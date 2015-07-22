@@ -1,0 +1,20 @@
+0.1
+---
+
+- Runs basic queries at a 10 minute interval
+- Can query multiple databases
+
+
+0.2
+---
+
+- Monitors log files
+
+
+
+FUTURE
+------
+
+- Sends diffs (i.e. what actually happened) and time ranges, instead of counters + timestamps
+- Only sends (full) schema information on changes
+- Short interval monitoring for 9.4+ pg_stat_statements (e.g. every 10s)
