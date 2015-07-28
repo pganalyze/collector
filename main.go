@@ -5,10 +5,10 @@ import (
   "fmt"
   "log"
   "time"
-	"os"
-	"os/signal"
-	"sync"
-	"syscall"
+  "os"
+  "os/signal"
+  "sync"
+  "syscall"
 
   "database/sql"
   _ "github.com/lib/pq"
@@ -46,31 +46,28 @@ func checkStatActivity() {
   fmt.Println(string(statsJson))
 }
 
-func runner() {
-  ticker := time.NewTicker(time.Millisecond * 1000)
-  for _ = range ticker.C {
-    checkStatActivity()
-  }
-}
-
 func main() {
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM)
+  sigs := make(chan os.Signal, 1)
+  signal.Notify(sigs, os.Interrupt, syscall.SIGTERM)
 
-	wg := sync.WaitGroup{}
-	wg.Add(1)
+  wg := sync.WaitGroup{}
 
-	go func() {
-		runner()
-		wg.Done()
-	}()
+  ticker := time.NewTicker(time.Millisecond * 1000)
 
-	<-sigs
+  go func() {
+    for _ = range ticker.C {
+      wg.Add(1)
+      checkStatActivity()
+      wg.Done()
+    }
+  }()
 
-	signal.Stop(sigs)
+  <-sigs
 
-	log.Printf("Exiting...")
-  // TODO: Send cancel signal to runner
+  signal.Stop(sigs)
 
-	wg.Wait()
+  log.Printf("Exiting...")
+  ticker.Stop()
+
+  wg.Wait()
 }
