@@ -31,10 +31,11 @@ func GetActivity(db *sql.DB) []Activity {
   defer stmt.Close()
 
   rows, err := stmt.Query()
+  checkErr(err)
+  defer rows.Close()
 
   var activities []Activity
 
-  defer rows.Close()
   for rows.Next() {
     var row Activity
 

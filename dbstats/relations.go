@@ -125,10 +125,11 @@ func GetRelations(db *sql.DB) []Relation {
   defer stmt.Close()
 
   rows, err := stmt.Query()
+  checkErr(err)
+  defer rows.Close()
 
   var relations []Relation
 
-  defer rows.Close()
   for rows.Next() {
     var row Relation
 

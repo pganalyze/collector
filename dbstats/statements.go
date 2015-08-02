@@ -40,7 +40,7 @@ const pg94OptionalFields = "queryid, NULL, NULL, NULL, NULL"
 const pg95OptionalFields = "queryid, min_time, max_time, mean_time, stddev_time"
 
 const statementSQL string =
-`SELECT (SELECT rolname FROM pg_authid WHERE oid = userid) AS username,
+`SELECT (SELECT rolname FROM pg_roles WHERE oid = userid) AS username,
         query, calls, total_time, rows, shared_blks_hit, shared_blks_read,
         shared_blks_dirtied, shared_blks_written, local_blks_hit,
         local_blks_read, local_blks_dirtied, local_blks_written,
@@ -57,10 +57,11 @@ func GetStatements(db *sql.DB) []Statement {
   defer stmt.Close()
 
   rows, err := stmt.Query()
+  checkErr(err)
+  defer rows.Close()
 
   var statements []Statement
 
-  defer rows.Close()
   for rows.Next() {
     var row Statement
 
