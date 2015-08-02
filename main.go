@@ -23,8 +23,9 @@ func checkErr(err error) {
 }
 
 type snapshot struct {
-  ActiveQueries []dbstats.StatActivity `json:"active_queries"`
+  ActiveQueries []dbstats.Activity `json:"active_queries"`
   Relations []dbstats.Relation `json:"relations"`
+  Statements []dbstats.Statement `json:"statements"`
 }
 
 func checkStatActivity() {
@@ -39,7 +40,8 @@ func checkStatActivity() {
 
   var stats snapshot
 
-  stats.ActiveQueries = dbstats.GetStatActivity(db)
+  stats.ActiveQueries = dbstats.GetActivity(db)
+  stats.Statements = dbstats.GetStatements(db)
   stats.Relations = dbstats.GetRelations(db)
 
   statsJson, _ := json.Marshal(stats)

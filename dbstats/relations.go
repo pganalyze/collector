@@ -28,10 +28,10 @@ type RelationStats struct {
   NLiveTup null.Int `json:"n_live_tup"`                  // Estimated number of live rows
   NDeadTup null.Int `json:"n_dead_tup"`                  // Estimated number of dead rows
   NModSinceAnalyze null.Int `json:"n_mod_since_analyze"` // Estimated number of rows modified since this table was last analyzed
-  LastVacuum Timestamp `json:"last_vacuum"`                   // Last time at which this table was manually vacuumed (not counting VACUUM FULL)
-  LastAutovacuum Timestamp `json:"last_autovacuum"`           // Last time at which this table was vacuumed by the autovacuum daemon
-  LastAnalyze Timestamp `json:"last_analyze"`                 // Last time at which this table was manually analyzed
-  LastAutoanalyze Timestamp `json:"last_autoanalyze"`         // Last time at which this table was analyzed by the autovacuum daemon
+  LastVacuum Timestamp `json:"last_vacuum"`              // Last time at which this table was manually vacuumed (not counting VACUUM FULL)
+  LastAutovacuum Timestamp `json:"last_autovacuum"`      // Last time at which this table was vacuumed by the autovacuum daemon
+  LastAnalyze Timestamp `json:"last_analyze"`            // Last time at which this table was manually analyzed
+  LastAutoanalyze Timestamp `json:"last_autoanalyze"`    // Last time at which this table was analyzed by the autovacuum daemon
   VacuumCount null.Int `json:"vacuum_count"`             // Number of times this table has been manually vacuumed (not counting VACUUM FULL)
   AutovacuumCount null.Int `json:"autovacuum_count"`     // Number of times this table has been vacuumed by the autovacuum daemon
   AnalyzeCount null.Int `json:"analyze_count"`           // Number of times this table has been manually analyzed

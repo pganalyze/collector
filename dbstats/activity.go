@@ -5,10 +5,10 @@ import (
   "database/sql"
 )
 
-type StatActivity struct {
+type Activity struct {
   Pid int `json:"pid"`
-  Usename string `json:"query"`
-  ApplicationName string `json:"state"`
+  Username string `json:"username"`
+  ApplicationName string `json:"application_name"`
   ClientAddr string `json:"client_addr"`
   BackendStart time.Time `json:"backend_start"`
   XactStart time.Time `json:"xact_start"`
@@ -18,28 +18,27 @@ type StatActivity struct {
   State string `json:"state"`
 }
 
-const statActivitySQL string =
+const activitySQL string =
 `SELECT pid, usename, application_name, client_addr::text, backend_start,
         xact_start, query_start, state_change, waiting, state
    FROM pg_stat_activity
-  WHERE datname = current_database()`
-// pid <> pg_backend_pid() AND
+  WHERE pid <> pg_backend_pid() AND datname = current_database()`
 
-func GetStatActivity(db *sql.DB) []StatActivity {
-  stmt, err := db.Prepare(statActivitySQL)
+func GetActivity(db *sql.DB) []Activity {
+  stmt, err := db.Prepare(activitySQL)
   checkErr(err)
 
   defer stmt.Close()
 
   rows, err := stmt.Query()
 
-  var activities []StatActivity
+  var activities []Activity
 
   defer rows.Close()
   for rows.Next() {
-    var row StatActivity
+    var row Activity
 
-    err := rows.Scan(&row.Pid, &row.Usename, &row.ApplicationName, &row.ClientAddr,
+    err := rows.Scan(&row.Pid, &row.Username, &row.ApplicationName, &row.ClientAddr,
                      &row.BackendStart, &row.XactStart, &row.QueryStart, &row.StateChange,
                      &row.Waiting, &row.State)
     checkErr(err)
