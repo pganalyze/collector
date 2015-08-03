@@ -1,19 +1,19 @@
 package dbstats
 
 import (
-  "time"
   "database/sql"
+  null "gopkg.in/guregu/null.v2"
 )
 
 type Activity struct {
   Pid int `json:"pid"`
   Username string `json:"username"`
   ApplicationName string `json:"application_name"`
-  ClientAddr string `json:"client_addr"`
-  BackendStart time.Time `json:"backend_start"`
-  XactStart time.Time `json:"xact_start"`
-  QueryStart time.Time `json:"query_start"`
-  StateChange time.Time `json:"state_change"`
+  ClientAddr null.String `json:"client_addr"`
+  BackendStart Timestamp `json:"backend_start"`
+  XactStart Timestamp `json:"xact_start"`
+  QueryStart Timestamp `json:"query_start"`
+  StateChange Timestamp `json:"state_change"`
   Waiting bool `json:"waiting"`
   State string `json:"state"`
 }
@@ -25,7 +25,7 @@ const activitySQL string =
   WHERE pid <> pg_backend_pid() AND datname = current_database()`
 
 func GetActivity(db *sql.DB) []Activity {
-  stmt, err := db.Prepare(activitySQL)
+  stmt, err := db.Prepare(queryMarkerSQL + activitySQL)
   checkErr(err)
 
   defer stmt.Close()

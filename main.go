@@ -45,9 +45,9 @@ type snapshot struct {
 func collectStatistics(config connectionConfig, db *sql.DB) {
   var stats snapshot
 
-  //stats.ActiveQueries = dbstats.GetActivity(db)
+  stats.ActiveQueries = dbstats.GetActivity(db)
   stats.Statements = dbstats.GetStatements(db)
-  //stats.Relations = dbstats.GetRelations(db)
+  stats.Relations = dbstats.GetRelations(db)
 
   statsJson, _ := json.Marshal(stats)
   fmt.Println(string(statsJson))

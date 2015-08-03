@@ -3,6 +3,7 @@ package dbstats
 import (
   "database/sql"
   "fmt"
+  "strings"
   null "gopkg.in/guregu/null.v2"
 )
 
@@ -46,12 +47,24 @@ const statementSQL string =
         local_blks_read, local_blks_dirtied, local_blks_written,
         temp_blks_read, temp_blks_written, blk_read_time, blk_write_time,
         %s
-   FROM pg_stat_statements
-  WHERE dbid IN (SELECT oid FROM pg_database WHERE datname = current_database())`
+   FROM %s
+  WHERE query !~* '^%s' AND query <> '<insufficient privilege>'
+        AND query NOT LIKE 'DEALLOCATE %%'
+        AND dbid IN (SELECT oid FROM pg_database WHERE datname = current_database())`
 
 func GetStatements(db *sql.DB) []Statement {
   // TODO(LukasFittl): Use correct optional fields based on version
-  stmt, err := db.Prepare(fmt.Sprintf(statementSQL, pg94OptionalFields))
+  optionalFields := pg94OptionalFields
+
+  // TODO(LukasFittl): Optionally use stats helper
+  sourceTable := "pg_stat_statements"
+
+  //re.sub(r'([*/])', r'\\\1', self.db.querymarker)
+  queryMarkerRegex := queryMarkerSQL
+  queryMarkerRegex = strings.Replace(queryMarkerRegex, "*", "\\*", -1)
+  queryMarkerRegex = strings.Replace(queryMarkerRegex, "/", "\\/", -1)
+
+  stmt, err := db.Prepare(queryMarkerSQL + fmt.Sprintf(statementSQL, optionalFields, sourceTable, queryMarkerRegex))
   checkErr(err)
 
   defer stmt.Close()

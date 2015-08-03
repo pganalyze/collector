@@ -119,7 +119,7 @@ const columnsSQL string =
  ORDER BY a.attnum`
 
 func GetRelations(db *sql.DB) []Relation {
-  stmt, err := db.Prepare(relationsSQL)
+  stmt, err := db.Prepare(queryMarkerSQL + relationsSQL)
   checkErr(err)
 
   defer stmt.Close()

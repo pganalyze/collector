@@ -1,7 +1,6 @@
 ## Basic working version
 
 * [ ] Use pganalyze-collector JSON format
-* [ ] Add marker in front of stats queries and filter them out
 * [ ] Run queries at 10 minute interval
 * [ ] DB: Indices
 * [ ] Dockerfile
