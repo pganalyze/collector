@@ -2,9 +2,10 @@
 
 * [X] Use pganalyze-collector JSON format
 * [X] Run queries at 10 minute interval
-* [ ] DB: Indices
-* [ ] DB: Columns
+* [X] DB: Indices
+* [X] DB: Columns
 * [X] Dockerfile
+* [X] Exclude marked queries from output
 
 
 ## Solve existing pganalyze-collector use cases
@@ -15,6 +16,7 @@
 * [ ] Use version detection to fetch correct fields
 * [ ] Compress sent data using zlib
 * [ ] System information
+* [ ] Option to not collect view statistics
 * [ ] DB: Bloat, bgwriter, replication, locks, functions, settings
 * [ ] DB: View definitions
 * [ ] DB: Constraints

@@ -44,8 +44,12 @@ type connectionConfig struct {
 
 type snapshot struct {
 	ActiveQueries []dbstats.Activity  `json:"backends"`
-	Relations     []dbstats.Relation  `json:"schema"`
 	Statements    []dbstats.Statement `json:"queries"`
+	Postgres      snapshotPostgres    `json:"postgres"`
+}
+
+type snapshotPostgres struct {
+	Relations []dbstats.Relation `json:"schema"`
 }
 
 func collectStatistics(config connectionConfig, db *sql.DB) (err error) {
@@ -53,7 +57,7 @@ func collectStatistics(config connectionConfig, db *sql.DB) (err error) {
 
 	stats.ActiveQueries = dbstats.GetActivity(db)
 	stats.Statements = dbstats.GetStatements(db)
-	stats.Relations = dbstats.GetRelations(db)
+	stats.Postgres.Relations = dbstats.GetRelations(db)
 
 	statsJSON, _ := json.Marshal(stats)
 
@@ -82,7 +86,7 @@ func collectStatistics(config connectionConfig, db *sql.DB) (err error) {
 		return
 	}
 
-	fmt.Printf("Submitted snapshot successfully\n")
+	log.Printf("Submitted snapshot successfully\n")
 	return
 }
 
@@ -182,7 +186,7 @@ func main() {
 		err := collectStatistics(config, db)
 		if err != nil {
 			// TODO(LukasFittl): We could consider re-running on error (e.g. if it was a temporary server issue)
-			fmt.Print(err)
+			log.Print(err)
 		}
 
 		wg.Done()

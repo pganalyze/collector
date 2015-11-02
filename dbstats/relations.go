@@ -6,13 +6,16 @@ import (
 	null "gopkg.in/guregu/null.v2"
 )
 
+type Oid int64
+
 type Relation struct {
-	Oid          int64         `json:"oid"`
+	Oid          Oid           `json:"oid"`
 	SchemaName   string        `json:"schema_name"`
 	TableName    string        `json:"table_name"`
 	RelationType string        `json:"relation_type"`
 	Stats        RelationStats `json:"stats"`
 	Columns      []Column      `json:"columns"`
+	Indices      []Index       `json:"indices"`
 }
 
 type RelationStats struct {
@@ -48,11 +51,30 @@ type RelationStats struct {
 }
 
 type Column struct {
-	Name         string `json:"name"`
-	DataType     string `json:"data_type"`
-	DefaultValue string `json:"default_value"`
-	NotNull      bool   `json:"not_null"`
-	Position     int32  `json:"position"`
+	Oid          Oid         `json:"-"`
+	Name         string      `json:"name"`
+	DataType     string      `json:"data_type"`
+	DefaultValue null.String `json:"default_value"`
+	NotNull      bool        `json:"not_null"`
+	Position     int32       `json:"position"`
+}
+
+type Index struct {
+	Oid           Oid         `json:"-"`
+	IndexOid      Oid         `json:"-"`
+	Columns       string      `json:"columns"`
+	Name          string      `json:"name"`
+	SizeBytes     null.Int    `json:"size_bytes"`
+	IsPrimary     bool        `json:"is_primary"`
+	IsUnique      bool        `json:"is_unique"`
+	IsValid       bool        `json:"is_valid"`
+	IndexDef      string      `json:"index_def"`
+	ConstraintDef null.String `json:"constraint_def"`
+	IdxScan       null.Int    `json:"idx_scan"`
+	IdxTupRead    null.Int    `json:"idx_tup_read"`
+	IdxTupFetch   null.Int    `json:"idx_tup_fetch"`
+	IdxBlksRead   null.Int    `json:"idx_blks_read"`
+	IdxBlksHit    null.Int    `json:"idx_blks_hit"`
 }
 
 const relationsSQL string = `SELECT c.oid,
@@ -117,17 +139,43 @@ const columnsSQL string = `SELECT c.oid,
 			 AND NOT a.attisdropped
  ORDER BY a.attnum`
 
+const indicesSQL string = `
+SELECT c.oid,
+			 c2.oid AS index_oid,
+			 i.indkey::text AS columns,
+			 c2.relname AS name,
+			 pg_catalog.pg_relation_size(c2.oid) AS size_bytes,
+			 i.indisprimary AS is_primary,
+			 i.indisunique AS is_unique,
+			 i.indisvalid AS is_valid,
+			 pg_catalog.pg_get_indexdef(i.indexrelid, 0, TRUE) AS index_def,
+			 pg_catalog.pg_get_constraintdef(con.oid, TRUE) AS constraint_def,
+			 s.idx_scan, s.idx_tup_read, s.idx_tup_fetch,
+			 sio.idx_blks_read, sio.idx_blks_hit
+	FROM pg_catalog.pg_class c
+	JOIN pg_catalog.pg_namespace n ON (n.oid = c.relnamespace)
+	JOIN pg_catalog.pg_index i ON (c.oid = i.indrelid)
+	JOIN pg_catalog.pg_class c2 ON (i.indexrelid = c2.oid)
+	LEFT JOIN pg_catalog.pg_constraint con ON (conrelid = i.indrelid
+																						 AND conindid = i.indexrelid
+																						 AND contype IN ('p', 'u', 'x'))
+	LEFT JOIN pg_stat_user_indexes s ON (s.indexrelid = c2.oid)
+	LEFT JOIN pg_statio_user_indexes sio ON (sio.indexrelid = c2.oid)
+ WHERE c.relkind IN ('r','v','m')
+			 AND c.relpersistence <> 't'
+			 AND n.nspname NOT IN ('pg_catalog', 'information_schema')`
+
 func GetRelations(db *sql.DB) []Relation {
+	relations := make(map[Oid]Relation, 0)
+
+	// Relations
 	stmt, err := db.Prepare(queryMarkerSQL + relationsSQL)
 	checkErr(err)
-
 	defer stmt.Close()
 
 	rows, err := stmt.Query()
 	checkErr(err)
 	defer rows.Close()
-
-	var relations []Relation
 
 	for rows.Next() {
 		var row Relation
@@ -145,10 +193,56 @@ func GetRelations(db *sql.DB) []Relation {
 			&row.Stats.TidxBlksHit)
 		checkErr(err)
 
-		relations = append(relations, row)
+		relations[row.Oid] = row
 	}
 
-	// TODO: Read columns
+	// Columns
+	stmt, err = db.Prepare(queryMarkerSQL + columnsSQL)
+	checkErr(err)
+	defer stmt.Close()
 
-	return relations
+	rows, err = stmt.Query()
+	checkErr(err)
+	defer rows.Close()
+
+	for rows.Next() {
+		var row Column
+
+		err := rows.Scan(&row.Oid, &row.Name, &row.DataType, &row.DefaultValue,
+			&row.NotNull, &row.Position)
+		checkErr(err)
+
+		relation := relations[row.Oid]
+		relation.Columns = append(relation.Columns, row)
+		relations[row.Oid] = relation
+	}
+
+	// Indices
+	stmt, err = db.Prepare(queryMarkerSQL + indicesSQL)
+	checkErr(err)
+	defer stmt.Close()
+
+	rows, err = stmt.Query()
+	checkErr(err)
+	defer rows.Close()
+
+	for rows.Next() {
+		var row Index
+
+		err := rows.Scan(&row.Oid, &row.IndexOid, &row.Columns, &row.Name, &row.SizeBytes,
+			&row.IsPrimary, &row.IsUnique, &row.IsValid, &row.IndexDef, &row.ConstraintDef,
+			&row.IdxScan, &row.IdxTupRead, &row.IdxTupFetch, &row.IdxBlksRead, &row.IdxBlksHit)
+		checkErr(err)
+
+		relation := relations[row.Oid]
+		relation.Indices = append(relation.Indices, row)
+		relations[row.Oid] = relation
+	}
+
+	v := make([]Relation, 0, len(relations))
+	for _, value := range relations {
+		v = append(v, value)
+	}
+
+	return v
 }

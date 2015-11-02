@@ -59,8 +59,7 @@ func GetStatements(db *sql.DB) []Statement {
 	// TODO(LukasFittl): Optionally use stats helper
 	sourceTable := "pg_stat_statements"
 
-	//re.sub(r'([*/])', r'\\\1', self.db.querymarker)
-	queryMarkerRegex := queryMarkerSQL
+	queryMarkerRegex := strings.Trim(queryMarkerSQL, " ")
 	queryMarkerRegex = strings.Replace(queryMarkerRegex, "*", "\\*", -1)
 	queryMarkerRegex = strings.Replace(queryMarkerRegex, "/", "\\/", -1)
 
