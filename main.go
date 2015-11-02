@@ -1,129 +1,130 @@
 package main
 
 import (
-  "encoding/json"
-  "fmt"
-  "log"
-  "time"
-  "os"
-  "os/signal"
-  "os/user"
-  "sync"
-  "syscall"
+	"encoding/json"
+	"fmt"
+	"log"
+	"os"
+	"os/signal"
+	"os/user"
+	"sync"
+	"syscall"
 
-  "database/sql"
-  _ "github.com/lib/pq"
+	"database/sql"
 
-  "github.com/go-ini/ini"
+	_ "github.com/lib/pq" // Enable database package to use Postgres
 
-  "github.com/pganalyze/agent/dbstats"
+	"github.com/go-ini/ini"
+
+	"github.com/lfittl/pganalyze-collector-next/dbstats"
+	scheduler "github.com/lfittl/pganalyze-collector-next/scheduler"
 )
 
 func checkErr(err error) {
-  if err != nil {
-    panic(err)
-  }
+	if err != nil {
+		panic(err)
+	}
 }
 
 type connectionConfig struct {
-  ApiKey string `ini:"api_key"`
-  ApiUrl string `ini:"api_url"`
-  DbUrl string `ini:"db_url"`
-  DbName string `ini:"db_name"`
-  DbUsername string `ini:"db_username"`
-  DbPassword string `ini:"db_password"`
-  DbHost string `ini:"db_host"`
-  DbPort int `ini:"db_port"`
+	APIKey     string `ini:"api_key"`
+	APIURL     string `ini:"api_url"`
+	DbURL      string `ini:"db_url"`
+	DbName     string `ini:"db_name"`
+	DbUsername string `ini:"db_username"`
+	DbPassword string `ini:"db_password"`
+	DbHost     string `ini:"db_host"`
+	DbPort     int    `ini:"db_port"`
 }
 
 type snapshot struct {
-  ActiveQueries []dbstats.Activity `json:"active_queries"`
-  Relations []dbstats.Relation `json:"relations"`
-  Statements []dbstats.Statement `json:"statements"`
+	ActiveQueries []dbstats.Activity  `json:"active_queries"`
+	Relations     []dbstats.Relation  `json:"relations"`
+	Statements    []dbstats.Statement `json:"statements"`
 }
 
 func collectStatistics(config connectionConfig, db *sql.DB) {
-  var stats snapshot
+	var stats snapshot
 
-  stats.ActiveQueries = dbstats.GetActivity(db)
-  stats.Statements = dbstats.GetStatements(db)
-  stats.Relations = dbstats.GetRelations(db)
+	stats.ActiveQueries = dbstats.GetActivity(db)
+	stats.Statements = dbstats.GetStatements(db)
+	stats.Relations = dbstats.GetRelations(db)
 
-  statsJson, _ := json.Marshal(stats)
-  fmt.Println(string(statsJson))
+	statsJSON, _ := json.Marshal(stats)
+	fmt.Println(string(statsJSON))
 }
 
 func readConfig() connectionConfig {
-  config := &connectionConfig{
-    DbHost: "localhost",
-    DbPort: 5432,
-  }
+	config := &connectionConfig{
+		DbHost: "localhost",
+		DbPort: 5432,
+	}
 
-  usr, err := user.Current()
-  checkErr(err)
+	usr, err := user.Current()
+	checkErr(err)
 
-  configFile, err := ini.Load(usr.HomeDir + "/.pganalyze_collector.conf")
-  checkErr(err)
+	configFile, err := ini.Load(usr.HomeDir + "/.pganalyze_collector.conf")
+	checkErr(err)
 
-  err = configFile.Section("pganalyze").MapTo(config)
-  checkErr(err)
+	err = configFile.Section("pganalyze").MapTo(config)
+	checkErr(err)
 
-  return *config
+	return *config
 }
 
 func connectToDb(config connectionConfig) *sql.DB {
-  var dbinfo string
+	var dbinfo string
 
-  if (config.DbUrl != "") {
-    dbinfo = config.DbUrl
-  } else {
-    dbinfo = fmt.Sprintf("user=%s dbname=%s host=%s port=%d sslmode=disable connect_timeout=10",
-                          config.DbUsername, config.DbName, config.DbHost, config.DbPort)
+	if config.DbURL != "" {
+		dbinfo = config.DbURL
+	} else {
+		dbinfo = fmt.Sprintf("user=%s dbname=%s host=%s port=%d sslmode=disable connect_timeout=10",
+			config.DbUsername, config.DbName, config.DbHost, config.DbPort)
 
-    if (config.DbPassword != "") {
-      dbinfo += fmt.Sprintf(" password=%s", config.DbPassword)
-    }
-  }
+		if config.DbPassword != "" {
+			dbinfo += fmt.Sprintf(" password=%s", config.DbPassword)
+		}
+	}
 
-  db, err := sql.Open("postgres", dbinfo)
-  checkErr(err)
+	db, err := sql.Open("postgres", dbinfo)
+	checkErr(err)
 
-  err = db.Ping()
-  checkErr(err)
+	err = db.Ping()
+	checkErr(err)
 
-  return db
+	return db
 }
 
 func main() {
-  sigs := make(chan os.Signal, 1)
-  signal.Notify(sigs, os.Interrupt, syscall.SIGTERM)
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM)
 
-  wg := sync.WaitGroup{}
+	wg := sync.WaitGroup{}
 
-  config := readConfig()
+	config := readConfig()
+	schedulerGroups, err := scheduler.ReadSchedulerGroups(scheduler.DefaultConfig)
+	if err != nil {
+		panic("Could not read scheduler configuration - please make sure scheduler.toml exists")
+	}
 
-  db := connectToDb(config)
-  defer db.Close()
+	db := connectToDb(config)
+	defer db.Close()
 
-  // Initial run to ensure everything is working
-  collectStatistics(config, db)
+	// Initial run to ensure everything is working
+	collectStatistics(config, db)
 
-  ticker := time.NewTicker(time.Millisecond * 10000)
+	stop := schedulerGroups["stats"].Schedule(func() {
+		wg.Add(1)
+		collectStatistics(config, db)
+		wg.Done()
+	})
 
-  go func() {
-    for _ = range ticker.C {
-      wg.Add(1)
-      collectStatistics(config, db)
-      wg.Done()
-    }
-  }()
+	<-sigs
 
-  <-sigs
+	signal.Stop(sigs)
 
-  signal.Stop(sigs)
+	log.Printf("Exiting...")
+	stop <- true
 
-  log.Printf("Exiting...")
-  ticker.Stop()
-
-  wg.Wait()
+	wg.Wait()
 }
