@@ -3,7 +3,8 @@
 * [X] Use pganalyze-collector JSON format
 * [X] Run queries at 10 minute interval
 * [ ] DB: Indices
-* [ ] Dockerfile
+* [ ] DB: Columns
+* [X] Dockerfile
 
 
 ## Solve existing pganalyze-collector use cases
@@ -17,6 +18,11 @@
 * [ ] DB: Bloat, bgwriter, replication, locks, functions, settings
 * [ ] DB: View definitions
 * [ ] DB: Constraints
+
+
+## Neat things
+
+* [ ] Include normalized query in backends information
 
 
 ## Proxy

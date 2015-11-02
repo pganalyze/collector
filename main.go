@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"os/user"
+	"strconv"
 	"sync"
 	"syscall"
 	"time"
@@ -24,7 +25,7 @@ import (
 	scheduler "github.com/lfittl/pganalyze-collector-next/scheduler"
 )
 
-func checkErr(err error) {
+func panicOnErr(err error) {
 	if err != nil {
 		panic(err)
 	}
@@ -47,7 +48,7 @@ type snapshot struct {
 	Statements    []dbstats.Statement `json:"queries"`
 }
 
-func collectStatistics(config connectionConfig, db *sql.DB) {
+func collectStatistics(config connectionConfig, db *sql.DB) (err error) {
 	var stats snapshot
 
 	stats.ActiveQueries = dbstats.GetActivity(db)
@@ -66,33 +67,71 @@ func collectStatistics(config connectionConfig, db *sql.DB) {
 		"collected_at":       {fmt.Sprintf("%d", time.Now().Unix())},
 		//"data_compressor": 	  {"zlib"},
 	})
+	if err != nil {
+		return
+	}
 	defer resp.Body.Close()
-	checkErr(err)
 
 	body, err := ioutil.ReadAll(resp.Body)
-	checkErr(err)
+	if err != nil {
+		return
+	}
 
 	if resp.StatusCode != http.StatusOK {
-		fmt.Printf("Error when submitting: %s\n", body)
+		err = fmt.Errorf("Error when submitting: %s\n", body)
+		return
 	}
 
 	fmt.Printf("Submitted snapshot successfully\n")
+	return
 }
 
 func readConfig() connectionConfig {
 	config := &connectionConfig{
+		APIURL: "https://api.pganalyze.com/v1/snapshots",
 		DbHost: "localhost",
 		DbPort: 5432,
 	}
 
 	usr, err := user.Current()
-	checkErr(err)
+	panicOnErr(err)
 
-	configFile, err := ini.Load(usr.HomeDir + "/.pganalyze_collector.conf")
-	checkErr(err)
+	filename := usr.HomeDir + "/.pganalyze_collector.conf"
 
-	err = configFile.Section("pganalyze").MapTo(config)
-	checkErr(err)
+	if _, err := os.Stat(filename); err == nil {
+		configFile, err := ini.Load(filename)
+		panicOnErr(err)
+
+		err = configFile.Section("pganalyze").MapTo(config)
+		panicOnErr(err)
+	}
+
+	// The environment variables always trump everything else, and are the default way
+	// to configure when running inside a Docker container.
+	if apiKey := os.Getenv("PGA_API_KEY"); apiKey != "" {
+		config.APIKey = apiKey
+	}
+	if apiURL := os.Getenv("PGA_API_URL"); apiURL != "" {
+		config.APIURL = apiURL
+	}
+	if dbURL := os.Getenv("DB_URL"); dbURL != "" {
+		config.DbURL = dbURL
+	}
+	if dbName := os.Getenv("DB_NAME"); dbName != "" {
+		config.DbName = dbName
+	}
+	if dbUsername := os.Getenv("DB_USERNAME"); dbUsername != "" {
+		config.DbUsername = dbUsername
+	}
+	if dbPassword := os.Getenv("DB_PASSWORD"); dbPassword != "" {
+		config.DbPassword = dbPassword
+	}
+	if dbHost := os.Getenv("DB_HOST"); dbHost != "" {
+		config.DbHost = dbHost
+	}
+	if dbPort := os.Getenv("DB_PORT"); dbPort != "" {
+		config.DbPort, _ = strconv.Atoi(dbPort)
+	}
 
 	return *config
 }
@@ -112,10 +151,10 @@ func connectToDb(config connectionConfig) *sql.DB {
 	}
 
 	db, err := sql.Open("postgres", dbinfo)
-	checkErr(err)
+	panicOnErr(err)
 
 	err = db.Ping()
-	checkErr(err)
+	panicOnErr(err)
 
 	return db
 }
@@ -128,19 +167,24 @@ func main() {
 
 	config := readConfig()
 	schedulerGroups, err := scheduler.ReadSchedulerGroups(scheduler.DefaultConfig)
-	if err != nil {
-		panic("Could not read scheduler configuration - please make sure scheduler.toml exists")
-	}
+	panicOnErr(err)
 
 	db := connectToDb(config)
 	defer db.Close()
 
 	// Initial run to ensure everything is working
-	collectStatistics(config, db)
+	err = collectStatistics(config, db)
+	panicOnErr(err)
 
 	stop := schedulerGroups["stats"].Schedule(func() {
 		wg.Add(1)
-		collectStatistics(config, db)
+
+		err := collectStatistics(config, db)
+		if err != nil {
+			// TODO(LukasFittl): We could consider re-running on error (e.g. if it was a temporary server issue)
+			fmt.Print(err)
+		}
+
 		wg.Done()
 	})
 
