@@ -15,7 +15,7 @@ type Activity struct {
 	XactStart       Timestamp   `json:"xact_start"`
 	QueryStart      Timestamp   `json:"query_start"`
 	StateChange     Timestamp   `json:"state_change"`
-	Waiting         bool        `json:"waiting"`
+	Waiting         null.Bool   `json:"waiting"`
 	State           string      `json:"state"`
 }
 
