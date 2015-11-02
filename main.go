@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"compress/zlib"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -61,15 +63,20 @@ func collectStatistics(config connectionConfig, db *sql.DB) (err error) {
 
 	statsJSON, _ := json.Marshal(stats)
 
+	var compressedJSON bytes.Buffer
+	w := zlib.NewWriter(&compressedJSON)
+	w.Write(statsJSON)
+	w.Close()
+
 	resp, err := http.PostForm(config.APIURL, url.Values{
-		"data":               {string(statsJSON)},
+		"data":               {compressedJSON.String()},
+		"data_compressor":    {"zlib"},
 		"api_key":            {config.APIKey},
 		"submitter":          {"pganalyze-collector-next"},
 		"system_information": {"false"},
 		"no_reset":           {"true"},
 		"query_source":       {"pg_stat_statements"},
 		"collected_at":       {fmt.Sprintf("%d", time.Now().Unix())},
-		//"data_compressor": 	  {"zlib"},
 	})
 	if err != nil {
 		return
