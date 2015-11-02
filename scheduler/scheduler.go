@@ -23,15 +23,13 @@ func (group Group) Schedule(runner func()) chan bool {
 
 	go func() {
 		for {
-			// NOTE(LukasFittl): In the future we'll measure runner's exection time
-			// and decide scheduling interval based on that
-			runner()
-
 			delay := group.interval.Next(time.Now()).Sub(time.Now())
 
 			select {
 			case <-time.After(delay):
-				// Nothing, re-run loop
+				// NOTE(LukasFittl): In the future we'll measure the runner's exection time
+				// and decide the next scheduling interval based on that
+				runner()
 			case <-stop:
 				return
 			}

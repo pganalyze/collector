@@ -3,12 +3,16 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
+	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"os/user"
 	"sync"
 	"syscall"
+	"time"
 
 	"database/sql"
 
@@ -38,9 +42,9 @@ type connectionConfig struct {
 }
 
 type snapshot struct {
-	ActiveQueries []dbstats.Activity  `json:"active_queries"`
-	Relations     []dbstats.Relation  `json:"relations"`
-	Statements    []dbstats.Statement `json:"statements"`
+	ActiveQueries []dbstats.Activity  `json:"backends"`
+	Relations     []dbstats.Relation  `json:"schema"`
+	Statements    []dbstats.Statement `json:"queries"`
 }
 
 func collectStatistics(config connectionConfig, db *sql.DB) {
@@ -51,7 +55,28 @@ func collectStatistics(config connectionConfig, db *sql.DB) {
 	stats.Relations = dbstats.GetRelations(db)
 
 	statsJSON, _ := json.Marshal(stats)
-	fmt.Println(string(statsJSON))
+
+	resp, err := http.PostForm(config.APIURL, url.Values{
+		"data":               {string(statsJSON)},
+		"api_key":            {config.APIKey},
+		"submitter":          {"pganalyze-collector-next"},
+		"system_information": {"false"},
+		"no_reset":           {"true"},
+		"query_source":       {"pg_stat_statements"},
+		"collected_at":       {fmt.Sprintf("%d", time.Now().Unix())},
+		//"data_compressor": 	  {"zlib"},
+	})
+	defer resp.Body.Close()
+	checkErr(err)
+
+	body, err := ioutil.ReadAll(resp.Body)
+	checkErr(err)
+
+	if resp.StatusCode != http.StatusOK {
+		fmt.Printf("Error when submitting: %s\n", body)
+	}
+
+	fmt.Printf("Submitted snapshot successfully\n")
 }
 
 func readConfig() connectionConfig {

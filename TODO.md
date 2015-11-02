@@ -1,7 +1,7 @@
 ## Basic working version
 
-* [ ] Use pganalyze-collector JSON format
-* [ ] Run queries at 10 minute interval
+* [X] Use pganalyze-collector JSON format
+* [X] Run queries at 10 minute interval
 * [ ] DB: Indices
 * [ ] Dockerfile
 

@@ -19,6 +19,9 @@ type Activity struct {
 	State           string      `json:"state"`
 }
 
+// http://www.postgresql.org/docs/devel/static/monitoring-stats.html#PG-STAT-ACTIVITY-VIEW
+//
+// Note: We don't include query to avoid sending sensitive data
 const activitySQL string = `SELECT pid, usename, application_name, client_addr::text, backend_start,
 				xact_start, query_start, state_change, waiting, state
 	 FROM pg_stat_activity

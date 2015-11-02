@@ -148,5 +148,7 @@ func GetRelations(db *sql.DB) []Relation {
 		relations = append(relations, row)
 	}
 
+	// TODO: Read columns
+
 	return relations
 }
