@@ -18,7 +18,7 @@ type Timestamp struct {
 	pq.NullTime
 }
 
-// NewTime creates a new Time
+// NewTimestamp - creates a new Timestamp
 func NewTimestamp(t time.Time, valid bool) Timestamp {
 	return Timestamp{
 		NullTime: pq.NullTime{
