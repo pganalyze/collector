@@ -25,6 +25,7 @@ import (
 
 	"github.com/lfittl/pganalyze-collector-next/dbstats"
 	scheduler "github.com/lfittl/pganalyze-collector-next/scheduler"
+	systemstats "github.com/lfittl/pganalyze-collector-next/systemstats"
 )
 
 func panicOnErr(err error) {
@@ -42,12 +43,16 @@ type connectionConfig struct {
 	DbPassword string `ini:"db_password"`
 	DbHost     string `ini:"db_host"`
 	DbPort     int    `ini:"db_port"`
+
+	AwsAccessKeyId     string `ini:"aws_access_key_id"`
+	AwsSecretAccessKey string `ini:"aws_secret_access_key"`
 }
 
 type snapshot struct {
 	ActiveQueries []dbstats.Activity  `json:"backends"`
 	Statements    []dbstats.Statement `json:"queries"`
 	Postgres      snapshotPostgres    `json:"postgres"`
+	System        systemstats.SnapshotSystem `json:"system"`
 }
 
 type snapshotPostgres struct {
@@ -60,6 +65,7 @@ func collectStatistics(config connectionConfig, db *sql.DB) (err error) {
 	stats.ActiveQueries = dbstats.GetActivity(db)
 	stats.Statements = dbstats.GetStatements(db)
 	stats.Postgres.Relations = dbstats.GetRelations(db)
+	stats.System = systemstats.GetFromAws(config.AwsAccessKeyId, config.AwsSecretAccessKey)
 
 	statsJSON, _ := json.Marshal(stats)
 
