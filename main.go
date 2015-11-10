@@ -11,8 +11,6 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
-	"os/user"
-	"strconv"
 	"sync"
 	"syscall"
 	"time"
@@ -21,8 +19,7 @@ import (
 
 	_ "github.com/lib/pq" // Enable database package to use Postgres
 
-	"github.com/go-ini/ini"
-
+	"github.com/lfittl/pganalyze-collector-next/config"
 	"github.com/lfittl/pganalyze-collector-next/dbstats"
 	scheduler "github.com/lfittl/pganalyze-collector-next/scheduler"
 	systemstats "github.com/lfittl/pganalyze-collector-next/systemstats"
@@ -34,24 +31,10 @@ func panicOnErr(err error) {
 	}
 }
 
-type connectionConfig struct {
-	APIKey     string `ini:"api_key"`
-	APIURL     string `ini:"api_url"`
-	DbURL      string `ini:"db_url"`
-	DbName     string `ini:"db_name"`
-	DbUsername string `ini:"db_username"`
-	DbPassword string `ini:"db_password"`
-	DbHost     string `ini:"db_host"`
-	DbPort     int    `ini:"db_port"`
-
-	AwsAccessKeyId     string `ini:"aws_access_key_id"`
-	AwsSecretAccessKey string `ini:"aws_secret_access_key"`
-}
-
 type snapshot struct {
-	ActiveQueries []dbstats.Activity  `json:"backends"`
-	Statements    []dbstats.Statement `json:"queries"`
-	Postgres      snapshotPostgres    `json:"postgres"`
+	ActiveQueries []dbstats.Activity         `json:"backends"`
+	Statements    []dbstats.Statement        `json:"queries"`
+	Postgres      snapshotPostgres           `json:"postgres"`
 	System        systemstats.SnapshotSystem `json:"system"`
 }
 
@@ -59,13 +42,13 @@ type snapshotPostgres struct {
 	Relations []dbstats.Relation `json:"schema"`
 }
 
-func collectStatistics(config connectionConfig, db *sql.DB) (err error) {
+func collectStatistics(config config.Config, db *sql.DB) (err error) {
 	var stats snapshot
 
 	stats.ActiveQueries = dbstats.GetActivity(db)
 	stats.Statements = dbstats.GetStatements(db)
 	stats.Postgres.Relations = dbstats.GetRelations(db)
-	stats.System = systemstats.GetFromAws(config.AwsAccessKeyId, config.AwsSecretAccessKey)
+	stats.System = systemstats.GetFromAws(config)
 
 	statsJSON, _ := json.Marshal(stats)
 
@@ -103,57 +86,7 @@ func collectStatistics(config connectionConfig, db *sql.DB) (err error) {
 	return
 }
 
-func readConfig() connectionConfig {
-	config := &connectionConfig{
-		APIURL: "https://api.pganalyze.com/v1/snapshots",
-		DbHost: "localhost",
-		DbPort: 5432,
-	}
-
-	usr, err := user.Current()
-	panicOnErr(err)
-
-	filename := usr.HomeDir + "/.pganalyze_collector.conf"
-
-	if _, err := os.Stat(filename); err == nil {
-		configFile, err := ini.Load(filename)
-		panicOnErr(err)
-
-		err = configFile.Section("pganalyze").MapTo(config)
-		panicOnErr(err)
-	}
-
-	// The environment variables always trump everything else, and are the default way
-	// to configure when running inside a Docker container.
-	if apiKey := os.Getenv("PGA_API_KEY"); apiKey != "" {
-		config.APIKey = apiKey
-	}
-	if apiURL := os.Getenv("PGA_API_URL"); apiURL != "" {
-		config.APIURL = apiURL
-	}
-	if dbURL := os.Getenv("DB_URL"); dbURL != "" {
-		config.DbURL = dbURL
-	}
-	if dbName := os.Getenv("DB_NAME"); dbName != "" {
-		config.DbName = dbName
-	}
-	if dbUsername := os.Getenv("DB_USERNAME"); dbUsername != "" {
-		config.DbUsername = dbUsername
-	}
-	if dbPassword := os.Getenv("DB_PASSWORD"); dbPassword != "" {
-		config.DbPassword = dbPassword
-	}
-	if dbHost := os.Getenv("DB_HOST"); dbHost != "" {
-		config.DbHost = dbHost
-	}
-	if dbPort := os.Getenv("DB_PORT"); dbPort != "" {
-		config.DbPort, _ = strconv.Atoi(dbPort)
-	}
-
-	return *config
-}
-
-func connectToDb(config connectionConfig) *sql.DB {
+func connectToDb(config config.Config) *sql.DB {
 	var dbinfo string
 
 	if config.DbURL != "" {
@@ -182,7 +115,9 @@ func main() {
 
 	wg := sync.WaitGroup{}
 
-	config := readConfig()
+	config, err := config.Read()
+	panicOnErr(err)
+
 	schedulerGroups, err := scheduler.ReadSchedulerGroups(scheduler.DefaultConfig)
 	panicOnErr(err)
 
