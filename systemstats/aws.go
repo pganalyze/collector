@@ -28,7 +28,7 @@ func GetFromAws(config config.Config) (system SnapshotSystem) {
 	instance, err := FindInstance(config, sess)
 
 	if err != nil {
-		fmt.Println("Error: %v", err)
+		fmt.Printf("Error: %v\n", err)
 		return
 	}
 
