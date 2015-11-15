@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/zlib"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -32,25 +33,32 @@ func panicOnErr(err error) {
 }
 
 type snapshot struct {
-	ActiveQueries []dbstats.Activity         `json:"backends"`
-	Statements    []dbstats.Statement        `json:"queries"`
-	Postgres      snapshotPostgres           `json:"postgres"`
-	System        systemstats.SnapshotSystem `json:"system"`
+	ActiveQueries []dbstats.Activity          `json:"backends"`
+	Statements    []dbstats.Statement         `json:"queries"`
+	Postgres      snapshotPostgres            `json:"postgres"`
+	System        *systemstats.SystemSnapshot `json:"system"`
 }
 
 type snapshotPostgres struct {
 	Relations []dbstats.Relation `json:"schema"`
 }
 
-func collectStatistics(config config.Config, db *sql.DB) (err error) {
+func collectStatistics(config config.Config, db *sql.DB, dryRun bool) (err error) {
 	var stats snapshot
 
 	stats.ActiveQueries = dbstats.GetActivity(db)
 	stats.Statements = dbstats.GetStatements(db)
 	stats.Postgres.Relations = dbstats.GetRelations(db)
-	stats.System = systemstats.GetFromAws(config)
+	stats.System = systemstats.GetSystemSnapshot(config)
 
 	statsJSON, _ := json.Marshal(stats)
+
+	if dryRun {
+		var out bytes.Buffer
+		json.Indent(&out, statsJSON, "", "\t")
+		log.Printf("Dry run - JSON data that would have been sent:\n%s", out.String())
+		return
+	}
 
 	var compressedJSON bytes.Buffer
 	w := zlib.NewWriter(&compressedJSON)
@@ -110,6 +118,11 @@ func connectToDb(config config.Config) *sql.DB {
 }
 
 func main() {
+	var dryRun bool
+
+	flag.BoolVar(&dryRun, "dry-run", false, "Print JSON data that would get sent to web service and exit afterwards.")
+	flag.Parse()
+
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM)
 
@@ -125,13 +138,17 @@ func main() {
 	defer db.Close()
 
 	// Initial run to ensure everything is working
-	err = collectStatistics(config, db)
+	err = collectStatistics(config, db, dryRun)
 	panicOnErr(err)
+
+	if dryRun {
+		return
+	}
 
 	stop := schedulerGroups["stats"].Schedule(func() {
 		wg.Add(1)
 
-		err := collectStatistics(config, db)
+		err := collectStatistics(config, db, false)
 		if err != nil {
 			// TODO(LukasFittl): We could consider re-running on error (e.g. if it was a temporary server issue)
 			log.Print(err)

@@ -16,6 +16,7 @@ type Config struct {
 	DbHost     string `ini:"db_host"`
 	DbPort     int    `ini:"db_port"`
 
+	AwsRegion          string `ini:"aws_region"`
 	AwsDbInstanceId    string `ini:"aws_db_instance_id"`
 	AwsAccessKeyId     string `ini:"aws_access_key_id"`
 	AwsSecretAccessKey string `ini:"aws_secret_access_key"`

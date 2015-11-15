@@ -10,9 +10,10 @@ import (
 
 func Read() (Config, error) {
 	config := &Config{
-		APIURL: "https://api.pganalyze.com/v1/snapshots",
-		DbHost: "localhost",
-		DbPort: 5432,
+		APIURL:    "https://api.pganalyze.com/v1/snapshots",
+		DbHost:    "localhost",
+		DbPort:    5432,
+		AwsRegion: "us-east-1",
 	}
 
 	usr, err := user.Current()
