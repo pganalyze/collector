@@ -61,6 +61,18 @@ func Read() (Config, error) {
 	if dbPort := os.Getenv("DB_PORT"); dbPort != "" {
 		config.DbPort, _ = strconv.Atoi(dbPort)
 	}
+	if awsRegion := os.Getenv("AWS_REGION"); awsRegion != "" {
+		config.AwsRegion = awsRegion
+	}
+	if awsInstanceId := os.Getenv("AWS_INSTANCE_ID"); awsInstanceId != "" {
+		config.AwsDbInstanceId = awsInstanceId
+	}
+	if awsAccessKeyId := os.Getenv("AWS_ACCESS_KEY_ID"); awsAccessKeyId != "" {
+		config.AwsAccessKeyId = awsAccessKeyId
+	}
+	if awsSecretAccessKey := os.Getenv("AWS_SECRET_ACCESS_KEY"); awsSecretAccessKey != "" {
+		config.AwsSecretAccessKey = awsSecretAccessKey
+	}
 
 	return *config, nil
 }
