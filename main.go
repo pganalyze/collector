@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/zlib"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -11,8 +12,6 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
-	"os/user"
-	"strconv"
 	"sync"
 	"syscall"
 	"time"
@@ -21,10 +20,10 @@ import (
 
 	_ "github.com/lib/pq" // Enable database package to use Postgres
 
-	"github.com/go-ini/ini"
-
+	"github.com/lfittl/pganalyze-collector-next/config"
 	"github.com/lfittl/pganalyze-collector-next/dbstats"
 	scheduler "github.com/lfittl/pganalyze-collector-next/scheduler"
+	systemstats "github.com/lfittl/pganalyze-collector-next/systemstats"
 )
 
 func panicOnErr(err error) {
@@ -33,35 +32,33 @@ func panicOnErr(err error) {
 	}
 }
 
-type connectionConfig struct {
-	APIKey     string `ini:"api_key"`
-	APIURL     string `ini:"api_url"`
-	DbURL      string `ini:"db_url"`
-	DbName     string `ini:"db_name"`
-	DbUsername string `ini:"db_username"`
-	DbPassword string `ini:"db_password"`
-	DbHost     string `ini:"db_host"`
-	DbPort     int    `ini:"db_port"`
-}
-
 type snapshot struct {
-	ActiveQueries []dbstats.Activity  `json:"backends"`
-	Statements    []dbstats.Statement `json:"queries"`
-	Postgres      snapshotPostgres    `json:"postgres"`
+	ActiveQueries []dbstats.Activity          `json:"backends"`
+	Statements    []dbstats.Statement         `json:"queries"`
+	Postgres      snapshotPostgres            `json:"postgres"`
+	System        *systemstats.SystemSnapshot `json:"system"`
 }
 
 type snapshotPostgres struct {
 	Relations []dbstats.Relation `json:"schema"`
 }
 
-func collectStatistics(config connectionConfig, db *sql.DB) (err error) {
+func collectStatistics(config config.Config, db *sql.DB, dryRun bool) (err error) {
 	var stats snapshot
 
 	stats.ActiveQueries = dbstats.GetActivity(db)
 	stats.Statements = dbstats.GetStatements(db)
 	stats.Postgres.Relations = dbstats.GetRelations(db)
+	stats.System = systemstats.GetSystemSnapshot(config)
 
 	statsJSON, _ := json.Marshal(stats)
+
+	if dryRun {
+		var out bytes.Buffer
+		json.Indent(&out, statsJSON, "", "\t")
+		log.Printf("Dry run - JSON data that would have been sent:\n%s", out.String())
+		return
+	}
 
 	var compressedJSON bytes.Buffer
 	w := zlib.NewWriter(&compressedJSON)
@@ -97,57 +94,7 @@ func collectStatistics(config connectionConfig, db *sql.DB) (err error) {
 	return
 }
 
-func readConfig() connectionConfig {
-	config := &connectionConfig{
-		APIURL: "https://api.pganalyze.com/v1/snapshots",
-		DbHost: "localhost",
-		DbPort: 5432,
-	}
-
-	usr, err := user.Current()
-	panicOnErr(err)
-
-	filename := usr.HomeDir + "/.pganalyze_collector.conf"
-
-	if _, err := os.Stat(filename); err == nil {
-		configFile, err := ini.Load(filename)
-		panicOnErr(err)
-
-		err = configFile.Section("pganalyze").MapTo(config)
-		panicOnErr(err)
-	}
-
-	// The environment variables always trump everything else, and are the default way
-	// to configure when running inside a Docker container.
-	if apiKey := os.Getenv("PGA_API_KEY"); apiKey != "" {
-		config.APIKey = apiKey
-	}
-	if apiURL := os.Getenv("PGA_API_URL"); apiURL != "" {
-		config.APIURL = apiURL
-	}
-	if dbURL := os.Getenv("DB_URL"); dbURL != "" {
-		config.DbURL = dbURL
-	}
-	if dbName := os.Getenv("DB_NAME"); dbName != "" {
-		config.DbName = dbName
-	}
-	if dbUsername := os.Getenv("DB_USERNAME"); dbUsername != "" {
-		config.DbUsername = dbUsername
-	}
-	if dbPassword := os.Getenv("DB_PASSWORD"); dbPassword != "" {
-		config.DbPassword = dbPassword
-	}
-	if dbHost := os.Getenv("DB_HOST"); dbHost != "" {
-		config.DbHost = dbHost
-	}
-	if dbPort := os.Getenv("DB_PORT"); dbPort != "" {
-		config.DbPort, _ = strconv.Atoi(dbPort)
-	}
-
-	return *config
-}
-
-func connectToDb(config connectionConfig) *sql.DB {
+func connectToDb(config config.Config) *sql.DB {
 	var dbinfo string
 
 	if config.DbURL != "" {
@@ -171,12 +118,19 @@ func connectToDb(config connectionConfig) *sql.DB {
 }
 
 func main() {
+	var dryRun bool
+
+	flag.BoolVar(&dryRun, "dry-run", false, "Print JSON data that would get sent to web service and exit afterwards.")
+	flag.Parse()
+
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM)
 
 	wg := sync.WaitGroup{}
 
-	config := readConfig()
+	config, err := config.Read()
+	panicOnErr(err)
+
 	schedulerGroups, err := scheduler.ReadSchedulerGroups(scheduler.DefaultConfig)
 	panicOnErr(err)
 
@@ -184,13 +138,17 @@ func main() {
 	defer db.Close()
 
 	// Initial run to ensure everything is working
-	err = collectStatistics(config, db)
+	err = collectStatistics(config, db, dryRun)
 	panicOnErr(err)
+
+	if dryRun {
+		return
+	}
 
 	stop := schedulerGroups["stats"].Schedule(func() {
 		wg.Add(1)
 
-		err := collectStatistics(config, db)
+		err := collectStatistics(config, db, false)
 		if err != nil {
 			// TODO(LukasFittl): We could consider re-running on error (e.g. if it was a temporary server issue)
 			log.Print(err)

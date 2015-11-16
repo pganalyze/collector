@@ -24,8 +24,8 @@ type Statement struct {
 	LocalBlksWritten  int64   `json:"local_blks_written"`
 	TempBlksRead      int64   `json:"temp_blks_read"`
 	TempBlksWritten   int64   `json:"temp_blks_written"`
-	BlkReadTime       float64 `json:"blk_read_time",omitempty`
-	BlkWriteTime      float64 `json:"blk_write_time",omitempty`
+	BlkReadTime       float64 `json:"blk_read_time"`
+	BlkWriteTime      float64 `json:"blk_write_time"`
 
 	// Postgres 9.4+
 	Queryid null.Int `json:"query_id"`

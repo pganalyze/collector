@@ -56,18 +56,6 @@ Nov 02 12:12:02 c02 docker[6448]: created by net/http.(*Transport).dialConn
 Nov 02 12:12:02 c02 docker[6448]: /usr/lib/go/src/net/http/transport.go:661 +0xcbc
 ```
 
-Request entity too large
-
-```
-Nov 02 12:12:59 c02 docker[6963]: panic: Error when submitting: <html>
-Nov 02 12:12:59 c02 docker[6963]: <head><title>413 Request Entity Too Large</title></head>
-Nov 02 12:12:59 c02 docker[6963]: <body bgcolor="white">
-Nov 02 12:12:59 c02 docker[6963]: <center><h1>413 Request Entity Too Large</h1></center>
-Nov 02 12:12:59 c02 docker[6963]: <hr><center>nginx/1.9.5</center>
-Nov 02 12:12:59 c02 docker[6963]: </body>
-Nov 02 12:12:59 c02 docker[6963]: </html>
-```
-
 ## Basic working version
 
 * [X] Use pganalyze-collector JSON format
