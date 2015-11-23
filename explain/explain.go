@@ -3,6 +3,8 @@ package explain
 import (
 	"database/sql"
 	"fmt"
+
+	pg_query "github.com/lfittl/pg_query.go"
 )
 
 type ExplainInput struct {
@@ -21,7 +23,29 @@ type Explain struct {
 }
 
 func RunExplain(db *sql.DB, inputs []ExplainInput) (explains []Explain) {
-	fmt.Printf("%v\n", inputs[0].Query)
-	// TODO
+	for _, input := range inputs {
+		fmt.Printf("%s\n", input.Query)
+
+		// To be on the safe side never EXPLAIN a statement that can't be parsed,
+		// or multiple statements in one (leading to accidental execution)
+		parsetree, err := pg_query.Parse(input.Query)
+		if err != nil && len(parsetree.Statements) != 1 {
+			continue
+		}
+
+		explainOut := Explain{
+			NormalizedQuery: input.Query,
+			Runtime:         input.Runtime,
+		}
+
+		err = db.QueryRow("EXPLAIN (VERBOSE, FORMAT JSON) " + input.Query).Scan(&explainOut.PlanOutput)
+		if err != nil {
+			fmt.Printf("%v\n", err)
+			continue
+		}
+
+		explains = append(explains, explainOut)
+	}
+
 	return
 }
