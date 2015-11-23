@@ -3,20 +3,22 @@ package dbstats
 import (
 	"database/sql"
 
+	"github.com/lfittl/pganalyze-collector-next/util"
+
 	null "gopkg.in/guregu/null.v2"
 )
 
 type Activity struct {
-	Pid             int         `json:"pid"`
-	Username        null.String `json:"username"`
-	ApplicationName null.String `json:"application_name"`
-	ClientAddr      null.String `json:"client_addr"`
-	BackendStart    Timestamp   `json:"backend_start"`
-	XactStart       Timestamp   `json:"xact_start"`
-	QueryStart      Timestamp   `json:"query_start"`
-	StateChange     Timestamp   `json:"state_change"`
-	Waiting         null.Bool   `json:"waiting"`
-	State           null.String `json:"state"`
+	Pid             int            `json:"pid"`
+	Username        null.String    `json:"username"`
+	ApplicationName null.String    `json:"application_name"`
+	ClientAddr      null.String    `json:"client_addr"`
+	BackendStart    util.Timestamp `json:"backend_start"`
+	XactStart       util.Timestamp `json:"xact_start"`
+	QueryStart      util.Timestamp `json:"query_start"`
+	StateChange     util.Timestamp `json:"state_change"`
+	Waiting         null.Bool      `json:"waiting"`
+	State           null.String    `json:"state"`
 }
 
 // http://www.postgresql.org/docs/devel/static/monitoring-stats.html#PG-STAT-ACTIVITY-VIEW

@@ -3,6 +3,8 @@ package dbstats
 import (
 	"database/sql"
 
+	"github.com/lfittl/pganalyze-collector-next/util"
+
 	null "gopkg.in/guregu/null.v2"
 )
 
@@ -19,35 +21,35 @@ type Relation struct {
 }
 
 type RelationStats struct {
-	SizeBytes        null.Int  `json:"size_bytes"`
-	WastedBytes      null.Int  `json:"wasted_bytes"`
-	SeqScan          null.Int  `json:"seq_scan"`            // Number of sequential scans initiated on this table
-	SeqTupRead       null.Int  `json:"seq_tup_read"`        // Number of live rows fetched by sequential scans
-	IdxScan          null.Int  `json:"idx_scan"`            // Number of index scans initiated on this table
-	IdxTupFetch      null.Int  `json:"idx_tup_fetch"`       // Number of live rows fetched by index scans
-	NTupIns          null.Int  `json:"n_tup_ins"`           // Number of rows inserted
-	NTupUpd          null.Int  `json:"n_tup_upd"`           // Number of rows updated
-	NTupDel          null.Int  `json:"n_tup_del"`           // Number of rows deleted
-	NTupHotUpd       null.Int  `json:"n_tup_hot_upd"`       // Number of rows HOT updated (i.e., with no separate index update required)
-	NLiveTup         null.Int  `json:"n_live_tup"`          // Estimated number of live rows
-	NDeadTup         null.Int  `json:"n_dead_tup"`          // Estimated number of dead rows
-	NModSinceAnalyze null.Int  `json:"n_mod_since_analyze"` // Estimated number of rows modified since this table was last analyzed
-	LastVacuum       Timestamp `json:"last_vacuum"`         // Last time at which this table was manually vacuumed (not counting VACUUM FULL)
-	LastAutovacuum   Timestamp `json:"last_autovacuum"`     // Last time at which this table was vacuumed by the autovacuum daemon
-	LastAnalyze      Timestamp `json:"last_analyze"`        // Last time at which this table was manually analyzed
-	LastAutoanalyze  Timestamp `json:"last_autoanalyze"`    // Last time at which this table was analyzed by the autovacuum daemon
-	VacuumCount      null.Int  `json:"vacuum_count"`        // Number of times this table has been manually vacuumed (not counting VACUUM FULL)
-	AutovacuumCount  null.Int  `json:"autovacuum_count"`    // Number of times this table has been vacuumed by the autovacuum daemon
-	AnalyzeCount     null.Int  `json:"analyze_count"`       // Number of times this table has been manually analyzed
-	AutoanalyzeCount null.Int  `json:"autoanalyze_count"`   // Number of times this table has been analyzed by the autovacuum daemon
-	HeapBlksRead     null.Int  `json:"heap_blks_read"`      // Number of disk blocks read from this table
-	HeapBlksHit      null.Int  `json:"heap_blks_hit"`       // Number of buffer hits in this table
-	IdxBlksRead      null.Int  `json:"idx_blks_read"`       // Number of disk blocks read from all indexes on this table
-	IdxBlksHit       null.Int  `json:"idx_blks_hit"`        // Number of buffer hits in all indexes on this table
-	ToastBlksRead    null.Int  `json:"toast_blks_read"`     // Number of disk blocks read from this table's TOAST table (if any)
-	ToastBlksHit     null.Int  `json:"toast_blks_hit"`      // Number of buffer hits in this table's TOAST table (if any)
-	TidxBlksRead     null.Int  `json:"tidx_blks_read"`      // Number of disk blocks read from this table's TOAST table indexes (if any)
-	TidxBlksHit      null.Int  `json:"tidx_blks_hit"`       // Number of buffer hits in this table's TOAST table indexes (if any)
+	SizeBytes        null.Int       `json:"size_bytes"`
+	WastedBytes      null.Int       `json:"wasted_bytes"`
+	SeqScan          null.Int       `json:"seq_scan"`            // Number of sequential scans initiated on this table
+	SeqTupRead       null.Int       `json:"seq_tup_read"`        // Number of live rows fetched by sequential scans
+	IdxScan          null.Int       `json:"idx_scan"`            // Number of index scans initiated on this table
+	IdxTupFetch      null.Int       `json:"idx_tup_fetch"`       // Number of live rows fetched by index scans
+	NTupIns          null.Int       `json:"n_tup_ins"`           // Number of rows inserted
+	NTupUpd          null.Int       `json:"n_tup_upd"`           // Number of rows updated
+	NTupDel          null.Int       `json:"n_tup_del"`           // Number of rows deleted
+	NTupHotUpd       null.Int       `json:"n_tup_hot_upd"`       // Number of rows HOT updated (i.e., with no separate index update required)
+	NLiveTup         null.Int       `json:"n_live_tup"`          // Estimated number of live rows
+	NDeadTup         null.Int       `json:"n_dead_tup"`          // Estimated number of dead rows
+	NModSinceAnalyze null.Int       `json:"n_mod_since_analyze"` // Estimated number of rows modified since this table was last analyzed
+	LastVacuum       util.Timestamp `json:"last_vacuum"`         // Last time at which this table was manually vacuumed (not counting VACUUM FULL)
+	LastAutovacuum   util.Timestamp `json:"last_autovacuum"`     // Last time at which this table was vacuumed by the autovacuum daemon
+	LastAnalyze      util.Timestamp `json:"last_analyze"`        // Last time at which this table was manually analyzed
+	LastAutoanalyze  util.Timestamp `json:"last_autoanalyze"`    // Last time at which this table was analyzed by the autovacuum daemon
+	VacuumCount      null.Int       `json:"vacuum_count"`        // Number of times this table has been manually vacuumed (not counting VACUUM FULL)
+	AutovacuumCount  null.Int       `json:"autovacuum_count"`    // Number of times this table has been vacuumed by the autovacuum daemon
+	AnalyzeCount     null.Int       `json:"analyze_count"`       // Number of times this table has been manually analyzed
+	AutoanalyzeCount null.Int       `json:"autoanalyze_count"`   // Number of times this table has been analyzed by the autovacuum daemon
+	HeapBlksRead     null.Int       `json:"heap_blks_read"`      // Number of disk blocks read from this table
+	HeapBlksHit      null.Int       `json:"heap_blks_hit"`       // Number of buffer hits in this table
+	IdxBlksRead      null.Int       `json:"idx_blks_read"`       // Number of disk blocks read from all indexes on this table
+	IdxBlksHit       null.Int       `json:"idx_blks_hit"`        // Number of buffer hits in all indexes on this table
+	ToastBlksRead    null.Int       `json:"toast_blks_read"`     // Number of disk blocks read from this table's TOAST table (if any)
+	ToastBlksHit     null.Int       `json:"toast_blks_hit"`      // Number of buffer hits in this table's TOAST table (if any)
+	TidxBlksRead     null.Int       `json:"tidx_blks_read"`      // Number of disk blocks read from this table's TOAST table indexes (if any)
+	TidxBlksHit      null.Int       `json:"tidx_blks_hit"`       // Number of buffer hits in this table's TOAST table indexes (if any)
 }
 
 type Column struct {
