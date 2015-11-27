@@ -1,4 +1,4 @@
-FROM gliderlabs/alpine:3.2
+FROM gliderlabs/alpine:edge
 MAINTAINER team@pganalyze.com
 
 RUN adduser -D pganalyze pganalyze
@@ -13,6 +13,7 @@ RUN apk-install -t build-deps curl libc-dev gcc go git \
   && cd $CODE_DIR \
 	&& export GOPATH=/go \
 	&& go get \
+	&& make -C $GOPATH/src/github.com/lfittl/pg_query.go \
 	&& go build -o $HOME_DIR/collector \
 	&& rm -rf /go \
 	&& apk del --purge build-deps

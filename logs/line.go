@@ -9,7 +9,7 @@ import (
 // Line - "Line" in the PostgreSQL logs - can be multiple lines if they belong together
 type Line struct {
 	OccurredAt      util.Timestamp `json:"occurred_at"`
-	Source          SourceType     `json:"type"`
+	Source          SourceType     `json:"source"`
 	ClientIP        string         `json:"client_ip,omitempty"`
 	LogLevel        string         `json:"log_level"`
 	BackendPid      int            `json:"backend_pid"`

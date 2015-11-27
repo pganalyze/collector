@@ -51,12 +51,11 @@ func collectStatistics(config config.Config, db *sql.DB, dryRun bool) (err error
 	var stats snapshot
 	var explainInputs []explain.ExplainInput
 
-	//stats.ActiveQueries = dbstats.GetActivity(db)
-	//stats.Statements = dbstats.GetStatements(db)
-	//stats.Postgres.Relations = dbstats.GetRelations(db)
-	//stats.System = systemstats.GetSystemSnapshot(config)
-	//stats.Logs
-	_, explainInputs = logs.GetLogLines(config)
+	stats.ActiveQueries = dbstats.GetActivity(db)
+	stats.Statements = dbstats.GetStatements(db)
+	stats.Postgres.Relations = dbstats.GetRelations(db)
+	stats.System = systemstats.GetSystemSnapshot(config)
+	stats.Logs, explainInputs = logs.GetLogLines(config)
 
 	stats.Explains = explain.RunExplain(db, explainInputs)
 

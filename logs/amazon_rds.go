@@ -23,15 +23,6 @@ import (
 // http://docs.aws.amazon.com/AmazonRDS/latest/APIReference//API_DownloadDBLogFilePortion.html
 // Retain the marker across runs to only download new data
 
-// type rdsLogLine struct {
-// 	timestamp           time.Time
-// 	clientAndPort       string
-// 	usernameAndDatabase string
-// 	backendPid          int
-// 	logLevel            string
-// 	content             string
-// }
-
 // GetFromAmazonRds - Gets log lines for an Amazon RDS instance
 func getFromAmazonRds(config config.Config) (result []Line, explains []explain.ExplainInput) {
 	// Get interesting files (last written to in the last 10 minutes)
@@ -178,8 +169,6 @@ func getFromAmazonRds(config config.Config) (result []Line, explains []explain.E
 				}
 
 				if strings.HasPrefix(logLine.Content, "duration: ") {
-					// duration: 15987.974 ms  execute <unnamed>: SELECT "last_query_states"."id" FROM "last_query_states"  WHERE "last_query_states"."database_id" = 1446
-					//
 					parts := regexp.MustCompile(`duration: ([\d\.]+) ms([^:]+): (.+)`).FindStringSubmatch(logLine.Content)
 
 					if len(parts) != 4 || strings.Contains(parts[2], "bind") || strings.Contains(parts[2], "parse") {
@@ -189,8 +178,9 @@ func getFromAmazonRds(config config.Config) (result []Line, explains []explain.E
 
 					runtime, _ := strconv.ParseFloat(parts[1], 64)
 					explains = append(explains, explain.ExplainInput{
-						Query:   parts[3],
-						Runtime: runtime,
+						OccurredAt: logLine.OccurredAt,
+						Query:      parts[3],
+						Runtime:    runtime,
 					})
 
 					continue
