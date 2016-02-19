@@ -1,6 +1,6 @@
 // https://github.com/guregu/null/issues/7
 
-package dbstats
+package util
 
 import (
 	"encoding/json"

@@ -15,7 +15,7 @@ type SystemSnapshot struct {
 // SystemType - Enum that describes which kind of system we're monitoring
 type SystemType int
 
-// Treat this list as append-only and never change the order.
+// Treat this list as append-only and never change the order
 const (
 	PhysicalSystem SystemType = iota
 	VirtualSystem

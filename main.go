@@ -22,6 +22,8 @@ import (
 
 	"github.com/lfittl/pganalyze-collector-next/config"
 	"github.com/lfittl/pganalyze-collector-next/dbstats"
+	"github.com/lfittl/pganalyze-collector-next/explain"
+	"github.com/lfittl/pganalyze-collector-next/logs"
 	scheduler "github.com/lfittl/pganalyze-collector-next/scheduler"
 	systemstats "github.com/lfittl/pganalyze-collector-next/systemstats"
 )
@@ -37,6 +39,8 @@ type snapshot struct {
 	Statements    []dbstats.Statement         `json:"queries"`
 	Postgres      snapshotPostgres            `json:"postgres"`
 	System        *systemstats.SystemSnapshot `json:"system"`
+	Logs          []logs.Line                 `json:"logs"`
+	Explains      []explain.Explain           `json:"explains"`
 }
 
 type snapshotPostgres struct {
@@ -45,11 +49,15 @@ type snapshotPostgres struct {
 
 func collectStatistics(config config.Config, db *sql.DB, dryRun bool) (err error) {
 	var stats snapshot
+	var explainInputs []explain.ExplainInput
 
 	stats.ActiveQueries = dbstats.GetActivity(db)
 	stats.Statements = dbstats.GetStatements(db)
 	stats.Postgres.Relations = dbstats.GetRelations(db)
 	stats.System = systemstats.GetSystemSnapshot(config)
+	stats.Logs, explainInputs = logs.GetLogLines(config)
+
+	stats.Explains = explain.RunExplain(db, explainInputs)
 
 	statsJSON, _ := json.Marshal(stats)
 
