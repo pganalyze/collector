@@ -47,12 +47,17 @@ type snapshotPostgres struct {
 	Relations []dbstats.Relation `json:"schema"`
 }
 
-func collectStatistics(config config.Config, db *sql.DB, dryRun bool) (err error) {
+func collectStatistics(config config.DatabaseConfig, db *sql.DB, dryRun bool) (err error) {
 	var stats snapshot
 	var explainInputs []explain.ExplainInput
 
 	stats.ActiveQueries = dbstats.GetActivity(db)
-	stats.Statements = dbstats.GetStatements(db)
+
+	stats.Statements, err = dbstats.GetStatements(db)
+	if err != nil {
+		return err
+	}
+
 	stats.Postgres.Relations = dbstats.GetRelations(db)
 	stats.System = systemstats.GetSystemSnapshot(config)
 	stats.Logs, explainInputs = logs.GetLogLines(config)
@@ -102,7 +107,7 @@ func collectStatistics(config config.Config, db *sql.DB, dryRun bool) (err error
 	return
 }
 
-func connectToDb(config config.Config) *sql.DB {
+func connectToDb(config config.DatabaseConfig) *sql.DB {
 	var dbinfo string
 
 	if config.DbURL != "" {
@@ -125,6 +130,58 @@ func connectToDb(config config.Config) *sql.DB {
 	return db
 }
 
+type ConfigAndConnection struct {
+	config     config.DatabaseConfig
+	connection *sql.DB
+}
+
+func run(wg sync.WaitGroup, dryRun bool) chan<- bool {
+	var databases []ConfigAndConnection
+
+	schedulerGroups, err := scheduler.ReadSchedulerGroups(scheduler.DefaultConfig)
+	panicOnErr(err)
+
+	databaseConfigs, err := config.Read()
+	panicOnErr(err)
+
+	for _, config := range databaseConfigs {
+		database := ConfigAndConnection{config: config}
+
+		database.connection = connectToDb(databaseConfigs[0])
+		defer database.connection.Close()
+
+		databases = append(databases, database)
+	}
+
+	// Initial run to ensure everything is working
+	for _, database := range databases {
+		err = collectStatistics(database.config, database.connection, dryRun)
+		if err != nil {
+			log.Print(err)
+		}
+	}
+
+	if dryRun {
+		return nil
+	}
+
+	stop := schedulerGroups["stats"].Schedule(func() {
+		wg.Add(1)
+
+		for _, database := range databases {
+			err := collectStatistics(database.config, database.connection, false)
+			if err != nil {
+				// TODO(LukasFittl): We could consider re-running on error (e.g. if it was a temporary server issue)
+				log.Print(err)
+			}
+		}
+
+		wg.Done()
+	})
+
+	return stop
+}
+
 func main() {
 	var dryRun bool
 
@@ -132,40 +189,22 @@ func main() {
 	flag.Parse()
 
 	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM)
+	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
 
 	wg := sync.WaitGroup{}
 
-	config, err := config.Read()
-	panicOnErr(err)
-
-	schedulerGroups, err := scheduler.ReadSchedulerGroups(scheduler.DefaultConfig)
-	panicOnErr(err)
-
-	db := connectToDb(config)
-	defer db.Close()
-
-	// Initial run to ensure everything is working
-	err = collectStatistics(config, db, dryRun)
-	panicOnErr(err)
-
-	if dryRun {
+ReadConfigAndRun:
+	stop := run(wg, dryRun)
+	if stop == nil {
 		return
 	}
 
-	stop := schedulerGroups["stats"].Schedule(func() {
-		wg.Add(1)
+	s := <-sigs
 
-		err := collectStatistics(config, db, false)
-		if err != nil {
-			// TODO(LukasFittl): We could consider re-running on error (e.g. if it was a temporary server issue)
-			log.Print(err)
-		}
-
-		wg.Done()
-	})
-
-	<-sigs
+	if s == syscall.SIGHUP {
+		log.Printf("Reloading configuration...")
+		goto ReadConfigAndRun
+	}
 
 	signal.Stop(sigs)
 

@@ -52,7 +52,7 @@ const statementSQL string = `SELECT (SELECT rolname FROM pg_roles WHERE oid = us
 				AND query NOT LIKE 'DEALLOCATE %%'
 				AND dbid IN (SELECT oid FROM pg_database WHERE datname = current_database())`
 
-func GetStatements(db *sql.DB) []Statement {
+func GetStatements(db *sql.DB) ([]Statement, error) {
 	// TODO(LukasFittl): Use correct optional fields based on version
 	optionalFields := pg94OptionalFields
 
@@ -64,12 +64,16 @@ func GetStatements(db *sql.DB) []Statement {
 	queryMarkerRegex = strings.Replace(queryMarkerRegex, "/", "\\/", -1)
 
 	stmt, err := db.Prepare(queryMarkerSQL + fmt.Sprintf(statementSQL, optionalFields, sourceTable, queryMarkerRegex))
-	checkErr(err)
+	if err != nil {
+		return nil, err
+	}
 
 	defer stmt.Close()
 
 	rows, err := stmt.Query()
-	checkErr(err)
+	if err != nil {
+		return nil, err
+	}
 	defer rows.Close()
 
 	var statements []Statement
@@ -82,10 +86,12 @@ func GetStatements(db *sql.DB) []Statement {
 			&row.LocalBlksHit, &row.LocalBlksRead, &row.LocalBlksDirtied, &row.LocalBlksWritten,
 			&row.TempBlksRead, &row.TempBlksWritten, &row.BlkReadTime, &row.BlkWriteTime,
 			&row.Queryid, &row.MinTime, &row.MaxTime, &row.MeanTime, &row.StddevTime)
-		checkErr(err)
+		if err != nil {
+			return nil, err
+		}
 
 		statements = append(statements, row)
 	}
 
-	return statements
+	return statements, nil
 }

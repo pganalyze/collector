@@ -8,35 +8,15 @@ import (
 	"github.com/go-ini/ini"
 )
 
-func Read() (Config, error) {
-	config := &Config{
+func GetDefaultConfig() *DatabaseConfig {
+	config := &DatabaseConfig{
 		APIURL:    "https://api.pganalyze.com/v1/snapshots",
 		DbHost:    "localhost",
 		DbPort:    5432,
 		AwsRegion: "us-east-1",
 	}
 
-	usr, err := user.Current()
-	if err != nil {
-		return *config, err
-	}
-
-	filename := usr.HomeDir + "/.pganalyze_collector.conf"
-
-	if _, err := os.Stat(filename); err == nil {
-		configFile, err := ini.Load(filename)
-		if err != nil {
-			return *config, err
-		}
-
-		err = configFile.Section("pganalyze").MapTo(config)
-		if err != nil {
-			return *config, err
-		}
-	}
-
-	// The environment variables always trump everything else, and are the default way
-	// to configure when running inside a Docker container.
+	// The environment variables are the default way to configure when running inside a Docker container.
 	if apiKey := os.Getenv("PGA_API_KEY"); apiKey != "" {
 		config.APIKey = apiKey
 	}
@@ -74,5 +54,41 @@ func Read() (Config, error) {
 		config.AwsSecretAccessKey = awsSecretAccessKey
 	}
 
-	return *config, nil
+	return config
+}
+
+func Read() ([]DatabaseConfig, error) {
+	var databases []DatabaseConfig
+
+	usr, err := user.Current()
+	if err != nil {
+		return databases, err
+	}
+
+	filename := usr.HomeDir + "/.pganalyze_collector.conf"
+
+	if _, err := os.Stat(filename); err == nil {
+		configFile, err := ini.Load(filename)
+		if err != nil {
+			return databases, err
+		}
+
+		sections := configFile.Sections()
+		for _, section := range sections {
+			config := GetDefaultConfig()
+
+			err = section.MapTo(config)
+			if err != nil {
+				return databases, err
+			}
+
+			if config.DbName != "" {
+				databases = append(databases, *config)
+			}
+		}
+	} else {
+		databases = append(databases, *GetDefaultConfig())
+	}
+
+	return databases, nil
 }

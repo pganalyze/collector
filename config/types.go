@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-type Config struct {
+type DatabaseConfig struct {
 	APIKey     string `ini:"api_key"`
 	APIURL     string `ini:"api_url"`
 	DbURL      string `ini:"db_url"`
@@ -22,7 +22,7 @@ type Config struct {
 	AwsSecretAccessKey string `ini:"aws_secret_access_key"`
 }
 
-func (config Config) GetDbHost() string {
+func (config DatabaseConfig) GetDbHost() string {
 	if config.DbURL != "" {
 		u, _ := url.Parse(config.DbURL)
 		parts := strings.Split(u.Host, ":")
@@ -32,7 +32,7 @@ func (config Config) GetDbHost() string {
 	return config.DbHost
 }
 
-func (config Config) GetDbPort() int {
+func (config DatabaseConfig) GetDbPort() int {
 	if config.DbURL != "" {
 		u, _ := url.Parse(config.DbURL)
 		parts := strings.Split(u.Host, ":")

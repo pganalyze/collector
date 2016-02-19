@@ -27,7 +27,7 @@ const (
 )
 
 // GetLogLines - Retrieves all new log lines for this system and returns them
-func GetLogLines(config config.Config) (lines []Line, explainInputs []explain.ExplainInput) {
+func GetLogLines(config config.DatabaseConfig) (lines []Line, explainInputs []explain.ExplainInput) {
 	// TODO: We need a smarter selection mechanism here, and also consider AWS instances by hostname
 	if config.AwsDbInstanceId != "" {
 		lines, explainInputs = getFromAmazonRds(config)

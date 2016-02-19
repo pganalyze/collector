@@ -24,7 +24,7 @@ import (
 // Retain the marker across runs to only download new data
 
 // GetFromAmazonRds - Gets log lines for an Amazon RDS instance
-func getFromAmazonRds(config config.Config) (result []Line, explains []explain.ExplainInput) {
+func getFromAmazonRds(config config.DatabaseConfig) (result []Line, explains []explain.ExplainInput) {
 	// Get interesting files (last written to in the last 10 minutes)
 	// Remember markers for each file
 

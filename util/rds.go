@@ -11,7 +11,7 @@ import (
 	"github.com/lfittl/pganalyze-collector-next/config"
 )
 
-func FindRdsInstance(config config.Config, sess *session.Session) (instance *rds.DBInstance, err error) {
+func FindRdsInstance(config config.DatabaseConfig, sess *session.Session) (instance *rds.DBInstance, err error) {
 	var resp *rds.DescribeDBInstancesOutput
 
 	svc := rds.New(sess)
