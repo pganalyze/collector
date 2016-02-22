@@ -20,6 +20,8 @@ type DatabaseConfig struct {
 	AwsDbInstanceId    string `ini:"aws_db_instance_id"`
 	AwsAccessKeyId     string `ini:"aws_access_key_id"`
 	AwsSecretAccessKey string `ini:"aws_secret_access_key"`
+
+	SectionName string
 }
 
 func (config DatabaseConfig) GetDbHost() string {

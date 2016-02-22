@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"os/user"
 	"sync"
 	"syscall"
 	"time"
@@ -27,12 +28,6 @@ import (
 	scheduler "github.com/lfittl/pganalyze-collector-next/scheduler"
 	systemstats "github.com/lfittl/pganalyze-collector-next/systemstats"
 )
-
-func panicOnErr(err error) {
-	if err != nil {
-		panic(err)
-	}
-}
 
 type snapshot struct {
 	ActiveQueries []dbstats.Activity          `json:"backends"`
@@ -51,14 +46,21 @@ func collectStatistics(config config.DatabaseConfig, db *sql.DB, dryRun bool) (e
 	var stats snapshot
 	var explainInputs []explain.ExplainInput
 
-	stats.ActiveQueries = dbstats.GetActivity(db)
+	stats.ActiveQueries, err = dbstats.GetActivity(db)
+	if err != nil {
+		return err
+	}
 
 	stats.Statements, err = dbstats.GetStatements(db)
 	if err != nil {
 		return err
 	}
 
-	stats.Postgres.Relations = dbstats.GetRelations(db)
+	stats.Postgres.Relations, err = dbstats.GetRelations(db)
+	if err != nil {
+		return err
+	}
+
 	stats.System = systemstats.GetSystemSnapshot(config)
 	stats.Logs, explainInputs = logs.GetLogLines(config)
 
@@ -88,6 +90,7 @@ func collectStatistics(config config.DatabaseConfig, db *sql.DB, dryRun bool) (e
 		"query_source":       {"pg_stat_statements"},
 		"collected_at":       {fmt.Sprintf("%d", time.Now().Unix())},
 	})
+	// TODO(LukasFittl): We could consider re-running on error (e.g. if it was a temporary server issue)
 	if err != nil {
 		return
 	}
@@ -103,11 +106,11 @@ func collectStatistics(config config.DatabaseConfig, db *sql.DB, dryRun bool) (e
 		return
 	}
 
-	log.Printf("Submitted snapshot successfully\n")
+	log.Printf("[%s] Submitted snapshot successfully", config.SectionName)
 	return
 }
 
-func connectToDb(config config.DatabaseConfig) *sql.DB {
+func connectToDb(config config.DatabaseConfig) (*sql.DB, error) {
 	var dbinfo string
 
 	if config.DbURL != "" {
@@ -122,12 +125,16 @@ func connectToDb(config config.DatabaseConfig) *sql.DB {
 	}
 
 	db, err := sql.Open("postgres", dbinfo)
-	panicOnErr(err)
+	if err != nil {
+		return nil, err
+	}
 
 	err = db.Ping()
-	panicOnErr(err)
+	if err != nil {
+		return nil, err
+	}
 
-	return db
+	return db, nil
 }
 
 type ConfigAndConnection struct {
@@ -135,29 +142,36 @@ type ConfigAndConnection struct {
 	connection *sql.DB
 }
 
-func run(wg sync.WaitGroup, dryRun bool) chan<- bool {
+func run(wg sync.WaitGroup, dryRun bool, configFilename string) chan<- bool {
 	var databases []ConfigAndConnection
 
 	schedulerGroups, err := scheduler.ReadSchedulerGroups(scheduler.DefaultConfig)
-	panicOnErr(err)
+	if err != nil {
+		log.Print("Error: Could not read scheduler groups, awaiting SIGHUP or process kill")
+		return nil
+	}
 
-	databaseConfigs, err := config.Read()
-	panicOnErr(err)
+	databaseConfigs, err := config.Read(configFilename)
+	if err != nil {
+		log.Print("Error: Could not read configuration, awaiting SIGHUP or process kill")
+		return nil
+	}
 
 	for _, config := range databaseConfigs {
 		database := ConfigAndConnection{config: config}
-
-		database.connection = connectToDb(databaseConfigs[0])
-		defer database.connection.Close()
-
-		databases = append(databases, database)
+		database.connection, err = connectToDb(config)
+		if err != nil {
+			log.Printf("[%s] Error: Failed to connect to database, skipping it for all runs", config.SectionName)
+		} else {
+			databases = append(databases, database)
+		}
 	}
 
 	// Initial run to ensure everything is working
 	for _, database := range databases {
 		err = collectStatistics(database.config, database.connection, dryRun)
 		if err != nil {
-			log.Print(err)
+			log.Printf("[%s] %s", database.config.SectionName, err)
 		}
 	}
 
@@ -171,8 +185,7 @@ func run(wg sync.WaitGroup, dryRun bool) chan<- bool {
 		for _, database := range databases {
 			err := collectStatistics(database.config, database.connection, false)
 			if err != nil {
-				// TODO(LukasFittl): We could consider re-running on error (e.g. if it was a temporary server issue)
-				log.Print(err)
+				log.Printf("[%s] %s", database.config.SectionName, err)
 			}
 		}
 
@@ -184,8 +197,16 @@ func run(wg sync.WaitGroup, dryRun bool) chan<- bool {
 
 func main() {
 	var dryRun bool
+	var configFilename string
+
+	usr, err := user.Current()
+	if err != nil {
+		log.Print("Could not get user context from operating system - can't initialize, exiting.")
+		return
+	}
 
 	flag.BoolVar(&dryRun, "dry-run", false, "Print JSON data that would get sent to web service and exit afterwards.")
+	flag.StringVar(&configFilename, "config", usr.HomeDir+"/.pganalyze_collector.conf", "Specifiy alternative path for config file.")
 	flag.Parse()
 
 	sigs := make(chan os.Signal, 1)
@@ -194,22 +215,24 @@ func main() {
 	wg := sync.WaitGroup{}
 
 ReadConfigAndRun:
-	stop := run(wg, dryRun)
-	if stop == nil {
+	stop := run(wg, dryRun, configFilename)
+	if dryRun {
 		return
 	}
 
+	// Block here until we get any of the registered signals
 	s := <-sigs
 
+	// Stop the scheduled runs
+	stop <- true
+
 	if s == syscall.SIGHUP {
-		log.Printf("Reloading configuration...")
+		log.Print("Reloading configuration...")
 		goto ReadConfigAndRun
 	}
 
 	signal.Stop(sigs)
 
-	log.Printf("Exiting...")
-	stop <- true
-
+	log.Print("Exiting...")
 	wg.Wait()
 }

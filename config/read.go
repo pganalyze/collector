@@ -2,7 +2,6 @@ package config
 
 import (
 	"os"
-	"os/user"
 	"strconv"
 
 	"github.com/go-ini/ini"
@@ -57,15 +56,8 @@ func GetDefaultConfig() *DatabaseConfig {
 	return config
 }
 
-func Read() ([]DatabaseConfig, error) {
+func Read(filename string) ([]DatabaseConfig, error) {
 	var databases []DatabaseConfig
-
-	usr, err := user.Current()
-	if err != nil {
-		return databases, err
-	}
-
-	filename := usr.HomeDir + "/.pganalyze_collector.conf"
 
 	if _, err := os.Stat(filename); err == nil {
 		configFile, err := ini.Load(filename)
@@ -81,6 +73,8 @@ func Read() ([]DatabaseConfig, error) {
 			if err != nil {
 				return databases, err
 			}
+
+			config.SectionName = section.Name()
 
 			if config.DbName != "" {
 				databases = append(databases, *config)

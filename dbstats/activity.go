@@ -29,14 +29,19 @@ const activitySQL string = `SELECT pid, usename, application_name, client_addr::
 	 FROM pg_stat_activity
 	WHERE pid <> pg_backend_pid() AND datname = current_database()`
 
-func GetActivity(db *sql.DB) []Activity {
+func GetActivity(db *sql.DB) ([]Activity, error) {
 	stmt, err := db.Prepare(queryMarkerSQL + activitySQL)
-	checkErr(err)
+	if err != nil {
+		return nil, err
+	}
 
 	defer stmt.Close()
 
 	rows, err := stmt.Query()
-	checkErr(err)
+	if err != nil {
+		return nil, err
+	}
+
 	defer rows.Close()
 
 	var activities []Activity
@@ -47,10 +52,12 @@ func GetActivity(db *sql.DB) []Activity {
 		err := rows.Scan(&row.Pid, &row.Username, &row.ApplicationName, &row.ClientAddr,
 			&row.BackendStart, &row.XactStart, &row.QueryStart, &row.StateChange,
 			&row.Waiting, &row.State)
-		checkErr(err)
+		if err != nil {
+			return nil, err
+		}
 
 		activities = append(activities, row)
 	}
 
-	return activities
+	return activities, nil
 }

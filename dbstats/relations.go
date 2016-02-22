@@ -167,16 +167,22 @@ SELECT c.oid,
 			 AND c.relpersistence <> 't'
 			 AND n.nspname NOT IN ('pg_catalog', 'information_schema')`
 
-func GetRelations(db *sql.DB) []Relation {
+func GetRelations(db *sql.DB) ([]Relation, error) {
 	relations := make(map[Oid]Relation, 0)
 
 	// Relations
 	stmt, err := db.Prepare(queryMarkerSQL + relationsSQL)
-	checkErr(err)
+	if err != nil {
+		return nil, err
+	}
+
 	defer stmt.Close()
 
 	rows, err := stmt.Query()
-	checkErr(err)
+	if err != nil {
+		return nil, err
+	}
+
 	defer rows.Close()
 
 	for rows.Next() {
@@ -193,18 +199,26 @@ func GetRelations(db *sql.DB) []Relation {
 			&row.Stats.HeapBlksHit, &row.Stats.IdxBlksRead, &row.Stats.IdxBlksHit,
 			&row.Stats.ToastBlksRead, &row.Stats.ToastBlksHit, &row.Stats.TidxBlksRead,
 			&row.Stats.TidxBlksHit)
-		checkErr(err)
+		if err != nil {
+			return nil, err
+		}
 
 		relations[row.Oid] = row
 	}
 
 	// Columns
 	stmt, err = db.Prepare(queryMarkerSQL + columnsSQL)
-	checkErr(err)
+	if err != nil {
+		return nil, err
+	}
+
 	defer stmt.Close()
 
 	rows, err = stmt.Query()
-	checkErr(err)
+	if err != nil {
+		return nil, err
+	}
+
 	defer rows.Close()
 
 	for rows.Next() {
@@ -212,7 +226,9 @@ func GetRelations(db *sql.DB) []Relation {
 
 		err := rows.Scan(&row.Oid, &row.Name, &row.DataType, &row.DefaultValue,
 			&row.NotNull, &row.Position)
-		checkErr(err)
+		if err != nil {
+			return nil, err
+		}
 
 		relation := relations[row.Oid]
 		relation.Columns = append(relation.Columns, row)
@@ -221,11 +237,17 @@ func GetRelations(db *sql.DB) []Relation {
 
 	// Indices
 	stmt, err = db.Prepare(queryMarkerSQL + indicesSQL)
-	checkErr(err)
+	if err != nil {
+		return nil, err
+	}
+
 	defer stmt.Close()
 
 	rows, err = stmt.Query()
-	checkErr(err)
+	if err != nil {
+		return nil, err
+	}
+
 	defer rows.Close()
 
 	for rows.Next() {
@@ -234,7 +256,9 @@ func GetRelations(db *sql.DB) []Relation {
 		err := rows.Scan(&row.Oid, &row.IndexOid, &row.Columns, &row.Name, &row.SizeBytes,
 			&row.IsPrimary, &row.IsUnique, &row.IsValid, &row.IndexDef, &row.ConstraintDef,
 			&row.IdxScan, &row.IdxTupRead, &row.IdxTupFetch, &row.IdxBlksRead, &row.IdxBlksHit)
-		checkErr(err)
+		if err != nil {
+			return nil, err
+		}
 
 		relation := relations[row.Oid]
 		relation.Indices = append(relation.Indices, row)
@@ -246,5 +270,5 @@ func GetRelations(db *sql.DB) []Relation {
 		v = append(v, value)
 	}
 
-	return v
+	return v, nil
 }
