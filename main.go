@@ -116,7 +116,7 @@ func connectToDb(config config.DatabaseConfig) (*sql.DB, error) {
 	if config.DbURL != "" {
 		dbinfo = config.DbURL
 	} else {
-		dbinfo = fmt.Sprintf("user=%s dbname=%s host=%s port=%d sslmode=disable connect_timeout=10",
+		dbinfo = fmt.Sprintf("user=%s dbname=%s host=%s port=%d connect_timeout=10",
 			config.DbUsername, config.DbName, config.DbHost, config.DbPort)
 
 		if config.DbPassword != "" {
