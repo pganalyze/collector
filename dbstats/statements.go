@@ -37,9 +37,9 @@ type Statement struct {
 	StddevTime null.Float `json:"stddev_time"`
 }
 
-const pg93OptionalFields = "NULL, NULL, NULL, NULL, NULL"
-const pg94OptionalFields = "queryid, NULL, NULL, NULL, NULL"
-const pg95OptionalFields = "queryid, min_time, max_time, mean_time, stddev_time"
+const statementSQLpg93OptionalFields = "NULL, NULL, NULL, NULL, NULL"
+const statementSQLpg94OptionalFields = "queryid, NULL, NULL, NULL, NULL"
+const statementSQLpg95OptionalFields = "queryid, min_time, max_time, mean_time, stddev_time"
 
 const statementSQL string = `SELECT (SELECT rolname FROM pg_roles WHERE oid = userid) AS username,
 				query, calls, total_time, rows, shared_blks_hit, shared_blks_read,
@@ -54,7 +54,7 @@ const statementSQL string = `SELECT (SELECT rolname FROM pg_roles WHERE oid = us
 
 func GetStatements(db *sql.DB) ([]Statement, error) {
 	// TODO(LukasFittl): Use correct optional fields based on version
-	optionalFields := pg94OptionalFields
+	optionalFields := statementSQLpg93OptionalFields
 
 	// TODO(LukasFittl): Optionally use stats helper
 	sourceTable := "pg_stat_statements"

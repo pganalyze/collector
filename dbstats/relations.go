@@ -2,6 +2,7 @@ package dbstats
 
 import (
 	"database/sql"
+	"fmt"
 
 	"github.com/lfittl/pganalyze-collector-next/util"
 
@@ -79,6 +80,9 @@ type Index struct {
 	IdxBlksHit    null.Int    `json:"idx_blks_hit"`
 }
 
+const relationsSQLpg93OptionalFields = "NULL"
+const relationsSQLpg94OptionalFields = "s.n_mod_since_analyze"
+
 const relationsSQL string = `SELECT c.oid,
 				n.nspname AS schema_name,
 				c.relname AS table_name,
@@ -94,7 +98,7 @@ const relationsSQL string = `SELECT c.oid,
 				s.n_tup_hot_upd,
 				s.n_live_tup,
 				s.n_dead_tup,
-				s.n_mod_since_analyze,
+				%s,
 				s.last_vacuum,
 				s.last_autovacuum,
 				s.last_analyze,
@@ -170,8 +174,10 @@ SELECT c.oid,
 func GetRelations(db *sql.DB) ([]Relation, error) {
 	relations := make(map[Oid]Relation, 0)
 
+	optionalFields := relationsSQLpg93OptionalFields
+
 	// Relations
-	stmt, err := db.Prepare(queryMarkerSQL + relationsSQL)
+	stmt, err := db.Prepare(queryMarkerSQL + fmt.Sprintf(relationsSQL, optionalFields))
 	if err != nil {
 		return nil, err
 	}
