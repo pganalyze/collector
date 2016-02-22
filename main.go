@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/signal"
 	"os/user"
+	"strconv"
 	"sync"
 	"syscall"
 	"time"
@@ -161,7 +162,7 @@ func run(wg sync.WaitGroup, dryRun bool, configFilename string) chan<- bool {
 		database := ConfigAndConnection{config: config}
 		database.connection, err = connectToDb(config)
 		if err != nil {
-			log.Printf("[%s] Error: Failed to connect to database, skipping it for all runs", config.SectionName)
+			log.Printf("[%s] Error: Failed to connect to database: %s", config.SectionName, err)
 		} else {
 			databases = append(databases, database)
 		}
@@ -198,6 +199,7 @@ func run(wg sync.WaitGroup, dryRun bool, configFilename string) chan<- bool {
 func main() {
 	var dryRun bool
 	var configFilename string
+	var pidFilename string
 
 	usr, err := user.Current()
 	if err != nil {
@@ -207,7 +209,17 @@ func main() {
 
 	flag.BoolVar(&dryRun, "dry-run", false, "Print JSON data that would get sent to web service and exit afterwards.")
 	flag.StringVar(&configFilename, "config", usr.HomeDir+"/.pganalyze_collector.conf", "Specifiy alternative path for config file.")
+	flag.StringVar(&pidFilename, "pidfile", "", "Specifies a path that a pidfile should be written to. (default is no pidfile being written)")
 	flag.Parse()
+
+	if pidFilename != "" {
+		pid := os.Getpid()
+		err := ioutil.WriteFile(pidFilename, []byte(strconv.Itoa(pid)), 0644)
+		if err != nil {
+			log.Printf("Could not write pidfile to \"%s\" as requested", pidFilename)
+			return
+		}
+	}
 
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
