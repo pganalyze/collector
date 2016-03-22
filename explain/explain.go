@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	pg_query "github.com/lfittl/pg_query.go"
+	pg_query "github.com/lfittl/pg_query_go"
 	"github.com/pganalyze/collector/util"
 )
 

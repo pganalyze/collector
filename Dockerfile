@@ -12,9 +12,7 @@ WORKDIR $CODE_DIR
 # We run this all in one layer to reduce the resulting image size
 RUN apk-install -t build-deps make curl libc-dev gcc go git tar \
   && curl -o /usr/local/bin/gosu -sSL "https://github.com/tianon/gosu/releases/download/1.6/gosu-amd64" \
-  && go get -d \
-  && make -C $GOPATH/src/github.com/lfittl/pg_query.go build \
-  && go get \
+  && make build \
   && go build -o $HOME_DIR/collector \
   && rm -rf $GOPATH \
 	&& apk del --purge build-deps
