@@ -53,10 +53,10 @@ const statementSQL string = `SELECT (SELECT rolname FROM pg_roles WHERE oid = us
 				AND dbid IN (SELECT oid FROM pg_database WHERE datname = current_database())`
 
 func GetStatements(db *sql.DB) ([]Statement, error) {
-	// TODO(LukasFittl): Use correct optional fields based on version
+	// TODO: Use correct optional fields based on version
 	optionalFields := statementSQLpg93OptionalFields
 
-	// TODO(LukasFittl): Optionally use stats helper
+	// TODO: Optionally use stats helper
 	sourceTable := "pg_stat_statements"
 
 	queryMarkerRegex := strings.Trim(queryMarkerSQL, " ")

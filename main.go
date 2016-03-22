@@ -22,12 +22,12 @@ import (
 
 	_ "github.com/lib/pq" // Enable database package to use Postgres
 
-	"github.com/lfittl/pganalyze-collector-next/config"
-	"github.com/lfittl/pganalyze-collector-next/dbstats"
-	"github.com/lfittl/pganalyze-collector-next/explain"
-	"github.com/lfittl/pganalyze-collector-next/logs"
-	scheduler "github.com/lfittl/pganalyze-collector-next/scheduler"
-	systemstats "github.com/lfittl/pganalyze-collector-next/systemstats"
+	"github.com/pganalyze/collector/config"
+	"github.com/pganalyze/collector/dbstats"
+	"github.com/pganalyze/collector/explain"
+	"github.com/pganalyze/collector/logs"
+	scheduler "github.com/pganalyze/collector/scheduler"
+	systemstats "github.com/pganalyze/collector/systemstats"
 )
 
 type snapshot struct {
@@ -85,13 +85,13 @@ func collectStatistics(config config.DatabaseConfig, db *sql.DB, dryRun bool) (e
 		"data":               {compressedJSON.String()},
 		"data_compressor":    {"zlib"},
 		"api_key":            {config.APIKey},
-		"submitter":          {"pganalyze-collector-next"},
+		"submitter":          {"pganalyze-collector 0.9.0rc1"},
 		"system_information": {"false"},
 		"no_reset":           {"true"},
 		"query_source":       {"pg_stat_statements"},
 		"collected_at":       {fmt.Sprintf("%d", time.Now().Unix())},
 	})
-	// TODO(LukasFittl): We could consider re-running on error (e.g. if it was a temporary server issue)
+	// TODO: We could consider re-running on error (e.g. if it was a temporary server issue)
 	if err != nil {
 		return
 	}

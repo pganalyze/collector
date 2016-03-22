@@ -8,7 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/cloudwatch"
 	"github.com/aws/aws-sdk-go/service/rds"
-	"github.com/lfittl/pganalyze-collector-next/config"
+	"github.com/pganalyze/collector/config"
 )
 
 func FindRdsInstance(config config.DatabaseConfig, sess *session.Session) (instance *rds.DBInstance, err error) {

@@ -27,7 +27,7 @@ func (group Group) Schedule(runner func()) chan bool {
 
 			select {
 			case <-time.After(delay):
-				// NOTE(LukasFittl): In the future we'll measure the runner's execution time
+				// NOTE: In the future we'll measure the runner's execution time
 				// and decide the next scheduling interval based on that
 				runner()
 			case <-stop:

@@ -3,7 +3,7 @@ package dbstats
 import (
 	"database/sql"
 
-	"github.com/lfittl/pganalyze-collector-next/util"
+	"github.com/pganalyze/collector/util"
 
 	null "gopkg.in/guregu/null.v2"
 )

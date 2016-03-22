@@ -1,9 +1,9 @@
 package logs
 
 import (
-	"github.com/lfittl/pganalyze-collector-next/config"
-	"github.com/lfittl/pganalyze-collector-next/explain"
-	"github.com/lfittl/pganalyze-collector-next/util"
+	"github.com/pganalyze/collector/config"
+	"github.com/pganalyze/collector/explain"
+	"github.com/pganalyze/collector/util"
 )
 
 // Line - "Line" in the PostgreSQL logs - can be multiple lines if they belong together

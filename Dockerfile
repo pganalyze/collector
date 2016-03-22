@@ -4,7 +4,7 @@ MAINTAINER team@pganalyze.com
 RUN adduser -D pganalyze pganalyze
 ENV GOPATH /go
 ENV HOME_DIR /home/pganalyze
-ENV CODE_DIR $GOPATH/src/github.com/lfittl/pganalyze-collector-next
+ENV CODE_DIR $GOPATH/src/github.com/pganalyze/collector
 
 COPY . $CODE_DIR
 WORKDIR $CODE_DIR

@@ -1,6 +1,6 @@
 package systemstats
 
-import "github.com/lfittl/pganalyze-collector-next/config"
+import "github.com/pganalyze/collector/config"
 
 // SystemSnapshot - All kinds of system-related information and metrics
 type SystemSnapshot struct {

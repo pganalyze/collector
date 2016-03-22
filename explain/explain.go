@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	pg_query "github.com/lfittl/pg_query.go"
-	"github.com/lfittl/pganalyze-collector-next/util"
+	"github.com/pganalyze/collector/util"
 )
 
 type ExplainInput struct {
@@ -46,6 +46,8 @@ func RunExplain(db *sql.DB, inputs []ExplainInput) (explains []Explain) {
 			NormalizedQuery: normalizedQuery,
 			Runtime:         input.Runtime,
 		}
+
+		// TODO: Don't run EXPLAIN on queries that start with the marker
 
 		var planStr []byte
 		err = db.QueryRow("EXPLAIN (VERBOSE, FORMAT JSON) " + input.Query).Scan(&planStr)

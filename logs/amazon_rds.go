@@ -14,9 +14,9 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/rds"
-	"github.com/lfittl/pganalyze-collector-next/config"
-	"github.com/lfittl/pganalyze-collector-next/explain"
-	"github.com/lfittl/pganalyze-collector-next/util"
+	"github.com/pganalyze/collector/config"
+	"github.com/pganalyze/collector/explain"
+	"github.com/pganalyze/collector/util"
 )
 
 // http://docs.aws.amazon.com/AmazonRDS/latest/APIReference//API_DescribeDBLogFiles.html
@@ -72,8 +72,8 @@ func getFromAmazonRds(config config.DatabaseConfig) (result []Line, explains []e
 
 		if err != nil {
 			// TODO: Check for unauthorized error:
-			// Error: AccessDenied: User: arn:aws:iam::793741702295:user/pganalyze_collector is not authorized to perform: rds:DownloadDBLogFilePortion on resource: arn:aws:rds:us-east-1:793741702295:db:pganalyze-production
-			// status code: 403, request id: 8e8cb4e8-91a7-11e5-a24c-2bc3c220de32
+			// Error: AccessDenied: User: arn:aws:iam::XXX:user/pganalyze_collector is not authorized to perform: rds:DownloadDBLogFilePortion on resource: arn:aws:rds:us-east-1:XXX:db:XXX
+			// status code: 403, request id: XXX
 			fmt.Printf("Error: %v\n", err)
 			return
 		}

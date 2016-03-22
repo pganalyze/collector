@@ -10,8 +10,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/rds"
 
-	"github.com/lfittl/pganalyze-collector-next/config"
-	"github.com/lfittl/pganalyze-collector-next/util"
+	"github.com/pganalyze/collector/config"
+	"github.com/pganalyze/collector/util"
 )
 
 // AmazonRdsInfo - Additional information for Amazon RDS systems
