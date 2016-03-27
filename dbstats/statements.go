@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/lib/pq"
+	"github.com/pganalyze/collector/util"
+
 	null "gopkg.in/guregu/null.v2"
 )
 
@@ -52,8 +55,27 @@ const statementSQL string = `SELECT (SELECT rolname FROM pg_roles WHERE oid = us
 				AND query NOT LIKE 'DEALLOCATE %%'
 				AND dbid IN (SELECT oid FROM pg_database WHERE datname = current_database())`
 
-func GetStatements(db *sql.DB, postgresVersionNum int) ([]Statement, error) {
+const statementStatsHelperSQL string = `
+SELECT 1 AS enabled
+	FROM pg_proc
+	JOIN pg_namespace ON (pronamespace = pg_namespace.oid)
+ WHERE nspname = 'pganalyze' AND proname = 'get_stat_statements'
+`
+
+func statementStatsHelperExists(db *sql.DB) bool {
+	var enabled bool
+
+	err := db.QueryRow(QueryMarkerSQL + statementStatsHelperSQL).Scan(&enabled)
+	if err != nil {
+		return false
+	}
+
+	return enabled
+}
+
+func GetStatements(logger *util.Logger, db *sql.DB, postgresVersionNum int) ([]Statement, error) {
 	var optionalFields string
+	var sourceTable string
 
 	if postgresVersionNum >= PostgresVersion95 {
 		optionalFields = statementSQLpg95OptionalFields
@@ -63,23 +85,42 @@ func GetStatements(db *sql.DB, postgresVersionNum int) ([]Statement, error) {
 		optionalFields = statementSQLDefaultOptionalFields
 	}
 
-	// TODO: Optionally use stats helper
-	sourceTable := "pg_stat_statements"
+	if statementStatsHelperExists(db) {
+		logger.PrintVerbose("Found pganalyze.get_stat_statements() stats helper")
+		sourceTable = "pganalyze.get_stat_statements()"
+	} else {
+		sourceTable = "pg_stat_statements"
+	}
 
-	queryMarkerRegex := strings.Trim(queryMarkerSQL, " ")
+	queryMarkerRegex := strings.Trim(QueryMarkerSQL, " ")
 	queryMarkerRegex = strings.Replace(queryMarkerRegex, "*", "\\*", -1)
 	queryMarkerRegex = strings.Replace(queryMarkerRegex, "/", "\\/", -1)
 
-	stmt, err := db.Prepare(queryMarkerSQL + fmt.Sprintf(statementSQL, optionalFields, sourceTable, queryMarkerRegex))
+	sql := QueryMarkerSQL + fmt.Sprintf(statementSQL, optionalFields, sourceTable, queryMarkerRegex)
+
+	stmt, err := db.Prepare(sql)
 	if err != nil {
-		return nil, err
+		if sourceTable == "pg_stat_statements" && err.(*pq.Error).Code == "42P01" { // undefined_table
+			logger.PrintInfo("pg_stat_statements relation does not exist, trying to create extension...")
+
+			_, err := db.Exec(QueryMarkerSQL + "CREATE EXTENSION IF NOT EXISTS pg_stat_statements")
+			if err != nil {
+				return nil, err
+			}
+
+			stmt, err = db.Prepare(sql)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			return nil, err
+		}
 	}
 
 	defer stmt.Close()
 
 	rows, err := stmt.Query()
 	if err != nil {
-		fmt.Printf("%+v", err)
 		return nil, err
 	}
 	defer rows.Close()
