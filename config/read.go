@@ -9,11 +9,12 @@ import (
 
 func getDefaultConfig() *DatabaseConfig {
 	config := &DatabaseConfig{
-		APIURL:    "https://api.pganalyze.com/v1/snapshots",
-		DbHost:    "localhost",
-		DbPort:    5432,
-		DbSslMode: "prefer",
-		AwsRegion: "us-east-1",
+		APIURL:      "https://api.pganalyze.com/v1/snapshots",
+		DbHost:      "localhost",
+		DbPort:      5432,
+		DbSslMode:   "prefer",
+		AwsRegion:   "us-east-1",
+		SectionName: "default",
 	}
 
 	// The environment variables are the default way to configure when running inside a Docker container.
