@@ -3,12 +3,13 @@ go:
 - 1.5
 - 1.6
 - tip
+script: make OUTFILE=pganalyze-collector-linux-amd64
 deploy:
   skip_cleanup: true
   provider: releases
   api_key:
     secure: wOikWTqlZBnQvy8leNdHCyKroOus4/jo7mlQMyNl0/czTIWSBi/KQNewKEB4bCZxNJUiccl7Ts5JwWMC9nEgHsS4Cd5BXvPfOEh3hR/LQGL833ts8Z4c8axP1g4YSXndTW0nHWu4WZJ4PrPlGmiIiRWCpSSKHC1CmmMJfTzgdX3e34w/kEqUeIrmgOrNZcJnwz36DbS/CL+DWUq8fXX/2OcBLKIJPS+react4guBe/CpGEkbiOsqFD+4R5Ew3k5U1rXXnXrQyiGZx0XPReHO7dnhI/uYL48bsk2RF7wdD9hbrmCDeszJiJaUqxoh1ycpq06MNImWMRInB8U7+DwWcNNA3wOQBE6dQh1qQK9Dfi74pytm589xtIk9C9Q1pnR5E2nM2yAiJpwNL7j6L+TcuCsekm6jpipWY+QhVzCcMlJY9neeKAhTymUu41dxiZw5j4kbdrv2/fzlVTf5xCh91bzDXqUV+IsPyOZLweOjxsKEcwSIqWb3MaoGNiXlzXA7BOAqYHEay/dwXruv4gLx/QKvkXsZQj0vcmRfR9Oym8tj0SmNtafbjIrW5YkzZFIJ6csCN+aUnlCrENaZ0GcIV+STvUo6p+MVKpjrmSh7+RJukGvUP8uO2bCeIv8CBLCjQBarzzjsFyriudEPFLOyBwIuV1AV/PKoVfLSs5HdVa8=
-  file: pganalyze-collector
+  file: pganalyze-collector-linux-amd64
   on:
     repo: pganalyze/collector
     tags: true
