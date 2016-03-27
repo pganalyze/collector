@@ -44,10 +44,11 @@ type snapshot struct {
 type snapshotPostgres struct {
 	Relations []dbstats.Relation `json:"schema"`
 	Settings  []dbstats.Setting  `json:"settings"`
+	Functions []dbstats.Function `json:"functions"`
 }
 
 type collectionOpts struct {
-	collectPostgresSchema    bool
+	collectPostgresRelations bool
 	collectPostgresSettings  bool
 	collectPostgresLocks     bool
 	collectPostgresFunctions bool
@@ -91,7 +92,7 @@ func collectStatistics(config config.DatabaseConfig, db *sql.DB, collectionOpts 
 		return
 	}
 
-	stats.ActiveQueries, err = dbstats.GetActivity(db, postgresVersionNum)
+	stats.ActiveQueries, err = dbstats.GetActivity(logger, db, postgresVersionNum)
 	if err != nil {
 		return
 	}
@@ -101,8 +102,8 @@ func collectStatistics(config config.DatabaseConfig, db *sql.DB, collectionOpts 
 		return
 	}
 
-	if collectionOpts.collectPostgresSchema {
-		stats.Postgres.Relations, err = dbstats.GetRelations(db, postgresVersionNum)
+	if collectionOpts.collectPostgresRelations {
+		stats.Postgres.Relations, err = dbstats.GetRelations(db, postgresVersionNum, collectionOpts.collectPostgresBloat)
 		if err != nil {
 			return
 		}
@@ -110,6 +111,13 @@ func collectStatistics(config config.DatabaseConfig, db *sql.DB, collectionOpts 
 
 	if collectionOpts.collectPostgresSettings {
 		stats.Postgres.Settings, err = dbstats.GetSettings(db, postgresVersionNum)
+		if err != nil {
+			return
+		}
+	}
+
+	if collectionOpts.collectPostgresFunctions {
+		stats.Postgres.Functions, err = dbstats.GetFunctions(db, postgresVersionNum)
 		if err != nil {
 			return
 		}
@@ -132,7 +140,8 @@ func collectStatistics(config config.DatabaseConfig, db *sql.DB, collectionOpts 
 	if !collectionOpts.submitCollectedData {
 		var out bytes.Buffer
 		json.Indent(&out, statsJSON, "", "\t")
-		logger.PrintInfo("Dry run - JSON data that would have been sent:\n%s", out.String())
+		logger.PrintInfo("Dry run - JSON data that would have been sent will be output on stdout:\n")
+		fmt.Print(out.String())
 		return
 	}
 
@@ -270,7 +279,7 @@ func main() {
 	var configFilename string
 	var pidFilename string
 	var noPostgresSettings, noPostgresLocks, noPostgresFunctions, noPostgresBloat, noPostgresViews bool
-	var noPostgresSchema, noLogs, noExplain, noSystemInformation bool
+	var noPostgresRelations, noLogs, noExplain, noSystemInformation bool
 
 	logger := &util.Logger{Destination: log.New(os.Stderr, "", log.LstdFlags)}
 
@@ -283,12 +292,12 @@ func main() {
 	flag.BoolVarP(&testRun, "test", "t", false, "Tests whether we can successfully collect data, submits it to the server, and exits afterwards.")
 	flag.BoolVarP(&logger.Verbose, "verbose", "v", false, "Outputs additional debugging information, use this if you're encoutering errors or other problems.")
 	flag.BoolVar(&dryRun, "dry-run", false, "Print JSON data that would get sent to web service (without actually sending) and exit afterwards.")
-	flag.BoolVar(&noPostgresSchema, "no-postgres-schema", false, "Don't collect any Postgres schema data (not recommended)")
+	flag.BoolVar(&noPostgresRelations, "no-postgres-relations", false, "Don't collect any Postgres relation information (not recommended)")
 	flag.BoolVar(&noPostgresSettings, "no-postgres-settings", false, "Don't collect Postgres configuration settings")
-	flag.BoolVar(&noPostgresLocks, "no-postgres-locks", false, "Don't collect Postgres lock information")
+	flag.BoolVar(&noPostgresLocks, "no-postgres-locks", false, "Don't collect Postgres lock information (NOTE: This is always enabled right now, i.e. no lock data is gathered)")
 	flag.BoolVar(&noPostgresFunctions, "no-postgres-functions", false, "Don't collect Postgres function/procedure information")
 	flag.BoolVar(&noPostgresBloat, "no-postgres-bloat", false, "Don't collect Postgres table/index bloat statistics")
-	flag.BoolVar(&noPostgresViews, "no-postgres-views", false, "Don't collect Postgres view/materialized view information")
+	flag.BoolVar(&noPostgresViews, "no-postgres-views", false, "Don't collect Postgres view/materialized view information (NOTE: This is not implemented right now - views are always collected)")
 	flag.BoolVar(&noLogs, "no-logs", false, "Don't collect log data")
 	flag.BoolVar(&noExplain, "no-explain", false, "Don't automatically EXPLAIN slow queries logged in the logfile")
 	flag.BoolVar(&noSystemInformation, "no-system-information", false, "Don't collect OS level performance data")
@@ -299,7 +308,7 @@ func main() {
 	globalCollectionOpts := collectionOpts{
 		submitCollectedData:      true,
 		testRun:                  true,
-		collectPostgresSchema:    !noPostgresSchema,
+		collectPostgresRelations: !noPostgresRelations,
 		collectPostgresSettings:  !noPostgresSettings,
 		collectPostgresLocks:     !noPostgresLocks,
 		collectPostgresFunctions: !noPostgresFunctions,
@@ -315,8 +324,8 @@ func main() {
 		globalCollectionOpts.testRun = true
 	} else {
 		// Check some cases we can't support from a pganalyze perspective right now
-		if noPostgresSchema {
-			logger.PrintError("Error: You can only disable schema collection for dry test runs (the API can't accept the snapshot otherwise)")
+		if noPostgresRelations {
+			logger.PrintError("Error: You can only disable relation data collection for dry test runs (the API can't accept the snapshot otherwise)")
 			return
 		}
 	}
