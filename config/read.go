@@ -7,11 +7,12 @@ import (
 	"github.com/go-ini/ini"
 )
 
-func GetDefaultConfig() *DatabaseConfig {
+func getDefaultConfig() *DatabaseConfig {
 	config := &DatabaseConfig{
 		APIURL:    "https://api.pganalyze.com/v1/snapshots",
 		DbHost:    "localhost",
 		DbPort:    5432,
+		DbSslMode: "prefer",
 		AwsRegion: "us-east-1",
 	}
 
@@ -43,11 +44,11 @@ func GetDefaultConfig() *DatabaseConfig {
 	if awsRegion := os.Getenv("AWS_REGION"); awsRegion != "" {
 		config.AwsRegion = awsRegion
 	}
-	if awsInstanceId := os.Getenv("AWS_INSTANCE_ID"); awsInstanceId != "" {
-		config.AwsDbInstanceId = awsInstanceId
+	if awsInstanceID := os.Getenv("AWS_INSTANCE_ID"); awsInstanceID != "" {
+		config.AwsDbInstanceID = awsInstanceID
 	}
-	if awsAccessKeyId := os.Getenv("AWS_ACCESS_KEY_ID"); awsAccessKeyId != "" {
-		config.AwsAccessKeyId = awsAccessKeyId
+	if awsAccessKeyID := os.Getenv("AWS_ACCESS_KEY_ID"); awsAccessKeyID != "" {
+		config.AwsAccessKeyID = awsAccessKeyID
 	}
 	if awsSecretAccessKey := os.Getenv("AWS_SECRET_ACCESS_KEY"); awsSecretAccessKey != "" {
 		config.AwsSecretAccessKey = awsSecretAccessKey
@@ -56,6 +57,7 @@ func GetDefaultConfig() *DatabaseConfig {
 	return config
 }
 
+// Read - Reads the configuration from the specified filename, or fall back to the default config
 func Read(filename string) ([]DatabaseConfig, error) {
 	var databases []DatabaseConfig
 
@@ -67,7 +69,7 @@ func Read(filename string) ([]DatabaseConfig, error) {
 
 		sections := configFile.Sections()
 		for _, section := range sections {
-			config := GetDefaultConfig()
+			config := getDefaultConfig()
 
 			err = section.MapTo(config)
 			if err != nil {
@@ -81,7 +83,7 @@ func Read(filename string) ([]DatabaseConfig, error) {
 			}
 		}
 	} else {
-		databases = append(databases, *GetDefaultConfig())
+		databases = append(databases, *getDefaultConfig())
 	}
 
 	return databases, nil

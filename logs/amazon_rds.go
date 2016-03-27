@@ -28,7 +28,7 @@ func getFromAmazonRds(config config.DatabaseConfig) (result []Line, explains []e
 	// Get interesting files (last written to in the last 10 minutes)
 	// Remember markers for each file
 
-	creds := credentials.NewStaticCredentials(config.AwsAccessKeyId, config.AwsSecretAccessKey, "")
+	creds := credentials.NewStaticCredentials(config.AwsAccessKeyID, config.AwsSecretAccessKey, "")
 
 	sess := session.New(&aws.Config{Credentials: creds, Region: aws.String(config.AwsRegion)})
 	//sess.Handlers.Send.PushFront(func(r *request.Request) {

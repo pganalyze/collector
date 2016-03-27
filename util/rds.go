@@ -16,9 +16,9 @@ func FindRdsInstance(config config.DatabaseConfig, sess *session.Session) (insta
 
 	svc := rds.New(sess)
 
-	if config.AwsDbInstanceId != "" {
+	if config.AwsDbInstanceID != "" {
 		params := &rds.DescribeDBInstancesInput{
-			DBInstanceIdentifier: aws.String(config.AwsDbInstanceId),
+			DBInstanceIdentifier: aws.String(config.AwsDbInstanceID),
 		}
 
 		resp, err = svc.DescribeDBInstances(params)

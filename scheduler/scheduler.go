@@ -5,6 +5,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/gorhill/cronexpr"
+	"github.com/pganalyze/collector/util"
 )
 
 type config struct {
@@ -18,12 +19,14 @@ type Group struct {
 	interval     *cronexpr.Expression
 }
 
-func (group Group) Schedule(runner func()) chan bool {
+func (group Group) Schedule(runner func(), logger *util.Logger, logName string) chan bool {
 	stop := make(chan bool)
 
 	go func() {
 		for {
 			delay := group.interval.Next(time.Now()).Sub(time.Now())
+
+			logger.PrintVerbose("Scheduled next run for %s in %+v", logName, delay)
 
 			select {
 			case <-time.After(delay):

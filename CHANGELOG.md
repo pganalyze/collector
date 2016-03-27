@@ -1,6 +1,19 @@
 # Changelog
 
-## 0.9.0rc1    UNRELEASED
+## 0.9.0rc2    UNRELEASED
+
+* Add --test mode to ease initial setup
+* Don't do an initial run when daemonizing (the default), this is mostly so we
+  can keep a clean schedule and prevent issues if the config is temporarily wrong,
+  or the server is unreachable for some reason
+* Use POSIX commandline flags (double dash instead of single dash, shorthand flags)
+  instead of Go's flag approach
+* Added support for specifying sslmode when connecting, and default to "prefer"
+   * This also fixes an issue where beforehand we required SSL to always be present
+   * For maximum security you might want to set this to "require" or "verify-full"
+
+
+## 0.9.0rc1    2016-03-22
 
 * Initial Go re-release
 * The collector now runs as a daemon (instead of through the crontab)
