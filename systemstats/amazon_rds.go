@@ -65,7 +65,7 @@ type AmazonRdsInfo struct {
 
 // GetFromAmazonRds - Gets system information about an Amazon RDS instance
 func getFromAmazonRds(config config.DatabaseConfig) (system *SystemSnapshot) {
-	creds := credentials.NewStaticCredentials(config.AwsAccessKeyId, config.AwsSecretAccessKey, "")
+	creds := credentials.NewStaticCredentials(config.AwsAccessKeyID, config.AwsSecretAccessKey, "")
 
 	sess := session.New(&aws.Config{Credentials: creds, Region: aws.String(config.AwsRegion)})
 	//sess.Handlers.Send.PushFront(func(r *request.Request) {

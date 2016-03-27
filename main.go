@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"compress/zlib"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -18,6 +17,8 @@ import (
 	"syscall"
 	"time"
 
+	flag "github.com/ogier/pflag"
+
 	"database/sql"
 
 	_ "github.com/lib/pq" // Enable database package to use Postgres
@@ -28,6 +29,7 @@ import (
 	"github.com/pganalyze/collector/logs"
 	scheduler "github.com/pganalyze/collector/scheduler"
 	systemstats "github.com/pganalyze/collector/systemstats"
+	"github.com/pganalyze/collector/util"
 )
 
 type snapshot struct {
@@ -43,7 +45,7 @@ type snapshotPostgres struct {
 	Relations []dbstats.Relation `json:"schema"`
 }
 
-func collectStatistics(config config.DatabaseConfig, db *sql.DB, dryRun bool) (err error) {
+func collectStatistics(config config.DatabaseConfig, db *sql.DB, submitCollectedData bool, logger *util.Logger) (err error) {
 	var stats snapshot
 	var explainInputs []explain.ExplainInput
 
@@ -69,10 +71,10 @@ func collectStatistics(config config.DatabaseConfig, db *sql.DB, dryRun bool) (e
 
 	statsJSON, _ := json.Marshal(stats)
 
-	if dryRun {
+	if !submitCollectedData {
 		var out bytes.Buffer
 		json.Indent(&out, statsJSON, "", "\t")
-		log.Printf("Dry run - JSON data that would have been sent:\n%s", out.String())
+		logger.PrintInfo("Dry run - JSON data that would have been sent:\n%s", out.String())
 		return
 	}
 
@@ -107,25 +109,25 @@ func collectStatistics(config config.DatabaseConfig, db *sql.DB, dryRun bool) (e
 		return
 	}
 
-	log.Printf("[%s] Submitted snapshot successfully", config.SectionName)
+	logger.PrintInfo("Submitted snapshot successfully")
 	return
 }
 
-func connectToDb(config config.DatabaseConfig) (*sql.DB, error) {
-	var dbinfo string
-
-	if config.DbURL != "" {
-		dbinfo = config.DbURL
-	} else {
-		dbinfo = fmt.Sprintf("user=%s dbname=%s host=%s port=%d connect_timeout=10",
-			config.DbUsername, config.DbName, config.DbHost, config.DbPort)
-
-		if config.DbPassword != "" {
-			dbinfo += fmt.Sprintf(" password=%s", config.DbPassword)
+func collectAllDatabases(databases []configAndConnection, submitCollectedData bool, logger *util.Logger) {
+	for _, database := range databases {
+		prefixedLogger := logger.WithPrefix(database.config.SectionName)
+		err := collectStatistics(database.config, database.connection, submitCollectedData, prefixedLogger)
+		if err != nil {
+			prefixedLogger.PrintError("%s", err)
 		}
 	}
+}
 
-	db, err := sql.Open("postgres", dbinfo)
+func connectToDb(config config.DatabaseConfig, logger *util.Logger) (*sql.DB, error) {
+	connectString := config.GetPqOpenString()
+	logger.PrintVerbose("sql.Open(\"postgres\", \"%s\")", connectString)
+
+	db, err := sql.Open("postgres", connectString)
 	if err != nil {
 		return nil, err
 	}
@@ -138,85 +140,108 @@ func connectToDb(config config.DatabaseConfig) (*sql.DB, error) {
 	return db, nil
 }
 
-type ConfigAndConnection struct {
+type configAndConnection struct {
 	config     config.DatabaseConfig
 	connection *sql.DB
 }
 
-func run(wg sync.WaitGroup, dryRun bool, configFilename string) chan<- bool {
-	var databases []ConfigAndConnection
+func establishConnection(config config.DatabaseConfig, logger *util.Logger) (database configAndConnection, err error) {
+	database = configAndConnection{config: config}
+	requestedSslMode := config.DbSslMode
+
+	// Go's lib/pq does not support sslmode properly, so we have to implement the "prefer" mode ourselves
+	if requestedSslMode == "prefer" {
+		config.DbSslMode = "require"
+	}
+
+	database.connection, err = connectToDb(config, logger)
+	if err != nil {
+		if err.Error() == "pq: SSL is not enabled on the server" && requestedSslMode == "prefer" {
+			config.DbSslMode = "disable"
+			database.connection, err = connectToDb(config, logger)
+		}
+	}
+
+	return
+}
+
+func run(wg sync.WaitGroup, testRun bool, submitCollectedData bool, logger *util.Logger, configFilename string) chan<- bool {
+	var databases []configAndConnection
 
 	schedulerGroups, err := scheduler.ReadSchedulerGroups(scheduler.DefaultConfig)
 	if err != nil {
-		log.Print("Error: Could not read scheduler groups, awaiting SIGHUP or process kill")
+		logger.PrintError("Error: Could not read scheduler groups, awaiting SIGHUP or process kill")
 		return nil
 	}
 
 	databaseConfigs, err := config.Read(configFilename)
 	if err != nil {
-		log.Print("Error: Could not read configuration, awaiting SIGHUP or process kill")
+		logger.PrintError("Error: Could not read configuration, awaiting SIGHUP or process kill")
 		return nil
 	}
 
 	for _, config := range databaseConfigs {
-		database := ConfigAndConnection{config: config}
-		database.connection, err = connectToDb(config)
+		prefixedLogger := logger.WithPrefix(config.SectionName)
+		database, err := establishConnection(config, prefixedLogger)
 		if err != nil {
-			log.Printf("[%s] Error: Failed to connect to database: %s", config.SectionName, err)
+			prefixedLogger.PrintError("Error: Failed to connect to database: %s", err)
 		} else {
 			databases = append(databases, database)
 		}
 	}
 
-	// Initial run to ensure everything is working
-	for _, database := range databases {
-		err = collectStatistics(database.config, database.connection, dryRun)
-		if err != nil {
-			log.Printf("[%s] %s", database.config.SectionName, err)
-		}
-	}
-
-	if dryRun {
+	// We intentionally don't do a test-run in the normal mode, since we're fine with
+	// a later SIGHUP that fixes the config (or a temporarily unreachable server at start)
+	if testRun {
+		collectAllDatabases(databases, submitCollectedData, logger)
 		return nil
 	}
 
 	stop := schedulerGroups["stats"].Schedule(func() {
 		wg.Add(1)
-
-		for _, database := range databases {
-			err := collectStatistics(database.config, database.connection, false)
-			if err != nil {
-				log.Printf("[%s] %s", database.config.SectionName, err)
-			}
-		}
-
+		collectAllDatabases(databases, submitCollectedData, logger)
 		wg.Done()
-	})
+	}, logger, "collection of all databases")
 
 	return stop
 }
 
 func main() {
+	var testRun bool
 	var dryRun bool
+	var submitCollectedData bool
 	var configFilename string
 	var pidFilename string
 
+	logger := &util.Logger{Destination: log.New(os.Stderr, "", log.LstdFlags)}
+
 	usr, err := user.Current()
 	if err != nil {
-		log.Print("Could not get user context from operating system - can't initialize, exiting.")
+		logger.PrintError("Could not get user context from operating system - can't initialize, exiting.")
 		return
 	}
 
-	flag.BoolVar(&dryRun, "dry-run", false, "Print JSON data that would get sent to web service and exit afterwards.")
-	flag.StringVar(&configFilename, "config", usr.HomeDir+"/.pganalyze_collector.conf", "Specifiy alternative path for config file.")
+	flag.BoolVarP(&testRun, "test", "t", false, "Tests whether we can successfully collect data, submits it to the server, and exits afterwards.")
+	flag.BoolVarP(&logger.Verbose, "verbose", "v", false, "Outputs additional debugging information, use this if you're encoutering errors or other problems.")
+	flag.BoolVar(&dryRun, "dry-run", false, "Print JSON data that would get sent to web service (without actually sending) and exit afterwards.")
+	flag.StringVar(&configFilename, "config", usr.HomeDir+"/.pganalyze_collector.conf", "Specify alternative path for config file.")
 	flag.StringVar(&pidFilename, "pidfile", "", "Specifies a path that a pidfile should be written to. (default is no pidfile being written)")
 	flag.Parse()
+
+	if dryRun {
+		submitCollectedData = false
+		testRun = true
+	} else if testRun {
+		submitCollectedData = true
+	} else {
+		submitCollectedData = true
+	}
 
 	if pidFilename != "" {
 		pid := os.Getpid()
 		err := ioutil.WriteFile(pidFilename, []byte(strconv.Itoa(pid)), 0644)
 		if err != nil {
-			log.Printf("Could not write pidfile to \"%s\" as requested", pidFilename)
+			logger.PrintError("Could not write pidfile to \"%s\" as requested, exiting.", pidFilename)
 			return
 		}
 	}
@@ -227,8 +252,8 @@ func main() {
 	wg := sync.WaitGroup{}
 
 ReadConfigAndRun:
-	stop := run(wg, dryRun, configFilename)
-	if dryRun {
+	stop := run(wg, testRun, submitCollectedData, logger, configFilename)
+	if stop == nil {
 		return
 	}
 
@@ -239,12 +264,12 @@ ReadConfigAndRun:
 	stop <- true
 
 	if s == syscall.SIGHUP {
-		log.Print("Reloading configuration...")
+		logger.PrintInfo("Reloading configuration...")
 		goto ReadConfigAndRun
 	}
 
 	signal.Stop(sigs)
 
-	log.Print("Exiting...")
+	logger.PrintInfo("Exiting...")
 	wg.Wait()
 }
