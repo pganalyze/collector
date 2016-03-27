@@ -30,7 +30,7 @@ const activitySQL string = `SELECT pid, usename, application_name, client_addr::
 	WHERE pid <> pg_backend_pid() AND datname = current_database()`
 
 func GetActivity(db *sql.DB) ([]Activity, error) {
-	stmt, err := db.Prepare(queryMarkerSQL + activitySQL)
+	stmt, err := db.Prepare(QueryMarkerSQL + activitySQL)
 	if err != nil {
 		return nil, err
 	}

@@ -52,17 +52,17 @@ func collectStatistics(config config.DatabaseConfig, db *sql.DB, submitCollected
 	var postgresVersionReadable string
 	var postgresVersionNum int
 
-	err = db.QueryRow("SELECT version()").Scan(&postgresVersion)
+	err = db.QueryRow(dbstats.QueryMarkerSQL + "SELECT version()").Scan(&postgresVersion)
 	if err != nil {
 		return
 	}
 
-	err = db.QueryRow("SHOW server_version").Scan(&postgresVersionReadable)
+	err = db.QueryRow(dbstats.QueryMarkerSQL + "SHOW server_version").Scan(&postgresVersionReadable)
 	if err != nil {
 		return
 	}
 
-	err = db.QueryRow("SHOW server_version_num").Scan(&postgresVersionNum)
+	err = db.QueryRow(dbstats.QueryMarkerSQL + "SHOW server_version_num").Scan(&postgresVersionNum)
 	if err != nil {
 		return
 	}
@@ -79,7 +79,7 @@ func collectStatistics(config config.DatabaseConfig, db *sql.DB, submitCollected
 		return
 	}
 
-	stats.Statements, err = dbstats.GetStatements(db, postgresVersionNum)
+	stats.Statements, err = dbstats.GetStatements(logger, db, postgresVersionNum)
 	if err != nil {
 		return
 	}

@@ -1,3 +1,3 @@
 package dbstats
 
-const queryMarkerSQL string = "/* pganalyze-collector */ "
+const QueryMarkerSQL string = "/* pganalyze-collector */ "

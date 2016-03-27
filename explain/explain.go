@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	pg_query "github.com/lfittl/pg_query_go"
+	"github.com/pganalyze/collector/dbstats"
 	"github.com/pganalyze/collector/util"
 )
 
@@ -50,7 +51,7 @@ func RunExplain(db *sql.DB, inputs []ExplainInput) (explains []Explain) {
 		// TODO: Don't run EXPLAIN on queries that start with the marker
 
 		var planStr []byte
-		err = db.QueryRow("EXPLAIN (VERBOSE, FORMAT JSON) " + input.Query).Scan(&planStr)
+		err = db.QueryRow(dbstats.QueryMarkerSQL + "EXPLAIN (VERBOSE, FORMAT JSON) " + input.Query).Scan(&planStr)
 		if err != nil {
 			errorStr := fmt.Sprintf("%s", err)
 			explainOut.ExplainError = &errorStr

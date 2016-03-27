@@ -183,7 +183,7 @@ func GetRelations(db *sql.DB, postgresVersionNum int) ([]Relation, error) {
 	}
 
 	// Relations
-	stmt, err := db.Prepare(queryMarkerSQL + fmt.Sprintf(relationsSQL, optionalFields))
+	stmt, err := db.Prepare(QueryMarkerSQL + fmt.Sprintf(relationsSQL, optionalFields))
 	if err != nil {
 		return nil, err
 	}
@@ -219,7 +219,7 @@ func GetRelations(db *sql.DB, postgresVersionNum int) ([]Relation, error) {
 	}
 
 	// Columns
-	stmt, err = db.Prepare(queryMarkerSQL + columnsSQL)
+	stmt, err = db.Prepare(QueryMarkerSQL + columnsSQL)
 	if err != nil {
 		return nil, err
 	}
@@ -248,7 +248,7 @@ func GetRelations(db *sql.DB, postgresVersionNum int) ([]Relation, error) {
 	}
 
 	// Indices
-	stmt, err = db.Prepare(queryMarkerSQL + indicesSQL)
+	stmt, err = db.Prepare(QueryMarkerSQL + indicesSQL)
 	if err != nil {
 		return nil, err
 	}
