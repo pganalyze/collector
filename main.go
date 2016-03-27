@@ -307,7 +307,7 @@ func main() {
 
 	globalCollectionOpts := collectionOpts{
 		submitCollectedData:      true,
-		testRun:                  true,
+		testRun:                  testRun,
 		collectPostgresRelations: !noPostgresRelations,
 		collectPostgresSettings:  !noPostgresSettings,
 		collectPostgresLocks:     !noPostgresLocks,
