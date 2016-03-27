@@ -12,18 +12,20 @@ import (
 type Oid int64
 
 type Relation struct {
-	Oid          Oid           `json:"oid"`
-	SchemaName   string        `json:"schema_name"`
-	TableName    string        `json:"table_name"`
-	RelationType string        `json:"relation_type"`
-	Stats        RelationStats `json:"stats"`
-	Columns      []Column      `json:"columns"`
-	Indices      []Index       `json:"indices"`
+	Oid            Oid           `json:"oid"`
+	SchemaName     string        `json:"schema_name"`
+	TableName      string        `json:"table_name"`
+	RelationType   string        `json:"relation_type"`
+	Stats          RelationStats `json:"stats"`
+	Columns        []Column      `json:"columns"`
+	Indices        []Index       `json:"indices"`
+	Constraints    []Constraint  `json:"constraints"`
+	ViewDefinition string        `json:"view_definition,omitempty"`
 }
 
 type RelationStats struct {
-	SizeBytes        null.Int       `json:"size_bytes"`
-	WastedBytes      null.Int       `json:"wasted_bytes"`
+	SizeBytes        int64          `json:"size_bytes"`
+	WastedBytes      int64          `json:"wasted_bytes"`
 	SeqScan          null.Int       `json:"seq_scan"`            // Number of sequential scans initiated on this table
 	SeqTupRead       null.Int       `json:"seq_tup_read"`        // Number of live rows fetched by sequential scans
 	IdxScan          null.Int       `json:"idx_scan"`            // Number of index scans initiated on this table
@@ -54,7 +56,7 @@ type RelationStats struct {
 }
 
 type Column struct {
-	Oid          Oid         `json:"-"`
+	RelationOid  Oid         `json:"-"`
 	Name         string      `json:"name"`
 	DataType     string      `json:"data_type"`
 	DefaultValue null.String `json:"default_value"`
@@ -63,11 +65,12 @@ type Column struct {
 }
 
 type Index struct {
-	Oid           Oid         `json:"-"`
+	RelationOid   Oid         `json:"-"`
 	IndexOid      Oid         `json:"-"`
 	Columns       string      `json:"columns"`
 	Name          string      `json:"name"`
-	SizeBytes     null.Int    `json:"size_bytes"`
+	SizeBytes     int64       `json:"size_bytes"`
+	WastedBytes   int64       `json:"wasted_bytes"`
 	IsPrimary     bool        `json:"is_primary"`
 	IsUnique      bool        `json:"is_unique"`
 	IsValid       bool        `json:"is_valid"`
@@ -78,6 +81,16 @@ type Index struct {
 	IdxTupFetch   null.Int    `json:"idx_tup_fetch"`
 	IdxBlksRead   null.Int    `json:"idx_blks_read"`
 	IdxBlksHit    null.Int    `json:"idx_blks_hit"`
+}
+
+type Constraint struct {
+	RelationOid    Oid         `json:"-"`
+	Name           string      `json:"name"`
+	ConstraintDef  string      `json:"constraint_def"`
+	Columns        null.String `json:"columns"`
+	ForeignSchema  null.String `json:"foreign_schema"`
+	ForeignTable   null.String `json:"foreign_table"`
+	ForeignColumns null.String `json:"foreign_columns"`
 }
 
 const relationsSQLDefaultOptionalFields = "NULL"
@@ -171,7 +184,181 @@ SELECT c.oid,
 			 AND c.relpersistence <> 't'
 			 AND n.nspname NOT IN ('pg_catalog', 'information_schema')`
 
-func GetRelations(db *sql.DB, postgresVersionNum int) ([]Relation, error) {
+// FIXME: This misses check constraints and others
+const constraintsSQL string = `
+SELECT c.oid,
+			 conname AS name,
+			 pg_catalog.pg_get_constraintdef(r.oid, TRUE) AS constraint_def,
+			 r.conkey AS columns,
+			 n2.nspname AS foreign_schema,
+			 c2.relname AS foreign_table,
+			 r.confkey AS foreign_columns
+	FROM pg_catalog.pg_class c
+			 LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+			 LEFT JOIN pg_catalog.pg_constraint r ON r.conrelid = c.oid
+			 LEFT JOIN pg_catalog.pg_class c2 ON r.confrelid = c2.oid
+			 LEFT JOIN pg_catalog.pg_namespace n2 ON n2.oid = c2.relnamespace
+WHERE r.contype = 'f'
+			 AND n.nspname NOT IN ('pg_catalog', 'information_schema')`
+
+const viewDefinitionSQL string = `
+SELECT c.oid,
+			 pg_catalog.pg_get_viewdef(c.oid) AS view_definition
+	FROM pg_catalog.pg_class c
+	LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+	WHERE c.relkind IN ('v','m')
+			 AND c.relpersistence <> 't'
+			 AND c.relname NOT IN ('pg_stat_statements')
+			 AND n.nspname NOT IN ('pg_catalog', 'information_schema')`
+
+const tableBloatSQL string = `
+WITH constants AS (
+	SELECT current_setting('block_size')::numeric AS bs, 23 AS hdr, 8 AS ma
+),
+no_stats AS (
+	SELECT table_schema, table_name
+	 FROM information_schema.columns
+	 LEFT OUTER JOIN pg_stats ON table_schema = schemaname
+															 AND table_name = tablename
+															 AND column_name = attname
+	WHERE attname IS NULL
+				AND table_schema NOT IN ('pg_catalog', 'information_schema')
+	GROUP BY table_schema, table_name
+),
+null_headers AS (
+	SELECT hdr+1+(sum(case when null_frac <> 0 THEN 1 else 0 END)/8) as nullhdr,
+				 SUM((1-null_frac)*avg_width) as datawidth,
+				 MAX(null_frac) as maxfracsum,
+				 schemaname,
+				 tablename,
+				 hdr, ma, bs
+		FROM pg_stats CROSS JOIN constants
+		LEFT OUTER JOIN no_stats ON schemaname = no_stats.table_schema
+																AND tablename = no_stats.table_name
+	 WHERE schemaname NOT IN ('pg_catalog', 'information_schema')
+				 AND no_stats.table_name IS NULL
+				 AND EXISTS (SELECT 1
+											 FROM information_schema.columns
+											WHERE schemaname = columns.table_schema
+														AND tablename = columns.table_name)
+	 GROUP BY schemaname, tablename, hdr, ma, bs
+),
+data_headers AS (
+	SELECT ma, bs, hdr, schemaname, tablename,
+				 (datawidth+(hdr+ma-(case when hdr % ma=0 THEN ma ELSE hdr % ma END)))::numeric AS datahdr,
+				 (maxfracsum*(nullhdr+ma-(case when nullhdr % ma=0 THEN ma ELSE nullhdr % ma END))) AS nullhdr2
+		FROM null_headers
+),
+table_estimates AS (
+	SELECT pg_class.oid,
+				 relpages * bs as table_bytes,
+				 CEIL((reltuples*
+							(datahdr + nullhdr2 + 4 + ma -
+								(CASE WHEN datahdr % ma=0
+									THEN ma ELSE datahdr % ma END)
+								)/(bs-20))) * bs AS expected_bytes
+		FROM data_headers
+		JOIN pg_class ON tablename = relname
+		JOIN pg_namespace ON relnamespace = pg_namespace.oid
+												 AND schemaname = nspname
+	 WHERE pg_class.relkind = 'r'
+)
+SELECT oid,
+	CASE WHEN table_bytes > 0
+	THEN table_bytes::NUMERIC
+	ELSE NULL::NUMERIC END
+	AS table_bytes,
+	CASE WHEN expected_bytes > 0
+	THEN expected_bytes::NUMERIC
+	ELSE NULL::NUMERIC END
+	AS expected_bytes,
+	CASE WHEN expected_bytes > 0 AND table_bytes > 0
+	AND expected_bytes <= table_bytes
+	THEN (table_bytes - expected_bytes)::NUMERIC
+	ELSE 0::NUMERIC END AS wasted_bytes
+FROM table_estimates;
+`
+
+const indexBloatSQL string = `
+WITH btree_index_atts AS (
+	SELECT nspname, relname, reltuples, relpages, indrelid, relam,
+				 regexp_split_to_table(indkey::text, ' ')::smallint AS attnum,
+				 indexrelid as index_oid
+		FROM pg_index
+		JOIN pg_class ON pg_class.oid=pg_index.indexrelid
+		JOIN pg_namespace ON pg_namespace.oid = pg_class.relnamespace
+		JOIN pg_am ON pg_class.relam = pg_am.oid
+	 WHERE pg_am.amname = 'btree' AND pg_class.relpages > 0
+),
+index_item_sizes AS (
+	SELECT i.nspname,
+				 i.relname,
+				 i.reltuples,
+				 i.relpages,
+				 i.relam,
+				 (quote_ident(s.schemaname) || '.' || quote_ident(s.tablename))::regclass AS starelid,
+				 a.attrelid AS table_oid,
+				 index_oid,
+				 current_setting('block_size')::numeric AS bs,
+				 8 AS maxalign,
+				 24 AS pagehdr,
+				 /* per tuple header: add index_attribute_bm if some cols are null-able */
+				 CASE WHEN max(coalesce(s.null_frac, 0)) = 0
+						 THEN 2
+						 ELSE 6
+				 END AS index_tuple_hdr,
+				 /* data len: we remove null values save space using it fractionnal part from stats */
+				 sum( (1 - coalesce(s.null_frac, 0)) * coalesce(s.avg_width, 1024) ) AS nulldatawidth
+		FROM pg_attribute a
+		JOIN pg_stats s ON (quote_ident(s.schemaname) || '.' || quote_ident(s.tablename))::regclass = a.attrelid AND s.attname = a.attname
+		JOIN btree_index_atts i ON i.indrelid = a.attrelid AND a.attnum = i.attnum
+	 WHERE a.attnum > 0
+	 GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9
+),
+index_aligned AS (
+	SELECT maxalign, bs, nspname, relname AS index_name, reltuples,
+				 relpages, relam, table_oid, index_oid,
+				 ( 6
+					 + maxalign
+					 /* Add padding to the index tuple header to align on MAXALIGN */
+					 - CASE
+							 WHEN index_tuple_hdr % maxalign = 0 THEN maxalign
+							 ELSE index_tuple_hdr % maxalign
+						 END
+					 + nulldatawidth
+					 + maxalign
+					 /* Add padding to the data to align on MAXALIGN */
+					 - CASE
+							 WHEN nulldatawidth::integer % maxalign = 0 THEN maxalign
+							 ELSE nulldatawidth::integer % maxalign
+						 END
+				)::numeric AS nulldatahdrwidth, pagehdr
+	 FROM index_item_sizes
+),
+otta_calc AS (
+	SELECT bs, nspname, table_oid, index_oid, index_name, relpages,
+				 coalesce(
+						ceil(reltuples * nulldatahdrwidth)::numeric / bs
+						- pagehdr::numeric
+						/* btree and hash have a metadata reserved block */
+						+ CASE WHEN am.amname IN ('hash', 'btree') THEN 1 ELSE 0 END,
+						0
+				 ) AS otta
+	FROM index_aligned
+	LEFT JOIN pg_am am ON index_aligned.relam = am.oid
+)
+SELECT sub.table_oid,
+			 sub.index_oid,
+	CASE
+		WHEN sub.relpages <= otta THEN 0
+		ELSE bs * (sub.relpages - otta)::bigint
+	END AS wasted_bytes
+FROM otta_calc AS sub
+		 JOIN pg_class AS c ON c.oid = sub.table_oid
+		 JOIN pg_stat_user_indexes AS stat ON sub.index_oid = stat.indexrelid
+`
+
+func GetRelations(db *sql.DB, postgresVersionNum int, collectBloat bool) ([]Relation, error) {
 	var optionalFields string
 
 	relations := make(map[Oid]Relation, 0)
@@ -236,15 +423,15 @@ func GetRelations(db *sql.DB, postgresVersionNum int) ([]Relation, error) {
 	for rows.Next() {
 		var row Column
 
-		err := rows.Scan(&row.Oid, &row.Name, &row.DataType, &row.DefaultValue,
+		err := rows.Scan(&row.RelationOid, &row.Name, &row.DataType, &row.DefaultValue,
 			&row.NotNull, &row.Position)
 		if err != nil {
 			return nil, err
 		}
 
-		relation := relations[row.Oid]
+		relation := relations[row.RelationOid]
 		relation.Columns = append(relation.Columns, row)
-		relations[row.Oid] = relation
+		relations[row.RelationOid] = relation
 	}
 
 	// Indices
@@ -265,17 +452,148 @@ func GetRelations(db *sql.DB, postgresVersionNum int) ([]Relation, error) {
 	for rows.Next() {
 		var row Index
 
-		err := rows.Scan(&row.Oid, &row.IndexOid, &row.Columns, &row.Name, &row.SizeBytes,
+		err := rows.Scan(&row.RelationOid, &row.IndexOid, &row.Columns, &row.Name, &row.SizeBytes,
 			&row.IsPrimary, &row.IsUnique, &row.IsValid, &row.IndexDef, &row.ConstraintDef,
 			&row.IdxScan, &row.IdxTupRead, &row.IdxTupFetch, &row.IdxBlksRead, &row.IdxBlksHit)
 		if err != nil {
 			return nil, err
 		}
 
-		relation := relations[row.Oid]
+		relation := relations[row.RelationOid]
 		relation.Indices = append(relation.Indices, row)
-		relations[row.Oid] = relation
+		relations[row.RelationOid] = relation
 	}
+
+	// Constraints
+	stmt, err = db.Prepare(QueryMarkerSQL + constraintsSQL)
+	if err != nil {
+		return nil, err
+	}
+
+	defer stmt.Close()
+
+	rows, err = stmt.Query()
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	for rows.Next() {
+		var row Constraint
+
+		err := rows.Scan(&row.RelationOid, &row.Name, &row.ConstraintDef, &row.Columns,
+			&row.ForeignSchema, &row.ForeignTable, &row.ForeignColumns)
+		if err != nil {
+			return nil, err
+		}
+
+		relation := relations[row.RelationOid]
+		relation.Constraints = append(relation.Constraints, row)
+		relations[row.RelationOid] = relation
+	}
+
+	// View definitions
+	stmt, err = db.Prepare(QueryMarkerSQL + viewDefinitionSQL)
+	if err != nil {
+		return nil, err
+	}
+
+	defer stmt.Close()
+
+	rows, err = stmt.Query()
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	for rows.Next() {
+		var relationOid Oid
+		var viewDefinition string
+
+		err := rows.Scan(&relationOid, &viewDefinition)
+		if err != nil {
+			return nil, err
+		}
+
+		relation := relations[relationOid]
+		relation.ViewDefinition = viewDefinition
+		relations[relationOid] = relation
+	}
+
+	if collectBloat {
+		// Table bloat
+		stmt, err = db.Prepare(QueryMarkerSQL + tableBloatSQL)
+		if err != nil {
+			return nil, err
+		}
+
+		defer stmt.Close()
+
+		rows, err = stmt.Query()
+		if err != nil {
+			return nil, err
+		}
+
+		defer rows.Close()
+
+		for rows.Next() {
+			var relationOid Oid
+			var tableBytes int64
+			var expectedBytes int64
+			var wastedBytes int64
+
+			err := rows.Scan(&relationOid, &tableBytes, &expectedBytes, &wastedBytes)
+			if err != nil {
+				return nil, err
+			}
+
+			relation := relations[relationOid]
+			relation.Stats.WastedBytes = wastedBytes
+			relations[relationOid] = relation
+		}
+
+		// Index bloat
+		stmt, err = db.Prepare(QueryMarkerSQL + indexBloatSQL)
+		if err != nil {
+			return nil, err
+		}
+
+		defer stmt.Close()
+
+		rows, err = stmt.Query()
+		if err != nil {
+			return nil, err
+		}
+
+		defer rows.Close()
+
+		for rows.Next() {
+			var relationOid Oid
+			var indexOid Oid
+			var wastedBytes int64
+
+			err := rows.Scan(&relationOid, &indexOid, &wastedBytes)
+			if err != nil {
+				return nil, err
+			}
+
+			relation := relations[relationOid]
+
+			for idx, index := range relation.Indices {
+				if index.IndexOid == indexOid {
+					index.WastedBytes = wastedBytes
+					relation.Indices[idx] = index
+					break
+				}
+			}
+
+			relations[relationOid] = relation
+		}
+	}
+
+	// Flip the oid-based map into an array
 
 	v := make([]Relation, 0, len(relations))
 	for _, value := range relations {
