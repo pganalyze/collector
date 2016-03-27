@@ -12,7 +12,7 @@ import (
 )
 
 type Statement struct {
-	Username          string  `json:"username"`
+	Userid            int     `json:"userid"`
 	Query             string  `json:"query"`
 	Calls             int64   `json:"calls"`
 	TotalTime         float64 `json:"total_time"`
@@ -44,16 +44,15 @@ const statementSQLDefaultOptionalFields = "NULL, NULL, NULL, NULL, NULL"
 const statementSQLpg94OptionalFields = "queryid, NULL, NULL, NULL, NULL"
 const statementSQLpg95OptionalFields = "queryid, min_time, max_time, mean_time, stddev_time"
 
-const statementSQL string = `SELECT (SELECT rolname FROM pg_roles WHERE oid = userid) AS username,
-				query, calls, total_time, rows, shared_blks_hit, shared_blks_read,
-				shared_blks_dirtied, shared_blks_written, local_blks_hit,
-				local_blks_read, local_blks_dirtied, local_blks_written,
-				temp_blks_read, temp_blks_written, blk_read_time, blk_write_time,
-				%s
-	 FROM %s
-	WHERE query !~* '^%s' AND query <> '<insufficient privilege>'
-				AND query NOT LIKE 'DEALLOCATE %%'
-				AND dbid IN (SELECT oid FROM pg_database WHERE datname = current_database())`
+const statementSQL string = `
+SELECT userid, query, calls, total_time, rows, shared_blks_hit, shared_blks_read,
+			 shared_blks_dirtied, shared_blks_written, local_blks_hit, local_blks_read,
+			 local_blks_dirtied, local_blks_written, temp_blks_read, temp_blks_written,
+			 blk_read_time, blk_write_time, %s
+	FROM %s
+ WHERE query !~* '^%s' AND query <> '<insufficient privilege>'
+			 AND query NOT LIKE 'DEALLOCATE %%'
+			 AND dbid IN (SELECT oid FROM pg_database WHERE datname = current_database())`
 
 const statementStatsHelperSQL string = `
 SELECT 1 AS enabled
@@ -130,7 +129,7 @@ func GetStatements(logger *util.Logger, db *sql.DB, postgresVersionNum int) ([]S
 	for rows.Next() {
 		var row Statement
 
-		err := rows.Scan(&row.Username, &row.Query, &row.Calls, &row.TotalTime, &row.Rows,
+		err := rows.Scan(&row.Userid, &row.Query, &row.Calls, &row.TotalTime, &row.Rows,
 			&row.SharedBlksHit, &row.SharedBlksRead, &row.SharedBlksDirtied, &row.SharedBlksWritten,
 			&row.LocalBlksHit, &row.LocalBlksRead, &row.LocalBlksDirtied, &row.LocalBlksWritten,
 			&row.TempBlksRead, &row.TempBlksWritten, &row.BlkReadTime, &row.BlkWriteTime,
