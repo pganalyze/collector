@@ -3,6 +3,7 @@ package dbstats
 import (
 	"database/sql"
 
+	"github.com/lfittl/pg_query_go"
 	"github.com/pganalyze/collector/util"
 
 	null "gopkg.in/guregu/null.v2"
@@ -19,17 +20,16 @@ type Activity struct {
 	StateChange     util.Timestamp `json:"state_change"`
 	Waiting         null.Bool      `json:"waiting"`
 	State           null.String    `json:"state"`
+	NormalizedQuery null.String    `json:"normalized_query"`
 }
 
 // http://www.postgresql.org/docs/devel/static/monitoring-stats.html#PG-STAT-ACTIVITY-VIEW
-//
-// Note: We don't include query to avoid sending sensitive data
 const activitySQL string = `SELECT pid, usename, application_name, client_addr::text, backend_start,
-				xact_start, query_start, state_change, waiting, state
+				xact_start, query_start, state_change, waiting, state, query
 	 FROM pg_stat_activity
 	WHERE pid <> pg_backend_pid() AND datname = current_database()`
 
-func GetActivity(db *sql.DB, postgresVersionNum int) ([]Activity, error) {
+func GetActivity(logger *util.Logger, db *sql.DB, postgresVersionNum int) ([]Activity, error) {
 	stmt, err := db.Prepare(QueryMarkerSQL + activitySQL)
 	if err != nil {
 		return nil, err
@@ -48,12 +48,22 @@ func GetActivity(db *sql.DB, postgresVersionNum int) ([]Activity, error) {
 
 	for rows.Next() {
 		var row Activity
+		var query null.String
 
 		err := rows.Scan(&row.Pid, &row.Username, &row.ApplicationName, &row.ClientAddr,
 			&row.BackendStart, &row.XactStart, &row.QueryStart, &row.StateChange,
-			&row.Waiting, &row.State)
+			&row.Waiting, &row.State, &query)
 		if err != nil {
 			return nil, err
+		}
+
+		if !query.IsZero() {
+			normalizedQuery, err := pg_query.Normalize(*query.Ptr())
+			if err != nil {
+				logger.PrintVerbose("Failed to normalize query: %s", err)
+			} else {
+				row.NormalizedQuery = null.StringFrom(normalizedQuery)
+			}
 		}
 
 		activities = append(activities, row)
