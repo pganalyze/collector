@@ -43,9 +43,26 @@ type snapshot struct {
 
 type snapshotPostgres struct {
 	Relations []dbstats.Relation `json:"schema"`
+	Settings  []dbstats.Setting  `json:"settings"`
 }
 
-func collectStatistics(config config.DatabaseConfig, db *sql.DB, submitCollectedData bool, logger *util.Logger) (err error) {
+type collectionOpts struct {
+	collectPostgresSchema    bool
+	collectPostgresSettings  bool
+	collectPostgresLocks     bool
+	collectPostgresFunctions bool
+	collectPostgresBloat     bool
+	collectPostgresViews     bool
+
+	collectLogs              bool
+	collectExplain           bool
+	collectSystemInformation bool
+
+	submitCollectedData bool
+	testRun             bool
+}
+
+func collectStatistics(config config.DatabaseConfig, db *sql.DB, collectionOpts collectionOpts, logger *util.Logger) (err error) {
 	var stats snapshot
 	var explainInputs []explain.ExplainInput
 	var postgresVersion string
@@ -74,7 +91,7 @@ func collectStatistics(config config.DatabaseConfig, db *sql.DB, submitCollected
 		return
 	}
 
-	stats.ActiveQueries, err = dbstats.GetActivity(db)
+	stats.ActiveQueries, err = dbstats.GetActivity(db, postgresVersionNum)
 	if err != nil {
 		return
 	}
@@ -84,19 +101,35 @@ func collectStatistics(config config.DatabaseConfig, db *sql.DB, submitCollected
 		return
 	}
 
-	stats.Postgres.Relations, err = dbstats.GetRelations(db, postgresVersionNum)
-	if err != nil {
-		return
+	if collectionOpts.collectPostgresSchema {
+		stats.Postgres.Relations, err = dbstats.GetRelations(db, postgresVersionNum)
+		if err != nil {
+			return
+		}
 	}
 
-	stats.System = systemstats.GetSystemSnapshot(config)
-	stats.Logs, explainInputs = logs.GetLogLines(config)
+	if collectionOpts.collectPostgresSettings {
+		stats.Postgres.Settings, err = dbstats.GetSettings(db, postgresVersionNum)
+		if err != nil {
+			return
+		}
+	}
 
-	stats.Explains = explain.RunExplain(db, explainInputs)
+	if collectionOpts.collectSystemInformation {
+		stats.System = systemstats.GetSystemSnapshot(config)
+	}
+
+	if collectionOpts.collectLogs {
+		stats.Logs, explainInputs = logs.GetLogLines(config)
+
+		if collectionOpts.collectExplain {
+			stats.Explains = explain.RunExplain(db, explainInputs)
+		}
+	}
 
 	statsJSON, _ := json.Marshal(stats)
 
-	if !submitCollectedData {
+	if !collectionOpts.submitCollectedData {
 		var out bytes.Buffer
 		json.Indent(&out, statsJSON, "", "\t")
 		logger.PrintInfo("Dry run - JSON data that would have been sent:\n%s", out.String())
@@ -138,10 +171,10 @@ func collectStatistics(config config.DatabaseConfig, db *sql.DB, submitCollected
 	return
 }
 
-func collectAllDatabases(databases []configAndConnection, submitCollectedData bool, logger *util.Logger) {
+func collectAllDatabases(databases []configAndConnection, globalCollectionOpts collectionOpts, logger *util.Logger) {
 	for _, database := range databases {
 		prefixedLogger := logger.WithPrefix(database.config.SectionName)
-		err := collectStatistics(database.config, database.connection, submitCollectedData, prefixedLogger)
+		err := collectStatistics(database.config, database.connection, globalCollectionOpts, prefixedLogger)
 		if err != nil {
 			prefixedLogger.PrintError("%s", err)
 		}
@@ -190,7 +223,7 @@ func establishConnection(config config.DatabaseConfig, logger *util.Logger) (dat
 	return
 }
 
-func run(wg sync.WaitGroup, testRun bool, submitCollectedData bool, logger *util.Logger, configFilename string) chan<- bool {
+func run(wg sync.WaitGroup, globalCollectionOpts collectionOpts, logger *util.Logger, configFilename string) chan<- bool {
 	var databases []configAndConnection
 
 	schedulerGroups, err := scheduler.ReadSchedulerGroups(scheduler.DefaultConfig)
@@ -217,14 +250,14 @@ func run(wg sync.WaitGroup, testRun bool, submitCollectedData bool, logger *util
 
 	// We intentionally don't do a test-run in the normal mode, since we're fine with
 	// a later SIGHUP that fixes the config (or a temporarily unreachable server at start)
-	if testRun {
-		collectAllDatabases(databases, submitCollectedData, logger)
+	if globalCollectionOpts.testRun {
+		collectAllDatabases(databases, globalCollectionOpts, logger)
 		return nil
 	}
 
 	stop := schedulerGroups["stats"].Schedule(func() {
 		wg.Add(1)
-		collectAllDatabases(databases, submitCollectedData, logger)
+		collectAllDatabases(databases, globalCollectionOpts, logger)
 		wg.Done()
 	}, logger, "collection of all databases")
 
@@ -232,11 +265,12 @@ func run(wg sync.WaitGroup, testRun bool, submitCollectedData bool, logger *util
 }
 
 func main() {
-	var testRun bool
 	var dryRun bool
-	var submitCollectedData bool
+	var testRun bool
 	var configFilename string
 	var pidFilename string
+	var noPostgresSettings, noPostgresLocks, noPostgresFunctions, noPostgresBloat, noPostgresViews bool
+	var noPostgresSchema, noLogs, noExplain, noSystemInformation bool
 
 	logger := &util.Logger{Destination: log.New(os.Stderr, "", log.LstdFlags)}
 
@@ -249,17 +283,42 @@ func main() {
 	flag.BoolVarP(&testRun, "test", "t", false, "Tests whether we can successfully collect data, submits it to the server, and exits afterwards.")
 	flag.BoolVarP(&logger.Verbose, "verbose", "v", false, "Outputs additional debugging information, use this if you're encoutering errors or other problems.")
 	flag.BoolVar(&dryRun, "dry-run", false, "Print JSON data that would get sent to web service (without actually sending) and exit afterwards.")
+	flag.BoolVar(&noPostgresSchema, "no-postgres-schema", false, "Don't collect any Postgres schema data (not recommended)")
+	flag.BoolVar(&noPostgresSettings, "no-postgres-settings", false, "Don't collect Postgres configuration settings")
+	flag.BoolVar(&noPostgresLocks, "no-postgres-locks", false, "Don't collect Postgres lock information")
+	flag.BoolVar(&noPostgresFunctions, "no-postgres-functions", false, "Don't collect Postgres function/procedure information")
+	flag.BoolVar(&noPostgresBloat, "no-postgres-bloat", false, "Don't collect Postgres table/index bloat statistics")
+	flag.BoolVar(&noPostgresViews, "no-postgres-views", false, "Don't collect Postgres view/materialized view information")
+	flag.BoolVar(&noLogs, "no-logs", false, "Don't collect log data")
+	flag.BoolVar(&noExplain, "no-explain", false, "Don't automatically EXPLAIN slow queries logged in the logfile")
+	flag.BoolVar(&noSystemInformation, "no-system-information", false, "Don't collect OS level performance data")
 	flag.StringVar(&configFilename, "config", usr.HomeDir+"/.pganalyze_collector.conf", "Specify alternative path for config file.")
 	flag.StringVar(&pidFilename, "pidfile", "", "Specifies a path that a pidfile should be written to. (default is no pidfile being written)")
 	flag.Parse()
 
+	globalCollectionOpts := collectionOpts{
+		submitCollectedData:      true,
+		testRun:                  true,
+		collectPostgresSchema:    !noPostgresSchema,
+		collectPostgresSettings:  !noPostgresSettings,
+		collectPostgresLocks:     !noPostgresLocks,
+		collectPostgresFunctions: !noPostgresFunctions,
+		collectPostgresBloat:     !noPostgresBloat,
+		collectPostgresViews:     !noPostgresViews,
+		collectLogs:              !noLogs,
+		collectExplain:           !noExplain,
+		collectSystemInformation: !noSystemInformation,
+	}
+
 	if dryRun {
-		submitCollectedData = false
-		testRun = true
-	} else if testRun {
-		submitCollectedData = true
+		globalCollectionOpts.submitCollectedData = false
+		globalCollectionOpts.testRun = true
 	} else {
-		submitCollectedData = true
+		// Check some cases we can't support from a pganalyze perspective right now
+		if noPostgresSchema {
+			logger.PrintError("Error: You can only disable schema collection for dry test runs (the API can't accept the snapshot otherwise)")
+			return
+		}
 	}
 
 	if pidFilename != "" {
@@ -277,7 +336,7 @@ func main() {
 	wg := sync.WaitGroup{}
 
 ReadConfigAndRun:
-	stop := run(wg, testRun, submitCollectedData, logger, configFilename)
+	stop := run(wg, globalCollectionOpts, logger, configFilename)
 	if stop == nil {
 		return
 	}
