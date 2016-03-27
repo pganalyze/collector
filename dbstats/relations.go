@@ -80,7 +80,7 @@ type Index struct {
 	IdxBlksHit    null.Int    `json:"idx_blks_hit"`
 }
 
-const relationsSQLpg93OptionalFields = "NULL"
+const relationsSQLDefaultOptionalFields = "NULL"
 const relationsSQLpg94OptionalFields = "s.n_mod_since_analyze"
 
 const relationsSQL string = `SELECT c.oid,
@@ -171,10 +171,16 @@ SELECT c.oid,
 			 AND c.relpersistence <> 't'
 			 AND n.nspname NOT IN ('pg_catalog', 'information_schema')`
 
-func GetRelations(db *sql.DB) ([]Relation, error) {
+func GetRelations(db *sql.DB, postgresVersionNum int) ([]Relation, error) {
+	var optionalFields string
+
 	relations := make(map[Oid]Relation, 0)
 
-	optionalFields := relationsSQLpg93OptionalFields
+	if postgresVersionNum >= PostgresVersion94 {
+		optionalFields = relationsSQLpg94OptionalFields
+	} else {
+		optionalFields = relationsSQLDefaultOptionalFields
+	}
 
 	// Relations
 	stmt, err := db.Prepare(queryMarkerSQL + fmt.Sprintf(relationsSQL, optionalFields))

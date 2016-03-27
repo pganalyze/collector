@@ -48,20 +48,45 @@ type snapshotPostgres struct {
 func collectStatistics(config config.DatabaseConfig, db *sql.DB, submitCollectedData bool, logger *util.Logger) (err error) {
 	var stats snapshot
 	var explainInputs []explain.ExplainInput
+	var postgresVersion string
+	var postgresVersionReadable string
+	var postgresVersionNum int
+
+	err = db.QueryRow("SELECT version()").Scan(&postgresVersion)
+	if err != nil {
+		return
+	}
+
+	err = db.QueryRow("SHOW server_version").Scan(&postgresVersionReadable)
+	if err != nil {
+		return
+	}
+
+	err = db.QueryRow("SHOW server_version_num").Scan(&postgresVersionNum)
+	if err != nil {
+		return
+	}
+
+	logger.PrintVerbose("Detected PostgreSQL Version %d (%s)", postgresVersionNum, postgresVersion)
+
+	if postgresVersionNum < dbstats.MinRequiredPostgresVersion {
+		err = fmt.Errorf("Error: Your PostgreSQL server version (%s) is too old, 9.2 or newer is required.", postgresVersionReadable)
+		return
+	}
 
 	stats.ActiveQueries, err = dbstats.GetActivity(db)
 	if err != nil {
-		return err
+		return
 	}
 
-	stats.Statements, err = dbstats.GetStatements(db)
+	stats.Statements, err = dbstats.GetStatements(db, postgresVersionNum)
 	if err != nil {
-		return err
+		return
 	}
 
-	stats.Postgres.Relations, err = dbstats.GetRelations(db)
+	stats.Postgres.Relations, err = dbstats.GetRelations(db, postgresVersionNum)
 	if err != nil {
-		return err
+		return
 	}
 
 	stats.System = systemstats.GetSystemSnapshot(config)

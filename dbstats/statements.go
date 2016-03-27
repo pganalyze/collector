@@ -37,7 +37,7 @@ type Statement struct {
 	StddevTime null.Float `json:"stddev_time"`
 }
 
-const statementSQLpg93OptionalFields = "NULL, NULL, NULL, NULL, NULL"
+const statementSQLDefaultOptionalFields = "NULL, NULL, NULL, NULL, NULL"
 const statementSQLpg94OptionalFields = "queryid, NULL, NULL, NULL, NULL"
 const statementSQLpg95OptionalFields = "queryid, min_time, max_time, mean_time, stddev_time"
 
@@ -52,9 +52,16 @@ const statementSQL string = `SELECT (SELECT rolname FROM pg_roles WHERE oid = us
 				AND query NOT LIKE 'DEALLOCATE %%'
 				AND dbid IN (SELECT oid FROM pg_database WHERE datname = current_database())`
 
-func GetStatements(db *sql.DB) ([]Statement, error) {
-	// TODO: Use correct optional fields based on version
-	optionalFields := statementSQLpg93OptionalFields
+func GetStatements(db *sql.DB, postgresVersionNum int) ([]Statement, error) {
+	var optionalFields string
+
+	if postgresVersionNum >= PostgresVersion95 {
+		optionalFields = statementSQLpg95OptionalFields
+	} else if postgresVersionNum >= PostgresVersion94 {
+		optionalFields = statementSQLpg94OptionalFields
+	} else {
+		optionalFields = statementSQLDefaultOptionalFields
+	}
 
 	// TODO: Optionally use stats helper
 	sourceTable := "pg_stat_statements"
@@ -72,6 +79,7 @@ func GetStatements(db *sql.DB) ([]Statement, error) {
 
 	rows, err := stmt.Query()
 	if err != nil {
+		fmt.Printf("%+v", err)
 		return nil, err
 	}
 	defer rows.Close()
