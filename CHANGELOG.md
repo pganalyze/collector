@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.9.0rc2    UNRELEASED
+## 0.9.0rc2    2016-03-27
 
 * Add --test mode to ease initial setup
 * Don't do an initial run when daemonizing (the default), this is mostly so we
@@ -11,6 +11,7 @@
 * Added support for specifying sslmode when connecting, and default to "prefer"
    * This also fixes an issue where beforehand we required SSL to always be present
    * For maximum security you might want to set this to "require" or "verify-full"
+* Re-introduced all required statistics currently used by pganalyze
 
 
 ## 0.9.0rc1    2016-03-22
