@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.9.0rc3    UNRELEASED
+## 0.9.0rc3    2016-03-28
 
 * Send Postgres version to the server as well
 
