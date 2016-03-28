@@ -358,12 +358,12 @@ FROM otta_calc AS sub
 		 JOIN pg_stat_user_indexes AS stat ON sub.index_oid = stat.indexrelid
 `
 
-func GetRelations(db *sql.DB, postgresVersionNum int, collectBloat bool) ([]Relation, error) {
+func GetRelations(db *sql.DB, postgresVersion PostgresVersion, collectBloat bool) ([]Relation, error) {
 	var optionalFields string
 
 	relations := make(map[Oid]Relation, 0)
 
-	if postgresVersionNum >= PostgresVersion94 {
+	if postgresVersion.Numeric >= PostgresVersion94 {
 		optionalFields = relationsSQLpg94OptionalFields
 	} else {
 		optionalFields = relationsSQLDefaultOptionalFields

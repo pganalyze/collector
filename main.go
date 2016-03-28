@@ -42,9 +42,10 @@ type snapshot struct {
 }
 
 type snapshotPostgres struct {
-	Relations []dbstats.Relation `json:"schema"`
-	Settings  []dbstats.Setting  `json:"settings"`
-	Functions []dbstats.Function `json:"functions"`
+	Relations []dbstats.Relation      `json:"schema"`
+	Settings  []dbstats.Setting       `json:"settings"`
+	Functions []dbstats.Function      `json:"functions"`
+	Version   dbstats.PostgresVersion `json:"version"`
 }
 
 type collectionOpts struct {
@@ -66,58 +67,45 @@ type collectionOpts struct {
 func collectStatistics(config config.DatabaseConfig, db *sql.DB, collectionOpts collectionOpts, logger *util.Logger) (err error) {
 	var stats snapshot
 	var explainInputs []explain.ExplainInput
-	var postgresVersion string
-	var postgresVersionReadable string
-	var postgresVersionNum int
 
-	err = db.QueryRow(dbstats.QueryMarkerSQL + "SELECT version()").Scan(&postgresVersion)
+	postgresVersion, err := dbstats.GetPostgresVersion(logger, db)
 	if err != nil {
 		return
 	}
 
-	err = db.QueryRow(dbstats.QueryMarkerSQL + "SHOW server_version").Scan(&postgresVersionReadable)
+	stats.Postgres.Version = postgresVersion
+
+	if postgresVersion.Numeric < dbstats.MinRequiredPostgresVersion {
+		err = fmt.Errorf("Error: Your PostgreSQL server version (%s) is too old, 9.2 or newer is required.", postgresVersion.Short)
+		return
+	}
+
+	stats.ActiveQueries, err = dbstats.GetActivity(logger, db, postgresVersion)
 	if err != nil {
 		return
 	}
 
-	err = db.QueryRow(dbstats.QueryMarkerSQL + "SHOW server_version_num").Scan(&postgresVersionNum)
-	if err != nil {
-		return
-	}
-
-	logger.PrintVerbose("Detected PostgreSQL Version %d (%s)", postgresVersionNum, postgresVersion)
-
-	if postgresVersionNum < dbstats.MinRequiredPostgresVersion {
-		err = fmt.Errorf("Error: Your PostgreSQL server version (%s) is too old, 9.2 or newer is required.", postgresVersionReadable)
-		return
-	}
-
-	stats.ActiveQueries, err = dbstats.GetActivity(logger, db, postgresVersionNum)
-	if err != nil {
-		return
-	}
-
-	stats.Statements, err = dbstats.GetStatements(logger, db, postgresVersionNum)
+	stats.Statements, err = dbstats.GetStatements(logger, db, postgresVersion)
 	if err != nil {
 		return
 	}
 
 	if collectionOpts.collectPostgresRelations {
-		stats.Postgres.Relations, err = dbstats.GetRelations(db, postgresVersionNum, collectionOpts.collectPostgresBloat)
+		stats.Postgres.Relations, err = dbstats.GetRelations(db, postgresVersion, collectionOpts.collectPostgresBloat)
 		if err != nil {
 			return
 		}
 	}
 
 	if collectionOpts.collectPostgresSettings {
-		stats.Postgres.Settings, err = dbstats.GetSettings(db, postgresVersionNum)
+		stats.Postgres.Settings, err = dbstats.GetSettings(db, postgresVersion)
 		if err != nil {
 			return
 		}
 	}
 
 	if collectionOpts.collectPostgresFunctions {
-		stats.Postgres.Functions, err = dbstats.GetFunctions(db, postgresVersionNum)
+		stats.Postgres.Functions, err = dbstats.GetFunctions(db, postgresVersion)
 		if err != nil {
 			return
 		}

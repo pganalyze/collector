@@ -28,7 +28,7 @@ SELECT name,
 			 sourceline
 	FROM pg_settings`
 
-func GetSettings(db *sql.DB, postgresVersionNum int) ([]Setting, error) {
+func GetSettings(db *sql.DB, postgresVersion PostgresVersion) ([]Setting, error) {
 	stmt, err := db.Prepare(QueryMarkerSQL + settingsSQL)
 	if err != nil {
 		return nil, err

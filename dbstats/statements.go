@@ -72,13 +72,13 @@ func statementStatsHelperExists(db *sql.DB) bool {
 	return enabled
 }
 
-func GetStatements(logger *util.Logger, db *sql.DB, postgresVersionNum int) ([]Statement, error) {
+func GetStatements(logger *util.Logger, db *sql.DB, postgresVersion PostgresVersion) ([]Statement, error) {
 	var optionalFields string
 	var sourceTable string
 
-	if postgresVersionNum >= PostgresVersion95 {
+	if postgresVersion.Numeric >= PostgresVersion95 {
 		optionalFields = statementSQLpg95OptionalFields
-	} else if postgresVersionNum >= PostgresVersion94 {
+	} else if postgresVersion.Numeric >= PostgresVersion94 {
 		optionalFields = statementSQLpg94OptionalFields
 	} else {
 		optionalFields = statementSQLDefaultOptionalFields

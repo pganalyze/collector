@@ -54,7 +54,7 @@ SELECT pn.nspname AS schema_name,
 			 AND pn.nspname NOT IN ('pg_catalog', 'information_schema')
 			 AND pp.proname NOT IN ('pg_stat_statements', 'pg_stat_statements_reset')`
 
-func GetFunctions(db *sql.DB, postgresVersionNum int) ([]Function, error) {
+func GetFunctions(db *sql.DB, postgresVersion PostgresVersion) ([]Function, error) {
 	stmt, err := db.Prepare(QueryMarkerSQL + functionsSQL)
 	if err != nil {
 		return nil, err

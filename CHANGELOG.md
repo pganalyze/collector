@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.0rc3    UNRELEASED
+
+* Send Postgres version to the server as well
+
+
 ## 0.9.0rc2    2016-03-27
 
 * Add --test mode to ease initial setup
