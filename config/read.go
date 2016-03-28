@@ -9,7 +9,7 @@ import (
 
 func getDefaultConfig() *DatabaseConfig {
 	config := &DatabaseConfig{
-		APIURL:      "https://api.pganalyze.com/v1/snapshots",
+		APIBaseURL:  "https://api.pganalyze.com",
 		DbHost:      "localhost",
 		DbPort:      5432,
 		DbSslMode:   "prefer",
@@ -21,8 +21,8 @@ func getDefaultConfig() *DatabaseConfig {
 	if apiKey := os.Getenv("PGA_API_KEY"); apiKey != "" {
 		config.APIKey = apiKey
 	}
-	if apiURL := os.Getenv("PGA_API_URL"); apiURL != "" {
-		config.APIURL = apiURL
+	if apiBaseURL := os.Getenv("PGA_API_BASEURL"); apiBaseURL != "" {
+		config.APIBaseURL = apiBaseURL
 	}
 	if dbURL := os.Getenv("DB_URL"); dbURL != "" {
 		config.DbURL = dbURL

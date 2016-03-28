@@ -13,6 +13,7 @@ import (
 	"os/signal"
 	"os/user"
 	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -138,16 +139,31 @@ func collectStatistics(config config.DatabaseConfig, db *sql.DB, collectionOpts 
 	w.Write(statsJSON)
 	w.Close()
 
-	resp, err := http.PostForm(config.APIURL, url.Values{
-		"data":               {compressedJSON.String()},
-		"data_compressor":    {"zlib"},
-		"api_key":            {config.APIKey},
-		"submitter":          {"pganalyze-collector 0.9.0rc2"},
-		"system_information": {"false"},
-		"no_reset":           {"true"},
-		"query_source":       {"pg_stat_statements"},
-		"collected_at":       {fmt.Sprintf("%d", time.Now().Unix())},
-	})
+	requestURL := config.APIBaseURL + "/v1/snapshots"
+
+	if collectionOpts.testRun {
+		requestURL = config.APIBaseURL + "/v1/snapshots/test"
+	}
+
+	data := url.Values{
+		"data":            {compressedJSON.String()},
+		"data_compressor": {"zlib"},
+		"api_key":         {config.APIKey},
+		"submitter":       {"pganalyze-collector 0.9.0rc3"},
+		"no_reset":        {"true"},
+		"query_source":    {"pg_stat_statements"},
+		"collected_at":    {fmt.Sprintf("%d", time.Now().Unix())},
+	}
+
+	req, err := http.NewRequest("POST", requestURL, strings.NewReader(data.Encode()))
+	if err != nil {
+		return
+	}
+
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Add("Accept", "application/json,text/plain")
+
+	resp, err := http.DefaultClient.Do(req)
 	// TODO: We could consider re-running on error (e.g. if it was a temporary server issue)
 	if err != nil {
 		return
@@ -164,7 +180,12 @@ func collectStatistics(config config.DatabaseConfig, db *sql.DB, collectionOpts 
 		return
 	}
 
-	logger.PrintInfo("Submitted snapshot successfully")
+	if len(body) > 0 {
+		logger.PrintInfo("%s", body)
+	} else {
+		logger.PrintInfo("Submitted snapshot successfully")
+	}
+
 	return
 }
 

@@ -13,7 +13,7 @@ import (
 //   from AWS CloudWatch as well as RDS logfiles
 type DatabaseConfig struct {
 	APIKey     string `ini:"api_key"`
-	APIURL     string `ini:"api_url"`
+	APIBaseURL string `ini:"api_base_url"`
 	DbURL      string `ini:"db_url"`
 	DbName     string `ini:"db_name"`
 	DbUsername string `ini:"db_username"`
