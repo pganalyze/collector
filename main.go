@@ -149,7 +149,7 @@ func collectStatistics(config config.DatabaseConfig, db *sql.DB, collectionOpts 
 		"data":            {compressedJSON.String()},
 		"data_compressor": {"zlib"},
 		"api_key":         {config.APIKey},
-		"submitter":       {"pganalyze-collector 0.9.0rc3"},
+		"submitter":       {"pganalyze-collector 0.9.0rc4"},
 		"no_reset":        {"true"},
 		"query_source":    {"pg_stat_statements"},
 		"collected_at":    {fmt.Sprintf("%d", time.Now().Unix())},

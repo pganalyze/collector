@@ -135,7 +135,7 @@ const relationsSQL string = `SELECT c.oid,
 	WHERE c.relkind IN ('r','v','m')
 				AND c.relpersistence <> 't'
 				AND c.relname NOT IN ('pg_stat_statements')
-				AND n.nspname NOT IN ('pg_catalog', 'information_schema')`
+				AND n.nspname NOT IN ('pg_catalog','pg_toast','information_schema')`
 
 const columnsSQL string = `SELECT c.oid,
 				a.attname AS name,
@@ -153,7 +153,7 @@ const columnsSQL string = `SELECT c.oid,
  WHERE c.relkind IN ('r','v','m')
 			 AND c.relpersistence <> 't'
 			 AND c.relname NOT IN ('pg_stat_statements')
-			 AND n.nspname NOT IN ('pg_catalog', 'information_schema')
+			 AND n.nspname NOT IN ('pg_catalog','pg_toast','information_schema')
 			 AND a.attnum > 0
 			 AND NOT a.attisdropped
  ORDER BY a.attnum`
@@ -182,7 +182,7 @@ SELECT c.oid,
 	LEFT JOIN pg_statio_user_indexes sio ON (sio.indexrelid = c2.oid)
  WHERE c.relkind IN ('r','v','m')
 			 AND c.relpersistence <> 't'
-			 AND n.nspname NOT IN ('pg_catalog', 'information_schema')`
+			 AND n.nspname NOT IN ('pg_catalog','pg_toast','information_schema')`
 
 // FIXME: This misses check constraints and others
 const constraintsSQL string = `
@@ -199,7 +199,7 @@ SELECT c.oid,
 			 LEFT JOIN pg_catalog.pg_class c2 ON r.confrelid = c2.oid
 			 LEFT JOIN pg_catalog.pg_namespace n2 ON n2.oid = c2.relnamespace
 WHERE r.contype = 'f'
-			 AND n.nspname NOT IN ('pg_catalog', 'information_schema')`
+			 AND n.nspname NOT IN ('pg_catalog','pg_toast','information_schema')`
 
 const viewDefinitionSQL string = `
 SELECT c.oid,
@@ -209,7 +209,7 @@ SELECT c.oid,
 	WHERE c.relkind IN ('v','m')
 			 AND c.relpersistence <> 't'
 			 AND c.relname NOT IN ('pg_stat_statements')
-			 AND n.nspname NOT IN ('pg_catalog', 'information_schema')`
+			 AND n.nspname NOT IN ('pg_catalog','pg_toast','information_schema')`
 
 const tableBloatSQL string = `
 WITH constants AS (
@@ -222,7 +222,7 @@ no_stats AS (
 															 AND table_name = tablename
 															 AND column_name = attname
 	WHERE attname IS NULL
-				AND table_schema NOT IN ('pg_catalog', 'information_schema')
+				AND table_schema NOT IN ('pg_catalog','pg_toast','information_schema')
 	GROUP BY table_schema, table_name
 ),
 null_headers AS (
@@ -235,7 +235,7 @@ null_headers AS (
 		FROM pg_stats CROSS JOIN constants
 		LEFT OUTER JOIN no_stats ON schemaname = no_stats.table_schema
 																AND tablename = no_stats.table_name
-	 WHERE schemaname NOT IN ('pg_catalog', 'information_schema')
+	 WHERE schemaname NOT IN ('pg_catalog','pg_toast','information_schema')
 				 AND no_stats.table_name IS NULL
 				 AND EXISTS (SELECT 1
 											 FROM information_schema.columns
@@ -289,6 +289,7 @@ WITH btree_index_atts AS (
 		JOIN pg_namespace ON pg_namespace.oid = pg_class.relnamespace
 		JOIN pg_am ON pg_class.relam = pg_am.oid
 	 WHERE pg_am.amname = 'btree' AND pg_class.relpages > 0
+				 AND nspname NOT IN ('pg_catalog','pg_toast','information_schema')
 ),
 index_item_sizes AS (
 	SELECT i.nspname,

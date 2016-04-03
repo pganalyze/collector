@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.0rc4    UNRELEASED
+
+* Ensure pg_toast schema is excluded when calculating index bloat
+
+
 ## 0.9.0rc3    2016-03-28
 
 * Send Postgres version to the server as well
