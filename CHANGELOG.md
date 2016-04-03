@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.9.0rc4    UNRELEASED
+## 0.9.0rc4    2016-04-03
 
 * Ensure pg_toast schema is excluded when calculating index bloat
 
