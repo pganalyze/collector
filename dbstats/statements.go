@@ -31,7 +31,7 @@ type Statement struct {
 	BlkWriteTime      float64 `json:"blk_write_time"`
 
 	// Postgres 9.4+
-	Queryid null.Int `json:"query_id"`
+	Queryid null.Int `json:"queryid"`
 
 	// Postgres 9.5+
 	MinTime    null.Float `json:"min_time"`
