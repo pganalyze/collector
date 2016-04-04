@@ -40,6 +40,12 @@ type snapshot struct {
 	System        *systemstats.SystemSnapshot `json:"system"`
 	Logs          []logs.Line                 `json:"logs"`
 	Explains      []explain.Explain           `json:"explains"`
+	Opts          snapshotOpts                `json:"opts"`
+}
+
+type snapshotOpts struct {
+	StatementStatsAreDiffed        bool `json:"statement_stats_are_diffed"`
+	PostgresRelationStatsAreDiffed bool `json:"postgres_relation_stats_are_diffed"`
 }
 
 type snapshotPostgres struct {
@@ -61,15 +67,32 @@ type collectionOpts struct {
 	collectExplain           bool
 	collectSystemInformation bool
 
+	diffStatements bool
+
 	submitCollectedData bool
 	testRun             bool
 }
 
-func collectStatistics(config config.DatabaseConfig, db *sql.DB, collectionOpts collectionOpts, logger *util.Logger) (err error) {
+type statementStatsKey struct {
+	Userid  int
+	Queryid int
+}
+
+type statsState struct {
+	statements map[statementStatsKey]dbstats.Statement
+}
+
+type database struct {
+	config     config.DatabaseConfig
+	connection *sql.DB
+	prevState  statsState
+}
+
+func collectStatistics(db database, collectionOpts collectionOpts, logger *util.Logger) (newState statsState, err error) {
 	var stats snapshot
 	var explainInputs []explain.ExplainInput
 
-	postgresVersion, err := dbstats.GetPostgresVersion(logger, db)
+	postgresVersion, err := dbstats.GetPostgresVersion(logger, db.connection)
 	if err != nil {
 		return
 	}
@@ -81,46 +104,72 @@ func collectStatistics(config config.DatabaseConfig, db *sql.DB, collectionOpts 
 		return
 	}
 
-	stats.ActiveQueries, err = dbstats.GetActivity(logger, db, postgresVersion)
+	stats.ActiveQueries, err = dbstats.GetActivity(logger, db.connection, postgresVersion)
 	if err != nil {
 		return
 	}
 
-	stats.Statements, err = dbstats.GetStatements(logger, db, postgresVersion)
+	stats.Statements, err = dbstats.GetStatements(logger, db.connection, postgresVersion)
 	if err != nil {
 		return
+	}
+
+	if collectionOpts.diffStatements && postgresVersion.Numeric >= dbstats.PostgresVersion94 {
+		var diffedStatements []dbstats.Statement
+
+		newState.statements = make(map[statementStatsKey]dbstats.Statement)
+
+		// Iterate through all statements, and diff them based on the previous state
+		for _, statement := range stats.Statements {
+			key := statementStatsKey{Userid: statement.Userid, Queryid: int(statement.Queryid.Int64)}
+
+			prevStatement, exists := db.prevState.statements[key]
+			if exists {
+				diffedStatement := statement.DiffSince(prevStatement)
+				if diffedStatement.Calls > 0 {
+					diffedStatements = append(diffedStatements, diffedStatement)
+				}
+			} else if len(db.prevState.statements) > 0 {
+				diffedStatements = append(diffedStatements, statement)
+			}
+
+			newState.statements[key] = statement
+		}
+
+		stats.Statements = diffedStatements
+		stats.Opts.StatementStatsAreDiffed = true
 	}
 
 	if collectionOpts.collectPostgresRelations {
-		stats.Postgres.Relations, err = dbstats.GetRelations(db, postgresVersion, collectionOpts.collectPostgresBloat)
+		stats.Postgres.Relations, err = dbstats.GetRelations(db.connection, postgresVersion, collectionOpts.collectPostgresBloat)
 		if err != nil {
 			return
 		}
 	}
 
 	if collectionOpts.collectPostgresSettings {
-		stats.Postgres.Settings, err = dbstats.GetSettings(db, postgresVersion)
+		stats.Postgres.Settings, err = dbstats.GetSettings(db.connection, postgresVersion)
 		if err != nil {
 			return
 		}
 	}
 
 	if collectionOpts.collectPostgresFunctions {
-		stats.Postgres.Functions, err = dbstats.GetFunctions(db, postgresVersion)
+		stats.Postgres.Functions, err = dbstats.GetFunctions(db.connection, postgresVersion)
 		if err != nil {
 			return
 		}
 	}
 
 	if collectionOpts.collectSystemInformation {
-		stats.System = systemstats.GetSystemSnapshot(config)
+		stats.System = systemstats.GetSystemSnapshot(db.config)
 	}
 
 	if collectionOpts.collectLogs {
-		stats.Logs, explainInputs = logs.GetLogLines(config)
+		stats.Logs, explainInputs = logs.GetLogLines(db.config)
 
 		if collectionOpts.collectExplain {
-			stats.Explains = explain.RunExplain(db, explainInputs)
+			stats.Explains = explain.RunExplain(db.connection, explainInputs)
 		}
 	}
 
@@ -139,17 +188,17 @@ func collectStatistics(config config.DatabaseConfig, db *sql.DB, collectionOpts 
 	w.Write(statsJSON)
 	w.Close()
 
-	requestURL := config.APIBaseURL + "/v1/snapshots"
+	requestURL := db.config.APIBaseURL + "/v1/snapshots"
 
 	if collectionOpts.testRun {
-		requestURL = config.APIBaseURL + "/v1/snapshots/test"
+		requestURL = db.config.APIBaseURL + "/v1/snapshots/test"
 	}
 
 	data := url.Values{
 		"data":            {compressedJSON.String()},
 		"data_compressor": {"zlib"},
-		"api_key":         {config.APIKey},
-		"submitter":       {"pganalyze-collector 0.9.0rc4"},
+		"api_key":         {db.config.APIKey},
+		"submitter":       {"pganalyze-collector 0.9.0rc5"},
 		"no_reset":        {"true"},
 		"query_source":    {"pg_stat_statements"},
 		"collected_at":    {fmt.Sprintf("%d", time.Now().Unix())},
@@ -189,12 +238,14 @@ func collectStatistics(config config.DatabaseConfig, db *sql.DB, collectionOpts 
 	return
 }
 
-func collectAllDatabases(databases []configAndConnection, globalCollectionOpts collectionOpts, logger *util.Logger) {
-	for _, database := range databases {
-		prefixedLogger := logger.WithPrefix(database.config.SectionName)
-		err := collectStatistics(database.config, database.connection, globalCollectionOpts, prefixedLogger)
+func collectAllDatabases(databases []database, globalCollectionOpts collectionOpts, logger *util.Logger) {
+	for idx, db := range databases {
+		prefixedLogger := logger.WithPrefix(db.config.SectionName)
+		newState, err := collectStatistics(db, globalCollectionOpts, prefixedLogger)
 		if err != nil {
 			prefixedLogger.PrintError("%s", err)
+		} else {
+			databases[idx].prevState = newState
 		}
 	}
 }
@@ -216,13 +267,8 @@ func connectToDb(config config.DatabaseConfig, logger *util.Logger) (*sql.DB, er
 	return db, nil
 }
 
-type configAndConnection struct {
-	config     config.DatabaseConfig
-	connection *sql.DB
-}
-
-func establishConnection(config config.DatabaseConfig, logger *util.Logger) (database configAndConnection, err error) {
-	database = configAndConnection{config: config}
+func establishConnection(config config.DatabaseConfig, logger *util.Logger) (db database, err error) {
+	db = database{config: config}
 	requestedSslMode := config.DbSslMode
 
 	// Go's lib/pq does not support sslmode properly, so we have to implement the "prefer" mode ourselves
@@ -230,11 +276,11 @@ func establishConnection(config config.DatabaseConfig, logger *util.Logger) (dat
 		config.DbSslMode = "require"
 	}
 
-	database.connection, err = connectToDb(config, logger)
+	db.connection, err = connectToDb(config, logger)
 	if err != nil {
 		if err.Error() == "pq: SSL is not enabled on the server" && requestedSslMode == "prefer" {
 			config.DbSslMode = "disable"
-			database.connection, err = connectToDb(config, logger)
+			db.connection, err = connectToDb(config, logger)
 		}
 	}
 
@@ -242,7 +288,7 @@ func establishConnection(config config.DatabaseConfig, logger *util.Logger) (dat
 }
 
 func run(wg sync.WaitGroup, globalCollectionOpts collectionOpts, logger *util.Logger, configFilename string) chan<- bool {
-	var databases []configAndConnection
+	var databases []database
 
 	schedulerGroups, err := scheduler.ReadSchedulerGroups(scheduler.DefaultConfig)
 	if err != nil {
@@ -288,7 +334,7 @@ func main() {
 	var configFilename string
 	var pidFilename string
 	var noPostgresSettings, noPostgresLocks, noPostgresFunctions, noPostgresBloat, noPostgresViews bool
-	var noPostgresRelations, noLogs, noExplain, noSystemInformation bool
+	var noPostgresRelations, noLogs, noExplain, noSystemInformation, diffStatements bool
 
 	logger := &util.Logger{Destination: log.New(os.Stderr, "", log.LstdFlags)}
 
@@ -310,6 +356,7 @@ func main() {
 	flag.BoolVar(&noLogs, "no-logs", false, "Don't collect log data")
 	flag.BoolVar(&noExplain, "no-explain", false, "Don't automatically EXPLAIN slow queries logged in the logfile")
 	flag.BoolVar(&noSystemInformation, "no-system-information", false, "Don't collect OS level performance data")
+	flag.BoolVar(&diffStatements, "diff-statements", false, "Send a diff of the pg_stat_statements statistics, instead of counter values")
 	flag.StringVar(&configFilename, "config", usr.HomeDir+"/.pganalyze_collector.conf", "Specify alternative path for config file.")
 	flag.StringVar(&pidFilename, "pidfile", "", "Specifies a path that a pidfile should be written to. (default is no pidfile being written)")
 	flag.Parse()
@@ -326,6 +373,7 @@ func main() {
 		collectLogs:              !noLogs,
 		collectExplain:           !noExplain,
 		collectSystemInformation: !noSystemInformation,
+		diffStatements:           diffStatements,
 	}
 
 	if dryRun {

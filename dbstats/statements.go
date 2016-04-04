@@ -72,6 +72,29 @@ func statementStatsHelperExists(db *sql.DB) bool {
 	return enabled
 }
 
+func (curr Statement) DiffSince(prev Statement) Statement {
+	return Statement{
+		Userid:            curr.Userid,
+		Query:             curr.Query,
+		Queryid:           curr.Queryid,
+		Calls:             curr.Calls - prev.Calls,
+		TotalTime:         curr.TotalTime - prev.TotalTime,
+		Rows:              curr.Rows - prev.Rows,
+		SharedBlksHit:     curr.SharedBlksHit - prev.SharedBlksHit,
+		SharedBlksRead:    curr.SharedBlksRead - prev.SharedBlksRead,
+		SharedBlksDirtied: curr.SharedBlksDirtied - prev.SharedBlksDirtied,
+		SharedBlksWritten: curr.SharedBlksWritten - prev.SharedBlksWritten,
+		LocalBlksHit:      curr.LocalBlksHit - prev.LocalBlksHit,
+		LocalBlksRead:     curr.LocalBlksRead - prev.LocalBlksRead,
+		LocalBlksDirtied:  curr.LocalBlksDirtied - prev.LocalBlksDirtied,
+		LocalBlksWritten:  curr.LocalBlksWritten - prev.LocalBlksWritten,
+		TempBlksRead:      curr.TempBlksRead - prev.TempBlksRead,
+		TempBlksWritten:   curr.TempBlksWritten - prev.TempBlksWritten,
+		BlkReadTime:       curr.BlkReadTime - prev.BlkReadTime,
+		BlkWriteTime:      curr.BlkWriteTime - prev.BlkWriteTime,
+	}
+}
+
 func GetStatements(logger *util.Logger, db *sql.DB, postgresVersion PostgresVersion) ([]Statement, error) {
 	var optionalFields string
 	var sourceTable string

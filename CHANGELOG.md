@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.9.0rc5    UNRELEASED
+
+* Introduce new --diff-statements option (default off for now)
+  * This calculates the diff for the counter values of pg_stat_statements on the client (i.e. collector),
+    instead of the server for increased accuracy and protection against out-of-order processing
+* Introduce "opts" to the snapshot, for indicating which options were chosen
+
+
 ## 0.9.0rc4    2016-04-03
 
 * Ensure pg_toast schema is excluded when calculating index bloat
