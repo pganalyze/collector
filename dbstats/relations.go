@@ -373,6 +373,7 @@ func GetRelations(db *sql.DB, postgresVersion PostgresVersion, collectBloat bool
 	// Relations
 	stmt, err := db.Prepare(QueryMarkerSQL + fmt.Sprintf(relationsSQL, optionalFields))
 	if err != nil {
+		err = fmt.Errorf("Relations/Prepare: %s", err)
 		return nil, err
 	}
 
@@ -380,6 +381,7 @@ func GetRelations(db *sql.DB, postgresVersion PostgresVersion, collectBloat bool
 
 	rows, err := stmt.Query()
 	if err != nil {
+		err = fmt.Errorf("Relations/Query: %s", err)
 		return nil, err
 	}
 
@@ -400,6 +402,7 @@ func GetRelations(db *sql.DB, postgresVersion PostgresVersion, collectBloat bool
 			&row.Stats.ToastBlksRead, &row.Stats.ToastBlksHit, &row.Stats.TidxBlksRead,
 			&row.Stats.TidxBlksHit)
 		if err != nil {
+			err = fmt.Errorf("Relations/Scan: %s", err)
 			return nil, err
 		}
 
@@ -409,6 +412,7 @@ func GetRelations(db *sql.DB, postgresVersion PostgresVersion, collectBloat bool
 	// Columns
 	stmt, err = db.Prepare(QueryMarkerSQL + columnsSQL)
 	if err != nil {
+		err = fmt.Errorf("Columns/Prepare: %s", err)
 		return nil, err
 	}
 
@@ -416,6 +420,7 @@ func GetRelations(db *sql.DB, postgresVersion PostgresVersion, collectBloat bool
 
 	rows, err = stmt.Query()
 	if err != nil {
+		err = fmt.Errorf("Columns/Query: %s", err)
 		return nil, err
 	}
 
@@ -427,6 +432,7 @@ func GetRelations(db *sql.DB, postgresVersion PostgresVersion, collectBloat bool
 		err := rows.Scan(&row.RelationOid, &row.Name, &row.DataType, &row.DefaultValue,
 			&row.NotNull, &row.Position)
 		if err != nil {
+			err = fmt.Errorf("Columns/Scan: %s", err)
 			return nil, err
 		}
 
@@ -438,6 +444,7 @@ func GetRelations(db *sql.DB, postgresVersion PostgresVersion, collectBloat bool
 	// Indices
 	stmt, err = db.Prepare(QueryMarkerSQL + indicesSQL)
 	if err != nil {
+		err = fmt.Errorf("Indices/Prepare: %s", err)
 		return nil, err
 	}
 
@@ -445,6 +452,7 @@ func GetRelations(db *sql.DB, postgresVersion PostgresVersion, collectBloat bool
 
 	rows, err = stmt.Query()
 	if err != nil {
+		err = fmt.Errorf("Indices/Query: %s", err)
 		return nil, err
 	}
 
@@ -457,6 +465,7 @@ func GetRelations(db *sql.DB, postgresVersion PostgresVersion, collectBloat bool
 			&row.IsPrimary, &row.IsUnique, &row.IsValid, &row.IndexDef, &row.ConstraintDef,
 			&row.IdxScan, &row.IdxTupRead, &row.IdxTupFetch, &row.IdxBlksRead, &row.IdxBlksHit)
 		if err != nil {
+			err = fmt.Errorf("Indices/Scan: %s", err)
 			return nil, err
 		}
 
@@ -468,6 +477,7 @@ func GetRelations(db *sql.DB, postgresVersion PostgresVersion, collectBloat bool
 	// Constraints
 	stmt, err = db.Prepare(QueryMarkerSQL + constraintsSQL)
 	if err != nil {
+		err = fmt.Errorf("Constraints/Prepare: %s", err)
 		return nil, err
 	}
 
@@ -475,6 +485,7 @@ func GetRelations(db *sql.DB, postgresVersion PostgresVersion, collectBloat bool
 
 	rows, err = stmt.Query()
 	if err != nil {
+		err = fmt.Errorf("Constraints/Query: %s", err)
 		return nil, err
 	}
 
@@ -486,6 +497,7 @@ func GetRelations(db *sql.DB, postgresVersion PostgresVersion, collectBloat bool
 		err := rows.Scan(&row.RelationOid, &row.Name, &row.ConstraintDef, &row.Columns,
 			&row.ForeignSchema, &row.ForeignTable, &row.ForeignColumns)
 		if err != nil {
+			err = fmt.Errorf("Constraints/Scan: %s", err)
 			return nil, err
 		}
 
@@ -497,6 +509,7 @@ func GetRelations(db *sql.DB, postgresVersion PostgresVersion, collectBloat bool
 	// View definitions
 	stmt, err = db.Prepare(QueryMarkerSQL + viewDefinitionSQL)
 	if err != nil {
+		err = fmt.Errorf("Views/Prepare: %s", err)
 		return nil, err
 	}
 
@@ -504,6 +517,7 @@ func GetRelations(db *sql.DB, postgresVersion PostgresVersion, collectBloat bool
 
 	rows, err = stmt.Query()
 	if err != nil {
+		err = fmt.Errorf("Views/Query: %s", err)
 		return nil, err
 	}
 
@@ -515,6 +529,7 @@ func GetRelations(db *sql.DB, postgresVersion PostgresVersion, collectBloat bool
 
 		err := rows.Scan(&relationOid, &viewDefinition)
 		if err != nil {
+			err = fmt.Errorf("Views/Scan: %s", err)
 			return nil, err
 		}
 
@@ -527,6 +542,7 @@ func GetRelations(db *sql.DB, postgresVersion PostgresVersion, collectBloat bool
 		// Table bloat
 		stmt, err = db.Prepare(QueryMarkerSQL + tableBloatSQL)
 		if err != nil {
+			err = fmt.Errorf("TableBloat/Prepare: %s", err)
 			return nil, err
 		}
 
@@ -534,6 +550,7 @@ func GetRelations(db *sql.DB, postgresVersion PostgresVersion, collectBloat bool
 
 		rows, err = stmt.Query()
 		if err != nil {
+			err = fmt.Errorf("TableBloat/Query: %s", err)
 			return nil, err
 		}
 
@@ -541,23 +558,27 @@ func GetRelations(db *sql.DB, postgresVersion PostgresVersion, collectBloat bool
 
 		for rows.Next() {
 			var relationOid Oid
-			var tableBytes int64
-			var expectedBytes int64
-			var wastedBytes int64
+			var tableBytes null.Int
+			var expectedBytes null.Int
+			var wastedBytes null.Int
 
 			err := rows.Scan(&relationOid, &tableBytes, &expectedBytes, &wastedBytes)
 			if err != nil {
+				err = fmt.Errorf("TableBloat/Scan: %s", err)
 				return nil, err
 			}
 
-			relation := relations[relationOid]
-			relation.Stats.WastedBytes = wastedBytes
-			relations[relationOid] = relation
+			if wastedBytes.Valid {
+				relation := relations[relationOid]
+				relation.Stats.WastedBytes = wastedBytes.Int64
+				relations[relationOid] = relation
+			}
 		}
 
 		// Index bloat
 		stmt, err = db.Prepare(QueryMarkerSQL + indexBloatSQL)
 		if err != nil {
+			err = fmt.Errorf("IndexBloat/Prepare: %s", err)
 			return nil, err
 		}
 
@@ -565,6 +586,7 @@ func GetRelations(db *sql.DB, postgresVersion PostgresVersion, collectBloat bool
 
 		rows, err = stmt.Query()
 		if err != nil {
+			err = fmt.Errorf("IndexBloat/Query: %s", err)
 			return nil, err
 		}
 
@@ -573,24 +595,27 @@ func GetRelations(db *sql.DB, postgresVersion PostgresVersion, collectBloat bool
 		for rows.Next() {
 			var relationOid Oid
 			var indexOid Oid
-			var wastedBytes int64
+			var wastedBytes null.Int
 
 			err := rows.Scan(&relationOid, &indexOid, &wastedBytes)
 			if err != nil {
+				err = fmt.Errorf("IndexBloat/Scan: %s", err)
 				return nil, err
 			}
 
-			relation := relations[relationOid]
+			if wastedBytes.Valid {
+				relation := relations[relationOid]
 
-			for idx, index := range relation.Indices {
-				if index.IndexOid == indexOid {
-					index.WastedBytes = wastedBytes
-					relation.Indices[idx] = index
-					break
+				for idx, index := range relation.Indices {
+					if index.IndexOid == indexOid {
+						index.WastedBytes = wastedBytes.Int64
+						relation.Indices[idx] = index
+						break
+					}
 				}
-			}
 
-			relations[relationOid] = relation
+				relations[relationOid] = relation
+			}
 		}
 	}
 
