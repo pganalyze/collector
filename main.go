@@ -67,6 +67,8 @@ type collectionOpts struct {
 	collectExplain           bool
 	collectSystemInformation bool
 
+	collectorApplicationName string
+
 	diffStatements bool
 
 	submitCollectedData bool
@@ -83,9 +85,10 @@ type statsState struct {
 }
 
 type database struct {
-	config     config.DatabaseConfig
-	connection *sql.DB
-	prevState  statsState
+	config           config.DatabaseConfig
+	connection       *sql.DB
+	prevState        statsState
+	requestedSslMode string
 }
 
 func collectStatistics(db database, collectionOpts collectionOpts, logger *util.Logger) (newState statsState, err error) {
@@ -94,6 +97,7 @@ func collectStatistics(db database, collectionOpts collectionOpts, logger *util.
 
 	postgresVersion, err := dbstats.GetPostgresVersion(logger, db.connection)
 	if err != nil {
+		logger.PrintError("Error collecting Postgres Version")
 		return
 	}
 
@@ -106,11 +110,13 @@ func collectStatistics(db database, collectionOpts collectionOpts, logger *util.
 
 	stats.ActiveQueries, err = dbstats.GetActivity(logger, db.connection, postgresVersion)
 	if err != nil {
+		logger.PrintError("Error collecting pg_stat_activity")
 		return
 	}
 
 	stats.Statements, err = dbstats.GetStatements(logger, db.connection, postgresVersion)
 	if err != nil {
+		logger.PrintError("Error collecting pg_stat_statements")
 		return
 	}
 
@@ -143,6 +149,7 @@ func collectStatistics(db database, collectionOpts collectionOpts, logger *util.
 	if collectionOpts.collectPostgresRelations {
 		stats.Postgres.Relations, err = dbstats.GetRelations(db.connection, postgresVersion, collectionOpts.collectPostgresBloat)
 		if err != nil {
+			logger.PrintError("Error collecting schema information")
 			return
 		}
 	}
@@ -150,6 +157,7 @@ func collectStatistics(db database, collectionOpts collectionOpts, logger *util.
 	if collectionOpts.collectPostgresSettings {
 		stats.Postgres.Settings, err = dbstats.GetSettings(db.connection, postgresVersion)
 		if err != nil {
+			logger.PrintError("Error collecting config settings")
 			return
 		}
 	}
@@ -157,6 +165,7 @@ func collectStatistics(db database, collectionOpts collectionOpts, logger *util.
 	if collectionOpts.collectPostgresFunctions {
 		stats.Postgres.Functions, err = dbstats.GetFunctions(db.connection, postgresVersion)
 		if err != nil {
+			logger.PrintError("Error collecting stored procedures")
 			return
 		}
 	}
@@ -240,24 +249,54 @@ func collectStatistics(db database, collectionOpts collectionOpts, logger *util.
 
 func collectAllDatabases(databases []database, globalCollectionOpts collectionOpts, logger *util.Logger) {
 	for idx, db := range databases {
+		var err error
+
 		prefixedLogger := logger.WithPrefix(db.config.SectionName)
+
+		db.connection, err = establishConnection(db, logger, globalCollectionOpts)
+		if err != nil {
+			prefixedLogger.PrintError("Error: Failed to connect to database: %s", err)
+		}
+
 		newState, err := collectStatistics(db, globalCollectionOpts, prefixedLogger)
 		if err != nil {
-			prefixedLogger.PrintError("%s", err)
+			prefixedLogger.PrintError("Error: Could not collect data: %s", err)
 		} else {
 			databases[idx].prevState = newState
 		}
+
+		// This is the easiest way to avoid opening multiple connections to different databases on the same instance
+		db.connection.Close()
+		db.connection = nil
 	}
 }
 
-func connectToDb(config config.DatabaseConfig, logger *util.Logger) (*sql.DB, error) {
+func validateConnectionCount(connection *sql.DB, logger *util.Logger, globalCollectionOpts collectionOpts) {
+	var connectionCount int
+
+	connection.QueryRow(dbstats.QueryMarkerSQL + "SELECT COUNT(*) FROM pg_stat_activity WHERE application_name = '" + globalCollectionOpts.collectorApplicationName + "'").Scan(&connectionCount)
+
+	if connectionCount > 1 {
+		logger.PrintError("Too many open monitoring connections (%d), exiting", connectionCount)
+		panic("Too many open monitoring connections")
+	}
+
+	return
+}
+
+func connectToDb(config config.DatabaseConfig, logger *util.Logger, globalCollectionOpts collectionOpts) (*sql.DB, error) {
 	connectString := config.GetPqOpenString()
-	logger.PrintVerbose("sql.Open(\"postgres\", \"%s\")", connectString)
+	connectString += " application_name=" + globalCollectionOpts.collectorApplicationName
+
+	// logger.PrintVerbose("sql.Open(\"postgres\", \"%s\")", connectString)
 
 	db, err := sql.Open("postgres", connectString)
 	if err != nil {
 		return nil, err
 	}
+
+	db.SetMaxOpenConns(1)
+	db.SetConnMaxLifetime(30 * time.Second)
 
 	err = db.Ping()
 	if err != nil {
@@ -267,22 +306,20 @@ func connectToDb(config config.DatabaseConfig, logger *util.Logger) (*sql.DB, er
 	return db, nil
 }
 
-func establishConnection(config config.DatabaseConfig, logger *util.Logger) (db database, err error) {
-	db = database{config: config}
-	requestedSslMode := config.DbSslMode
-
-	// Go's lib/pq does not support sslmode properly, so we have to implement the "prefer" mode ourselves
-	if requestedSslMode == "prefer" {
-		config.DbSslMode = "require"
-	}
-
-	db.connection, err = connectToDb(config, logger)
+func establishConnection(db database, logger *util.Logger, globalCollectionOpts collectionOpts) (connection *sql.DB, err error) {
+	connection, err = connectToDb(db.config, logger, globalCollectionOpts)
 	if err != nil {
-		if err.Error() == "pq: SSL is not enabled on the server" && requestedSslMode == "prefer" {
-			config.DbSslMode = "disable"
-			db.connection, err = connectToDb(config, logger)
+		if err.Error() == "pq: SSL is not enabled on the server" && db.requestedSslMode == "prefer" {
+			db.config.DbSslMode = "disable"
+			connection, err = connectToDb(db.config, logger, globalCollectionOpts)
 		}
 	}
+
+	if err != nil {
+		return
+	}
+
+	validateConnectionCount(connection, logger, globalCollectionOpts)
 
 	return
 }
@@ -303,13 +340,14 @@ func run(wg sync.WaitGroup, globalCollectionOpts collectionOpts, logger *util.Lo
 	}
 
 	for _, config := range databaseConfigs {
-		prefixedLogger := logger.WithPrefix(config.SectionName)
-		database, err := establishConnection(config, prefixedLogger)
-		if err != nil {
-			prefixedLogger.PrintError("Error: Failed to connect to database: %s", err)
-		} else {
-			databases = append(databases, database)
+		db := database{config: config, requestedSslMode: config.DbSslMode}
+
+		// Go's lib/pq does not support sslmode properly, so we have to implement the "prefer" mode ourselves
+		if db.requestedSslMode == "prefer" {
+			db.config.DbSslMode = "require"
 		}
+
+		databases = append(databases, db)
 	}
 
 	// We intentionally don't do a test-run in the normal mode, since we're fine with
@@ -385,6 +423,12 @@ func main() {
 			logger.PrintError("Error: You can only disable relation data collection for dry test runs (the API can't accept the snapshot otherwise)")
 			return
 		}
+	}
+
+	if testRun {
+		globalCollectionOpts.collectorApplicationName = "pganalyze_test_run"
+	} else {
+		globalCollectionOpts.collectorApplicationName = "pganalyze"
 	}
 
 	if pidFilename != "" {
