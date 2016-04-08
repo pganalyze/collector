@@ -6,6 +6,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/credentials/ec2rolecreds"
 	//"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/rds"
@@ -65,7 +66,13 @@ type AmazonRdsInfo struct {
 
 // GetFromAmazonRds - Gets system information about an Amazon RDS instance
 func getFromAmazonRds(config config.DatabaseConfig) (system *SystemSnapshot) {
-	creds := credentials.NewStaticCredentials(config.AwsAccessKeyID, config.AwsSecretAccessKey, "")
+	var creds *credentials.Credentials
+
+	if config.AwsAccessKeyID != "" {
+		creds = credentials.NewStaticCredentials(config.AwsAccessKeyID, config.AwsSecretAccessKey, "")
+	} else {
+		creds = credentials.NewCredentials(&ec2rolecreds.EC2RoleProvider{})
+	}
 
 	sess := session.New(&aws.Config{Credentials: creds, Region: aws.String(config.AwsRegion)})
 	//sess.Handlers.Send.PushFront(func(r *request.Request) {

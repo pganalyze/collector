@@ -10,6 +10,7 @@
   * This covers edge cases like sending a lot of SIGHUP signals
   * In case we detect more than 1 connection we error out and exit, to avoid
     clogging the database
+* Use AWS EC2 instance role if no credentials are specified
 
 
 ## 0.9.0rc4    2016-04-03
