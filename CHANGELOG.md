@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.9.0rc5    UNRELEASED
+## 0.9.0rc5    2016-04-07
 
 * Introduce new --diff-statements option (default off for now)
   * This calculates the diff for the counter values of pg_stat_statements on the client (i.e. collector),
