@@ -11,8 +11,6 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/rds"
 	"github.com/pganalyze/collector/config"
 	"github.com/pganalyze/collector/explain"
@@ -28,13 +26,7 @@ func getFromAmazonRds(config config.DatabaseConfig) (result []Line, explains []e
 	// Get interesting files (last written to in the last 10 minutes)
 	// Remember markers for each file
 
-	creds := credentials.NewStaticCredentials(config.AwsAccessKeyID, config.AwsSecretAccessKey, "")
-
-	sess := session.New(&aws.Config{Credentials: creds, Region: aws.String(config.AwsRegion)})
-	//sess.Handlers.Send.PushFront(func(r *request.Request) {
-	// Log every request made and its payload
-	//  fmt.Printf("Request: %s/%s, Payload: %s\n", r.ClientInfo.ServiceName, r.Operation, r.Params)
-	//})
+	sess := util.GetAwsSession(config)
 
 	rdsSvc := rds.New(sess)
 

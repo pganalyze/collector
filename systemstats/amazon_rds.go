@@ -4,11 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/credentials/ec2rolecreds"
 	//"github.com/aws/aws-sdk-go/aws/request"
-	"github.com/aws/aws-sdk-go/aws/session"
+
 	"github.com/aws/aws-sdk-go/service/rds"
 
 	"github.com/pganalyze/collector/config"
@@ -66,19 +63,7 @@ type AmazonRdsInfo struct {
 
 // GetFromAmazonRds - Gets system information about an Amazon RDS instance
 func getFromAmazonRds(config config.DatabaseConfig) (system *SystemSnapshot) {
-	var creds *credentials.Credentials
-
-	if config.AwsAccessKeyID != "" {
-		creds = credentials.NewStaticCredentials(config.AwsAccessKeyID, config.AwsSecretAccessKey, "")
-	} else {
-		creds = credentials.NewCredentials(&ec2rolecreds.EC2RoleProvider{})
-	}
-
-	sess := session.New(&aws.Config{Credentials: creds, Region: aws.String(config.AwsRegion)})
-	//sess.Handlers.Send.PushFront(func(r *request.Request) {
-	// Log every request made and its payload
-	//  fmt.Printf("Request: %s/%s, Payload: %s\n", r.ClientInfo.ServiceName, r.Operation, r.Params)
-	//})
+	sess := util.GetAwsSession(config)
 
 	rdsSvc := rds.New(sess)
 

@@ -207,7 +207,7 @@ func collectStatistics(db database, collectionOpts collectionOpts, logger *util.
 		"data":            {compressedJSON.String()},
 		"data_compressor": {"zlib"},
 		"api_key":         {db.config.APIKey},
-		"submitter":       {"pganalyze-collector 0.9.0rc5"},
+		"submitter":       {"pganalyze-collector 0.9.0rc6"},
 		"no_reset":        {"true"},
 		"query_source":    {"pg_stat_statements"},
 		"collected_at":    {fmt.Sprintf("%d", time.Now().Unix())},
@@ -256,6 +256,7 @@ func collectAllDatabases(databases []database, globalCollectionOpts collectionOp
 		db.connection, err = establishConnection(db, logger, globalCollectionOpts)
 		if err != nil {
 			prefixedLogger.PrintError("Error: Failed to connect to database: %s", err)
+			return
 		}
 
 		newState, err := collectStatistics(db, globalCollectionOpts, prefixedLogger)
@@ -286,7 +287,17 @@ func validateConnectionCount(connection *sql.DB, logger *util.Logger, globalColl
 
 func connectToDb(config config.DatabaseConfig, logger *util.Logger, globalCollectionOpts collectionOpts) (*sql.DB, error) {
 	connectString := config.GetPqOpenString()
-	connectString += " application_name=" + globalCollectionOpts.collectorApplicationName
+
+	if strings.HasPrefix(connectString, "postgres://") || strings.HasPrefix(connectString, "postgresql://") {
+		if strings.Contains(connectString, "?") {
+			connectString += "&"
+		} else {
+			connectString += "?"
+		}
+	} else {
+		connectString += " "
+	}
+	connectString += "application_name=" + globalCollectionOpts.collectorApplicationName
 
 	// logger.PrintVerbose("sql.Open(\"postgres\", \"%s\")", connectString)
 

@@ -57,10 +57,10 @@ func GetActivity(logger *util.Logger, db *sql.DB, postgresVersion PostgresVersio
 			return nil, err
 		}
 
-		if !query.IsZero() {
-			normalizedQuery, err := pg_query.Normalize(*query.Ptr())
+		if query.Valid && query.String != "<insufficient privilege>" {
+			normalizedQuery, err := pg_query.Normalize(query.String)
 			if err != nil {
-				logger.PrintVerbose("Failed to normalize query: %s", err)
+				logger.PrintVerbose("Failed to normalize query, excluding from statistics: %s", err)
 			} else {
 				row.NormalizedQuery = null.StringFrom(normalizedQuery)
 			}
