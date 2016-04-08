@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.0rc6    2016-04-07
+
+* Bugfixes for AWS Instance Role handling
+
+
 ## 0.9.0rc5    2016-04-07
 
 * Introduce new --diff-statements option (default off for now)
