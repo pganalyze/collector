@@ -338,9 +338,9 @@ func establishConnection(db database, logger *util.Logger, globalCollectionOpts 
 func run(wg sync.WaitGroup, globalCollectionOpts collectionOpts, logger *util.Logger, configFilename string) chan<- bool {
 	var databases []database
 
-	schedulerGroups, err := scheduler.ReadSchedulerGroups(scheduler.DefaultConfig)
+	schedulerGroups, err := scheduler.GetSchedulerGroups()
 	if err != nil {
-		logger.PrintError("Error: Could not read scheduler groups, awaiting SIGHUP or process kill")
+		logger.PrintError("Error: Could not get scheduler groups, awaiting SIGHUP or process kill")
 		return nil
 	}
 

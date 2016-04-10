@@ -6,17 +6,9 @@ import (
 )
 
 func TestScheduler(t *testing.T) {
-	groups, err := ReadSchedulerGroups(DefaultConfig)
+	groups, err := GetSchedulerGroups()
 	if err != nil {
 		t.Errorf("Error: %v\n", err)
-	}
-
-	if groups["stats"].Method != "fixed" {
-		t.Errorf("Invalid method %v\n", groups["stats"].Method)
-	}
-
-	if groups["stats"].IntervalName != "10min" {
-		t.Errorf("Invalid interval name %v\n", groups["stats"].IntervalName)
 	}
 
 	someTime := time.Date(2013, 1, 1, 0, 5, 0, 0, time.UTC)

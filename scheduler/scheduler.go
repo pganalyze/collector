@@ -3,20 +3,12 @@ package scheduler
 import (
 	"time"
 
-	"github.com/BurntSushi/toml"
 	"github.com/gorhill/cronexpr"
 	"github.com/pganalyze/collector/util"
 )
 
-type config struct {
-	Intervals map[string]string `toml:"intervals"`
-	Groups    map[string]Group
-}
-
 type Group struct {
-	Method       string
-	IntervalName string `toml:"Interval"`
-	interval     *cronexpr.Expression
+	interval *cronexpr.Expression
 }
 
 func (group Group) Schedule(runner func(), logger *util.Logger, logName string) chan bool {
@@ -42,22 +34,15 @@ func (group Group) Schedule(runner func(), logger *util.Logger, logName string) 
 	return stop
 }
 
-func ReadSchedulerGroups(configData string) (groups map[string]Group, err error) {
-	var config config
-	if _, err = toml.Decode(configData, &config); err != nil {
+func GetSchedulerGroups() (groups map[string]Group, err error) {
+	tenMinuteInterval, err := cronexpr.Parse("0 */10 * * * * *")
+	if err != nil {
 		return
 	}
 
-	for key, group := range config.Groups {
-		var expr *cronexpr.Expression
-		if expr, err = cronexpr.Parse(config.Intervals[group.IntervalName]); err != nil {
-			return
-		}
-		group.interval = expr
-		config.Groups[key] = group
-	}
+	groups = make(map[string]Group)
 
-	groups = config.Groups
+	groups["stats"] = Group{interval: tenMinuteInterval}
 
 	return
 }
