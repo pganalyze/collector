@@ -10,6 +10,7 @@ type SystemSnapshot struct {
 	CPU        CPU         `json:"cpu"`
 	Memory     Memory      `json:"memory"`
 	Network    *Network    `json:"network,omitempty"`
+	Scheduler  Scheduler   `json:"scheduler,omitempty"`
 }
 
 // SystemType - Enum that describes which kind of system we're monitoring
