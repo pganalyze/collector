@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.0rc7    2016-04-14
+
+* Add support for RDS enhanced monitoring
+* Simplify dependencies and document OSS licenses in use
+
+
 ## 0.9.0rc6    2016-04-07
 
 * Bugfixes for AWS Instance Role handling
