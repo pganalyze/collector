@@ -13,4 +13,5 @@ type Memory struct {
 	SwapTotalBytes    null.Int `json:"swap_total_bytes,omitempty"`
 	TotalBytes        null.Int `json:"total_bytes,omitempty"`
 	WritebackBytes    null.Int `json:"writeback_bytes,omitempty"`
+	ActiveBytes       null.Int `json:"active_bytes,omitempty"`
 }

@@ -89,7 +89,7 @@ type RdsOsSnapshot struct {
 	FileSystems       []RdsOsFileSystem       `json:"fileSys"`
 
 	// Skip this for now to reduce output size
-	// ProcessList       []RdsOsProcess          `json:"processList"`
+	// ProcessList []RdsOsProcess `json:"processList"`
 }
 
 type RdsOsCPUUtilization struct {
@@ -183,7 +183,7 @@ type RdsOsProcess struct {
 	Name         string  `json:"name"`         // The name of the process.
 	Tgid         int64   `json:"tgid"`         // The thread group identifier, which is a number representing the process ID to which a thread belongs. This identifier is used to group threads from the same process.
 	ParentID     int64   `json:"parentID"`     // The process identifier for the parent process of the process.
-	MemoryUsedPc float32 `json:"memoryUsedPc"` // The amount of memory used by the process, in kilobytes.
+	MemoryUsedPc float32 `json:"memoryUsedPc"` // The percentage of memory used by the process.
 	CPUUsedPc    float32 `json:"cpuUsedPc"`    // The percentage of CPU used by the process.
 	ID           int64   `json:"id"`           // The identifier of the process.
 	Rss          int64   `json:"rss"`          // The amount of RAM allocated to the process, in kilobytes.
@@ -330,7 +330,7 @@ func getFromAmazonRds(config config.DatabaseConfig) (system *SystemSnapshot) {
 				system.Scheduler.ProcsRunning = null.IntFrom(osSnapshot.Tasks.Running)
 				system.Scheduler.ProcsBlocked = null.IntFrom(osSnapshot.Tasks.Blocked)
 
-				system.Memory.ApplicationsBytes = null.IntFrom(osSnapshot.Memory.Active * 1024)
+				system.Memory.ApplicationsBytes = null.IntFrom((osSnapshot.Memory.Total - osSnapshot.Memory.Free - osSnapshot.Memory.Buffers - osSnapshot.Memory.Cached) * 1024)
 				system.Memory.BuffersBytes = null.IntFrom(osSnapshot.Memory.Buffers * 1024)
 				system.Memory.DirtyBytes = null.IntFrom(osSnapshot.Memory.Dirty * 1024)
 				system.Memory.FreeBytes = null.IntFrom(osSnapshot.Memory.Free * 1024)
@@ -339,6 +339,9 @@ func getFromAmazonRds(config config.DatabaseConfig) (system *SystemSnapshot) {
 				system.Memory.SwapTotalBytes = null.IntFrom(osSnapshot.Swap.Total * 1024)
 				system.Memory.TotalBytes = null.IntFrom(osSnapshot.Memory.Total * 1024)
 				system.Memory.WritebackBytes = null.IntFrom(osSnapshot.Memory.Writeback * 1024)
+				system.Memory.ActiveBytes = null.IntFrom(osSnapshot.Memory.Active * 1024)
+
+				system.Storage[0].Perfdata.AvgReqSize = null.IntFrom(int64(osSnapshot.DiskIO[0].AvgReqSz * 1024))
 
 				systemInfo.OsSnapshot = &osSnapshot
 			}

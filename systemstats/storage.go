@@ -1,5 +1,7 @@
 package systemstats
 
+import "gopkg.in/guregu/null.v2"
+
 // Storage - Information about the storage used by the database
 type Storage struct {
 	BytesAvailable *int64  `json:"bytes_available"`
@@ -18,9 +20,10 @@ type StoragePerfdata struct {
 	Version int `json:"version"`
 
 	// Version 0/1
-	ReadIops       *int64 `json:"rd_ios"`      // (count/sec)
-	WriteIops      *int64 `json:"wr_ios"`      // (count/sec)
-	IopsInProgress *int64 `json:"ios_in_prog"` // (count)
+	ReadIops       *int64   `json:"rd_ios"`       // (count/sec)
+	WriteIops      *int64   `json:"wr_ios"`       // (count/sec)
+	IopsInProgress *int64   `json:"ios_in_prog"`  // (count)
+	AvgReqSize     null.Int `json:"avg_req_size"` // (avg)
 
 	// Version 1 only
 	ReadLatency     *float64 `json:"rd_latency,omitempty"`    // (avg seconds)
