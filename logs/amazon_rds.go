@@ -14,6 +14,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/rds"
 	"github.com/pganalyze/collector/config"
 	"github.com/pganalyze/collector/explain"
+	"github.com/pganalyze/collector/snapshot"
 	"github.com/pganalyze/collector/util"
 )
 
@@ -22,7 +23,7 @@ import (
 // Retain the marker across runs to only download new data
 
 // GetFromAmazonRds - Gets log lines for an Amazon RDS instance
-func getFromAmazonRds(config config.DatabaseConfig) (result []Line, explains []explain.ExplainInput) {
+func getFromAmazonRds(config config.DatabaseConfig) (result []snapshot.LogLine, explains []explain.ExplainInput) {
 	// Get interesting files (last written to in the last 10 minutes)
 	// Remember markers for each file
 
@@ -70,7 +71,7 @@ func getFromAmazonRds(config config.DatabaseConfig) (result []Line, explains []e
 			return
 		}
 
-		var logLines []Line
+		var logLines []snapshot.LogLine
 
 		var incompleteLine = false
 
@@ -99,7 +100,7 @@ func getFromAmazonRds(config config.DatabaseConfig) (result []Line, explains []e
 			// TODO: What we should actually do is look at log_line_prefix and find the relevant
 			// parts using that - otherwise we break in non-default RDS setups
 
-			var logLine Line
+			var logLine snapshot.LogLine
 
 			parts := strings.SplitN(string(line), ":", 8)
 			if len(parts) != 8 {
@@ -117,7 +118,7 @@ func getFromAmazonRds(config config.DatabaseConfig) (result []Line, explains []e
 				continue
 			}
 
-			logLine.OccurredAt = util.TimestampFrom(timestamp)
+			logLine.OccurredAt = snapshot.NullableUnixTimestamp(util.TimestampFrom(timestamp))
 			logLine.ClientIP = regexp.MustCompile(`[\d.]+`).FindString(parts[3])
 			//logLine.usernameAndDatabase = parts[4] // TODO: We should probably filter out other databases (in our current monitoring model)
 			logLine.BackendPid, _ = strconv.Atoi(parts[5][1 : len(parts[5])-1])
@@ -128,11 +129,11 @@ func getFromAmazonRds(config config.DatabaseConfig) (result []Line, explains []e
 		}
 
 		// Split log lines by backend to ensure we have the right context
-		backendLogLines := make(map[int][]Line)
+		backendLogLines := make(map[int][]snapshot.LogLine)
 
 		for _, logLine := range logLines {
 			// Ignore loglines which are outside our time window
-			if logLine.OccurredAt.Ptr().Before(linesNewerThan) {
+			if logLine.OccurredAt.Time.Before(linesNewerThan) {
 				continue
 			}
 
@@ -170,7 +171,7 @@ func getFromAmazonRds(config config.DatabaseConfig) (result []Line, explains []e
 
 					runtime, _ := strconv.ParseFloat(parts[1], 64)
 					explains = append(explains, explain.ExplainInput{
-						OccurredAt: logLine.OccurredAt,
+						OccurredAt: util.Timestamp(logLine.OccurredAt),
 						Query:      parts[3],
 						Runtime:    runtime,
 					})
