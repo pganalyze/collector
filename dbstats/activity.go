@@ -4,24 +4,11 @@ import (
 	"database/sql"
 
 	"github.com/lfittl/pg_query_go"
+	"github.com/pganalyze/collector/snapshot"
 	"github.com/pganalyze/collector/util"
 
 	null "gopkg.in/guregu/null.v2"
 )
-
-type Activity struct {
-	Pid             int            `json:"pid"`
-	Username        null.String    `json:"username"`
-	ApplicationName null.String    `json:"application_name"`
-	ClientAddr      null.String    `json:"client_addr"`
-	BackendStart    util.Timestamp `json:"backend_start"`
-	XactStart       util.Timestamp `json:"xact_start"`
-	QueryStart      util.Timestamp `json:"query_start"`
-	StateChange     util.Timestamp `json:"state_change"`
-	Waiting         null.Bool      `json:"waiting"`
-	State           null.String    `json:"state"`
-	NormalizedQuery null.String    `json:"normalized_query"`
-}
 
 // http://www.postgresql.org/docs/devel/static/monitoring-stats.html#PG-STAT-ACTIVITY-VIEW
 const activitySQL string = `SELECT pid, usename, application_name, client_addr::text, backend_start,
@@ -29,7 +16,7 @@ const activitySQL string = `SELECT pid, usename, application_name, client_addr::
 	 FROM pg_stat_activity
 	WHERE pid <> pg_backend_pid() AND datname = current_database()`
 
-func GetActivity(logger *util.Logger, db *sql.DB, postgresVersion PostgresVersion) ([]Activity, error) {
+func GetActivity(logger *util.Logger, db *sql.DB, postgresVersion snapshot.PostgresVersion) ([]snapshot.Activity, error) {
 	stmt, err := db.Prepare(QueryMarkerSQL + activitySQL)
 	if err != nil {
 		return nil, err
@@ -44,10 +31,10 @@ func GetActivity(logger *util.Logger, db *sql.DB, postgresVersion PostgresVersio
 
 	defer rows.Close()
 
-	var activities []Activity
+	var activities []snapshot.Activity
 
 	for rows.Next() {
-		var row Activity
+		var row snapshot.Activity
 		var query null.String
 
 		err := rows.Scan(&row.Pid, &row.Username, &row.ApplicationName, &row.ClientAddr,
@@ -62,7 +49,7 @@ func GetActivity(logger *util.Logger, db *sql.DB, postgresVersion PostgresVersio
 			if err != nil {
 				logger.PrintVerbose("Failed to normalize query, excluding from statistics: %s", err)
 			} else {
-				row.NormalizedQuery = null.StringFrom(normalizedQuery)
+				row.NormalizedQuery = snapshot.NullableString(null.StringFrom(normalizedQuery))
 			}
 		}
 

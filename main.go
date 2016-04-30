@@ -19,6 +19,7 @@ import (
 	"time"
 
 	flag "github.com/ogier/pflag"
+	"github.com/tinylib/msgp/msgp"
 
 	"database/sql"
 
@@ -29,31 +30,10 @@ import (
 	"github.com/pganalyze/collector/explain"
 	"github.com/pganalyze/collector/logs"
 	scheduler "github.com/pganalyze/collector/scheduler"
+	"github.com/pganalyze/collector/snapshot"
 	systemstats "github.com/pganalyze/collector/systemstats"
 	"github.com/pganalyze/collector/util"
 )
-
-type snapshot struct {
-	ActiveQueries []dbstats.Activity          `json:"backends"`
-	Statements    []dbstats.Statement         `json:"queries"`
-	Postgres      snapshotPostgres            `json:"postgres"`
-	System        *systemstats.SystemSnapshot `json:"system"`
-	Logs          []logs.Line                 `json:"logs"`
-	Explains      []explain.Explain           `json:"explains"`
-	Opts          snapshotOpts                `json:"opts"`
-}
-
-type snapshotOpts struct {
-	StatementStatsAreDiffed        bool `json:"statement_stats_are_diffed"`
-	PostgresRelationStatsAreDiffed bool `json:"postgres_relation_stats_are_diffed"`
-}
-
-type snapshotPostgres struct {
-	Relations []dbstats.Relation      `json:"schema"`
-	Settings  []dbstats.Setting       `json:"settings"`
-	Functions []dbstats.Function      `json:"functions"`
-	Version   dbstats.PostgresVersion `json:"version"`
-}
 
 type collectionOpts struct {
 	collectPostgresRelations bool
@@ -81,7 +61,7 @@ type statementStatsKey struct {
 }
 
 type statsState struct {
-	statements map[statementStatsKey]dbstats.Statement
+	statements map[statementStatsKey]snapshot.Statement
 }
 
 type database struct {
@@ -92,7 +72,7 @@ type database struct {
 }
 
 func collectStatistics(db database, collectionOpts collectionOpts, logger *util.Logger) (newState statsState, err error) {
-	var stats snapshot
+	var stats snapshot.Snapshot
 	var explainInputs []explain.ExplainInput
 
 	postgresVersion, err := dbstats.GetPostgresVersion(logger, db.connection)
@@ -103,7 +83,7 @@ func collectStatistics(db database, collectionOpts collectionOpts, logger *util.
 
 	stats.Postgres.Version = postgresVersion
 
-	if postgresVersion.Numeric < dbstats.MinRequiredPostgresVersion {
+	if postgresVersion.Numeric < snapshot.MinRequiredPostgresVersion {
 		err = fmt.Errorf("Error: Your PostgreSQL server version (%s) is too old, 9.2 or newer is required.", postgresVersion.Short)
 		return
 	}
@@ -120,10 +100,10 @@ func collectStatistics(db database, collectionOpts collectionOpts, logger *util.
 		return
 	}
 
-	if collectionOpts.diffStatements && postgresVersion.Numeric >= dbstats.PostgresVersion94 {
-		var diffedStatements []dbstats.Statement
+	if collectionOpts.diffStatements && postgresVersion.Numeric >= snapshot.PostgresVersion94 {
+		var diffedStatements []snapshot.Statement
 
-		newState.statements = make(map[statementStatsKey]dbstats.Statement)
+		newState.statements = make(map[statementStatsKey]snapshot.Statement)
 
 		// Iterate through all statements, and diff them based on the previous state
 		for _, statement := range stats.Statements {
@@ -182,7 +162,13 @@ func collectStatistics(db database, collectionOpts collectionOpts, logger *util.
 		}
 	}
 
-	statsJSON, _ := json.Marshal(stats)
+	statsMsgpack, _ := stats.MarshalMsg(nil)
+
+	var js bytes.Buffer
+	msgp.CopyToJSON(&js, bytes.NewBuffer(statsMsgpack))
+	statsJSON := js.Bytes()
+
+	// statsJSON, _ := json.Marshal(stats)
 
 	if !collectionOpts.submitCollectedData {
 		var out bytes.Buffer
@@ -194,7 +180,7 @@ func collectStatistics(db database, collectionOpts collectionOpts, logger *util.
 
 	var compressedJSON bytes.Buffer
 	w := zlib.NewWriter(&compressedJSON)
-	w.Write(statsJSON)
+	w.Write(statsMsgpack)
 	w.Close()
 
 	requestURL := db.config.APIBaseURL + "/v1/snapshots"
@@ -213,13 +199,17 @@ func collectStatistics(db database, collectionOpts collectionOpts, logger *util.
 		"collected_at":    {fmt.Sprintf("%d", time.Now().Unix())},
 	}
 
-	req, err := http.NewRequest("POST", requestURL, strings.NewReader(data.Encode()))
+	encodedData := data.Encode()
+
+	req, err := http.NewRequest("POST", requestURL, strings.NewReader(encodedData))
 	if err != nil {
 		return
 	}
 
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Add("Accept", "application/json,text/plain")
+
+	logger.PrintVerbose("Successfully prepared request - size of request body: %.4f MB", float64(len(encodedData))/1024.0/1024.0)
 
 	resp, err := http.DefaultClient.Do(req)
 	// TODO: We could consider re-running on error (e.g. if it was a temporary server issue)

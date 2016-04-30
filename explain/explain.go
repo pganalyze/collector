@@ -1,3 +1,5 @@
+//go:generate msgp
+
 package explain
 
 import (
@@ -5,8 +7,11 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"gopkg.in/guregu/null.v2"
+
 	pg_query "github.com/lfittl/pg_query_go"
 	"github.com/pganalyze/collector/dbstats"
+	"github.com/pganalyze/collector/snapshot"
 	"github.com/pganalyze/collector/util"
 )
 
@@ -20,15 +25,7 @@ type ExplainInput struct {
 	// the given value is included in most_common_vals (and which most_common_freqs it has)
 }
 
-type Explain struct {
-	OccurredAt      util.Timestamp `json:"occurred_at"`
-	NormalizedQuery string         `json:"normalized_query"`
-	Runtime         float64        `json:"runtime"`
-	ExplainOutput   []interface{}  `json:"explain_output"`
-	ExplainError    *string        `json:"explain_error,omitempty"`
-}
-
-func RunExplain(db *sql.DB, inputs []ExplainInput) (explains []Explain) {
+func RunExplain(db *sql.DB, inputs []ExplainInput) (explains []snapshot.Explain) {
 	for _, input := range inputs {
 		// To be on the safe side never EXPLAIN a statement that can't be parsed,
 		// or multiple statements in one (leading to accidental execution)
@@ -42,8 +39,8 @@ func RunExplain(db *sql.DB, inputs []ExplainInput) (explains []Explain) {
 			continue
 		}
 
-		explainOut := Explain{
-			OccurredAt:      input.OccurredAt,
+		explainOut := snapshot.Explain{
+			OccurredAt:      snapshot.NullableUnixTimestamp(input.OccurredAt),
 			NormalizedQuery: normalizedQuery,
 			Runtime:         input.Runtime,
 		}
@@ -54,7 +51,7 @@ func RunExplain(db *sql.DB, inputs []ExplainInput) (explains []Explain) {
 		err = db.QueryRow(dbstats.QueryMarkerSQL + "EXPLAIN (VERBOSE, FORMAT JSON) " + input.Query).Scan(&planStr)
 		if err != nil {
 			errorStr := fmt.Sprintf("%s", err)
-			explainOut.ExplainError = &errorStr
+			explainOut.ExplainError = snapshot.NullableString(null.StringFrom(errorStr))
 			explains = append(explains, explainOut)
 			continue
 		}
@@ -62,7 +59,7 @@ func RunExplain(db *sql.DB, inputs []ExplainInput) (explains []Explain) {
 		err = json.Unmarshal(planStr, &explainOut.ExplainOutput)
 		if err != nil {
 			errorStr := fmt.Sprintf("%s", err)
-			explainOut.ExplainError = &errorStr
+			explainOut.ExplainError = snapshot.NullableString(null.StringFrom(errorStr))
 			explains = append(explains, explainOut)
 			continue
 		}
