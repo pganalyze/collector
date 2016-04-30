@@ -1,0 +1,435 @@
+syntax = "proto3";
+package snapshot;
+
+message NullString {
+  bool valid = 1;
+  string value = 2;
+}
+
+message NullInt64 {
+  bool valid = 1;
+  int64 value = 2;
+}
+
+message NullDouble {
+  bool valid = 1;
+  double value = 2;
+}
+
+message NullTimestamp {
+  bool valid = 1;
+  int64 value = 2;
+}
+
+message Snapshot {
+  repeated Activity backends = 1;
+  // Statements    []Statement      `msg:"queries"`
+  SnapshotPostgres postgres = 3;
+  System system = 4;
+  repeated LogLine logs = 5;
+  repeated Explain explains = 6;
+  SnapshotOpts opts = 7;
+}
+
+message SnapshotOpts {
+  bool statement_stats_are_diffed = 1;
+	bool postgres_relation_stats_are_diffed = 2;
+}
+
+message SnapshotPostgres {
+  repeated Relation relations = 1;
+  repeated Setting settings = 2;
+  repeated Function functions = 3;
+  PostgresVersion version = 4;
+}
+
+enum SystemType {
+  PHYSICAL_SYSTEM = 0;
+  VIRTUAL_SYSTEM = 1;
+  AMAZON_RDS_SYSTEM = 2;
+  HEROKU_SYSTEM = 3;
+}
+
+message System {
+  SystemType system_type = 1;
+
+  oneof system_info {
+    AmazonRdsInfo amazon_rds_info = 2;
+  }
+
+  CPU cpu = 3;
+  Memory memory = 4;
+	repeated Storage storage = 5;
+  Network network = 6;
+	Scheduler scheduler = 7;
+}
+
+message Storage {
+  int64 bytes_available = 1;
+  int64 bytes_total = 2;
+  string mountpoint = 3;
+  string name = 4;
+  string path = 5;
+
+  StoragePerfdata perfdata = 6;
+}
+
+message Scheduler {
+  int64 context_switches = 1;
+  int64 interrupts = 2;
+
+  double loadavg_1min = 3;
+  double loadavg_5min = 4;
+  double loadavg_15min = 5;
+
+  int64 procs_blocked = 6;
+  int64 procs_created = 7;
+  int64 procs_running = 8;
+}
+
+message LogLine {
+  int64 occurred_at = 1;
+  SourceType source = 2;
+  NullString client_ip = 3;
+  string log_level = 4;
+  int32 backend_pid = 5;
+  string content = 6;
+  repeated LogLine additional_lines = 7;
+
+  enum SourceType {
+    PostgresSource = 0;
+    AmazonRdsSource = 1;
+  }
+}
+
+message Explain {
+  int64 occurred_at = 1;
+  string normalized_query = 2;
+  double runtime = 3;
+  string explain_output = 4;
+  NullString explain_error = 5;
+}
+
+message Setting {
+  string name = 1;
+  string current_value = 2;
+  NullString unit = 3;
+  NullString boot_value = 4;
+  NullString reset_value = 5;
+  NullString source = 6;
+  NullString source_file = 7;
+  NullString source_line = 8;
+}
+
+message Function {
+  string schema_name = 1;
+  string function_name = 2;
+  string language = 3;
+  string source = 4;
+  string source_bin = 5;
+  NullString config = 6;
+  string arguments = 7;
+  string result = 8;
+  bool aggregate = 9;
+  bool window = 10;
+  bool security_definer = 11;
+  bool leakproof = 12;
+  bool strict = 13;
+  bool returns_set = 14;
+  string volatile = 15;
+  NullInt64 calls = 16;
+  NullDouble total_time = 17;
+  NullDouble self_time = 18;
+}
+
+message Relation {
+  int64 oid = 1;
+  string schema_name = 2;
+  string table_name = 3;
+  string relation_type = 4;
+  Stats stats = 5;
+  repeated Column columns = 7;
+  repeated Index indices = 8;
+  repeated Constraint constraints = 9;
+  string view_definition = 10;
+
+  message Column {
+    int64 relation_oid = 1;
+    string name = 2;
+    string data_type = 3;
+    NullString default_value = 4;
+    bool not_null = 5;
+    int64 position = 6;
+  }
+
+  message Stats {
+    int64 size_bytes = 1;
+    int64 wasted_bytes = 2;
+  	int64 seq_scan = 3;             // Number of sequential scans initiated on this table
+  	int64 seq_tup_read = 4;         // Number of live rows fetched by sequential scans
+  	int64 idx_scan = 5;             // Number of index scans initiated on this table
+  	int64 idx_tup_fetch = 6;        // Number of live rows fetched by index scans
+  	int64 n_tup_ins = 7;            // Number of rows inserted
+  	int64 n_tup_upd = 8;            // Number of rows updated
+  	int64 n_tup_del = 9;            // Number of rows deleted
+  	int64 n_tup_hot_upd = 10;       // Number of rows HOT updated (i.e., with no separate index update required)
+  	int64 n_live_tup = 11;          // Estimated number of live rows
+  	int64 n_dead_tup = 12;          // Estimated number of dead rows
+    NullInt64 n_mod_since_analyze = 13; // Estimated number of rows modified since this table was last analyzed
+  	NullTimestamp last_vacuum = 14;         // Last time at which this table was manually vacuumed (not counting VACUUM FULL)
+  	NullTimestamp last_autovacuum = 15;     // Last time at which this table was vacuumed by the autovacuum daemon
+  	NullTimestamp last_analyze = 16;        // Last time at which this table was manually analyzed
+  	NullTimestamp last_autoanalyze = 17;    // Last time at which this table was analyzed by the autovacuum daemon
+  	int64 vacuum_count = 18;        // Number of times this table has been manually vacuumed (not counting VACUUM FULL)
+  	int64 autovacuum_count = 19;    // Number of times this table has been vacuumed by the autovacuum daemon
+  	int64 analyze_count = 20;       // Number of times this table has been manually analyzed
+  	int64 autoanalyze_count = 21;   // Number of times this table has been analyzed by the autovacuum daemon
+  	NullInt64 heap_blks_read = 22;      // Number of disk blocks read from this table
+  	NullInt64 heap_blks_hit = 23;       // Number of buffer hits in this table
+  	NullInt64 idx_blks_read = 24;       // Number of disk blocks read from all indexes on this table
+  	NullInt64 idx_blks_hit = 25;        // Number of buffer hits in all indexes on this table
+  	NullInt64 toast_blks_read = 26;     // Number of disk blocks read from this table's TOAST table (if any)
+  	NullInt64 toast_blks_hit = 27;      // Number of buffer hits in this table's TOAST table (if any)
+  	NullInt64 tidx_blks_read = 28;      // Number of disk blocks read from this table's TOAST table indexes (if any)
+  	NullInt64 tidx_blks_hit = 29;       // Number of buffer hits in this table's TOAST table indexes (if any)
+  }
+
+  message Index {
+    int64 relation_oid = 1;
+    int64 index_oid = 2;
+    string columns = 3;
+    string name = 4;
+    int64 size_bytes = 5;
+    int64 wasted_bytes = 6;
+    bool is_primary = 7;
+    bool is_unique = 8;
+    bool is_valid = 9;
+    string index_def = 10;
+    NullString constraint_def = 11;
+    int64 idx_scan = 12;
+    int64 idx_tup_read = 13;
+    int64 idx_tup_fetch = 14;
+    int64 idx_blks_read = 15;
+    int64 idx_blks_hit = 16;
+  }
+
+  message Constraint {
+    int64 relation_oid = 1;
+    string name = 2;
+    string constraint_def = 3;
+    string columns = 4;
+    string foreign_schema = 5;
+    string foreign_table = 6;
+    string foreign_columns = 7;
+  }
+}
+
+message StoragePerfdata {
+	// 0 = counters, raw data
+	// 1 = diff, (only) useful data
+  int64 version = 1;
+
+	// Version 0/1
+	int64 rd_ios = 2;       // (count/sec)
+	int64 wr_ios = 3;       // (count/sec)
+	int64 ios_in_prog = 4;  // (count)
+	int64 avg_req_size = 5; // (avg)
+
+	// Version 1 only
+	double rd_latency = 6;   // (avg seconds)
+	int64  rd_throughput = 7; // (bytes/sec)
+	double wr_latency = 8;    // (avg seconds)
+	int64  wr_throughput = 9; // (bytes/sec)
+
+	// Version 0 only
+	int64 rd_merges = 10;
+	int64 rd_sectors = 11;
+	int64 rd_ticks = 12;
+	int64 wr_merges = 13;
+	int64 wr_sectors = 14;
+	int64 wr_ticks = 15;
+	int64 tot_ticks = 16;
+	int64 rq_ticks = 17;
+}
+
+message Network {
+  int64 receive_throughput = 1;
+  int64 transmit_throughput = 2;
+}
+
+message CPU {
+  double utilization = 1;
+  int64 busy_times_guest_msec = 2;
+  int64 busy_times_guest_nice_msec = 3;
+  int64 busy_times_idle_msec = 4;
+  int64 busy_times_iowait_msec = 5;
+  int64 busy_times_irq_msec = 6;
+  int64 busy_times_nice_msec = 7;
+  int64 busy_times_softirq_msec = 8;
+  int64 busy_times_steal_msec = 9;
+  int64 busy_times_system_msec = 10;
+  int64 busy_times_user_msec = 11;
+
+  string hardware_cache_size = 12;
+  string hardware_model = 13;
+  int64 hardware_sockets = 14;
+  int64 hardware_cores_per_socket = 15;
+  float hardware_speed_mhz = 16;
+}
+
+message Memory {
+  int64 applications_bytes = 1;
+  int64 buffers_bytes = 2;
+  int64 dirty_bytes = 3;
+  int64 free_bytes = 4;
+  int64 pagecache_bytes = 5;
+  int64 swap_free_bytes = 6;
+  int64 swap_total_bytes = 7;
+  int64 total_bytes = 8;
+  int64 writeback_bytes = 9;
+  int64 active_bytes = 10;
+}
+
+message PostgresVersion {
+  string full = 1;
+  string short = 2;
+  int64 numeric = 3;
+}
+
+message Activity {
+  int64 pid = 1;
+  string username = 2;
+  string application_name = 3;
+  string client_addr = 4;
+  int64 backend_start = 5; // Unix timestamp
+  int64 xact_start = 6; // Unix timestamp
+  int64 query_start = 7; // Unix timestamp
+  int64 state_change = 8; // Unix timestamp
+  bool waiting = 9;
+  string state = 10;
+  string normalized_query = 11;
+}
+
+message AmazonRdsInfo {
+  string region = 1;
+  string instance_class = 2;
+  string instance_id = 3;
+  string status = 4;
+  string availability_zone = 5;
+  bool publicly_accessible = 6;
+  bool multi_az = 7;
+  string secondary_availability_zone = 8;
+  string ca_certificate = 9;
+
+  bool auto_minor_version_upgrade = 10;
+  string preferred_maintenance_window = 11;
+
+  int64 latest_restorable_time = 12; // Unix timestamp
+  string preferred_backup_window = 13;
+  int64 backup_retention_period = 14;
+
+  string master_username = 15;
+  string initial_db_name = 16;
+  int64 created_at = 17; // Unix timestamp
+
+  int64 storage_provisioned_iops = 18;
+  bool storage_encrypted = 19;
+  string storage_type = 20;
+
+  string parameter_apply_status = 21;
+  bool parameter_pgss_enabled = 22;
+
+  RdsOsSnapshot os_snapshot = 23;
+}
+
+message RdsOsSnapshot {
+  string engine = 1; // The database engine for the DB instance.
+  string instance_id = 2; // The DB instance identifier.
+  string instance_resource_id = 3; // A region-unique, immutable identifier for the DB instance, also used as the log stream identifier.
+  string timestamp = 4; // The time at which the metrics were taken.
+  float version = 5; // The version of the OS metrics' stream JSON format.
+  string uptime = 6; // The amount of time that the DB instance has been active.
+  int32 num_cpus = 7; // The number of virtual CPUs for the DB instance.
+
+	RdsOsCPUUtilization cpu_utilization = 8;
+	RdsOsLoadAverageMinute load_average_minute = 9;
+	RdsOsMemory memory = 10;
+	RdsOsTasks tasks = 11;
+  RdsOsSwap swap = 12;
+
+  // Network           []RdsOsNetworkInterface `msg:"network"`
+  repeated RdsOsDiskIO disk_io = 14;
+	// FileSystems       []RdsOsFileSystem       `msg:"fileSys"`
+
+	// Skip this for now to reduce output size
+	// ProcessList []RdsOsProcess `msg:"processList"`
+}
+
+message RdsOsCPUUtilization {
+  float guest = 1; // The percentage of CPU in use by guest programs.
+  float irq = 2; // The percentage of CPU in use by software interrupts.
+  float system = 3; // The percentage of CPU in use by the kernel.
+  float wait = 4; // The percentage of CPU unused while waiting for I/O access.
+  float idle = 5; // The percentage of CPU that is idle.
+  float user = 6; // The percentage of CPU in use by user programs.
+  float total = 7; // The total percentage of the CPU in use. This value excludes the nice value.
+  float steal = 8; // The percentage of CPU in use by other virtual machines.
+  float nice = 9; // The percentage of CPU in use by programs running at lowest priority.
+}
+
+message RdsOsLoadAverageMinute {
+  float fifteen = 1; // The number of processes requesting CPU time over the last 15 minutes.
+  float five = 2; // The number of processes requesting CPU time over the last 5 minutes.
+  float one = 3; // The number of processes requesting CPU time over the last minute.
+}
+
+message RdsOsMemory {
+  int64 writeback = 1;      // The amount of dirty pages in RAM that are still being written to the backing storage, in kilobytes.
+	int64 huge_pages_free = 2;  // The number of free huge pages. Huge pages are a feature of the Linux kernel.
+	int64 huge_pages_rsvd = 3;  // The number of committed huge pages.
+	int64 huge_pages_surp = 4;  // The number of available surplus huge pages over the total.
+	int64 cached = 5;        // The amount of memory used for caching file system–based I/O.
+	int64 huge_pages_size = 6;  // The size for each huge pages unit, in kilobytes.
+	int64 free = 7;           // The amount of unassigned memory, in kilobytes.
+	int64 huge_pages_total = 8; // The total number of huge pages for the system.
+	int64 inactive = 9;      // The amount of least-frequently used memory pages, in kilobytes.
+	int64 page_tables = 10;    // The amount of memory used by page tables, in kilobytes.
+	int64 dirty = 11;         // The amount of memory pages in RAM that have been modified but not written to their related data block in storage, in kilobytes.
+	int64 mapped = 12;        // The total amount of file-system contents that is memory mapped inside a process address space, in kilobytes.
+	int64 active = 13;        // The amount of assigned memory, in kilobytes.
+	int64 total = 14;         // The total amount of memory, in kilobytes.
+	int64 slab = 15;          // The amount of reusable kernel data structures, in kilobytes.
+	int64 buffers = 16;       // The amount of memory used for buffering I/O requests prior to writing to the storage device, in kilobytes.
+}
+
+message RdsOsTasks {
+  int64 sleeping = 1; // The number of tasks that are sleeping.
+  int64 zombie = 2; // The number of child tasks that are inactive with an active parent task.
+  int64 running = 3; // The number of tasks that are running.
+  int64 stopped = 4; // The number of tasks that are stopped.
+  int64 total = 5; // The total number of tasks.
+  int64 blocked = 6; // The number of tasks that are blocked.
+}
+
+message RdsOsSwap {
+	int64 cached = 1; // The amount of swap memory, in kilobytes, used as cache memory.
+	int64 total = 2;  // The total amount of swap memory available, in kilobytes.
+	int64 free = 3;   // The total amount of swap memory free, in kilobytes.
+}
+
+message RdsOsDiskIO {
+	float writeKbPS = 1;   // The number of kilobytes written per second.
+	float readIOsPS = 2;  // The number of read operations per second.
+	float await = 3;       // The number of milliseconds required to respond to requests, including queue time and service time.
+	float readKbPS = 4;   // The number of kilobytes read per second.
+	float rrqmPS = 5;     // The number of merged read requests queued per second.
+	float util = 6;       // The percentage of CPU time during which requests were issued.
+	float avgQueueLen = 7; // The number of requests waiting in the I/O device's queue.
+	float tps = 8;        // The number of I/O transactions per second.
+	float readKb = 9;     // The total number of kilobytes read.
+	string device = 10;     // The identifier of the disk device in use.
+	float writeKb = 11;     // The total number of kilobytes written.
+	float avgReqSz = 12;   // The average request size, in kilobytes.
+	float wrqmPS = 13;     // The number of merged write requests queued per second.
+	float writeIOsPS = 14; // The number of write operations per second.
+}

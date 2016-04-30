@@ -2,20 +2,10 @@ package dbstats
 
 import (
 	"database/sql"
+	"fmt"
 
-	null "gopkg.in/guregu/null.v2"
+	"github.com/pganalyze/collector/snapshot"
 )
-
-type Setting struct {
-	Name         string      `json:"name"`
-	CurrentValue null.String `json:"current_value"`
-	Unit         null.String `json:"unit"`
-	BootValue    null.String `json:"boot_value"`
-	ResetValue   null.String `json:"reset_value"`
-	Source       null.String `json:"source"`
-	SourceFile   null.String `json:"sourcefile"`
-	SourceLine   null.String `json:"sourceline"`
-}
 
 const settingsSQL string = `
 SELECT name,
@@ -28,9 +18,10 @@ SELECT name,
 			 sourceline
 	FROM pg_settings`
 
-func GetSettings(db *sql.DB, postgresVersion PostgresVersion) ([]Setting, error) {
+func GetSettings(db *sql.DB, postgresVersion snapshot.PostgresVersion) ([]*snapshot.Setting, error) {
 	stmt, err := db.Prepare(QueryMarkerSQL + settingsSQL)
 	if err != nil {
+		err = fmt.Errorf("Settings/Prepare: %s", err)
 		return nil, err
 	}
 
@@ -38,23 +29,25 @@ func GetSettings(db *sql.DB, postgresVersion PostgresVersion) ([]Setting, error)
 
 	rows, err := stmt.Query()
 	if err != nil {
+		err = fmt.Errorf("Settings/Query: %s", err)
 		return nil, err
 	}
 
 	defer rows.Close()
 
-	var settings []Setting
+	var settings []*snapshot.Setting
 
 	for rows.Next() {
-		var row Setting
+		var row snapshot.Setting
 
 		err := rows.Scan(&row.Name, &row.CurrentValue, &row.Unit, &row.BootValue,
 			&row.ResetValue, &row.Source, &row.SourceFile, &row.SourceLine)
 		if err != nil {
+			err = fmt.Errorf("Settings/Scan: %s", err)
 			return nil, err
 		}
 
-		settings = append(settings, row)
+		settings = append(settings, &row)
 	}
 
 	return settings, nil
