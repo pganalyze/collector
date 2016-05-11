@@ -1,7 +1,6 @@
 package util
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -81,20 +80,23 @@ func GetRdsParameter(group *rds.DBParameterGroupStatus, name string, svc *rds.RD
 	return
 }
 
+type RdsCloudWatchReader struct {
+	svc      *cloudwatch.CloudWatch
+	instance string
+	logger   *Logger
+}
+
+func NewRdsCloudWatchReader(sess *session.Session, logger *Logger, instance string) RdsCloudWatchReader {
+	return RdsCloudWatchReader{svc: cloudwatch.New(sess), instance: instance, logger: logger}
+}
+
 // GetRdsIntMetric - Gets an integer value from Cloudwatch
-func GetRdsIntMetric(instance string, metricName string, unit string, sess *session.Session) *int64 {
-	value := GetRdsFloatMetric(instance, metricName, unit, sess)
-	if value == nil {
-		return nil
-	}
-	var valueInt = int64(*value)
-	return &valueInt
+func (reader RdsCloudWatchReader) GetRdsIntMetric(metricName string, unit string) int64 {
+	return int64(reader.GetRdsFloatMetric(metricName, unit))
 }
 
 // GetRdsFloatMetric - Gets a float value from Cloudwatch
-func GetRdsFloatMetric(instance string, metricName string, unit string, sess *session.Session) *float64 {
-	svc := cloudwatch.New(sess)
-
+func (reader RdsCloudWatchReader) GetRdsFloatMetric(metricName string, unit string) float64 {
 	params := &cloudwatch.GetMetricStatisticsInput{
 		EndTime:    aws.Time(time.Now()),
 		MetricName: aws.String(metricName),
@@ -108,22 +110,25 @@ func GetRdsFloatMetric(instance string, metricName string, unit string, sess *se
 		Dimensions: []*cloudwatch.Dimension{
 			{
 				Name:  aws.String("DBInstanceIdentifier"),
-				Value: aws.String(instance),
+				Value: aws.String(reader.instance),
 			},
 		},
 	}
-	resp, err := svc.GetMetricStatistics(params)
+	resp, err := reader.svc.GetMetricStatistics(params)
 
 	if err != nil {
-		// Print the error, cast err to awserr.Error to get the Code and
-		// Message from an error.
-		fmt.Println(err.Error())
-		return nil
+		reader.logger.PrintVerbose(err.Error())
+		return 0.0
 	}
 
 	if len(resp.Datapoints) == 0 {
-		return nil
+		return 0.0
 	}
 
-	return resp.Datapoints[0].Average
+	val := resp.Datapoints[0].Average
+	if val != nil {
+		return *resp.Datapoints[0].Average
+	}
+
+	return 0.0
 }

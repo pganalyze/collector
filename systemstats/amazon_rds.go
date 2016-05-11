@@ -1,11 +1,10 @@
+//go:generate msgp
+
 package systemstats
 
 import (
 	"encoding/json"
 	"fmt"
-	"time"
-
-	"gopkg.in/guregu/null.v2"
 
 	//"github.com/aws/aws-sdk-go/aws/request"
 
@@ -14,62 +13,11 @@ import (
 	"github.com/aws/aws-sdk-go/service/rds"
 
 	"github.com/pganalyze/collector/config"
+	"github.com/pganalyze/collector/snapshot"
 	"github.com/pganalyze/collector/util"
 )
 
-// AmazonRdsInfo - Additional information for Amazon RDS systems
-type AmazonRdsInfo struct {
-	Region                    *string `json:"region"`
-	InstanceClass             *string `json:"instance_class"`    // e.g. "db.m3.xlarge"
-	InstanceID                *string `json:"instance_id"`       // e.g. "my-database"
-	Status                    *string `json:"status"`            // e.g. "available"
-	AvailabilityZone          *string `json:"availability_zone"` // e.g. "us-east-1a"
-	PubliclyAccessible        *bool   `json:"publicly_accessible"`
-	MultiAZ                   *bool   `json:"multi_az"`
-	SecondaryAvailabilityZone *string `json:"secondary_availability_zone"` // e.g. "us-east-1c"
-	CACertificate             *string `json:"ca_certificate"`              // e.g. "rds-ca-2015"
-
-	AutoMinorVersionUpgrade    *bool   `json:"auto_minor_version_upgrade"`
-	PreferredMaintenanceWindow *string `json:"preferred_maintenance_window"`
-
-	LatestRestorableTime  *time.Time `json:"latest_restorable_time"`
-	PreferredBackupWindow *string    `json:"preferred_backup_window"`
-	BackupRetentionPeriod *int64     `json:"backup_retention_period"` // e.g. 7 (in number of days)
-
-	MasterUsername *string    `json:"master_username"`
-	InitialDbName  *string    `json:"initial_db_name"`
-	CreatedAt      *time.Time `json:"created_at"`
-
-	StorageProvisionedIops *int64  `json:"storage_provisioned_iops"`
-	StorageEncrypted       *bool   `json:"storage_encrypted"`
-	StorageType            *string `json:"storage_type"`
-
-	ParameterApplyStatus string `json:"parameter_apply_status"` // e.g. pending-reboot
-	ParameterPgssEnabled bool   `json:"parameter_pgss_enabled"`
-
-	OsSnapshot *RdsOsSnapshot `json:"os_snapshot"`
-
-	// ---
-
-	// If the DB instance is a member of a DB cluster, contains the name of the
-	// DB cluster that the DB instance is a member of.
-	//DBClusterIdentifier *string `type:"string"`
-
-	// Contains one or more identifiers of the Read Replicas associated with this
-	// DB instance.
-	//ReadReplicaDBInstanceIdentifiers []*string `locationNameList:"ReadReplicaDBInstanceIdentifier" type:"list"`
-
-	// Contains the identifier of the source DB instance if this DB instance is
-	// a Read Replica.
-	//ReadReplicaSourceDBInstanceIdentifier *string `type:"string"`
-
-	// The status of a Read Replica. If the instance is not a Read Replica, this
-	// will be blank.
-	//StatusInfos []*DBInstanceStatusInfo `locationNameList:"DBInstanceStatusInfo" type:"list"`
-}
-
 // http://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_Monitoring.html
-
 type RdsOsSnapshot struct {
 	Engine             string  `json:"engine"`             // The database engine for the DB instance.
 	InstanceID         string  `json:"instanceID"`         // The DB instance identifier.
@@ -190,7 +138,7 @@ type RdsOsProcess struct {
 }
 
 // GetFromAmazonRds - Gets system information about an Amazon RDS instance
-func getFromAmazonRds(config config.DatabaseConfig) (system *SystemSnapshot) {
+func getFromAmazonRds(config config.DatabaseConfig, logger *util.Logger) (system *snapshot.System) {
 	sess := util.GetAwsSession(config)
 
 	rdsSvc := rds.New(sess)
@@ -207,35 +155,35 @@ func getFromAmazonRds(config config.DatabaseConfig) (system *SystemSnapshot) {
 		return
 	}
 
-	system = &SystemSnapshot{
-		SystemType: AmazonRdsSystem,
+	system = &snapshot.System{
+		SystemType: snapshot.SystemType_PHYSICAL_SYSTEM,
 	}
 
-	systemInfo := &AmazonRdsInfo{
-		Region:                    &config.AwsRegion,
-		InstanceClass:             instance.DBInstanceClass,
-		InstanceID:                instance.DBInstanceIdentifier,
-		Status:                    instance.DBInstanceStatus,
-		AvailabilityZone:          instance.AvailabilityZone,
-		PubliclyAccessible:        instance.PubliclyAccessible,
-		MultiAZ:                   instance.MultiAZ,
-		SecondaryAvailabilityZone: instance.SecondaryAvailabilityZone,
-		CACertificate:             instance.CACertificateIdentifier,
+	systemInfo := &snapshot.AmazonRdsInfo{
+		Region:                    config.AwsRegion,
+		InstanceClass:             util.StringPtrToString(instance.DBInstanceClass),
+		InstanceId:                util.StringPtrToString(instance.DBInstanceIdentifier),
+		Status:                    util.StringPtrToString(instance.DBInstanceStatus),
+		AvailabilityZone:          util.StringPtrToString(instance.AvailabilityZone),
+		PubliclyAccessible:        util.BoolPtrToBool(instance.PubliclyAccessible),
+		MultiAz:                   util.BoolPtrToBool(instance.MultiAZ),
+		SecondaryAvailabilityZone: util.StringPtrToString(instance.SecondaryAvailabilityZone),
+		CaCertificate:             util.StringPtrToString(instance.CACertificateIdentifier),
 
-		AutoMinorVersionUpgrade:    instance.AutoMinorVersionUpgrade,
-		PreferredMaintenanceWindow: instance.PreferredMaintenanceWindow,
+		AutoMinorVersionUpgrade:    util.BoolPtrToBool(instance.AutoMinorVersionUpgrade),
+		PreferredMaintenanceWindow: util.StringPtrToString(instance.PreferredMaintenanceWindow),
 
-		LatestRestorableTime:  instance.LatestRestorableTime,
-		PreferredBackupWindow: instance.PreferredBackupWindow,
-		BackupRetentionPeriod: instance.BackupRetentionPeriod,
+		LatestRestorableTime:  util.TimePtrToUnixTimestamp(instance.LatestRestorableTime),
+		PreferredBackupWindow: util.StringPtrToString(instance.PreferredBackupWindow),
+		BackupRetentionPeriod: util.IntPtrToString(instance.BackupRetentionPeriod),
 
-		MasterUsername: instance.MasterUsername,
-		InitialDbName:  instance.DBName,
-		CreatedAt:      instance.InstanceCreateTime,
+		MasterUsername: util.StringPtrToString(instance.MasterUsername),
+		InitialDbName:  util.StringPtrToString(instance.DBName),
+		CreatedAt:      util.TimePtrToUnixTimestamp(instance.InstanceCreateTime),
 
-		StorageProvisionedIops: instance.Iops,
-		StorageEncrypted:       instance.StorageEncrypted,
-		StorageType:            instance.StorageType,
+		StorageProvisionedIops: util.IntPtrToString(instance.Iops),
+		StorageEncrypted:       util.BoolPtrToBool(instance.StorageEncrypted),
+		StorageType:            util.StringPtrToString(instance.StorageType),
 	}
 
 	group := instance.DBParameterGroups[0]
@@ -245,7 +193,7 @@ func getFromAmazonRds(config config.DatabaseConfig) (system *SystemSnapshot) {
 	systemInfo.ParameterPgssEnabled = pgssParam != nil && *pgssParam.ParameterValue == "pg_stat_statements"
 	systemInfo.ParameterApplyStatus = *group.ParameterApplyStatus
 
-	system.SystemInfo = systemInfo
+	system.SystemInfo = &snapshot.System_AmazonRdsInfo{AmazonRdsInfo: systemInfo}
 
 	// Not fetched right now:
 	// - DatabaseConnections
@@ -253,34 +201,38 @@ func getFromAmazonRds(config config.DatabaseConfig) (system *SystemSnapshot) {
 
 	dbInstanceID := *instance.DBInstanceIdentifier
 
-	system.CPU.Utilization = util.GetRdsFloatMetric(dbInstanceID, "CPUUtilization", "Percent", sess)
+	cloudWatchReader := util.NewRdsCloudWatchReader(sess, logger, dbInstanceID)
 
-	system.Network = &Network{
-		ReceiveThroughput:  util.GetRdsIntMetric(dbInstanceID, "NetworkReceiveThroughput", "Bytes/Second", sess),
-		TransmitThroughput: util.GetRdsIntMetric(dbInstanceID, "NetworkTransmitThroughput", "Bytes/Second", sess),
+	system.Cpu = &snapshot.CPU{
+		Utilization: cloudWatchReader.GetRdsFloatMetric("CPUUtilization", "Percent"),
 	}
 
-	storage := Storage{
-		BytesAvailable: util.GetRdsIntMetric(dbInstanceID, "FreeStorageSpace", "Bytes", sess),
-		Perfdata: StoragePerfdata{
-			Version:         1,
-			ReadIops:        util.GetRdsIntMetric(dbInstanceID, "ReadIOPS", "Count/Second", sess),
-			WriteIops:       util.GetRdsIntMetric(dbInstanceID, "WriteIOPS", "Count/Second", sess),
-			ReadThroughput:  util.GetRdsIntMetric(dbInstanceID, "ReadThroughput", "Bytes/Second", sess),
-			WriteThroughput: util.GetRdsIntMetric(dbInstanceID, "WriteThroughput", "Bytes/Second", sess),
-			IopsInProgress:  util.GetRdsIntMetric(dbInstanceID, "DiskQueueDepth", "Count", sess),
-			ReadLatency:     util.GetRdsFloatMetric(dbInstanceID, "ReadLatency", "Seconds", sess),
-			WriteLatency:    util.GetRdsFloatMetric(dbInstanceID, "WriteLatency", "Seconds", sess),
+	system.Network = &snapshot.Network{
+		ReceiveThroughput:  cloudWatchReader.GetRdsIntMetric("NetworkReceiveThroughput", "Bytes/Second"),
+		TransmitThroughput: cloudWatchReader.GetRdsIntMetric("NetworkTransmitThroughput", "Bytes/Second"),
+	}
+
+	storage := snapshot.Storage{
+		BytesAvailable: cloudWatchReader.GetRdsIntMetric("FreeStorageSpace", "Bytes"),
+		Perfdata: &snapshot.StoragePerfdata{
+			Version:      1,
+			RdIos:        cloudWatchReader.GetRdsIntMetric("ReadIOPS", "Count/Second"),
+			WrIos:        cloudWatchReader.GetRdsIntMetric("WriteIOPS", "Count/Second"),
+			RdThroughput: cloudWatchReader.GetRdsIntMetric("ReadThroughput", "Bytes/Second"),
+			WrThroughput: cloudWatchReader.GetRdsIntMetric("WriteThroughput", "Bytes/Second"),
+			IosInProg:    cloudWatchReader.GetRdsIntMetric("DiskQueueDepth", "Count"),
+			RdLatency:    cloudWatchReader.GetRdsFloatMetric("ReadLatency", "Seconds"),
+			WrLatency:    cloudWatchReader.GetRdsFloatMetric("WriteLatency", "Seconds"),
 		},
 	}
 
 	var bytesTotal int64
 	if instance.AllocatedStorage != nil {
 		bytesTotal = *instance.AllocatedStorage * 1024 * 1024 * 1024
-		storage.BytesTotal = &bytesTotal
+		storage.BytesTotal = bytesTotal
 	}
 
-	system.Storage = append(system.Storage, storage)
+	system.Storage = append(system.Storage, &storage)
 
 	if instance.EnhancedMonitoringResourceArn != nil {
 		svc := cloudwatchlogs.New(sess)
@@ -309,47 +261,48 @@ func getFromAmazonRds(config config.DatabaseConfig) (system *SystemSnapshot) {
 				}
 
 				// Technically these are not msec but percentages, so we multiply by the number of milliseconds in a minute (our standard measurement)
-				system.CPU.BusyTimesGuestMsec = null.IntFrom(int64(osSnapshot.CPUUtilization.Guest * 60000))
-				system.CPU.BusyTimesGuestNiceMsec = null.IntFrom(0)
-				system.CPU.BusyTimesIdleMsec = null.IntFrom(int64(osSnapshot.CPUUtilization.Idle * 60000))
-				system.CPU.BusyTimesSoftirqMsec = null.IntFrom(int64(osSnapshot.CPUUtilization.Irq * 60000))
-				system.CPU.BusyTimesIrqMsec = null.IntFrom(0)
-				system.CPU.BusyTimesIowaitMsec = null.IntFrom(int64(osSnapshot.CPUUtilization.Wait * 60000))
-				system.CPU.BusyTimesSystemMsec = null.IntFrom(int64(osSnapshot.CPUUtilization.System * 60000))
-				system.CPU.BusyTimesUserMsec = null.IntFrom(int64(osSnapshot.CPUUtilization.User * 60000))
-				system.CPU.BusyTimesStealMsec = null.IntFrom(int64(osSnapshot.CPUUtilization.Steal * 60000))
-				system.CPU.BusyTimesNiceMsec = null.IntFrom(int64(osSnapshot.CPUUtilization.Nice * 60000))
+				system.Cpu = &snapshot.CPU{}
+				system.Cpu.BusyTimesGuestMsec = int64(osSnapshot.CPUUtilization.Guest * 60000)
+				system.Cpu.BusyTimesGuestNiceMsec = 0
+				system.Cpu.BusyTimesIdleMsec = int64(osSnapshot.CPUUtilization.Idle * 60000)
+				system.Cpu.BusyTimesSoftirqMsec = int64(osSnapshot.CPUUtilization.Irq * 60000)
+				system.Cpu.BusyTimesIrqMsec = 0
+				system.Cpu.BusyTimesIowaitMsec = int64(osSnapshot.CPUUtilization.Wait * 60000)
+				system.Cpu.BusyTimesSystemMsec = int64(osSnapshot.CPUUtilization.System * 60000)
+				system.Cpu.BusyTimesUserMsec = int64(osSnapshot.CPUUtilization.User * 60000)
+				system.Cpu.BusyTimesStealMsec = int64(osSnapshot.CPUUtilization.Steal * 60000)
+				system.Cpu.BusyTimesNiceMsec = int64(osSnapshot.CPUUtilization.Nice * 60000)
+				system.Cpu.HardwareSockets = 1
+				system.Cpu.HardwareCoresPerSocket = int64(osSnapshot.NumVCPUs)
 
-				system.CPU.HardwareSockets = null.IntFrom(1)
-				system.CPU.HardwareCoresPerSocket = null.IntFrom(int64(osSnapshot.NumVCPUs))
+				system.Scheduler = &snapshot.Scheduler{}
+				system.Scheduler.Loadavg_1Min = float64(osSnapshot.LoadAverageMinute.One)
+				system.Scheduler.Loadavg_5Min = float64(osSnapshot.LoadAverageMinute.Five)
+				system.Scheduler.Loadavg_15Min = float64(osSnapshot.LoadAverageMinute.Fifteen)
+				system.Scheduler.ProcsRunning = osSnapshot.Tasks.Running
+				system.Scheduler.ProcsBlocked = osSnapshot.Tasks.Blocked
 
-				system.Scheduler.Loadavg1min = null.FloatFrom(float64(osSnapshot.LoadAverageMinute.One))
-				system.Scheduler.Loadavg5min = null.FloatFrom(float64(osSnapshot.LoadAverageMinute.Five))
-				system.Scheduler.Loadavg15min = null.FloatFrom(float64(osSnapshot.LoadAverageMinute.Fifteen))
+				system.Memory = &snapshot.Memory{}
+				system.Memory.ApplicationsBytes = (osSnapshot.Memory.Total - osSnapshot.Memory.Free - osSnapshot.Memory.Buffers - osSnapshot.Memory.Cached) * 1024
+				system.Memory.BuffersBytes = osSnapshot.Memory.Buffers * 1024
+				system.Memory.DirtyBytes = osSnapshot.Memory.Dirty * 1024
+				system.Memory.FreeBytes = osSnapshot.Memory.Free * 1024
+				system.Memory.PagecacheBytes = osSnapshot.Memory.Cached * 1024
+				system.Memory.SwapFreeBytes = osSnapshot.Swap.Free * 1024
+				system.Memory.SwapTotalBytes = osSnapshot.Swap.Total * 1024
+				system.Memory.TotalBytes = osSnapshot.Memory.Total * 1024
+				system.Memory.WritebackBytes = osSnapshot.Memory.Writeback * 1024
+				system.Memory.ActiveBytes = osSnapshot.Memory.Active * 1024
 
-				system.Scheduler.ProcsRunning = null.IntFrom(osSnapshot.Tasks.Running)
-				system.Scheduler.ProcsBlocked = null.IntFrom(osSnapshot.Tasks.Blocked)
-
-				system.Memory.ApplicationsBytes = null.IntFrom((osSnapshot.Memory.Total - osSnapshot.Memory.Free - osSnapshot.Memory.Buffers - osSnapshot.Memory.Cached) * 1024)
-				system.Memory.BuffersBytes = null.IntFrom(osSnapshot.Memory.Buffers * 1024)
-				system.Memory.DirtyBytes = null.IntFrom(osSnapshot.Memory.Dirty * 1024)
-				system.Memory.FreeBytes = null.IntFrom(osSnapshot.Memory.Free * 1024)
-				system.Memory.PagecacheBytes = null.IntFrom(osSnapshot.Memory.Cached * 1024)
-				system.Memory.SwapFreeBytes = null.IntFrom(osSnapshot.Swap.Free * 1024)
-				system.Memory.SwapTotalBytes = null.IntFrom(osSnapshot.Swap.Total * 1024)
-				system.Memory.TotalBytes = null.IntFrom(osSnapshot.Memory.Total * 1024)
-				system.Memory.WritebackBytes = null.IntFrom(osSnapshot.Memory.Writeback * 1024)
-				system.Memory.ActiveBytes = null.IntFrom(osSnapshot.Memory.Active * 1024)
-
-				system.Storage[0].Perfdata.AvgReqSize = null.IntFrom(int64(osSnapshot.DiskIO[0].AvgReqSz * 1024))
-
-				systemInfo.OsSnapshot = &osSnapshot
+				system.Storage[0].Perfdata.AvgReqSize = int64(osSnapshot.DiskIO[0].AvgReqSz * 1024)
 			}
 		}
 	} else {
-		system.Memory.FreeBytes = null.IntFromPtr(util.GetRdsIntMetric(dbInstanceID, "FreeableMemory", "Bytes", sess))
-		system.Memory.SwapTotalBytes = null.IntFromPtr(util.GetRdsIntMetric(dbInstanceID, "SwapUsage", "Bytes", sess))
-		system.Memory.SwapFreeBytes = null.IntFrom(0)
+		system.Memory = &snapshot.Memory{
+			FreeBytes:      cloudWatchReader.GetRdsIntMetric("FreeableMemory", "Bytes"),
+			SwapTotalBytes: cloudWatchReader.GetRdsIntMetric("SwapUsage", "Bytes"),
+			SwapFreeBytes:  0,
+		}
 	}
 
 	return
