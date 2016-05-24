@@ -1,10 +1,10 @@
-package dbstats
+package postgres
 
 import (
 	"database/sql"
 	"fmt"
 
-	"github.com/pganalyze/collector/snapshot"
+	"github.com/pganalyze/collector/state"
 )
 
 const settingsSQL string = `
@@ -18,7 +18,7 @@ SELECT name,
 			 sourceline
 	FROM pg_settings`
 
-func GetSettings(db *sql.DB, postgresVersion snapshot.PostgresVersion) ([]*snapshot.Setting, error) {
+func GetSettings(db *sql.DB, postgresVersion state.PostgresVersion) ([]state.PostgresSetting, error) {
 	stmt, err := db.Prepare(QueryMarkerSQL + settingsSQL)
 	if err != nil {
 		err = fmt.Errorf("Settings/Prepare: %s", err)
@@ -35,10 +35,10 @@ func GetSettings(db *sql.DB, postgresVersion snapshot.PostgresVersion) ([]*snaps
 
 	defer rows.Close()
 
-	var settings []*snapshot.Setting
+	var settings []state.PostgresSetting
 
 	for rows.Next() {
-		var row snapshot.Setting
+		var row state.PostgresSetting
 
 		err := rows.Scan(&row.Name, &row.CurrentValue, &row.Unit, &row.BootValue,
 			&row.ResetValue, &row.Source, &row.SourceFile, &row.SourceLine)
@@ -47,7 +47,7 @@ func GetSettings(db *sql.DB, postgresVersion snapshot.PostgresVersion) ([]*snaps
 			return nil, err
 		}
 
-		settings = append(settings, &row)
+		settings = append(settings, row)
 	}
 
 	return settings, nil

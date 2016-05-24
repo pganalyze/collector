@@ -1,31 +1,10 @@
-package dbstats
+package postgres
 
 import (
 	"database/sql"
 
-	null "gopkg.in/guregu/null.v2"
+	"github.com/pganalyze/collector/state"
 )
-
-type Function struct {
-	SchemaName      string      `json:"schema_name"`
-	FunctionName    string      `json:"function_name"`
-	Language        string      `json:"language"`
-	Source          string      `json:"source"`
-	SourceBin       null.String `json:"source_bin"`
-	Config          null.String `json:"config"`
-	Arguments       null.String `json:"arguments"`
-	Result          null.String `json:"result"`
-	Aggregate       bool        `json:"aggregate"`
-	Window          bool        `json:"window"`
-	SecurityDefiner bool        `json:"security_definer"`
-	Leakproof       bool        `json:"leakproof"`
-	Strict          bool        `json:"strict"`
-	ReturnsSet      bool        `json:"returns_set"`
-	Volatile        null.String `json:"volatile"`
-	Calls           null.Int    `json:"calls"`
-	TotalTime       null.Float  `json:"total_time"`
-	SelfTime        null.Float  `json:"self_time"`
-}
 
 const functionsSQL string = `
 SELECT pn.nspname AS schema_name,
@@ -54,7 +33,7 @@ SELECT pn.nspname AS schema_name,
 			 AND pn.nspname NOT IN ('pg_catalog', 'information_schema')
 			 AND pp.proname NOT IN ('pg_stat_statements', 'pg_stat_statements_reset')`
 
-func GetFunctions(db *sql.DB, postgresVersion PostgresVersion) ([]Function, error) {
+func GetFunctions(db *sql.DB, postgresVersion state.PostgresVersion) ([]state.PostgresFunction, error) {
 	stmt, err := db.Prepare(QueryMarkerSQL + functionsSQL)
 	if err != nil {
 		return nil, err
@@ -69,15 +48,15 @@ func GetFunctions(db *sql.DB, postgresVersion PostgresVersion) ([]Function, erro
 
 	defer rows.Close()
 
-	var functions []Function
+	var functions []state.PostgresFunction
 
 	for rows.Next() {
-		var row Function
+		var row state.PostgresFunction
 
 		err := rows.Scan(&row.SchemaName, &row.FunctionName, &row.Language, &row.Source,
 			&row.SourceBin, &row.Config, &row.Arguments, &row.Result, &row.Aggregate,
-			&row.Window, &row.SecurityDefiner, &row.Leakproof, &row.Strict, &row.ReturnsSet,
-			&row.Volatile, &row.Calls, &row.TotalTime, &row.SelfTime)
+			&row.Window, &row.SecurityDefiner, &row.Leakproof, &row.Strict, &row.ReturnsSet)
+		//	&row.Volatile, &row.Calls, &row.TotalTime, &row.SelfTime) FIXME
 		if err != nil {
 			return nil, err
 		}

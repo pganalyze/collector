@@ -1,17 +1,16 @@
 package snapshot
 
-import "time"
-
-func (ns *NullTimestamp) Scan(value interface{}) error {
-	var time time.Time
+/*func (ns *NullTimestamp) Scan(value interface{}) error {
 	if value == nil {
 		return nil
 	}
-	err := convertAssign(&time, value)
+
+	err := ns.Value.Scan(value)
 	if err != nil {
 		return err
 	}
+
 	ns.Valid = true
-	ns.Value = time.Unix()
+
 	return nil
-}
+}*/

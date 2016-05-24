@@ -1,0 +1,301 @@
+syntax = "proto3";
+
+import "google/protobuf/timestamp.proto";
+
+package snapshot;
+
+// DEFINITIONS
+//
+// - Reference: Term(s) that can be UPSERTed into the monitoring system, and is
+//              referenced by its list index within other parts of the snapshot.
+//
+//              The goal here is that we can do a two-step processing of the data,
+//              first we create/find all references and get their IDs, then we
+//              just COPY all statistics into the database, replacing idx for ID.
+//
+// - Information: Data that is unique per reference, and is not stored historically.
+//                When processing this data can simply be UPDATEd after the initial UPSERT.
+//
+//                In some cases this data might also be provided at less frequent intervals than Statistics.
+//
+// - Statistic: Data that is unique per reference, and is stored historically.
+//              When processing this data can be COPYed after the initial UPSERT.
+//
+//              In case the input data is a counter, this will be normalized by the collector
+//              before the snapshot is created, the recipient does not need to look at previous
+//              values to find out what happened.
+
+message NullString {
+  bool valid = 1;
+  string value = 2;
+}
+
+message RelationReference {
+  int32 database_idx = 1;
+  string schema_name = 2;
+  string relation_name = 3;
+}
+
+message IndexReference {
+  int32 database_idx = 1;
+  string schema_name = 2;
+  string index_name = 3;
+}
+
+message FunctionReference {
+  int32 database_idx = 1;
+  string schema_name = 2;
+  string function_name = 3;
+  string arguments = 4;
+}
+
+message Snapshot {
+  // Per server (and hence snapshot)
+  PostgresVersion version = 100;
+
+  repeated LogLine logs = 101;
+  repeated Backend backends = 102;
+  repeated Setting settings = 103;
+
+  // Per database
+  repeated string database_references = 1; //  = ['mydb']
+  repeated string user_references = 2; // = ['admin', 'otheruser', 'something_else']
+
+  repeated RelationReference relation_references = 3;
+  repeated IndexReference index_references = 4;
+  repeated FunctionReference function_references = 5;
+
+  repeated QueryInformation query_informations = 10;
+  repeated QueryStatistic query_statistics = 11;
+  repeated QueryExplain query_explains = 12;
+
+  repeated RelationInformation relation_informations = 20;
+  repeated RelationStatistic relation_statistics = 21;
+  repeated RelationBloatStatistic relation_bloat_statistics = 22;
+
+  repeated IndexInformation index_informations = 24;
+  repeated IndexStatistic index_statistics = 25;
+
+  repeated FunctionInformation function_informations = 26;
+  repeated FunctionStatistic function_statistics = 27;
+}
+
+message QueryInformation {
+  int32 database_ref = 1;
+  int32 user_ref = 2;
+  bytes fingerprint = 3;
+
+  string normalized_query = 4;
+}
+
+message QueryStatistic {
+  int32 database_ref = 1;
+  int32 user_ref = 2;
+  bytes fingerprint = 3;
+
+  int64 calls = 4;
+  double total_time = 5;
+  int64 rows = 6;
+
+  int64 shared_blks_hit = 7;
+  int64 shared_blks_read = 8;
+  int64 shared_blks_dirtied = 9;
+  int64 shared_blks_written = 10;
+  int64 local_blks_hit = 11;
+  int64 local_blks_read = 12;
+  int64 local_blks_dirtied = 13;
+  int64 local_blks_written = 14;
+  int64 temp_blks_read = 15;
+  int64 temp_blks_written = 16;
+
+  double blk_read_time = 17;
+  double blk_write_time = 18;
+
+  // Postgres 9.5+
+  double min_time = 19;
+  double max_time = 20;
+  double mean_time = 21;
+  double stddev_time = 22;
+}
+
+message QueryExplain {
+  int32 database_ref = 1;
+  int32 user_ref = 2;
+  bytes fingerprint = 3;
+
+  int64 occurred_at = 4;
+  double runtime = 5;
+  string explain_output = 6;
+  string explain_error = 7;
+}
+
+message RelationInformation {
+  int32 relation_ref = 1;
+
+  string relation_type = 2;
+  NullString view_definition = 3;
+
+  repeated Column columns = 4;
+  repeated Constraint constraints = 5;
+
+  message Column {
+    string name = 2;
+    string data_type = 3;
+    NullString default_value = 4;
+    bool not_null = 5;
+    int64 position = 6;
+  }
+
+  message Constraint {
+    string name = 2;
+    string constraint_def = 3;
+    string columns = 4;
+    string foreign_schema = 5;
+    string foreign_table = 6;
+    string foreign_columns = 7;
+  }
+}
+
+message RelationStatistic {
+  int32 relation_ref = 1;
+
+  int64 size_bytes = 2;
+  int64 seq_scan = 3;             // Number of sequential scans initiated on this table
+  int64 seq_tup_read = 4;         // Number of live rows fetched by sequential scans
+  int64 idx_scan = 5;             // Number of index scans initiated on this table
+  int64 idx_tup_fetch = 6;        // Number of live rows fetched by index scans
+  int64 n_tup_ins = 7;            // Number of rows inserted
+  int64 n_tup_upd = 8;            // Number of rows updated
+  int64 n_tup_del = 9;            // Number of rows deleted
+  int64 n_tup_hot_upd = 10;       // Number of rows HOT updated (i.e., with no separate index update required)
+  int64 n_live_tup = 11;          // Estimated number of live rows
+  int64 n_dead_tup = 12;          // Estimated number of dead rows
+  int64 n_mod_since_analyze = 13; // Estimated number of rows modified since this table was last analyzed
+
+  google.protobuf.Timestamp last_vacuum = 14;      // Last time at which this table was manually vacuumed (not counting VACUUM FULL)
+  google.protobuf.Timestamp last_autovacuum = 15;  // Last time at which this table was vacuumed by the autovacuum daemon
+  google.protobuf.Timestamp last_analyze = 16;     // Last time at which this table was manually analyzed
+  google.protobuf.Timestamp last_autoanalyze = 17; // Last time at which this table was analyzed by the autovacuum daemon
+
+  int64 vacuum_count = 18;        // Number of times this table has been manually vacuumed (not counting VACUUM FULL)
+  int64 autovacuum_count = 19;    // Number of times this table has been vacuumed by the autovacuum daemon
+  int64 analyze_count = 20;       // Number of times this table has been manually analyzed
+  int64 autoanalyze_count = 21;   // Number of times this table has been analyzed by the autovacuum daemon
+  int64 heap_blks_read = 22;      // Number of disk blocks read from this table
+  int64 heap_blks_hit = 23;       // Number of buffer hits in this table
+  int64 idx_blks_read = 24;       // Number of disk blocks read from all indexes on this table
+  int64 idx_blks_hit = 25;        // Number of buffer hits in all indexes on this table
+  int64 toast_blks_read = 26;     // Number of disk blocks read from this table's TOAST table (if any)
+  int64 toast_blks_hit = 27;      // Number of buffer hits in this table's TOAST table (if any)
+  int64 tidx_blks_read = 28;      // Number of disk blocks read from this table's TOAST table indexes (if any)
+  int64 tidx_blks_hit = 29;       // Number of buffer hits in this table's TOAST table indexes (if any)
+}
+
+message RelationBloatStatistic {
+  int32 relation_ref = 1;
+
+  int64 wasted_bytes = 2;
+}
+
+message IndexInformation {
+  int32 index_ref = 1;
+  int32 relation_ref = 2;
+
+  string columns = 3;
+  string name = 4;
+  string index_def = 5;
+  NullString constraint_def = 6;
+
+  bool is_primary = 7;
+  bool is_unique = 8;
+  bool is_valid = 9;
+}
+
+message IndexStatistic {
+  int32 index_ref = 1;
+
+  int64 size_bytes = 2;
+  int64 idx_scan = 3;
+  int64 idx_tup_read = 4;
+  int64 idx_tup_fetch = 6;
+  int64 idx_blks_read = 7;
+  int64 idx_blks_hit = 8;
+}
+
+message FunctionInformation {
+  int32 function_ref = 1;
+
+  string language = 3;
+  string source = 4;
+  string source_bin = 5;
+  NullString config = 6;
+  string result = 8;
+
+  bool aggregate = 9;
+  bool window = 10;
+  bool security_definer = 11;
+  bool leakproof = 12;
+  bool strict = 13;
+  bool returns_set = 14;
+  string volatile = 15;
+}
+
+message FunctionStatistic {
+  int32 function_ref = 1;
+
+  int64 calls = 2;
+  double total_time = 3;
+  double self_time = 4;
+}
+
+message PostgresVersion {
+  string full = 1;
+  string short = 2;
+  int64 numeric = 3;
+}
+
+message LogLine {
+  int64 occurred_at = 1;
+  SourceType source = 2;
+  NullString client_ip = 3;
+  string log_level = 4;
+  int32 backend_pid = 5;
+  string content = 6;
+  repeated LogLine additional_lines = 7;
+
+  enum SourceType {
+    PostgresSource = 0;
+    AmazonRdsSource = 1;
+  }
+}
+
+message Setting {
+  string name = 1;
+  string current_value = 2;
+  NullString unit = 3;
+  NullString boot_value = 4;
+  NullString reset_value = 5;
+  NullString source = 6;
+  NullString source_file = 7;
+  NullString source_line = 8;
+}
+
+message Backend {
+  int64 pid = 1;
+  string username = 2;
+  string application_name = 3;
+  string client_addr = 4;
+
+  google.protobuf.Timestamp backend_start = 5;
+  google.protobuf.Timestamp xact_start = 6;
+  google.protobuf.Timestamp query_start = 7;
+  google.protobuf.Timestamp state_change = 8;
+
+  bool waiting = 9;
+  string state = 10;
+  string normalized_query = 11;
+}
+
+message System {
+  // TODO
+}

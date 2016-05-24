@@ -1,12 +1,12 @@
-package dbstats
+package postgres
 
 import (
 	"database/sql"
 	"fmt"
 
-	"github.com/pganalyze/collector/snapshot"
+	"github.com/pganalyze/collector/state"
 
-	null "gopkg.in/guregu/null.v2"
+	null "gopkg.in/guregu/null.v3"
 )
 
 const relationsSQLDefaultOptionalFields = "NULL"
@@ -275,12 +275,12 @@ FROM otta_calc AS sub
 		 JOIN pg_stat_user_indexes AS stat ON sub.index_oid = stat.indexrelid
 `
 
-func GetRelations(db *sql.DB, postgresVersion snapshot.PostgresVersion, collectBloat bool) ([]*snapshot.Relation, error) {
+func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, collectBloat bool) ([]state.PostgresRelation, error) {
 	var optionalFields string
 
-	relations := make(map[int64]snapshot.Relation, 0)
+	relations := make(map[state.Oid]state.PostgresRelation, 0)
 
-	if postgresVersion.Numeric >= snapshot.PostgresVersion94 {
+	if postgresVersion.Numeric >= state.PostgresVersion94 {
 		optionalFields = relationsSQLpg94OptionalFields
 	} else {
 		optionalFields = relationsSQLDefaultOptionalFields
@@ -304,9 +304,7 @@ func GetRelations(db *sql.DB, postgresVersion snapshot.PostgresVersion, collectB
 	defer rows.Close()
 
 	for rows.Next() {
-		var row snapshot.Relation
-
-		row.Stats = &snapshot.Relation_Stats{}
+		var row state.PostgresRelation
 
 		err := rows.Scan(&row.Oid, &row.SchemaName, &row.TableName, &row.RelationType,
 			&row.Stats.SizeBytes, &row.Stats.SeqScan, &row.Stats.SeqTupRead,
@@ -345,7 +343,7 @@ func GetRelations(db *sql.DB, postgresVersion snapshot.PostgresVersion, collectB
 	defer rows.Close()
 
 	for rows.Next() {
-		var row snapshot.Relation_Column
+		var row state.PostgresColumn
 
 		err := rows.Scan(&row.RelationOid, &row.Name, &row.DataType, &row.DefaultValue,
 			&row.NotNull, &row.Position)
@@ -355,7 +353,7 @@ func GetRelations(db *sql.DB, postgresVersion snapshot.PostgresVersion, collectB
 		}
 
 		relation := relations[row.RelationOid]
-		relation.Columns = append(relation.Columns, &row)
+		relation.Columns = append(relation.Columns, row)
 		relations[row.RelationOid] = relation
 	}
 
@@ -377,7 +375,7 @@ func GetRelations(db *sql.DB, postgresVersion snapshot.PostgresVersion, collectB
 	defer rows.Close()
 
 	for rows.Next() {
-		var row snapshot.Relation_Index
+		var row state.PostgresIndex
 
 		err := rows.Scan(&row.RelationOid, &row.IndexOid, &row.Columns, &row.Name, &row.SizeBytes,
 			&row.IsPrimary, &row.IsUnique, &row.IsValid, &row.IndexDef, &row.ConstraintDef,
@@ -388,7 +386,7 @@ func GetRelations(db *sql.DB, postgresVersion snapshot.PostgresVersion, collectB
 		}
 
 		relation := relations[row.RelationOid]
-		relation.Indices = append(relation.Indices, &row)
+		relation.Indices = append(relation.Indices, row)
 		relations[row.RelationOid] = relation
 	}
 
@@ -410,7 +408,7 @@ func GetRelations(db *sql.DB, postgresVersion snapshot.PostgresVersion, collectB
 	defer rows.Close()
 
 	for rows.Next() {
-		var row snapshot.Relation_Constraint
+		var row state.PostgresConstraint
 
 		err := rows.Scan(&row.RelationOid, &row.Name, &row.ConstraintDef, &row.Columns,
 			&row.ForeignSchema, &row.ForeignTable, &row.ForeignColumns)
@@ -420,7 +418,7 @@ func GetRelations(db *sql.DB, postgresVersion snapshot.PostgresVersion, collectB
 		}
 
 		relation := relations[row.RelationOid]
-		relation.Constraints = append(relation.Constraints, &row)
+		relation.Constraints = append(relation.Constraints, row)
 		relations[row.RelationOid] = relation
 	}
 
@@ -442,7 +440,7 @@ func GetRelations(db *sql.DB, postgresVersion snapshot.PostgresVersion, collectB
 	defer rows.Close()
 
 	for rows.Next() {
-		var relationOid int64
+		var relationOid state.Oid
 		var viewDefinition string
 
 		err := rows.Scan(&relationOid, &viewDefinition)
@@ -475,7 +473,7 @@ func GetRelations(db *sql.DB, postgresVersion snapshot.PostgresVersion, collectB
 		defer rows.Close()
 
 		for rows.Next() {
-			var relationOid int64
+			var relationOid state.Oid
 			var tableBytes null.Int
 			var expectedBytes null.Int
 			var wastedBytes null.Int
@@ -511,8 +509,8 @@ func GetRelations(db *sql.DB, postgresVersion snapshot.PostgresVersion, collectB
 		defer rows.Close()
 
 		for rows.Next() {
-			var relationOid int64
-			var indexOid int64
+			var relationOid state.Oid
+			var indexOid state.Oid
 			var wastedBytes null.Int
 
 			err := rows.Scan(&relationOid, &indexOid, &wastedBytes)
@@ -539,9 +537,9 @@ func GetRelations(db *sql.DB, postgresVersion snapshot.PostgresVersion, collectB
 
 	// Flip the oid-based map into an array
 
-	v := make([]*snapshot.Relation, 0, len(relations))
+	v := make([]state.PostgresRelation, 0, len(relations))
 	for _, value := range relations {
-		v = append(v, &value)
+		v = append(v, value)
 	}
 
 	return v, nil

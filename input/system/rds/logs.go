@@ -1,4 +1,4 @@
-package logs
+package rds
 
 import (
 	"bufio"
@@ -13,8 +13,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/rds"
 	"github.com/pganalyze/collector/config"
-	"github.com/pganalyze/collector/explain"
-	"github.com/pganalyze/collector/snapshot"
+	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
 )
 
@@ -22,8 +21,8 @@ import (
 // http://docs.aws.amazon.com/AmazonRDS/latest/APIReference//API_DownloadDBLogFilePortion.html
 // Retain the marker across runs to only download new data
 
-// GetFromAmazonRds - Gets log lines for an Amazon RDS instance
-func getFromAmazonRds(config config.DatabaseConfig) (result []*snapshot.LogLine, explains []explain.ExplainInput) {
+// GetLogLines - Gets log lines for an Amazon RDS instance
+func GetLogLines(config config.DatabaseConfig) (result []state.LogLine, explains []state.PostgresExplainInput) {
 	// Get interesting files (last written to in the last 10 minutes)
 	// Remember markers for each file
 
@@ -71,7 +70,7 @@ func getFromAmazonRds(config config.DatabaseConfig) (result []*snapshot.LogLine,
 			return
 		}
 
-		var logLines []snapshot.LogLine
+		var logLines []state.LogLine
 
 		var incompleteLine = false
 
@@ -100,7 +99,7 @@ func getFromAmazonRds(config config.DatabaseConfig) (result []*snapshot.LogLine,
 			// TODO: What we should actually do is look at log_line_prefix and find the relevant
 			// parts using that - otherwise we break in non-default RDS setups
 
-			var logLine snapshot.LogLine
+			var logLine state.LogLine
 
 			parts := strings.SplitN(string(line), ":", 8)
 			if len(parts) != 8 {
@@ -118,16 +117,10 @@ func getFromAmazonRds(config config.DatabaseConfig) (result []*snapshot.LogLine,
 				continue
 			}
 
-			backendPid, _ := strconv.Atoi(parts[5][1 : len(parts[5])-1])
-			clientIp := regexp.MustCompile(`[\d.]+`).FindString(parts[3])
-
-			if clientIp != "" {
-				logLine.ClientIp = &snapshot.NullString{Valid: true, Value: clientIp}
-			}
-
-			logLine.OccurredAt = timestamp.Unix()
+			logLine.OccurredAt = timestamp
+			logLine.ClientIP = regexp.MustCompile(`[\d.]+`).FindString(parts[3])
 			//logLine.usernameAndDatabase = parts[4] // TODO: We should probably filter out other databases (in our current monitoring model)
-			logLine.BackendPid = int32(backendPid)
+			logLine.BackendPid, _ = strconv.Atoi(parts[5][1 : len(parts[5])-1])
 			logLine.LogLevel = parts[6]
 			logLine.Content = strings.TrimLeft(parts[7], " ")
 
@@ -135,11 +128,11 @@ func getFromAmazonRds(config config.DatabaseConfig) (result []*snapshot.LogLine,
 		}
 
 		// Split log lines by backend to ensure we have the right context
-		backendLogLines := make(map[int32][]snapshot.LogLine)
+		backendLogLines := make(map[int][]state.LogLine)
 
 		for _, logLine := range logLines {
 			// Ignore loglines which are outside our time window
-			if time.Unix(logLine.OccurredAt, 0).Before(linesNewerThan) {
+			if logLine.OccurredAt.Before(linesNewerThan) {
 				continue
 			}
 
@@ -160,7 +153,7 @@ func getFromAmazonRds(config config.DatabaseConfig) (result []*snapshot.LogLine,
 				upperBound := int(math.Min(float64(len(logLines)), float64(idx+3)))
 				for _, futureLine := range logLines[lowerBound:upperBound] {
 					if futureLine.LogLevel == "STATEMENT" || futureLine.LogLevel == "DETAIL" {
-						logLine.AdditionalLines = append(logLine.AdditionalLines, &futureLine)
+						logLine.AdditionalLines = append(logLine.AdditionalLines, futureLine)
 						skipLines++
 					} else {
 						break
@@ -176,8 +169,8 @@ func getFromAmazonRds(config config.DatabaseConfig) (result []*snapshot.LogLine,
 					}
 
 					runtime, _ := strconv.ParseFloat(parts[1], 64)
-					explains = append(explains, explain.ExplainInput{
-						OccurredAt: util.TimestampFrom(time.Unix(logLine.OccurredAt, 0)),
+					explains = append(explains, state.PostgresExplainInput{
+						OccurredAt: logLine.OccurredAt,
 						Query:      parts[3],
 						Runtime:    runtime,
 					})
@@ -188,7 +181,7 @@ func getFromAmazonRds(config config.DatabaseConfig) (result []*snapshot.LogLine,
 				// Need to clean STATEMENT
 				// Need to remove DETAIL "parameters: "
 
-				result = append(result, &logLine)
+				result = append(result, logLine)
 			}
 		}
 

@@ -1,13 +1,13 @@
-package dbstats
+package postgres
 
 import (
 	"database/sql"
 
 	"github.com/lfittl/pg_query_go"
-	"github.com/pganalyze/collector/snapshot"
+	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
 
-	null "gopkg.in/guregu/null.v2"
+	null "gopkg.in/guregu/null.v3"
 )
 
 // http://www.postgresql.org/docs/devel/static/monitoring-stats.html#PG-STAT-ACTIVITY-VIEW
@@ -16,7 +16,7 @@ const activitySQL string = `SELECT pid, usename, application_name, client_addr::
 	 FROM pg_stat_activity
 	WHERE pid <> pg_backend_pid() AND datname = current_database()`
 
-func GetActivity(logger *util.Logger, db *sql.DB, postgresVersion snapshot.PostgresVersion) ([]*snapshot.Activity, error) {
+func GetBackends(logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion) ([]state.PostgresBackend, error) {
 	stmt, err := db.Prepare(QueryMarkerSQL + activitySQL)
 	if err != nil {
 		return nil, err
@@ -31,10 +31,10 @@ func GetActivity(logger *util.Logger, db *sql.DB, postgresVersion snapshot.Postg
 
 	defer rows.Close()
 
-	var activities []*snapshot.Activity
+	var activities []state.PostgresBackend
 
 	for rows.Next() {
-		var row snapshot.Activity
+		var row state.PostgresBackend
 		var query null.String
 
 		err := rows.Scan(&row.Pid, &row.Username, &row.ApplicationName, &row.ClientAddr,
@@ -49,11 +49,11 @@ func GetActivity(logger *util.Logger, db *sql.DB, postgresVersion snapshot.Postg
 			if err != nil {
 				logger.PrintVerbose("Failed to normalize query, excluding from statistics: %s", err)
 			} else {
-				row.NormalizedQuery = normalizedQuery
+				row.NormalizedQuery = null.StringFrom(normalizedQuery)
 			}
 		}
 
-		activities = append(activities, &row)
+		activities = append(activities, row)
 	}
 
 	return activities, nil

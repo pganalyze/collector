@@ -1,11 +1,6 @@
 syntax = "proto3";
 package snapshot;
 
-message NullString {
-  bool valid = 1;
-  string value = 2;
-}
-
 message NullInt64 {
   bool valid = 1;
   int64 value = 2;
@@ -16,17 +11,12 @@ message NullDouble {
   double value = 2;
 }
 
-message NullTimestamp {
-  bool valid = 1;
-  int64 value = 2;
-}
 
 message Snapshot {
   repeated Activity backends = 1;
   // Statements    []Statement      `msg:"queries"`
   SnapshotPostgres postgres = 3;
   System system = 4;
-  repeated LogLine logs = 5;
   repeated Explain explains = 6;
   SnapshotOpts opts = 7;
 }
@@ -34,13 +24,6 @@ message Snapshot {
 message SnapshotOpts {
   bool statement_stats_are_diffed = 1;
 	bool postgres_relation_stats_are_diffed = 2;
-}
-
-message SnapshotPostgres {
-  repeated Relation relations = 1;
-  repeated Setting settings = 2;
-  repeated Function functions = 3;
-  PostgresVersion version = 4;
 }
 
 enum SystemType {
@@ -85,143 +68,6 @@ message Scheduler {
   int64 procs_blocked = 6;
   int64 procs_created = 7;
   int64 procs_running = 8;
-}
-
-message LogLine {
-  int64 occurred_at = 1;
-  SourceType source = 2;
-  NullString client_ip = 3;
-  string log_level = 4;
-  int32 backend_pid = 5;
-  string content = 6;
-  repeated LogLine additional_lines = 7;
-
-  enum SourceType {
-    PostgresSource = 0;
-    AmazonRdsSource = 1;
-  }
-}
-
-message Explain {
-  int64 occurred_at = 1;
-  string normalized_query = 2;
-  double runtime = 3;
-  string explain_output = 4;
-  NullString explain_error = 5;
-}
-
-message Setting {
-  string name = 1;
-  string current_value = 2;
-  NullString unit = 3;
-  NullString boot_value = 4;
-  NullString reset_value = 5;
-  NullString source = 6;
-  NullString source_file = 7;
-  NullString source_line = 8;
-}
-
-message Function {
-  string schema_name = 1;
-  string function_name = 2;
-  string language = 3;
-  string source = 4;
-  string source_bin = 5;
-  NullString config = 6;
-  string arguments = 7;
-  string result = 8;
-  bool aggregate = 9;
-  bool window = 10;
-  bool security_definer = 11;
-  bool leakproof = 12;
-  bool strict = 13;
-  bool returns_set = 14;
-  string volatile = 15;
-  NullInt64 calls = 16;
-  NullDouble total_time = 17;
-  NullDouble self_time = 18;
-}
-
-message Relation {
-  int64 oid = 1;
-  string schema_name = 2;
-  string table_name = 3;
-  string relation_type = 4;
-  Stats stats = 5;
-  repeated Column columns = 7;
-  repeated Index indices = 8;
-  repeated Constraint constraints = 9;
-  string view_definition = 10;
-
-  message Column {
-    int64 relation_oid = 1;
-    string name = 2;
-    string data_type = 3;
-    NullString default_value = 4;
-    bool not_null = 5;
-    int64 position = 6;
-  }
-
-  message Stats {
-    int64 size_bytes = 1;
-    int64 wasted_bytes = 2;
-  	int64 seq_scan = 3;             // Number of sequential scans initiated on this table
-  	int64 seq_tup_read = 4;         // Number of live rows fetched by sequential scans
-  	int64 idx_scan = 5;             // Number of index scans initiated on this table
-  	int64 idx_tup_fetch = 6;        // Number of live rows fetched by index scans
-  	int64 n_tup_ins = 7;            // Number of rows inserted
-  	int64 n_tup_upd = 8;            // Number of rows updated
-  	int64 n_tup_del = 9;            // Number of rows deleted
-  	int64 n_tup_hot_upd = 10;       // Number of rows HOT updated (i.e., with no separate index update required)
-  	int64 n_live_tup = 11;          // Estimated number of live rows
-  	int64 n_dead_tup = 12;          // Estimated number of dead rows
-    NullInt64 n_mod_since_analyze = 13; // Estimated number of rows modified since this table was last analyzed
-  	NullTimestamp last_vacuum = 14;         // Last time at which this table was manually vacuumed (not counting VACUUM FULL)
-  	NullTimestamp last_autovacuum = 15;     // Last time at which this table was vacuumed by the autovacuum daemon
-  	NullTimestamp last_analyze = 16;        // Last time at which this table was manually analyzed
-  	NullTimestamp last_autoanalyze = 17;    // Last time at which this table was analyzed by the autovacuum daemon
-  	int64 vacuum_count = 18;        // Number of times this table has been manually vacuumed (not counting VACUUM FULL)
-  	int64 autovacuum_count = 19;    // Number of times this table has been vacuumed by the autovacuum daemon
-  	int64 analyze_count = 20;       // Number of times this table has been manually analyzed
-  	int64 autoanalyze_count = 21;   // Number of times this table has been analyzed by the autovacuum daemon
-  	NullInt64 heap_blks_read = 22;      // Number of disk blocks read from this table
-  	NullInt64 heap_blks_hit = 23;       // Number of buffer hits in this table
-  	NullInt64 idx_blks_read = 24;       // Number of disk blocks read from all indexes on this table
-  	NullInt64 idx_blks_hit = 25;        // Number of buffer hits in all indexes on this table
-  	NullInt64 toast_blks_read = 26;     // Number of disk blocks read from this table's TOAST table (if any)
-  	NullInt64 toast_blks_hit = 27;      // Number of buffer hits in this table's TOAST table (if any)
-  	NullInt64 tidx_blks_read = 28;      // Number of disk blocks read from this table's TOAST table indexes (if any)
-  	NullInt64 tidx_blks_hit = 29;       // Number of buffer hits in this table's TOAST table indexes (if any)
-  }
-
-  message Index {
-    int64 relation_oid = 1;
-    int64 index_oid = 2;
-    string columns = 3;
-    string name = 4;
-    int64 size_bytes = 5;
-    int64 wasted_bytes = 6;
-    bool is_primary = 7;
-    bool is_unique = 8;
-    bool is_valid = 9;
-    string index_def = 10;
-    NullString constraint_def = 11;
-    int64 idx_scan = 12;
-    int64 idx_tup_read = 13;
-    int64 idx_tup_fetch = 14;
-    int64 idx_blks_read = 15;
-    int64 idx_blks_hit = 16;
-  }
-
-  message Constraint {
-    int64 relation_oid = 1;
-    string name = 2;
-    string constraint_def = 3;
-    string columns = 4;
-    string foreign_schema = 5;
-    string foreign_table = 6;
-    string foreign_columns = 7;
-  }
 }
 
 message StoragePerfdata {
@@ -288,26 +134,6 @@ message Memory {
   int64 total_bytes = 8;
   int64 writeback_bytes = 9;
   int64 active_bytes = 10;
-}
-
-message PostgresVersion {
-  string full = 1;
-  string short = 2;
-  int64 numeric = 3;
-}
-
-message Activity {
-  int64 pid = 1;
-  string username = 2;
-  string application_name = 3;
-  string client_addr = 4;
-  int64 backend_start = 5; // Unix timestamp
-  int64 xact_start = 6; // Unix timestamp
-  int64 query_start = 7; // Unix timestamp
-  int64 state_change = 8; // Unix timestamp
-  bool waiting = 9;
-  string state = 10;
-  string normalized_query = 11;
 }
 
 message AmazonRdsInfo {

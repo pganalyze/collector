@@ -21,18 +21,17 @@ import (
 	"github.com/golang/protobuf/proto"
 	flag "github.com/ogier/pflag"
 
+	"github.com/pganalyze/collector/config"
+	"github.com/pganalyze/collector/input/postgres"
+	"github.com/pganalyze/collector/input/system"
+	"github.com/pganalyze/collector/scheduler"
+	"github.com/pganalyze/collector/snapshot"
+	"github.com/pganalyze/collector/state"
+	"github.com/pganalyze/collector/util"
+
 	"database/sql"
 
 	_ "github.com/lib/pq" // Enable database package to use Postgres
-
-	"github.com/pganalyze/collector/config"
-	"github.com/pganalyze/collector/dbstats"
-	"github.com/pganalyze/collector/explain"
-	"github.com/pganalyze/collector/logs"
-	scheduler "github.com/pganalyze/collector/scheduler"
-	"github.com/pganalyze/collector/snapshot"
-	"github.com/pganalyze/collector/systemstats"
-	"github.com/pganalyze/collector/util"
 )
 
 type collectionOpts struct {
@@ -61,7 +60,8 @@ type statementStatsKey struct {
 }
 
 type statsState struct {
-	statements map[statementStatsKey]snapshot.Statement
+	collectedAt time.Time
+	statements  map[statementStatsKey]state.PostgresStatement
 }
 
 type database struct {
@@ -72,42 +72,44 @@ type database struct {
 }
 
 func collectStatistics(db database, collectionOpts collectionOpts, logger *util.Logger) (newState statsState, err error) {
-	var stats snapshot.Snapshot
-	var explainInputs []explain.ExplainInput
+	var s state.State
+	var explainInputs []state.PostgresExplainInput
 
-	postgresVersion, err := dbstats.GetPostgresVersion(logger, db.connection)
+	postgresVersion, err := postgres.GetPostgresVersion(logger, db.connection)
 	if err != nil {
 		logger.PrintError("Error collecting Postgres Version")
 		return
 	}
 
-	stats.Postgres = &snapshot.SnapshotPostgres{}
-	stats.Postgres.Version = &postgresVersion
+	/*stats.Postgres = &snapshot.SnapshotPostgres{}
+	stats.Postgres.Version = &postgresVersion*/
 
-	if postgresVersion.Numeric < snapshot.MinRequiredPostgresVersion {
+	if postgresVersion.Numeric < state.MinRequiredPostgresVersion {
 		err = fmt.Errorf("Error: Your PostgreSQL server version (%s) is too old, 9.2 or newer is required.", postgresVersion.Short)
 		return
 	}
 
-	stats.Backends, err = dbstats.GetActivity(logger, db.connection, postgresVersion)
+	s.Backends, err = postgres.GetBackends(logger, db.connection, postgresVersion)
 	if err != nil {
 		logger.PrintError("Error collecting pg_stat_activity")
 		return
 	}
 
-	/*stats.Statements, err = dbstats.GetStatements(logger, db.connection, postgresVersion)
+	fmt.Printf("%+v\n", s.Backends)
+
+	statements, err := postgres.GetStatements(logger, db.connection, postgresVersion)
 	if err != nil {
 		logger.PrintError("Error collecting pg_stat_statements")
 		return
 	}
 
-	if collectionOpts.diffStatements && postgresVersion.Numeric >= snapshot.PostgresVersion94 {
-		var diffedStatements []snapshot.Statement
+	if postgresVersion.Numeric >= state.PostgresVersion94 {
+		var diffedStatements []state.PostgresStatement
 
-		newState.statements = make(map[statementStatsKey]snapshot.Statement)
+		newState.statements = make(map[statementStatsKey]state.PostgresStatement)
 
 		// Iterate through all statements, and diff them based on the previous state
-		for _, statement := range stats.Statements {
+		for _, statement := range statements {
 			key := statementStatsKey{Userid: statement.Userid, Queryid: int(statement.Queryid.Int64)}
 
 			prevStatement, exists := db.prevState.statements[key]
@@ -123,12 +125,24 @@ func collectStatistics(db database, collectionOpts collectionOpts, logger *util.
 			newState.statements[key] = statement
 		}
 
-		stats.Statements = diffedStatements
-		stats.Opts.StatementStatsAreDiffed = true
-	}*/
+		fmt.Printf("New state size: %d", len(newState.statements))
+
+		var queryInformations []*snapshot.QueryInformation
+
+		for _, statement := range diffedStatements {
+			var queryInformation snapshot.QueryInformation
+
+			queryInformation.NormalizedQuery = statement.Query
+
+			queryInformations = append(queryInformations, &queryInformation)
+		}
+
+		//s.QueryInformations = queryInformations
+		//stats.Opts.StatementStatsAreDiffed = true
+	}
 
 	if collectionOpts.collectPostgresRelations {
-		stats.Postgres.Relations, err = dbstats.GetRelations(db.connection, postgresVersion, collectionOpts.collectPostgresBloat)
+		s.Relations, err = postgres.GetRelations(db.connection, postgresVersion, collectionOpts.collectPostgresBloat)
 		if err != nil {
 			logger.PrintError("Error collecting schema information")
 			return
@@ -136,7 +150,7 @@ func collectStatistics(db database, collectionOpts collectionOpts, logger *util.
 	}
 
 	if collectionOpts.collectPostgresSettings {
-		stats.Postgres.Settings, err = dbstats.GetSettings(db.connection, postgresVersion)
+		s.Settings, err = postgres.GetSettings(db.connection, postgresVersion)
 		if err != nil {
 			logger.PrintError("Error collecting config settings")
 			return
@@ -144,7 +158,7 @@ func collectStatistics(db database, collectionOpts collectionOpts, logger *util.
 	}
 
 	if collectionOpts.collectPostgresFunctions {
-		stats.Postgres.Functions, err = dbstats.GetFunctions(db.connection, postgresVersion)
+		s.Functions, err = postgres.GetFunctions(db.connection, postgresVersion)
 		if err != nil {
 			logger.PrintError("Error collecting stored procedures")
 			return
@@ -152,18 +166,20 @@ func collectStatistics(db database, collectionOpts collectionOpts, logger *util.
 	}
 
 	if collectionOpts.collectSystemInformation {
-		stats.System = systemstats.GetSystemSnapshot(db.config, logger)
+		systemState := system.GetSystemState(db.config, logger)
+		s.System = &systemState
 	}
 
 	if collectionOpts.collectLogs {
-		stats.Logs, explainInputs = logs.GetLogLines(db.config)
+		s.Logs, explainInputs = system.GetLogLines(db.config)
 
 		if collectionOpts.collectExplain {
-			stats.Explains = explain.RunExplain(db.connection, explainInputs)
+			s.Explains = postgres.RunExplain(db.connection, explainInputs)
 		}
 	}
 
-	statsProto, err := proto.Marshal(&stats)
+	// FIXME: Need to transform state into snapshot
+	statsProto, err := proto.Marshal(&snapshot.Snapshot{})
 	if err != nil {
 		logger.PrintError("Error marshaling statistics")
 		return
@@ -270,7 +286,7 @@ func collectAllDatabases(databases []database, globalCollectionOpts collectionOp
 func validateConnectionCount(connection *sql.DB, logger *util.Logger, globalCollectionOpts collectionOpts) {
 	var connectionCount int
 
-	connection.QueryRow(dbstats.QueryMarkerSQL + "SELECT COUNT(*) FROM pg_stat_activity WHERE application_name = '" + globalCollectionOpts.collectorApplicationName + "'").Scan(&connectionCount)
+	connection.QueryRow(postgres.QueryMarkerSQL + "SELECT COUNT(*) FROM pg_stat_activity WHERE application_name = '" + globalCollectionOpts.collectorApplicationName + "'").Scan(&connectionCount)
 
 	if connectionCount > 1 {
 		logger.PrintError("Too many open monitoring connections (%d), exiting", connectionCount)
@@ -358,10 +374,10 @@ func run(wg sync.WaitGroup, globalCollectionOpts collectionOpts, logger *util.Lo
 
 	// We intentionally don't do a test-run in the normal mode, since we're fine with
 	// a later SIGHUP that fixes the config (or a temporarily unreachable server at start)
-	if globalCollectionOpts.testRun {
+	/*if globalCollectionOpts.testRun {
 		collectAllDatabases(databases, globalCollectionOpts, logger)
 		return nil
-	}
+	}FIXME*/
 
 	stop := schedulerGroups["stats"].Schedule(func() {
 		wg.Add(1)
