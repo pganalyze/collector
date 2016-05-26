@@ -10,9 +10,9 @@ import (
 	null "gopkg.in/guregu/null.v3"
 )
 
-// http://www.postgresql.org/docs/devel/static/monitoring-stats.html#PG-STAT-ACTIVITY-VIEW
-const activitySQL string = `SELECT pid, usename, application_name, client_addr::text, backend_start,
-				xact_start, query_start, state_change, waiting, state, query
+// https://www.postgresql.org/docs/9.5/static/monitoring-stats.html#PG-STAT-ACTIVITY-VIEW
+const activitySQL string = `SELECT datid, usesysid, pid, application_name, client_addr::text, client_port,
+				backend_start, xact_start, query_start, state_change, waiting, backend_xid, backend_xmin, state, query
 	 FROM pg_stat_activity
 	WHERE pid <> pg_backend_pid() AND datname = current_database()`
 
@@ -37,9 +37,9 @@ func GetBackends(logger *util.Logger, db *sql.DB, postgresVersion state.Postgres
 		var row state.PostgresBackend
 		var query null.String
 
-		err := rows.Scan(&row.Pid, &row.Username, &row.ApplicationName, &row.ClientAddr,
-			&row.BackendStart, &row.XactStart, &row.QueryStart, &row.StateChange,
-			&row.Waiting, &row.State, &query)
+		err := rows.Scan(&row.DatabaseOid, &row.UserOid, &row.Pid, &row.ApplicationName,
+			&row.ClientAddr, &row.ClientPort, &row.BackendStart, &row.XactStart, &row.QueryStart,
+			&row.StateChange, &row.Waiting, &row.BackendXid, &row.BackendXmin, &row.State, &query)
 		if err != nil {
 			return nil, err
 		}

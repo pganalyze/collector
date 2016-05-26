@@ -21,10 +21,7 @@ SELECT pn.nspname AS schema_name,
 			 pp.proleakproof AS leakproof,
 			 pp.proisstrict AS strict,
 			 pp.proretset AS returns_set,
-			 pp.provolatile AS volatile,
-			 ps.calls,
-			 ps.total_time,
-			 ps.self_time
+			 pp.provolatile AS volatile
 	FROM pg_proc pp
  INNER JOIN pg_namespace pn ON (pp.pronamespace = pn.oid)
  INNER JOIN pg_language pl ON (pp.prolang = pl.oid)
@@ -32,6 +29,10 @@ SELECT pn.nspname AS schema_name,
  WHERE pl.lanname != 'internal'
 			 AND pn.nspname NOT IN ('pg_catalog', 'information_schema')
 			 AND pp.proname NOT IN ('pg_stat_statements', 'pg_stat_statements_reset')`
+
+// ps.calls,
+// ps.total_time,
+// ps.self_time
 
 func GetFunctions(db *sql.DB, postgresVersion state.PostgresVersion) ([]state.PostgresFunction, error) {
 	stmt, err := db.Prepare(QueryMarkerSQL + functionsSQL)
@@ -55,8 +56,8 @@ func GetFunctions(db *sql.DB, postgresVersion state.PostgresVersion) ([]state.Po
 
 		err := rows.Scan(&row.SchemaName, &row.FunctionName, &row.Language, &row.Source,
 			&row.SourceBin, &row.Config, &row.Arguments, &row.Result, &row.Aggregate,
-			&row.Window, &row.SecurityDefiner, &row.Leakproof, &row.Strict, &row.ReturnsSet)
-		//	&row.Volatile, &row.Calls, &row.TotalTime, &row.SelfTime) FIXME
+			&row.Window, &row.SecurityDefiner, &row.Leakproof, &row.Strict, &row.ReturnsSet, &row.Volatile)
+		//	, &row.Calls, &row.TotalTime, &row.SelfTime) FIXME
 		if err != nil {
 			return nil, err
 		}

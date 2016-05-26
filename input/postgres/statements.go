@@ -15,14 +15,13 @@ const statementSQLpg94OptionalFields = "queryid, NULL, NULL, NULL, NULL"
 const statementSQLpg95OptionalFields = "queryid, min_time, max_time, mean_time, stddev_time"
 
 const statementSQL string = `
-SELECT userid, query, calls, total_time, rows, shared_blks_hit, shared_blks_read,
+SELECT dbid, userid, query, calls, total_time, rows, shared_blks_hit, shared_blks_read,
 			 shared_blks_dirtied, shared_blks_written, local_blks_hit, local_blks_read,
 			 local_blks_dirtied, local_blks_written, temp_blks_read, temp_blks_written,
 			 blk_read_time, blk_write_time, %s
 	FROM %s
  WHERE query !~* '^%s' AND query <> '<insufficient privilege>'
-			 AND query NOT LIKE 'DEALLOCATE %%'
-			 AND dbid IN (SELECT oid FROM pg_database WHERE datname = current_database())`
+			 AND query NOT LIKE 'DEALLOCATE %%'`
 
 const statementStatsHelperSQL string = `
 SELECT 1 AS enabled
@@ -42,7 +41,8 @@ func statementStatsHelperExists(db *sql.DB) bool {
 	return enabled
 }
 
-func GetStatements(logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion) ([]state.PostgresStatement, error) {
+func GetStatements(logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion) (map[state.PostgresStatementKey]state.PostgresStatement, error) {
+	var err error
 	var optionalFields string
 	var sourceTable string
 
@@ -72,7 +72,7 @@ func GetStatements(logger *util.Logger, db *sql.DB, postgresVersion state.Postgr
 		if sourceTable == "pg_stat_statements" && err.(*pq.Error).Code == "42P01" { // undefined_table
 			logger.PrintInfo("pg_stat_statements relation does not exist, trying to create extension...")
 
-			_, err := db.Exec(QueryMarkerSQL + "CREATE EXTENSION IF NOT EXISTS pg_stat_statements")
+			_, err = db.Exec(QueryMarkerSQL + "CREATE EXTENSION IF NOT EXISTS pg_stat_statements")
 			if err != nil {
 				return nil, err
 			}
@@ -94,21 +94,21 @@ func GetStatements(logger *util.Logger, db *sql.DB, postgresVersion state.Postgr
 	}
 	defer rows.Close()
 
-	var statements []state.PostgresStatement
+	statements := make(map[state.PostgresStatementKey]state.PostgresStatement)
 
 	for rows.Next() {
-		var row state.PostgresStatement
+		var statement state.PostgresStatement
 
-		err := rows.Scan(&row.Userid, &row.Query, &row.Calls, &row.TotalTime, &row.Rows,
-			&row.SharedBlksHit, &row.SharedBlksRead, &row.SharedBlksDirtied, &row.SharedBlksWritten,
-			&row.LocalBlksHit, &row.LocalBlksRead, &row.LocalBlksDirtied, &row.LocalBlksWritten,
-			&row.TempBlksRead, &row.TempBlksWritten, &row.BlkReadTime, &row.BlkWriteTime,
-			&row.Queryid, &row.MinTime, &row.MaxTime, &row.MeanTime, &row.StddevTime)
+		err = rows.Scan(&statement.DatabaseOid, &statement.UserOid, &statement.NormalizedQuery, &statement.Calls, &statement.TotalTime, &statement.Rows,
+			&statement.SharedBlksHit, &statement.SharedBlksRead, &statement.SharedBlksDirtied, &statement.SharedBlksWritten,
+			&statement.LocalBlksHit, &statement.LocalBlksRead, &statement.LocalBlksDirtied, &statement.LocalBlksWritten,
+			&statement.TempBlksRead, &statement.TempBlksWritten, &statement.BlkReadTime, &statement.BlkWriteTime,
+			&statement.QueryId, &statement.MinTime, &statement.MaxTime, &statement.MeanTime, &statement.StddevTime)
 		if err != nil {
 			return nil, err
 		}
 
-		statements = append(statements, row)
+		statements[statement.Key()] = statement
 	}
 
 	return statements, nil

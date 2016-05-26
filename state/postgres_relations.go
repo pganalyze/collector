@@ -2,8 +2,6 @@ package state
 
 import "gopkg.in/guregu/null.v3"
 
-type Oid int64
-
 type PostgresRelation struct {
 	Oid            Oid                   `json:"oid"`
 	SchemaName     string                `json:"schema_name"`
