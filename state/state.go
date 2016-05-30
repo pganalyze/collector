@@ -10,7 +10,9 @@ import (
 type State struct {
 	CollectedAt time.Time
 
-	Statements map[PostgresStatementKey]PostgresStatement
+	Statements    PostgresStatementMap
+	RelationStats PostgresRelationStatsMap
+	IndexStats    PostgresIndexStatsMap
 
 	Backends  []PostgresBackend
 	Relations []PostgresRelation
@@ -23,7 +25,9 @@ type State struct {
 }
 
 type DiffState struct {
-	Statements []DiffedPostgresStatement
+	Statements    []DiffedPostgresStatement
+	RelationStats DiffedPostgresRelationStatsMap
+	IndexStats    DiffedPostgresIndexStatsMap
 }
 
 type CollectionOpts struct {

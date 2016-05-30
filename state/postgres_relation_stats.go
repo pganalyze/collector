@@ -1,0 +1,95 @@
+package state
+
+import "gopkg.in/guregu/null.v3"
+
+type PostgresRelationStats struct {
+	SizeBytes        int64
+	SeqScan          int64     // Number of sequential scans initiated on this table
+	SeqTupRead       int64     // Number of live rows fetched by sequential scans
+	IdxScan          int64     // Number of index scans initiated on this table
+	IdxTupFetch      int64     // Number of live rows fetched by index scans
+	NTupIns          int64     // Number of rows inserted
+	NTupUpd          int64     // Number of rows updated
+	NTupDel          int64     // Number of rows deleted
+	NTupHotUpd       int64     // Number of rows HOT updated (i.e., with no separate index update required)
+	NLiveTup         int64     // Estimated number of live rows
+	NDeadTup         int64     // Estimated number of dead rows
+	NModSinceAnalyze null.Int  // Estimated number of rows modified since this table was last analyzed
+	LastVacuum       null.Time // Last time at which this table was manually vacuumed (not counting VACUUM FULL)
+	LastAutovacuum   null.Time // Last time at which this table was vacuumed by the autovacuum daemon
+	LastAnalyze      null.Time // Last time at which this table was manually analyzed
+	LastAutoanalyze  null.Time // Last time at which this table was analyzed by the autovacuum daemon
+	VacuumCount      int64     // Number of times this table has been manually vacuumed (not counting VACUUM FULL)
+	AutovacuumCount  int64     // Number of times this table has been vacuumed by the autovacuum daemon
+	AnalyzeCount     int64     // Number of times this table has been manually analyzed
+	AutoanalyzeCount int64     // Number of times this table has been analyzed by the autovacuum daemon
+	HeapBlksRead     int64     // Number of disk blocks read from this table
+	HeapBlksHit      int64     // Number of buffer hits in this table
+	IdxBlksRead      int64     // Number of disk blocks read from all indexes on this table
+	IdxBlksHit       int64     // Number of buffer hits in all indexes on this table
+	ToastBlksRead    int64     // Number of disk blocks read from this table's TOAST table (if any)
+	ToastBlksHit     int64     // Number of buffer hits in this table's TOAST table (if any)
+	TidxBlksRead     int64     // Number of disk blocks read from this table's TOAST table indexes (if any)
+	TidxBlksHit      int64     // Number of buffer hits in this table's TOAST table indexes (if any)
+}
+
+type PostgresIndexStats struct {
+	SizeBytes   int64
+	IdxScan     int64 // Number of index scans initiated on this index
+	IdxTupRead  int64 // Number of index entries returned by scans on this index
+	IdxTupFetch int64 // Number of live table rows fetched by simple index scans using this index
+	IdxBlksRead int64 // Number of disk blocks read from this index
+	IdxBlksHit  int64 // Number of buffer hits in this index
+}
+
+type PostgresRelationStatsMap map[Oid]PostgresRelationStats
+type PostgresIndexStatsMap map[Oid]PostgresIndexStats
+
+type DiffedPostgresRelationStats PostgresRelationStats
+type DiffedPostgresIndexStats PostgresIndexStats
+type DiffedPostgresRelationStatsMap map[Oid]DiffedPostgresRelationStats
+type DiffedPostgresIndexStatsMap map[Oid]DiffedPostgresIndexStats
+
+func (curr PostgresRelationStats) DiffSince(prev PostgresRelationStats) DiffedPostgresRelationStats {
+	return DiffedPostgresRelationStats{
+		SizeBytes:        curr.SizeBytes,
+		SeqScan:          curr.SeqScan - prev.SeqScan,
+		SeqTupRead:       curr.SeqTupRead - prev.SeqTupRead,
+		IdxScan:          curr.IdxScan - prev.IdxScan,
+		IdxTupFetch:      curr.IdxTupFetch - prev.IdxTupFetch,
+		NTupIns:          curr.NTupIns - prev.NTupIns,
+		NTupUpd:          curr.NTupUpd - prev.NTupUpd,
+		NTupDel:          curr.NTupDel - prev.NTupDel,
+		NTupHotUpd:       curr.NTupHotUpd - prev.NTupHotUpd,
+		NLiveTup:         curr.NLiveTup - prev.NLiveTup,
+		NDeadTup:         curr.NDeadTup - prev.NDeadTup,
+		NModSinceAnalyze: curr.NModSinceAnalyze,
+		LastVacuum:       curr.LastVacuum,
+		LastAutovacuum:   curr.LastAutovacuum,
+		LastAnalyze:      curr.LastAnalyze,
+		LastAutoanalyze:  curr.LastAutoanalyze,
+		VacuumCount:      curr.VacuumCount - prev.VacuumCount,
+		AutovacuumCount:  curr.AutovacuumCount - prev.AutovacuumCount,
+		AnalyzeCount:     curr.AnalyzeCount - prev.AnalyzeCount,
+		AutoanalyzeCount: curr.AutoanalyzeCount - prev.AutoanalyzeCount,
+		HeapBlksRead:     curr.HeapBlksRead - prev.HeapBlksRead,
+		HeapBlksHit:      curr.HeapBlksHit - prev.HeapBlksHit,
+		IdxBlksRead:      curr.IdxBlksRead - prev.IdxBlksRead,
+		IdxBlksHit:       curr.IdxBlksHit - prev.IdxBlksHit,
+		ToastBlksRead:    curr.ToastBlksRead - prev.ToastBlksRead,
+		ToastBlksHit:     curr.ToastBlksHit - prev.ToastBlksHit,
+		TidxBlksRead:     curr.TidxBlksRead - prev.TidxBlksRead,
+		TidxBlksHit:      curr.TidxBlksHit - prev.TidxBlksHit,
+	}
+}
+
+func (curr PostgresIndexStats) DiffSince(prev PostgresIndexStats) DiffedPostgresIndexStats {
+	return DiffedPostgresIndexStats{
+		SizeBytes:   curr.SizeBytes,
+		IdxScan:     curr.IdxScan - prev.IdxScan,
+		IdxTupRead:  curr.IdxTupRead - prev.IdxTupRead,
+		IdxTupFetch: curr.IdxTupFetch - prev.IdxTupFetch,
+		IdxBlksRead: curr.IdxBlksRead - prev.IdxBlksRead,
+		IdxBlksHit:  curr.IdxBlksHit - prev.IdxBlksHit,
+	}
+}

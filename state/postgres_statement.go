@@ -36,6 +36,8 @@ type PostgresStatement struct {
 	StddevTime null.Float // Population standard deviation of time spent in the statement, in milliseconds
 }
 
+type PostgresStatementMap map[PostgresStatementKey]PostgresStatement
+
 type DiffedPostgresStatement PostgresStatement
 
 type PostgresStatementKey struct {
