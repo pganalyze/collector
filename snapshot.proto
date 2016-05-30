@@ -13,17 +13,58 @@ package snapshot;
 //              first we create/find all references and get their IDs, then we
 //              just COPY all statistics into the database, replacing idx for ID.
 //
-// - Information: Data that is unique per reference, and is not stored historically.
+// - Information: Data that is attached to a reference, at most once, and is not stored historically.
 //                When processing this data can simply be UPDATEd after the initial UPSERT.
 //
 //                In some cases this data might also be provided at less frequent intervals than Statistics.
 //
-// - Statistic: Data that is unique per reference, and is stored historically.
+// - Statistic: Data that is attached to a reference, at most once, and is stored historically.
 //              When processing this data can be COPYed after the initial UPSERT.
 //
 //              In case the input data is a counter, this will be normalized by the collector
 //              before the snapshot is created, the recipient does not need to look at previous
 //              values to find out what happened.
+//
+// - Event: Data that is attached to a reference, and can occur multiple times for one reference within the snapshot.
+//          When processing this data can be COPYed after the initial UPSERT.
+
+message Snapshot {
+  // Basic information about this snapshot
+  string collector_version = 1;
+  google.protobuf.Timestamp collected_at = 2;
+
+  // Per server (and hence snapshot)
+  PostgresVersion postgres_version = 101;
+
+  repeated LogLine logs = 102;
+  repeated Backend backends = 103;
+  repeated Setting settings = 104;
+
+  repeated string database_references = 105; //  = ['mydb']
+  repeated string user_references = 106; // = ['admin', 'otheruser', 'something_else']
+
+  // Per database
+  repeated QueryReference query_references = 200;
+  repeated RelationReference relation_references = 201;
+  repeated IndexReference index_references = 202;
+  repeated FunctionReference function_references = 203;
+
+  repeated QueryInformation query_informations = 210;
+  repeated QueryStatistic query_statistics = 211;
+  repeated QueryExplain query_explains = 212;
+
+  repeated RelationInformation relation_informations = 220;
+  repeated RelationStatistic relation_statistics = 221;
+  repeated RelationBloatStatistic relation_bloat_statistics = 222;
+  repeated RelationEvent relation_events = 223;
+
+  repeated IndexInformation index_informations = 224;
+  repeated IndexStatistic index_statistics = 225;
+  repeated IndexBloatStatistic index_bloat_statistics = 226;
+
+  repeated FunctionInformation function_informations = 227;
+  repeated FunctionStatistic function_statistics = 228;
+}
 
 message NullString {
   bool valid = 1;
@@ -49,49 +90,20 @@ message FunctionReference {
   string arguments = 4;
 }
 
-message Snapshot {
-  // Per server (and hence snapshot)
-  PostgresVersion version = 100;
-
-  repeated LogLine logs = 101;
-  repeated Backend backends = 102;
-  repeated Setting settings = 103;
-
-  // Per database
-  repeated string database_references = 1; //  = ['mydb']
-  repeated string user_references = 2; // = ['admin', 'otheruser', 'something_else']
-
-  repeated RelationReference relation_references = 3;
-  repeated IndexReference index_references = 4;
-  repeated FunctionReference function_references = 5;
-
-  repeated QueryInformation query_informations = 10;
-  repeated QueryStatistic query_statistics = 11;
-  repeated QueryExplain query_explains = 12;
-
-  repeated RelationInformation relation_informations = 20;
-  repeated RelationStatistic relation_statistics = 21;
-  repeated RelationBloatStatistic relation_bloat_statistics = 22;
-
-  repeated IndexInformation index_informations = 24;
-  repeated IndexStatistic index_statistics = 25;
-
-  repeated FunctionInformation function_informations = 26;
-  repeated FunctionStatistic function_statistics = 27;
+message QueryReference {
+  int32 database_idx = 1;
+  int32 user_idx = 2;
+  bytes fingerprint = 3;
 }
 
 message QueryInformation {
-  int32 database_ref = 1;
-  int32 user_ref = 2;
-  bytes fingerprint = 3;
+  int32 query_ref = 1;
 
   string normalized_query = 4;
 }
 
 message QueryStatistic {
-  int32 database_ref = 1;
-  int32 user_ref = 2;
-  bytes fingerprint = 3;
+  int32 query_ref = 1;
 
   int64 calls = 4;
   double total_time = 5;
@@ -119,9 +131,7 @@ message QueryStatistic {
 }
 
 message QueryExplain {
-  int32 database_ref = 1;
-  int32 user_ref = 2;
-  bytes fingerprint = 3;
+  int32 query_ref = 1;
 
   int64 occurred_at = 4;
   double runtime = 5;
@@ -171,30 +181,35 @@ message RelationStatistic {
   int64 n_live_tup = 11;          // Estimated number of live rows
   int64 n_dead_tup = 12;          // Estimated number of dead rows
   int64 n_mod_since_analyze = 13; // Estimated number of rows modified since this table was last analyzed
+  int64 heap_blks_read = 18;      // Number of disk blocks read from this table
+  int64 heap_blks_hit = 19;       // Number of buffer hits in this table
+  int64 idx_blks_read = 20;       // Number of disk blocks read from all indexes on this table
+  int64 idx_blks_hit = 21;        // Number of buffer hits in all indexes on this table
+  int64 toast_blks_read = 22;     // Number of disk blocks read from this table's TOAST table (if any)
+  int64 toast_blks_hit = 23;      // Number of buffer hits in this table's TOAST table (if any)
+  int64 tidx_blks_read = 24;      // Number of disk blocks read from this table's TOAST table indexes (if any)
+  int64 tidx_blks_hit = 25;       // Number of buffer hits in this table's TOAST table indexes (if any)
+}
 
-  google.protobuf.Timestamp last_vacuum = 14;      // Last time at which this table was manually vacuumed (not counting VACUUM FULL)
-  google.protobuf.Timestamp last_autovacuum = 15;  // Last time at which this table was vacuumed by the autovacuum daemon
-  google.protobuf.Timestamp last_analyze = 16;     // Last time at which this table was manually analyzed
-  google.protobuf.Timestamp last_autoanalyze = 17; // Last time at which this table was analyzed by the autovacuum daemon
+message RelationEvent {
+  enum EventType {
+    MANUAL_VACUUM = 0;  // Manually vacuumed (not counting VACUUM FULL)
+    AUTO_VACUUM = 1;    // Vacuumed by the autovacuum daemon
+    MANUAL_ANALYZE = 2; // Manually analyzed
+    AUTO_ANALYZE = 3;   // Analyzed by the autovacuum daemon
+  }
 
-  int64 vacuum_count = 18;        // Number of times this table has been manually vacuumed (not counting VACUUM FULL)
-  int64 autovacuum_count = 19;    // Number of times this table has been vacuumed by the autovacuum daemon
-  int64 analyze_count = 20;       // Number of times this table has been manually analyzed
-  int64 autoanalyze_count = 21;   // Number of times this table has been analyzed by the autovacuum daemon
-  int64 heap_blks_read = 22;      // Number of disk blocks read from this table
-  int64 heap_blks_hit = 23;       // Number of buffer hits in this table
-  int64 idx_blks_read = 24;       // Number of disk blocks read from all indexes on this table
-  int64 idx_blks_hit = 25;        // Number of buffer hits in all indexes on this table
-  int64 toast_blks_read = 26;     // Number of disk blocks read from this table's TOAST table (if any)
-  int64 toast_blks_hit = 27;      // Number of buffer hits in this table's TOAST table (if any)
-  int64 tidx_blks_read = 28;      // Number of disk blocks read from this table's TOAST table indexes (if any)
-  int64 tidx_blks_hit = 29;       // Number of buffer hits in this table's TOAST table indexes (if any)
+  int32 relation_ref = 1;
+  EventType type = 2;
+  google.protobuf.Timestamp occurred_at = 3;
+  bool approximate_occurred_at = 4; // In case the "occurred_at" field is approximate, because more than one kind of this event happened during the snapshot
 }
 
 message RelationBloatStatistic {
   int32 relation_ref = 1;
 
   int64 wasted_bytes = 2;
+  int64 size_bytes = 3;
 }
 
 message IndexInformation {
@@ -222,6 +237,12 @@ message IndexStatistic {
   int64 idx_blks_hit = 8;
 }
 
+message IndexBloatStatistic {
+  int32 index_ref = 1;
+
+  int64 wasted_bytes = 2;
+  int64 size_bytes = 3;
+}
 message FunctionInformation {
   int32 function_ref = 1;
 

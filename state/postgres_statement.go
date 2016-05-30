@@ -34,6 +34,8 @@ type PostgresStatement struct {
 	MaxTime    null.Float // Maximum time spent in the statement, in milliseconds
 	MeanTime   null.Float // Mean time spent in the statement, in milliseconds
 	StddevTime null.Float // Population standard deviation of time spent in the statement, in milliseconds
+
+	Fingerprint []byte // Fingerprint generated based on the parsetree
 }
 
 type PostgresStatementMap map[PostgresStatementKey]PostgresStatement

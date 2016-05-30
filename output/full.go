@@ -5,144 +5,111 @@ import (
 	"compress/zlib"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
-	"net/url"
-	"strings"
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/ptypes"
 	"github.com/pganalyze/collector/output/snapshot"
+	"github.com/pganalyze/collector/output/transform"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
 )
 
-func transformState(newState state.State, diffState state.DiffState) (s snapshot.Snapshot, err error) {
-	// Go through all statements, creating references as needed
-	for _, statement := range diffState.Statements {
-		// FIXME: This is (very!) incomplete code
+func SendFull(db state.Database, collectionOpts state.CollectionOpts, logger *util.Logger, newState state.State, diffState state.DiffState) error {
+	var err error
+	var data []byte
 
-		var queryInformation snapshot.QueryInformation
+	collectedAt := time.Now()
+	s := transform.StateToSnapshot(newState, diffState)
 
-		queryInformation.NormalizedQuery = statement.NormalizedQuery
-
-		s.QueryInformations = append(s.QueryInformations, &queryInformation)
-	}
-
-	for _, relation := range newState.Relations {
-		ref := snapshot.RelationReference{
-			DatabaseIdx:  0,
-			SchemaName:   relation.SchemaName,
-			RelationName: relation.RelationName,
-		}
-		idx := int32(len(s.RelationReferences))
-		s.RelationReferences = append(s.RelationReferences, &ref)
-
-		// Information
-		info := snapshot.RelationInformation{
-			RelationRef:  idx,
-			RelationType: relation.RelationType,
-		}
-		if relation.ViewDefinition != "" {
-			info.ViewDefinition = &snapshot.NullString{Valid: true, Value: relation.ViewDefinition}
-		}
-		// TODO: Add columns and constraints here
-		s.RelationInformations = append(s.RelationInformations, &info)
-
-		// Statistic
-		stats, exists := diffState.RelationStats[relation.Oid]
-		if exists {
-			statistic := snapshot.RelationStatistic{
-				RelationRef: idx,
-				SizeBytes:   stats.SizeBytes,
-				SeqScan:     stats.SeqScan,
-				NTupUpd:     stats.NTupUpd,
-			}
-			// TODO: Complete set of stats
-			s.RelationStatistics = append(s.RelationStatistics, &statistic)
-		}
-	}
-
-	return
-}
-
-func SendFull(db state.Database, collectionOpts state.CollectionOpts, logger *util.Logger, newState state.State, diffState state.DiffState) (err error) {
-	s, err := transformState(newState, diffState)
+	s.CollectorVersion = "pganalyze-collector 0.9.0rc8"
+	s.CollectedAt, err = ptypes.TimestampProto(collectedAt)
 	if err != nil {
-		logger.PrintError("Error transforming state into snapshot: %s", err)
-		return
+		logger.PrintError("Error initializating snapshot timestamp")
+		return err
 	}
 
-	// FIXME: Need to transform state into snapshot
-	statsProto, err := proto.Marshal(&s)
+	data, err = proto.Marshal(&s)
 	if err != nil {
-		logger.PrintError("Error marshaling statistics: %s", err)
-		return
+		logger.PrintError("Error marshaling protocol buffers")
+		return err
 	}
 
-	if true { //!collectionOpts.SubmitCollectedData {
-		statsReRead := &snapshot.Snapshot{}
-		if err = proto.Unmarshal(statsProto, statsReRead); err != nil {
-			log.Fatalln("Failed to re-read stats:", err)
-		}
-
-		var out bytes.Buffer
-		statsJSON, _ := json.Marshal(statsReRead)
-		json.Indent(&out, statsJSON, "", "\t")
-		logger.PrintInfo("Dry run - data that would have been sent will be output on stdout:\n")
-		fmt.Print(out.String())
-		return
-	}
-
-	var compressedJSON bytes.Buffer
-	w := zlib.NewWriter(&compressedJSON)
-	w.Write(statsProto)
+	var compressedData bytes.Buffer
+	w := zlib.NewWriter(&compressedData)
+	w.Write(data)
 	w.Close()
 
-	requestURL := db.Config.APIBaseURL + "/v1/snapshots"
-
-	if collectionOpts.TestRun {
-		requestURL = db.Config.APIBaseURL + "/v1/snapshots/test"
+	if true { //!collectionOpts.SubmitCollectedData {
+		debugOutputAsJSON(logger, compressedData)
+		return nil
 	}
 
-	data := url.Values{
-		"data":            {compressedJSON.String()},
-		"data_compressor": {"zlib"},
-		"api_key":         {db.Config.APIKey},
-		"submitter":       {"pganalyze-collector 0.9.0rc7"},
-		"no_reset":        {"true"},
-		"query_source":    {"pg_stat_statements"},
-		"collected_at":    {fmt.Sprintf("%d", time.Now().Unix())},
-	}
+	return submitSnapshot(db, collectionOpts, logger, compressedData, collectedAt)
+}
 
-	encodedData := data.Encode()
+func debugOutputAsJSON(logger *util.Logger, compressedData bytes.Buffer) {
+	var err error
+	var data bytes.Buffer
 
-	req, err := http.NewRequest("POST", requestURL, strings.NewReader(encodedData))
+	r, err := zlib.NewReader(&compressedData)
 	if err != nil {
+		logger.PrintError("Failed to decompress protocol buffers: %s", err)
+		return
+	}
+	defer r.Close()
+
+	io.Copy(&data, r)
+
+	s := &snapshot.Snapshot{}
+	if err = proto.Unmarshal(data.Bytes(), s); err != nil {
+		logger.PrintError("Failed to re-read protocol buffers: %s", err)
 		return
 	}
 
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Add("Accept", "application/json,text/plain")
+	var out bytes.Buffer
+	dataJSON, _ := json.Marshal(s)
+	json.Indent(&out, dataJSON, "", "\t")
+	logger.PrintInfo("Dry run - data that would have been sent will be output on stdout:\n")
+	logger.PrintInfo(out.String())
+}
 
-	logger.PrintVerbose("Successfully prepared request - size of request body: %.4f MB", float64(len(encodedData))/1024.0/1024.0)
+func submitSnapshot(db state.Database, collectionOpts state.CollectionOpts, logger *util.Logger, compressedData bytes.Buffer, collectedAt time.Time) error {
+	logger.PrintVerbose("Successfully prepared request - size of request body: %.4f MB", float64(compressedData.Len())/1024.0/1024.0)
+
+	requestURL := db.Config.APIBaseURL + "/v2/snapshots"
+
+	if collectionOpts.TestRun {
+		requestURL = db.Config.APIBaseURL + "/v2/snapshots/test"
+	}
+
+	req, err := http.NewRequest("POST", requestURL, &compressedData)
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set("Pganalyze-Api-Key", db.Config.APIKey)
+	req.Header.Set("Pganalyze-Collected-At", fmt.Sprintf("%d", collectedAt.Unix()))
+	req.Header.Set("Content-Type", "application/octet-stream")
+	req.Header.Add("Accept", "text/plain")
 
 	resp, err := http.DefaultClient.Do(req)
 	// TODO: We could consider re-running on error (e.g. if it was a temporary server issue)
 	if err != nil {
-		return
+		return err
 	}
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return
+		return err
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		err = fmt.Errorf("Error when submitting: %s\n", body)
-		return
+		return fmt.Errorf("Error when submitting: %s\n", body)
 	}
 
 	if len(body) > 0 {
@@ -151,5 +118,5 @@ func SendFull(db state.Database, collectionOpts state.CollectionOpts, logger *ut
 		logger.PrintInfo("Submitted snapshot successfully")
 	}
 
-	return
+	return nil
 }

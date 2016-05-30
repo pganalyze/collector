@@ -3,7 +3,7 @@ PROTOBUF_FILE = snapshot.proto
 
 default: prepare build test
 
-prepare:
+prepare: output/snapshot/snapshot.pb.go
 	go get -d
 	make -C ${GOPATH}/src/github.com/lfittl/pg_query_go build
 	go get
