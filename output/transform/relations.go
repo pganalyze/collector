@@ -33,11 +33,29 @@ func transformRelations(s snapshot.Snapshot, newState state.State, diffState sta
 				RelationRef: idx,
 				SizeBytes:   stats.SizeBytes,
 				SeqScan:     stats.SeqScan,
+				SeqTupRead:  stats.SeqTupRead,
+				IdxScan:     stats.IdxScan,
+				IdxTupFetch: stats.IdxTupFetch,
+				NTupIns:     stats.NTupIns,
 				NTupUpd:     stats.NTupUpd,
+				NTupDel:     stats.NTupDel,
+				NTupHotUpd:  stats.NTupHotUpd,
+				NLiveTup:    stats.NLiveTup,
+				NDeadTup:    stats.NDeadTup,
+				//NModSinceAnalyze: stats.NModSinceAnalyze, // FIXME
+				HeapBlksRead:  stats.HeapBlksRead,
+				HeapBlksHit:   stats.HeapBlksHit,
+				IdxBlksRead:   stats.IdxBlksRead,
+				IdxBlksHit:    stats.IdxBlksHit,
+				ToastBlksRead: stats.ToastBlksRead,
+				ToastBlksHit:  stats.ToastBlksHit,
+				TidxBlksRead:  stats.TidxBlksRead,
+				TidxBlksHit:   stats.TidxBlksHit,
 			}
-			// TODO: Complete set of stats
 			s.RelationStatistics = append(s.RelationStatistics, &statistic)
 		}
+
+		// TODO: Events
 	}
 
 	return s
