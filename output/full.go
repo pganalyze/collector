@@ -4,10 +4,14 @@ import (
 	"bytes"
 	"compress/zlib"
 	"encoding/json"
+	"encoding/xml"
 	"fmt"
 	"io"
 	"io/ioutil"
+	"mime/multipart"
 	"net/http"
+	"net/url"
+	"strings"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -16,16 +20,18 @@ import (
 	"github.com/pganalyze/collector/output/transform"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
+	"github.com/satori/go.uuid"
 )
 
 func SendFull(db state.Database, collectionOpts state.CollectionOpts, logger *util.Logger, newState state.State, diffState state.DiffState) error {
 	var err error
 	var data []byte
 
+	snapshotUUID := uuid.NewV4()
 	collectedAt := time.Now()
 	s := transform.StateToSnapshot(newState, diffState)
 
-	s.CollectorVersion = "pganalyze-collector 0.9.0rc8"
+	s.CollectorVersion = util.CollectorNameAndVersion
 	s.CollectedAt, err = ptypes.TimestampProto(collectedAt)
 	if err != nil {
 		logger.PrintError("Error initializating snapshot timestamp")
@@ -43,12 +49,18 @@ func SendFull(db state.Database, collectionOpts state.CollectionOpts, logger *ut
 	w.Write(data)
 	w.Close()
 
-	if true { //!collectionOpts.SubmitCollectedData {
+	if !collectionOpts.SubmitCollectedData {
 		debugOutputAsJSON(logger, compressedData)
 		return nil
 	}
 
-	return submitSnapshot(db, collectionOpts, logger, compressedData, collectedAt)
+	s3Location, err := uploadSnapshot(db, collectionOpts, logger, compressedData, snapshotUUID)
+	if err != nil {
+		logger.PrintError("Error uploading to S3: %s", err)
+		return err
+	}
+
+	return submitSnapshot(db, collectionOpts, logger, s3Location, collectedAt)
 }
 
 func debugOutputAsJSON(logger *util.Logger, compressedData bytes.Buffer) {
@@ -77,24 +89,86 @@ func debugOutputAsJSON(logger *util.Logger, compressedData bytes.Buffer) {
 	logger.PrintInfo(out.String())
 }
 
-func submitSnapshot(db state.Database, collectionOpts state.CollectionOpts, logger *util.Logger, compressedData bytes.Buffer, collectedAt time.Time) error {
+type s3UploadResponse struct {
+	Location string
+	Bucket   string
+	Key      string
+}
+
+func uploadSnapshot(db state.Database, collectionOpts state.CollectionOpts, logger *util.Logger, compressedData bytes.Buffer, snapshotUUID uuid.UUID) (string, error) {
 	logger.PrintVerbose("Successfully prepared request - size of request body: %.4f MB", float64(compressedData.Len())/1024.0/1024.0)
 
+	var formBytes bytes.Buffer
+	var err error
+
+	writer := multipart.NewWriter(&formBytes)
+
+	for key, val := range db.Grant.S3Fields {
+		err = writer.WriteField(key, val)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	part, _ := writer.CreateFormFile("file", snapshotUUID.String())
+	_, err = part.Write(compressedData.Bytes())
+	if err != nil {
+		return "", err
+	}
+
+	writer.Close()
+
+	req, err := http.NewRequest("POST", db.Grant.S3URL, &formBytes)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	if resp.StatusCode != http.StatusCreated {
+		return "", fmt.Errorf("Bad S3 upload return code %s (should be 201 Created), body: %s", resp.Status, body)
+	}
+
+	var s3Resp s3UploadResponse
+	err = xml.Unmarshal(body, &s3Resp)
+	if err != nil {
+		return "", err
+	}
+
+	return s3Resp.Key, nil
+}
+
+func submitSnapshot(db state.Database, collectionOpts state.CollectionOpts, logger *util.Logger, s3Location string, collectedAt time.Time) error {
 	requestURL := db.Config.APIBaseURL + "/v2/snapshots"
 
 	if collectionOpts.TestRun {
 		requestURL = db.Config.APIBaseURL + "/v2/snapshots/test"
 	}
 
-	req, err := http.NewRequest("POST", requestURL, &compressedData)
+	data := url.Values{
+		"s3_location":  {s3Location},
+		"collected_at": {fmt.Sprintf("%d", collectedAt.Unix())},
+	}
+
+	req, err := http.NewRequest("POST", requestURL, strings.NewReader(data.Encode()))
 	if err != nil {
 		return err
 	}
 
 	req.Header.Set("Pganalyze-Api-Key", db.Config.APIKey)
-	req.Header.Set("Pganalyze-Collected-At", fmt.Sprintf("%d", collectedAt.Unix()))
-	req.Header.Set("Content-Type", "application/octet-stream")
-	req.Header.Add("Accept", "text/plain")
+	req.Header.Set("User-Agent", util.CollectorNameAndVersion)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Add("Accept", "application/json,text/plain")
 
 	resp, err := http.DefaultClient.Do(req)
 	// TODO: We could consider re-running on error (e.g. if it was a temporary server issue)

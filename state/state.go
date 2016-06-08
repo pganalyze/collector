@@ -50,9 +50,20 @@ type CollectionOpts struct {
 	TestRun             bool
 }
 
+type GrantConfig struct {
+	// Here be dragons
+}
+
+type Grant struct {
+	Config   GrantConfig       `json:"config"`
+	S3URL    string            `json:"s3_url"`
+	S3Fields map[string]string `json:"s3_fields"`
+}
+
 type Database struct {
 	Config           config.DatabaseConfig
 	Connection       *sql.DB
 	PrevState        State
 	RequestedSslMode string
+	Grant            Grant
 }
