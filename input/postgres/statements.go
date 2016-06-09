@@ -103,7 +103,7 @@ func GetStatements(logger *util.Logger, db *sql.DB, postgresVersion state.Postgr
 			&statement.SharedBlksHit, &statement.SharedBlksRead, &statement.SharedBlksDirtied, &statement.SharedBlksWritten,
 			&statement.LocalBlksHit, &statement.LocalBlksRead, &statement.LocalBlksDirtied, &statement.LocalBlksWritten,
 			&statement.TempBlksRead, &statement.TempBlksWritten, &statement.BlkReadTime, &statement.BlkWriteTime,
-			&statement.QueryId, &statement.MinTime, &statement.MaxTime, &statement.MeanTime, &statement.StddevTime)
+			&statement.QueryID, &statement.MinTime, &statement.MaxTime, &statement.MeanTime, &statement.StddevTime)
 		if err != nil {
 			return nil, err
 		}

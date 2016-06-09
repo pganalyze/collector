@@ -27,15 +27,13 @@ type PostgresStatement struct {
 	BlkWriteTime      float64 // Total time the statement spent writing blocks, in milliseconds (if track_io_timing is enabled, otherwise zero)
 
 	// Postgres 9.4+
-	QueryId null.Int // Internal hash code, computed from the statement's parse tree
+	QueryID null.Int // Internal hash code, computed from the statement's parse tree
 
 	// Postgres 9.5+
 	MinTime    null.Float // Minimum time spent in the statement, in milliseconds
 	MaxTime    null.Float // Maximum time spent in the statement, in milliseconds
 	MeanTime   null.Float // Mean time spent in the statement, in milliseconds
 	StddevTime null.Float // Population standard deviation of time spent in the statement, in milliseconds
-
-	Fingerprint []byte // Fingerprint generated based on the parsetree
 }
 
 type PostgresStatementMap map[PostgresStatementKey]PostgresStatement
@@ -45,11 +43,11 @@ type DiffedPostgresStatement PostgresStatement
 type PostgresStatementKey struct {
 	DatabaseOid Oid
 	UserOid     Oid
-	QueryId     int64
+	QueryID     int64
 }
 
 func (stmt PostgresStatement) Key() PostgresStatementKey {
-	return PostgresStatementKey{DatabaseOid: stmt.DatabaseOid, UserOid: stmt.UserOid, QueryId: stmt.QueryId.Int64}
+	return PostgresStatementKey{DatabaseOid: stmt.DatabaseOid, UserOid: stmt.UserOid, QueryID: stmt.QueryID.Int64}
 }
 
 func (curr PostgresStatement) DiffSince(prev PostgresStatement) DiffedPostgresStatement {
@@ -57,7 +55,7 @@ func (curr PostgresStatement) DiffSince(prev PostgresStatement) DiffedPostgresSt
 		DatabaseOid:       curr.DatabaseOid,
 		UserOid:           curr.UserOid,
 		NormalizedQuery:   curr.NormalizedQuery,
-		QueryId:           curr.QueryId,
+		QueryID:           curr.QueryID,
 		Calls:             curr.Calls - prev.Calls,
 		TotalTime:         curr.TotalTime - prev.TotalTime,
 		Rows:              curr.Rows - prev.Rows,
