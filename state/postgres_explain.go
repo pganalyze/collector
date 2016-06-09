@@ -5,7 +5,7 @@ import "time"
 type PostgresExplain struct {
 	OccurredAt      time.Time     `json:"occurred_at"`
 	NormalizedQuery string        `json:"normalized_query"`
-	Fingerprint     []byte        `json:"fingerprint"`
+	Fingerprint     [21]byte      `json:"fingerprint"`
 	Runtime         float64       `json:"runtime"`
 	ExplainOutput   []interface{} `json:"explain_output"`
 	ExplainError    *string       `json:"explain_error,omitempty"`

@@ -60,7 +60,8 @@ var fingerprintTests = []struct {
 
 func TestFingerprint(t *testing.T) {
 	for _, test := range fingerprintTests {
-		actual := util.FingerprintQuery(test.input)
+		fp := util.FingerprintQuery(test.input)
+		actual := fp[:]
 		expected, _ := hex.DecodeString(test.expected)
 
 		if !reflect.DeepEqual(actual, expected) {

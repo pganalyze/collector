@@ -73,3 +73,28 @@ func (curr PostgresStatement) DiffSince(prev PostgresStatement) DiffedPostgresSt
 		BlkWriteTime:      curr.BlkWriteTime - prev.BlkWriteTime,
 	}
 }
+
+// Add - Adds the statistics of one diffed statement to another, returning the result as a copy
+func (stmt DiffedPostgresStatement) Add(other DiffedPostgresStatement) DiffedPostgresStatement {
+	return DiffedPostgresStatement{
+		DatabaseOid:     stmt.DatabaseOid,
+		UserOid:         stmt.UserOid,
+		NormalizedQuery: stmt.NormalizedQuery,
+
+		Calls:             stmt.Calls + other.Calls,
+		TotalTime:         stmt.TotalTime + other.TotalTime,
+		Rows:              stmt.Rows + other.Rows,
+		SharedBlksHit:     stmt.SharedBlksHit + other.SharedBlksHit,
+		SharedBlksRead:    stmt.SharedBlksRead + other.SharedBlksRead,
+		SharedBlksDirtied: stmt.SharedBlksDirtied + other.SharedBlksDirtied,
+		SharedBlksWritten: stmt.SharedBlksWritten + other.SharedBlksWritten,
+		LocalBlksHit:      stmt.LocalBlksHit + other.LocalBlksHit,
+		LocalBlksRead:     stmt.LocalBlksRead + other.LocalBlksRead,
+		LocalBlksDirtied:  stmt.LocalBlksDirtied + other.LocalBlksDirtied,
+		LocalBlksWritten:  stmt.LocalBlksWritten + other.LocalBlksWritten,
+		TempBlksRead:      stmt.TempBlksRead + other.TempBlksRead,
+		TempBlksWritten:   stmt.TempBlksWritten + other.TempBlksWritten,
+		BlkReadTime:       stmt.BlkReadTime + other.BlkReadTime,
+		BlkWriteTime:      stmt.BlkWriteTime + other.BlkWriteTime,
+	}
+}

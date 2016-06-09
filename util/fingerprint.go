@@ -10,23 +10,27 @@ import (
 )
 
 // FingerprintQuery - Generates a unique SHA-1 fingerprint for the given query
-func FingerprintQuery(query string) []byte {
+func FingerprintQuery(query string) (fp [21]byte) {
 	fingerprintHex, err := pg_query.FastFingerprint(query)
 	if err != nil {
 		fixedQuery := fixTruncatedQuery(query)
 
 		fingerprintHex, err = pg_query.FastFingerprint(fixedQuery)
 		if err != nil {
-			return fingerprintError(query)
+			fp = fingerprintError(query)
+			return
 		}
 	}
 
 	fingerprint, err := hex.DecodeString(fingerprintHex)
 	if err != nil {
-		return fingerprintError(query)
+		fp = fingerprintError(query)
+		return
 	}
 
-	return fingerprint
+	copy(fp[:], fingerprint)
+
+	return
 }
 
 func fixTruncatedQuery(query string) string {
@@ -47,8 +51,10 @@ func fixTruncatedQuery(query string) string {
 	return query
 }
 
-func fingerprintError(query string) []byte {
+func fingerprintError(query string) (fp [21]byte) {
+	fp[0] = 0xee
 	h := sha1.New()
 	io.WriteString(h, query)
-	return append([]byte{0xee}, h.Sum(nil)...)
+	copy(fp[1:], h.Sum(nil))
+	return
 }

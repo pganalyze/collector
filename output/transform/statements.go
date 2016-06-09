@@ -6,32 +6,68 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
-func upsertQueryReference(s *snapshot.Snapshot, databaseIdx int32, userIdx int32, fingerprint []byte) int32 {
-	ref := snapshot.QueryReference{
-		DatabaseIdx: databaseIdx,
-		UserIdx:     userIdx,
-		Fingerprint: fingerprint,
-	}
-
+func upsertQueryReference(s *snapshot.Snapshot, ref snapshot.QueryReference) int32 {
 	idx := int32(len(s.QueryReferences))
 	s.QueryReferences = append(s.QueryReferences, &ref)
-
 	return idx
 }
 
-func transformStatements(s snapshot.Snapshot, newState state.State, diffState state.DiffState) snapshot.Snapshot {
-	// TODO: Group together queries by fingerprint
+type statementKey struct {
+	databaseOid state.Oid
+	userOid     state.Oid
+	fingerprint [21]byte
+}
 
-	for _, statement := range diffState.Statements {
-		databaseIdx := int32(0) // FIXME
-		userIdx := int32(0)     // FIXME
-		fingerprint := util.FingerprintQuery(statement.NormalizedQuery)
-		idx := upsertQueryReference(&s, databaseIdx, userIdx, fingerprint)
+type statementValue struct {
+	queryIDs  []int64
+	statement state.DiffedPostgresStatement
+}
+
+func groupStatements(statements []state.DiffedPostgresStatement) map[statementKey]statementValue {
+	groupedStatements := make(map[statementKey]statementValue)
+
+	for _, statement := range statements {
+		statementKey := statementKey{
+			databaseOid: statement.DatabaseOid,
+			userOid:     statement.UserOid,
+			fingerprint: util.FingerprintQuery(statement.NormalizedQuery),
+		}
+
+		value, exist := groupedStatements[statementKey]
+		if exist {
+			groupedStatements[statementKey] = statementValue{
+				statement: value.statement.Add(statement),
+				queryIDs:  append(value.queryIDs, statement.QueryID.Int64),
+			}
+		} else {
+			groupedStatements[statementKey] = statementValue{
+				statement: statement,
+				queryIDs:  []int64{statement.QueryID.Int64},
+			}
+		}
+	}
+
+	return groupedStatements
+}
+
+func transformStatements(s snapshot.Snapshot, newState state.State, diffState state.DiffState) snapshot.Snapshot {
+	groupedStatements := groupStatements(diffState.Statements)
+
+	for key, value := range groupedStatements {
+		ref := snapshot.QueryReference{
+			DatabaseIdx: int32(0), // FIXME
+			UserIdx:     int32(0), // FIXME
+			Fingerprint: key.fingerprint[:],
+		}
+		idx := upsertQueryReference(&s, ref)
+
+		statement := value.statement
 
 		// Information
 		queryInformation := snapshot.QueryInformation{
 			QueryRef:        idx,
 			NormalizedQuery: statement.NormalizedQuery,
+			QueryIds:        value.queryIDs,
 		}
 		s.QueryInformations = append(s.QueryInformations, &queryInformation)
 
@@ -54,22 +90,6 @@ func transformStatements(s snapshot.Snapshot, newState state.State, diffState st
 			TempBlksWritten:   statement.TempBlksWritten,
 			BlkReadTime:       statement.BlkReadTime,
 			BlkWriteTime:      statement.BlkWriteTime,
-		}
-
-		if statement.MinTime.Valid {
-			statistic.MinTime = statement.MinTime.Float64
-		}
-
-		if statement.MaxTime.Valid {
-			statistic.MaxTime = statement.MaxTime.Float64
-		}
-
-		if statement.MeanTime.Valid {
-			statistic.MeanTime = statement.MeanTime.Float64
-		}
-
-		if statement.StddevTime.Valid {
-			statistic.StddevTime = statement.StddevTime.Float64
 		}
 
 		s.QueryStatistics = append(s.QueryStatistics, &statistic)
