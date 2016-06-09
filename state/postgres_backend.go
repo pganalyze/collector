@@ -12,7 +12,7 @@ type PostgresBackend struct {
 	Pid             int         // Process ID of this backend
 	ApplicationName null.String // Name of the application that is connected to this backend
 	ClientAddr      null.String // IP address of the client connected to this backend. If this field is null, it indicates either that the client is connected via a Unix socket on the server machine or that this is an internal process such as autovacuum.
-	ClientPort      int32       // TCP port number that the client is using for communication with this backend, or -1 if a Unix socket is used
+	ClientPort      null.Int    // TCP port number that the client is using for communication with this backend, or -1 if a Unix socket is used
 	BackendStart    null.Time   // Time when this process was started, i.e., when the client connected to the server
 	XactStart       null.Time   // Time when this process' current transaction was started, or null if no transaction is active. If the current query is the first of its transaction, this column is equal to the query_start column.
 	QueryStart      null.Time   // Time when the currently active query was started, or if state is not active, when the last query was started
