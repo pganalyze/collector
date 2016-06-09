@@ -2,12 +2,12 @@ package postgres
 
 import (
 	"database/sql"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 
 	pg_query "github.com/lfittl/pg_query_go"
 	"github.com/pganalyze/collector/state"
+	"github.com/pganalyze/collector/util"
 )
 
 func RunExplain(db *sql.DB, inputs []state.PostgresExplainInput) (explains []state.PostgresExplain) {
@@ -25,8 +25,7 @@ func RunExplain(db *sql.DB, inputs []state.PostgresExplainInput) (explains []sta
 			continue
 		}
 
-		fingerprintHex := parsetree.Fingerprint()
-		fingerprint, _ := hex.DecodeString(fingerprintHex)
+		fingerprint := util.FingerprintQuery(normalizedQuery)
 
 		explainOut := state.PostgresExplain{
 			OccurredAt:      input.OccurredAt,

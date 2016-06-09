@@ -3,14 +3,15 @@ package transform
 import (
 	"github.com/pganalyze/collector/output/snapshot"
 	"github.com/pganalyze/collector/state"
+	"github.com/pganalyze/collector/util"
 )
 
 func transformStatements(s snapshot.Snapshot, newState state.State, diffState state.DiffState) snapshot.Snapshot {
 	for _, statement := range diffState.Statements {
 		ref := snapshot.QueryReference{
-			DatabaseIdx: 0,                     // FIXME
-			UserIdx:     0,                     // FIXME
-			Fingerprint: statement.Fingerprint, // FIXME (the input/runner needs to generate this)
+			DatabaseIdx: 0, // FIXME
+			UserIdx:     0, // FIXME
+			Fingerprint: util.FingerprintQuery(statement.NormalizedQuery),
 		}
 		idx := int32(len(s.QueryReferences))
 		s.QueryReferences = append(s.QueryReferences, &ref)

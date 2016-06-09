@@ -15,6 +15,6 @@ build: output/snapshot/snapshot.pb.go
 	go build -o ${OUTFILE}
 
 test: build
-	go test -v ./ ./scheduler
+	go test -v ./ ./scheduler ./util
 
 .PHONY: test
