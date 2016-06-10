@@ -146,16 +146,20 @@ message RelationInformation {
     string data_type = 3;
     NullString default_value = 4;
     bool not_null = 5;
-    int64 position = 6;
+    int32 position = 6;
   }
 
   message Constraint {
-    string name = 2;
-    string constraint_def = 3;
-    string columns = 4;
-    string foreign_schema = 5;
-    string foreign_table = 6;
-    string foreign_columns = 7;
+    int32 foreign_relation_ref = 1;     // If a foreign key, the referenced table
+
+    string name = 2;                    // Constraint name (not necessarily unique!)
+    string type = 3;                    // c = check constraint, f = foreign key constraint, p = primary key constraint, u = unique constraint, t = constraint trigger, x = exclusion constraint
+    string constraint_def = 4;          // Human-readable representation of the expression
+    repeated int32 columns = 5;         // If a table constraint (including foreign keys, but not constraint triggers), list of the constrained columns
+    repeated int32 foreign_columns = 6; // If a foreign key, list of the referenced columns
+    string foreign_update_type = 7;     // Foreign key update action code: a = no action, r = restrict, c = cascade, n = set null, d = set default
+    string foreign_delete_type = 8;     // Foreign key deletion action code: a = no action, r = restrict, c = cascade, n = set null, d = set default
+    string foreign_match_type = 9;      // Foreign key match type: f = full, p = partial, s = simple
   }
 }
 
@@ -209,14 +213,13 @@ message IndexInformation {
   int32 index_ref = 1;
   int32 relation_ref = 2;
 
-  string columns = 3;
-  string name = 4;
-  string index_def = 5;
-  NullString constraint_def = 6;
+  repeated int32 columns = 3;
+  string index_def = 4;
+  NullString constraint_def = 5;
 
-  bool is_primary = 7;
-  bool is_unique = 8;
-  bool is_valid = 9;
+  bool is_primary = 6;
+  bool is_unique = 7;
+  bool is_valid = 8;
 }
 
 message IndexStatistic {

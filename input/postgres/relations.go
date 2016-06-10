@@ -3,6 +3,10 @@ package postgres
 import (
 	"database/sql"
 	"fmt"
+	"strconv"
+	"strings"
+
+	"gopkg.in/guregu/null.v2"
 
 	"github.com/pganalyze/collector/state"
 )
@@ -41,14 +45,14 @@ const columnsSQL string = `SELECT c.oid,
 
 const indicesSQL string = `
 SELECT c.oid,
-			 c2.oid AS index_oid,
-			 i.indkey::text AS columns,
-			 c2.relname AS name,
-			 i.indisprimary AS is_primary,
-			 i.indisunique AS is_unique,
-			 i.indisvalid AS is_valid,
-			 pg_catalog.pg_get_indexdef(i.indexrelid, 0, TRUE) AS index_def,
-			 pg_catalog.pg_get_constraintdef(con.oid, TRUE) AS constraint_def
+			 c2.oid,
+			 i.indkey::text,
+			 c2.relname,
+			 i.indisprimary,
+			 i.indisunique,
+			 i.indisvalid,
+			 pg_catalog.pg_get_indexdef(i.indexrelid, 0, TRUE),
+			 pg_catalog.pg_get_constraintdef(con.oid, TRUE)
 	FROM pg_catalog.pg_class c
 	JOIN pg_catalog.pg_namespace n ON (n.oid = c.relnamespace)
 	JOIN pg_catalog.pg_index i ON (c.oid = i.indrelid)
@@ -60,22 +64,21 @@ SELECT c.oid,
 			 AND c.relpersistence <> 't'
 			 AND n.nspname NOT IN ('pg_catalog','pg_toast','information_schema')`
 
-// FIXME: This misses check constraints and others
 const constraintsSQL string = `
 SELECT c.oid,
-			 conname AS name,
-			 pg_catalog.pg_get_constraintdef(r.oid, TRUE) AS constraint_def,
-			 r.conkey AS columns,
-			 n2.nspname AS foreign_schema,
-			 c2.relname AS foreign_table,
-			 r.confkey AS foreign_columns
-	FROM pg_catalog.pg_class c
-			 LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
-			 LEFT JOIN pg_catalog.pg_constraint r ON r.conrelid = c.oid
-			 LEFT JOIN pg_catalog.pg_class c2 ON r.confrelid = c2.oid
-			 LEFT JOIN pg_catalog.pg_namespace n2 ON n2.oid = c2.relnamespace
-WHERE r.contype = 'f'
-			 AND n.nspname NOT IN ('pg_catalog','pg_toast','information_schema')`
+			 conname,
+			 contype,
+			 pg_catalog.pg_get_constraintdef(r.oid, TRUE),
+			 conkey,
+			 confrelid,
+			 confkey,
+			 confupdtype,
+			 confdeltype,
+			 confmatchtype
+	FROM pg_catalog.pg_constraint r
+			 JOIN pg_catalog.pg_class c ON r.conrelid = c.oid
+			 JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+WHERE n.nspname NOT IN ('pg_catalog','pg_toast','information_schema')`
 
 const viewDefinitionSQL string = `
 SELECT c.oid,
@@ -170,12 +173,18 @@ func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion) ([]state.Po
 
 	for rows.Next() {
 		var row state.PostgresIndex
+		var columns string
 
-		err = rows.Scan(&row.RelationOid, &row.IndexOid, &row.Columns, &row.Name,
+		err = rows.Scan(&row.RelationOid, &row.IndexOid, &columns, &row.Name,
 			&row.IsPrimary, &row.IsUnique, &row.IsValid, &row.IndexDef, &row.ConstraintDef)
 		if err != nil {
 			err = fmt.Errorf("Indices/Scan: %s", err)
 			return nil, err
+		}
+
+		for _, cstr := range strings.Split(columns, " ") {
+			cint, _ := strconv.Atoi(cstr)
+			row.Columns = append(row.Columns, int32(cint))
 		}
 
 		relation := relations[row.RelationOid]
@@ -202,12 +211,37 @@ func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion) ([]state.Po
 
 	for rows.Next() {
 		var row state.PostgresConstraint
+		var columns, foreignColumns null.String
+		var foreignUpdateType, foreignDeleteType, foreignMatchType string
 
-		err = rows.Scan(&row.RelationOid, &row.Name, &row.ConstraintDef, &row.Columns,
-			&row.ForeignSchema, &row.ForeignTable, &row.ForeignColumns)
+		err = rows.Scan(&row.RelationOid, &row.Name, &row.Type, &row.ConstraintDef,
+			&columns, &row.ForeignOid, &foreignColumns, &foreignUpdateType,
+			&foreignDeleteType, &foreignMatchType)
 		if err != nil {
 			err = fmt.Errorf("Constraints/Scan: %s", err)
 			return nil, err
+		}
+
+		if foreignUpdateType != " " {
+			row.ForeignUpdateType = foreignUpdateType
+		}
+		if foreignDeleteType != " " {
+			row.ForeignDeleteType = foreignDeleteType
+		}
+		if foreignMatchType != " " {
+			row.ForeignMatchType = foreignMatchType
+		}
+		if columns.Valid {
+			for _, cstr := range strings.Split(strings.Trim(columns.String, "{}"), ",") {
+				cint, _ := strconv.Atoi(cstr)
+				row.Columns = append(row.Columns, int32(cint))
+			}
+		}
+		if foreignColumns.Valid {
+			for _, cstr := range strings.Split(strings.Trim(foreignColumns.String, "{}"), ",") {
+				cint, _ := strconv.Atoi(cstr)
+				row.ForeignColumns = append(row.ForeignColumns, int32(cint))
+			}
 		}
 
 		relation := relations[row.RelationOid]
