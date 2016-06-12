@@ -1,4 +1,4 @@
-package snapshot
+package pganalyze_collector
 
 import (
 	"database/sql"

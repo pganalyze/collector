@@ -1,6 +1,6 @@
-package snapshot
+package pganalyze_collector
 
-/*func (ns *NullDouble) Scan(value interface{}) error {
+/*func (ns *NullInt64) Scan(value interface{}) error {
 	if value == nil {
 		return nil
 	}

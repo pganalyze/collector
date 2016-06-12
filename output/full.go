@@ -16,7 +16,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
-	"github.com/pganalyze/collector/output/snapshot"
+	"github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/output/transform"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
@@ -76,7 +76,7 @@ func debugOutputAsJSON(logger *util.Logger, compressedData bytes.Buffer) {
 
 	io.Copy(&data, r)
 
-	s := &snapshot.Snapshot{}
+	s := &pganalyze_collector.Snapshot{}
 	if err = proto.Unmarshal(data.Bytes(), s); err != nil {
 		logger.PrintError("Failed to re-read protocol buffers: %s", err)
 		return

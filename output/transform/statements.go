@@ -1,14 +1,14 @@
 package transform
 
 import (
-	"github.com/pganalyze/collector/output/snapshot"
+	snapshot "github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
 )
 
-func upsertQueryReference(s *snapshot.Snapshot, ref snapshot.QueryReference) int32 {
+func upsertQueryReference(s *snapshot.Snapshot, ref *snapshot.QueryReference) int32 {
 	idx := int32(len(s.QueryReferences))
-	s.QueryReferences = append(s.QueryReferences, &ref)
+	s.QueryReferences = append(s.QueryReferences, ref)
 	return idx
 }
 
@@ -27,20 +27,20 @@ func groupStatements(statements []state.DiffedPostgresStatement) map[statementKe
 	groupedStatements := make(map[statementKey]statementValue)
 
 	for _, statement := range statements {
-		statementKey := statementKey{
+		key := statementKey{
 			databaseOid: statement.DatabaseOid,
 			userOid:     statement.UserOid,
 			fingerprint: util.FingerprintQuery(statement.NormalizedQuery),
 		}
 
-		value, exist := groupedStatements[statementKey]
+		value, exist := groupedStatements[key]
 		if exist {
-			groupedStatements[statementKey] = statementValue{
+			groupedStatements[key] = statementValue{
 				statement: value.statement.Add(statement),
 				queryIDs:  append(value.queryIDs, statement.QueryID.Int64),
 			}
 		} else {
-			groupedStatements[statementKey] = statementValue{
+			groupedStatements[key] = statementValue{
 				statement: statement,
 				queryIDs:  []int64{statement.QueryID.Int64},
 			}
@@ -54,12 +54,16 @@ func transformStatements(s snapshot.Snapshot, newState state.State, diffState st
 	groupedStatements := groupStatements(diffState.Statements)
 
 	for key, value := range groupedStatements {
+		// Note: For whichever reason, we need to use a separate variable here so each fingerprint
+		// gets its own memory location (otherwise they're all the one of the last fingerprint value)
+		fp := key.fingerprint
+
 		ref := snapshot.QueryReference{
 			DatabaseIdx: int32(0), // FIXME
 			UserIdx:     int32(0), // FIXME
-			Fingerprint: key.fingerprint[:],
+			Fingerprint: fp[:],
 		}
-		idx := upsertQueryReference(&s, ref)
+		idx := upsertQueryReference(&s, &ref)
 
 		statement := value.statement
 

@@ -1,7 +1,7 @@
 package transform
 
 import (
-	"github.com/pganalyze/collector/output/snapshot"
+	snapshot "github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
 )
 
