@@ -127,12 +127,12 @@ message DatabaseInformation {
   // All transaction IDs before this one have been replaced with a permanent ("frozen") transaction ID in this database.
 	// This is used to track whether the database needs to be vacuumed in order to prevent transaction ID wraparound or to
 	// allow pg_clog to be shrunk. It is the minimum of the per-table pg_class.relfrozenxid values.
-  int32 frozen_xid = 9;
+  uint32 frozen_xid = 9;
 
   // All multixact IDs before this one have been replaced with a transaction ID in this database.
 	// This is used to track whether the database needs to be vacuumed in order to prevent multixact ID wraparound or to
 	// allow pg_multixact to be shrunk. It is the minimum of the per-table pg_class.relminmxid values.
-  int32 minimum_multixact_xid = 10;
+  uint32 minimum_multixact_xid = 10;
 }
 
 message PostgresVersion {

@@ -1,4 +1,4 @@
 package state
 
-type Oid int64
-type Xid int32
+type Oid uint64
+type Xid uint32

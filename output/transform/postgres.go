@@ -71,8 +71,8 @@ func transformPostgresDatabases(s snapshot.FullSnapshot, newState state.State, r
 			IsTemplate:          database.IsTemplate,
 			AllowConnections:    database.AllowConnections,
 			ConnectionLimit:     database.ConnectionLimit,
-			FrozenXid:           int32(database.FrozenXID),
-			MinimumMultixactXid: int32(database.MinimumMultixactXID),
+			FrozenXid:           uint32(database.FrozenXID),
+			MinimumMultixactXid: uint32(database.MinimumMultixactXID),
 		}
 
 		s.DatabaseInformations = append(s.DatabaseInformations, &info)
