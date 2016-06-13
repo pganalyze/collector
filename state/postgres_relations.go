@@ -4,6 +4,7 @@ import "gopkg.in/guregu/null.v3"
 
 type PostgresRelation struct {
 	Oid            Oid
+	DatabaseOid    Oid
 	SchemaName     string
 	RelationName   string
 	RelationType   string

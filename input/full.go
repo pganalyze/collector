@@ -18,11 +18,29 @@ func CollectFull(db state.Database, collectionOpts state.CollectionOpts, logger 
 		return
 	}
 
+	currentDatabaseOid, err := postgres.CurrentDatabaseOid(db.Connection)
+	if err != nil {
+		logger.PrintError("Error getting OID of current database")
+		return
+	}
+
 	/*stats.Postgres = &snapshot.SnapshotPostgres{}
 	stats.Postgres.Version = &postgresVersion*/
 
 	if postgresVersion.Numeric < state.MinRequiredPostgresVersion {
 		err = fmt.Errorf("Error: Your PostgreSQL server version (%s) is too old, 9.2 or newer is required.", postgresVersion.Short)
+		return
+	}
+
+	s.Roles, err = postgres.GetRoles(logger, db.Connection, postgresVersion)
+	if err != nil {
+		logger.PrintError("Error collecting pg_roles")
+		return
+	}
+
+	s.Databases, err = postgres.GetDatabases(logger, db.Connection, postgresVersion)
+	if err != nil {
+		logger.PrintError("Error collecting pg_databases")
 		return
 	}
 
@@ -39,7 +57,7 @@ func CollectFull(db state.Database, collectionOpts state.CollectionOpts, logger 
 	}
 
 	if collectionOpts.CollectPostgresRelations {
-		s.Relations, err = postgres.GetRelations(db.Connection, postgresVersion)
+		s.Relations, err = postgres.GetRelations(db.Connection, postgresVersion, currentDatabaseOid)
 		if err != nil {
 			logger.PrintError("Error collecting relation/index information: %s", err)
 			return

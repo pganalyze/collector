@@ -1,16 +1,16 @@
 package pganalyze_collector
 
-/*func (ns *NullTimestamp) Scan(value interface{}) error {
-	if value == nil {
-		return nil
+import (
+	"github.com/golang/protobuf/ptypes"
+	"gopkg.in/guregu/null.v3"
+)
+
+func NullTimeToNullTimestamp(in null.Time) *NullTimestamp {
+	if !in.Valid {
+		return &NullTimestamp{Valid: false}
 	}
 
-	err := ns.Value.Scan(value)
-	if err != nil {
-		return err
-	}
+	ts, _ := ptypes.TimestampProto(in.Time)
 
-	ns.Valid = true
-
-	return nil
-}*/
+	return &NullTimestamp{Valid: true, Value: ts}
+}

@@ -5,10 +5,10 @@ import (
 	"github.com/pganalyze/collector/state"
 )
 
-func transformRelations(s snapshot.Snapshot, newState state.State, diffState state.DiffState) snapshot.Snapshot {
+func transformPostgresRelations(s snapshot.FullSnapshot, newState state.State, diffState state.DiffState, roleOidToIdx OidToIdx, databaseOidToIdx OidToIdx) snapshot.FullSnapshot {
 	for _, relation := range newState.Relations {
 		ref := snapshot.RelationReference{
-			DatabaseIdx:  0,
+			DatabaseIdx:  databaseOidToIdx[relation.DatabaseOid],
 			SchemaName:   relation.SchemaName,
 			RelationName: relation.RelationName,
 		}
@@ -93,7 +93,7 @@ func transformRelations(s snapshot.Snapshot, newState state.State, diffState sta
 		// Indices
 		for _, index := range relation.Indices {
 			ref := snapshot.IndexReference{
-				DatabaseIdx: 0,
+				DatabaseIdx: databaseOidToIdx[relation.DatabaseOid],
 				SchemaName:  relation.SchemaName,
 				IndexName:   index.Name,
 			}

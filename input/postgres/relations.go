@@ -90,7 +90,7 @@ SELECT c.oid,
 			 AND c.relname NOT IN ('pg_stat_statements')
 			 AND n.nspname NOT IN ('pg_catalog','pg_toast','information_schema')`
 
-func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion) ([]state.PostgresRelation, error) {
+func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, currentDatabaseOid state.Oid) ([]state.PostgresRelation, error) {
 	relations := make(map[state.Oid]state.PostgresRelation, 0)
 
 	// Relations
@@ -118,6 +118,8 @@ func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion) ([]state.Po
 			err = fmt.Errorf("Relations/Scan: %s", err)
 			return nil, err
 		}
+
+		row.DatabaseOid = currentDatabaseOid
 
 		relations[row.Oid] = row
 	}

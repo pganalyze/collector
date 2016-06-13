@@ -31,7 +31,7 @@ func TestStatements(t *testing.T) {
 	fp1 := util.FingerprintQuery("SELECT 1")
 	fp2 := util.FingerprintQuery("SELECT * FROM test")
 
-	expected := pganalyze_collector.Snapshot{
+	expected := pganalyze_collector.FullSnapshot{
 		QueryReferences: []*pganalyze_collector.QueryReference{
 			&pganalyze_collector.QueryReference{
 				DatabaseIdx: 0,

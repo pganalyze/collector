@@ -14,6 +14,8 @@ type State struct {
 	RelationStats PostgresRelationStatsMap
 	IndexStats    PostgresIndexStatsMap
 
+	Roles     []PostgresRole
+	Databases []PostgresDatabase
 	Backends  []PostgresBackend
 	Relations []PostgresRelation
 	Settings  []PostgresSetting

@@ -4,6 +4,8 @@ import "google/protobuf/timestamp.proto";
 
 package pganalyze.collector;
 
+// Format Version: 1.0.0
+
 // DEFINITIONS
 //
 // - Reference: Term(s) that can be UPSERTed into the monitoring system, and is
@@ -28,20 +30,28 @@ package pganalyze.collector;
 // - Event: Data that is attached to a reference, and can occur multiple times for one reference within the snapshot.
 //          When processing this data can be COPYed after the initial UPSERT.
 
-message Snapshot {
+message FullSnapshot {
   // Basic information about this snapshot
-  string collector_version = 1;
-  google.protobuf.Timestamp collected_at = 2;
+  int32 snapshot_version_major = 1;
+  int32 snapshot_version_minor = 2;
+  string collector_version = 3;
+
+  string snapshot_uuid = 10;
+  google.protobuf.Timestamp collected_at = 11;
+  int32 collected_interval_secs = 12;
 
   // Per server (and hence snapshot)
   PostgresVersion postgres_version = 101;
 
-  repeated LogLine logs = 102;
-  repeated Backend backends = 103;
-  repeated Setting settings = 104;
+  repeated RoleReference role_references = 102;
+  repeated DatabaseReference database_references = 103;
 
-  repeated string database_references = 105; //  = ['mydb']
-  repeated string user_references = 106; // = ['admin', 'otheruser', 'something_else']
+  repeated RoleInformation role_informations = 110;
+  repeated DatabaseInformation database_informations = 111;
+
+  repeated LogLine logs = 120;
+  repeated Backend backends = 121;
+  repeated Setting settings = 122;
 
   // Per database
   repeated QueryReference query_references = 200;
@@ -70,6 +80,114 @@ message NullString {
   bool valid = 1;
   string value = 2;
 }
+
+message NullTimestamp {
+  bool valid = 1;
+  google.protobuf.Timestamp value = 2;
+}
+
+// PER SERVER
+
+message RoleReference {
+  string name = 1; // Role name
+}
+
+message DatabaseReference {
+  string name = 1; // Database name
+}
+
+message RoleInformation {
+  int32 role_idx = 1;
+
+  bool inherit = 2;           // Role automatically inherits privileges of roles it is a member of
+  bool login = 3;             // Role can log in. That is, this role can be given as the initial session authorization identifier
+  bool create_db = 4;         // Role can create databases
+  bool create_role = 5;       // Role can create more roles
+  bool super_user = 6;        // Role has superuser privileges
+  bool replication = 7;       // Role can initiate streaming replication and put the system in and out of backup mode.
+  bool bypass_rls = 8;        // Role bypasses every row level security policy, see https://www.postgresql.org/docs/9.5/static/ddl-rowsecurity.html
+  int32 connection_limit = 9; // For roles that can log in, this sets maximum number of concurrent connections this role can make. -1 means no limit.
+
+  NullTimestamp password_valid_until = 10; // Password expiry time (only used for password authentication); null if no expiration
+  repeated string config = 11;             // Role-specific defaults for run-time configuration variables
+  repeated int32 member_of = 12;           // List of roles that this role is a member of (i.e. whose permissions it inherits)
+}
+
+message DatabaseInformation {
+  int32 database_idx = 1;
+
+  int32 owner_role_idx = 2;   // Owner of the database, usually the user who created it
+  string encoding = 3;        // Character encoding for this database
+  string collate = 4;         // LC_COLLATE for this database
+  string c_type = 5;          // LC_CTYPE for this database
+  bool is_template = 6;       // If true, then this database can be cloned by any user with CREATEDB privileges; if false, then only superusers or the owner of the database can clone it.
+  bool allow_connections = 7; // If false then no one can connect to this database. This is used to protect the template0 database from being altered.
+  int32 connection_limit = 8; // Sets maximum number of concurrent connections that can be made to this database. -1 means no limit.
+
+  // All transaction IDs before this one have been replaced with a permanent ("frozen") transaction ID in this database.
+	// This is used to track whether the database needs to be vacuumed in order to prevent transaction ID wraparound or to
+	// allow pg_clog to be shrunk. It is the minimum of the per-table pg_class.relfrozenxid values.
+  int32 frozen_xid = 9;
+
+  // All multixact IDs before this one have been replaced with a transaction ID in this database.
+	// This is used to track whether the database needs to be vacuumed in order to prevent multixact ID wraparound or to
+	// allow pg_multixact to be shrunk. It is the minimum of the per-table pg_class.relminmxid values.
+  int32 minimum_multixact_xid = 10;
+}
+
+message PostgresVersion {
+  string full = 1;
+  string short = 2;
+  int64 numeric = 3;
+}
+
+message LogLine {
+  int64 occurred_at = 1;
+  SourceType source = 2;
+  NullString client_ip = 3;
+  string log_level = 4;
+  int32 backend_pid = 5;
+  string content = 6;
+  repeated LogLine additional_lines = 7;
+
+  enum SourceType {
+    PostgresSource = 0;
+    AmazonRdsSource = 1;
+  }
+}
+
+message Setting {
+  string name = 1;
+  string current_value = 2;
+  NullString unit = 3;
+  NullString boot_value = 4;
+  NullString reset_value = 5;
+  NullString source = 6;
+  NullString source_file = 7;
+  NullString source_line = 8;
+}
+
+message Backend {
+  int64 pid = 1;
+  string username = 2;
+  string application_name = 3;
+  string client_addr = 4;
+
+  google.protobuf.Timestamp backend_start = 5;
+  google.protobuf.Timestamp xact_start = 6;
+  google.protobuf.Timestamp query_start = 7;
+  google.protobuf.Timestamp state_change = 8;
+
+  bool waiting = 9;
+  string state = 10;
+  string normalized_query = 11;
+}
+
+message System {
+  // TODO
+}
+
+// PER DATABASE
 
 message RelationReference {
   int32 database_idx = 1;
@@ -263,56 +381,4 @@ message FunctionStatistic {
   int64 calls = 2;
   double total_time = 3;
   double self_time = 4;
-}
-
-message PostgresVersion {
-  string full = 1;
-  string short = 2;
-  int64 numeric = 3;
-}
-
-message LogLine {
-  int64 occurred_at = 1;
-  SourceType source = 2;
-  NullString client_ip = 3;
-  string log_level = 4;
-  int32 backend_pid = 5;
-  string content = 6;
-  repeated LogLine additional_lines = 7;
-
-  enum SourceType {
-    PostgresSource = 0;
-    AmazonRdsSource = 1;
-  }
-}
-
-message Setting {
-  string name = 1;
-  string current_value = 2;
-  NullString unit = 3;
-  NullString boot_value = 4;
-  NullString reset_value = 5;
-  NullString source = 6;
-  NullString source_file = 7;
-  NullString source_line = 8;
-}
-
-message Backend {
-  int64 pid = 1;
-  string username = 2;
-  string application_name = 3;
-  string client_addr = 4;
-
-  google.protobuf.Timestamp backend_start = 5;
-  google.protobuf.Timestamp xact_start = 6;
-  google.protobuf.Timestamp query_start = 7;
-  google.protobuf.Timestamp state_change = 8;
-
-  bool waiting = 9;
-  string state = 10;
-  string normalized_query = 11;
-}
-
-message System {
-  // TODO
 }

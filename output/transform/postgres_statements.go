@@ -6,7 +6,7 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
-func upsertQueryReference(s *snapshot.Snapshot, ref *snapshot.QueryReference) int32 {
+func upsertQueryReference(s *snapshot.FullSnapshot, ref *snapshot.QueryReference) int32 {
 	idx := int32(len(s.QueryReferences))
 	s.QueryReferences = append(s.QueryReferences, ref)
 	return idx
@@ -50,7 +50,7 @@ func groupStatements(statements []state.DiffedPostgresStatement) map[statementKe
 	return groupedStatements
 }
 
-func transformStatements(s snapshot.Snapshot, newState state.State, diffState state.DiffState) snapshot.Snapshot {
+func transformPostgresStatements(s snapshot.FullSnapshot, newState state.State, diffState state.DiffState, roleOidToIdx OidToIdx, databaseOidToIdx OidToIdx) snapshot.FullSnapshot {
 	groupedStatements := groupStatements(diffState.Statements)
 
 	for key, value := range groupedStatements {
@@ -59,8 +59,8 @@ func transformStatements(s snapshot.Snapshot, newState state.State, diffState st
 		fp := key.fingerprint
 
 		ref := snapshot.QueryReference{
-			DatabaseIdx: int32(0), // FIXME
-			UserIdx:     int32(0), // FIXME
+			DatabaseIdx: databaseOidToIdx[key.databaseOid],
+			UserIdx:     roleOidToIdx[key.userOid],
 			Fingerprint: fp[:],
 		}
 		idx := upsertQueryReference(&s, &ref)

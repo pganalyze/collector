@@ -31,12 +31,13 @@ func SendFull(db state.Database, collectionOpts state.CollectionOpts, logger *ut
 	collectedAt := time.Now()
 	s := transform.StateToSnapshot(newState, diffState)
 
+	s.SnapshotVersionMajor = 1
+	s.SnapshotVersionMinor = 0
 	s.CollectorVersion = util.CollectorNameAndVersion
-	s.CollectedAt, err = ptypes.TimestampProto(collectedAt)
-	if err != nil {
-		logger.PrintError("Error initializating snapshot timestamp")
-		return err
-	}
+
+	s.SnapshotUuid = snapshotUUID.String()
+	s.CollectedAt, _ = ptypes.TimestampProto(collectedAt)
+	s.CollectedIntervalSecs = 600 // TODO: 10 minutes - we should actually measure the distance between states here
 
 	data, err = proto.Marshal(&s)
 	if err != nil {
@@ -76,7 +77,7 @@ func debugOutputAsJSON(logger *util.Logger, compressedData bytes.Buffer) {
 
 	io.Copy(&data, r)
 
-	s := &pganalyze_collector.Snapshot{}
+	s := &pganalyze_collector.FullSnapshot{}
 	if err = proto.Unmarshal(data.Bytes(), s); err != nil {
 		logger.PrintError("Failed to re-read protocol buffers: %s", err)
 		return
