@@ -64,6 +64,7 @@ func transformPostgresDatabases(s snapshot.FullSnapshot, newState state.State, r
 
 	for _, database := range newState.Databases {
 		info := snapshot.DatabaseInformation{
+			DatabaseIdx:         databaseOidToIdx[database.Oid],
 			OwnerRoleIdx:        roleOidToIdx[database.OwnerRoleOid],
 			Encoding:            database.Encoding,
 			Collate:             database.Collate,
