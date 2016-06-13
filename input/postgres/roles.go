@@ -24,7 +24,7 @@ SELECT oid,
 			 rolsuper,
 			 rolreplication,
 			 rolconnlimit,
-			 rolvaliduntil,
+			 rolvaliduntil::timestamp,
 			 rolconfig,
 			 (SELECT array_agg(roleid) FROM pg_auth_members WHERE pg_roles.oid = pg_auth_members.member) AS member_of,
 			 %s
