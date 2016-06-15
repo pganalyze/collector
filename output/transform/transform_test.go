@@ -35,34 +35,34 @@ func TestStatements(t *testing.T) {
 		QueryReferences: []*pganalyze_collector.QueryReference{
 			&pganalyze_collector.QueryReference{
 				DatabaseIdx: 0,
-				UserIdx:     0,
+				RoleIdx:     0,
 				Fingerprint: fp1[:],
 			},
 			&pganalyze_collector.QueryReference{
 				DatabaseIdx: 0,
-				UserIdx:     0,
+				RoleIdx:     0,
 				Fingerprint: fp2[:],
 			},
 		},
 		QueryInformations: []*pganalyze_collector.QueryInformation{
 			&pganalyze_collector.QueryInformation{
-				QueryRef:        0,
+				QueryIdx:        0,
 				NormalizedQuery: "SELECT 1",
 				QueryIds:        []int64{0},
 			},
 			&pganalyze_collector.QueryInformation{
-				QueryRef:        1,
+				QueryIdx:        1,
 				NormalizedQuery: "SELECT * FROM test",
 				QueryIds:        []int64{0},
 			},
 		},
 		QueryStatistics: []*pganalyze_collector.QueryStatistic{
 			&pganalyze_collector.QueryStatistic{
-				QueryRef: 0,
+				QueryIdx: 0,
 				Calls:    1,
 			},
 			&pganalyze_collector.QueryStatistic{
-				QueryRef: 1,
+				QueryIdx: 1,
 				Calls:    13,
 			},
 		},

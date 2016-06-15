@@ -17,7 +17,7 @@ func transformPostgresRelations(s snapshot.FullSnapshot, newState state.State, d
 
 		// Information
 		info := snapshot.RelationInformation{
-			RelationRef:  idx,
+			RelationIdx:  idx,
 			RelationType: relation.RelationType,
 		}
 		if relation.ViewDefinition != "" {
@@ -45,7 +45,7 @@ func transformPostgresRelations(s snapshot.FullSnapshot, newState state.State, d
 				ForeignMatchType:  constraint.ForeignMatchType,
 			}
 			if constraint.ForeignOid != 0 {
-				sConstraint.ForeignRelationRef = -1 // FIXME, need to look this up
+				sConstraint.ForeignRelationIdx = -1 // FIXME, need to look this up
 			}
 			for _, column := range constraint.Columns {
 				sConstraint.Columns = append(sConstraint.Columns, int32(column))
@@ -61,7 +61,7 @@ func transformPostgresRelations(s snapshot.FullSnapshot, newState state.State, d
 		stats, exists := diffState.RelationStats[relation.Oid]
 		if exists {
 			statistic := snapshot.RelationStatistic{
-				RelationRef:   idx,
+				RelationIdx:   idx,
 				SizeBytes:     stats.SizeBytes,
 				SeqScan:       stats.SeqScan,
 				SeqTupRead:    stats.SeqTupRead,
@@ -102,8 +102,8 @@ func transformPostgresRelations(s snapshot.FullSnapshot, newState state.State, d
 
 			// Information
 			indexInfo := snapshot.IndexInformation{
-				IndexRef:    idx,
-				RelationRef: indexIdx,
+				IndexIdx:    indexIdx,
+				RelationIdx: idx,
 				IndexDef:    index.IndexDef,
 				IsPrimary:   index.IsPrimary,
 				IsUnique:    index.IsUnique,
@@ -121,7 +121,7 @@ func transformPostgresRelations(s snapshot.FullSnapshot, newState state.State, d
 			indexStats, exists := diffState.IndexStats[index.IndexOid]
 			if exists {
 				statistic := snapshot.IndexStatistic{
-					IndexRef:    indexIdx,
+					IndexIdx:    indexIdx,
 					SizeBytes:   indexStats.SizeBytes,
 					IdxScan:     indexStats.IdxScan,
 					IdxTupRead:  indexStats.IdxTupRead,

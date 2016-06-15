@@ -60,7 +60,7 @@ func transformPostgresStatements(s snapshot.FullSnapshot, newState state.State, 
 
 		ref := snapshot.QueryReference{
 			DatabaseIdx: databaseOidToIdx[key.databaseOid],
-			UserIdx:     roleOidToIdx[key.userOid],
+			RoleIdx:     roleOidToIdx[key.userOid],
 			Fingerprint: fp[:],
 		}
 		idx := upsertQueryReference(&s, &ref)
@@ -69,7 +69,7 @@ func transformPostgresStatements(s snapshot.FullSnapshot, newState state.State, 
 
 		// Information
 		queryInformation := snapshot.QueryInformation{
-			QueryRef:        idx,
+			QueryIdx:        idx,
 			NormalizedQuery: statement.NormalizedQuery,
 			QueryIds:        value.queryIDs,
 		}
@@ -77,7 +77,7 @@ func transformPostgresStatements(s snapshot.FullSnapshot, newState state.State, 
 
 		// Statistic
 		statistic := snapshot.QueryStatistic{
-			QueryRef: idx,
+			QueryIdx: idx,
 
 			Calls:             statement.Calls,
 			TotalTime:         statement.TotalTime,

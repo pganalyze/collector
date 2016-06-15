@@ -210,19 +210,19 @@ message FunctionReference {
 
 message QueryReference {
   int32 database_idx = 1;
-  int32 user_idx = 2;
+  int32 role_idx = 2;
   bytes fingerprint = 3;
 }
 
 message QueryInformation {
-  int32 query_ref = 1;
+  int32 query_idx = 1;
 
   string normalized_query = 2;
   repeated int64 query_ids = 3;
 }
 
 message QueryStatistic {
-  int32 query_ref = 1;
+  int32 query_idx = 1;
 
   int64 calls = 2;
   double total_time = 3;
@@ -242,7 +242,7 @@ message QueryStatistic {
 }
 
 message QueryExplain {
-  int32 query_ref = 1;
+  int32 query_idx = 1;
 
   int64 occurred_at = 4;
   double runtime = 5;
@@ -251,7 +251,7 @@ message QueryExplain {
 }
 
 message RelationInformation {
-  int32 relation_ref = 1;
+  int32 relation_idx = 1;
 
   string relation_type = 2;
   NullString view_definition = 3;
@@ -268,7 +268,7 @@ message RelationInformation {
   }
 
   message Constraint {
-    int32 foreign_relation_ref = 1;     // If a foreign key, the referenced table
+    int32 foreign_relation_idx = 1;     // If a foreign key, the referenced table
 
     string name = 2;                    // Constraint name (not necessarily unique!)
     string type = 3;                    // c = check constraint, f = foreign key constraint, p = primary key constraint, u = unique constraint, t = constraint trigger, x = exclusion constraint
@@ -282,7 +282,7 @@ message RelationInformation {
 }
 
 message RelationStatistic {
-  int32 relation_ref = 1;
+  int32 relation_idx = 1;
 
   int64 size_bytes = 2;
   int64 seq_scan = 3;             // Number of sequential scans initiated on this table
@@ -314,22 +314,22 @@ message RelationEvent {
     AUTO_ANALYZE = 3;   // Analyzed by the autovacuum daemon
   }
 
-  int32 relation_ref = 1;
+  int32 relation_idx = 1;
   EventType type = 2;
   google.protobuf.Timestamp occurred_at = 3;
   bool approximate_occurred_at = 4; // In case the "occurred_at" field is approximate, because more than one kind of this event happened during the snapshot
 }
 
 message RelationBloatStatistic {
-  int32 relation_ref = 1;
+  int32 relation_idx = 1;
 
   int64 wasted_bytes = 2;
   int64 size_bytes = 3;
 }
 
 message IndexInformation {
-  int32 index_ref = 1;
-  int32 relation_ref = 2;
+  int32 index_idx = 1;
+  int32 relation_idx = 2;
 
   repeated int32 columns = 3;
   string index_def = 4;
@@ -341,7 +341,7 @@ message IndexInformation {
 }
 
 message IndexStatistic {
-  int32 index_ref = 1;
+  int32 index_idx = 1;
 
   int64 size_bytes = 2;
   int64 idx_scan = 3;
@@ -352,13 +352,13 @@ message IndexStatistic {
 }
 
 message IndexBloatStatistic {
-  int32 index_ref = 1;
+  int32 index_idx = 1;
 
   int64 wasted_bytes = 2;
   int64 size_bytes = 3;
 }
 message FunctionInformation {
-  int32 function_ref = 1;
+  int32 function_idx = 1;
 
   string language = 3;
   string source = 4;
@@ -376,7 +376,7 @@ message FunctionInformation {
 }
 
 message FunctionStatistic {
-  int32 function_ref = 1;
+  int32 function_idx = 1;
 
   int64 calls = 2;
   double total_time = 3;
