@@ -12,48 +12,48 @@ const relationStatsSQLpg94OptionalFields = "s.n_mod_since_analyze"
 
 const relationStatsSQL = `
 SELECT s.relid,
-       pg_catalog.pg_table_size(s.relid) AS size_bytes,
-       COALESCE(s.seq_scan, 0),
-       COALESCE(s.seq_tup_read, 0),
-       COALESCE(s.idx_scan, 0),
-       COALESCE(s.idx_tup_fetch, 0),
-       COALESCE(s.n_tup_ins, 0),
-       COALESCE(s.n_tup_upd, 0),
-       COALESCE(s.n_tup_del, 0),
-       COALESCE(s.n_tup_hot_upd, 0),
-       COALESCE(s.n_live_tup, 0),
-       COALESCE(s.n_dead_tup, 0),
-       %s,
-       s.last_vacuum,
-       s.last_autovacuum,
-       s.last_analyze,
-       s.last_autoanalyze,
-       COALESCE(s.vacuum_count, 0),
-       COALESCE(s.autovacuum_count, 0),
-       COALESCE(s.analyze_count, 0),
-       COALESCE(s.autoanalyze_count, 0),
-       COALESCE(sio.heap_blks_read, 0),
-       COALESCE(sio.heap_blks_hit, 0),
-       COALESCE(sio.idx_blks_read, 0),
-       COALESCE(sio.idx_blks_hit, 0),
-       COALESCE(sio.toast_blks_read, 0),
-       COALESCE(sio.toast_blks_hit, 0),
-       COALESCE(sio.tidx_blks_read, 0),
-       COALESCE(sio.tidx_blks_hit, 0)
-  FROM pg_stat_user_tables s
-       LEFT JOIN pg_statio_user_tables sio USING (relid);
+			 pg_catalog.pg_table_size(s.relid) AS size_bytes,
+			 COALESCE(s.seq_scan, 0),
+			 COALESCE(s.seq_tup_read, 0),
+			 COALESCE(s.idx_scan, 0),
+			 COALESCE(s.idx_tup_fetch, 0),
+			 COALESCE(s.n_tup_ins, 0),
+			 COALESCE(s.n_tup_upd, 0),
+			 COALESCE(s.n_tup_del, 0),
+			 COALESCE(s.n_tup_hot_upd, 0),
+			 COALESCE(s.n_live_tup, 0),
+			 COALESCE(s.n_dead_tup, 0),
+			 %s,
+			 s.last_vacuum,
+			 s.last_autovacuum,
+			 s.last_analyze,
+			 s.last_autoanalyze,
+			 COALESCE(s.vacuum_count, 0),
+			 COALESCE(s.autovacuum_count, 0),
+			 COALESCE(s.analyze_count, 0),
+			 COALESCE(s.autoanalyze_count, 0),
+			 COALESCE(sio.heap_blks_read, 0),
+			 COALESCE(sio.heap_blks_hit, 0),
+			 COALESCE(sio.idx_blks_read, 0),
+			 COALESCE(sio.idx_blks_hit, 0),
+			 COALESCE(sio.toast_blks_read, 0),
+			 COALESCE(sio.toast_blks_hit, 0),
+			 COALESCE(sio.tidx_blks_read, 0),
+			 COALESCE(sio.tidx_blks_hit, 0)
+	FROM pg_stat_user_tables s
+			 LEFT JOIN pg_statio_user_tables sio USING (relid);
 `
 
 const indexStatsSQL = `
-SELECT s.relid,
-       pg_catalog.pg_relation_size(s.relid) AS size_bytes,
-       COALESCE(s.idx_scan, 0),
-       COALESCE(s.idx_tup_read, 0),
-       COALESCE(s.idx_tup_fetch, 0),
-       COALESCE(sio.idx_blks_read, 0),
-       COALESCE(sio.idx_blks_hit, 0)
-  FROM pg_stat_user_indexes s
-       LEFT JOIN pg_statio_user_indexes sio USING (relid);
+SELECT s.indexrelid,
+			 pg_catalog.pg_relation_size(s.relid) AS size_bytes,
+			 COALESCE(s.idx_scan, 0),
+			 COALESCE(s.idx_tup_read, 0),
+			 COALESCE(s.idx_tup_fetch, 0),
+			 COALESCE(sio.idx_blks_read, 0),
+			 COALESCE(sio.idx_blks_hit, 0)
+	FROM pg_stat_user_indexes s
+			 LEFT JOIN pg_statio_user_indexes sio USING (relid);
 `
 
 func GetRelationStats(db *sql.DB, postgresVersion state.PostgresVersion) (relStats state.PostgresRelationStatsMap, err error) {
