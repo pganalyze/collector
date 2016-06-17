@@ -46,7 +46,7 @@ SELECT s.relid,
 
 const indexStatsSQL = `
 SELECT s.indexrelid,
-			 pg_catalog.pg_relation_size(s.relid) AS size_bytes,
+			 pg_catalog.pg_relation_size(s.indexrelid) AS size_bytes,
 			 COALESCE(s.idx_scan, 0),
 			 COALESCE(s.idx_tup_read, 0),
 			 COALESCE(s.idx_tup_fetch, 0),
