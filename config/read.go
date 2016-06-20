@@ -7,8 +7,8 @@ import (
 	"github.com/go-ini/ini"
 )
 
-func getDefaultConfig() *DatabaseConfig {
-	config := &DatabaseConfig{
+func getDefaultConfig() *ServerConfig {
+	config := &ServerConfig{
 		APIBaseURL:  "https://api.pganalyze.com",
 		DbHost:      "localhost",
 		DbPort:      5432,
@@ -59,13 +59,13 @@ func getDefaultConfig() *DatabaseConfig {
 }
 
 // Read - Reads the configuration from the specified filename, or fall back to the default config
-func Read(filename string) ([]DatabaseConfig, error) {
-	var databases []DatabaseConfig
+func Read(filename string) ([]ServerConfig, error) {
+	var servers []ServerConfig
 
 	if _, err := os.Stat(filename); err == nil {
 		configFile, err := ini.Load(filename)
 		if err != nil {
-			return databases, err
+			return servers, err
 		}
 
 		sections := configFile.Sections()
@@ -74,18 +74,18 @@ func Read(filename string) ([]DatabaseConfig, error) {
 
 			err = section.MapTo(config)
 			if err != nil {
-				return databases, err
+				return servers, err
 			}
 
 			config.SectionName = section.Name()
 
 			if config.DbName != "" {
-				databases = append(databases, *config)
+				servers = append(servers, *config)
 			}
 		}
 	} else {
-		databases = append(databases, *getDefaultConfig())
+		servers = append(servers, *getDefaultConfig())
 	}
 
-	return databases, nil
+	return servers, nil
 }

@@ -9,7 +9,7 @@ import (
 	"github.com/pganalyze/collector/config"
 )
 
-func GetAwsSession(config config.DatabaseConfig) *session.Session {
+func GetAwsSession(config config.ServerConfig) *session.Session {
 	var creds *credentials.Credentials
 
 	if config.AwsAccessKeyID != "" {

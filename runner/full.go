@@ -12,36 +12,36 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
-func processDatabase(db state.Database, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.State, state.Grant, error) {
+func processDatabase(server state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.State, state.Grant, error) {
 	// Note: In case of server errors, we should reuse the old grant if its still recent (i.e. less than 50 minutes ago)
-	grant, err := getSnapshotGrant(db, globalCollectionOpts, logger)
+	grant, err := getSnapshotGrant(server, globalCollectionOpts, logger)
 	if err != nil {
 		logger.PrintVerbose("Could not acquire snapshot grant, reusing previous grant: %s", err)
 	} else {
-		db.Grant = grant
+		server.Grant = grant
 	}
 
-	newState, err := input.CollectFull(db, globalCollectionOpts, logger)
+	newState, err := input.CollectFull(server, globalCollectionOpts, logger)
 	if err != nil {
 		return newState, grant, err
 	}
 
-	diffState := diffState(logger, db.PrevState, newState)
+	diffState := diffState(logger, server.PrevState, newState)
 
-	output.SendFull(db, globalCollectionOpts, logger, newState, diffState)
+	output.SendFull(server, globalCollectionOpts, logger, newState, diffState)
 
 	return newState, grant, nil
 }
 
-func getSnapshotGrant(db state.Database, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.Grant, error) {
+func getSnapshotGrant(server state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.Grant, error) {
 	var grant state.Grant
 
-	req, err := http.NewRequest("GET", db.Config.APIBaseURL+"/v2/snapshots/grant", nil)
+	req, err := http.NewRequest("GET", server.Config.APIBaseURL+"/v2/snapshots/grant", nil)
 	if err != nil {
 		return grant, err
 	}
 
-	req.Header.Set("Pganalyze-Api-Key", db.Config.APIKey)
+	req.Header.Set("Pganalyze-Api-Key", server.Config.APIKey)
 	req.Header.Set("User-Agent", util.CollectorNameAndVersion)
 	req.Header.Add("Accept", "application/json")
 
@@ -68,28 +68,28 @@ func getSnapshotGrant(db state.Database, globalCollectionOpts state.CollectionOp
 	return grant, nil
 }
 
-func CollectAllDatabases(databases []state.Database, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
-	for idx, db := range databases {
+func CollectAllServers(servers []state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
+	for idx, server := range servers {
 		var err error
 
-		prefixedLogger := logger.WithPrefix(db.Config.SectionName)
+		prefixedLogger := logger.WithPrefix(server.Config.SectionName)
 
-		db.Connection, err = establishConnection(db, logger, globalCollectionOpts)
+		server.Connection, err = establishConnection(server, logger, globalCollectionOpts)
 		if err != nil {
 			prefixedLogger.PrintError("Error: Failed to connect to database: %s", err)
 			return
 		}
 
-		newState, grant, err := processDatabase(db, globalCollectionOpts, prefixedLogger)
+		newState, grant, err := processDatabase(server, globalCollectionOpts, prefixedLogger)
 		if err != nil {
 			prefixedLogger.PrintError("Error: Could not process database: %s", err)
 		} else {
-			databases[idx].Grant = grant
-			databases[idx].PrevState = newState
+			servers[idx].Grant = grant
+			servers[idx].PrevState = newState
 		}
 
 		// This is the easiest way to avoid opening multiple connections to different databases on the same instance
-		db.Connection.Close()
-		db.Connection = nil
+		server.Connection.Close()
+		server.Connection = nil
 	}
 }

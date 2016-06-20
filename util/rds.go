@@ -10,7 +10,7 @@ import (
 	"github.com/pganalyze/collector/config"
 )
 
-func FindRdsInstance(config config.DatabaseConfig, sess *session.Session) (instance *rds.DBInstance, err error) {
+func FindRdsInstance(config config.ServerConfig, sess *session.Session) (instance *rds.DBInstance, err error) {
 	var resp *rds.DescribeDBInstancesOutput
 
 	svc := rds.New(sess)

@@ -23,7 +23,7 @@ import (
 	"github.com/satori/go.uuid"
 )
 
-func SendFull(db state.Database, collectionOpts state.CollectionOpts, logger *util.Logger, newState state.State, diffState state.DiffState) error {
+func SendFull(db state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, newState state.State, diffState state.DiffState) error {
 	var err error
 	var data []byte
 
@@ -96,7 +96,7 @@ type s3UploadResponse struct {
 	Key      string
 }
 
-func uploadSnapshot(db state.Database, collectionOpts state.CollectionOpts, logger *util.Logger, compressedData bytes.Buffer, snapshotUUID uuid.UUID) (string, error) {
+func uploadSnapshot(server state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, compressedData bytes.Buffer, snapshotUUID uuid.UUID) (string, error) {
 	logger.PrintVerbose("Successfully prepared request - size of request body: %.4f MB", float64(compressedData.Len())/1024.0/1024.0)
 
 	var formBytes bytes.Buffer
@@ -104,7 +104,7 @@ func uploadSnapshot(db state.Database, collectionOpts state.CollectionOpts, logg
 
 	writer := multipart.NewWriter(&formBytes)
 
-	for key, val := range db.Grant.S3Fields {
+	for key, val := range server.Grant.S3Fields {
 		err = writer.WriteField(key, val)
 		if err != nil {
 			return "", err
@@ -119,7 +119,7 @@ func uploadSnapshot(db state.Database, collectionOpts state.CollectionOpts, logg
 
 	writer.Close()
 
-	req, err := http.NewRequest("POST", db.Grant.S3URL, &formBytes)
+	req, err := http.NewRequest("POST", server.Grant.S3URL, &formBytes)
 	if err != nil {
 		return "", err
 	}
@@ -149,11 +149,11 @@ func uploadSnapshot(db state.Database, collectionOpts state.CollectionOpts, logg
 	return s3Resp.Key, nil
 }
 
-func submitSnapshot(db state.Database, collectionOpts state.CollectionOpts, logger *util.Logger, s3Location string, collectedAt time.Time) error {
-	requestURL := db.Config.APIBaseURL + "/v2/snapshots"
+func submitSnapshot(server state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, s3Location string, collectedAt time.Time) error {
+	requestURL := server.Config.APIBaseURL + "/v2/snapshots"
 
 	if collectionOpts.TestRun {
-		requestURL = db.Config.APIBaseURL + "/v2/snapshots/test"
+		requestURL = server.Config.APIBaseURL + "/v2/snapshots/test"
 	}
 
 	data := url.Values{
@@ -166,7 +166,7 @@ func submitSnapshot(db state.Database, collectionOpts state.CollectionOpts, logg
 		return err
 	}
 
-	req.Header.Set("Pganalyze-Api-Key", db.Config.APIKey)
+	req.Header.Set("Pganalyze-Api-Key", server.Config.APIKey)
 	req.Header.Set("User-Agent", util.CollectorNameAndVersion)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Add("Accept", "application/json,text/plain")

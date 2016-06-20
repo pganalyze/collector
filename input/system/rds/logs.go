@@ -22,7 +22,7 @@ import (
 // Retain the marker across runs to only download new data
 
 // GetLogLines - Gets log lines for an Amazon RDS instance
-func GetLogLines(config config.DatabaseConfig) (result []state.LogLine, explains []state.PostgresExplainInput) {
+func GetLogLines(config config.ServerConfig) (result []state.LogLine, explains []state.PostgresExplainInput) {
 	// Get interesting files (last written to in the last 10 minutes)
 	// Remember markers for each file
 

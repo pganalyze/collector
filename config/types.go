@@ -7,11 +7,11 @@ import (
 	"strings"
 )
 
-// DatabaseConfig -
-//   Contains the information how to connect to a single Postgres
-//   database (on a given instance), with optional AWS credentials to get metrics
+// ServerConfig -
+//   Contains the information how to connect to a Postgres instance,
+//   with optional AWS credentials to get metrics
 //   from AWS CloudWatch as well as RDS logfiles
-type DatabaseConfig struct {
+type ServerConfig struct {
 	APIKey     string `ini:"api_key"`
 	APIBaseURL string `ini:"api_base_url"`
 	DbURL      string `ini:"db_url"`
@@ -31,7 +31,7 @@ type DatabaseConfig struct {
 }
 
 // GetPqOpenString - Gets the database configuration as a string that can be passed to lib/pq for connecting
-func (config DatabaseConfig) GetPqOpenString() string {
+func (config ServerConfig) GetPqOpenString() string {
 	if config.DbURL != "" {
 		return config.DbURL
 	}
@@ -47,7 +47,7 @@ func (config DatabaseConfig) GetPqOpenString() string {
 }
 
 // GetDbHost - Gets the database hostname from the given configuration
-func (config DatabaseConfig) GetDbHost() string {
+func (config ServerConfig) GetDbHost() string {
 	if config.DbURL != "" {
 		u, _ := url.Parse(config.DbURL)
 		parts := strings.Split(u.Host, ":")
@@ -58,7 +58,7 @@ func (config DatabaseConfig) GetDbHost() string {
 }
 
 // GetDbPort - Gets the database port from the given configuration
-func (config DatabaseConfig) GetDbPort() int {
+func (config ServerConfig) GetDbPort() int {
 	if config.DbURL != "" {
 		u, _ := url.Parse(config.DbURL)
 		parts := strings.Split(u.Host, ":")

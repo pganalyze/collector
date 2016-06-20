@@ -62,8 +62,8 @@ type Grant struct {
 	S3Fields map[string]string `json:"s3_fields"`
 }
 
-type Database struct {
-	Config           config.DatabaseConfig
+type Server struct {
+	Config           config.ServerConfig
 	Connection       *sql.DB
 	PrevState        State
 	RequestedSslMode string

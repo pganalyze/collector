@@ -11,12 +11,12 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
-func establishConnection(db state.Database, logger *util.Logger, globalCollectionOpts state.CollectionOpts) (connection *sql.DB, err error) {
-	connection, err = connectToDb(db.Config, logger, globalCollectionOpts)
+func establishConnection(server state.Server, logger *util.Logger, globalCollectionOpts state.CollectionOpts) (connection *sql.DB, err error) {
+	connection, err = connectToDb(server.Config, logger, globalCollectionOpts)
 	if err != nil {
-		if err.Error() == "pq: SSL is not enabled on the server" && db.RequestedSslMode == "prefer" {
-			db.Config.DbSslMode = "disable"
-			connection, err = connectToDb(db.Config, logger, globalCollectionOpts)
+		if err.Error() == "pq: SSL is not enabled on the server" && server.RequestedSslMode == "prefer" {
+			server.Config.DbSslMode = "disable"
+			connection, err = connectToDb(server.Config, logger, globalCollectionOpts)
 		}
 	}
 
@@ -29,7 +29,7 @@ func establishConnection(db state.Database, logger *util.Logger, globalCollectio
 	return
 }
 
-func connectToDb(config config.DatabaseConfig, logger *util.Logger, globalCollectionOpts state.CollectionOpts) (*sql.DB, error) {
+func connectToDb(config config.ServerConfig, logger *util.Logger, globalCollectionOpts state.CollectionOpts) (*sql.DB, error) {
 	connectString := config.GetPqOpenString()
 
 	if strings.HasPrefix(connectString, "postgres://") || strings.HasPrefix(connectString, "postgresql://") {

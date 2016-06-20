@@ -22,7 +22,7 @@ import (
 )
 
 func run(wg sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *util.Logger, configFilename string) chan<- bool {
-	var databases []state.Database
+	var servers []state.Server
 
 	schedulerGroups, err := scheduler.GetSchedulerGroups()
 	if err != nil {
@@ -30,33 +30,33 @@ func run(wg sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *u
 		return nil
 	}
 
-	databaseConfigs, err := config.Read(configFilename)
+	serverConfigs, err := config.Read(configFilename)
 	if err != nil {
 		logger.PrintError("Error: Could not read configuration, awaiting SIGHUP or process kill")
 		return nil
 	}
 
-	for _, config := range databaseConfigs {
-		db := state.Database{Config: config, RequestedSslMode: config.DbSslMode}
+	for _, config := range serverConfigs {
+		server := state.Server{Config: config, RequestedSslMode: config.DbSslMode}
 
 		// Go's lib/pq does not support sslmode properly, so we have to implement the "prefer" mode ourselves
-		if db.RequestedSslMode == "prefer" {
-			db.Config.DbSslMode = "require"
+		if server.RequestedSslMode == "prefer" {
+			server.Config.DbSslMode = "require"
 		}
 
-		databases = append(databases, db)
+		servers = append(servers, server)
 	}
 
 	// We intentionally don't do a test-run in the normal mode, since we're fine with
 	// a later SIGHUP that fixes the config (or a temporarily unreachable server at start)
 	if globalCollectionOpts.TestRun {
-		runner.CollectAllDatabases(databases, globalCollectionOpts, logger)
+		runner.CollectAllServers(servers, globalCollectionOpts, logger)
 		return nil
 	}
 
 	stop := schedulerGroups["stats"].Schedule(func() {
 		wg.Add(1)
-		runner.CollectAllDatabases(databases, globalCollectionOpts, logger)
+		runner.CollectAllServers(servers, globalCollectionOpts, logger)
 		wg.Done()
 	}, logger, "collection of all databases")
 
@@ -67,6 +67,7 @@ func main() {
 	var dryRun bool
 	var testRun bool
 	var configFilename string
+	var stateFilename string
 	var pidFilename string
 	var noPostgresSettings, noPostgresLocks, noPostgresFunctions, noPostgresBloat, noPostgresViews bool
 	var noPostgresRelations, noLogs, noExplain, noSystemInformation, diffStatements bool
@@ -93,6 +94,7 @@ func main() {
 	flag.BoolVar(&noSystemInformation, "no-system-information", false, "Don't collect OS level performance data")
 	flag.BoolVar(&diffStatements, "diff-statements", false, "Send a diff of the pg_stat_statements statistics, instead of counter values")
 	flag.StringVar(&configFilename, "config", usr.HomeDir+"/.pganalyze_collector.conf", "Specify alternative path for config file.")
+	flag.StringVar(&stateFilename, "statefile", usr.HomeDir+"/.pganalyze_collector.state", "Specify alternative path for state file.")
 	flag.StringVar(&pidFilename, "pidfile", "", "Specifies a path that a pidfile should be written to. (default is no pidfile being written)")
 	flag.Parse()
 

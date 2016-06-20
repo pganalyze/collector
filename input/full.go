@@ -9,16 +9,16 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
-func CollectFull(db state.Database, collectionOpts state.CollectionOpts, logger *util.Logger) (s state.State, err error) {
+func CollectFull(server state.Server, collectionOpts state.CollectionOpts, logger *util.Logger) (s state.State, err error) {
 	var explainInputs []state.PostgresExplainInput
 
-	postgresVersion, err := postgres.GetPostgresVersion(logger, db.Connection)
+	postgresVersion, err := postgres.GetPostgresVersion(logger, server.Connection)
 	if err != nil {
 		logger.PrintError("Error collecting Postgres Version")
 		return
 	}
 
-	currentDatabaseOid, err := postgres.CurrentDatabaseOid(db.Connection)
+	currentDatabaseOid, err := postgres.CurrentDatabaseOid(server.Connection)
 	if err != nil {
 		logger.PrintError("Error getting OID of current database")
 		return
@@ -32,44 +32,44 @@ func CollectFull(db state.Database, collectionOpts state.CollectionOpts, logger 
 		return
 	}
 
-	s.Roles, err = postgres.GetRoles(logger, db.Connection, postgresVersion)
+	s.Roles, err = postgres.GetRoles(logger, server.Connection, postgresVersion)
 	if err != nil {
 		logger.PrintError("Error collecting pg_roles")
 		return
 	}
 
-	s.Databases, err = postgres.GetDatabases(logger, db.Connection, postgresVersion)
+	s.Databases, err = postgres.GetDatabases(logger, server.Connection, postgresVersion)
 	if err != nil {
 		logger.PrintError("Error collecting pg_databases")
 		return
 	}
 
-	s.Backends, err = postgres.GetBackends(logger, db.Connection, postgresVersion)
+	s.Backends, err = postgres.GetBackends(logger, server.Connection, postgresVersion)
 	if err != nil {
 		logger.PrintError("Error collecting pg_stat_activity")
 		return
 	}
 
-	s.Statements, err = postgres.GetStatements(logger, db.Connection, postgresVersion)
+	s.Statements, err = postgres.GetStatements(logger, server.Connection, postgresVersion)
 	if err != nil {
 		logger.PrintError("Error collecting pg_stat_statements")
 		return
 	}
 
 	if collectionOpts.CollectPostgresRelations {
-		s.Relations, err = postgres.GetRelations(db.Connection, postgresVersion, currentDatabaseOid)
+		s.Relations, err = postgres.GetRelations(server.Connection, postgresVersion, currentDatabaseOid)
 		if err != nil {
 			logger.PrintError("Error collecting relation/index information: %s", err)
 			return
 		}
 
-		s.RelationStats, err = postgres.GetRelationStats(db.Connection, postgresVersion)
+		s.RelationStats, err = postgres.GetRelationStats(server.Connection, postgresVersion)
 		if err != nil {
 			logger.PrintError("Error collecting relation stats: %s", err)
 			return
 		}
 
-		s.IndexStats, err = postgres.GetIndexStats(db.Connection, postgresVersion)
+		s.IndexStats, err = postgres.GetIndexStats(server.Connection, postgresVersion)
 		if err != nil {
 			logger.PrintError("Error collecting index stats: %s", err)
 			return
@@ -79,7 +79,7 @@ func CollectFull(db state.Database, collectionOpts state.CollectionOpts, logger 
 	}
 
 	if collectionOpts.CollectPostgresSettings {
-		s.Settings, err = postgres.GetSettings(db.Connection, postgresVersion)
+		s.Settings, err = postgres.GetSettings(server.Connection, postgresVersion)
 		if err != nil {
 			logger.PrintError("Error collecting config settings")
 			return
@@ -87,7 +87,7 @@ func CollectFull(db state.Database, collectionOpts state.CollectionOpts, logger 
 	}
 
 	if collectionOpts.CollectPostgresFunctions {
-		s.Functions, err = postgres.GetFunctions(db.Connection, postgresVersion)
+		s.Functions, err = postgres.GetFunctions(server.Connection, postgresVersion)
 		if err != nil {
 			logger.PrintError("Error collecting stored procedures")
 			return
@@ -95,15 +95,15 @@ func CollectFull(db state.Database, collectionOpts state.CollectionOpts, logger 
 	}
 
 	if collectionOpts.CollectSystemInformation {
-		systemState := system.GetSystemState(db.Config, logger)
+		systemState := system.GetSystemState(server.Config, logger)
 		s.System = &systemState
 	}
 
 	if collectionOpts.CollectLogs {
-		s.Logs, explainInputs = system.GetLogLines(db.Config)
+		s.Logs, explainInputs = system.GetLogLines(server.Config)
 
 		if collectionOpts.CollectExplain {
-			s.Explains = postgres.RunExplain(db.Connection, explainInputs)
+			s.Explains = postgres.RunExplain(server.Connection, explainInputs)
 		}
 	}
 
