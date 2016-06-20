@@ -2,6 +2,7 @@ package transform_test
 
 import (
 	"encoding/json"
+	"reflect"
 	"testing"
 
 	"github.com/pganalyze/collector/output/pganalyze_collector"
@@ -69,7 +70,7 @@ func TestStatements(t *testing.T) {
 	}
 	expectedJSON, _ := json.Marshal(expected)
 
-	if string(expectedJSON) != string(actualJSON) {
+	if !reflect.DeepEqual(expected, actual) {
 		t.Errorf("\nExpected:%+v\n\tActual: %+v\n\n", string(expectedJSON), string(actualJSON))
 	}
 }
