@@ -22,4 +22,8 @@ RUN apk-install -t build-deps make curl libc-dev gcc go git tar \
 RUN chmod +x /usr/local/bin/gosu
 RUN chown pganalyze:pganalyze $HOME_DIR/collector
 
-CMD ["/usr/local/bin/gosu", "pganalyze", "/home/pganalyze/collector"]
+RUN mkdir /state
+RUN chown pganalyze:pganalyze /state
+VOLUME ["/state"]
+
+CMD ["/usr/local/bin/gosu", "pganalyze", "/home/pganalyze/collector", "--statefile", "/state/pganalyze-collector.state"]

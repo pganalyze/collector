@@ -47,6 +47,8 @@ func run(wg sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *u
 		servers = append(servers, server)
 	}
 
+	runner.ReadStateFile(servers, globalCollectionOpts, logger)
+
 	// We intentionally don't do a test-run in the normal mode, since we're fine with
 	// a later SIGHUP that fixes the config (or a temporarily unreachable server at start)
 	if globalCollectionOpts.TestRun {

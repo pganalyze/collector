@@ -68,6 +68,7 @@ type GrantConfig struct {
 }
 
 type Grant struct {
+	Valid    bool
 	Config   GrantConfig       `json:"config"`
 	S3URL    string            `json:"s3_url"`
 	S3Fields map[string]string `json:"s3_fields"`
