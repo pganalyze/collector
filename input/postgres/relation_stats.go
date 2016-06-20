@@ -53,7 +53,7 @@ SELECT s.indexrelid,
 			 COALESCE(sio.idx_blks_read, 0),
 			 COALESCE(sio.idx_blks_hit, 0)
 	FROM pg_stat_user_indexes s
-			 LEFT JOIN pg_statio_user_indexes sio USING (relid);
+			 LEFT JOIN pg_statio_user_indexes sio USING (indexrelid);
 `
 
 func GetRelationStats(db *sql.DB, postgresVersion state.PostgresVersion) (relStats state.PostgresRelationStatsMap, err error) {
