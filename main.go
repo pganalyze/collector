@@ -111,6 +111,7 @@ func main() {
 		CollectExplain:           !noExplain,
 		CollectSystemInformation: !noSystemInformation,
 		DiffStatements:           diffStatements,
+		StateFilename:            stateFilename,
 	}
 
 	if dryRun {

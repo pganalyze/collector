@@ -1,10 +1,12 @@
 package runner
 
 import (
+	"encoding/gob"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 
 	"github.com/pganalyze/collector/input"
 	"github.com/pganalyze/collector/output"
@@ -68,6 +70,24 @@ func getSnapshotGrant(server state.Server, globalCollectionOpts state.Collection
 	return grant, nil
 }
 
+func writeStateFile(servers []state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
+	stateOnDisk := state.StateOnDisk{PrevStateByAPIKey: make(map[string]state.State)}
+
+	for _, server := range servers {
+		stateOnDisk.PrevStateByAPIKey[server.Config.APIKey] = server.PrevState
+	}
+
+	file, err := os.Create(globalCollectionOpts.StateFilename)
+	if err != nil {
+		logger.PrintWarning("Could not write out state file to %s because of error: %s", globalCollectionOpts.StateFilename, err)
+		return
+	}
+	defer file.Close()
+
+	encoder := gob.NewEncoder(file)
+	encoder.Encode(stateOnDisk)
+}
+
 func CollectAllServers(servers []state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
 	for idx, server := range servers {
 		var err error
@@ -91,5 +111,9 @@ func CollectAllServers(servers []state.Server, globalCollectionOpts state.Collec
 		// This is the easiest way to avoid opening multiple connections to different databases on the same instance
 		server.Connection.Close()
 		server.Connection = nil
+	}
+
+	if !globalCollectionOpts.TestRun {
+		writeStateFile(servers, globalCollectionOpts, logger)
 	}
 }

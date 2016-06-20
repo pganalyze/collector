@@ -32,6 +32,15 @@ type DiffState struct {
 	IndexStats    DiffedPostgresIndexStatsMap
 }
 
+// StateOnDiskFormatVersion - Increment this when an old state preserved to disk should be ignored
+const StateOnDiskFormatVersion = 1
+
+type StateOnDisk struct {
+	FormatVersion uint
+
+	PrevStateByAPIKey map[string]State
+}
+
 type CollectionOpts struct {
 	CollectPostgresRelations bool
 	CollectPostgresSettings  bool
@@ -50,6 +59,8 @@ type CollectionOpts struct {
 
 	SubmitCollectedData bool
 	TestRun             bool
+
+	StateFilename string
 }
 
 type GrantConfig struct {
