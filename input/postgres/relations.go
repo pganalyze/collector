@@ -14,7 +14,14 @@ import (
 const relationsSQL string = `SELECT c.oid,
 				n.nspname AS schema_name,
 				c.relname AS table_name,
-				c.relkind AS relation_type
+				c.relkind AS relation_type,
+				c.reloptions AS relation_options,
+				c.relhasoids AS relation_has_oids,
+				c.relpersistence AS relation_persistence,
+				c.relhassubclass AS relation_has_inheritance_children,
+				c.reltoastrelid IS NULL AS relation_has_toast,
+				c.relfrozenxid AS relation_frozen_xid,
+				c.relminmxid AS relation_min_mxid
 	 FROM pg_catalog.pg_class c
 	 LEFT JOIN pg_catalog.pg_namespace n ON (n.oid = c.relnamespace)
 	WHERE c.relkind IN ('r','v','m')
@@ -112,11 +119,20 @@ func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 
 	for rows.Next() {
 		var row state.PostgresRelation
+		var options null.String
 
-		err = rows.Scan(&row.Oid, &row.SchemaName, &row.RelationName, &row.RelationType)
+		err = rows.Scan(&row.Oid, &row.SchemaName, &row.RelationName, &row.RelationType,
+			&options, &row.HasOids, &row.PersistenceType, &row.HasInheritanceChildren,
+			&row.HasToast, &row.FrozenXID, &row.MinimumMultixactXID)
 		if err != nil {
 			err = fmt.Errorf("Relations/Scan: %s", err)
 			return nil, err
+		}
+
+		if options.Valid {
+			for _, cstr := range strings.Split(strings.Trim(options.String, "{}"), ",") {
+				row.Options = append(row.Options, cstr)
+			}
 		}
 
 		row.DatabaseOid = currentDatabaseOid

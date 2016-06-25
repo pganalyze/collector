@@ -1,8 +1,10 @@
 package transform
 
 import (
+	"github.com/golang/protobuf/ptypes"
 	snapshot "github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
+	"gopkg.in/guregu/null.v3"
 )
 
 func transformPostgresRelations(s snapshot.FullSnapshot, newState state.State, diffState state.DiffState, roleOidToIdx OidToIdx, databaseOidToIdx OidToIdx) snapshot.FullSnapshot {
@@ -17,9 +19,17 @@ func transformPostgresRelations(s snapshot.FullSnapshot, newState state.State, d
 
 		// Information
 		info := snapshot.RelationInformation{
-			RelationIdx:  idx,
-			RelationType: relation.RelationType,
+			RelationIdx:            idx,
+			RelationType:           relation.RelationType,
+			PersistenceType:        relation.PersistenceType,
+			Options:                relation.Options,
+			HasOids:                relation.HasOids,
+			HasInheritanceChildren: relation.HasInheritanceChildren,
+			HasToast:               relation.HasToast,
+			FrozenXid:              uint32(relation.FrozenXID),
+			MinimumMultixactXid:    uint32(relation.MinimumMultixactXID),
 		}
+
 		if relation.ViewDefinition != "" {
 			info.ViewDefinition = &snapshot.NullString{Valid: true, Value: relation.ViewDefinition}
 		}
@@ -86,9 +96,13 @@ func transformPostgresRelations(s snapshot.FullSnapshot, newState state.State, d
 				statistic.NModSinceAnalyze = stats.NModSinceAnalyze.Int64
 			}
 			s.RelationStatistics = append(s.RelationStatistics, &statistic)
-		}
 
-		// TODO: Events
+			// Events
+			s.RelationEvents = addRelationEvents(idx, s.RelationEvents, stats.AnalyzeCount, stats.LastAnalyze, snapshot.RelationEvent_MANUAL_ANALYZE)
+			s.RelationEvents = addRelationEvents(idx, s.RelationEvents, stats.AutoanalyzeCount, stats.LastAutoanalyze, snapshot.RelationEvent_AUTO_ANALYZE)
+			s.RelationEvents = addRelationEvents(idx, s.RelationEvents, stats.VacuumCount, stats.LastVacuum, snapshot.RelationEvent_MANUAL_VACUUM)
+			s.RelationEvents = addRelationEvents(idx, s.RelationEvents, stats.AutovacuumCount, stats.LastAutovacuum, snapshot.RelationEvent_AUTO_VACUUM)
+		}
 
 		// Indices
 		for _, index := range relation.Indices {
@@ -135,4 +149,24 @@ func transformPostgresRelations(s snapshot.FullSnapshot, newState state.State, d
 	}
 
 	return s
+}
+
+func addRelationEvents(relationIdx int32, events []*snapshot.RelationEvent, count int64, lastTime null.Time, eventType snapshot.RelationEvent_EventType) []*snapshot.RelationEvent {
+	if count == 0 {
+		return events
+	}
+
+	ts, _ := ptypes.TimestampProto(lastTime.Time)
+
+	for i := int64(0); i < count; i++ {
+		event := snapshot.RelationEvent{
+			RelationIdx:           relationIdx,
+			Type:                  eventType,
+			OccurredAt:            ts,
+			ApproximateOccurredAt: i != 0,
+		}
+		events = append(events, &event)
+	}
+
+	return events
 }

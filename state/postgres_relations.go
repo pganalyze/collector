@@ -3,15 +3,22 @@ package state
 import "gopkg.in/guregu/null.v3"
 
 type PostgresRelation struct {
-	Oid            Oid
-	DatabaseOid    Oid
-	SchemaName     string
-	RelationName   string
-	RelationType   string
-	Columns        []PostgresColumn
-	Indices        []PostgresIndex
-	Constraints    []PostgresConstraint
-	ViewDefinition string
+	Oid                    Oid
+	DatabaseOid            Oid
+	SchemaName             string
+	RelationName           string
+	RelationType           string
+	PersistenceType        string
+	Columns                []PostgresColumn
+	Indices                []PostgresIndex
+	Constraints            []PostgresConstraint
+	ViewDefinition         string
+	Options                []string
+	HasOids                bool
+	HasInheritanceChildren bool
+	HasToast               bool
+	FrozenXID              Xid
+	MinimumMultixactXID    Xid
 }
 
 type PostgresColumn struct {

@@ -259,6 +259,15 @@ message RelationInformation {
   repeated Column columns = 4;
   repeated Constraint constraints = 5;
 
+  string persistence_type = 6;
+  repeated string options = 7;
+  bool has_oids = 8;
+  bool has_inheritance_children = 9;
+  bool has_toast = 10;
+
+  uint32 frozen_xid = 11;
+  uint32 minimum_multixact_xid = 12;
+
   message Column {
     string name = 2;
     string data_type = 3;
