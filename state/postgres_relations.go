@@ -37,6 +37,7 @@ type PostgresColumn struct {
 type PostgresIndex struct {
 	RelationOid   Oid
 	IndexOid      Oid
+	IndexType     string // Equivalent with pg_am.amname, e.g. "btree", "gist", "gin", "brin"
 	Columns       []int32
 	Name          string
 	IsPrimary     bool
@@ -77,5 +78,8 @@ func (i PostgresIndex) Fillfactor() int32 {
 		f, _ := strconv.Atoi(fstr)
 		return int32(f)
 	}
-	return 100
+	if i.IndexType == "btree" {
+		return 90
+	}
+	return -1
 }

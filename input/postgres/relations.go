@@ -60,7 +60,8 @@ SELECT c.oid,
 			 i.indisvalid,
 			 pg_catalog.pg_get_indexdef(i.indexrelid, 0, TRUE),
 			 pg_catalog.pg_get_constraintdef(con.oid, TRUE),
-			 c2.reloptions
+			 c2.reloptions,
+			 (SELECT pg_am.amname FROM pg_am JOIN pg_opclass ON (pg_am.oid = pg_opclass.opcmethod) WHERE pg_opclass.oid = i.indclass[0])
 	FROM pg_catalog.pg_class c
 	JOIN pg_catalog.pg_namespace n ON (n.oid = c.relnamespace)
 	JOIN pg_catalog.pg_index i ON (c.oid = i.indrelid)
@@ -198,7 +199,7 @@ func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 		var options null.String
 
 		err = rows.Scan(&row.RelationOid, &row.IndexOid, &columns, &row.Name, &row.IsPrimary,
-			&row.IsUnique, &row.IsValid, &row.IndexDef, &row.ConstraintDef, &options)
+			&row.IsUnique, &row.IsValid, &row.IndexDef, &row.ConstraintDef, &options, &row.IndexType)
 		if err != nil {
 			err = fmt.Errorf("Indices/Scan: %s", err)
 			return nil, err

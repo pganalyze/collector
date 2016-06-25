@@ -348,6 +348,7 @@ message IndexInformation {
   bool is_unique = 7;
   bool is_valid = 8;
   int32 fillfactor = 9;
+  string index_type = 10;
 }
 
 message IndexStatistic {

@@ -118,6 +118,7 @@ func transformPostgresRelations(s snapshot.FullSnapshot, newState state.State, d
 			indexInfo := snapshot.IndexInformation{
 				IndexIdx:    indexIdx,
 				RelationIdx: idx,
+				IndexType:   index.IndexType,
 				IndexDef:    index.IndexDef,
 				IsPrimary:   index.IsPrimary,
 				IsUnique:    index.IsUnique,
