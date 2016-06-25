@@ -2,39 +2,43 @@ package postgres
 
 import (
 	"database/sql"
+	"fmt"
+
+	"gopkg.in/guregu/null.v2"
 
 	"github.com/pganalyze/collector/state"
 )
 
 const functionsSQL string = `
-SELECT pn.nspname AS schema_name,
-			 pp.proname AS function_name,
-			 pl.lanname AS language,
-			 pp.prosrc AS source,
-			 pp.probin AS source_bin,
-			 pp.proconfig AS config,
-			 pg_get_function_arguments(pp.oid) AS arguments,
-			 pg_get_function_result(pp.oid) AS result,
-			 pp.proisagg AS aggregate,
-			 pp.proiswindow AS window,
-			 pp.prosecdef AS security_definer,
-			 pp.proleakproof AS leakproof,
-			 pp.proisstrict AS strict,
-			 pp.proretset AS returns_set,
-			 pp.provolatile AS volatile
+SELECT pp.oid,
+			 pn.nspname,
+			 pp.proname,
+			 pl.lanname,
+			 pp.prosrc,
+			 pp.probin,
+			 pp.proconfig,
+			 pg_get_function_arguments(pp.oid),
+			 pg_get_function_result(pp.oid),
+			 pp.proisagg,
+			 pp.proiswindow,
+			 pp.prosecdef,
+			 pp.proleakproof,
+			 pp.proisstrict,
+			 pp.proretset,
+			 pp.provolatile
 	FROM pg_proc pp
  INNER JOIN pg_namespace pn ON (pp.pronamespace = pn.oid)
  INNER JOIN pg_language pl ON (pp.prolang = pl.oid)
-	LEFT JOIN pg_stat_user_functions ps ON (ps.funcid = pp.oid)
  WHERE pl.lanname != 'internal'
 			 AND pn.nspname NOT IN ('pg_catalog', 'information_schema')
 			 AND pp.proname NOT IN ('pg_stat_statements', 'pg_stat_statements_reset')`
 
-// ps.calls,
-// ps.total_time,
-// ps.self_time
+const functionStatsSQL string = `
+SELECT funcid, calls, total_time, self_time
+	FROM pg_stat_user_functions
+`
 
-func GetFunctions(db *sql.DB, postgresVersion state.PostgresVersion) ([]state.PostgresFunction, error) {
+func GetFunctions(db *sql.DB, postgresVersion state.PostgresVersion, currentDatabaseOid state.Oid) ([]state.PostgresFunction, error) {
 	stmt, err := db.Prepare(QueryMarkerSQL + functionsSQL)
 	if err != nil {
 		return nil, err
@@ -53,17 +57,52 @@ func GetFunctions(db *sql.DB, postgresVersion state.PostgresVersion) ([]state.Po
 
 	for rows.Next() {
 		var row state.PostgresFunction
+		var config null.String
 
-		err := rows.Scan(&row.SchemaName, &row.FunctionName, &row.Language, &row.Source,
-			&row.SourceBin, &row.Config, &row.Arguments, &row.Result, &row.Aggregate,
+		err := rows.Scan(&row.Oid, &row.SchemaName, &row.FunctionName, &row.Language, &row.Source,
+			&row.SourceBin, &config, &row.Arguments, &row.Result, &row.Aggregate,
 			&row.Window, &row.SecurityDefiner, &row.Leakproof, &row.Strict, &row.ReturnsSet, &row.Volatile)
-		//	, &row.Calls, &row.TotalTime, &row.SelfTime) FIXME
 		if err != nil {
 			return nil, err
 		}
+
+		row.DatabaseOid = currentDatabaseOid
+		row.Config = unpackPostgresStringArray(config)
 
 		functions = append(functions, row)
 	}
 
 	return functions, nil
+}
+
+func GetFunctionStats(db *sql.DB, postgresVersion state.PostgresVersion) (functionStats state.PostgresFunctionStatsMap, err error) {
+	stmt, err := db.Prepare(QueryMarkerSQL + functionStatsSQL)
+	if err != nil {
+		err = fmt.Errorf("FunctionStats/Prepare: %s", err)
+		return
+	}
+	defer stmt.Close()
+
+	rows, err := stmt.Query()
+	if err != nil {
+		err = fmt.Errorf("FunctionStats/Query: %s", err)
+		return
+	}
+	defer rows.Close()
+
+	functionStats = make(state.PostgresFunctionStatsMap)
+	for rows.Next() {
+		var oid state.Oid
+		var stats state.PostgresFunctionStats
+
+		err = rows.Scan(&oid, &stats.Calls, &stats.TotalTime, &stats.SelfTime)
+		if err != nil {
+			err = fmt.Errorf("FunctionStats/Scan: %s", err)
+			return
+		}
+
+		functionStats[oid] = stats
+	}
+
+	return
 }

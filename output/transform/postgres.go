@@ -11,6 +11,8 @@ func transformPostgres(s snapshot.FullSnapshot, newState state.State, diffState 
 	s, roleOidToIdx := transformPostgresRoles(s, newState)
 	s, databaseOidToIdx := transformPostgresDatabases(s, newState, roleOidToIdx)
 
+	s = transformPostgresVersion(s, newState)
+	s = transformPostgresConfig(s, newState)
 	s = transformPostgresStatements(s, newState, diffState, roleOidToIdx, databaseOidToIdx)
 	s = transformPostgresRelations(s, newState, diffState, roleOidToIdx, databaseOidToIdx)
 
@@ -80,4 +82,45 @@ func transformPostgresDatabases(s snapshot.FullSnapshot, newState state.State, r
 	}
 
 	return s, databaseOidToIdx
+}
+
+func transformPostgresConfig(s snapshot.FullSnapshot, newState state.State) snapshot.FullSnapshot {
+	for _, setting := range newState.Settings {
+		info := snapshot.Setting{Name: setting.Name}
+
+		if setting.CurrentValue.Valid {
+			info.CurrentValue = setting.CurrentValue.String
+		}
+		if setting.Unit.Valid {
+			info.Unit = &snapshot.NullString{Valid: true, Value: setting.Unit.String}
+		}
+		if setting.BootValue.Valid {
+			info.BootValue = &snapshot.NullString{Valid: true, Value: setting.BootValue.String}
+		}
+		if setting.ResetValue.Valid {
+			info.ResetValue = &snapshot.NullString{Valid: true, Value: setting.ResetValue.String}
+		}
+		if setting.Source.Valid {
+			info.Source = &snapshot.NullString{Valid: true, Value: setting.Source.String}
+		}
+		if setting.SourceFile.Valid {
+			info.SourceFile = &snapshot.NullString{Valid: true, Value: setting.SourceFile.String}
+		}
+		if setting.SourceLine.Valid {
+			info.SourceLine = &snapshot.NullString{Valid: true, Value: setting.SourceLine.String}
+		}
+
+		s.Settings = append(s.Settings, &info)
+	}
+
+	return s
+}
+
+func transformPostgresVersion(s snapshot.FullSnapshot, newState state.State) snapshot.FullSnapshot {
+	s.PostgresVersion = &snapshot.PostgresVersion{
+		Full:    newState.Version.Full,
+		Short:   newState.Version.Short,
+		Numeric: int64(newState.Version.Numeric),
+	}
+	return s
 }

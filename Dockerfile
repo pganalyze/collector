@@ -26,4 +26,4 @@ RUN mkdir /state
 RUN chown pganalyze:pganalyze /state
 VOLUME ["/state"]
 
-CMD ["/usr/local/bin/gosu", "pganalyze", "/home/pganalyze/collector", "--statefile", "/state/pganalyze-collector.state"]
+CMD ["/usr/local/bin/gosu", "pganalyze", "/home/pganalyze/collector", "--statefile=/state/pganalyze-collector.state"]

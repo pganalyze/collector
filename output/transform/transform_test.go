@@ -2,7 +2,6 @@ package transform_test
 
 import (
 	"encoding/json"
-	"reflect"
 	"testing"
 
 	"github.com/pganalyze/collector/output/pganalyze_collector"
@@ -33,6 +32,7 @@ func TestStatements(t *testing.T) {
 	fp2 := util.FingerprintQuery("SELECT * FROM test")
 
 	expected := pganalyze_collector.FullSnapshot{
+		PostgresVersion: &pganalyze_collector.PostgresVersion{},
 		QueryReferences: []*pganalyze_collector.QueryReference{
 			&pganalyze_collector.QueryReference{
 				DatabaseIdx: 0,
@@ -70,7 +70,47 @@ func TestStatements(t *testing.T) {
 	}
 	expectedJSON, _ := json.Marshal(expected)
 
-	if !reflect.DeepEqual(expected, actual) {
+	// Sadly this is the quickest way with all the idx references...
+	expectedAlt := pganalyze_collector.FullSnapshot{
+		PostgresVersion: &pganalyze_collector.PostgresVersion{},
+		QueryReferences: []*pganalyze_collector.QueryReference{
+			&pganalyze_collector.QueryReference{
+				DatabaseIdx: 0,
+				RoleIdx:     0,
+				Fingerprint: fp2[:],
+			},
+			&pganalyze_collector.QueryReference{
+				DatabaseIdx: 0,
+				RoleIdx:     0,
+				Fingerprint: fp1[:],
+			},
+		},
+		QueryInformations: []*pganalyze_collector.QueryInformation{
+			&pganalyze_collector.QueryInformation{
+				QueryIdx:        0,
+				NormalizedQuery: "SELECT * FROM test",
+				QueryIds:        []int64{0},
+			},
+			&pganalyze_collector.QueryInformation{
+				QueryIdx:        1,
+				NormalizedQuery: "SELECT 1",
+				QueryIds:        []int64{0},
+			},
+		},
+		QueryStatistics: []*pganalyze_collector.QueryStatistic{
+			&pganalyze_collector.QueryStatistic{
+				QueryIdx: 0,
+				Calls:    13,
+			},
+			&pganalyze_collector.QueryStatistic{
+				QueryIdx: 1,
+				Calls:    1,
+			},
+		},
+	}
+	expectedJSONAlt, _ := json.Marshal(expectedAlt)
+
+	if string(expectedJSON) != string(actualJSON) && string(expectedJSONAlt) != string(actualJSON) {
 		t.Errorf("\nExpected:%+v\n\tActual: %+v\n\n", string(expectedJSON), string(actualJSON))
 	}
 }

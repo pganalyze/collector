@@ -363,7 +363,7 @@ message FunctionInformation {
   string language = 3;
   string source = 4;
   string source_bin = 5;
-  NullString config = 6;
+  repeated string config = 6;
   string result = 8;
 
   bool aggregate = 9;

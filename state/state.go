@@ -13,6 +13,7 @@ type State struct {
 	Statements    PostgresStatementMap
 	RelationStats PostgresRelationStatsMap
 	IndexStats    PostgresIndexStatsMap
+	FunctionStats PostgresFunctionStatsMap
 
 	Roles     []PostgresRole
 	Databases []PostgresDatabase
@@ -30,6 +31,7 @@ type DiffState struct {
 	Statements    []DiffedPostgresStatement
 	RelationStats DiffedPostgresRelationStatsMap
 	IndexStats    DiffedPostgresIndexStatsMap
+	FunctionStats DiffedPostgresFunctionStatsMap
 }
 
 // StateOnDiskFormatVersion - Increment this when an old state preserved to disk should be ignored
