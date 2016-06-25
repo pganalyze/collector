@@ -1,6 +1,10 @@
 package state
 
-import "gopkg.in/guregu/null.v3"
+import (
+	"strconv"
+
+	"gopkg.in/guregu/null.v3"
+)
 
 type PostgresRelation struct {
 	Oid                    Oid
@@ -13,7 +17,7 @@ type PostgresRelation struct {
 	Indices                []PostgresIndex
 	Constraints            []PostgresConstraint
 	ViewDefinition         string
-	Options                []string
+	Options                map[string]string
 	HasOids                bool
 	HasInheritanceChildren bool
 	HasToast               bool
@@ -40,6 +44,7 @@ type PostgresIndex struct {
 	IsValid       bool
 	IndexDef      string
 	ConstraintDef null.String
+	Options       map[string]string
 }
 
 type PostgresConstraint struct {
@@ -53,4 +58,24 @@ type PostgresConstraint struct {
 	ForeignUpdateType string  // Foreign key update action code: a = no action, r = restrict, c = cascade, n = set null, d = set default
 	ForeignDeleteType string  // Foreign key deletion action code: a = no action, r = restrict, c = cascade, n = set null, d = set default
 	ForeignMatchType  string  // Foreign key match type: f = full, p = partial, s = simple
+}
+
+// Fillfactor - Returns the FILLFACTOR storage parameter set on the table, or the default (100)
+func (r PostgresRelation) Fillfactor() int32 {
+	fstr, exists := r.Options["fillfactor"]
+	if exists {
+		f, _ := strconv.Atoi(fstr)
+		return int32(f)
+	}
+	return 100
+}
+
+// Fillfactor - Returns the FILLFACTOR storage parameter set on the index, or the default (100)
+func (i PostgresIndex) Fillfactor() int32 {
+	fstr, exists := i.Options["fillfactor"]
+	if exists {
+		f, _ := strconv.Atoi(fstr)
+		return int32(f)
+	}
+	return 100
 }

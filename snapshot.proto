@@ -260,7 +260,7 @@ message RelationInformation {
   repeated Constraint constraints = 5;
 
   string persistence_type = 6;
-  repeated string options = 7;
+  int32 fillfactor = 7;
   bool has_oids = 8;
   bool has_inheritance_children = 9;
   bool has_toast = 10;
@@ -347,6 +347,7 @@ message IndexInformation {
   bool is_primary = 6;
   bool is_unique = 7;
   bool is_valid = 8;
+  int32 fillfactor = 9;
 }
 
 message IndexStatistic {

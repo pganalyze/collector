@@ -22,7 +22,7 @@ func transformPostgresRelations(s snapshot.FullSnapshot, newState state.State, d
 			RelationIdx:            idx,
 			RelationType:           relation.RelationType,
 			PersistenceType:        relation.PersistenceType,
-			Options:                relation.Options,
+			Fillfactor:             relation.Fillfactor(),
 			HasOids:                relation.HasOids,
 			HasInheritanceChildren: relation.HasInheritanceChildren,
 			HasToast:               relation.HasToast,
@@ -122,6 +122,7 @@ func transformPostgresRelations(s snapshot.FullSnapshot, newState state.State, d
 				IsPrimary:   index.IsPrimary,
 				IsUnique:    index.IsUnique,
 				IsValid:     index.IsValid,
+				Fillfactor:  index.Fillfactor(),
 			}
 			if index.ConstraintDef.Valid {
 				indexInfo.ConstraintDef = &snapshot.NullString{Valid: true, Value: index.ConstraintDef.String}

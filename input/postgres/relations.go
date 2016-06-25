@@ -59,7 +59,8 @@ SELECT c.oid,
 			 i.indisunique,
 			 i.indisvalid,
 			 pg_catalog.pg_get_indexdef(i.indexrelid, 0, TRUE),
-			 pg_catalog.pg_get_constraintdef(con.oid, TRUE)
+			 pg_catalog.pg_get_constraintdef(con.oid, TRUE),
+			 c2.reloptions
 	FROM pg_catalog.pg_class c
 	JOIN pg_catalog.pg_namespace n ON (n.oid = c.relnamespace)
 	JOIN pg_catalog.pg_index i ON (c.oid = i.indrelid)
@@ -129,9 +130,11 @@ func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 			return nil, err
 		}
 
+		row.Options = make(map[string]string)
 		if options.Valid {
 			for _, cstr := range strings.Split(strings.Trim(options.String, "{}"), ",") {
-				row.Options = append(row.Options, cstr)
+				parts := strings.Split(cstr, "=")
+				row.Options[parts[0]] = parts[1]
 			}
 		}
 
@@ -192,9 +195,10 @@ func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 	for rows.Next() {
 		var row state.PostgresIndex
 		var columns string
+		var options null.String
 
-		err = rows.Scan(&row.RelationOid, &row.IndexOid, &columns, &row.Name,
-			&row.IsPrimary, &row.IsUnique, &row.IsValid, &row.IndexDef, &row.ConstraintDef)
+		err = rows.Scan(&row.RelationOid, &row.IndexOid, &columns, &row.Name, &row.IsPrimary,
+			&row.IsUnique, &row.IsValid, &row.IndexDef, &row.ConstraintDef, &options)
 		if err != nil {
 			err = fmt.Errorf("Indices/Scan: %s", err)
 			return nil, err
@@ -203,6 +207,14 @@ func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 		for _, cstr := range strings.Split(columns, " ") {
 			cint, _ := strconv.Atoi(cstr)
 			row.Columns = append(row.Columns, int32(cint))
+		}
+
+		row.Options = make(map[string]string)
+		if options.Valid {
+			for _, cstr := range strings.Split(strings.Trim(options.String, "{}"), ",") {
+				parts := strings.Split(cstr, "=")
+				row.Options[parts[0]] = parts[1]
+			}
 		}
 
 		relation := relations[row.RelationOid]
