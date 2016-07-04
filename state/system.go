@@ -1,16 +1,19 @@
 package state
 
-import "gopkg.in/guregu/null.v3"
+import (
+	"time"
 
-// SystemSnapshot - All kinds of system-related information and metrics
+	"gopkg.in/guregu/null.v3"
+)
+
+// SystemState - All kinds of system-related information and metrics
 type SystemState struct {
-	SystemType SystemType  `json:"system_type"`
-	SystemInfo interface{} `json:"system_info,omitempty"`
-	Storage    []Storage   `json:"storage"`
-	CPU        CPU         `json:"cpu"`
-	Memory     Memory      `json:"memory"`
-	Network    *Network    `json:"network,omitempty"`
-	Scheduler  Scheduler   `json:"scheduler,omitempty"`
+	Info         SystemInfo
+	Scheduler    Scheduler
+	Memory       Memory
+	CPUInfo      CPUInformation
+	CPUStats     CPUStatisticMap
+	NetworkStats NetworkStatsMap
 }
 
 // SystemType - Enum that describes which kind of system we're monitoring
@@ -18,104 +21,229 @@ type SystemType int
 
 // Treat this list as append-only and never change the order
 const (
-	PhysicalSystem SystemType = iota
-	VirtualSystem
+	SelfHostedSystem SystemType = iota
 	AmazonRdsSystem
 	HerokuSystem
 )
 
-// Network - Information about the network activity going in and out of the database
-type Network struct {
-	ReceiveThroughput  *int64 `json:"receive_throughput"`
-	TransmitThroughput *int64 `json:"transmit_throughput"`
+type SystemInfo struct {
+	Type SystemType
+
+	SelfHosted *SystemInfoSelfHosted
+	AmazonRds  *SystemInfoAmazonRds
+
+	BootTime time.Time
 }
 
-// CPU - Information about CPU activity
-type CPU struct {
-	Utilization *float64 `json:"utilization"`
-
-	BusyTimesGuestMsec     null.Int `json:"busy_times_guest_msec,omitempty"`
-	BusyTimesGuestNiceMsec null.Int `json:"busy_times_guest_nice_msec,omitempty"`
-	BusyTimesIdleMsec      null.Int `json:"busy_times_idle_msec,omitempty"`
-	BusyTimesIowaitMsec    null.Int `json:"busy_times_iowait_msec,omitempty"`
-	BusyTimesIrqMsec       null.Int `json:"busy_times_irq_msec,omitempty"`
-	BusyTimesNiceMsec      null.Int `json:"busy_times_nice_msec,omitempty"`
-	BusyTimesSoftirqMsec   null.Int `json:"busy_times_softirq_msec,omitempty"`
-	BusyTimesStealMsec     null.Int `json:"busy_times_steal_msec,omitempty"`
-	BusyTimesSystemMsec    null.Int `json:"busy_times_system_msec,omitempty"`
-	BusyTimesUserMsec      null.Int `json:"busy_times_user_msec,omitempty"`
-
-	HardwareCacheSize      *string    `json:"hardware_cache_size,omitempty"`
-	HardwareModel          *string    `json:"hardware_model,omitempty"`
-	HardwareSockets        null.Int   `json:"hardware_sockets,omitempty"`
-	HardwareCoresPerSocket null.Int   `json:"hardware_cores_per_socket,omitempty"`
-	HardwareSpeedMhz       null.Float `json:"hardware_speed_mhz,omitempty"`
+// SystemInfoSelfHosted - System information for self-hosted systems (both physical and virtual)
+type SystemInfoSelfHosted struct {
+	Hostname             string
+	Architecture         string
+	OperatingSystem      string
+	Platform             string
+	PlatformFamily       string
+	PlatformVersion      string
+	VirtualizationSystem string // Name of the virtualization system (only if we're a guest)
+	KernelVersion        string
 }
 
-// Memory - Metrics related to system memory
-type Memory struct {
-	ApplicationsBytes null.Int `json:"applications_bytes,omitempty"`
-	BuffersBytes      null.Int `json:"buffers_bytes,omitempty"`
-	DirtyBytes        null.Int `json:"dirty_bytes,omitempty"`
-	FreeBytes         null.Int `json:"free_bytes,omitempty"`
-	PagecacheBytes    null.Int `json:"pagecache_bytes,omitempty"`
-	SwapFreeBytes     null.Int `json:"swap_free_bytes,omitempty"`
-	SwapTotalBytes    null.Int `json:"swap_total_bytes,omitempty"`
-	TotalBytes        null.Int `json:"total_bytes,omitempty"`
-	WritebackBytes    null.Int `json:"writeback_bytes,omitempty"`
-	ActiveBytes       null.Int `json:"active_bytes,omitempty"`
+// SystemInfoAmazonRds - System information for Amazon RDS systems
+type SystemInfoAmazonRds struct {
+	Region                     string
+	InstanceClass              string
+	InstanceID                 string
+	Status                     string
+	AvailabilityZone           string
+	PubliclyAccessible         bool
+	MultiAz                    bool
+	SecondaryAvailabilityZone  string
+	CaCertificate              string
+	AutoMinorVersionUpgrade    bool
+	AutoMajorVersionUpgrade    bool
+	PreferredMaintenanceWindow string
+	PreferredBackupWindow      string
+	LatestRestorableTime       time.Time
+	BackupRetentionPeriodDays  int32
+	MasterUsername             string
+	InitialDbName              string
+	CreatedAt                  time.Time
+	StorageProvisionedIOPS     int32
+	StorageAllocatedGigabytes  int32
+	StorageEncrypted           bool
+	StorageType                string
+	EnhancedMonitoring         bool
+	ParameterApplyStatus       string
+	ParameterPgssEnabled       bool
 }
 
 // Scheduler - Information about the OS scheduler
 type Scheduler struct {
-	ContextSwitches null.Int `json:"context_switches,omitempty"`
-	Interrupts      null.Int `json:"interrupts,omitempty"`
-
-	Loadavg1min  null.Float `json:"loadavg_1min,omitempty"`
-	Loadavg5min  null.Float `json:"loadavg_5min,omitempty"`
-	Loadavg15min null.Float `json:"loadavg_15min,omitempty"`
-
-	ProcsBlocked null.Int `json:"procs_blocked,omitempty"`
-	ProcsCreated null.Int `json:"procs_created,omitempty"`
-	ProcsRunning null.Int `json:"procs_running,omitempty"`
+	Loadavg1min  float64
+	Loadavg5min  float64
+	Loadavg15min float64
 }
+
+// Memory - Metrics related to system memory
+type Memory struct {
+	TotalBytes      uint64
+	CachedBytes     uint64
+	BuffersBytes    uint64
+	FreeBytes       uint64
+	WritebackBytes  uint64
+	DirtyBytes      uint64
+	SlabBytes       uint64
+	MappedBytes     uint64
+	PageTablesBytes uint64
+	ActiveBytes     uint64
+	InactiveBytes   uint64
+	AvailableBytes  uint64
+	SwapUsedBytes   uint64
+	SwapTotalBytes  uint64
+
+	HugePagesSizeBytes uint64
+	HugePagesFree      uint64
+	HugePagesTotal     uint64
+	HugePagesReserved  uint64
+	HugePagesSurplus   uint64
+}
+
+type CPUInformation struct {
+	Model             string
+	CacheSizeBytes    int32
+	SpeedMhz          float64
+	SocketCount       int32
+	PhysicalCoreCount int32
+	LogicalCoreCount  int32
+}
+
+// CPUStatisticMap - Map of all CPU statistics (Key = CPU ID)
+type CPUStatisticMap map[string]CPUStatistic
+
+// CPUStatistic - Statistics for a single CPU core
+type CPUStatistic struct {
+	MeasuredAsSeconds bool // True if this uses the Seconds counters, false if it uses percentages
+
+	// Seconds (counter values that need to be diff-ed between runs)
+	UserSeconds      float64
+	SystemSeconds    float64
+	IdleSeconds      float64
+	NiceSeconds      float64
+	IowaitSeconds    float64
+	IrqSeconds       float64
+	SoftIrqSeconds   float64
+	StealSeconds     float64
+	GuestSeconds     float64
+	GuestNiceSeconds float64
+
+	// Percentages (don't need to be diff-ed)
+	Percentages *DiffedSystemCPUStats
+}
+
+// DiffedSystemCPUStatsMap - Map of all CPU statistics (Key = CPU ID)
+type DiffedSystemCPUStatsMap map[string]DiffedSystemCPUStats
+
+// DiffedSystemCPUStats - CPU statistics as percentages
+type DiffedSystemCPUStats struct {
+	UserPercent      float64
+	SystemPercent    float64
+	IdlePercent      float64
+	NicePercent      float64
+	IowaitPercent    float64
+	IrqPercent       float64
+	SoftIrqPercent   float64
+	StealPercent     float64
+	GuestPercent     float64
+	GuestNicePercent float64
+}
+
+func (curr CPUStatistic) DiffSince(prev CPUStatistic) DiffedSystemCPUStats {
+	userSecs := curr.UserSeconds - prev.UserSeconds
+	systemSecs := curr.SystemSeconds - prev.SystemSeconds
+	idleSecs := curr.IdleSeconds - prev.IdleSeconds
+	niceSecs := curr.NiceSeconds - prev.NiceSeconds
+	iowaitSecs := curr.IowaitSeconds - prev.IowaitSeconds
+	irqSecs := curr.IrqSeconds - prev.IrqSeconds
+	softIrqSecs := curr.SoftIrqSeconds - prev.SoftIrqSeconds
+	stealSecs := curr.StealSeconds - prev.StealSeconds
+	guestSecs := curr.GuestSeconds - prev.GuestSeconds
+	guestNiceSecs := curr.GuestNiceSeconds - prev.GuestNiceSeconds
+	totalSecs := userSecs + systemSecs + idleSecs + niceSecs + iowaitSecs + irqSecs + softIrqSecs + stealSecs + guestSecs + guestNiceSecs
+
+	return DiffedSystemCPUStats{
+		UserPercent:      userSecs / totalSecs * 100,
+		SystemPercent:    systemSecs / totalSecs * 100,
+		IdlePercent:      idleSecs / totalSecs * 100,
+		NicePercent:      niceSecs / totalSecs * 100,
+		IowaitPercent:    iowaitSecs / totalSecs * 100,
+		IrqPercent:       irqSecs / totalSecs * 100,
+		SoftIrqPercent:   softIrqSecs / totalSecs * 100,
+		StealPercent:     stealSecs / totalSecs * 100,
+		GuestPercent:     guestSecs / totalSecs * 100,
+		GuestNicePercent: guestNiceSecs / totalSecs * 100,
+	}
+}
+
+// NetworkStatsMap - Map of all network statistics (Key = Interface Name)
+type NetworkStatsMap map[string]NetworkStats
+
+// NetworkStats - Information about the network activity on a single interface
+type NetworkStats struct {
+	ReceiveThroughputBytes  uint64
+	TransmitThroughputBytes uint64
+}
+
+// DiffedNetworkStats - Network statistics for a single interface as a diff
+type DiffedNetworkStats NetworkStats
+
+// DiffedNetworkStatsMap - Map of network statistics as a diff (Key = Interface Name)
+type DiffedNetworkStatsMap map[string]DiffedNetworkStats
+
+// DiffSince - Calculate the diff between two network stats runs
+func (curr NetworkStats) DiffSince(prev NetworkStats) DiffedNetworkStats {
+	return DiffedNetworkStats{
+		ReceiveThroughputBytes:  curr.ReceiveThroughputBytes - prev.ReceiveThroughputBytes,
+		TransmitThroughputBytes: curr.TransmitThroughputBytes - prev.TransmitThroughputBytes,
+	}
+}
+
+// ---
 
 // Storage - Information about the storage used by the database
 type Storage struct {
-	BytesAvailable *int64  `json:"bytes_available"`
-	BytesTotal     *int64  `json:"bytes_total"`
-	Mountpoint     *string `json:"mountpoint,omitempty"`
-	Name           *string `json:"name,omitempty"`
-	Path           *string `json:"path,omitempty"`
+	BytesAvailable *int64
+	BytesTotal     *int64
+	Mountpoint     *string
+	Name           *string
+	Path           *string
 
-	Perfdata StoragePerfdata `json:"perfdata"`
+	Perfdata StoragePerfdata
 }
 
 // StoragePerfdata - Metrics gathered about the underlying storage
 type StoragePerfdata struct {
 	// 0 = counters, raw data
 	// 1 = diff, (only) useful data
-	Version int `json:"version"`
+	Version int
 
 	// Version 0/1
-	ReadIops       *int64   `json:"rd_ios"`       // (count/sec)
-	WriteIops      *int64   `json:"wr_ios"`       // (count/sec)
-	IopsInProgress *int64   `json:"ios_in_prog"`  // (count)
-	AvgReqSize     null.Int `json:"avg_req_size"` // (avg)
+	ReadIops       *int64   // (count/sec)
+	WriteIops      *int64   // (count/sec)
+	IopsInProgress *int64   // (count)
+	AvgReqSize     null.Int // (avg)
 
 	// Version 1 only
-	ReadLatency     *float64 `json:"rd_latency,omitempty"`    // (avg seconds)
-	ReadThroughput  *int64   `json:"rd_throughput,omitempty"` // (bytes/sec)
-	WriteLatency    *float64 `json:"wr_latency,omitempty"`    // (avg seconds)
-	WriteThroughput *int64   `json:"wr_throughput,omitempty"` // (bytes/sec)
+	ReadLatency     *float64 // (avg seconds)
+	ReadThroughput  *int64   // (bytes/sec)
+	WriteLatency    *float64 // (avg seconds)
+	WriteThroughput *int64   // (bytes/sec)
 
 	// Version 0 only
-	ReadMerges   *int64 `json:"rd_merges,omitempty"`
-	ReadSectors  *int64 `json:"rd_sectors,omitempty,omitempty"`
-	ReadTicks    *int64 `json:"rd_ticks,omitempty"`
-	WriteMerges  *int64 `json:"wr_merges,omitempty"`
-	WriteSectors *int64 `json:"wr_sectors,omitempty"`
-	WriteTicks   *int64 `json:"wr_ticks,omitempty"`
-	TotalTicks   *int64 `json:"tot_ticks,omitempty"`
-	RequestTicks *int64 `json:"rq_ticks,omitempty"`
+	ReadMerges   *int64
+	ReadSectors  *int64
+	ReadTicks    *int64
+	WriteMerges  *int64
+	WriteSectors *int64
+	WriteTicks   *int64
+	TotalTicks   *int64
+	RequestTicks *int64
 }

@@ -9,6 +9,8 @@ func diffState(logger *util.Logger, prevState state.State, newState state.State)
 	diffState.Statements = diffStatements(newState.Statements, prevState.Statements)
 	diffState.RelationStats = diffRelationStats(newState.RelationStats, prevState.RelationStats)
 	diffState.IndexStats = diffIndexStats(newState.IndexStats, prevState.IndexStats)
+	diffState.SystemCPUStats = diffSystemCPUStats(newState.System.CPUStats, prevState.System.CPUStats)
+	diffState.SystemNetworkStats = diffSystemNetworkStats(newState.System.NetworkStats, prevState.System.NetworkStats)
 
 	return
 }
@@ -60,6 +62,36 @@ func diffIndexStats(new state.PostgresIndexStatsMap, prev state.PostgresIndexSta
 			diff[key] = stats.DiffSince(prevStats)
 		} else if followUpRun { // New since the last run
 			diff[key] = stats.DiffSince(state.PostgresIndexStats{})
+		}
+	}
+
+	return
+}
+
+func diffSystemCPUStats(new state.CPUStatisticMap, prev state.CPUStatisticMap) (diff state.DiffedSystemCPUStatsMap) {
+	diff = make(state.DiffedSystemCPUStatsMap)
+	for cpuID, stats := range new {
+		if !stats.MeasuredAsSeconds {
+			if stats.Percentages != nil {
+				diff[cpuID] = *stats.Percentages
+			}
+		} else {
+			prevStats, exists := prev[cpuID]
+			if exists {
+				diff[cpuID] = stats.DiffSince(prevStats)
+			}
+		}
+	}
+
+	return
+}
+
+func diffSystemNetworkStats(new state.NetworkStatsMap, prev state.NetworkStatsMap) (diff state.DiffedNetworkStatsMap) {
+	diff = make(state.DiffedNetworkStatsMap)
+	for interfaceName, stats := range new {
+		prevStats, exists := prev[interfaceName]
+		if exists {
+			diff[interfaceName] = stats.DiffSince(prevStats)
 		}
 	}
 

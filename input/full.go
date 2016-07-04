@@ -92,8 +92,7 @@ func CollectFull(server state.Server, collectionOpts state.CollectionOpts, logge
 	}
 
 	if collectionOpts.CollectSystemInformation {
-		systemState := system.GetSystemState(server.Config, logger)
-		s.System = &systemState
+		s.System = system.GetSystemState(server.Config, logger)
 	}
 
 	if collectionOpts.CollectLogs {

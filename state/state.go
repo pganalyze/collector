@@ -22,16 +22,19 @@ type State struct {
 	Settings  []PostgresSetting
 	Functions []PostgresFunction
 	Version   PostgresVersion
-	System    *SystemState
 	Logs      []LogLine
 	Explains  []PostgresExplain
+
+	System SystemState
 }
 
 type DiffState struct {
-	Statements    []DiffedPostgresStatement
-	RelationStats DiffedPostgresRelationStatsMap
-	IndexStats    DiffedPostgresIndexStatsMap
-	FunctionStats DiffedPostgresFunctionStatsMap
+	Statements         []DiffedPostgresStatement
+	RelationStats      DiffedPostgresRelationStatsMap
+	IndexStats         DiffedPostgresIndexStatsMap
+	FunctionStats      DiffedPostgresFunctionStatsMap
+	SystemCPUStats     DiffedSystemCPUStatsMap
+	SystemNetworkStats DiffedNetworkStatsMap
 }
 
 // StateOnDiskFormatVersion - Increment this when an old state preserved to disk should be ignored

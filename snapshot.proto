@@ -41,6 +41,7 @@ message FullSnapshot {
   int32 collected_interval_secs = 12;
 
   // Per server (and hence snapshot)
+  System system = 100;
   PostgresVersion postgres_version = 101;
 
   repeated RoleReference role_references = 102;
@@ -168,23 +169,228 @@ message Setting {
 }
 
 message Backend {
-  int64 pid = 1;
-  string username = 2;
-  string application_name = 3;
-  string client_addr = 4;
+  int32 database_idx = 1;
+  int32 role_idx = 2;
+  int32 query_idx = 3; // Optional, -1 if no query currently/previously running
 
-  google.protobuf.Timestamp backend_start = 5;
-  google.protobuf.Timestamp xact_start = 6;
-  google.protobuf.Timestamp query_start = 7;
-  google.protobuf.Timestamp state_change = 8;
+  int64 pid = 4;
+  string application_name = 5;
+  string client_addr = 6;
 
-  bool waiting = 9;
-  string state = 10;
-  string normalized_query = 11;
+  google.protobuf.Timestamp backend_start = 7;
+  google.protobuf.Timestamp xact_start = 8;
+  google.protobuf.Timestamp query_start = 9;
+  google.protobuf.Timestamp state_change = 10;
+
+  bool waiting = 11;
+  string state = 12;
+}
+
+message TablespaceReference {
+  string name = 1; // Tablespace name
+}
+
+message TablespaceInformation {
+  int32 tablespace_idx = 1;
+  int32 role_idx = 2;         // Owner of the tablespace, usually the user who created it
+  repeated string config = 3; // Tablespace-level options, as "keyword=value" strings
 }
 
 message System {
-  // TODO
+  SystemInformation system_information = 1;
+
+  SchedulerStatistic scheduler_statistic = 10;
+  MemoryStatistic memory_statistic = 11;
+
+  CPUInformation cpu_information = 12;
+  repeated CPUReference cpu_references = 13;
+  repeated CPUStatistic cpu_statistics = 14;
+
+  repeated NetworkReference network_references = 15;
+  repeated NetworkStatistic network_statistics = 16;
+
+  repeated DiskReference disk_references = 17;
+  repeated DiskInformation disk_informations = 18;
+  repeated DiskStatistic disk_statistics = 19;
+
+  repeated FilesystemReference filesystem_references = 20;
+  repeated FilesystemInformation filesystem_informations = 21;
+  repeated FilesystemStatistic filesystem_statistics = 22;
+}
+
+message SystemInformation {
+  enum SystemType {
+    SELF_HOSTED_SYSTEM = 0;
+    AMAZON_RDS_SYSTEM = 1;
+    HEROKU_SYSTEM = 2;
+  }
+
+  SystemType type = 1;
+
+  oneof info {
+    SystemInformationSelfHosted self_hosted = 2;
+    SystemInformationRDS rds = 3;
+  }
+
+  google.protobuf.Timestamp boot_time = 10; // Timestamp for when the system was started (aka uptime)
+}
+
+message SystemInformationSelfHosted {
+  string hostname = 1;
+  string architecture = 2;
+  string operating_system = 3;
+  string platform = 4;
+  string platform_family = 5;
+  string platform_version = 6;
+  string virtualization_system = 7; // Name of the virtualization system (only if we're a guest)
+  string kernel_version = 8;
+}
+
+message SystemInformationRDS {
+  string region = 1;
+  string instance_class = 2;
+  string instance_id = 3;
+  string status = 4;
+  string availability_zone = 5;
+  bool publicly_accessible = 6;
+  bool multi_az = 7;
+  string secondary_availability_zone = 8;
+  string ca_certificate = 9;
+  bool auto_minor_version_upgrade = 10;
+  bool auto_major_version_upgrade = 11;
+  string preferred_maintanence_window = 12;
+  string preferred_backup_window = 14;
+  google.protobuf.Timestamp latest_restorable_time = 13;
+  int32 backup_retention_period_days = 15;
+  string master_username = 16;
+  string initial_db_name = 17;
+  google.protobuf.Timestamp created_at = 18;
+  int32 storage_provisioned_iops = 19;
+  int32 storage_allocated_gigabytes = 20;
+  bool storage_encrypted = 21;
+  string storage_type = 22;
+  bool enhanced_monitoring = 23;
+
+  string parameter_apply_status = 40;
+  bool parameter_pgss_enabled = 41;
+}
+
+message SchedulerStatistic {
+  double load_average_1min = 1;
+  double load_average_5min = 2;
+  double load_average_15min = 3;
+}
+
+message MemoryStatistic {
+  uint64 total_bytes = 1;
+  uint64 cached_bytes = 2;
+  uint64 buffers_bytes = 3;
+  uint64 free_bytes = 4;
+  uint64 writeback_bytes = 5;
+  uint64 dirty_bytes = 6;
+  uint64 slab_bytes = 7;
+  uint64 mapped_bytes = 8;
+  uint64 page_tables_bytes = 9;
+  uint64 active_bytes = 10;
+  uint64 inactive_bytes = 11;
+  uint64 available_bytes = 12;
+  uint64 swap_used_bytes = 13;
+  uint64 swap_total_bytes = 14;
+
+  uint64 huge_pages_size_bytes = 20;
+  uint64 huge_pages_free = 21;
+  uint64 huge_pages_total = 22;
+  uint64 huge_pages_reserved = 23;
+  uint64 huge_pages_surplus = 24;
+
+  uint64 application_bytes = 30; // Some systems only tell us how much memory PostgreSQL is using (and nothing else)
+}
+
+message CPUInformation {
+  string model = 1;
+  int32 cache_size_bytes = 2;
+  double speed_mhz = 3;
+  int32 socket_count = 4;
+  int32 physical_core_count = 5;
+  int32 logical_core_count = 6;
+}
+
+message CPUReference {
+  string core_id = 1; // Which CPU core these stats refer to (-1 for systems where we only have an aggregate for all cores)
+}
+
+message CPUStatistic {
+  int32 cpu_idx = 1;
+
+  double user_percent = 2;
+  double system_percent = 3;
+  double idle_percent = 4;
+  double nice_percent = 5;
+  double iowait_percent = 6;
+  double irq_percent = 7;
+  double soft_irq_percent = 8;
+  double steal_percent = 9;
+  double guest_percent = 10;
+  double guest_nice_percent = 11;
+}
+
+message NetworkReference {
+  string interface_name = 1;
+}
+
+message NetworkStatistic {
+  int32 network_idx = 1;
+  uint64 transmit_throughput_bytes = 2;
+  uint64 receive_throughput_bytes = 3;
+}
+
+message DiskReference {
+  string device_name = 1;
+}
+
+message DiskInformation {
+  int32 disk_idx = 1;
+
+  bool rotational = 2; // Rotational disk (HDD) or SSD?
+  string scheduler = 3; // Linux Scheduler (noop/anticipatory/deadline/cfq)
+}
+
+message DiskStatistic {
+  int32 disk_idx = 1;
+
+  int32 read_operations_per_second = 2; // The average number of read requests that were issued to the device per second
+  double reads_merged_per_second = 3;   // The average number of read requests merged per second that were queued to the device
+  int64 bytes_read_per_second = 4;      // The average number of bytes read from the device per second
+  double avg_read_latency = 5;          // The average time (in milliseconds) for read requests issued to the device to be served
+
+  int32 write_operations_per_second = 6; // The average number of write requests that were issued to the device per second
+  double writes_merged_per_second = 7;   // The average number of write requests merged per second that were queued to the device
+  int64 bytes_written_per_second = 8;    // The average number of bytes written to the device per second
+  double avg_write_latency = 9;          // The average time (in milliseconds) for write requests issued to the device to be served
+
+  int32 avg_queue_size = 10;         // Average I/O operations in flight at the same time (waiting or worked on by the device)
+  int64 avg_request_size_bytes = 11; // Average size of I/O requests in bytes
+  double utilization_pct = 12;       // Percentage of CPU time during which I/O requests were issued to the device (bandwidth utilization for the device)
+}
+
+message FilesystemReference {
+  string mountpoint = 1;
+}
+
+message FilesystemInformation {
+  int32 filesystem_idx = 1;
+
+  int32 disk_idx = 2;
+  int32 tablespace_idx = 3; // -1 for WAL or main data directory
+
+  string filesystem_type = 4; // ext4/zfs/etc.
+}
+
+message FilesystemStatistic {
+  int32 filesystem_idx = 1;
+
+  int64 used_bytes = 2;
+  int64 total_bytes = 3;
 }
 
 // PER DATABASE

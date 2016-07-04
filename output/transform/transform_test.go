@@ -32,6 +32,12 @@ func TestStatements(t *testing.T) {
 	fp2 := util.FingerprintQuery("SELECT * FROM test")
 
 	expected := pganalyze_collector.FullSnapshot{
+		System: &pganalyze_collector.System{
+			SystemInformation:  &pganalyze_collector.SystemInformation{},
+			SchedulerStatistic: &pganalyze_collector.SchedulerStatistic{},
+			MemoryStatistic:    &pganalyze_collector.MemoryStatistic{},
+			CpuInformation:     &pganalyze_collector.CPUInformation{},
+		},
 		PostgresVersion: &pganalyze_collector.PostgresVersion{},
 		QueryReferences: []*pganalyze_collector.QueryReference{
 			&pganalyze_collector.QueryReference{
@@ -72,6 +78,12 @@ func TestStatements(t *testing.T) {
 
 	// Sadly this is the quickest way with all the idx references...
 	expectedAlt := pganalyze_collector.FullSnapshot{
+		System: &pganalyze_collector.System{
+			SystemInformation:  &pganalyze_collector.SystemInformation{},
+			SchedulerStatistic: &pganalyze_collector.SchedulerStatistic{},
+			MemoryStatistic:    &pganalyze_collector.MemoryStatistic{},
+			CpuInformation:     &pganalyze_collector.CPUInformation{},
+		},
 		PostgresVersion: &pganalyze_collector.PostgresVersion{},
 		QueryReferences: []*pganalyze_collector.QueryReference{
 			&pganalyze_collector.QueryReference{

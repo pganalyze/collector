@@ -13,14 +13,10 @@ type RdsOsSnapshot struct {
 	CPUUtilization    RdsOsCPUUtilization     `json:"cpuUtilization"`
 	LoadAverageMinute RdsOsLoadAverageMinute  `json:"loadAverageMinute"`
 	Memory            RdsOsMemory             `json:"memory"`
-	Tasks             RdsOsTasks              `json:"tasks"`
 	Swap              RdsOsSwap               `json:"swap"`
 	Network           []RdsOsNetworkInterface `json:"network"`
 	DiskIO            []RdsOsDiskIO           `json:"diskIO"`
 	FileSystems       []RdsOsFileSystem       `json:"fileSys"`
-
-	// Skip this for now to reduce output size
-	// ProcessList []RdsOsProcess `json:"processList"`
 }
 
 type RdsOsCPUUtilization struct {
@@ -58,15 +54,6 @@ type RdsOsMemory struct {
 	Total          int64 `json:"total"`          // The total amount of memory, in kilobytes.
 	Slab           int64 `json:"slab"`           // The amount of reusable kernel data structures, in kilobytes.
 	Buffers        int64 `json:"buffers"`        // The amount of memory used for buffering I/O requests prior to writing to the storage device, in kilobytes.
-}
-
-type RdsOsTasks struct {
-	Sleeping int64 `json:"sleeping"` // The number of tasks that are sleeping.
-	Zombie   int64 `json:"zombie"`   // The number of child tasks that are inactive with an active parent task.
-	Running  int64 `json:"running"`  // The number of tasks that are running.
-	Stopped  int64 `json:"stopped"`  // The number of tasks that are stopped.
-	Total    int64 `json:"total"`    // The total number of tasks.
-	Blocked  int64 `json:"blocked"`  // The number of tasks that are blocked.
 }
 
 type RdsOsSwap struct {
@@ -107,15 +94,4 @@ type RdsOsFileSystem struct {
 	MountPoint      string  `json:"mountPoint"`      // The path to the file system.
 	Total           int64   `json:"total"`           // The total number of disk space available for the file system, in kilobytes.
 	UsedPercent     float32 `json:"usedPercent"`     // The percentage of the file-system disk space in use.
-}
-
-type RdsOsProcess struct {
-	Vss          int64   `json:"vss"`          // The amount of virtual memory allocated to the process, in kilobytes.
-	Name         string  `json:"name"`         // The name of the process.
-	Tgid         int64   `json:"tgid"`         // The thread group identifier, which is a number representing the process ID to which a thread belongs. This identifier is used to group threads from the same process.
-	ParentID     int64   `json:"parentID"`     // The process identifier for the parent process of the process.
-	MemoryUsedPc float32 `json:"memoryUsedPc"` // The percentage of memory used by the process.
-	CPUUsedPc    float32 `json:"cpuUsedPc"`    // The percentage of CPU used by the process.
-	ID           int64   `json:"id"`           // The identifier of the process.
-	Rss          int64   `json:"rss"`          // The amount of RAM allocated to the process, in kilobytes.
 }
