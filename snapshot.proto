@@ -54,6 +54,9 @@ message FullSnapshot {
   repeated Backend backends = 121;
   repeated Setting settings = 122;
 
+  repeated TablespaceReference tablespace_references = 130;
+  repeated TablespaceInformation tablespace_informations = 131;
+
   // Per database
   repeated QueryReference query_references = 200;
   repeated RelationReference relation_references = 201;
@@ -192,8 +195,10 @@ message TablespaceReference {
 
 message TablespaceInformation {
   int32 tablespace_idx = 1;
-  int32 role_idx = 2;         // Owner of the tablespace, usually the user who created it
-  repeated string config = 3; // Tablespace-level options, as "keyword=value" strings
+
+  int32 filesystem_idx = 2;   // Filesystem that this tablespace resides on
+  int32 role_idx = 3;         // Owner of the tablespace, usually the user who created it
+  repeated string config = 4; // Tablespace-level options, as "keyword=value" strings
 }
 
 message System {
@@ -216,6 +221,9 @@ message System {
   repeated FilesystemReference filesystem_references = 20;
   repeated FilesystemInformation filesystem_informations = 21;
   repeated FilesystemStatistic filesystem_statistics = 22;
+
+  int32 data_directory_filesystem_idx = 30; // Filesystem that the PostgreSQL data directory lives on
+  int32 xlog_filesystem_idx = 31;           // Filesystem that the PostgreSQL WAL lives on
 }
 
 message SystemInformation {
@@ -379,11 +387,10 @@ message FilesystemReference {
 
 message FilesystemInformation {
   int32 filesystem_idx = 1;
-
   int32 disk_idx = 2;
-  int32 tablespace_idx = 3; // -1 for WAL or main data directory
 
-  string filesystem_type = 4; // ext4/zfs/etc.
+  string fs_type = 3; // ext4/zfs/etc.
+  string opts = 4;    // filesystem options (noatime, etc)
 }
 
 message FilesystemStatistic {
