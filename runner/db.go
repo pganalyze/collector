@@ -2,6 +2,7 @@ package runner
 
 import (
 	"database/sql"
+	"fmt"
 	"strings"
 	"time"
 
@@ -25,6 +26,7 @@ func establishConnection(server state.Server, logger *util.Logger, globalCollect
 	}
 
 	validateConnectionCount(connection, logger, globalCollectionOpts)
+	setStatementTimeout(connection, logger, globalCollectionOpts)
 
 	return
 }
@@ -70,6 +72,18 @@ func validateConnectionCount(connection *sql.DB, logger *util.Logger, globalColl
 		logger.PrintError("Too many open monitoring connections (%d), exiting", connectionCount)
 		panic("Too many open monitoring connections")
 	}
+
+	return
+}
+
+func setStatementTimeout(connection *sql.DB, logger *util.Logger, globalCollectionOpts state.CollectionOpts) {
+	// Assume anything below 100ms to be set in error - its not reasonable to have out queries run faster than that
+	if globalCollectionOpts.StatementTimeoutMs < 100 {
+		logger.PrintVerbose("Ignoring invalid statement timeout of %dms (set it to at least 100ms)", globalCollectionOpts.StatementTimeoutMs)
+		return
+	}
+
+	connection.Exec(fmt.Sprintf("%sSET statement_timeout = %d", postgres.QueryMarkerSQL, globalCollectionOpts.StatementTimeoutMs))
 
 	return
 }

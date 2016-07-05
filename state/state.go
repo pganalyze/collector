@@ -62,6 +62,7 @@ type CollectionOpts struct {
 	CollectSystemInformation bool
 
 	CollectorApplicationName string
+	StatementTimeoutMs       int32 // Statement timeout for all SQL statements sent to the database
 
 	DiffStatements bool
 

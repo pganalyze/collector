@@ -114,6 +114,7 @@ func main() {
 		CollectSystemInformation: !noSystemInformation,
 		DiffStatements:           diffStatements,
 		StateFilename:            stateFilename,
+		StatementTimeoutMs:       10000,
 	}
 
 	if dryRun {
