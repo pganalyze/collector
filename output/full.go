@@ -23,7 +23,7 @@ import (
 	"github.com/satori/go.uuid"
 )
 
-func SendFull(db state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, newState state.State, diffState state.DiffState) error {
+func SendFull(db state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, newState state.State, diffState state.DiffState, collectedIntervalSecs uint32) error {
 	var err error
 	var data []byte
 
@@ -37,7 +37,7 @@ func SendFull(db state.Server, collectionOpts state.CollectionOpts, logger *util
 
 	s.SnapshotUuid = snapshotUUID.String()
 	s.CollectedAt, _ = ptypes.TimestampProto(collectedAt)
-	s.CollectedIntervalSecs = 600 // TODO: 10 minutes - we should actually measure the distance between states here
+	s.CollectedIntervalSecs = collectedIntervalSecs
 
 	data, err = proto.Marshal(&s)
 	if err != nil {

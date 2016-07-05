@@ -7,7 +7,7 @@ import (
 )
 
 // GetSystemState - Gets system information about an Amazon RDS instance
-func GetSystemState(config config.ServerConfig, logger *util.Logger) (system state.SystemState) {
+func GetSystemState(config config.ServerConfig, logger *util.Logger, dataDirectory string) (system state.SystemState) {
 	/*sess := util.GetAwsSession(config)
 
 	rdsSvc := rds.New(sess)

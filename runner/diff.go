@@ -5,12 +5,13 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
-func diffState(logger *util.Logger, prevState state.State, newState state.State) (diffState state.DiffState) {
+func diffState(logger *util.Logger, prevState state.State, newState state.State, collectedIntervalSecs uint32) (diffState state.DiffState) {
 	diffState.Statements = diffStatements(newState.Statements, prevState.Statements)
 	diffState.RelationStats = diffRelationStats(newState.RelationStats, prevState.RelationStats)
 	diffState.IndexStats = diffIndexStats(newState.IndexStats, prevState.IndexStats)
 	diffState.SystemCPUStats = diffSystemCPUStats(newState.System.CPUStats, prevState.System.CPUStats)
 	diffState.SystemNetworkStats = diffSystemNetworkStats(newState.System.NetworkStats, prevState.System.NetworkStats)
+	diffState.SystemDiskStats = diffSystemDiskStats(newState.System.DiskStats, prevState.System.DiskStats, collectedIntervalSecs)
 
 	return
 }
@@ -71,9 +72,9 @@ func diffIndexStats(new state.PostgresIndexStatsMap, prev state.PostgresIndexSta
 func diffSystemCPUStats(new state.CPUStatisticMap, prev state.CPUStatisticMap) (diff state.DiffedSystemCPUStatsMap) {
 	diff = make(state.DiffedSystemCPUStatsMap)
 	for cpuID, stats := range new {
-		if !stats.MeasuredAsSeconds {
-			if stats.Percentages != nil {
-				diff[cpuID] = *stats.Percentages
+		if stats.DiffedOnInput {
+			if stats.DiffedValues != nil {
+				diff[cpuID] = *stats.DiffedValues
 			}
 		} else {
 			prevStats, exists := prev[cpuID]
@@ -92,6 +93,24 @@ func diffSystemNetworkStats(new state.NetworkStatsMap, prev state.NetworkStatsMa
 		prevStats, exists := prev[interfaceName]
 		if exists {
 			diff[interfaceName] = stats.DiffSince(prevStats)
+		}
+	}
+
+	return
+}
+
+func diffSystemDiskStats(new state.DiskStatsMap, prev state.DiskStatsMap, collectedIntervalSecs uint32) (diff state.DiffedDiskStatsMap) {
+	diff = make(state.DiffedDiskStatsMap)
+	for deviceName, stats := range new {
+		if stats.DiffedOnInput {
+			if stats.DiffedValues != nil {
+				diff[deviceName] = *stats.DiffedValues
+			}
+		} else {
+			prevStats, exists := prev[deviceName]
+			if exists {
+				diff[deviceName] = stats.DiffSince(prevStats, collectedIntervalSecs)
+			}
 		}
 	}
 

@@ -18,6 +18,11 @@ func CollectFull(server state.Server, collectionOpts state.CollectionOpts, logge
 		return
 	}
 
+	s.DataDirectory, err = postgres.GetDataDirectory(logger, server.Connection)
+	if err != nil {
+		logger.PrintVerbose("Could not determine data directory location")
+	}
+
 	currentDatabaseOid, err := postgres.CurrentDatabaseOid(server.Connection)
 	if err != nil {
 		logger.PrintError("Error getting OID of current database")
@@ -92,7 +97,7 @@ func CollectFull(server state.Server, collectionOpts state.CollectionOpts, logge
 	}
 
 	if collectionOpts.CollectSystemInformation {
-		s.System = system.GetSystemState(server.Config, logger)
+		s.System = system.GetSystemState(server.Config, logger, s.DataDirectory)
 	}
 
 	if collectionOpts.CollectLogs {

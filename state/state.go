@@ -25,16 +25,19 @@ type State struct {
 	Logs      []LogLine
 	Explains  []PostgresExplain
 
-	System SystemState
+	DataDirectory string
+	System        SystemState
 }
 
 type DiffState struct {
-	Statements         []DiffedPostgresStatement
-	RelationStats      DiffedPostgresRelationStatsMap
-	IndexStats         DiffedPostgresIndexStatsMap
-	FunctionStats      DiffedPostgresFunctionStatsMap
+	Statements    []DiffedPostgresStatement
+	RelationStats DiffedPostgresRelationStatsMap
+	IndexStats    DiffedPostgresIndexStatsMap
+	FunctionStats DiffedPostgresFunctionStatsMap
+
 	SystemCPUStats     DiffedSystemCPUStatsMap
 	SystemNetworkStats DiffedNetworkStatsMap
+	SystemDiskStats    DiffedDiskStatsMap
 }
 
 // StateOnDiskFormatVersion - Increment this when an old state preserved to disk should be ignored

@@ -1,10 +1,6 @@
 package state
 
-import (
-	"time"
-
-	"gopkg.in/guregu/null.v3"
-)
+import "time"
 
 // SystemState - All kinds of system-related information and metrics
 type SystemState struct {
@@ -14,6 +10,10 @@ type SystemState struct {
 	CPUInfo      CPUInformation
 	CPUStats     CPUStatisticMap
 	NetworkStats NetworkStatsMap
+
+	Disks          DiskMap
+	DiskStats      DiskStatsMap
+	DiskPartitions DiskPartitionMap
 }
 
 // SystemType - Enum that describes which kind of system we're monitoring
@@ -121,7 +121,8 @@ type CPUStatisticMap map[string]CPUStatistic
 
 // CPUStatistic - Statistics for a single CPU core
 type CPUStatistic struct {
-	MeasuredAsSeconds bool // True if this uses the Seconds counters, false if it uses percentages
+	DiffedOnInput bool // True if has already been diffed on input (and we can simply copy the diff)
+	DiffedValues  *DiffedSystemCPUStats
 
 	// Seconds (counter values that need to be diff-ed between runs)
 	UserSeconds      float64
@@ -134,9 +135,6 @@ type CPUStatistic struct {
 	StealSeconds     float64
 	GuestSeconds     float64
 	GuestNiceSeconds float64
-
-	// Percentages (don't need to be diff-ed)
-	Percentages *DiffedSystemCPUStats
 }
 
 // DiffedSystemCPUStatsMap - Map of all CPU statistics (Key = CPU ID)
@@ -156,6 +154,86 @@ type DiffedSystemCPUStats struct {
 	GuestNicePercent float64
 }
 
+// NetworkStatsMap - Map of all network statistics (Key = Interface Name)
+type NetworkStatsMap map[string]NetworkStats
+
+// NetworkStats - Information about the network activity on a single interface
+type NetworkStats struct {
+	ReceiveThroughputBytes  uint64
+	TransmitThroughputBytes uint64
+}
+
+// DiffedNetworkStats - Network statistics for a single interface as a diff
+type DiffedNetworkStats NetworkStats
+
+// DiffedNetworkStatsMap - Map of network statistics as a diff (Key = Interface Name)
+type DiffedNetworkStatsMap map[string]DiffedNetworkStats
+
+// Disk - Information about an individual disk device in the system
+type Disk struct {
+	DiskType  string // Disk type (hdd/sdd/io1/gp2)
+	Scheduler string // Linux Scheduler (noop/anticipatory/deadline/cfq)
+}
+
+// DiskStats - Statistics about an individual disk device in the system
+type DiskStats struct {
+	DiffedOnInput bool // True if has already been diffed on input (and we can simply copy the diff)
+	DiffedValues  *DiffedDiskStats
+
+	// Counter values
+	ReadsCompleted  uint64 // /proc/diskstats 4 - reads completed successfully
+	ReadsMerged     uint64 // /proc/diskstats 5 - reads merged
+	BytesRead       uint64 // /proc/diskstat 6 - sectors read, multiplied by sector size
+	ReadTimeMs      uint64 // /proc/diskstat 7 - time spent reading (ms)
+	WritesCompleted uint64 // /proc/diskstats 8 - writes completed
+	WritesMerged    uint64 // /proc/diskstats 9 - writes merged
+	BytesWritten    uint64 // /proc/diskstat 10 - sectors written, multiplied by sector size
+	WriteTimeMs     uint64 // /proc/diskstat 11 - time spent writing (ms)
+	AvgQueueSize    int32  // /proc/diskstat 12 - I/Os currently in progress
+	IoTime          uint64 // /proc/diskstat 13 - time spent doing I/Os (ms)
+}
+
+type DiffedDiskStats struct {
+	ReadOperationsPerSecond float64 // The average number of read requests that were issued to the device per second
+	ReadsMergedPerSecond    float64 // The average number of read requests merged per second that were queued to the device
+	BytesReadPerSecond      float64 // The average number of bytes read from the device per second
+	AvgReadLatency          float64 // The average time (in milliseconds) for read requests issued to the device to be served
+
+	WriteOperationsPerSecond float64 // The average number of write requests that were issued to the device per second
+	WritesMergedPerSecond    float64 // The average number of write requests merged per second that were queued to the device
+	BytesWrittenPerSecond    float64 // The average number of bytes written to the device per second
+	AvgWriteLatency          float64 // The average time (in milliseconds) for write requests issued to the device to be served
+
+	AvgQueueSize       int32   // Average I/O operations in flight at the same time (waiting or worked on by the device)
+	UtilizationPercent float64 // Percentage of CPU time during which I/O requests were issued to the device (bandwidth utilization for the device)
+}
+
+// DiskMap - Map of all disks (key = device name)
+type DiskMap map[string]Disk
+
+// DiskStatsMap - Map of all disk statistics (key = device name)
+type DiskStatsMap map[string]DiskStats
+
+// DiffedDiskStatsMap - Map of all diffed disk statistics (key = device name)
+type DiffedDiskStatsMap map[string]DiffedDiskStats
+
+// DiskPartition - Information and statistics about one of the disk partitions in the system
+type DiskPartition struct {
+	DiskName       string // Name of the base device disk that this partition resides on (e.g. /dev/sda)
+	PartitionName  string // Platform-specific name of the partition (e.g. /dev/sda1)
+	FilesystemType string
+	FilesystemOpts string
+
+	UsedBytes  uint64
+	TotalBytes uint64
+}
+
+// DiskPartitionMap - Map of all disk partitions (key = mountpoint)
+type DiskPartitionMap map[string]DiskPartition
+
+// ---
+
+// DiffSince - Calculate the diff between two CPU stats runs
 func (curr CPUStatistic) DiffSince(prev CPUStatistic) DiffedSystemCPUStats {
 	userSecs := curr.UserSeconds - prev.UserSeconds
 	systemSecs := curr.SystemSeconds - prev.SystemSeconds
@@ -183,21 +261,6 @@ func (curr CPUStatistic) DiffSince(prev CPUStatistic) DiffedSystemCPUStats {
 	}
 }
 
-// NetworkStatsMap - Map of all network statistics (Key = Interface Name)
-type NetworkStatsMap map[string]NetworkStats
-
-// NetworkStats - Information about the network activity on a single interface
-type NetworkStats struct {
-	ReceiveThroughputBytes  uint64
-	TransmitThroughputBytes uint64
-}
-
-// DiffedNetworkStats - Network statistics for a single interface as a diff
-type DiffedNetworkStats NetworkStats
-
-// DiffedNetworkStatsMap - Map of network statistics as a diff (Key = Interface Name)
-type DiffedNetworkStatsMap map[string]DiffedNetworkStats
-
 // DiffSince - Calculate the diff between two network stats runs
 func (curr NetworkStats) DiffSince(prev NetworkStats) DiffedNetworkStats {
 	return DiffedNetworkStats{
@@ -206,44 +269,18 @@ func (curr NetworkStats) DiffSince(prev NetworkStats) DiffedNetworkStats {
 	}
 }
 
-// ---
-
-// Storage - Information about the storage used by the database
-type Storage struct {
-	BytesAvailable *int64
-	BytesTotal     *int64
-	Mountpoint     *string
-	Name           *string
-	Path           *string
-
-	Perfdata StoragePerfdata
-}
-
-// StoragePerfdata - Metrics gathered about the underlying storage
-type StoragePerfdata struct {
-	// 0 = counters, raw data
-	// 1 = diff, (only) useful data
-	Version int
-
-	// Version 0/1
-	ReadIops       *int64   // (count/sec)
-	WriteIops      *int64   // (count/sec)
-	IopsInProgress *int64   // (count)
-	AvgReqSize     null.Int // (avg)
-
-	// Version 1 only
-	ReadLatency     *float64 // (avg seconds)
-	ReadThroughput  *int64   // (bytes/sec)
-	WriteLatency    *float64 // (avg seconds)
-	WriteThroughput *int64   // (bytes/sec)
-
-	// Version 0 only
-	ReadMerges   *int64
-	ReadSectors  *int64
-	ReadTicks    *int64
-	WriteMerges  *int64
-	WriteSectors *int64
-	WriteTicks   *int64
-	TotalTicks   *int64
-	RequestTicks *int64
+// DiffSince - Calculate the diff between two disk stats runs
+func (curr DiskStats) DiffSince(prev DiskStats, collectedIntervalSecs uint32) DiffedDiskStats {
+	return DiffedDiskStats{
+		ReadOperationsPerSecond:  float64(curr.ReadsCompleted-prev.ReadsCompleted) / float64(collectedIntervalSecs),
+		ReadsMergedPerSecond:     float64(curr.ReadsMerged-prev.ReadsMerged) / float64(collectedIntervalSecs),
+		BytesReadPerSecond:       float64(curr.BytesRead-prev.BytesRead) / float64(collectedIntervalSecs),
+		AvgReadLatency:           float64(curr.ReadTimeMs-prev.ReadTimeMs) / float64(curr.ReadsCompleted-prev.ReadsCompleted),
+		WriteOperationsPerSecond: float64(curr.WritesCompleted-prev.WritesCompleted) / float64(collectedIntervalSecs),
+		WritesMergedPerSecond:    float64(curr.WritesMerged-prev.WritesMerged) / float64(collectedIntervalSecs),
+		BytesWrittenPerSecond:    float64(curr.BytesWritten-prev.BytesWritten) / float64(collectedIntervalSecs),
+		AvgWriteLatency:          float64(curr.WriteTimeMs-prev.WriteTimeMs) / float64(curr.WritesCompleted-prev.WritesCompleted),
+		AvgQueueSize:             curr.AvgQueueSize,
+		UtilizationPercent:       float64(curr.IoTime-prev.IoTime) / float64(collectedIntervalSecs) * 100.0,
+	}
 }

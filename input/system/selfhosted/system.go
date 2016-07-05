@@ -1,12 +1,14 @@
 package selfhosted
 
 import (
+	"strings"
 	"time"
 
 	"github.com/pganalyze/collector/config"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
 	"github.com/shirou/gopsutil/cpu"
+	"github.com/shirou/gopsutil/disk"
 	"github.com/shirou/gopsutil/host"
 	"github.com/shirou/gopsutil/load"
 	"github.com/shirou/gopsutil/mem"
@@ -14,7 +16,7 @@ import (
 )
 
 // GetSystemState - Gets system information about a self-hosted (physical/virtual) system
-func GetSystemState(config config.ServerConfig, logger *util.Logger) (system state.SystemState) {
+func GetSystemState(config config.ServerConfig, logger *util.Logger, dataDirectory string) (system state.SystemState) {
 	system.Info.Type = state.SelfHostedSystem
 
 	hostInfo, err := host.Info()
@@ -34,6 +36,7 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger) (system sta
 			system.Info.SelfHosted.VirtualizationSystem = hostInfo.VirtualizationSystem
 		}
 
+		// TODO:
 		//Architecture         string
 		//KernelVersion        string
 	}
@@ -107,17 +110,17 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger) (system sta
 		system.CPUStats = make(state.CPUStatisticMap)
 		for _, cpuStat := range cpuStats {
 			system.CPUStats[cpuStat.CPU] = state.CPUStatistic{
-				MeasuredAsSeconds: true,
-				UserSeconds:       cpuStat.User,
-				SystemSeconds:     cpuStat.System,
-				IdleSeconds:       cpuStat.Idle,
-				NiceSeconds:       cpuStat.Nice,
-				IowaitSeconds:     cpuStat.Iowait,
-				IrqSeconds:        cpuStat.Irq,
-				SoftIrqSeconds:    cpuStat.Softirq,
-				StealSeconds:      cpuStat.Steal,
-				GuestSeconds:      cpuStat.Guest,
-				GuestNiceSeconds:  cpuStat.GuestNice,
+				DiffedOnInput:    false,
+				UserSeconds:      cpuStat.User,
+				SystemSeconds:    cpuStat.System,
+				IdleSeconds:      cpuStat.Idle,
+				NiceSeconds:      cpuStat.Nice,
+				IowaitSeconds:    cpuStat.Iowait,
+				IrqSeconds:       cpuStat.Irq,
+				SoftIrqSeconds:   cpuStat.Softirq,
+				StealSeconds:     cpuStat.Steal,
+				GuestSeconds:     cpuStat.Guest,
+				GuestNiceSeconds: cpuStat.GuestNice,
 			}
 		}
 	}
@@ -128,12 +131,81 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger) (system sta
 	} else {
 		system.NetworkStats = make(state.NetworkStatsMap)
 		for _, netStat := range netStats {
+			if netStat.BytesRecv == 0 && netStat.BytesSent == 0 {
+				continue
+			}
+
 			system.NetworkStats[netStat.Name] = state.NetworkStats{
 				ReceiveThroughputBytes:  netStat.BytesRecv,
 				TransmitThroughputBytes: netStat.BytesSent,
 			}
 		}
 	}
+
+	system.Disks = make(state.DiskMap)
+	disks, err := disk.IOCounters()
+	if err != nil {
+		logger.PrintVerbose("Selfhosted/System: Failed to get disk I/O stats: %s", err)
+
+		// We need to insert a dummy device, otherwise we can't attach the partitions anywhere
+		system.Disks["/"] = state.Disk{}
+	} else {
+		system.DiskStats = make(state.DiskStatsMap)
+		for _, disk := range disks {
+			system.Disks[disk.Name] = state.Disk{
+			// TODO: DiskType, Scheduler
+			}
+
+			system.DiskStats[disk.Name] = state.DiskStats{
+				ReadsCompleted:  disk.ReadCount,
+				BytesRead:       disk.ReadBytes,
+				ReadTimeMs:      disk.ReadTime,
+				WritesCompleted: disk.WriteCount,
+				BytesWritten:    disk.WriteBytes,
+				WriteTimeMs:     disk.WriteTime,
+				IoTime:          disk.IoTime,
+				// TODO: ReadsMerged, WritesMerged, AvgQueueSize
+			}
+		}
+	}
+
+	diskPartitions, err := disk.Partitions(true)
+	if err != nil {
+		logger.PrintVerbose("Selfhosted/System: Failed to get disk partitions: %s", err)
+	} else {
+		system.DiskPartitions = make(state.DiskPartitionMap)
+		for _, partition := range diskPartitions {
+			// OSX partition types we can ignore
+			if partition.Fstype == "autofs" || partition.Fstype == "devfs" {
+				continue
+			}
+
+			diskUsage, err := disk.Usage(partition.Mountpoint)
+			if err != nil {
+				logger.PrintVerbose("Selfhosted/System: Failed to get disk partition usage stats: %s", err)
+			} else {
+				var diskName string
+
+				for name := range system.Disks {
+					if strings.HasPrefix(partition.Device, name) {
+						diskName = name
+						break
+					}
+				}
+
+				system.DiskPartitions[partition.Mountpoint] = state.DiskPartition{
+					DiskName:       diskName,
+					PartitionName:  partition.Device,
+					FilesystemType: partition.Fstype,
+					FilesystemOpts: partition.Opts,
+					UsedBytes:      diskUsage.Total - diskUsage.Free,
+					TotalBytes:     diskUsage.Total,
+				}
+			}
+		}
+	}
+
+	// TODO: Locate the filesystem that the data directory lives on
 
 	return
 }

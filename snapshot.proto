@@ -38,7 +38,7 @@ message FullSnapshot {
 
   string snapshot_uuid = 10;
   google.protobuf.Timestamp collected_at = 11;
-  int32 collected_interval_secs = 12;
+  uint32 collected_interval_secs = 12;
 
   // Per server (and hence snapshot)
   System system = 100;
@@ -196,9 +196,9 @@ message TablespaceReference {
 message TablespaceInformation {
   int32 tablespace_idx = 1;
 
-  int32 filesystem_idx = 2;   // Filesystem that this tablespace resides on
-  int32 role_idx = 3;         // Owner of the tablespace, usually the user who created it
-  repeated string config = 4; // Tablespace-level options, as "keyword=value" strings
+  int32 disk_partition_idx = 2; // Disk partition that this tablespace resides on (-1 if unknown)
+  int32 role_idx = 3;           // Owner of the tablespace, usually the user who created it
+  repeated string config = 4;   // Tablespace-level options, as "keyword=value" strings
 }
 
 message System {
@@ -218,12 +218,12 @@ message System {
   repeated DiskInformation disk_informations = 18;
   repeated DiskStatistic disk_statistics = 19;
 
-  repeated FilesystemReference filesystem_references = 20;
-  repeated FilesystemInformation filesystem_informations = 21;
-  repeated FilesystemStatistic filesystem_statistics = 22;
+  repeated DiskPartitionReference disk_partition_references = 20;
+  repeated DiskPartitionInformation disk_partition_informations = 21;
+  repeated DiskPartitionStatistic disk_partition_statistics = 22;
 
-  int32 data_directory_filesystem_idx = 30; // Filesystem that the PostgreSQL data directory lives on
-  int32 xlog_filesystem_idx = 31;           // Filesystem that the PostgreSQL WAL lives on
+  int32 data_directory_disk_partition_idx = 30; // Disk partition that the PostgreSQL data directory lives on
+  int32 xlog_disk_partition_idx = 31;           // Disk partition that the PostgreSQL WAL lives on
 }
 
 message SystemInformation {
@@ -359,45 +359,45 @@ message DiskReference {
 message DiskInformation {
   int32 disk_idx = 1;
 
-  bool rotational = 2; // Rotational disk (HDD) or SSD?
+  string disk_type = 2; // Disk type (hdd/sdd/io1/gp2)
   string scheduler = 3; // Linux Scheduler (noop/anticipatory/deadline/cfq)
 }
 
 message DiskStatistic {
   int32 disk_idx = 1;
 
-  int32 read_operations_per_second = 2; // The average number of read requests that were issued to the device per second
-  double reads_merged_per_second = 3;   // The average number of read requests merged per second that were queued to the device
-  int64 bytes_read_per_second = 4;      // The average number of bytes read from the device per second
-  double avg_read_latency = 5;          // The average time (in milliseconds) for read requests issued to the device to be served
+  double read_operations_per_second = 2; // The average number of read requests that were issued to the device per second
+  double reads_merged_per_second = 3;    // The average number of read requests merged per second that were queued to the device
+  double bytes_read_per_second = 4;      // The average number of bytes read from the device per second
+  double avg_read_latency = 5;           // The average time (in milliseconds) for read requests issued to the device to be served
 
-  int32 write_operations_per_second = 6; // The average number of write requests that were issued to the device per second
-  double writes_merged_per_second = 7;   // The average number of write requests merged per second that were queued to the device
-  int64 bytes_written_per_second = 8;    // The average number of bytes written to the device per second
-  double avg_write_latency = 9;          // The average time (in milliseconds) for write requests issued to the device to be served
+  double write_operations_per_second = 6; // The average number of write requests that were issued to the device per second
+  double writes_merged_per_second = 7;    // The average number of write requests merged per second that were queued to the device
+  double bytes_written_per_second = 8;    // The average number of bytes written to the device per second
+  double avg_write_latency = 9;           // The average time (in milliseconds) for write requests issued to the device to be served
 
   int32 avg_queue_size = 10;         // Average I/O operations in flight at the same time (waiting or worked on by the device)
-  int64 avg_request_size_bytes = 11; // Average size of I/O requests in bytes
-  double utilization_pct = 12;       // Percentage of CPU time during which I/O requests were issued to the device (bandwidth utilization for the device)
+  double utilization_percent = 12;   // Percentage of CPU time during which I/O requests were issued to the device (bandwidth utilization for the device)
 }
 
-message FilesystemReference {
+message DiskPartitionReference {
   string mountpoint = 1;
 }
 
-message FilesystemInformation {
-  int32 filesystem_idx = 1;
+message DiskPartitionInformation {
+  int32 disk_partition_idx = 1;
   int32 disk_idx = 2;
 
-  string fs_type = 3; // ext4/zfs/etc.
-  string opts = 4;    // filesystem options (noatime, etc)
+  string filesystem_type = 3; // ext4/zfs/etc.
+  string filesystem_opts = 4; // filesystem options (noatime, etc)
+  string partition_name = 5;  // Platform-specific name for the partition (e.g. /dev/sda9)
 }
 
-message FilesystemStatistic {
-  int32 filesystem_idx = 1;
+message DiskPartitionStatistic {
+  int32 disk_partition_idx = 1;
 
-  int64 used_bytes = 2;
-  int64 total_bytes = 3;
+  uint64 used_bytes = 2;
+  uint64 total_bytes = 3;
 }
 
 // PER DATABASE

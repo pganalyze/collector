@@ -32,9 +32,10 @@ func processDatabase(server state.Server, globalCollectionOpts state.CollectionO
 		return newState, grant, err
 	}
 
-	diffState := diffState(logger, server.PrevState, newState)
+	collectedIntervalSecs := uint32(600) // TODO: 10 minutes - we should actually measure the distance between states here
+	diffState := diffState(logger, server.PrevState, newState, collectedIntervalSecs)
 
-	output.SendFull(server, globalCollectionOpts, logger, newState, diffState)
+	output.SendFull(server, globalCollectionOpts, logger, newState, diffState, collectedIntervalSecs)
 
 	return newState, grant, nil
 }

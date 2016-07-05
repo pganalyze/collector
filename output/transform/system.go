@@ -105,7 +105,64 @@ func transformSystem(s snapshot.FullSnapshot, newState state.State, diffState st
 		})
 	}
 
-	// TODO: Add disks
+	diskNameToIdx := make(map[string]int32)
+
+	for deviceName, disk := range newState.System.Disks {
+		ref := snapshot.DiskReference{
+			DeviceName: deviceName,
+		}
+		idx := int32(len(s.System.DiskReferences))
+		s.System.DiskReferences = append(s.System.DiskReferences, &ref)
+		diskNameToIdx[deviceName] = idx
+
+		s.System.DiskInformations = append(s.System.DiskInformations, &snapshot.DiskInformation{
+			DiskIdx:   idx,
+			DiskType:  disk.DiskType,
+			Scheduler: disk.Scheduler,
+		})
+
+		diskStats, exists := diffState.SystemDiskStats[deviceName]
+		if exists {
+			s.System.DiskStatistics = append(s.System.DiskStatistics, &snapshot.DiskStatistic{
+				DiskIdx:                 idx,
+				ReadOperationsPerSecond: diskStats.ReadOperationsPerSecond,
+				ReadsMergedPerSecond:    diskStats.ReadsMergedPerSecond,
+				BytesReadPerSecond:      diskStats.BytesReadPerSecond,
+				AvgReadLatency:          diskStats.AvgReadLatency,
+
+				WriteOperationsPerSecond: diskStats.WriteOperationsPerSecond,
+				WritesMergedPerSecond:    diskStats.WritesMergedPerSecond,
+				BytesWrittenPerSecond:    diskStats.BytesWrittenPerSecond,
+				AvgWriteLatency:          diskStats.AvgWriteLatency,
+				AvgQueueSize:             diskStats.AvgQueueSize,
+				UtilizationPercent:       diskStats.UtilizationPercent,
+			})
+		}
+	}
+
+	for mountpoint, diskPartition := range newState.System.DiskPartitions {
+		ref := snapshot.DiskPartitionReference{
+			Mountpoint: mountpoint,
+		}
+		idx := int32(len(s.System.DiskPartitionReferences))
+		s.System.DiskPartitionReferences = append(s.System.DiskPartitionReferences, &ref)
+
+		diskIdx := diskNameToIdx[diskPartition.DiskName]
+
+		s.System.DiskPartitionInformations = append(s.System.DiskPartitionInformations, &snapshot.DiskPartitionInformation{
+			DiskPartitionIdx: idx,
+			DiskIdx:          diskIdx,
+			FilesystemType:   diskPartition.FilesystemType,
+			FilesystemOpts:   diskPartition.FilesystemOpts,
+			PartitionName:    diskPartition.PartitionName,
+		})
+
+		s.System.DiskPartitionStatistics = append(s.System.DiskPartitionStatistics, &snapshot.DiskPartitionStatistic{
+			DiskPartitionIdx: idx,
+			UsedBytes:        diskPartition.UsedBytes,
+			TotalBytes:       diskPartition.TotalBytes,
+		})
+	}
 
 	return s
 }
