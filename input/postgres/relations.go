@@ -11,7 +11,9 @@ import (
 	"github.com/pganalyze/collector/state"
 )
 
-const relationsSQL string = `SELECT c.oid,
+const relationsSQL string = `
+	 WITH locked_relids AS (SELECT DISTINCT relation relid FROM pg_locks WHERE mode = 'AccessExclusiveLock')
+ SELECT c.oid,
 				n.nspname AS schema_name,
 				c.relname AS table_name,
 				c.relkind AS relation_type,
@@ -21,15 +23,19 @@ const relationsSQL string = `SELECT c.oid,
 				c.relhassubclass AS relation_has_inheritance_children,
 				c.reltoastrelid IS NULL AS relation_has_toast,
 				c.relfrozenxid AS relation_frozen_xid,
-				c.relminmxid AS relation_min_mxid
+				c.relminmxid AS relation_min_mxid,
+				locked_relids.relid IS NOT NULL
 	 FROM pg_catalog.pg_class c
 	 LEFT JOIN pg_catalog.pg_namespace n ON (n.oid = c.relnamespace)
+	 LEFT JOIN locked_relids ON (c.oid = locked_relids.relid)
 	WHERE c.relkind IN ('r','v','m')
 				AND c.relpersistence <> 't'
 				AND c.relname NOT IN ('pg_stat_statements')
 				AND n.nspname NOT IN ('pg_catalog','pg_toast','information_schema')`
 
-const columnsSQL string = `SELECT c.oid,
+const columnsSQL string = `
+	 WITH locked_relids AS (SELECT DISTINCT relation relid FROM pg_locks WHERE mode = 'AccessExclusiveLock')
+ SELECT c.oid,
 				a.attname AS name,
 				pg_catalog.format_type(a.atttypid, a.atttypmod) AS data_type,
 	 (SELECT pg_catalog.pg_get_expr(d.adbin, d.adrelid)
@@ -48,9 +54,11 @@ const columnsSQL string = `SELECT c.oid,
 			 AND n.nspname NOT IN ('pg_catalog','pg_toast','information_schema')
 			 AND a.attnum > 0
 			 AND NOT a.attisdropped
+			 AND c.oid NOT IN (SELECT relid FROM locked_relids)
  ORDER BY a.attnum`
 
 const indicesSQL string = `
+	WITH locked_relids AS (SELECT DISTINCT relation relid FROM pg_locks WHERE mode = 'AccessExclusiveLock')
 SELECT c.oid,
 			 c2.oid,
 			 i.indkey::text,
@@ -71,9 +79,12 @@ SELECT c.oid,
 																						 AND contype IN ('p', 'u', 'x'))
  WHERE c.relkind IN ('r','v','m')
 			 AND c.relpersistence <> 't'
-			 AND n.nspname NOT IN ('pg_catalog','pg_toast','information_schema')`
+			 AND n.nspname NOT IN ('pg_catalog','pg_toast','information_schema')
+			 AND c.oid NOT IN (SELECT relid FROM locked_relids)
+			 AND c2.oid NOT IN (SELECT relid FROM locked_relids)`
 
 const constraintsSQL string = `
+	WITH locked_relids AS (SELECT DISTINCT relation relid FROM pg_locks WHERE mode = 'AccessExclusiveLock')
 SELECT c.oid,
 			 conname,
 			 contype,
@@ -87,9 +98,11 @@ SELECT c.oid,
 	FROM pg_catalog.pg_constraint r
 			 JOIN pg_catalog.pg_class c ON r.conrelid = c.oid
 			 JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
-WHERE n.nspname NOT IN ('pg_catalog','pg_toast','information_schema')`
+WHERE n.nspname NOT IN ('pg_catalog','pg_toast','information_schema')
+			AND c.oid NOT IN (SELECT relid FROM locked_relids)`
 
 const viewDefinitionSQL string = `
+	WITH locked_relids AS (SELECT DISTINCT relation relid FROM pg_locks WHERE mode = 'AccessExclusiveLock')
 SELECT c.oid,
 			 pg_catalog.pg_get_viewdef(c.oid) AS view_definition
 	FROM pg_catalog.pg_class c
@@ -97,21 +110,14 @@ SELECT c.oid,
 	WHERE c.relkind IN ('v','m')
 			 AND c.relpersistence <> 't'
 			 AND c.relname NOT IN ('pg_stat_statements')
-			 AND n.nspname NOT IN ('pg_catalog','pg_toast','information_schema')`
+			 AND n.nspname NOT IN ('pg_catalog','pg_toast','information_schema')
+			 AND c.oid NOT IN (SELECT relid FROM locked_relids)`
 
 func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, currentDatabaseOid state.Oid) ([]state.PostgresRelation, error) {
 	relations := make(map[state.Oid]state.PostgresRelation, 0)
 
 	// Relations
-	stmt, err := db.Prepare(QueryMarkerSQL + relationsSQL)
-	if err != nil {
-		err = fmt.Errorf("Relations/Prepare: %s", err)
-		return nil, err
-	}
-
-	defer stmt.Close()
-
-	rows, err := stmt.Query()
+	rows, err := db.Query(QueryMarkerSQL + relationsSQL)
 	if err != nil {
 		err = fmt.Errorf("Relations/Query: %s", err)
 		return nil, err
@@ -125,7 +131,7 @@ func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 
 		err = rows.Scan(&row.Oid, &row.SchemaName, &row.RelationName, &row.RelationType,
 			&options, &row.HasOids, &row.PersistenceType, &row.HasInheritanceChildren,
-			&row.HasToast, &row.FrozenXID, &row.MinimumMultixactXID)
+			&row.HasToast, &row.FrozenXID, &row.MinimumMultixactXID, &row.ExclusivelyLocked)
 		if err != nil {
 			err = fmt.Errorf("Relations/Scan: %s", err)
 			return nil, err
@@ -145,15 +151,7 @@ func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 	}
 
 	// Columns
-	stmt, err = db.Prepare(QueryMarkerSQL + columnsSQL)
-	if err != nil {
-		err = fmt.Errorf("Columns/Prepare: %s", err)
-		return nil, err
-	}
-
-	defer stmt.Close()
-
-	rows, err = stmt.Query()
+	rows, err = db.Query(QueryMarkerSQL + columnsSQL)
 	if err != nil {
 		err = fmt.Errorf("Columns/Query: %s", err)
 		return nil, err
@@ -177,15 +175,7 @@ func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 	}
 
 	// Indices
-	stmt, err = db.Prepare(QueryMarkerSQL + indicesSQL)
-	if err != nil {
-		err = fmt.Errorf("Indices/Prepare: %s", err)
-		return nil, err
-	}
-
-	defer stmt.Close()
-
-	rows, err = stmt.Query()
+	rows, err = db.Query(QueryMarkerSQL + indicesSQL)
 	if err != nil {
 		err = fmt.Errorf("Indices/Query: %s", err)
 		return nil, err
@@ -224,15 +214,7 @@ func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 	}
 
 	// Constraints
-	stmt, err = db.Prepare(QueryMarkerSQL + constraintsSQL)
-	if err != nil {
-		err = fmt.Errorf("Constraints/Prepare: %s", err)
-		return nil, err
-	}
-
-	defer stmt.Close()
-
-	rows, err = stmt.Query()
+	rows, err = db.Query(QueryMarkerSQL + constraintsSQL)
 	if err != nil {
 		err = fmt.Errorf("Constraints/Query: %s", err)
 		return nil, err
@@ -281,17 +263,9 @@ func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 	}
 
 	// View definitions
-	stmt, err = db.Prepare(QueryMarkerSQL + viewDefinitionSQL)
+	rows, err = db.Query(QueryMarkerSQL + viewDefinitionSQL)
 	if err != nil {
 		err = fmt.Errorf("Views/Prepare: %s", err)
-		return nil, err
-	}
-
-	defer stmt.Close()
-
-	rows, err = stmt.Query()
-	if err != nil {
-		err = fmt.Errorf("Views/Query: %s", err)
 		return nil, err
 	}
 

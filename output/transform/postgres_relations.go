@@ -28,6 +28,7 @@ func transformPostgresRelations(s snapshot.FullSnapshot, newState state.State, d
 			HasToast:               relation.HasToast,
 			FrozenXid:              uint32(relation.FrozenXID),
 			MinimumMultixactXid:    uint32(relation.MinimumMultixactXID),
+			ExclusivelyLocked:      relation.ExclusivelyLocked,
 		}
 
 		if relation.ViewDefinition != "" {

@@ -481,6 +481,10 @@ message RelationInformation {
   uint32 frozen_xid = 11;
   uint32 minimum_multixact_xid = 12;
 
+  // True if another process is currently holding an AccessExclusiveLock on this
+  // relation, this also means we won't have columns/index/constraints information
+  bool exclusively_locked = 13;
+
   message Column {
     string name = 2;
     string data_type = 3;

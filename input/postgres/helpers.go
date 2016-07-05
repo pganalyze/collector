@@ -6,7 +6,7 @@ import (
 
 	"github.com/pganalyze/collector/state"
 
-	"gopkg.in/guregu/null.v2"
+	"gopkg.in/guregu/null.v3"
 )
 
 func unpackPostgresInt32Array(input null.String) (result []int32) {

@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 
-	"gopkg.in/guregu/null.v2"
+	"gopkg.in/guregu/null.v3"
 
 	"github.com/pganalyze/collector/state"
 )
