@@ -95,9 +95,9 @@ func main() {
 	flag.BoolVar(&noExplain, "no-explain", false, "Don't automatically EXPLAIN slow queries logged in the logfile")
 	flag.BoolVar(&noSystemInformation, "no-system-information", false, "Don't collect OS level performance data")
 	flag.BoolVar(&diffStatements, "diff-statements", false, "Send a diff of the pg_stat_statements statistics, instead of counter values")
-	flag.StringVar(&configFilename, "config", usr.HomeDir+"/.pganalyze_collector.conf", "Specify alternative path for config file.")
-	flag.StringVar(&stateFilename, "statefile", usr.HomeDir+"/.pganalyze_collector.state", "Specify alternative path for state file.")
-	flag.StringVar(&pidFilename, "pidfile", "", "Specifies a path that a pidfile should be written to. (default is no pidfile being written)")
+	flag.StringVar(&configFilename, "config", "/etc/pganalyze_collector.conf", "Specify alternative path for config file.")
+	flag.StringVar(&stateFilename, "statefile", "/var/run/pganalyze_collector.state", "Specify alternative path for state file.")
+	flag.StringVar(&pidFilename, "pidfile", "/var/run/pganalyze_collector.pid", "Specifies alternative path that a pidfile should be written to.")
 	flag.Parse()
 
 	globalCollectionOpts := state.CollectionOpts{
