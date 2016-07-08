@@ -1,5 +1,5 @@
 NAME=pganalyze-collector
-VERSION=0.9.0rc7
+VERSION=0.9.0rc8
 
 .PHONY: deb-upstart
 
