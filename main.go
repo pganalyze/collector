@@ -5,7 +5,6 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"os/user"
 	"strconv"
 	"sync"
 	"syscall"
@@ -75,12 +74,6 @@ func main() {
 	var noPostgresRelations, noLogs, noExplain, noSystemInformation, diffStatements bool
 
 	logger := &util.Logger{Destination: log.New(os.Stderr, "", log.LstdFlags)}
-
-	usr, err := user.Current()
-	if err != nil {
-		logger.PrintError("Could not get user context from operating system - can't initialize, exiting.")
-		return
-	}
 
 	flag.BoolVarP(&testRun, "test", "t", false, "Tests whether we can successfully collect data, submits it to the server, and exits afterwards.")
 	flag.BoolVarP(&logger.Verbose, "verbose", "v", false, "Outputs additional debugging information, use this if you're encoutering errors or other problems.")
