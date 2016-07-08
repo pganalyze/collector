@@ -1,0 +1,103 @@
+#! /bin/sh
+### BEGIN INIT INFO
+# Provides: pganalyze-collector
+# Required-Start: $remote_fs $syslog
+# Required-Stop: $remote_fs $syslog
+# Default-Start: 2 3 4 5
+# Default-Stop: 0 1 6
+# Short-Description: pganalyze PostgreSQL statistics collector
+# Description: This file starts and stops the pganalyze statistics collector.
+### END INIT INFO
+
+PATH=/usr/bin
+prog="pganalyze-collector"
+conf=/etc/pganalyze-collector.conf
+pidfile=/var/run/pganalyze-collector.pid
+logfile=/var/log/pganalyze-collector.log
+
+# Check config
+test -f $conf
+
+RETVAL=0
+
+start(){
+	test -x /usr/bin/$prog || exit 5
+	test -f $conf || exit 6
+
+	touch $logfile
+
+	echo -n $"Starting $prog: "
+	daemon $prog "--config=$conf --pidfile=$pidfile >$logfile 2>&1 &"
+	RETVAL=$?
+	echo
+	return $RETVAL
+}
+
+stop(){
+	echo -n $"Stopping $prog: "
+	killproc -p $pidfile $prog
+	RETVAL=$?
+	echo
+	rm -f $pidfile
+	return $RETVAL
+}
+
+reload(){
+	test -f $conf  || exit 6
+	echo -n $"Reloading configuration: "
+	killproc -p $pidfile $prog -HUP
+	RETVAL=$?
+	echo
+	return $RETVAL
+}
+
+restart() {
+    stop
+    start
+}
+
+force_reload() {
+    restart
+}
+
+rh_status() {
+    # run checks to determine if the service is running or use generic status
+    status $prog
+}
+
+rh_status_q() {
+    rh_status >/dev/null 2>&1
+}
+
+case "$1" in
+    start)
+        rh_status_q && exit 0
+        $1
+        ;;
+    stop)
+        rh_status_q || exit 0
+        $1
+        ;;
+    restart)
+        $1
+        ;;
+    reload)
+        rh_status_q || exit 7
+        $1
+        ;;
+    force-reload)
+        force_reload
+        ;;
+    status)
+        rh_status
+        ;;
+    condrestart|try-restart)
+        rh_status_q || exit 0
+        restart
+        ;;
+    *)
+        echo $"Usage: $0 {start|stop|status|restart|condrestart|try-restart|reload|force-reload|confcheck}"
+        exit 2
+esac
+
+exit $RETVAL

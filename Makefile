@@ -19,4 +19,7 @@ release: test
 	docker build -t quay.io/pganalyze/collector:protobuf .
 	docker push quay.io/pganalyze/collector:protobuf
 
-.PHONY: default prepare build test release
+packages:
+	make -C packages
+
+.PHONY: default prepare build test release packages
