@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.9.0rc8    2016-07-08
+
+* Significant restructuring of the codebase
+  * We're now sending data using the protocol buffers format
+  * Snapshot data is directly uploaded to S3
+* Query, table and system statistics are diff-ed on the client side
+* Support for monitoring system metrics on self-hosted systems is added again
+* New safety mechanisms against stuck/slow collector runs
+
+
 ## 0.9.0rc7    2016-04-14
 
 * Add support for RDS enhanced monitoring

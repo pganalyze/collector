@@ -131,7 +131,7 @@ func main() {
 	if testRun {
 		globalCollectionOpts.CollectorApplicationName = "pganalyze_test_run"
 	} else {
-		globalCollectionOpts.CollectorApplicationName = "pganalyze_protobuf" // FIXME
+		globalCollectionOpts.CollectorApplicationName = "pganalyze_collector"
 	}
 
 	if pidFilename != "" {
