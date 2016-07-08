@@ -1,6 +1,7 @@
 package transform
 
 import (
+	"github.com/golang/protobuf/ptypes"
 	snapshot "github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
 )
@@ -28,11 +29,39 @@ func transformSystem(s snapshot.FullSnapshot, newState state.State, diffState st
 		}
 	} else if newState.System.Info.Type == state.AmazonRdsSystem {
 		s.System.SystemInformation.Type = snapshot.SystemInformation_AMAZON_RDS_SYSTEM
-		// TODO: Add Info
+		if newState.System.Info.AmazonRds != nil {
+			latestRestorableTime, _ := ptypes.TimestampProto(newState.System.Info.AmazonRds.LatestRestorableTime)
+			createdAt, _ := ptypes.TimestampProto(newState.System.Info.AmazonRds.CreatedAt)
+
+			s.System.SystemInformation.Info = &snapshot.SystemInformation_AmazonRds{
+				AmazonRds: &snapshot.SystemInformationAmazonRDS{
+					Region:                     newState.System.Info.AmazonRds.Region,
+					InstanceClass:              newState.System.Info.AmazonRds.InstanceClass,
+					InstanceId:                 newState.System.Info.AmazonRds.InstanceID,
+					Status:                     newState.System.Info.AmazonRds.Status,
+					AvailabilityZone:           newState.System.Info.AmazonRds.AvailabilityZone,
+					PubliclyAccessible:         newState.System.Info.AmazonRds.PubliclyAccessible,
+					MultiAz:                    newState.System.Info.AmazonRds.MultiAz,
+					SecondaryAvailabilityZone:  newState.System.Info.AmazonRds.SecondaryAvailabilityZone,
+					CaCertificate:              newState.System.Info.AmazonRds.CaCertificate,
+					AutoMinorVersionUpgrade:    newState.System.Info.AmazonRds.AutoMinorVersionUpgrade,
+					PreferredMaintenanceWindow: newState.System.Info.AmazonRds.PreferredMaintenanceWindow,
+					PreferredBackupWindow:      newState.System.Info.AmazonRds.PreferredBackupWindow,
+					LatestRestorableTime:       latestRestorableTime,
+					BackupRetentionPeriodDays:  newState.System.Info.AmazonRds.BackupRetentionPeriodDays,
+					MasterUsername:             newState.System.Info.AmazonRds.MasterUsername,
+					InitialDbName:              newState.System.Info.AmazonRds.InitialDbName,
+					CreatedAt:                  createdAt,
+					EnhancedMonitoring:         newState.System.Info.AmazonRds.EnhancedMonitoring,
+				},
+			}
+		}
 	} else if newState.System.Info.Type == state.HerokuSystem {
 		s.System.SystemInformation.Type = snapshot.SystemInformation_HEROKU_SYSTEM
 		// TODO: Add Info
 	}
+
+	s.System.XlogUsedBytes = newState.System.XlogUsedBytes
 
 	s.System.SchedulerStatistic = &snapshot.SchedulerStatistic{
 		LoadAverage_1Min:  newState.System.Scheduler.Loadavg1min,
@@ -99,9 +128,9 @@ func transformSystem(s snapshot.FullSnapshot, newState state.State, diffState st
 		idx := int32(len(s.System.NetworkReferences))
 		s.System.NetworkReferences = append(s.System.NetworkReferences, &ref)
 		s.System.NetworkStatistics = append(s.System.NetworkStatistics, &snapshot.NetworkStatistic{
-			NetworkIdx:              idx,
-			TransmitThroughputBytes: interfaceStats.TransmitThroughputBytes,
-			ReceiveThroughputBytes:  interfaceStats.ReceiveThroughputBytes,
+			NetworkIdx:                       idx,
+			TransmitThroughputBytesPerSecond: interfaceStats.TransmitThroughputBytesPerSecond,
+			ReceiveThroughputBytesPerSecond:  interfaceStats.ReceiveThroughputBytesPerSecond,
 		})
 	}
 
@@ -116,9 +145,11 @@ func transformSystem(s snapshot.FullSnapshot, newState state.State, diffState st
 		diskNameToIdx[deviceName] = idx
 
 		s.System.DiskInformations = append(s.System.DiskInformations, &snapshot.DiskInformation{
-			DiskIdx:   idx,
-			DiskType:  disk.DiskType,
-			Scheduler: disk.Scheduler,
+			DiskIdx:         idx,
+			DiskType:        disk.DiskType,
+			Scheduler:       disk.Scheduler,
+			ProvisionedIops: disk.ProvisionedIOPS,
+			Encrypted:       disk.Encrypted,
 		})
 
 		diskStats, exists := diffState.SystemDiskStats[deviceName]

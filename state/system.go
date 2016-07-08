@@ -14,6 +14,8 @@ type SystemState struct {
 	Disks          DiskMap
 	DiskStats      DiskStatsMap
 	DiskPartitions DiskPartitionMap
+
+	XlogUsedBytes uint64
 }
 
 // SystemType - Enum that describes which kind of system we're monitoring
@@ -159,20 +161,28 @@ type NetworkStatsMap map[string]NetworkStats
 
 // NetworkStats - Information about the network activity on a single interface
 type NetworkStats struct {
+	DiffedOnInput bool // True if has already been diffed on input (and we can simply copy the diff)
+	DiffedValues  *DiffedNetworkStats
+
 	ReceiveThroughputBytes  uint64
 	TransmitThroughputBytes uint64
 }
 
 // DiffedNetworkStats - Network statistics for a single interface as a diff
-type DiffedNetworkStats NetworkStats
+type DiffedNetworkStats struct {
+	ReceiveThroughputBytesPerSecond  uint64
+	TransmitThroughputBytesPerSecond uint64
+}
 
 // DiffedNetworkStatsMap - Map of network statistics as a diff (Key = Interface Name)
 type DiffedNetworkStatsMap map[string]DiffedNetworkStats
 
 // Disk - Information about an individual disk device in the system
 type Disk struct {
-	DiskType  string // Disk type (hdd/sdd/io1/gp2)
-	Scheduler string // Linux Scheduler (noop/anticipatory/deadline/cfq)
+	DiskType        string // Disk type (hdd/sdd/io1/gp2)
+	Scheduler       string // Linux Scheduler (noop/anticipatory/deadline/cfq)
+	ProvisionedIOPS uint32 // If applicable, how many IOPS are provisioned for this device
+	Encrypted       bool   // If applicable, is this device encrypted? (default false)
 }
 
 // DiskStats - Statistics about an individual disk device in the system
@@ -262,10 +272,10 @@ func (curr CPUStatistic) DiffSince(prev CPUStatistic) DiffedSystemCPUStats {
 }
 
 // DiffSince - Calculate the diff between two network stats runs
-func (curr NetworkStats) DiffSince(prev NetworkStats) DiffedNetworkStats {
+func (curr NetworkStats) DiffSince(prev NetworkStats, collectedIntervalSecs uint32) DiffedNetworkStats {
 	return DiffedNetworkStats{
-		ReceiveThroughputBytes:  curr.ReceiveThroughputBytes - prev.ReceiveThroughputBytes,
-		TransmitThroughputBytes: curr.TransmitThroughputBytes - prev.TransmitThroughputBytes,
+		ReceiveThroughputBytesPerSecond:  (curr.ReceiveThroughputBytes - prev.ReceiveThroughputBytes) / uint64(collectedIntervalSecs),
+		TransmitThroughputBytesPerSecond: (curr.TransmitThroughputBytes - prev.TransmitThroughputBytes) / uint64(collectedIntervalSecs),
 	}
 }
 

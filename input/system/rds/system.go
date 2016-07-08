@@ -1,6 +1,12 @@
 package rds
 
 import (
+	"encoding/json"
+	"fmt"
+
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/service/cloudwatchlogs"
+	"github.com/aws/aws-sdk-go/service/rds"
 	"github.com/pganalyze/collector/config"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
@@ -8,102 +14,79 @@ import (
 
 // GetSystemState - Gets system information about an Amazon RDS instance
 func GetSystemState(config config.ServerConfig, logger *util.Logger, dataDirectory string) (system state.SystemState) {
-	/*sess := util.GetAwsSession(config)
+	system.Info.Type = state.AmazonRdsSystem
 
+	sess := util.GetAwsSession(config)
 	rdsSvc := rds.New(sess)
 
 	instance, err := util.FindRdsInstance(config, sess)
 
 	if err != nil {
-		fmt.Printf("Error: %v\n", err)
+		logger.PrintError("Rds/System: Encountered error when looking for instance: %v\n", err)
 		return
 	}
 
 	if instance == nil {
-		fmt.Println("Could not find RDS instance in AWS, skipping system data")
+		logger.PrintWarning("Could not find RDS instance in AWS, skipping system data")
 		return
 	}
 
-	system = &snapshot.System{
-		SystemType: snapshot.SystemType_PHYSICAL_SYSTEM,
-	}
-
-	systemInfo := &snapshot.AmazonRdsInfo{
-		Region:                    config.AwsRegion,
-		InstanceClass:             util.StringPtrToString(instance.DBInstanceClass),
-		InstanceId:                util.StringPtrToString(instance.DBInstanceIdentifier),
-		Status:                    util.StringPtrToString(instance.DBInstanceStatus),
-		AvailabilityZone:          util.StringPtrToString(instance.AvailabilityZone),
-		PubliclyAccessible:        util.BoolPtrToBool(instance.PubliclyAccessible),
-		MultiAz:                   util.BoolPtrToBool(instance.MultiAZ),
-		SecondaryAvailabilityZone: util.StringPtrToString(instance.SecondaryAvailabilityZone),
-		CaCertificate:             util.StringPtrToString(instance.CACertificateIdentifier),
-
+	system.Info.AmazonRds = &state.SystemInfoAmazonRds{
+		Region:                     config.AwsRegion,
+		InstanceClass:              util.StringPtrToString(instance.DBInstanceClass),
+		InstanceID:                 util.StringPtrToString(instance.DBInstanceIdentifier),
+		Status:                     util.StringPtrToString(instance.DBInstanceStatus),
+		AvailabilityZone:           util.StringPtrToString(instance.AvailabilityZone),
+		PubliclyAccessible:         util.BoolPtrToBool(instance.PubliclyAccessible),
+		MultiAz:                    util.BoolPtrToBool(instance.MultiAZ),
+		SecondaryAvailabilityZone:  util.StringPtrToString(instance.SecondaryAvailabilityZone),
+		CaCertificate:              util.StringPtrToString(instance.CACertificateIdentifier),
 		AutoMinorVersionUpgrade:    util.BoolPtrToBool(instance.AutoMinorVersionUpgrade),
 		PreferredMaintenanceWindow: util.StringPtrToString(instance.PreferredMaintenanceWindow),
-
-		LatestRestorableTime:  util.TimePtrToUnixTimestamp(instance.LatestRestorableTime),
-		PreferredBackupWindow: util.StringPtrToString(instance.PreferredBackupWindow),
-		BackupRetentionPeriod: util.IntPtrToString(instance.BackupRetentionPeriod),
-
-		MasterUsername: util.StringPtrToString(instance.MasterUsername),
-		InitialDbName:  util.StringPtrToString(instance.DBName),
-		CreatedAt:      util.TimePtrToUnixTimestamp(instance.InstanceCreateTime),
-
-		StorageProvisionedIops: util.IntPtrToString(instance.Iops),
-		StorageEncrypted:       util.BoolPtrToBool(instance.StorageEncrypted),
-		StorageType:            util.StringPtrToString(instance.StorageType),
+		PreferredBackupWindow:      util.StringPtrToString(instance.PreferredBackupWindow),
+		LatestRestorableTime:       util.TimePtrToTime(instance.LatestRestorableTime),
+		BackupRetentionPeriodDays:  int32(util.IntPtrToInt(instance.BackupRetentionPeriod)),
+		MasterUsername:             util.StringPtrToString(instance.MasterUsername),
+		InitialDbName:              util.StringPtrToString(instance.DBName),
+		CreatedAt:                  util.TimePtrToTime(instance.InstanceCreateTime),
 	}
 
 	group := instance.DBParameterGroups[0]
 
 	pgssParam, _ := util.GetRdsParameter(group, "shared_preload_libraries", rdsSvc)
 
-	systemInfo.ParameterPgssEnabled = pgssParam != nil && *pgssParam.ParameterValue == "pg_stat_statements"
-	systemInfo.ParameterApplyStatus = *group.ParameterApplyStatus
-
-	system.SystemInfo = &snapshot.System_AmazonRdsInfo{AmazonRdsInfo: systemInfo}
-
-	// Not fetched right now:
-	// - DatabaseConnections
-	// - TransactionLogsDiskUsage
+	system.Info.AmazonRds.ParameterPgssEnabled = pgssParam != nil && *pgssParam.ParameterValue == "pg_stat_statements"
+	system.Info.AmazonRds.ParameterApplyStatus = *group.ParameterApplyStatus
 
 	dbInstanceID := *instance.DBInstanceIdentifier
-
 	cloudWatchReader := util.NewRdsCloudWatchReader(sess, logger, dbInstanceID)
 
-	system.Cpu = &snapshot.CPU{
-		Utilization: cloudWatchReader.GetRdsFloatMetric("CPUUtilization", "Percent"),
+	system.Disks = make(state.DiskMap)
+	system.Disks["default"] = state.Disk{
+		DiskType:        util.StringPtrToString(instance.StorageType),
+		ProvisionedIOPS: uint32(util.IntPtrToInt(instance.Iops)),
+		Encrypted:       util.BoolPtrToBool(instance.StorageEncrypted),
 	}
 
-	system.Network = &snapshot.Network{
-		ReceiveThroughput:  cloudWatchReader.GetRdsIntMetric("NetworkReceiveThroughput", "Bytes/Second"),
-		TransmitThroughput: cloudWatchReader.GetRdsIntMetric("NetworkTransmitThroughput", "Bytes/Second"),
-	}
-
-	storage := snapshot.Storage{
-		BytesAvailable: cloudWatchReader.GetRdsIntMetric("FreeStorageSpace", "Bytes"),
-		Perfdata: &snapshot.StoragePerfdata{
-			Version:      1,
-			RdIos:        cloudWatchReader.GetRdsIntMetric("ReadIOPS", "Count/Second"),
-			WrIos:        cloudWatchReader.GetRdsIntMetric("WriteIOPS", "Count/Second"),
-			RdThroughput: cloudWatchReader.GetRdsIntMetric("ReadThroughput", "Bytes/Second"),
-			WrThroughput: cloudWatchReader.GetRdsIntMetric("WriteThroughput", "Bytes/Second"),
-			IosInProg:    cloudWatchReader.GetRdsIntMetric("DiskQueueDepth", "Count"),
-			RdLatency:    cloudWatchReader.GetRdsFloatMetric("ReadLatency", "Seconds"),
-			WrLatency:    cloudWatchReader.GetRdsFloatMetric("WriteLatency", "Seconds"),
+	system.DiskStats = make(state.DiskStatsMap)
+	system.DiskStats["default"] = state.DiskStats{
+		DiffedOnInput: true,
+		DiffedValues: &state.DiffedDiskStats{
+			ReadOperationsPerSecond:  float64(cloudWatchReader.GetRdsIntMetric("ReadIOPS", "Count/Second")),
+			WriteOperationsPerSecond: float64(cloudWatchReader.GetRdsIntMetric("WriteIOPS", "Count/Second")),
+			BytesReadPerSecond:       float64(cloudWatchReader.GetRdsIntMetric("ReadThroughput", "Bytes/Second")),
+			BytesWrittenPerSecond:    float64(cloudWatchReader.GetRdsIntMetric("WriteThroughput", "Bytes/Second")),
+			AvgQueueSize:             int32(cloudWatchReader.GetRdsIntMetric("DiskQueueDepth", "Count")),
+			AvgReadLatency:           cloudWatchReader.GetRdsFloatMetric("ReadLatency", "Seconds") * 1000,
+			AvgWriteLatency:          cloudWatchReader.GetRdsFloatMetric("WriteLatency", "Seconds") * 1000,
 		},
 	}
 
-	var bytesTotal int64
-	if instance.AllocatedStorage != nil {
-		bytesTotal = *instance.AllocatedStorage * 1024 * 1024 * 1024
-		storage.BytesTotal = bytesTotal
-	}
-
-	system.Storage = append(system.Storage, &storage)
+	system.XlogUsedBytes = uint64(cloudWatchReader.GetRdsIntMetric("TransactionLogsDiskUsage", "Bytes"))
 
 	if instance.EnhancedMonitoringResourceArn != nil {
+		system.Info.AmazonRds.EnhancedMonitoring = true
+
 		svc := cloudwatchlogs.New(sess)
 
 		params := &cloudwatchlogs.GetLogEventsInput{
@@ -129,50 +112,110 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger, dataDirecto
 					return
 				}
 
-				// Technically these are not msec but percentages, so we multiply by the number of milliseconds in a minute (our standard measurement)
-				system.Cpu = &snapshot.CPU{}
-				system.Cpu.BusyTimesGuestMsec = int64(osSnapshot.CPUUtilization.Guest * 60000)
-				system.Cpu.BusyTimesGuestNiceMsec = 0
-				system.Cpu.BusyTimesIdleMsec = int64(osSnapshot.CPUUtilization.Idle * 60000)
-				system.Cpu.BusyTimesSoftirqMsec = int64(osSnapshot.CPUUtilization.Irq * 60000)
-				system.Cpu.BusyTimesIrqMsec = 0
-				system.Cpu.BusyTimesIowaitMsec = int64(osSnapshot.CPUUtilization.Wait * 60000)
-				system.Cpu.BusyTimesSystemMsec = int64(osSnapshot.CPUUtilization.System * 60000)
-				system.Cpu.BusyTimesUserMsec = int64(osSnapshot.CPUUtilization.User * 60000)
-				system.Cpu.BusyTimesStealMsec = int64(osSnapshot.CPUUtilization.Steal * 60000)
-				system.Cpu.BusyTimesNiceMsec = int64(osSnapshot.CPUUtilization.Nice * 60000)
-				system.Cpu.HardwareSockets = 1
-				system.Cpu.HardwareCoresPerSocket = int64(osSnapshot.NumVCPUs)
+				system.CPUStats = make(state.CPUStatisticMap)
+				system.CPUStats["all"] = state.CPUStatistic{
+					DiffedOnInput: true,
+					DiffedValues: &state.DiffedSystemCPUStats{
+						GuestPercent:  float64(osSnapshot.CPUUtilization.Guest),
+						IdlePercent:   float64(osSnapshot.CPUUtilization.Idle),
+						IrqPercent:    float64(osSnapshot.CPUUtilization.Irq),
+						IowaitPercent: float64(osSnapshot.CPUUtilization.Wait),
+						SystemPercent: float64(osSnapshot.CPUUtilization.System),
+						UserPercent:   float64(osSnapshot.CPUUtilization.User),
+						StealPercent:  float64(osSnapshot.CPUUtilization.Steal),
+						NicePercent:   float64(osSnapshot.CPUUtilization.Nice),
+					},
+				}
 
-				system.Scheduler = &snapshot.Scheduler{}
-				system.Scheduler.Loadavg_1Min = float64(osSnapshot.LoadAverageMinute.One)
-				system.Scheduler.Loadavg_5Min = float64(osSnapshot.LoadAverageMinute.Five)
-				system.Scheduler.Loadavg_15Min = float64(osSnapshot.LoadAverageMinute.Fifteen)
-				system.Scheduler.ProcsRunning = osSnapshot.Tasks.Running
-				system.Scheduler.ProcsBlocked = osSnapshot.Tasks.Blocked
+				system.CPUInfo.SocketCount = 1
+				system.CPUInfo.LogicalCoreCount = int32(osSnapshot.NumVCPUs)
+				system.CPUInfo.PhysicalCoreCount = int32(osSnapshot.NumVCPUs)
 
-				system.Memory = &snapshot.Memory{}
-				system.Memory.ApplicationsBytes = (osSnapshot.Memory.Total - osSnapshot.Memory.Free - osSnapshot.Memory.Buffers - osSnapshot.Memory.Cached) * 1024
-				system.Memory.BuffersBytes = osSnapshot.Memory.Buffers * 1024
-				system.Memory.DirtyBytes = osSnapshot.Memory.Dirty * 1024
-				system.Memory.FreeBytes = osSnapshot.Memory.Free * 1024
-				system.Memory.PagecacheBytes = osSnapshot.Memory.Cached * 1024
-				system.Memory.SwapFreeBytes = osSnapshot.Swap.Free * 1024
-				system.Memory.SwapTotalBytes = osSnapshot.Swap.Total * 1024
-				system.Memory.TotalBytes = osSnapshot.Memory.Total * 1024
-				system.Memory.WritebackBytes = osSnapshot.Memory.Writeback * 1024
-				system.Memory.ActiveBytes = osSnapshot.Memory.Active * 1024
+				system.Scheduler.Loadavg1min = float64(osSnapshot.LoadAverageMinute.One)
+				system.Scheduler.Loadavg5min = float64(osSnapshot.LoadAverageMinute.Five)
+				system.Scheduler.Loadavg15min = float64(osSnapshot.LoadAverageMinute.Fifteen)
 
-				system.Storage[0].Perfdata.AvgReqSize = int64(osSnapshot.DiskIO[0].AvgReqSz * 1024)
+				system.Memory.ActiveBytes = uint64(osSnapshot.Memory.Active * 1024)
+				system.Memory.BuffersBytes = uint64(osSnapshot.Memory.Buffers * 1024)
+				system.Memory.CachedBytes = uint64(osSnapshot.Memory.Cached * 1024)
+				system.Memory.DirtyBytes = uint64(osSnapshot.Memory.Dirty * 1024)
+				system.Memory.FreeBytes = uint64(osSnapshot.Memory.Free * 1024)
+				system.Memory.HugePagesFree = uint64(osSnapshot.Memory.HugePagesFree)
+				system.Memory.HugePagesReserved = uint64(osSnapshot.Memory.HugePagesRsvd)
+				system.Memory.HugePagesSizeBytes = uint64(osSnapshot.Memory.HugePagesSize * 1024)
+				system.Memory.HugePagesSurplus = uint64(osSnapshot.Memory.HugePagesSurp)
+				system.Memory.HugePagesTotal = uint64(osSnapshot.Memory.HugePagesTotal)
+				system.Memory.InactiveBytes = uint64(osSnapshot.Memory.Inactive * 1024)
+				system.Memory.MappedBytes = uint64(osSnapshot.Memory.Mapped * 1024)
+				system.Memory.PageTablesBytes = uint64(osSnapshot.Memory.PageTables * 1024)
+				system.Memory.SlabBytes = uint64(osSnapshot.Memory.Slab * 1024)
+				system.Memory.SwapTotalBytes = uint64(osSnapshot.Swap.Total) * 1024
+				system.Memory.SwapUsedBytes = uint64(osSnapshot.Swap.Total-osSnapshot.Swap.Free) * 1024
+				system.Memory.TotalBytes = uint64(osSnapshot.Memory.Total * 1024)
+				system.Memory.WritebackBytes = uint64(osSnapshot.Memory.Writeback * 1024)
+
+				system.NetworkStats = make(state.NetworkStatsMap)
+				for _, networkIf := range osSnapshot.Network {
+					// Practically this always has one entry, and oddly enough we don't have
+					// the throughput numbers on a per interface basis...
+					system.NetworkStats[networkIf.Interface] = state.NetworkStats{
+						DiffedOnInput: true,
+						DiffedValues: &state.DiffedNetworkStats{
+							ReceiveThroughputBytesPerSecond:  uint64(cloudWatchReader.GetRdsIntMetric("NetworkReceiveThroughput", "Bytes/Second")),
+							TransmitThroughputBytesPerSecond: uint64(cloudWatchReader.GetRdsIntMetric("NetworkTransmitThroughput", "Bytes/Second")),
+						},
+					}
+				}
+
+				for _, disk := range osSnapshot.DiskIO {
+					system.DiskStats["default"].DiffedValues.UtilizationPercent = float64(disk.Util)
+				}
+
+				system.DiskPartitions = make(state.DiskPartitionMap)
+				for _, diskPartition := range osSnapshot.FileSystems {
+					system.DiskPartitions[diskPartition.MountPoint] = state.DiskPartition{
+						DiskName:      "default",
+						PartitionName: diskPartition.Name,
+						UsedBytes:     uint64(diskPartition.Used * 1024),
+						TotalBytes:    uint64(diskPartition.Total * 1024),
+					}
+				}
 			}
 		}
 	} else {
-		system.Memory = &snapshot.Memory{
-			FreeBytes:      cloudWatchReader.GetRdsIntMetric("FreeableMemory", "Bytes"),
-			SwapTotalBytes: cloudWatchReader.GetRdsIntMetric("SwapUsage", "Bytes"),
-			SwapFreeBytes:  0,
+		system.CPUStats = make(state.CPUStatisticMap)
+		system.CPUStats["all"] = state.CPUStatistic{
+			DiffedOnInput: true,
+			DiffedValues: &state.DiffedSystemCPUStats{
+				UserPercent: cloudWatchReader.GetRdsFloatMetric("CPUUtilization", "Percent"),
+			},
 		}
-	}*/
+
+		system.NetworkStats = make(state.NetworkStatsMap)
+		system.NetworkStats["default"] = state.NetworkStats{
+			DiffedOnInput: true,
+			DiffedValues: &state.DiffedNetworkStats{
+				ReceiveThroughputBytesPerSecond:  uint64(cloudWatchReader.GetRdsIntMetric("NetworkReceiveThroughput", "Bytes/Second")),
+				TransmitThroughputBytesPerSecond: uint64(cloudWatchReader.GetRdsIntMetric("NetworkTransmitThroughput", "Bytes/Second")),
+			},
+		}
+
+		system.Memory.FreeBytes = uint64(cloudWatchReader.GetRdsIntMetric("FreeableMemory", "Bytes"))
+		system.Memory.SwapUsedBytes = uint64(cloudWatchReader.GetRdsIntMetric("SwapUsage", "Bytes"))
+
+		var bytesTotal, bytesFree int64
+		if instance.AllocatedStorage != nil {
+			bytesTotal = *instance.AllocatedStorage * 1024 * 1024 * 1024
+			bytesFree = cloudWatchReader.GetRdsIntMetric("FreeStorageSpace", "Bytes")
+
+			system.DiskPartitions = make(state.DiskPartitionMap)
+			system.DiskPartitions["/"] = state.DiskPartition{
+				DiskName:   "default",
+				UsedBytes:  uint64(bytesTotal - bytesFree),
+				TotalBytes: uint64(bytesTotal),
+			}
+		}
+	}
 
 	return
 }

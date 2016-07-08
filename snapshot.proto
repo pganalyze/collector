@@ -224,6 +224,7 @@ message System {
 
   int32 data_directory_disk_partition_idx = 30; // Disk partition that the PostgreSQL data directory lives on
   int32 xlog_disk_partition_idx = 31;           // Disk partition that the PostgreSQL WAL lives on
+  uint64 xlog_used_bytes = 32;                  // Size of the WAL directory, in bytes (not necessarily the same as used bytes on the WAL partition!)
 }
 
 message SystemInformation {
@@ -237,7 +238,7 @@ message SystemInformation {
 
   oneof info {
     SystemInformationSelfHosted self_hosted = 2;
-    SystemInformationRDS rds = 3;
+    SystemInformationAmazonRDS amazon_rds = 3;
   }
 
   google.protobuf.Timestamp boot_time = 10; // Timestamp for when the system was started (aka uptime)
@@ -254,7 +255,7 @@ message SystemInformationSelfHosted {
   string kernel_version = 8;
 }
 
-message SystemInformationRDS {
+message SystemInformationAmazonRDS {
   string region = 1;
   string instance_class = 2;
   string instance_id = 3;
@@ -266,18 +267,14 @@ message SystemInformationRDS {
   string ca_certificate = 9;
   bool auto_minor_version_upgrade = 10;
   bool auto_major_version_upgrade = 11;
-  string preferred_maintanence_window = 12;
+  string preferred_maintenance_window = 12;
   string preferred_backup_window = 14;
   google.protobuf.Timestamp latest_restorable_time = 13;
   int32 backup_retention_period_days = 15;
   string master_username = 16;
   string initial_db_name = 17;
   google.protobuf.Timestamp created_at = 18;
-  int32 storage_provisioned_iops = 19;
-  int32 storage_allocated_gigabytes = 20;
-  bool storage_encrypted = 21;
-  string storage_type = 22;
-  bool enhanced_monitoring = 23;
+  bool enhanced_monitoring = 19;
 
   string parameter_apply_status = 40;
   bool parameter_pgss_enabled = 41;
@@ -348,8 +345,8 @@ message NetworkReference {
 
 message NetworkStatistic {
   int32 network_idx = 1;
-  uint64 transmit_throughput_bytes = 2;
-  uint64 receive_throughput_bytes = 3;
+  uint64 transmit_throughput_bytes_per_second = 2;
+  uint64 receive_throughput_bytes_per_second = 3;
 }
 
 message DiskReference {
@@ -361,6 +358,8 @@ message DiskInformation {
 
   string disk_type = 2; // Disk type (hdd/sdd/io1/gp2)
   string scheduler = 3; // Linux Scheduler (noop/anticipatory/deadline/cfq)
+  uint32 provisioned_iops = 4; // If applicable, how many IOPS are provisioned for this device
+  bool encrypted = 5; // If applicable, is this device encrypted? (default false)
 }
 
 message DiskStatistic {

@@ -10,7 +10,7 @@ func diffState(logger *util.Logger, prevState state.State, newState state.State,
 	diffState.RelationStats = diffRelationStats(newState.RelationStats, prevState.RelationStats)
 	diffState.IndexStats = diffIndexStats(newState.IndexStats, prevState.IndexStats)
 	diffState.SystemCPUStats = diffSystemCPUStats(newState.System.CPUStats, prevState.System.CPUStats)
-	diffState.SystemNetworkStats = diffSystemNetworkStats(newState.System.NetworkStats, prevState.System.NetworkStats)
+	diffState.SystemNetworkStats = diffSystemNetworkStats(newState.System.NetworkStats, prevState.System.NetworkStats, collectedIntervalSecs)
 	diffState.SystemDiskStats = diffSystemDiskStats(newState.System.DiskStats, prevState.System.DiskStats, collectedIntervalSecs)
 
 	return
@@ -87,12 +87,12 @@ func diffSystemCPUStats(new state.CPUStatisticMap, prev state.CPUStatisticMap) (
 	return
 }
 
-func diffSystemNetworkStats(new state.NetworkStatsMap, prev state.NetworkStatsMap) (diff state.DiffedNetworkStatsMap) {
+func diffSystemNetworkStats(new state.NetworkStatsMap, prev state.NetworkStatsMap, collectedIntervalSecs uint32) (diff state.DiffedNetworkStatsMap) {
 	diff = make(state.DiffedNetworkStatsMap)
 	for interfaceName, stats := range new {
 		prevStats, exists := prev[interfaceName]
 		if exists {
-			diff[interfaceName] = stats.DiffSince(prevStats)
+			diff[interfaceName] = stats.DiffSince(prevStats, collectedIntervalSecs)
 		}
 	}
 
