@@ -90,9 +90,15 @@ func diffSystemCPUStats(new state.CPUStatisticMap, prev state.CPUStatisticMap) (
 func diffSystemNetworkStats(new state.NetworkStatsMap, prev state.NetworkStatsMap, collectedIntervalSecs uint32) (diff state.DiffedNetworkStatsMap) {
 	diff = make(state.DiffedNetworkStatsMap)
 	for interfaceName, stats := range new {
-		prevStats, exists := prev[interfaceName]
-		if exists {
-			diff[interfaceName] = stats.DiffSince(prevStats, collectedIntervalSecs)
+		if stats.DiffedOnInput {
+			if stats.DiffedValues != nil {
+				diff[interfaceName] = *stats.DiffedValues
+			}
+		} else {
+			prevStats, exists := prev[interfaceName]
+			if exists {
+				diff[interfaceName] = stats.DiffSince(prevStats, collectedIntervalSecs)
+			}
 		}
 	}
 

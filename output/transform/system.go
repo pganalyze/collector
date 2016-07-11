@@ -53,6 +53,8 @@ func transformSystem(s snapshot.FullSnapshot, newState state.State, diffState st
 					InitialDbName:              newState.System.Info.AmazonRds.InitialDbName,
 					CreatedAt:                  createdAt,
 					EnhancedMonitoring:         newState.System.Info.AmazonRds.EnhancedMonitoring,
+					ParameterApplyStatus:       newState.System.Info.AmazonRds.ParameterApplyStatus,
+					ParameterPgssEnabled:       newState.System.Info.AmazonRds.ParameterPgssEnabled,
 				},
 			}
 		}

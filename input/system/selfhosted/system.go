@@ -175,6 +175,14 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger, dataDirecto
 	} else {
 		system.DiskPartitions = make(state.DiskPartitionMap)
 		for _, partition := range diskPartitions {
+			// Linux partition types we can ignore
+			if partition.Fstype == "devtmpfs" || partition.Fstype == "tmpfs" || partition.Fstype == "devpts" ||
+				partition.Fstype == "fusectl" || partition.Fstype == "proc" || partition.Fstype == "cgroup" ||
+				partition.Fstype == "securityfs" || partition.Fstype == "debugfs" || partition.Fstype == "sysfs" ||
+				partition.Fstype == "pstore" {
+				continue
+			}
+
 			// OSX partition types we can ignore
 			if partition.Fstype == "autofs" || partition.Fstype == "devfs" {
 				continue
