@@ -68,8 +68,8 @@ func validateConnectionCount(connection *sql.DB, logger *util.Logger, globalColl
 
 	connection.QueryRow(postgres.QueryMarkerSQL + "SELECT COUNT(*) FROM pg_stat_activity WHERE application_name = '" + globalCollectionOpts.CollectorApplicationName + "'").Scan(&connectionCount)
 
-	if connectionCount > 1 {
-		logger.PrintError("Too many open monitoring connections (%d), exiting", connectionCount)
+	if connectionCount > 5 {
+		logger.PrintError("Too many open monitoring connections (current: %d, maximum allowed: 5), exiting", connectionCount)
 		panic("Too many open monitoring connections")
 	}
 
