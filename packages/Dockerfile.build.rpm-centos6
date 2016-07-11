@@ -1,0 +1,51 @@
+FROM centos:6
+
+ENV GOPATH /go
+ENV CODE_DIR $GOPATH/src/github.com/pganalyze/collector
+ENV PATH $PATH:/usr/local/go/bin
+ENV ROOT_DIR /root
+ENV SOURCE_DIR /source
+
+# Packages required for both building and packaging
+RUN yum install -y -q tar make git rpmdevtools centos-release-scl
+
+# GCC 4.6+ needed for __int128 type used by libpg_query
+RUN yum install -y -q devtoolset-4-gcc
+
+# Ruby 1.9.3+ needed for FPM
+RUN yum install -y -q rh-ruby22 rh-ruby22-ruby-devel
+RUN scl enable rh-ruby22 devtoolset-4 "gem install fpm"
+
+# Golang
+RUN curl -o go.tar.gz -sSL "https://storage.googleapis.com/golang/go1.6.2.linux-amd64.tar.gz"
+RUN tar -C /usr/local -xzf go.tar.gz
+
+# Build arguments
+ARG VERSION
+ENV NAME pganalyze-collector
+
+# Build the collector
+COPY . $CODE_DIR
+WORKDIR $CODE_DIR
+RUN scl enable devtoolset-4 "make prepare && make build"
+
+# Prepare the package source
+RUN mkdir -p $SOURCE_DIR/usr/bin/
+RUN cp $CODE_DIR/collector $SOURCE_DIR/usr/bin/pganalyze-collector
+RUN chmod +x $SOURCE_DIR/usr/bin/pganalyze-collector
+RUN mkdir -p $SOURCE_DIR/etc/
+RUN cp $CODE_DIR/contrib/sample.conf $SOURCE_DIR/etc/pganalyze-collector.conf
+RUN mkdir -p $SOURCE_DIR/etc/init.d
+RUN cp $CODE_DIR/contrib/amazon_linux.init $SOURCE_DIR/etc/init.d/pganalyze-collector
+RUN chmod +x $SOURCE_DIR/etc/init.d/pganalyze-collector
+
+# Build the package
+WORKDIR $ROOT_DIR
+RUN scl enable rh-ruby22 "/opt/rh/rh-ruby22/root/usr/local/bin/fpm \
+  -n $NAME -v ${VERSION} -t rpm --rpm-os linux \
+  --config-files /etc/pganalyze-collector.conf \
+  --after-install $CODE_DIR/contrib/rhel_post.sh \
+  --before-remove $CODE_DIR/contrib/rhel_preun.sh \
+  -s dir -C $SOURCE_DIR etc usr"
+
+VOLUME ["/out"]
