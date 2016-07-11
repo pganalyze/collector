@@ -2,9 +2,9 @@ package transform
 
 import (
 	"github.com/golang/protobuf/ptypes"
+	"github.com/guregu/null"
 	snapshot "github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
-	"gopkg.in/guregu/null.v3"
 )
 
 func transformPostgresRelations(s snapshot.FullSnapshot, newState state.State, diffState state.DiffState, roleOidToIdx OidToIdx, databaseOidToIdx OidToIdx) snapshot.FullSnapshot {

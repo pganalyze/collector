@@ -3,7 +3,7 @@ package state
 import (
 	"strconv"
 
-	"gopkg.in/guregu/null.v3"
+	"github.com/guregu/null"
 )
 
 type PostgresRelation struct {

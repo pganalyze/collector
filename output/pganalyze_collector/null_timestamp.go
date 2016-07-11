@@ -2,7 +2,7 @@ package pganalyze_collector
 
 import (
 	"github.com/golang/protobuf/ptypes"
-	"gopkg.in/guregu/null.v3"
+	"github.com/guregu/null"
 )
 
 func NullTimeToNullTimestamp(in null.Time) *NullTimestamp {

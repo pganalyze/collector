@@ -1,6 +1,6 @@
 package state
 
-import "gopkg.in/guregu/null.v3"
+import "github.com/guregu/null"
 
 type PostgresSetting struct {
 	Name         string      `json:"name"`

@@ -4,8 +4,8 @@ import (
 	"database/sql"
 	"fmt"
 
+	"github.com/guregu/null"
 	"github.com/pganalyze/collector/state"
-	"gopkg.in/guregu/null.v2"
 )
 
 const tableBloatSQL string = `
@@ -146,7 +146,7 @@ otta_calc AS (
 	LEFT JOIN pg_am am ON index_aligned.relam = am.oid
 )
 SELECT sub.index_oid,
-       pg_catalog.pg_relation_size(s.relid) AS size_bytes,
+			 pg_catalog.pg_relation_size(s.relid) AS size_bytes,
 	CASE
 		WHEN sub.relpages <= otta THEN 0
 		ELSE bs * (sub.relpages - otta)::bigint

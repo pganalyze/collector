@@ -1,6 +1,6 @@
 package state
 
-import "gopkg.in/guregu/null.v3"
+import "github.com/guregu/null"
 
 // PostgresFunction - Function/Stored Procedure that runs on the PostgreSQL server
 type PostgresFunction struct {

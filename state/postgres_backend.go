@@ -1,6 +1,6 @@
 package state
 
-import "gopkg.in/guregu/null.v3"
+import "github.com/guregu/null"
 
 // PostgresBackend - PostgreSQL server backend thats currently working, waiting
 // or idling (also known as an open connection)

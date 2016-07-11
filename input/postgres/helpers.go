@@ -4,9 +4,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/guregu/null"
 	"github.com/pganalyze/collector/state"
-
-	"gopkg.in/guregu/null.v3"
 )
 
 func unpackPostgresInt32Array(input null.String) (result []int32) {

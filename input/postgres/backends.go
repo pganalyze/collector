@@ -3,11 +3,10 @@ package postgres
 import (
 	"database/sql"
 
+	"github.com/guregu/null"
 	"github.com/lfittl/pg_query_go"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
-
-	null "gopkg.in/guregu/null.v3"
 )
 
 // https://www.postgresql.org/docs/9.5/static/monitoring-stats.html#PG-STAT-ACTIVITY-VIEW

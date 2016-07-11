@@ -6,8 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"gopkg.in/guregu/null.v3"
-
+	"github.com/guregu/null"
 	"github.com/pganalyze/collector/state"
 )
 

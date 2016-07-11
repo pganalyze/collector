@@ -1,6 +1,6 @@
 package state
 
-import "gopkg.in/guregu/null.v3"
+import "github.com/guregu/null"
 
 // PostgresRole - A role in the PostgreSQL system - note that this includes users (Login=true)
 type PostgresRole struct {

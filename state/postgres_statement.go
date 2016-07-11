@@ -1,6 +1,6 @@
 package state
 
-import "gopkg.in/guregu/null.v3"
+import "github.com/guregu/null"
 
 // PostgresStatement - Specific kind of statement that has run one or multiple times
 // on the PostgreSQL server.
