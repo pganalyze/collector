@@ -15,11 +15,12 @@ build: output/pganalyze_collector/snapshot.pb.go
 test: build
 	go test -v ./ ./scheduler ./util ./output/transform/
 
-release: test
-	docker build -t quay.io/pganalyze/collector:protobuf .
-	docker push quay.io/pganalyze/collector:protobuf
-
 packages:
 	make -C packages
 
-.PHONY: default prepare build test release packages
+release_latest: test
+	docker build -t quay.io/pganalyze/collector:latest .
+	docker push quay.io/pganalyze/collector:latest
+	make -C packages push_packages_latest
+
+.PHONY: default prepare build test release_latest packages
