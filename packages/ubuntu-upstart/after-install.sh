@@ -1,5 +1,1 @@
-#!/bin/sh
-
-set -e
-
-start pganalyze-collector
+start -q pganalyze-collector

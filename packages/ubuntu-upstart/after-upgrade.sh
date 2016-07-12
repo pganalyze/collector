@@ -1,9 +1,6 @@
-#!/bin/sh
-
-set -e
-
-if [ status pganalyze-collector | grep -q running ]; then
-  restart pganalyze-collector
+status pganalyze-collector | grep -q running
+if [ $? -eq 0 ]; then
+  restart -q pganalyze-collector
 else
-  start pganalyze-collector
+  start -q pganalyze-collector
 fi
