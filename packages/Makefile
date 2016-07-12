@@ -4,9 +4,12 @@ VERSION=$(shell git show -s --format=%ct.%h HEAD)
 RPM_PACKAGE=$(NAME)-$(VERSION)-1.x86_64.rpm
 DEB_PACKAGE=$(NAME)_$(VERSION)_amd64.deb
 
-.PHONY: centos6 ubuntu-trusty push_packages_latest
+.PHONY: clean centos6 ubuntu-trusty push_packages_latest
 
 all: centos6 ubuntu-trusty
+
+clean:
+	rm -f *.deb *.rpm
 
 $(RPM_PACKAGE):
 	docker build --build-arg VERSION=$(VERSION) -f Dockerfile.build.rpm-centos6 -t pga-collector-build ..
