@@ -32,18 +32,19 @@ RUN cp $CODE_DIR/collector $SOURCE_DIR/usr/bin/pganalyze-collector
 RUN chmod +x $SOURCE_DIR/usr/bin/pganalyze-collector
 RUN mkdir -p $SOURCE_DIR/etc/
 RUN cp $CODE_DIR/contrib/sample.conf $SOURCE_DIR/etc/pganalyze-collector.conf
-
-#RUN mkdir -p $SOURCE_DIR/etc/init.d
-#RUN ln -s /lib/init/upstart-job $SOURCE_DIR/etc/init.d/pganalyze-collector
-#RUN mkdir -p $SOURCE_DIR/etc/init
-#RUN cp $CODE_DIR/packages/ubuntu-upstart/pganalyze-collector.conf $SOURCE_DIR/etc/init/pganalyze-collector.conf
-#RUN chmod 0644 $SOURCE_DIR/etc/init/pganalyze-collector.conf
+RUN mkdir -p $SOURCE_DIR/etc/init.d
+RUN ln -s /lib/init/upstart-job $SOURCE_DIR/etc/init.d/pganalyze-collector
+RUN mkdir -p $SOURCE_DIR/etc/init
+RUN cp $CODE_DIR/packages/ubuntu-upstart/pganalyze-collector.conf $SOURCE_DIR/etc/init/pganalyze-collector.conf
+RUN chmod 0644 $SOURCE_DIR/etc/init/pganalyze-collector.conf
 
 # Build the package
 WORKDIR $ROOT_DIR
 RUN fpm \
   -n $NAME -v ${VERSION} -t deb \
-  --deb-upstart $CODE_DIR/packages/ubuntu-upstart/pganalyze-collector.conf \
+  --after-upgrade $CODE_DIR/packages/ubuntu-upstart/after-upgrade.sh \
+  --after-remove $CODE_DIR/packages/ubuntu-upstart/after-remove.sh \
+  --after-install $CODE_DIR/packages/ubuntu-upstart/after-install.sh \
   -s dir -C $SOURCE_DIR etc usr
 
 VOLUME ["/out"]

@@ -36,24 +36,24 @@ centos6: $(RPM_PACKAGE)
 	docker exec -it pga-collector-test service pganalyze-collector stop
 	docker kill pga-collector-test
 	docker rm pga-collector-test
-	docker rmi pga-collector-test
+	docker rmi -f pga-collector-test
 	echo "Test successful"
 
 ubuntu-trusty: $(DEB_PACKAGE)
 	echo "FROM ubuntu-upstart:trusty" > Dockerfile.tmp
 	echo "COPY "$(NAME)"_"$(VERSION)"_amd64.deb /root" >> Dockerfile.tmp
-	echo "RUN dpkg -i /root/"$(NAME)"_"$(VERSION)"_amd64.deb" >> Dockerfile.tmp
 	docker build -f Dockerfile.tmp -t pga-collector-test .
 	rm Dockerfile.tmp
 	docker run --name pga-collector-test -d pga-collector-test
 	sleep 5
+	docker exec -it pga-collector-test dpkg -i /root/$(NAME)_$(VERSION)_amd64.deb
 	docker exec -it pga-collector-test status pganalyze-collector | grep -q running
 	docker exec -it pga-collector-test reload pganalyze-collector
 	docker exec -it pga-collector-test tail /var/log/pganalyze-collector.log | grep -q "Reloading configuration"
 	docker exec -it pga-collector-test stop pganalyze-collector
 	docker kill pga-collector-test
 	docker rm pga-collector-test
-	docker rmi pga-collector-test
+	docker rmi -f pga-collector-test
 	echo "Test successful"
 
 push_packages_latest: $(RPM_PACKAGE) $(DEB_PACKAGE)
