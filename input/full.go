@@ -9,6 +9,7 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
+// CollectFull - Collects a "full" snapshot of all data we need on a regular interval
 func CollectFull(server state.Server, collectionOpts state.CollectionOpts, logger *util.Logger) (s state.State, err error) {
 	var explainInputs []state.PostgresExplainInput
 
@@ -28,6 +29,7 @@ func CollectFull(server state.Server, collectionOpts state.CollectionOpts, logge
 		logger.PrintError("Error getting OID of current database")
 		return
 	}
+	s.DatabaseOidsWithLocalCatalog = append(s.DatabaseOidsWithLocalCatalog, currentDatabaseOid)
 
 	if s.Version.Numeric < state.MinRequiredPostgresVersion {
 		err = fmt.Errorf("Error: Your PostgreSQL server version (%s) is too old, 9.2 or newer is required.", s.Version.Short)

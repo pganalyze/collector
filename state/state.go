@@ -10,6 +10,9 @@ import (
 type State struct {
 	CollectedAt time.Time
 
+	// Databases we connected to and fetched local catalog data (e.g. schema)
+	DatabaseOidsWithLocalCatalog []Oid
+
 	Statements    PostgresStatementMap
 	RelationStats PostgresRelationStatsMap
 	IndexStats    PostgresIndexStatsMap

@@ -66,17 +66,26 @@ func transformPostgresDatabases(s snapshot.FullSnapshot, newState state.State, r
 	}
 
 	for _, database := range newState.Databases {
+		collectedLocalCatalog := false
+		for _, databaseOid := range newState.DatabaseOidsWithLocalCatalog {
+			if databaseOid == database.Oid {
+				collectedLocalCatalog = true
+				break
+			}
+		}
+
 		info := snapshot.DatabaseInformation{
-			DatabaseIdx:         databaseOidToIdx[database.Oid],
-			OwnerRoleIdx:        roleOidToIdx[database.OwnerRoleOid],
-			Encoding:            database.Encoding,
-			Collate:             database.Collate,
-			CType:               database.CType,
-			IsTemplate:          database.IsTemplate,
-			AllowConnections:    database.AllowConnections,
-			ConnectionLimit:     database.ConnectionLimit,
-			FrozenXid:           uint32(database.FrozenXID),
-			MinimumMultixactXid: uint32(database.MinimumMultixactXID),
+			DatabaseIdx:               databaseOidToIdx[database.Oid],
+			OwnerRoleIdx:              roleOidToIdx[database.OwnerRoleOid],
+			Encoding:                  database.Encoding,
+			Collate:                   database.Collate,
+			CType:                     database.CType,
+			IsTemplate:                database.IsTemplate,
+			AllowConnections:          database.AllowConnections,
+			ConnectionLimit:           database.ConnectionLimit,
+			FrozenXid:                 uint32(database.FrozenXID),
+			MinimumMultixactXid:       uint32(database.MinimumMultixactXID),
+			CollectedLocalCatalogData: collectedLocalCatalog,
 		}
 
 		s.DatabaseInformations = append(s.DatabaseInformations, &info)
