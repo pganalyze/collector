@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"os/user"
 	"strconv"
 	"sync"
 	"syscall"
@@ -64,6 +65,8 @@ func run(wg sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *u
 	return stop
 }
 
+const defaultConfigFile = "/etc/pganalyze_collector.conf"
+
 func main() {
 	var dryRun bool
 	var testRun bool
@@ -88,10 +91,21 @@ func main() {
 	flag.BoolVar(&noExplain, "no-explain", false, "Don't automatically EXPLAIN slow queries logged in the logfile")
 	flag.BoolVar(&noSystemInformation, "no-system-information", false, "Don't collect OS level performance data")
 	flag.BoolVar(&diffStatements, "diff-statements", false, "Send a diff of the pg_stat_statements statistics, instead of counter values")
-	flag.StringVar(&configFilename, "config", "/etc/pganalyze_collector.conf", "Specify alternative path for config file.")
+	flag.StringVar(&configFilename, "config", defaultConfigFile, "Specify alternative path for config file.")
 	flag.StringVar(&stateFilename, "statefile", "/var/run/pganalyze_collector.state", "Specify alternative path for state file.")
 	flag.StringVar(&pidFilename, "pidfile", "", "Specifies a path that a pidfile should be written to. (default is no pidfile being written)")
 	flag.Parse()
+
+	if configFilename == defaultConfigFile {
+		_, err := os.Stat(configFilename)
+		if os.IsNotExist(err) {
+			// Fall back to the previous location of config files, to ease transitions
+			usr, err := user.Current()
+			if err == nil {
+				configFilename = usr.HomeDir + "/.pganalyze_collector.conf"
+			}
+		}
+	}
 
 	globalCollectionOpts := state.CollectionOpts{
 		SubmitCollectedData:      true,
