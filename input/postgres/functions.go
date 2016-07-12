@@ -28,14 +28,13 @@ SELECT pp.oid,
 	FROM pg_proc pp
  INNER JOIN pg_namespace pn ON (pp.pronamespace = pn.oid)
  INNER JOIN pg_language pl ON (pp.prolang = pl.oid)
- WHERE pl.lanname != 'internal'
+ WHERE pl.lanname NOT IN ('internal', 'c')
 			 AND pn.nspname NOT IN ('pg_catalog', 'information_schema')
 			 AND pp.proname NOT IN ('pg_stat_statements', 'pg_stat_statements_reset')`
 
 const functionStatsSQL string = `
 SELECT funcid, calls, total_time, self_time
-	FROM pg_stat_user_functions
-`
+	FROM pg_stat_user_functions`
 
 func GetFunctions(db *sql.DB, postgresVersion state.PostgresVersion, currentDatabaseOid state.Oid) ([]state.PostgresFunction, error) {
 	stmt, err := db.Prepare(QueryMarkerSQL + functionsSQL)
