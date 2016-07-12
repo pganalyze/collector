@@ -108,5 +108,7 @@ func CollectFull(server state.Server, collectionOpts state.CollectionOpts, logge
 		}
 	}
 
+	s.CollectorStats = getCollectorStats()
+
 	return
 }

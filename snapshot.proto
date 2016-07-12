@@ -40,6 +40,8 @@ message FullSnapshot {
   google.protobuf.Timestamp collected_at = 11;
   uint32 collected_interval_secs = 12;
 
+  CollectorStatistic collector_statistic = 20;
+
   // Per server (and hence snapshot)
   System system = 100;
   PostgresVersion postgres_version = 101;
@@ -92,6 +94,21 @@ message NullTimestamp {
 
 // PER SERVER
 
+message CollectorStatistic {
+  string go_version = 10;
+
+  // Statistics from after the collection input step
+  uint64 memory_heap_allocated_bytes = 13; // Bytes allocated and not yet freed
+  uint64 memory_heap_objects = 14;         // Total number of allocated objects
+  uint64 memory_system_bytes = 15;         // Bytes obtained from system (sum of heap and fixed-size structures)
+  uint64 memory_rss_bytes = 16;            // Memory allocated in bytes as seen by the OS
+
+  int32 active_goroutines = 20;            // Number of active Go routines
+
+  // Diff-ed statistics between two runs
+  int64 cgo_calls = 30;
+}
+
 message RoleReference {
   string name = 1; // Role name
 }
@@ -137,6 +154,9 @@ message DatabaseInformation {
 	// This is used to track whether the database needs to be vacuumed in order to prevent multixact ID wraparound or to
 	// allow pg_multixact to be shrunk. It is the minimum of the per-table pg_class.relminmxid values.
   uint32 minimum_multixact_xid = 10;
+
+  // Whether the collector was able to connect to this database and fetch local catalog data (e.g. schema)
+  bool collected_local_catalog_data = 11;
 }
 
 message PostgresVersion {

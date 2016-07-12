@@ -32,6 +32,7 @@ func TestStatements(t *testing.T) {
 	fp2 := util.FingerprintQuery("SELECT * FROM test")
 
 	expected := pganalyze_collector.FullSnapshot{
+		CollectorStatistic: &pganalyze_collector.CollectorStatistic{},
 		System: &pganalyze_collector.System{
 			SystemInformation:  &pganalyze_collector.SystemInformation{},
 			SchedulerStatistic: &pganalyze_collector.SchedulerStatistic{},
@@ -78,6 +79,7 @@ func TestStatements(t *testing.T) {
 
 	// Sadly this is the quickest way with all the idx references...
 	expectedAlt := pganalyze_collector.FullSnapshot{
+		CollectorStatistic: &pganalyze_collector.CollectorStatistic{},
 		System: &pganalyze_collector.System{
 			SystemInformation:  &pganalyze_collector.SystemInformation{},
 			SchedulerStatistic: &pganalyze_collector.SchedulerStatistic{},

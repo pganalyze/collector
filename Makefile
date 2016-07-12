@@ -18,9 +18,11 @@ test: build
 packages:
 	make -C packages
 
-release_latest: test
+packages_push_latest: test
+	make -C packages push_packages_latest
+
+docker_latest:
 	docker build -t quay.io/pganalyze/collector:latest .
 	docker push quay.io/pganalyze/collector:latest
-	make -C packages push_packages_latest
 
 .PHONY: default prepare build test release_latest packages

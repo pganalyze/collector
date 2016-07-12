@@ -27,6 +27,8 @@ type State struct {
 
 	DataDirectory string
 	System        SystemState
+
+	CollectorStats CollectorStats
 }
 
 type DiffState struct {
@@ -38,6 +40,8 @@ type DiffState struct {
 	SystemCPUStats     DiffedSystemCPUStatsMap
 	SystemNetworkStats DiffedNetworkStatsMap
 	SystemDiskStats    DiffedDiskStatsMap
+
+	CollectorStats DiffedCollectorStats
 }
 
 // StateOnDiskFormatVersion - Increment this when an old state preserved to disk should be ignored
