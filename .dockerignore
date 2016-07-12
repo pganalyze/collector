@@ -1,1 +1,4 @@
-packages/
+packages/*.deb
+packages/*.rpm
+packages/Dockerfile.*
+packages/Makefile
