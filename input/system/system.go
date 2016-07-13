@@ -12,7 +12,8 @@ import (
 func GetLogLines(config config.ServerConfig) (lines []state.LogLine, explainInputs []state.PostgresExplainInput) {
 	// TODO: We need a smarter selection mechanism here, and also consider AWS instances by hostname
 	if config.AwsDbInstanceID != "" {
-		lines, explainInputs = rds.GetLogLines(config)
+		// This is disabled for now, until we rework log processing
+		//lines, explainInputs = rds.GetLogLines(config)
 	}
 
 	return
