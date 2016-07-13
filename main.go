@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 	"os/user"
+	"runtime/pprof"
 	"strconv"
 	"sync"
 	"syscall"
@@ -75,6 +76,7 @@ func main() {
 	var pidFilename string
 	var noPostgresSettings, noPostgresLocks, noPostgresFunctions, noPostgresBloat, noPostgresViews bool
 	var noPostgresRelations, noLogs, noExplain, noSystemInformation, diffStatements bool
+	var writeHeapProfile bool
 
 	logger := &util.Logger{Destination: log.New(os.Stderr, "", log.LstdFlags)}
 
@@ -91,6 +93,7 @@ func main() {
 	flag.BoolVar(&noExplain, "no-explain", false, "Don't automatically EXPLAIN slow queries logged in the logfile")
 	flag.BoolVar(&noSystemInformation, "no-system-information", false, "Don't collect OS level performance data")
 	flag.BoolVar(&diffStatements, "diff-statements", false, "Send a diff of the pg_stat_statements statistics, instead of counter values")
+	flag.BoolVar(&writeHeapProfile, "write-heap-profile", false, "Write a memory heap profile to ~/.pganalyze_collector.mprof when SIGHUP is received (disabled by default, only useful for debugging)")
 	flag.StringVar(&configFilename, "config", defaultConfigFile, "Specify alternative path for config file.")
 	flag.StringVar(&stateFilename, "statefile", "/var/run/pganalyze_collector.state", "Specify alternative path for state file.")
 	flag.StringVar(&pidFilename, "pidfile", "", "Specifies a path that a pidfile should be written to. (default is no pidfile being written)")
@@ -168,6 +171,18 @@ ReadConfigAndRun:
 	stop <- true
 
 	if s == syscall.SIGHUP {
+		if writeHeapProfile {
+			usr, err := user.Current()
+			if err == nil {
+				mprofPath := usr.HomeDir + "/.pganalyze_collector.mprof"
+				f, err := os.Create(mprofPath)
+				if err == nil {
+					pprof.WriteHeapProfile(f)
+					f.Close()
+					logger.PrintInfo("Wrote memory heap profile to %s", mprofPath)
+				}
+			}
+		}
 		logger.PrintInfo("Reloading configuration...")
 		goto ReadConfigAndRun
 	}
