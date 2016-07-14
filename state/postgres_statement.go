@@ -4,12 +4,15 @@ import "github.com/guregu/null"
 
 // PostgresStatement - Specific kind of statement that has run one or multiple times
 // on the PostgreSQL server.
+type PostgresStatement struct {
+	NormalizedQuery string // Text of a representative statement (normalized)
+}
+
+// PostgresStatementStats - Statistics from pg_stat_statements extension for a given
+// statement.
 //
 // See also https://www.postgresql.org/docs/9.5/static/pgstatstatements.html
-type PostgresStatement struct {
-	DatabaseOid       Oid     // OID of database in which the statement was executed
-	UserOid           Oid     // OID of user who executed the statement
-	NormalizedQuery   string  // Text of a representative statement (normalized)
+type PostgresStatementStats struct {
 	Calls             int64   // Number of times executed
 	TotalTime         float64 // Total time spent in the statement, in milliseconds
 	Rows              int64   // Total number of rows retrieved or affected by the statement
@@ -26,9 +29,6 @@ type PostgresStatement struct {
 	BlkReadTime       float64 // Total time the statement spent reading blocks, in milliseconds (if track_io_timing is enabled, otherwise zero)
 	BlkWriteTime      float64 // Total time the statement spent writing blocks, in milliseconds (if track_io_timing is enabled, otherwise zero)
 
-	// Postgres 9.4+
-	QueryID null.Int // Internal hash code, computed from the statement's parse tree
-
 	// Postgres 9.5+
 	MinTime    null.Float // Minimum time spent in the statement, in milliseconds
 	MaxTime    null.Float // Maximum time spent in the statement, in milliseconds
@@ -36,26 +36,25 @@ type PostgresStatement struct {
 	StddevTime null.Float // Population standard deviation of time spent in the statement, in milliseconds
 }
 
-type PostgresStatementMap map[PostgresStatementKey]PostgresStatement
-
-type DiffedPostgresStatement PostgresStatement
-
+// PostgresStatementKey - Information that uniquely identifies a query
 type PostgresStatementKey struct {
-	DatabaseOid Oid
-	UserOid     Oid
-	QueryID     int64
+	DatabaseOid Oid   // OID of database in which the statement was executed
+	UserOid     Oid   // OID of user who executed the statement
+	QueryID     int64 // Postgres 9.4+: Internal hash code, computed from the statement's parse tree
 }
 
-func (stmt PostgresStatement) Key() PostgresStatementKey {
-	return PostgresStatementKey{DatabaseOid: stmt.DatabaseOid, UserOid: stmt.UserOid, QueryID: stmt.QueryID.Int64}
-}
+type PostgresStatementMap map[PostgresStatementKey]PostgresStatement
+type PostgresStatementStatsMap map[PostgresStatementKey]PostgresStatementStats
 
-func (curr PostgresStatement) DiffSince(prev PostgresStatement) DiffedPostgresStatement {
-	return DiffedPostgresStatement{
-		DatabaseOid:       curr.DatabaseOid,
-		UserOid:           curr.UserOid,
-		NormalizedQuery:   curr.NormalizedQuery,
-		QueryID:           curr.QueryID,
+type DiffedPostgresStatementStats PostgresStatementStats
+type DiffedPostgresStatementStatsMap map[PostgresStatementKey]DiffedPostgresStatementStats
+
+//func (stmt PostgresStatement) Key() PostgresStatementKey {
+//	return PostgresStatementKey{DatabaseOid: stmt.DatabaseOid, UserOid: stmt.UserOid, QueryID: stmt.QueryID.Int64}
+//}
+
+func (curr PostgresStatementStats) DiffSince(prev PostgresStatementStats) DiffedPostgresStatementStats {
+	return DiffedPostgresStatementStats{
 		Calls:             curr.Calls - prev.Calls,
 		TotalTime:         curr.TotalTime - prev.TotalTime,
 		Rows:              curr.Rows - prev.Rows,
@@ -75,12 +74,8 @@ func (curr PostgresStatement) DiffSince(prev PostgresStatement) DiffedPostgresSt
 }
 
 // Add - Adds the statistics of one diffed statement to another, returning the result as a copy
-func (stmt DiffedPostgresStatement) Add(other DiffedPostgresStatement) DiffedPostgresStatement {
-	return DiffedPostgresStatement{
-		DatabaseOid:     stmt.DatabaseOid,
-		UserOid:         stmt.UserOid,
-		NormalizedQuery: stmt.NormalizedQuery,
-
+func (stmt DiffedPostgresStatementStats) Add(other DiffedPostgresStatementStats) DiffedPostgresStatementStats {
+	return DiffedPostgresStatementStats{
 		Calls:             stmt.Calls + other.Calls,
 		TotalTime:         stmt.TotalTime + other.TotalTime,
 		Rows:              stmt.Rows + other.Rows,

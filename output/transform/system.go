@@ -6,7 +6,7 @@ import (
 	"github.com/pganalyze/collector/state"
 )
 
-func transformSystem(s snapshot.FullSnapshot, newState state.State, diffState state.DiffState) snapshot.FullSnapshot {
+func transformSystem(s snapshot.FullSnapshot, newState state.PersistedState, diffState state.DiffState) snapshot.FullSnapshot {
 	s.System = &snapshot.System{}
 
 	s.System.SystemInformation = &snapshot.SystemInformation{}

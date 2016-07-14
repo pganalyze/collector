@@ -10,16 +10,16 @@ import (
 )
 
 // CollectFull - Collects a "full" snapshot of all data we need on a regular interval
-func CollectFull(server state.Server, collectionOpts state.CollectionOpts, logger *util.Logger) (s state.State, err error) {
+func CollectFull(server state.Server, collectionOpts state.CollectionOpts, logger *util.Logger) (ps state.PersistedState, ts state.TransientState, err error) {
 	var explainInputs []state.PostgresExplainInput
 
-	s.Version, err = postgres.GetPostgresVersion(logger, server.Connection)
+	ps.Version, err = postgres.GetPostgresVersion(logger, server.Connection)
 	if err != nil {
 		logger.PrintError("Error collecting Postgres Version")
 		return
 	}
 
-	s.DataDirectory, err = postgres.GetDataDirectory(logger, server.Connection)
+	ps.DataDirectory, err = postgres.GetDataDirectory(logger, server.Connection)
 	if err != nil {
 		logger.PrintVerbose("Could not determine data directory location")
 	}
@@ -29,51 +29,51 @@ func CollectFull(server state.Server, collectionOpts state.CollectionOpts, logge
 		logger.PrintError("Error getting OID of current database")
 		return
 	}
-	s.DatabaseOidsWithLocalCatalog = append(s.DatabaseOidsWithLocalCatalog, currentDatabaseOid)
+	ps.DatabaseOidsWithLocalCatalog = append(ps.DatabaseOidsWithLocalCatalog, currentDatabaseOid)
 
-	if s.Version.Numeric < state.MinRequiredPostgresVersion {
-		err = fmt.Errorf("Error: Your PostgreSQL server version (%s) is too old, 9.2 or newer is required.", s.Version.Short)
+	if ps.Version.Numeric < state.MinRequiredPostgresVersion {
+		err = fmt.Errorf("Error: Your PostgreSQL server version (%s) is too old, 9.2 or newer is required.", ps.Version.Short)
 		return
 	}
 
-	s.Roles, err = postgres.GetRoles(logger, server.Connection, s.Version)
+	ps.Roles, err = postgres.GetRoles(logger, server.Connection, ps.Version)
 	if err != nil {
 		logger.PrintError("Error collecting pg_roles")
 		return
 	}
 
-	s.Databases, err = postgres.GetDatabases(logger, server.Connection, s.Version)
+	ps.Databases, err = postgres.GetDatabases(logger, server.Connection, ps.Version)
 	if err != nil {
 		logger.PrintError("Error collecting pg_databases")
 		return
 	}
 
-	s.Backends, err = postgres.GetBackends(logger, server.Connection, s.Version)
+	ps.Backends, err = postgres.GetBackends(logger, server.Connection, ps.Version)
 	if err != nil {
 		logger.PrintError("Error collecting pg_stat_activity")
 		return
 	}
 
-	s.Statements, err = postgres.GetStatements(logger, server.Connection, s.Version)
+	ts.Statements, ps.StatementStats, err = postgres.GetStatements(logger, server.Connection, ps.Version)
 	if err != nil {
 		logger.PrintError("Error collecting pg_stat_statements")
 		return
 	}
 
 	if collectionOpts.CollectPostgresRelations {
-		s.Relations, err = postgres.GetRelations(server.Connection, s.Version, currentDatabaseOid)
+		ps.Relations, err = postgres.GetRelations(server.Connection, ps.Version, currentDatabaseOid)
 		if err != nil {
 			logger.PrintError("Error collecting relation/index information: %s", err)
 			return
 		}
 
-		s.RelationStats, err = postgres.GetRelationStats(server.Connection, s.Version)
+		ps.RelationStats, err = postgres.GetRelationStats(server.Connection, ps.Version)
 		if err != nil {
 			logger.PrintError("Error collecting relation stats: %s", err)
 			return
 		}
 
-		s.IndexStats, err = postgres.GetIndexStats(server.Connection, s.Version)
+		ps.IndexStats, err = postgres.GetIndexStats(server.Connection, ps.Version)
 		if err != nil {
 			logger.PrintError("Error collecting index stats: %s", err)
 			return
@@ -83,7 +83,7 @@ func CollectFull(server state.Server, collectionOpts state.CollectionOpts, logge
 	}
 
 	if collectionOpts.CollectPostgresFunctions {
-		s.Functions, err = postgres.GetFunctions(server.Connection, s.Version, currentDatabaseOid)
+		ps.Functions, err = postgres.GetFunctions(server.Connection, ps.Version, currentDatabaseOid)
 		if err != nil {
 			logger.PrintError("Error collecting stored procedures")
 			return
@@ -91,7 +91,7 @@ func CollectFull(server state.Server, collectionOpts state.CollectionOpts, logge
 	}
 
 	if collectionOpts.CollectPostgresSettings {
-		s.Settings, err = postgres.GetSettings(server.Connection, s.Version)
+		ps.Settings, err = postgres.GetSettings(server.Connection, ps.Version)
 		if err != nil {
 			logger.PrintError("Error collecting config settings")
 			return
@@ -99,18 +99,18 @@ func CollectFull(server state.Server, collectionOpts state.CollectionOpts, logge
 	}
 
 	if collectionOpts.CollectSystemInformation {
-		s.System = system.GetSystemState(server.Config, logger, s.DataDirectory)
+		ps.System = system.GetSystemState(server.Config, logger, ps.DataDirectory)
 	}
 
 	if collectionOpts.CollectLogs {
-		s.Logs, explainInputs = system.GetLogLines(server.Config)
+		ps.Logs, explainInputs = system.GetLogLines(server.Config)
 
 		if collectionOpts.CollectExplain {
-			s.Explains = postgres.RunExplain(server.Connection, explainInputs)
+			ps.Explains = postgres.RunExplain(server.Connection, explainInputs)
 		}
 	}
 
-	s.CollectorStats = getCollectorStats()
+	ps.CollectorStats = getCollectorStats()
 
 	return
 }

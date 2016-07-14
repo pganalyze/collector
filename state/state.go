@@ -7,16 +7,17 @@ import (
 	"github.com/pganalyze/collector/config"
 )
 
-type State struct {
+// PersistedState - State thats kept across collector runs to be used for diffs
+type PersistedState struct {
 	CollectedAt time.Time
 
 	// Databases we connected to and fetched local catalog data (e.g. schema)
 	DatabaseOidsWithLocalCatalog []Oid
 
-	Statements    PostgresStatementMap
-	RelationStats PostgresRelationStatsMap
-	IndexStats    PostgresIndexStatsMap
-	FunctionStats PostgresFunctionStatsMap
+	StatementStats PostgresStatementStatsMap
+	RelationStats  PostgresRelationStatsMap
+	IndexStats     PostgresIndexStatsMap
+	FunctionStats  PostgresFunctionStatsMap
 
 	Roles     []PostgresRole
 	Databases []PostgresDatabase
@@ -34,11 +35,17 @@ type State struct {
 	CollectorStats CollectorStats
 }
 
+// TransientState - State thats only used within a collector run (and not needed for diffs)
+type TransientState struct {
+	Statements PostgresStatementMap
+}
+
+// DiffState - Result of diff-ing two persistent state structs
 type DiffState struct {
-	Statements    []DiffedPostgresStatement
-	RelationStats DiffedPostgresRelationStatsMap
-	IndexStats    DiffedPostgresIndexStatsMap
-	FunctionStats DiffedPostgresFunctionStatsMap
+	StatementStats DiffedPostgresStatementStatsMap
+	RelationStats  DiffedPostgresRelationStatsMap
+	IndexStats     DiffedPostgresIndexStatsMap
+	FunctionStats  DiffedPostgresFunctionStatsMap
 
 	SystemCPUStats     DiffedSystemCPUStatsMap
 	SystemNetworkStats DiffedNetworkStatsMap
@@ -53,7 +60,7 @@ const StateOnDiskFormatVersion = 1
 type StateOnDisk struct {
 	FormatVersion uint
 
-	PrevStateByAPIKey map[string]State
+	PrevStateByAPIKey map[string]PersistedState
 }
 
 type CollectionOpts struct {
@@ -93,7 +100,7 @@ type Grant struct {
 type Server struct {
 	Config           config.ServerConfig
 	Connection       *sql.DB
-	PrevState        State
+	PrevState        PersistedState
 	RequestedSslMode string
 	Grant            Grant
 }

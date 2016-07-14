@@ -11,21 +11,19 @@ import (
 )
 
 func TestStatements(t *testing.T) {
-	newState := state.State{}
-	diffState := state.DiffState{
-		Statements: []state.DiffedPostgresStatement{
-			state.DiffedPostgresStatement{
-				NormalizedQuery: "SELECT 1",
-				Calls:           1,
-			},
-			state.DiffedPostgresStatement{
-				NormalizedQuery: "SELECT * FROM test",
-				Calls:           13,
-			},
-		},
-	}
+	key1 := state.PostgresStatementKey{QueryID: 1}
+	key2 := state.PostgresStatementKey{QueryID: 2}
 
-	actual := transform.StateToSnapshot(newState, diffState)
+	newState := state.PersistedState{}
+	transientState := state.TransientState{Statements: make(state.PostgresStatementMap)}
+	diffState := state.DiffState{StatementStats: make(state.DiffedPostgresStatementStatsMap)}
+
+	transientState.Statements[key1] = state.PostgresStatement{NormalizedQuery: "SELECT 1"}
+	transientState.Statements[key2] = state.PostgresStatement{NormalizedQuery: "SELECT * FROM test"}
+	diffState.StatementStats[key1] = state.DiffedPostgresStatementStats{Calls: 1}
+	diffState.StatementStats[key2] = state.DiffedPostgresStatementStats{Calls: 13}
+
+	actual := transform.StateToSnapshot(newState, diffState, transientState)
 	actualJSON, _ := json.Marshal(actual)
 
 	fp1 := util.FingerprintQuery("SELECT 1")
@@ -56,12 +54,12 @@ func TestStatements(t *testing.T) {
 			&pganalyze_collector.QueryInformation{
 				QueryIdx:        0,
 				NormalizedQuery: "SELECT 1",
-				QueryIds:        []int64{0},
+				QueryIds:        []int64{1},
 			},
 			&pganalyze_collector.QueryInformation{
 				QueryIdx:        1,
 				NormalizedQuery: "SELECT * FROM test",
-				QueryIds:        []int64{0},
+				QueryIds:        []int64{2},
 			},
 		},
 		QueryStatistics: []*pganalyze_collector.QueryStatistic{
@@ -103,12 +101,12 @@ func TestStatements(t *testing.T) {
 			&pganalyze_collector.QueryInformation{
 				QueryIdx:        0,
 				NormalizedQuery: "SELECT * FROM test",
-				QueryIds:        []int64{0},
+				QueryIds:        []int64{2},
 			},
 			&pganalyze_collector.QueryInformation{
 				QueryIdx:        1,
 				NormalizedQuery: "SELECT 1",
-				QueryIds:        []int64{0},
+				QueryIds:        []int64{1},
 			},
 		},
 		QueryStatistics: []*pganalyze_collector.QueryStatistic{

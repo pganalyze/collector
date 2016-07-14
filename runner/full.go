@@ -14,20 +14,20 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
-func processDatabase(server state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.State, state.Grant, error) {
+func processDatabase(server state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.PersistedState, state.Grant, error) {
 	// Note: In case of server errors, we should reuse the old grant if its still recent (i.e. less than 50 minutes ago)
 	grant, err := getSnapshotGrant(server, globalCollectionOpts, logger)
 	if err != nil {
 		if server.Grant.Valid {
 			logger.PrintVerbose("Could not acquire snapshot grant, reusing previous grant: %s", err)
 		} else {
-			return state.State{}, state.Grant{}, err
+			return state.PersistedState{}, state.Grant{}, err
 		}
 	} else {
 		server.Grant = grant
 	}
 
-	newState, err := input.CollectFull(server, globalCollectionOpts, logger)
+	newState, transientState, err := input.CollectFull(server, globalCollectionOpts, logger)
 	if err != nil {
 		return newState, grant, err
 	}
@@ -35,7 +35,7 @@ func processDatabase(server state.Server, globalCollectionOpts state.CollectionO
 	collectedIntervalSecs := uint32(600) // TODO: 10 minutes - we should actually measure the distance between states here
 	diffState := diffState(logger, server.PrevState, newState, collectedIntervalSecs)
 
-	output.SendFull(server, globalCollectionOpts, logger, newState, diffState, collectedIntervalSecs)
+	output.SendFull(server, globalCollectionOpts, logger, newState, diffState, transientState, collectedIntervalSecs)
 
 	return newState, grant, nil
 }
@@ -76,7 +76,7 @@ func getSnapshotGrant(server state.Server, globalCollectionOpts state.Collection
 }
 
 func writeStateFile(servers []state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
-	stateOnDisk := state.StateOnDisk{PrevStateByAPIKey: make(map[string]state.State), FormatVersion: state.StateOnDiskFormatVersion}
+	stateOnDisk := state.StateOnDisk{PrevStateByAPIKey: make(map[string]state.PersistedState), FormatVersion: state.StateOnDiskFormatVersion}
 
 	for _, server := range servers {
 		stateOnDisk.PrevStateByAPIKey[server.Config.APIKey] = server.PrevState

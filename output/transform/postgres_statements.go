@@ -19,30 +19,42 @@ type statementKey struct {
 }
 
 type statementValue struct {
-	queryIDs  []int64
-	statement state.DiffedPostgresStatement
+	queryIDs       []int64
+	statement      state.PostgresStatement
+	statementKey   state.PostgresStatementKey
+	statementStats state.DiffedPostgresStatementStats
 }
 
-func groupStatements(statements []state.DiffedPostgresStatement) map[statementKey]statementValue {
+func groupStatements(statements state.PostgresStatementMap, statsMap state.DiffedPostgresStatementStatsMap) map[statementKey]statementValue {
 	groupedStatements := make(map[statementKey]statementValue)
 
-	for _, statement := range statements {
+	for sKey, statement := range statements {
+		// For now we don't want statements without statistics (first run, consecutive runs with no change)
+		stats, exist := statsMap[sKey]
+		if !exist {
+			continue
+		}
+
 		key := statementKey{
-			databaseOid: statement.DatabaseOid,
-			userOid:     statement.UserOid,
+			databaseOid: sKey.DatabaseOid,
+			userOid:     sKey.UserOid,
 			fingerprint: util.FingerprintQuery(statement.NormalizedQuery),
 		}
 
 		value, exist := groupedStatements[key]
 		if exist {
 			groupedStatements[key] = statementValue{
-				statement: value.statement.Add(statement),
-				queryIDs:  append(value.queryIDs, statement.QueryID.Int64),
+				statement:      value.statement,
+				statementKey:   value.statementKey,
+				statementStats: value.statementStats.Add(stats),
+				queryIDs:       append(value.queryIDs, sKey.QueryID),
 			}
 		} else {
 			groupedStatements[key] = statementValue{
-				statement: statement,
-				queryIDs:  []int64{statement.QueryID.Int64},
+				statement:      statement,
+				statementKey:   sKey,
+				statementStats: stats,
+				queryIDs:       []int64{sKey.QueryID},
 			}
 		}
 	}
@@ -50,8 +62,8 @@ func groupStatements(statements []state.DiffedPostgresStatement) map[statementKe
 	return groupedStatements
 }
 
-func transformPostgresStatements(s snapshot.FullSnapshot, newState state.State, diffState state.DiffState, roleOidToIdx OidToIdx, databaseOidToIdx OidToIdx) snapshot.FullSnapshot {
-	groupedStatements := groupStatements(diffState.Statements)
+func transformPostgresStatements(s snapshot.FullSnapshot, newState state.PersistedState, diffState state.DiffState, transientState state.TransientState, roleOidToIdx OidToIdx, databaseOidToIdx OidToIdx) snapshot.FullSnapshot {
+	groupedStatements := groupStatements(transientState.Statements, diffState.StatementStats)
 
 	for key, value := range groupedStatements {
 		// Note: For whichever reason, we need to use a separate variable here so each fingerprint
@@ -66,6 +78,7 @@ func transformPostgresStatements(s snapshot.FullSnapshot, newState state.State, 
 		idx := upsertQueryReference(&s, &ref)
 
 		statement := value.statement
+		stats := value.statementStats
 
 		// Information
 		queryInformation := snapshot.QueryInformation{
@@ -79,21 +92,21 @@ func transformPostgresStatements(s snapshot.FullSnapshot, newState state.State, 
 		statistic := snapshot.QueryStatistic{
 			QueryIdx: idx,
 
-			Calls:             statement.Calls,
-			TotalTime:         statement.TotalTime,
-			Rows:              statement.Rows,
-			SharedBlksHit:     statement.SharedBlksHit,
-			SharedBlksRead:    statement.SharedBlksRead,
-			SharedBlksDirtied: statement.SharedBlksDirtied,
-			SharedBlksWritten: statement.SharedBlksWritten,
-			LocalBlksHit:      statement.LocalBlksHit,
-			LocalBlksRead:     statement.LocalBlksRead,
-			LocalBlksDirtied:  statement.LocalBlksDirtied,
-			LocalBlksWritten:  statement.LocalBlksWritten,
-			TempBlksRead:      statement.TempBlksRead,
-			TempBlksWritten:   statement.TempBlksWritten,
-			BlkReadTime:       statement.BlkReadTime,
-			BlkWriteTime:      statement.BlkWriteTime,
+			Calls:             stats.Calls,
+			TotalTime:         stats.TotalTime,
+			Rows:              stats.Rows,
+			SharedBlksHit:     stats.SharedBlksHit,
+			SharedBlksRead:    stats.SharedBlksRead,
+			SharedBlksDirtied: stats.SharedBlksDirtied,
+			SharedBlksWritten: stats.SharedBlksWritten,
+			LocalBlksHit:      stats.LocalBlksHit,
+			LocalBlksRead:     stats.LocalBlksRead,
+			LocalBlksDirtied:  stats.LocalBlksDirtied,
+			LocalBlksWritten:  stats.LocalBlksWritten,
+			TempBlksRead:      stats.TempBlksRead,
+			TempBlksWritten:   stats.TempBlksWritten,
+			BlkReadTime:       stats.BlkReadTime,
+			BlkWriteTime:      stats.BlkWriteTime,
 		}
 
 		s.QueryStatistics = append(s.QueryStatistics, &statistic)

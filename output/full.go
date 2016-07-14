@@ -23,13 +23,13 @@ import (
 	"github.com/satori/go.uuid"
 )
 
-func SendFull(db state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, newState state.State, diffState state.DiffState, collectedIntervalSecs uint32) error {
+func SendFull(db state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, newState state.PersistedState, diffState state.DiffState, transientState state.TransientState, collectedIntervalSecs uint32) error {
 	var err error
 	var data []byte
 
 	snapshotUUID := uuid.NewV4()
 	collectedAt := time.Now()
-	s := transform.StateToSnapshot(newState, diffState)
+	s := transform.StateToSnapshot(newState, diffState, transientState)
 
 	s.SnapshotVersionMajor = 1
 	s.SnapshotVersionMinor = 0

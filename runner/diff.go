@@ -5,8 +5,8 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
-func diffState(logger *util.Logger, prevState state.State, newState state.State, collectedIntervalSecs uint32) (diffState state.DiffState) {
-	diffState.Statements = diffStatements(newState.Statements, prevState.Statements)
+func diffState(logger *util.Logger, prevState state.PersistedState, newState state.PersistedState, collectedIntervalSecs uint32) (diffState state.DiffState) {
+	diffState.StatementStats = diffStatements(newState.StatementStats, prevState.StatementStats)
 	diffState.RelationStats = diffRelationStats(newState.RelationStats, prevState.RelationStats)
 	diffState.IndexStats = diffIndexStats(newState.IndexStats, prevState.IndexStats)
 	diffState.SystemCPUStats = diffSystemCPUStats(newState.System.CPUStats, prevState.System.CPUStats)
@@ -17,21 +17,22 @@ func diffState(logger *util.Logger, prevState state.State, newState state.State,
 	return
 }
 
-func diffStatements(new state.PostgresStatementMap, prev state.PostgresStatementMap) (diff []state.DiffedPostgresStatement) {
+func diffStatements(new state.PostgresStatementStatsMap, prev state.PostgresStatementStatsMap) (diff state.DiffedPostgresStatementStatsMap) {
 	followUpRun := len(prev) > 0
+	diff = make(state.DiffedPostgresStatementStatsMap)
 
 	for key, statement := range new {
-		var diffedStatement state.DiffedPostgresStatement
+		var diffedStatement state.DiffedPostgresStatementStats
 
 		prevStatement, exists := prev[key]
 		if exists {
 			diffedStatement = statement.DiffSince(prevStatement)
 		} else if followUpRun { // New statement since the last run
-			diffedStatement = statement.DiffSince(state.PostgresStatement{})
+			diffedStatement = statement.DiffSince(state.PostgresStatementStats{})
 		}
 
 		if diffedStatement.Calls > 0 {
-			diff = append(diff, diffedStatement)
+			diff[key] = diffedStatement
 		}
 	}
 

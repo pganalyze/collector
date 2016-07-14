@@ -7,20 +7,20 @@ import (
 
 type OidToIdx map[state.Oid]int32
 
-func transformPostgres(s snapshot.FullSnapshot, newState state.State, diffState state.DiffState) snapshot.FullSnapshot {
+func transformPostgres(s snapshot.FullSnapshot, newState state.PersistedState, diffState state.DiffState, transientState state.TransientState) snapshot.FullSnapshot {
 	s, roleOidToIdx := transformPostgresRoles(s, newState)
 	s, databaseOidToIdx := transformPostgresDatabases(s, newState, roleOidToIdx)
 
 	s = transformPostgresVersion(s, newState)
 	s = transformPostgresConfig(s, newState)
-	s = transformPostgresStatements(s, newState, diffState, roleOidToIdx, databaseOidToIdx)
+	s = transformPostgresStatements(s, newState, diffState, transientState, roleOidToIdx, databaseOidToIdx)
 	s = transformPostgresRelations(s, newState, diffState, roleOidToIdx, databaseOidToIdx)
 	s = transformPostgresFunctions(s, newState, diffState, roleOidToIdx, databaseOidToIdx)
 
 	return s
 }
 
-func transformPostgresRoles(s snapshot.FullSnapshot, newState state.State) (snapshot.FullSnapshot, OidToIdx) {
+func transformPostgresRoles(s snapshot.FullSnapshot, newState state.PersistedState) (snapshot.FullSnapshot, OidToIdx) {
 	roleOidToIdx := make(OidToIdx)
 
 	for _, role := range newState.Roles {
@@ -55,7 +55,7 @@ func transformPostgresRoles(s snapshot.FullSnapshot, newState state.State) (snap
 	return s, roleOidToIdx
 }
 
-func transformPostgresDatabases(s snapshot.FullSnapshot, newState state.State, roleOidToIdx OidToIdx) (snapshot.FullSnapshot, OidToIdx) {
+func transformPostgresDatabases(s snapshot.FullSnapshot, newState state.PersistedState, roleOidToIdx OidToIdx) (snapshot.FullSnapshot, OidToIdx) {
 	databaseOidToIdx := make(OidToIdx)
 
 	for _, database := range newState.Databases {
@@ -94,7 +94,7 @@ func transformPostgresDatabases(s snapshot.FullSnapshot, newState state.State, r
 	return s, databaseOidToIdx
 }
 
-func transformPostgresConfig(s snapshot.FullSnapshot, newState state.State) snapshot.FullSnapshot {
+func transformPostgresConfig(s snapshot.FullSnapshot, newState state.PersistedState) snapshot.FullSnapshot {
 	for _, setting := range newState.Settings {
 		info := snapshot.Setting{Name: setting.Name}
 
@@ -126,7 +126,7 @@ func transformPostgresConfig(s snapshot.FullSnapshot, newState state.State) snap
 	return s
 }
 
-func transformPostgresVersion(s snapshot.FullSnapshot, newState state.State) snapshot.FullSnapshot {
+func transformPostgresVersion(s snapshot.FullSnapshot, newState state.PersistedState) snapshot.FullSnapshot {
 	s.PostgresVersion = &snapshot.PostgresVersion{
 		Full:    newState.Version.Full,
 		Short:   newState.Version.Short,

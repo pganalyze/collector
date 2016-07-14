@@ -5,7 +5,7 @@ import (
 	"github.com/pganalyze/collector/state"
 )
 
-func transformPostgresFunctions(s snapshot.FullSnapshot, newState state.State, diffState state.DiffState, roleOidToIdx OidToIdx, databaseOidToIdx OidToIdx) snapshot.FullSnapshot {
+func transformPostgresFunctions(s snapshot.FullSnapshot, newState state.PersistedState, diffState state.DiffState, roleOidToIdx OidToIdx, databaseOidToIdx OidToIdx) snapshot.FullSnapshot {
 	for _, function := range newState.Functions {
 		ref := snapshot.FunctionReference{
 			DatabaseIdx:  databaseOidToIdx[function.DatabaseOid],

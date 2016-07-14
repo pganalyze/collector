@@ -5,7 +5,7 @@ import (
 	"github.com/pganalyze/collector/state"
 )
 
-func transformCollectorStats(s snapshot.FullSnapshot, newState state.State, diffState state.DiffState) snapshot.FullSnapshot {
+func transformCollectorStats(s snapshot.FullSnapshot, newState state.PersistedState, diffState state.DiffState) snapshot.FullSnapshot {
 	s.CollectorStatistic = &snapshot.CollectorStatistic{
 		GoVersion:                diffState.CollectorStats.GoVersion,
 		MemoryHeapAllocatedBytes: diffState.CollectorStats.MemoryHeapAllocatedBytes,

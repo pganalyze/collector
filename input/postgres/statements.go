@@ -41,7 +41,7 @@ func statementStatsHelperExists(db *sql.DB) bool {
 	return enabled
 }
 
-func GetStatements(logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion) (map[state.PostgresStatementKey]state.PostgresStatement, error) {
+func GetStatements(logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion) (state.PostgresStatementMap, state.PostgresStatementStatsMap, error) {
 	var err error
 	var optionalFields string
 	var sourceTable string
@@ -74,15 +74,15 @@ func GetStatements(logger *util.Logger, db *sql.DB, postgresVersion state.Postgr
 
 			_, err = db.Exec(QueryMarkerSQL + "CREATE EXTENSION IF NOT EXISTS pg_stat_statements")
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 
 			stmt, err = db.Prepare(sql)
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 		} else {
-			return nil, err
+			return nil, nil, err
 		}
 	}
 
@@ -90,26 +90,30 @@ func GetStatements(logger *util.Logger, db *sql.DB, postgresVersion state.Postgr
 
 	rows, err := stmt.Query()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	defer rows.Close()
 
-	statements := make(map[state.PostgresStatementKey]state.PostgresStatement)
+	statements := make(state.PostgresStatementMap)
+	statementStats := make(state.PostgresStatementStatsMap)
 
 	for rows.Next() {
+		var key state.PostgresStatementKey
 		var statement state.PostgresStatement
+		var stats state.PostgresStatementStats
 
-		err = rows.Scan(&statement.DatabaseOid, &statement.UserOid, &statement.NormalizedQuery, &statement.Calls, &statement.TotalTime, &statement.Rows,
-			&statement.SharedBlksHit, &statement.SharedBlksRead, &statement.SharedBlksDirtied, &statement.SharedBlksWritten,
-			&statement.LocalBlksHit, &statement.LocalBlksRead, &statement.LocalBlksDirtied, &statement.LocalBlksWritten,
-			&statement.TempBlksRead, &statement.TempBlksWritten, &statement.BlkReadTime, &statement.BlkWriteTime,
-			&statement.QueryID, &statement.MinTime, &statement.MaxTime, &statement.MeanTime, &statement.StddevTime)
+		err = rows.Scan(&key.DatabaseOid, &key.UserOid, &statement.NormalizedQuery, &stats.Calls, &stats.TotalTime, &stats.Rows,
+			&stats.SharedBlksHit, &stats.SharedBlksRead, &stats.SharedBlksDirtied, &stats.SharedBlksWritten,
+			&stats.LocalBlksHit, &stats.LocalBlksRead, &stats.LocalBlksDirtied, &stats.LocalBlksWritten,
+			&stats.TempBlksRead, &stats.TempBlksWritten, &stats.BlkReadTime, &stats.BlkWriteTime,
+			&key.QueryID, &stats.MinTime, &stats.MaxTime, &stats.MeanTime, &stats.StddevTime)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
-		statements[statement.Key()] = statement
+		statements[key] = statement
+		statementStats[key] = stats
 	}
 
-	return statements, nil
+	return statements, statementStats, nil
 }

@@ -5,10 +5,10 @@ import (
 	"github.com/pganalyze/collector/state"
 )
 
-func StateToSnapshot(newState state.State, diffState state.DiffState) snapshot.FullSnapshot {
+func StateToSnapshot(newState state.PersistedState, diffState state.DiffState, transientState state.TransientState) snapshot.FullSnapshot {
 	var s snapshot.FullSnapshot
 
-	s = transformPostgres(s, newState, diffState)
+	s = transformPostgres(s, newState, diffState, transientState)
 	s = transformSystem(s, newState, diffState)
 	s = transformCollectorStats(s, newState, diffState)
 

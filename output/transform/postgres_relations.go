@@ -7,7 +7,7 @@ import (
 	"github.com/pganalyze/collector/state"
 )
 
-func transformPostgresRelations(s snapshot.FullSnapshot, newState state.State, diffState state.DiffState, roleOidToIdx OidToIdx, databaseOidToIdx OidToIdx) snapshot.FullSnapshot {
+func transformPostgresRelations(s snapshot.FullSnapshot, newState state.PersistedState, diffState state.DiffState, roleOidToIdx OidToIdx, databaseOidToIdx OidToIdx) snapshot.FullSnapshot {
 	for _, relation := range newState.Relations {
 		ref := snapshot.RelationReference{
 			DatabaseIdx:  databaseOidToIdx[relation.DatabaseOid],
