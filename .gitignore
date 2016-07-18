@@ -1,6 +1,5 @@
 collector
 pganalyze-collector
-vendor/
 packages/*.deb
 packages/*.rpm
 packages/out
