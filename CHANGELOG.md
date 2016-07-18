@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.0       2016-07-14
+
+* First official release of new protocol buffers-based collector
+
+
 ## 0.9.0rc8    2016-07-08
 
 * Significant restructuring of the codebase

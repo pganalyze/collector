@@ -1,4 +1,5 @@
 NAME=pganalyze-collector
+#VERSION=0.9.0
 VERSION=$(shell git show -s --format=%ct.%h HEAD)
 
 RPM_PACKAGE=$(NAME)-$(VERSION)-1.x86_64.rpm
@@ -55,6 +56,10 @@ ubuntu-trusty: $(DEB_PACKAGE)
 	docker rm pga-collector-test
 	docker rmi -f pga-collector-test
 	echo "Test successful"
+
+push_packages_release: $(RPM_PACKAGE) $(DEB_PACKAGE)
+	package_cloud push pganalyze/collector/el/6 $(NAME)-$(VERSION)-1.x86_64.rpm
+	package_cloud push pganalyze/collector/ubuntu/trusty $(NAME)_$(VERSION)_amd64.deb
 
 push_packages_latest: $(RPM_PACKAGE) $(DEB_PACKAGE)
 	package_cloud push pganalyze/collector-latest/el/6 $(NAME)-$(VERSION)-1.x86_64.rpm
