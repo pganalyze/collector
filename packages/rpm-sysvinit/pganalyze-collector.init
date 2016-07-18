@@ -15,7 +15,7 @@ PATH=/usr/bin
 prog="pganalyze-collector"
 conf=/etc/pganalyze-collector.conf
 pidfile=/var/run/pganalyze-collector.pid
-logfile=/var/log/pganalyze-collector.log
+statefile=/var/lib/pganalyze-collector/state
 
 # Source function library.
 . /etc/init.d/functions
@@ -29,10 +29,11 @@ start(){
 	test -x /usr/bin/$prog || exit 5
 	test -f $conf || exit 6
 
-	touch $logfile
+	touch $pidfile
+	chown pganalyze $pidfile
 
 	echo -n $"Starting $prog: "
-	daemon $prog "--config=$conf --pidfile=$pidfile >$logfile 2>&1 &"
+	daemon --user=pganalyze $prog "--config=$conf --pidfile=$pidfile --statefile=$statefile --syslog &"
 	RETVAL=$?
 	echo
 	return $RETVAL

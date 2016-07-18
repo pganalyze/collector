@@ -34,9 +34,9 @@ RUN mkdir -p $SOURCE_DIR/usr/bin/
 RUN cp $CODE_DIR/collector $SOURCE_DIR/usr/bin/pganalyze-collector
 RUN chmod +x $SOURCE_DIR/usr/bin/pganalyze-collector
 RUN mkdir -p $SOURCE_DIR/etc/
-RUN cp $CODE_DIR/contrib/sample.conf $SOURCE_DIR/etc/pganalyze-collector.conf
+RUN cp $CODE_DIR/contrib/pganalyze-collector.conf $SOURCE_DIR/etc/pganalyze-collector.conf
 RUN mkdir -p $SOURCE_DIR/etc/init.d
-RUN cp $CODE_DIR/packages/rhel-sysvinit/pganalyze-collector.init $SOURCE_DIR/etc/init.d/pganalyze-collector
+RUN cp $CODE_DIR/packages/rpm-sysvinit/pganalyze-collector.init $SOURCE_DIR/etc/init.d/pganalyze-collector
 RUN chmod +x $SOURCE_DIR/etc/init.d/pganalyze-collector
 
 # Build the package
@@ -44,8 +44,8 @@ WORKDIR $ROOT_DIR
 RUN scl enable rh-ruby22 "/opt/rh/rh-ruby22/root/usr/local/bin/fpm \
   -n $NAME -v ${VERSION} -t rpm --rpm-os linux \
   --config-files /etc/pganalyze-collector.conf \
-  --after-install $CODE_DIR/packages/rhel-sysvinit/post.sh \
-  --before-remove $CODE_DIR/packages/rhel-sysvinit/preun.sh \
+  --after-install $CODE_DIR/packages/rpm-sysvinit/post.sh \
+  --before-remove $CODE_DIR/packages/rpm-sysvinit/preun.sh \
   -s dir -C $SOURCE_DIR etc usr"
 
 VOLUME ["/out"]

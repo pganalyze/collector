@@ -1,0 +1,50 @@
+FROM ubuntu:trusty
+
+ENV GOPATH /go
+ENV CODE_DIR $GOPATH/src/github.com/pganalyze/collector
+ENV PATH $PATH:/usr/local/go/bin
+ENV ROOT_DIR /root
+ENV SOURCE_DIR /source
+
+# Packages required for both building and packaging
+RUN apt-get update -qq \
+  && apt-get install -y -q build-essential curl git ruby ruby-dev
+
+# FPM
+RUN gem install fpm
+
+# Golang
+RUN curl -o go.tar.gz -sSL "https://storage.googleapis.com/golang/go1.6.2.linux-amd64.tar.gz"
+RUN tar -C /usr/local -xzf go.tar.gz
+
+# Build arguments
+ARG VERSION
+ENV NAME pganalyze-collector
+
+# Build the collector
+COPY . $CODE_DIR
+WORKDIR $CODE_DIR
+RUN make prepare && make build
+
+# Prepare the package source
+RUN mkdir -p $SOURCE_DIR/usr/bin/
+RUN cp $CODE_DIR/collector $SOURCE_DIR/usr/bin/pganalyze-collector
+RUN chmod +x $SOURCE_DIR/usr/bin/pganalyze-collector
+RUN mkdir -p $SOURCE_DIR/etc/
+RUN cp $CODE_DIR/contrib/pganalyze-collector.conf $SOURCE_DIR/etc/pganalyze-collector.conf
+RUN mkdir -p $SOURCE_DIR/etc/init.d
+RUN ln -s /lib/init/upstart-job $SOURCE_DIR/etc/init.d/pganalyze-collector
+RUN mkdir -p $SOURCE_DIR/etc/init
+RUN cp $CODE_DIR/packages/deb-upstart/pganalyze-collector.conf $SOURCE_DIR/etc/init/pganalyze-collector.conf
+RUN chmod 0644 $SOURCE_DIR/etc/init/pganalyze-collector.conf
+
+# Build the package
+WORKDIR $ROOT_DIR
+RUN fpm \
+  -n $NAME -v ${VERSION} -t deb \
+  --after-upgrade $CODE_DIR/packages/deb-upstart/after-upgrade.sh \
+  --after-remove $CODE_DIR/packages/deb-upstart/after-remove.sh \
+  --after-install $CODE_DIR/packages/deb-upstart/after-install.sh \
+  -s dir -C $SOURCE_DIR etc usr
+
+VOLUME ["/out"]

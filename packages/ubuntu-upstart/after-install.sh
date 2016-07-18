@@ -1,1 +1,0 @@
-start -q pganalyze-collector

@@ -1,0 +1,15 @@
+[Unit]
+Description=Statistics collector for the pganalyze database monitoring service
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/pganalyze-collector --config=/etc/pganalyze-collector.conf --statefile=/var/lib/pganalyze-collector/state --no-log-timestamps
+ExecReload=/bin/kill -HUP $MAINPID
+User=pganalyze
+ProtectSystem=full
+ProtectHome=true
+CapabilityBoundingSet=
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target
