@@ -99,6 +99,14 @@
 			"notests": true
 		},
 		{
+			"importpath": "github.com/juju/syslog",
+			"repository": "https://github.com/juju/syslog",
+			"vcs": "git",
+			"revision": "6be94e8b718766e9ff7a37342157fe4795da7cfa",
+			"branch": "master",
+			"notests": true
+		},
+		{
 			"importpath": "github.com/kr/pretty",
 			"repository": "https://github.com/kr/pretty",
 			"vcs": "git",

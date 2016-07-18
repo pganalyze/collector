@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -10,6 +11,8 @@ import (
 	"strconv"
 	"sync"
 	"syscall"
+
+	"github.com/juju/syslog"
 
 	flag "github.com/ogier/pflag"
 
@@ -77,11 +80,16 @@ func main() {
 	var noPostgresSettings, noPostgresLocks, noPostgresFunctions, noPostgresBloat, noPostgresViews bool
 	var noPostgresRelations, noLogs, noExplain, noSystemInformation, diffStatements bool
 	var writeHeapProfile bool
+	var logToSyslog bool
+	var logNoTimestamps bool
 
-	logger := &util.Logger{Destination: log.New(os.Stderr, "", log.LstdFlags)}
+	logFlags := log.LstdFlags
+	logger := &util.Logger{}
 
 	flag.BoolVarP(&testRun, "test", "t", false, "Tests whether we can successfully collect data, submits it to the server, and exits afterwards.")
 	flag.BoolVarP(&logger.Verbose, "verbose", "v", false, "Outputs additional debugging information, use this if you're encoutering errors or other problems.")
+	flag.BoolVar(&logToSyslog, "syslog", false, "Write all log output to syslog instead of stderr (disabled by default)")
+	flag.BoolVar(&logNoTimestamps, "no-log-timestamps", false, "Disable timestamps in the log output (automatically done when syslog is enabled)")
 	flag.BoolVar(&dryRun, "dry-run", false, "Print JSON data that would get sent to web service (without actually sending) and exit afterwards.")
 	flag.BoolVar(&noPostgresRelations, "no-postgres-relations", false, "Don't collect any Postgres relation information (not recommended)")
 	flag.BoolVar(&noPostgresSettings, "no-postgres-settings", false, "Don't collect Postgres configuration settings")
@@ -96,8 +104,22 @@ func main() {
 	flag.BoolVar(&writeHeapProfile, "write-heap-profile", false, "Write a memory heap profile to ~/.pganalyze_collector.mprof when SIGHUP is received (disabled by default, only useful for debugging)")
 	flag.StringVar(&configFilename, "config", defaultConfigFile, "Specify alternative path for config file.")
 	flag.StringVar(&stateFilename, "statefile", "/var/run/pganalyze_collector.state", "Specify alternative path for state file.")
-	flag.StringVar(&pidFilename, "pidfile", "", "Specifies a path that a pidfile should be written to. (default is no pidfile being written)")
+	flag.StringVar(&pidFilename, "pidfile", "", "Specifies a path that a pidfile should be written to (default is no pidfile being written)")
 	flag.Parse()
+
+	if logNoTimestamps || logToSyslog {
+		logFlags = 0
+	}
+
+	if logToSyslog {
+		var err error
+		logger.Destination, err = syslog.NewLogger(syslog.LOG_NOTICE|syslog.LOG_DAEMON, logFlags)
+		if err != nil {
+			panic(fmt.Errorf("Could not setup syslog as requested: %s", err))
+		}
+	} else {
+		logger.Destination = log.New(os.Stderr, "", logFlags)
+	}
 
 	if configFilename == defaultConfigFile {
 		_, err := os.Stat(configFilename)
