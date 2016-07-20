@@ -1,4 +1,4 @@
-pganalyze-collector
+pganalyze collector
 ===================
 
 This is a Go-based daemon which collects various information about Postgres databases
