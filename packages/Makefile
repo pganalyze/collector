@@ -2,6 +2,8 @@ NAME=pganalyze-collector
 VERSION=0.9.0
 #VERSION=$(shell git show -s --format=%ct.%h HEAD)
 
+REPO_GPG_KEY=A2B5F2F9
+
 RPM_PACKAGE_OUT=$(NAME)-$(VERSION)-1.x86_64.rpm
 RPM_SYSVINIT_PACKAGE=$(NAME)-$(VERSION)-1_sysvinit.x86_64.rpm
 RPM_SYSTEMD_PACKAGE=$(NAME)-$(VERSION)-1_systemd.x86_64.rpm
@@ -172,6 +174,27 @@ debian-stretch: $(DEB_SYSTEMD_PACKAGE)
 	docker rm pga-collector-test
 	docker rmi -f pga-collector-test
 	echo "Test successful"
+
+update_rpm_repo:
+	docker build --build-arg VERSION=$(VERSION) -f Dockerfile.repo-rpm -t pga-collector-repo .
+	mkdir -p repo-rpm
+	docker run --name pga-collector-repo -v `pwd`/repo-rpm:/repo -d pga-collector-repo /sbin/init
+	keybase pgp export -s -q $(REPO_GPG_KEY) | docker exec -i pga-collector-repo gpg --allow-secret-key-import --import
+	docker exec pga-collector-repo sh -c "printf \"key 1\ndelkey\ny\nkey 1\ndelkey\ny\nsave\n\" | gpg --batch --command-fd 0 --edit-key $(REPO_GPG_KEY)"
+	docker exec pga-collector-repo rpm --addsign /rpm/$(RPM_SYSVINIT_PACKAGE)
+	docker exec pga-collector-repo rpm --addsign /rpm/$(RPM_SYSTEMD_PACKAGE)
+	docker exec pga-collector-repo rpm --import https://keybase.io/pganalyze/key.asc
+	docker exec pga-collector-repo rpm --checksig /rpm/$(RPM_SYSVINIT_PACKAGE)
+	docker exec pga-collector-repo rpm --checksig /rpm/$(RPM_SYSTEMD_PACKAGE)
+	docker exec pga-collector-repo mkdir -p /repo/el/6/RPMS
+	docker exec pga-collector-repo cp /rpm/$(RPM_SYSVINIT_PACKAGE) /repo/el/6/RPMS/$(RPM_PACKAGE_OUT)
+	docker exec pga-collector-repo createrepo --update /repo/el/6
+	docker exec pga-collector-repo mkdir -p /repo/el/7/RPMS
+	docker exec pga-collector-repo cp /rpm/$(RPM_SYSTEMD_PACKAGE) /repo/el/7/RPMS/$(RPM_PACKAGE_OUT)
+	docker exec pga-collector-repo createrepo --update /repo/el/7
+	docker kill pga-collector-repo
+	docker rm pga-collector-repo
+	docker rmi -f pga-collector-repo
 
 push_packages_release: $(DISTROS)
 	package_cloud push pganalyze/collector/el/6 $(RPM_SYSVINIT_PACKAGE)

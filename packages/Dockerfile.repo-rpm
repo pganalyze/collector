@@ -1,0 +1,17 @@
+FROM centos:7
+
+# Build arguments
+ARG VERSION
+ENV NAME pganalyze-collector
+
+ENV RPM_DIR /rpm
+RUN mkdir -p $RPM_DIR
+
+RUN yum install -y -q rpm-sign createrepo
+
+RUN echo "%_gpg_name team@pganalyze.com" > /root/.rpmmacros
+
+COPY $NAME-$VERSION-1_sysvinit.x86_64.rpm $RPM_DIR
+COPY $NAME-$VERSION-1_systemd.x86_64.rpm $RPM_DIR
+
+VOLUME ["/repo"]
