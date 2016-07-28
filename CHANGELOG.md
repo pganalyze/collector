@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.1       2016-07-28
+
+* Add support for logging to syslog instead of stderr
+* Init scripts for systemd, upstart and sysvinit (see contrib/ directory)
+* Packaging scripts for common Linux distributions (see packages/ directory)
+
+
 ## 0.9.0       2016-07-14
 
 * First official release of new protocol buffers-based collector

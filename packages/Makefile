@@ -15,7 +15,7 @@ export TMP_DIR=$(shell pwd)/tmp
 
 .PHONY: default setup build test clean
 
-default: test
+default: test repo
 
 setup:
 	mkdir -p $(TMP_DIR)
