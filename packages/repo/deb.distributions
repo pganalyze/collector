@@ -1,0 +1,7 @@
+Origin: pganalyze
+Label: pganalyze
+Codename: stable
+Architectures: amd64
+Components: main
+Description: pganalyze Apt repository
+SignWith: A2B5F2F9

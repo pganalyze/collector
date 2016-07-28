@@ -1,6 +1,3 @@
 collector
 pganalyze-collector
-packages/*.deb
-packages/*.rpm
-packages/out
-packages/repo-rpm
+packages/tmp
