@@ -16,14 +16,17 @@ rpm --checksig /rpm/systemd/$RPM_PACKAGE
 mkdir -p /repo/el/6/RPMS
 cp /rpm/sysvinit/$RPM_PACKAGE /repo/el/6/RPMS/
 createrepo --update /repo/el/6
-gpg --detach-sign --armor /repo/el/6/repodata/repomd.xml
+rm -f /repo/el/6/repodata/repomd.xml.asc
+gpg --detach-sign --armor --batch /repo/el/6/repodata/repomd.xml
 
 mkdir -p /repo/el/7/RPMS
 cp /rpm/systemd/$RPM_PACKAGE /repo/el/7/RPMS/
 createrepo --update /repo/el/7
-gpg --detach-sign --armor /repo/el/7/repodata/repomd.xml
+rm -f /repo/el/7/repodata/repomd.xml.asc
+gpg --detach-sign --armor --batch /repo/el/7/repodata/repomd.xml
 
 mkdir -p /repo/fedora/24/RPMS
 cp /rpm/systemd/$RPM_PACKAGE /repo/fedora/24/RPMS/
 createrepo --update /repo/fedora/24
-gpg --detach-sign --armor /repo/fedora/24/repodata/repomd.xml
+rm -f /repo/fedora/24/repodata/repomd.xml.asc
+gpg --detach-sign --armor --batch /repo/fedora/24/repodata/repomd.xml
