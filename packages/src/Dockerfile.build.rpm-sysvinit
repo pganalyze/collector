@@ -42,7 +42,7 @@ RUN chmod +x $SOURCE_DIR/usr/bin/pganalyze-collector
 RUN mkdir -p $SOURCE_DIR/etc/
 RUN cp $CODE_DIR/contrib/pganalyze-collector.conf $SOURCE_DIR/etc/pganalyze-collector.conf
 RUN mkdir -p $SOURCE_DIR/etc/init.d
-RUN cp $CODE_DIR/packages/src/rpm-sysvinit/pganalyze-collector.init $SOURCE_DIR/etc/init.d/pganalyze-collector
+RUN cp $CODE_DIR/contrib/sysvinit/pganalyze-collector.init $SOURCE_DIR/etc/init.d/pganalyze-collector
 RUN chmod +x $SOURCE_DIR/etc/init.d/pganalyze-collector
 
 # Build the package

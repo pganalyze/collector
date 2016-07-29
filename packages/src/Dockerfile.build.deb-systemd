@@ -43,7 +43,7 @@ RUN cp $CODE_DIR/contrib/pganalyze-collector.conf $SOURCE_DIR/etc/pganalyze-coll
 WORKDIR $ROOT_DIR
 RUN fpm \
   -n $NAME -v ${VERSION} -t deb \
-  --deb-systemd $CODE_DIR/contrib/pganalyze-collector.service \
+  --deb-systemd $CODE_DIR/contrib/systemd/pganalyze-collector.service \
   --after-install $CODE_DIR/packages/src/deb-systemd/after-install.sh \
   -m "<team@pganalyze.com>" --url "https://pganalyze.com/" \
   --description "pganalyze statistics collector" \
