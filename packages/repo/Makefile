@@ -15,7 +15,7 @@ download_repo:
 	mkdir -p $(REPO_DIR)
 
 upload_repo:
-	aws s3 sync --acl public-read $(REPO_DIR) s3://packages.pganalyze.com/
+	aws s3 sync --acl public-read --cache-control no-cache $(REPO_DIR) s3://packages.pganalyze.com/
 
 update_rpm:
 	cp $(TMP_DIR)/$(RPM_SYSVINIT_PACKAGE) .
