@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.2       2016-08-01
+
+* PostgreSQL 9.2, 9.3 and 9.6 Support
+* Adjust default config and state file path to match packages
+* Allow using postgres driver default values for connection credentials
+
+
 ## 0.9.1       2016-07-28
 
 * Add support for logging to syslog instead of stderr
