@@ -36,14 +36,29 @@ func (config ServerConfig) GetPqOpenString() string {
 		return config.DbURL
 	}
 
-	dbinfo := fmt.Sprintf("user=%s dbname=%s host=%s port=%d connect_timeout=10 sslmode=%s",
-		config.DbUsername, config.DbName, config.DbHost, config.DbPort, config.DbSslMode)
+	dbinfo := []string{}
 
-	if config.DbPassword != "" {
-		dbinfo += fmt.Sprintf(" password=%s", config.DbPassword)
+	if config.DbUsername != "" {
+		dbinfo = append(dbinfo, fmt.Sprintf("user=%s", config.DbUsername))
 	}
+	if config.DbPassword != "" {
+		dbinfo = append(dbinfo, fmt.Sprintf("password=%s", config.DbPassword))
+	}
+	if config.DbName != "" {
+		dbinfo = append(dbinfo, fmt.Sprintf("dbname=%s", config.DbName))
+	}
+	if config.DbHost != "" {
+		dbinfo = append(dbinfo, fmt.Sprintf("host=%s", config.DbHost))
+	}
+	if config.DbPort != 0 {
+		dbinfo = append(dbinfo, fmt.Sprintf("port=%d", config.DbPort))
+	}
+	if config.DbSslMode != "" {
+		dbinfo = append(dbinfo, fmt.Sprintf("sslmode=%s", config.DbSslMode))
+	}
+	dbinfo = append(dbinfo, "connect_timeout=10")
 
-	return dbinfo
+	return strings.Join(dbinfo, " ")
 }
 
 // GetDbHost - Gets the database hostname from the given configuration
