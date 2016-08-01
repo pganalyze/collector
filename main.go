@@ -69,7 +69,7 @@ func run(wg sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *u
 	return stop
 }
 
-const defaultConfigFile = "/etc/pganalyze_collector.conf"
+const defaultConfigFile = "/etc/pganalyze-collector.conf"
 
 func main() {
 	var dryRun bool
@@ -103,7 +103,7 @@ func main() {
 	flag.BoolVar(&diffStatements, "diff-statements", false, "Send a diff of the pg_stat_statements statistics, instead of counter values")
 	flag.BoolVar(&writeHeapProfile, "write-heap-profile", false, "Write a memory heap profile to ~/.pganalyze_collector.mprof when SIGHUP is received (disabled by default, only useful for debugging)")
 	flag.StringVar(&configFilename, "config", defaultConfigFile, "Specify alternative path for config file.")
-	flag.StringVar(&stateFilename, "statefile", "/var/run/pganalyze_collector.state", "Specify alternative path for state file.")
+	flag.StringVar(&stateFilename, "statefile", "/var/run/pganalyze-collector.state", "Specify alternative path for state file.")
 	flag.StringVar(&pidFilename, "pidfile", "", "Specifies a path that a pidfile should be written to (default is no pidfile being written)")
 	flag.Parse()
 
