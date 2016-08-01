@@ -83,7 +83,8 @@ type CollectionOpts struct {
 	SubmitCollectedData bool
 	TestRun             bool
 
-	StateFilename string
+	StateFilename    string
+	WriteStateUpdate bool
 }
 
 type GrantConfig struct {

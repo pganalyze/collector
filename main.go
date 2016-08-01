@@ -74,6 +74,7 @@ const defaultConfigFile = "/etc/pganalyze-collector.conf"
 func main() {
 	var dryRun bool
 	var testRun bool
+	var forceStateUpdate bool
 	var configFilename string
 	var stateFilename string
 	var pidFilename string
@@ -91,6 +92,7 @@ func main() {
 	flag.BoolVar(&logToSyslog, "syslog", false, "Write all log output to syslog instead of stderr (disabled by default)")
 	flag.BoolVar(&logNoTimestamps, "no-log-timestamps", false, "Disable timestamps in the log output (automatically done when syslog is enabled)")
 	flag.BoolVar(&dryRun, "dry-run", false, "Print JSON data that would get sent to web service (without actually sending) and exit afterwards.")
+	flag.BoolVar(&forceStateUpdate, "force-state-update", false, "Updates the state file even if other options would have prevented it (intended to be used together with --dry-run for debugging)")
 	flag.BoolVar(&noPostgresRelations, "no-postgres-relations", false, "Don't collect any Postgres relation information (not recommended)")
 	flag.BoolVar(&noPostgresSettings, "no-postgres-settings", false, "Don't collect Postgres configuration settings")
 	flag.BoolVar(&noPostgresLocks, "no-postgres-locks", false, "Don't collect Postgres lock information (NOTE: This is always enabled right now, i.e. no lock data is gathered)")
@@ -146,6 +148,7 @@ func main() {
 		CollectSystemInformation: !noSystemInformation,
 		DiffStatements:           diffStatements,
 		StateFilename:            stateFilename,
+		WriteStateUpdate:         !testRun || forceStateUpdate,
 		StatementTimeoutMs:       10000,
 	}
 

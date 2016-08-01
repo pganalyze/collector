@@ -1,0 +1,18 @@
+FROM postgres:9.4
+ADD test/postgres-pgss.sh /docker-entrypoint-initdb.d/
+
+ENV GOPATH /go
+ENV CODE_DIR $GOPATH/src/github.com/pganalyze/collector
+ENV PATH $PATH:/usr/local/go/bin
+
+# Packages required for both building and packaging
+RUN apt-get update -qq && apt-get install -y -q build-essential git curl
+
+# Golang
+RUN curl -o go.tar.gz -sSL "https://storage.googleapis.com/golang/go1.6.2.linux-amd64.tar.gz"
+RUN tar -C /usr/local -xzf go.tar.gz
+
+# Build the collector
+COPY . $CODE_DIR
+WORKDIR $CODE_DIR
+RUN make prepare && make build

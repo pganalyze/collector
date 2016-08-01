@@ -10,6 +10,9 @@ import (
 	"github.com/pganalyze/collector/state"
 )
 
+const relationsSQLDefaultOptionalFields = "0"
+const relationsSQLpg93OptionalFields = "c.relminmxid"
+
 const relationsSQL string = `
 	 WITH locked_relids AS (SELECT DISTINCT relation relid FROM pg_locks WHERE mode = 'AccessExclusiveLock')
  SELECT c.oid,
@@ -22,7 +25,7 @@ const relationsSQL string = `
 				c.relhassubclass AS relation_has_inheritance_children,
 				c.reltoastrelid IS NULL AS relation_has_toast,
 				c.relfrozenxid AS relation_frozen_xid,
-				c.relminmxid AS relation_min_mxid,
+				%s,
 				locked_relids.relid IS NOT NULL
 	 FROM pg_catalog.pg_class c
 	 LEFT JOIN pg_catalog.pg_namespace n ON (n.oid = c.relnamespace)
@@ -116,7 +119,15 @@ func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 	relations := make(map[state.Oid]state.PostgresRelation, 0)
 
 	// Relations
-	rows, err := db.Query(QueryMarkerSQL + relationsSQL)
+	var optionalFields string
+
+	if postgresVersion.Numeric >= state.PostgresVersion93 {
+		optionalFields = relationsSQLpg93OptionalFields
+	} else {
+		optionalFields = relationsSQLDefaultOptionalFields
+	}
+
+	rows, err := db.Query(QueryMarkerSQL + fmt.Sprintf(relationsSQL, optionalFields))
 	if err != nil {
 		err = fmt.Errorf("Relations/Query: %s", err)
 		return nil, err

@@ -1,3 +1,4 @@
 collector
 pganalyze-collector
 packages/tmp
+test/*.json

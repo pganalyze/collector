@@ -281,16 +281,24 @@ func (curr NetworkStats) DiffSince(prev NetworkStats, collectedIntervalSecs uint
 
 // DiffSince - Calculate the diff between two disk stats runs
 func (curr DiskStats) DiffSince(prev DiskStats, collectedIntervalSecs uint32) DiffedDiskStats {
-	return DiffedDiskStats{
-		ReadOperationsPerSecond:  float64(curr.ReadsCompleted-prev.ReadsCompleted) / float64(collectedIntervalSecs),
+	readsPerSecond := float64(curr.ReadsCompleted - prev.ReadsCompleted)
+	writePerSecond := float64(curr.WritesCompleted - prev.WritesCompleted)
+
+	diffed := DiffedDiskStats{
+		ReadOperationsPerSecond:  readsPerSecond / float64(collectedIntervalSecs),
 		ReadsMergedPerSecond:     float64(curr.ReadsMerged-prev.ReadsMerged) / float64(collectedIntervalSecs),
 		BytesReadPerSecond:       float64(curr.BytesRead-prev.BytesRead) / float64(collectedIntervalSecs),
-		AvgReadLatency:           float64(curr.ReadTimeMs-prev.ReadTimeMs) / float64(curr.ReadsCompleted-prev.ReadsCompleted),
-		WriteOperationsPerSecond: float64(curr.WritesCompleted-prev.WritesCompleted) / float64(collectedIntervalSecs),
+		WriteOperationsPerSecond: writePerSecond / float64(collectedIntervalSecs),
 		WritesMergedPerSecond:    float64(curr.WritesMerged-prev.WritesMerged) / float64(collectedIntervalSecs),
 		BytesWrittenPerSecond:    float64(curr.BytesWritten-prev.BytesWritten) / float64(collectedIntervalSecs),
-		AvgWriteLatency:          float64(curr.WriteTimeMs-prev.WriteTimeMs) / float64(curr.WritesCompleted-prev.WritesCompleted),
 		AvgQueueSize:             curr.AvgQueueSize,
 		UtilizationPercent:       float64(curr.IoTime-prev.IoTime) / float64(collectedIntervalSecs) * 100.0,
 	}
+
+	if readsPerSecond > 0 {
+		diffed.AvgReadLatency = float64(curr.ReadTimeMs-prev.ReadTimeMs) / readsPerSecond
+		diffed.AvgWriteLatency = float64(curr.WriteTimeMs-prev.WriteTimeMs) / writePerSecond
+	}
+
+	return diffed
 }

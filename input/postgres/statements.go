@@ -3,8 +3,10 @@ package postgres
 import (
 	"database/sql"
 	"fmt"
+	"hash/fnv"
 	"strings"
 
+	"github.com/guregu/null"
 	"github.com/lib/pq"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
@@ -99,6 +101,7 @@ func GetStatements(logger *util.Logger, db *sql.DB, postgresVersion state.Postgr
 
 	for rows.Next() {
 		var key state.PostgresStatementKey
+		var queryID null.Int
 		var statement state.PostgresStatement
 		var stats state.PostgresStatementStats
 
@@ -106,9 +109,18 @@ func GetStatements(logger *util.Logger, db *sql.DB, postgresVersion state.Postgr
 			&stats.SharedBlksHit, &stats.SharedBlksRead, &stats.SharedBlksDirtied, &stats.SharedBlksWritten,
 			&stats.LocalBlksHit, &stats.LocalBlksRead, &stats.LocalBlksDirtied, &stats.LocalBlksWritten,
 			&stats.TempBlksRead, &stats.TempBlksWritten, &stats.BlkReadTime, &stats.BlkWriteTime,
-			&key.QueryID, &stats.MinTime, &stats.MaxTime, &stats.MeanTime, &stats.StddevTime)
+			&queryID, &stats.MinTime, &stats.MaxTime, &stats.MeanTime, &stats.StddevTime)
 		if err != nil {
 			return nil, nil, err
+		}
+
+		if queryID.Valid {
+			key.QueryID = queryID.Int64
+		} else {
+			// Note: This is a heuristic for old Postgres versions and will not work for duplicate queries (e.g. when tables are dropped and recreated)
+			h := fnv.New64a()
+			h.Write([]byte(statement.NormalizedQuery))
+			key.QueryID = int64(h.Sum64())
 		}
 
 		statements[key] = statement

@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/pganalyze/collector/output/pganalyze_collector"
@@ -84,10 +85,15 @@ func debugOutputAsJSON(logger *util.Logger, compressedData bytes.Buffer) {
 	}
 
 	var out bytes.Buffer
-	dataJSON, _ := json.Marshal(s)
-	json.Indent(&out, dataJSON, "", "\t")
+	var marshaler jsonpb.Marshaler
+	dataJSON, err := marshaler.MarshalToString(s)
+	if err != nil {
+		logger.PrintError("Failed to transform protocol buffers to JSON: %s", err)
+		return
+	}
+	json.Indent(&out, []byte(dataJSON), "", "\t")
 	logger.PrintInfo("Dry run - data that would have been sent will be output on stdout:\n")
-	logger.PrintInfo(out.String())
+	fmt.Printf("%s\n", out.String())
 }
 
 type s3UploadResponse struct {
