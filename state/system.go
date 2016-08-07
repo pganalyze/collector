@@ -259,6 +259,10 @@ func (curr CPUStatistic) DiffSince(prev CPUStatistic) DiffedSystemCPUStats {
 	guestNiceSecs := curr.GuestNiceSeconds - prev.GuestNiceSeconds
 	totalSecs := userSecs + systemSecs + idleSecs + niceSecs + iowaitSecs + irqSecs + softIrqSecs + stealSecs + guestSecs + guestNiceSecs
 
+	if totalSecs == 0 {
+		return DiffedSystemCPUStats{}
+	}
+
 	return DiffedSystemCPUStats{
 		UserPercent:      userSecs / totalSecs * 100,
 		SystemPercent:    systemSecs / totalSecs * 100,
@@ -284,13 +288,13 @@ func (curr NetworkStats) DiffSince(prev NetworkStats, collectedIntervalSecs uint
 // DiffSince - Calculate the diff between two disk stats runs
 func (curr DiskStats) DiffSince(prev DiskStats, collectedIntervalSecs uint32) DiffedDiskStats {
 	readsPerSecond := float64(curr.ReadsCompleted - prev.ReadsCompleted)
-	writePerSecond := float64(curr.WritesCompleted - prev.WritesCompleted)
+	writesPerSecond := float64(curr.WritesCompleted - prev.WritesCompleted)
 
 	diffed := DiffedDiskStats{
 		ReadOperationsPerSecond:  readsPerSecond / float64(collectedIntervalSecs),
 		ReadsMergedPerSecond:     float64(curr.ReadsMerged-prev.ReadsMerged) / float64(collectedIntervalSecs),
 		BytesReadPerSecond:       float64(curr.BytesRead-prev.BytesRead) / float64(collectedIntervalSecs),
-		WriteOperationsPerSecond: writePerSecond / float64(collectedIntervalSecs),
+		WriteOperationsPerSecond: writesPerSecond / float64(collectedIntervalSecs),
 		WritesMergedPerSecond:    float64(curr.WritesMerged-prev.WritesMerged) / float64(collectedIntervalSecs),
 		BytesWrittenPerSecond:    float64(curr.BytesWritten-prev.BytesWritten) / float64(collectedIntervalSecs),
 		AvgQueueSize:             curr.AvgQueueSize,
@@ -299,7 +303,10 @@ func (curr DiskStats) DiffSince(prev DiskStats, collectedIntervalSecs uint32) Di
 
 	if readsPerSecond > 0 {
 		diffed.AvgReadLatency = float64(curr.ReadTimeMs-prev.ReadTimeMs) / readsPerSecond
-		diffed.AvgWriteLatency = float64(curr.WriteTimeMs-prev.WriteTimeMs) / writePerSecond
+	}
+
+	if writesPerSecond > 0 {
+		diffed.AvgWriteLatency = float64(curr.WriteTimeMs-prev.WriteTimeMs) / writesPerSecond
 	}
 
 	return diffed
