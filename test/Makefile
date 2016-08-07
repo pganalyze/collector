@@ -15,7 +15,7 @@ pg92:
 pg93:
 	docker build -f Dockerfile.test-pg93 -t pganalyze-collector-test ..
 	docker run --name pganalyze-collector-test -d pganalyze-collector-test
-	sleep 5
+	sleep 10
 	docker exec pganalyze-collector-test pgbench -U postgres -i
 	docker exec pganalyze-collector-test pgbench -U postgres
 	docker exec pganalyze-collector-test sh -c "DB_USERNAME=postgres ./collector --dry-run --force-state-update -v" > pg93_1.json
@@ -27,7 +27,7 @@ pg93:
 pg94:
 	docker build -f Dockerfile.test-pg94 -t pganalyze-collector-test ..
 	docker run --name pganalyze-collector-test -d pganalyze-collector-test
-	sleep 5
+	sleep 10
 	docker exec pganalyze-collector-test pgbench -U postgres -i
 	docker exec pganalyze-collector-test pgbench -U postgres
 	docker exec pganalyze-collector-test sh -c "DB_USERNAME=postgres ./collector --dry-run --force-state-update -v" > pg94_1.json
@@ -39,7 +39,7 @@ pg94:
 pg95:
 	docker build -f Dockerfile.test-pg95 -t pganalyze-collector-test ..
 	docker run --name pganalyze-collector-test -d pganalyze-collector-test
-	sleep 5
+	sleep 10
 	docker exec pganalyze-collector-test pgbench -U postgres -i
 	docker exec pganalyze-collector-test pgbench -U postgres
 	docker exec pganalyze-collector-test sh -c "DB_USERNAME=postgres ./collector --dry-run --force-state-update -v" > pg95_1.json
@@ -51,7 +51,7 @@ pg95:
 pg96:
 	docker build -f Dockerfile.test-pg96 -t pganalyze-collector-test ..
 	docker run --name pganalyze-collector-test -d pganalyze-collector-test
-	sleep 5
+	sleep 10
 	docker exec pganalyze-collector-test pgbench -U postgres -i
 	docker exec pganalyze-collector-test pgbench -U postgres
 	docker exec pganalyze-collector-test sh -c "DB_USERNAME=postgres ./collector --dry-run --force-state-update -v" > pg96_1.json

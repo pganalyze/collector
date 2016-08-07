@@ -186,7 +186,7 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger, dataDirecto
 			if partition.Fstype == "devtmpfs" || partition.Fstype == "tmpfs" || partition.Fstype == "devpts" ||
 				partition.Fstype == "fusectl" || partition.Fstype == "proc" || partition.Fstype == "cgroup" ||
 				partition.Fstype == "securityfs" || partition.Fstype == "debugfs" || partition.Fstype == "sysfs" ||
-				partition.Fstype == "pstore" {
+				partition.Fstype == "pstore" || partition.Fstype == "mqueue" {
 				continue
 			}
 
@@ -202,9 +202,8 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger, dataDirecto
 				var diskName string
 
 				for name := range system.Disks {
-					if strings.HasPrefix(partition.Device, name) {
+					if (strings.HasPrefix(partition.Device, name) || strings.HasPrefix(partition.Device, "/dev/"+name)) && len(diskName) < len(name) {
 						diskName = name
-						break
 					}
 				}
 
