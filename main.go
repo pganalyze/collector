@@ -148,7 +148,7 @@ func main() {
 		CollectSystemInformation: !noSystemInformation,
 		DiffStatements:           diffStatements,
 		StateFilename:            stateFilename,
-		WriteStateUpdate:         !testRun || forceStateUpdate,
+		WriteStateUpdate:         (!dryRun && !testRun) || forceStateUpdate,
 		StatementTimeoutMs:       10000,
 	}
 
