@@ -15,7 +15,9 @@ type SystemState struct {
 	DiskStats      DiskStatsMap
 	DiskPartitions DiskPartitionMap
 
-	XlogUsedBytes uint64
+	DataDirectoryPartition string // Partition that the data directory lives on (identified by the partition's mountpoint)
+	XlogPartition          string // Partition that the WAL directory lives on
+	XlogUsedBytes          uint64
 }
 
 // SystemType - Enum that describes which kind of system we're monitoring

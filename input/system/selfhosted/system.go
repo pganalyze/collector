@@ -1,6 +1,7 @@
 package selfhosted
 
 import (
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -169,6 +170,12 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger, dataDirecto
 		}
 	}
 
+	xlogDirectory, err := filepath.EvalSymlinks(dataDirectory + "/pg_xlog")
+	if err != nil {
+		logger.PrintVerbose("Selfhosted/System: Failed to resolve xlog path: %s", err)
+		xlogDirectory = dataDirectory + "/pg_xlog"
+	}
+
 	diskPartitions, err := disk.Partitions(true)
 	if err != nil {
 		logger.PrintVerbose("Selfhosted/System: Failed to get disk partitions: %s", err)
@@ -199,6 +206,13 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger, dataDirecto
 						diskName = name
 						break
 					}
+				}
+
+				if strings.HasPrefix(dataDirectory, partition.Mountpoint) && len(system.DataDirectoryPartition) < len(partition.Mountpoint) {
+					system.DataDirectoryPartition = partition.Mountpoint
+				}
+				if strings.HasPrefix(xlogDirectory, partition.Mountpoint) && len(system.XlogPartition) < len(partition.Mountpoint) {
+					system.XlogPartition = partition.Mountpoint
 				}
 
 				system.DiskPartitions[partition.Mountpoint] = state.DiskPartition{

@@ -195,6 +195,13 @@ func transformSystem(s snapshot.FullSnapshot, newState state.PersistedState, dif
 			UsedBytes:        diskPartition.UsedBytes,
 			TotalBytes:       diskPartition.TotalBytes,
 		})
+
+		if mountpoint == newState.System.DataDirectoryPartition {
+			s.System.DataDirectoryDiskPartitionIdx = idx
+		}
+		if mountpoint == newState.System.XlogPartition {
+			s.System.XlogDiskPartitionIdx = idx
+		}
 	}
 
 	return s
