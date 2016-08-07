@@ -49,10 +49,6 @@ type PostgresStatementStatsMap map[PostgresStatementKey]PostgresStatementStats
 type DiffedPostgresStatementStats PostgresStatementStats
 type DiffedPostgresStatementStatsMap map[PostgresStatementKey]DiffedPostgresStatementStats
 
-//func (stmt PostgresStatement) Key() PostgresStatementKey {
-//	return PostgresStatementKey{DatabaseOid: stmt.DatabaseOid, UserOid: stmt.UserOid, QueryID: stmt.QueryID.Int64}
-//}
-
 func (curr PostgresStatementStats) DiffSince(prev PostgresStatementStats) DiffedPostgresStatementStats {
 	return DiffedPostgresStatementStats{
 		Calls:             curr.Calls - prev.Calls,

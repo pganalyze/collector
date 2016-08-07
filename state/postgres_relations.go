@@ -75,7 +75,7 @@ func (r PostgresRelation) Fillfactor() int32 {
 	return 100
 }
 
-// Fillfactor - Returns the FILLFACTOR storage parameter set on the index, or the default (100)
+// Fillfactor - Returns the FILLFACTOR storage parameter set on the index, the default if known (90 for btree), or -1 if unknown
 func (i PostgresIndex) Fillfactor() int32 {
 	fstr, exists := i.Options["fillfactor"]
 	if exists {
