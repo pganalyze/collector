@@ -4,7 +4,7 @@
 
 * Correctly identify PostgreSQL data directory and pg_xlog location
 * Avoid potential NaN values in disk stats for self-hosted systems
-* Don't write stats update for dry runs by default
+* Don't write state file for dry runs by default
 
 
 ## 0.9.2       2016-08-01
