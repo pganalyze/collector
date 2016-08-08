@@ -226,7 +226,5 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger, dataDirecto
 		}
 	}
 
-	// TODO: Locate the filesystem that the data directory lives on
-
 	return
 }

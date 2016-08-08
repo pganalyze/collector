@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.3       2016-08-07
+
+* Correctly identify PostgreSQL data directory and pg_xlog location
+* Avoid potential NaN values in disk stats for self-hosted systems
+* Don't write stats update for dry runs by default
+
+
 ## 0.9.2       2016-08-01
 
 * PostgreSQL 9.2, 9.3 and 9.6 Support
