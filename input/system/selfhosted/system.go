@@ -155,7 +155,7 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger, dataDirecto
 	} else {
 		system.NetworkStats = make(state.NetworkStatsMap)
 		for _, netStat := range netStats {
-			if netStat.BytesRecv == 0 && netStat.BytesSent == 0 {
+			if (netStat.BytesRecv == 0 && netStat.BytesSent == 0) || netStat.Name == "lo" {
 				continue
 			}
 
