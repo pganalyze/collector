@@ -1,6 +1,7 @@
 FROM centos:7
 
 ENV GOPATH /go
+ENV GOVERSION 1.7
 ENV CODE_DIR $GOPATH/src/github.com/pganalyze/collector
 ENV PATH $PATH:/usr/local/go/bin
 ENV ROOT_DIR /root
@@ -13,7 +14,7 @@ RUN yum install -y -q tar make git rpmdevtools ruby ruby-devel gcc
 RUN gem install fpm
 
 # Golang
-RUN curl -o go.tar.gz -sSL "https://storage.googleapis.com/golang/go1.6.2.linux-amd64.tar.gz"
+RUN curl -o go.tar.gz -sSL "https://storage.googleapis.com/golang/go${GOVERSION}.linux-amd64.tar.gz"
 RUN tar -C /usr/local -xzf go.tar.gz
 
 # Build arguments
