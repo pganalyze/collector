@@ -26,7 +26,7 @@ Installation
 
 The collector is available in multiple convenient options:
 
-* APT/YUM packages: https://packagecloud.io/pganalyze/collector
+* APT/YUM packages: https://packages.pganalyze.com/
 * Docker sidekick service, see details further down in this file
 
 Configuration (APT/YUM Packages)
