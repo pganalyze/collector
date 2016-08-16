@@ -2,6 +2,7 @@ package input
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/pganalyze/collector/input/postgres"
 	"github.com/pganalyze/collector/input/system"
@@ -12,6 +13,8 @@ import (
 // CollectFull - Collects a "full" snapshot of all data we need on a regular interval
 func CollectFull(server state.Server, collectionOpts state.CollectionOpts, logger *util.Logger) (ps state.PersistedState, ts state.TransientState, err error) {
 	var explainInputs []state.PostgresExplainInput
+
+	ps.CollectedAt = time.Now()
 
 	ps.Version, err = postgres.GetPostgresVersion(logger, server.Connection)
 	if err != nil {

@@ -29,7 +29,7 @@ func SendFull(db state.Server, collectionOpts state.CollectionOpts, logger *util
 	var data []byte
 
 	snapshotUUID := uuid.NewV4()
-	collectedAt := time.Now()
+	collectedAt := newState.CollectedAt
 	s := transform.StateToSnapshot(newState, diffState, transientState)
 
 	s.SnapshotVersionMajor = 1

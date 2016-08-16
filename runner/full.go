@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/pganalyze/collector/input"
 	"github.com/pganalyze/collector/output"
@@ -37,7 +38,7 @@ func processDatabase(server state.Server, globalCollectionOpts state.CollectionO
 		return newState, grant, err
 	}
 
-	collectedIntervalSecs := uint32(600) // TODO: 10 minutes - we should actually measure the distance between states here
+	collectedIntervalSecs := uint32(newState.CollectedAt.Sub(server.PrevState.CollectedAt) / time.Second)
 	diffState := diffState(logger, server.PrevState, newState, collectedIntervalSecs)
 
 	output.SendFull(server, globalCollectionOpts, logger, newState, diffState, transientState, collectedIntervalSecs)
