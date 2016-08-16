@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.9.4       2016-08-16
+
+* Introduce "pganalyze-collector-helper": Setuid Binary that can be used to run
+  privileged actions when the main collector is running as non-root (the default)
+* Determine the correct distance between two collector runs (instead of assuming 600 seconds)
+* Better monitoring for self-hosted systems
+  * Collect missing Disk I/O statistics
+  * Fix calculation logic for disk utilization
+  * Collect kernel version and architecture
+  * Don't monitor the local loopback network interface
+  * Sort disk/partition/network interface names before output
+  * Don't collect local system information when monitoring remote hosts
+* Packaging
+  * Update to Go 1.7
+  * Systemd: Enforce memory limit of 256mb for the collector
+
+
 ## 0.9.3       2016-08-07
 
 * Correctly identify PostgreSQL data directory and pg_xlog location
