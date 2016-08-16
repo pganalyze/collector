@@ -13,7 +13,6 @@ WORKDIR $CODE_DIR
 RUN apk-install -t build-deps make curl libc-dev gcc go git tar \
   && apk-install ca-certificates \
   && curl -o /usr/local/bin/gosu -sSL "https://github.com/tianon/gosu/releases/download/1.6/gosu-amd64" \
-  && make prepare \
   && make build \
   && go build -o $HOME_DIR/collector \
   && rm -rf $GOPATH \
