@@ -1,6 +1,6 @@
 language: go
 go:
-- 1.6
+- 1.7
 - tip
 script: make OUTFILE=pganalyze-collector-linux-amd64
 deploy:
@@ -12,4 +12,4 @@ deploy:
   on:
     repo: pganalyze/collector
     tags: true
-    go: 1.6
+    go: 1.7
