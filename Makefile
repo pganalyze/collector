@@ -1,16 +1,13 @@
-OUTFILE := collector
+OUTFILE := pganalyze-collector
 PROTOBUF_FILE = snapshot.proto
 
-default: prepare build test
+.PHONY: default build test docker_latest packages
 
-prepare: output/pganalyze_collector/snapshot.pb.go
-	go get
-
-output/pganalyze_collector/snapshot.pb.go: $(PROTOBUF_FILE)
-	protoc --go_out=Mgoogle/protobuf/timestamp.proto=github.com/golang/protobuf/ptypes/timestamp:output/pganalyze_collector $(PROTOBUF_FILE)
+default: build test
 
 build: output/pganalyze_collector/snapshot.pb.go
 	go build -o ${OUTFILE}
+	make -C helper
 
 test: build
 	go test -v ./ ./scheduler ./util ./output/transform/
@@ -22,4 +19,5 @@ docker_latest:
 	docker build -t quay.io/pganalyze/collector:latest .
 	docker push quay.io/pganalyze/collector:latest
 
-.PHONY: default prepare build test release_latest packages
+output/pganalyze_collector/snapshot.pb.go: $(PROTOBUF_FILE)
+	protoc --go_out=Mgoogle/protobuf/timestamp.proto=github.com/golang/protobuf/ptypes/timestamp:output/pganalyze_collector $(PROTOBUF_FILE)

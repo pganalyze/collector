@@ -26,7 +26,7 @@ ENV NAME pganalyze-collector
 COPY . $CODE_DIR
 WORKDIR $CODE_DIR
 RUN git checkout ${GIT_VERSION}
-RUN make prepare && make build
+RUN make build
 
 # Update contrib and packages directory beyond the tagged release
 COPY ./contrib $CODE_DIR/contrib
@@ -34,8 +34,10 @@ COPY ./packages $CODE_DIR/packages
 
 # Prepare the package source
 RUN mkdir -p $SOURCE_DIR/usr/bin/
-RUN cp $CODE_DIR/collector $SOURCE_DIR/usr/bin/pganalyze-collector
+RUN cp $CODE_DIR/pganalyze-collector $SOURCE_DIR/usr/bin/
+RUN cp $CODE_DIR/pganalyze-collector-helper $SOURCE_DIR/usr/bin/
 RUN chmod +x $SOURCE_DIR/usr/bin/pganalyze-collector
+RUN chmod +x $SOURCE_DIR/usr/bin/pganalyze-collector-helper
 RUN mkdir -p $SOURCE_DIR/etc/
 RUN cp $CODE_DIR/contrib/pganalyze-collector.conf $SOURCE_DIR/etc/pganalyze-collector.conf
 

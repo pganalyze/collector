@@ -1,4 +1,4 @@
-collector
 pganalyze-collector
+pganalyze-collector-helper
 packages/tmp
 test/*.json

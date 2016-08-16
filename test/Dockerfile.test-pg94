@@ -15,4 +15,4 @@ RUN tar -C /usr/local -xzf go.tar.gz
 # Build the collector
 COPY . $CODE_DIR
 WORKDIR $CODE_DIR
-RUN make prepare && make build
+RUN make build

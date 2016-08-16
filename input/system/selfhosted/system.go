@@ -1,7 +1,8 @@
 package selfhosted
 
 import (
-	"path/filepath"
+	"encoding/json"
+	"os/exec"
 	"strings"
 	"time"
 
@@ -16,9 +17,31 @@ import (
 	"github.com/shirou/gopsutil/net"
 )
 
+type helperStatus struct {
+	PostmasterPid    int
+	DataDirectory    string
+	XlogDirectory    string
+	XlogUsedBytes    uint64
+	SystemIdentifier string
+}
+
 // GetSystemState - Gets system information about a self-hosted (physical/virtual) system
 func GetSystemState(config config.ServerConfig, logger *util.Logger, dataDirectory string) (system state.SystemState) {
+	var status helperStatus
+
 	system.Info.Type = state.SelfHostedSystem
+
+	statusBytes, err := exec.Command("/usr/bin/pganalyze-collector-helper", "status").Output()
+	if err != nil {
+		logger.PrintVerbose("Selfhosted/System: Could not run helper process: %s", err)
+	} else {
+		err = json.Unmarshal(statusBytes, &status)
+		if err != nil {
+			logger.PrintVerbose("Selfhosted/System: Could not unmarshal helper status: %s", err)
+		}
+	}
+
+	system.XlogUsedBytes = status.XlogUsedBytes
 
 	hostInfo, err := host.Info()
 	if err != nil {
@@ -170,12 +193,6 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger, dataDirecto
 		}
 	}
 
-	xlogDirectory, err := filepath.EvalSymlinks(dataDirectory + "/pg_xlog")
-	if err != nil {
-		logger.PrintVerbose("Selfhosted/System: Failed to resolve xlog path: %s", err)
-		xlogDirectory = dataDirectory + "/pg_xlog"
-	}
-
 	diskPartitions, err := disk.Partitions(true)
 	if err != nil {
 		logger.PrintVerbose("Selfhosted/System: Failed to get disk partitions: %s", err)
@@ -207,10 +224,10 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger, dataDirecto
 					}
 				}
 
-				if strings.HasPrefix(dataDirectory, partition.Mountpoint) && len(system.DataDirectoryPartition) < len(partition.Mountpoint) {
+				if status.DataDirectory != "" && strings.HasPrefix(status.DataDirectory, partition.Mountpoint) && len(system.DataDirectoryPartition) < len(partition.Mountpoint) {
 					system.DataDirectoryPartition = partition.Mountpoint
 				}
-				if strings.HasPrefix(xlogDirectory, partition.Mountpoint) && len(system.XlogPartition) < len(partition.Mountpoint) {
+				if status.XlogDirectory != "" && strings.HasPrefix(status.XlogDirectory, partition.Mountpoint) && len(system.XlogPartition) < len(partition.Mountpoint) {
 					system.XlogPartition = partition.Mountpoint
 				}
 
