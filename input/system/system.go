@@ -20,13 +20,13 @@ func GetLogLines(config config.ServerConfig) (lines []state.LogLine, explainInpu
 }
 
 // GetSystemState - Retrieves a system snapshot for this system and returns it
-func GetSystemState(config config.ServerConfig, logger *util.Logger, dataDirectory string) (system state.SystemState) {
+func GetSystemState(config config.ServerConfig, logger *util.Logger) (system state.SystemState) {
 	dbHost := config.GetDbHost()
 	if config.AwsDbInstanceID != "" {
 		// TODO: We need a smarter selection mechanism here, and also consider AWS instances by hostname
-		system = rds.GetSystemState(config, logger, dataDirectory)
+		system = rds.GetSystemState(config, logger)
 	} else if dbHost == "" || dbHost == "localhost" || dbHost == "127.0.0.1" {
-		system = selfhosted.GetSystemState(config, logger, dataDirectory)
+		system = selfhosted.GetSystemState(config, logger)
 	}
 
 	return

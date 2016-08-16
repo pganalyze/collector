@@ -27,7 +27,7 @@ type helperStatus struct {
 }
 
 // GetSystemState - Gets system information about a self-hosted (physical/virtual) system
-func GetSystemState(config config.ServerConfig, logger *util.Logger, dataDirectory string) (system state.SystemState) {
+func GetSystemState(config config.ServerConfig, logger *util.Logger) (system state.SystemState) {
 	var status helperStatus
 
 	system.Info.Type = state.SelfHostedSystem

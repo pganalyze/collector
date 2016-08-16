@@ -29,8 +29,7 @@ type PersistedState struct {
 	Logs      []LogLine
 	Explains  []PostgresExplain
 
-	DataDirectory string
-	System        SystemState
+	System SystemState
 
 	CollectorStats CollectorStats
 }
