@@ -299,7 +299,7 @@ func (curr DiskStats) DiffSince(prev DiskStats, collectedIntervalSecs uint32) Di
 		WritesMergedPerSecond:    float64(curr.WritesMerged-prev.WritesMerged) / float64(collectedIntervalSecs),
 		BytesWrittenPerSecond:    float64(curr.BytesWritten-prev.BytesWritten) / float64(collectedIntervalSecs),
 		AvgQueueSize:             curr.AvgQueueSize,
-		UtilizationPercent:       float64(curr.IoTime-prev.IoTime) / float64(collectedIntervalSecs) * 100.0,
+		UtilizationPercent:       100 * float64(curr.IoTime-prev.IoTime) / float64(1000*collectedIntervalSecs),
 	}
 
 	if reads > 0 {
