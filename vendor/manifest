@@ -182,7 +182,7 @@
 			"importpath": "github.com/shirou/gopsutil",
 			"repository": "https://github.com/lfittl/gopsutil",
 			"vcs": "git",
-			"revision": "3e9a674e5a635772368bd29371ec0aed8b7e2d90",
+			"revision": "362880bb685ac54ed21206922efd4732a143defd",
 			"branch": "master",
 			"notests": true
 		},
