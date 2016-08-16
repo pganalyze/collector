@@ -1,6 +1,8 @@
 package transform
 
 import (
+	"sort"
+
 	"github.com/golang/protobuf/ptypes"
 	snapshot "github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
@@ -124,7 +126,14 @@ func transformSystem(s snapshot.FullSnapshot, newState state.PersistedState, dif
 		})
 	}
 
-	for interfaceName, interfaceStats := range diffState.SystemNetworkStats {
+	interfaceNames := []string{}
+	for k := range diffState.SystemNetworkStats {
+		interfaceNames = append(interfaceNames, k)
+	}
+	sort.Strings(interfaceNames)
+
+	for _, interfaceName := range interfaceNames {
+		interfaceStats := diffState.SystemNetworkStats[interfaceName]
 		ref := snapshot.NetworkReference{
 			InterfaceName: interfaceName,
 		}
@@ -137,9 +146,16 @@ func transformSystem(s snapshot.FullSnapshot, newState state.PersistedState, dif
 		})
 	}
 
+	deviceNames := []string{}
+	for k := range newState.System.Disks {
+		deviceNames = append(deviceNames, k)
+	}
+	sort.Strings(deviceNames)
+
 	diskNameToIdx := make(map[string]int32)
 
-	for deviceName, disk := range newState.System.Disks {
+	for _, deviceName := range deviceNames {
+		disk := newState.System.Disks[deviceName]
 		ref := snapshot.DiskReference{
 			DeviceName: deviceName,
 		}
@@ -174,7 +190,14 @@ func transformSystem(s snapshot.FullSnapshot, newState state.PersistedState, dif
 		}
 	}
 
-	for mountpoint, diskPartition := range newState.System.DiskPartitions {
+	mountpoints := []string{}
+	for k := range newState.System.DiskPartitions {
+		mountpoints = append(mountpoints, k)
+	}
+	sort.Strings(mountpoints)
+
+	for _, mountpoint := range mountpoints {
+		diskPartition := newState.System.DiskPartitions[mountpoint]
 		ref := snapshot.DiskPartitionReference{
 			Mountpoint: mountpoint,
 		}
