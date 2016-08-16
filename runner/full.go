@@ -39,6 +39,10 @@ func processDatabase(server state.Server, globalCollectionOpts state.CollectionO
 	}
 
 	collectedIntervalSecs := uint32(newState.CollectedAt.Sub(server.PrevState.CollectedAt) / time.Second)
+	if collectedIntervalSecs == 0 {
+		collectedIntervalSecs = 1 // Avoid divide by zero errors for fast consecutive runs
+	}
+
 	diffState := diffState(logger, server.PrevState, newState, collectedIntervalSecs)
 
 	output.SendFull(server, globalCollectionOpts, logger, newState, diffState, transientState, collectedIntervalSecs)
