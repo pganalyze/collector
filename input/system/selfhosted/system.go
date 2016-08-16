@@ -3,6 +3,7 @@ package selfhosted
 import (
 	"encoding/json"
 	"os/exec"
+	"runtime"
 	"strings"
 	"time"
 
@@ -42,6 +43,7 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger, dataDirecto
 	}
 
 	system.XlogUsedBytes = status.XlogUsedBytes
+	system.SystemId = status.SystemIdentifier
 
 	hostInfo, err := host.Info()
 	if err != nil {
@@ -50,19 +52,17 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger, dataDirecto
 		system.Info.BootTime = time.Unix(int64(hostInfo.BootTime), 0)
 		system.Info.SelfHosted = &state.SystemInfoSelfHosted{
 			Hostname:        hostInfo.Hostname,
+			Architecture:    runtime.GOARCH,
 			OperatingSystem: hostInfo.OS,
 			Platform:        hostInfo.Platform,
 			PlatformFamily:  hostInfo.PlatformFamily,
 			PlatformVersion: hostInfo.PlatformVersion,
+			KernelVersion:   hostInfo.KernelVersion,
 		}
 
 		if hostInfo.VirtualizationRole == "guest" {
 			system.Info.SelfHosted.VirtualizationSystem = hostInfo.VirtualizationSystem
 		}
-
-		// TODO:
-		//Architecture         string
-		//KernelVersion        string
 	}
 
 	loadAvg, err := load.Avg()
@@ -182,13 +182,15 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger, dataDirecto
 
 			system.DiskStats[disk.Name] = state.DiskStats{
 				ReadsCompleted:  disk.ReadCount,
+				ReadsMerged:     disk.MergedReadCount,
 				BytesRead:       disk.ReadBytes,
 				ReadTimeMs:      disk.ReadTime,
 				WritesCompleted: disk.WriteCount,
+				WritesMerged:    disk.MergedWriteCount,
 				BytesWritten:    disk.WriteBytes,
 				WriteTimeMs:     disk.WriteTime,
+				AvgQueueSize:    int32(disk.IopsInProgress),
 				IoTime:          disk.IoTime,
-				// TODO: ReadsMerged, WritesMerged, AvgQueueSize
 			}
 		}
 	}

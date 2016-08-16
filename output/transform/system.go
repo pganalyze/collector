@@ -63,6 +63,7 @@ func transformSystem(s snapshot.FullSnapshot, newState state.PersistedState, dif
 		// TODO: Add Info
 	}
 
+	s.System.SystemId = newState.System.SystemId
 	s.System.XlogUsedBytes = newState.System.XlogUsedBytes
 
 	s.System.SchedulerStatistic = &snapshot.SchedulerStatistic{

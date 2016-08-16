@@ -223,6 +223,7 @@ message TablespaceInformation {
 
 message System {
   SystemInformation system_information = 1;
+  string system_id = 2; // Unique identifier for this system (pg_controldata / AWS instance ID / etc)
 
   SchedulerStatistic scheduler_statistic = 10;
   MemoryStatistic memory_statistic = 11;

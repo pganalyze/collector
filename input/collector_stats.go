@@ -29,6 +29,7 @@ func getCollectorStats() state.CollectorStats {
 	runtime.ReadMemStats(&memStats)
 
 	return state.CollectorStats{
+		GoVersion:                runtime.Version(),
 		ActiveGoroutines:         int32(runtime.NumGoroutine()),
 		CgoCalls:                 runtime.NumCgoCall(),
 		MemoryHeapAllocatedBytes: memStats.HeapAlloc,

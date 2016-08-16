@@ -31,6 +31,8 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger, dataDirecto
 		return
 	}
 
+	system.SystemId = util.StringPtrToString(instance.DBInstanceIdentifier)
+
 	system.Info.AmazonRds = &state.SystemInfoAmazonRds{
 		Region:                     config.AwsRegion,
 		InstanceClass:              util.StringPtrToString(instance.DBInstanceClass),

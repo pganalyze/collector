@@ -15,6 +15,7 @@ type SystemState struct {
 	DiskStats      DiskStatsMap
 	DiskPartitions DiskPartitionMap
 
+	SystemId               string // Unique identifier for this system (pg_controldata / AWS instance ID / etc)
 	DataDirectoryPartition string // Partition that the data directory lives on (identified by the partition's mountpoint)
 	XlogPartition          string // Partition that the WAL directory lives on
 	XlogUsedBytes          uint64
@@ -287,26 +288,26 @@ func (curr NetworkStats) DiffSince(prev NetworkStats, collectedIntervalSecs uint
 
 // DiffSince - Calculate the diff between two disk stats runs
 func (curr DiskStats) DiffSince(prev DiskStats, collectedIntervalSecs uint32) DiffedDiskStats {
-	readsPerSecond := float64(curr.ReadsCompleted - prev.ReadsCompleted)
-	writesPerSecond := float64(curr.WritesCompleted - prev.WritesCompleted)
+	reads := float64(curr.ReadsCompleted - prev.ReadsCompleted)
+	writes := float64(curr.WritesCompleted - prev.WritesCompleted)
 
 	diffed := DiffedDiskStats{
-		ReadOperationsPerSecond:  readsPerSecond / float64(collectedIntervalSecs),
+		ReadOperationsPerSecond:  reads / float64(collectedIntervalSecs),
 		ReadsMergedPerSecond:     float64(curr.ReadsMerged-prev.ReadsMerged) / float64(collectedIntervalSecs),
 		BytesReadPerSecond:       float64(curr.BytesRead-prev.BytesRead) / float64(collectedIntervalSecs),
-		WriteOperationsPerSecond: writesPerSecond / float64(collectedIntervalSecs),
+		WriteOperationsPerSecond: writes / float64(collectedIntervalSecs),
 		WritesMergedPerSecond:    float64(curr.WritesMerged-prev.WritesMerged) / float64(collectedIntervalSecs),
 		BytesWrittenPerSecond:    float64(curr.BytesWritten-prev.BytesWritten) / float64(collectedIntervalSecs),
 		AvgQueueSize:             curr.AvgQueueSize,
 		UtilizationPercent:       float64(curr.IoTime-prev.IoTime) / float64(collectedIntervalSecs) * 100.0,
 	}
 
-	if readsPerSecond > 0 {
-		diffed.AvgReadLatency = float64(curr.ReadTimeMs-prev.ReadTimeMs) / readsPerSecond
+	if reads > 0 {
+		diffed.AvgReadLatency = float64(curr.ReadTimeMs-prev.ReadTimeMs) / reads
 	}
 
-	if writesPerSecond > 0 {
-		diffed.AvgWriteLatency = float64(curr.WriteTimeMs-prev.WriteTimeMs) / writesPerSecond
+	if writes > 0 {
+		diffed.AvgWriteLatency = float64(curr.WriteTimeMs-prev.WriteTimeMs) / writes
 	}
 
 	return diffed
