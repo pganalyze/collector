@@ -92,7 +92,7 @@ If you are monitoring an RDS database and want to run the collector inside Docke
 
 ```
 docker pull quay.io/pganalyze/collector:stable
-docker run --rm --name pganalyze-mydb -e DB_URL=postgres://username:password@hostname.us-east-1.rds.amazonaws.com/mydb -e PG_API_KEY=YOUR_PGANALYZE_API_KEY quay.io/pganalyze/collector:stable
+docker run --rm --name pganalyze-mydb -e DB_URL=postgres://username:password@hostname.us-east-1.rds.amazonaws.com/mydb -e PGA_API_KEY=YOUR_PGANALYZE_API_KEY quay.io/pganalyze/collector:stable
 ```
 
 Note that you currently require one Docker container per RDS instance monitored.
