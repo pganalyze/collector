@@ -55,14 +55,12 @@ CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
 
 CREATE OR REPLACE FUNCTION pganalyze.get_stat_statements() RETURNS SETOF pg_stat_statements AS
 $$
-  SELECT * FROM public.pg_stat_statements
-  WHERE dbid IN (SELECT oid FROM pg_database WHERE datname = current_database());
+  /* pganalyze-collector */ SELECT * FROM public.pg_stat_statements;
 $$ LANGUAGE sql VOLATILE SECURITY DEFINER;
 
 CREATE OR REPLACE FUNCTION pganalyze.get_stat_activity() RETURNS SETOF pg_stat_activity AS
 $$
-  SELECT * FROM pg_catalog.pg_stat_activity
-  WHERE datname = current_database();
+  /* pganalyze-collector */ SELECT * FROM pg_catalog.pg_stat_activity;
 $$ LANGUAGE sql VOLATILE SECURITY DEFINER;
 
 CREATE USER pganalyze WITH PASSWORD 'mypassword' CONNECTION LIMIT 5;
