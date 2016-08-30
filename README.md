@@ -92,10 +92,17 @@ If you are monitoring an RDS database and want to run the collector inside Docke
 
 ```
 docker pull quay.io/pganalyze/collector:stable
-docker run --rm --name pganalyze-mydb -e DB_URL=postgres://username:password@hostname.us-east-1.rds.amazonaws.com/mydb -e PGA_API_KEY=YOUR_PGANALYZE_API_KEY quay.io/pganalyze/collector:stable
+docker run --rm --name pganalyze-mydb -e DB_URL=postgres://username:password@hostname.us-east-1.rds.amazonaws.com/mydb \
+-e PGA_API_KEY=YOUR_PGANALYZE_API_KEY -e AWS_INSTANCE_ID=my-instance-id -e AWS_REGION=us-east-1 quay.io/pganalyze/collector:stable
 ```
 
-Note that you currently require one Docker container per RDS instance monitored.
+You'll need to set PGA_API_KEY, AWS_INSTANCE_ID and AWS_REGION with the correct values.
+
+Please also note that the EC2 instance running your Docker setup needs to have an IAM role that allows Cloudwatch access: https://pganalyze.com/docs/install/amazon_rds/03_setup_iam_policy
+
+To get better data quality for server metrics, enable "Enhanced Monitoring" in your RDS dashboard. The pganalyze collector will automatically pick this up and get all the metrics.
+
+We currently require one Docker container per RDS instance monitored.
 
 
 Docker Container (non-RDS)
