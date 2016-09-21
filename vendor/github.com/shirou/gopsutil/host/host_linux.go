@@ -359,14 +359,16 @@ func PlatformInformation() (platform string, family string, version string, err 
 }
 
 func KernelVersion() (version string, err error) {
-	uname, err := exec.LookPath("uname")
-	if err != nil {
-		return "", err
-	}
+	filename := common.HostProc("sys/kernel/osrelease")
+	if common.PathExists(filename) {
+		contents, err := common.ReadLines(filename)
+		if err != nil {
+			return "", err
+		}
 
-	out, err := invoke.Command(uname, "-r")
-	if err == nil {
-		version = strings.ToLower(strings.TrimSpace(string(out)))
+		if len(contents) > 0 {
+			version = contents[0]
+		}
 	}
 
 	return version, nil

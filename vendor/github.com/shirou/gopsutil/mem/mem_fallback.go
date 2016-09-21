@@ -1,4 +1,4 @@
-// +build solaris
+// +build !darwin,!linux,!freebsd,!windows
 
 package mem
 
