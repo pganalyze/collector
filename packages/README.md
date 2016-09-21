@@ -29,6 +29,7 @@ Supported Linux distributions
   * Jessie
   * Stretch (Testing)
 * Ubuntu
+  * Precise (12.04 LTS)
   * Trusty (14.04 LTS)
   * Xenial (16.04 LTS)
 
@@ -44,7 +45,7 @@ Currently the following minimum glibc versions apply:
 
 * RPM, sysvinit: glibc 2.12 (CentOS 6)
 * RPM, systemd: glibc 2.17 (CentOS 7)
-* DEB, upstart: eglibc 2.19 (Ubuntu Trusty / 14.04 LTS)
+* DEB, upstart: glibc 2.12 (Ubuntu Precise / 12.04 LTS)
 * DEB, systemd: glibc 2.19 (Debian Jessie)
 
 
