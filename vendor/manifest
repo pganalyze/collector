@@ -107,6 +107,14 @@
 			"notests": true
 		},
 		{
+			"importpath": "github.com/keybase/go-ps",
+			"repository": "https://github.com/keybase/go-ps",
+			"vcs": "git",
+			"revision": "9c11ca40a47944f49e0784b77a66636cb098445a",
+			"branch": "master",
+			"notests": true
+		},
+		{
 			"importpath": "github.com/kr/pretty",
 			"repository": "https://github.com/kr/pretty",
 			"vcs": "git",

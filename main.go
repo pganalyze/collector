@@ -83,11 +83,13 @@ func main() {
 	var writeHeapProfile bool
 	var logToSyslog bool
 	var logNoTimestamps bool
+	var reloadRun bool
 
 	logFlags := log.LstdFlags
 	logger := &util.Logger{}
 
 	flag.BoolVarP(&testRun, "test", "t", false, "Tests whether we can successfully collect data, submits it to the server, and exits afterwards.")
+	flag.BoolVar(&reloadRun, "reload", false, "Reloads the collector daemon thats running on the host")
 	flag.BoolVarP(&logger.Verbose, "verbose", "v", false, "Outputs additional debugging information, use this if you're encoutering errors or other problems.")
 	flag.BoolVar(&logToSyslog, "syslog", false, "Write all log output to syslog instead of stderr (disabled by default)")
 	flag.BoolVar(&logNoTimestamps, "no-log-timestamps", false, "Disable timestamps in the log output (automatically done when syslog is enabled)")
@@ -150,6 +152,11 @@ func main() {
 		StateFilename:            stateFilename,
 		WriteStateUpdate:         (!dryRun && !testRun) || forceStateUpdate,
 		StatementTimeoutMs:       10000,
+	}
+
+	if reloadRun {
+		util.Reload()
+		return
 	}
 
 	if dryRun {
