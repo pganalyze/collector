@@ -9,7 +9,7 @@ ENV SOURCE_DIR /source
 
 # Packages required for both building and packaging
 RUN apt-get update -qq \
-  && apt-get install -y -q build-essential curl git ruby ruby-dev
+  && apt-get install -y -q build-essential curl git ruby1.9.1 ruby1.9.1-dev
 
 # FPM
 RUN gem install fpm
