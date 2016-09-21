@@ -1,4 +1,4 @@
-package util
+package awsutil
 
 import (
 	"time"
@@ -8,6 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/cloudwatch"
 	"github.com/aws/aws-sdk-go/service/rds"
 	"github.com/pganalyze/collector/config"
+	"github.com/pganalyze/collector/util"
 )
 
 func FindRdsInstance(config config.ServerConfig, sess *session.Session) (instance *rds.DBInstance, err error) {
@@ -83,10 +84,10 @@ func GetRdsParameter(group *rds.DBParameterGroupStatus, name string, svc *rds.RD
 type RdsCloudWatchReader struct {
 	svc      *cloudwatch.CloudWatch
 	instance string
-	logger   *Logger
+	logger   *util.Logger
 }
 
-func NewRdsCloudWatchReader(sess *session.Session, logger *Logger, instance string) RdsCloudWatchReader {
+func NewRdsCloudWatchReader(sess *session.Session, logger *util.Logger, instance string) RdsCloudWatchReader {
 	return RdsCloudWatchReader{svc: cloudwatch.New(sess), instance: instance, logger: logger}
 }
 

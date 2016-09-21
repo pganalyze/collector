@@ -5,6 +5,8 @@ import (
 	"strconv"
 
 	"github.com/go-ini/ini"
+
+	"github.com/pganalyze/collector/util"
 )
 
 func getDefaultConfig() *ServerConfig {
@@ -59,7 +61,7 @@ func getDefaultConfig() *ServerConfig {
 }
 
 // Read - Reads the configuration from the specified filename, or fall back to the default config
-func Read(filename string) ([]ServerConfig, error) {
+func Read(logger *util.Logger, filename string) ([]ServerConfig, error) {
 	var servers []ServerConfig
 
 	if _, err := os.Stat(filename); err == nil {
@@ -82,6 +84,10 @@ func Read(filename string) ([]ServerConfig, error) {
 			if config.DbName != "" {
 				servers = append(servers, *config)
 			}
+		}
+
+		if len(servers) == 0 {
+			logger.PrintError("Error: Configuration is empty, please edit %s and reload the collector", filename)
 		}
 	} else {
 		servers = append(servers, *getDefaultConfig())

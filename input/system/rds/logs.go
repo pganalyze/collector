@@ -14,7 +14,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/rds"
 	"github.com/pganalyze/collector/config"
 	"github.com/pganalyze/collector/state"
-	"github.com/pganalyze/collector/util"
+	"github.com/pganalyze/collector/util/awsutil"
 )
 
 // http://docs.aws.amazon.com/AmazonRDS/latest/APIReference//API_DescribeDBLogFiles.html
@@ -26,11 +26,11 @@ func GetLogLines(config config.ServerConfig) (result []state.LogLine, explains [
 	// Get interesting files (last written to in the last 10 minutes)
 	// Remember markers for each file
 
-	sess := util.GetAwsSession(config)
+	sess := awsutil.GetAwsSession(config)
 
 	rdsSvc := rds.New(sess)
 
-	instance, err := util.FindRdsInstance(config, sess)
+	instance, err := awsutil.FindRdsInstance(config, sess)
 
 	if err != nil {
 		fmt.Printf("Error: %v\n", err)

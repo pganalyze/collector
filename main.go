@@ -34,7 +34,7 @@ func run(wg sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *u
 		return nil
 	}
 
-	serverConfigs, err := config.Read(configFilename)
+	serverConfigs, err := config.Read(logger, configFilename)
 	if err != nil {
 		logger.PrintError("Error: Could not read configuration, awaiting SIGHUP or process kill")
 		return nil

@@ -10,16 +10,17 @@ import (
 	"github.com/pganalyze/collector/config"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
+	"github.com/pganalyze/collector/util/awsutil"
 )
 
 // GetSystemState - Gets system information about an Amazon RDS instance
 func GetSystemState(config config.ServerConfig, logger *util.Logger) (system state.SystemState) {
 	system.Info.Type = state.AmazonRdsSystem
 
-	sess := util.GetAwsSession(config)
+	sess := awsutil.GetAwsSession(config)
 	rdsSvc := rds.New(sess)
 
-	instance, err := util.FindRdsInstance(config, sess)
+	instance, err := awsutil.FindRdsInstance(config, sess)
 
 	if err != nil {
 		logger.PrintError("Rds/System: Encountered error when looking for instance: %v\n", err)
@@ -55,13 +56,13 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger) (system sta
 
 	group := instance.DBParameterGroups[0]
 
-	pgssParam, _ := util.GetRdsParameter(group, "shared_preload_libraries", rdsSvc)
+	pgssParam, _ := awsutil.GetRdsParameter(group, "shared_preload_libraries", rdsSvc)
 
 	system.Info.AmazonRds.ParameterPgssEnabled = pgssParam != nil && *pgssParam.ParameterValue == "pg_stat_statements"
 	system.Info.AmazonRds.ParameterApplyStatus = *group.ParameterApplyStatus
 
 	dbInstanceID := *instance.DBInstanceIdentifier
-	cloudWatchReader := util.NewRdsCloudWatchReader(sess, logger, dbInstanceID)
+	cloudWatchReader := awsutil.NewRdsCloudWatchReader(sess, logger, dbInstanceID)
 
 	system.Disks = make(state.DiskMap)
 	system.Disks["default"] = state.Disk{
