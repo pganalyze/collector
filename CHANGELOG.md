@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.9.5       2016-09-21
+
+* Improved first user experience
+  * Add "--reload" command for sending SIGHUP to daemon process
+  * Show error message when configuration file is empty
+* Experimental build support for Solaris
+* System metrics: Various fixes
+* Packaging: Add support for Ubuntu Precise / 12.04 LTS
+
+
 ## 0.9.4       2016-08-16
 
 * Introduce "pganalyze-collector-helper": Setuid Binary that can be used to run
