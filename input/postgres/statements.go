@@ -32,10 +32,23 @@ SELECT 1 AS enabled
  WHERE nspname = 'pganalyze' AND proname = 'get_stat_statements'
 `
 
+const connectedAsSuperUserSQL string = `SELECT current_setting('is_superuser') = 'on'`
+
 func statementStatsHelperExists(db *sql.DB) bool {
 	var enabled bool
 
 	err := db.QueryRow(QueryMarkerSQL + statementStatsHelperSQL).Scan(&enabled)
+	if err != nil {
+		return false
+	}
+
+	return enabled
+}
+
+func connectedAsSuperUser(db *sql.DB) bool {
+	var enabled bool
+
+	err := db.QueryRow(QueryMarkerSQL + connectedAsSuperUserSQL).Scan(&enabled)
 	if err != nil {
 		return false
 	}
@@ -60,6 +73,11 @@ func GetStatements(logger *util.Logger, db *sql.DB, postgresVersion state.Postgr
 		logger.PrintVerbose("Found pganalyze.get_stat_statements() stats helper")
 		sourceTable = "pganalyze.get_stat_statements()"
 	} else {
+		if !connectedAsSuperUser(db) {
+			logger.PrintInfo("Warning: You are not connecting as superuser. Please setup" +
+				" the monitoring helper functions (https://github.com/pganalyze/collector#setting-up-a-restricted-monitoring-user)" +
+				" or connect as superuser, to get query statistics for all roles.")
+		}
 		sourceTable = "pg_stat_statements"
 	}
 
