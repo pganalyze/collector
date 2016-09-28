@@ -1,6 +1,8 @@
 package system
 
 import (
+	"os"
+
 	"github.com/pganalyze/collector/config"
 	"github.com/pganalyze/collector/input/system/rds"
 	"github.com/pganalyze/collector/input/system/selfhosted"
@@ -25,7 +27,7 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger) (system sta
 	if config.AwsDbInstanceID != "" {
 		// TODO: We need a smarter selection mechanism here, and also consider AWS instances by hostname
 		system = rds.GetSystemState(config, logger)
-	} else if dbHost == "" || dbHost == "localhost" || dbHost == "127.0.0.1" {
+	} else if dbHost == "" || dbHost == "localhost" || dbHost == "127.0.0.1" || os.Getenv("PGA_ALWAYS_COLLECT_SYSTEM_DATA") != "" {
 		system = selfhosted.GetSystemState(config, logger)
 	}
 

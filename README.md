@@ -117,14 +117,15 @@ collector_config.env needs to look like this:
 
 ```
 PGA_API_KEY=$YOUR_API_KEY
+PGA_ALWAYS_COLLECT_SYSTEM_DATA=1
 DB_NAME=your_database_name
 DB_USERNAME=your_database_user
 DB_PASSWORD=your_database_password
 ```
 
-The only required arguments are PGA_API_KEY (found in the [pganalyze](https://pganalyze.com/) dashboard) and DB_NAME.
+The only required arguments are PGA_API_KEY (found in the [pganalyze](https://pganalyze.com/) dashboard) and DB_NAME. Only specify `PGA_ALWAYS_COLLECT_SYSTEM_DATA` if the database is running on the same host and you'd like the collector to gather system metrics (from inside the container).
 
-Note: You can add ```-v /path/to/database/volume/on/host:/var/lib/postgresql/data``` in order to collect I/O statistics from your database, this requires that it runs on the same machine.
+Note: You can add ```-v /path/to/database/volume/on/host:/var/lib/postgresql/data``` in order to collect I/O statistics from your database (this requires that it runs on the same machine).
 
 
 Authors
