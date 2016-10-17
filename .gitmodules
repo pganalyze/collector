@@ -1,0 +1,3 @@
+[submodule "protobuf"]
+	path = protobuf
+	url = https://github.com/pganalyze/collector-snapshot

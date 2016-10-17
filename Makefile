@@ -1,5 +1,5 @@
 OUTFILE := pganalyze-collector
-PROTOBUF_FILE = snapshot.proto
+PROTOBUF_FILES := $(wildcard protobuf/*.proto) $(wildcard protobuf/reports/*.proto)
 
 .PHONY: default build test docker_latest packages
 
@@ -19,5 +19,5 @@ docker_latest:
 	docker build -t quay.io/pganalyze/collector:latest .
 	docker push quay.io/pganalyze/collector:latest
 
-output/pganalyze_collector/snapshot.pb.go: $(PROTOBUF_FILE)
-	protoc --go_out=Mgoogle/protobuf/timestamp.proto=github.com/golang/protobuf/ptypes/timestamp:output/pganalyze_collector $(PROTOBUF_FILE)
+output/pganalyze_collector/snapshot.pb.go: $(PROTOBUF_FILES)
+	protoc --go_out=Mgoogle/protobuf/timestamp.proto=github.com/golang/protobuf/ptypes/timestamp:output/pganalyze_collector -I protobuf $(PROTOBUF_FILES)
