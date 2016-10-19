@@ -2,67 +2,6 @@
 // source: full_snapshot.proto
 // DO NOT EDIT!
 
-/*
-Package pganalyze_collector is a generated protocol buffer package.
-
-It is generated from these files:
-	full_snapshot.proto
-	shared.proto
-	reports/bloat.proto
-	reports/buffercache.proto
-
-It has these top-level messages:
-	FullSnapshot
-	CollectorStatistic
-	RoleInformation
-	DatabaseInformation
-	PostgresVersion
-	LogLine
-	Setting
-	Backend
-	TablespaceReference
-	TablespaceInformation
-	System
-	SystemInformation
-	SystemInformationSelfHosted
-	SystemInformationAmazonRDS
-	SchedulerStatistic
-	MemoryStatistic
-	CPUInformation
-	CPUReference
-	CPUStatistic
-	NetworkReference
-	NetworkStatistic
-	DiskReference
-	DiskInformation
-	DiskStatistic
-	DiskPartitionReference
-	DiskPartitionInformation
-	DiskPartitionStatistic
-	QueryStatistic
-	QueryExplain
-	RelationInformation
-	RelationStatistic
-	RelationEvent
-	IndexInformation
-	IndexStatistic
-	FunctionInformation
-	FunctionStatistic
-	NullString
-	NullTimestamp
-	RoleReference
-	DatabaseReference
-	RelationReference
-	IndexReference
-	FunctionReference
-	QueryReference
-	QueryInformation
-	BloatReport
-	RelationBloatStatistic
-	IndexBloatStatistic
-	BuffercacheReport
-	BuffercacheEntry
-*/
 package pganalyze_collector
 
 import proto "github.com/golang/protobuf/proto"
@@ -74,10 +13,6 @@ import google_protobuf "github.com/golang/protobuf/ptypes/timestamp"
 var _ = proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
-
-// This is a compile-time assertion to ensure that this generated file
-// is compatible with the proto package it is being compiled against.
-const _ = proto.ProtoPackageIsVersion1
 
 type LogLine_SourceType int32
 
@@ -98,7 +33,7 @@ var LogLine_SourceType_value = map[string]int32{
 func (x LogLine_SourceType) String() string {
 	return proto.EnumName(LogLine_SourceType_name, int32(x))
 }
-func (LogLine_SourceType) EnumDescriptor() ([]byte, []int) { return fileDescriptor0, []int{5, 0} }
+func (LogLine_SourceType) EnumDescriptor() ([]byte, []int) { return fileDescriptor2, []int{5, 0} }
 
 type SystemInformation_SystemType int32
 
@@ -123,7 +58,7 @@ func (x SystemInformation_SystemType) String() string {
 	return proto.EnumName(SystemInformation_SystemType_name, int32(x))
 }
 func (SystemInformation_SystemType) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor0, []int{11, 0}
+	return fileDescriptor2, []int{11, 0}
 }
 
 type RelationEvent_EventType int32
@@ -151,7 +86,7 @@ var RelationEvent_EventType_value = map[string]int32{
 func (x RelationEvent_EventType) String() string {
 	return proto.EnumName(RelationEvent_EventType_name, int32(x))
 }
-func (RelationEvent_EventType) EnumDescriptor() ([]byte, []int) { return fileDescriptor0, []int{31, 0} }
+func (RelationEvent_EventType) EnumDescriptor() ([]byte, []int) { return fileDescriptor2, []int{31, 0} }
 
 type FullSnapshot struct {
 	// Basic information about this snapshot
@@ -195,7 +130,7 @@ type FullSnapshot struct {
 func (m *FullSnapshot) Reset()                    { *m = FullSnapshot{} }
 func (m *FullSnapshot) String() string            { return proto.CompactTextString(m) }
 func (*FullSnapshot) ProtoMessage()               {}
-func (*FullSnapshot) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
+func (*FullSnapshot) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{0} }
 
 func (m *FullSnapshot) GetCollectedAt() *google_protobuf.Timestamp {
 	if m != nil {
@@ -401,7 +336,7 @@ type CollectorStatistic struct {
 func (m *CollectorStatistic) Reset()                    { *m = CollectorStatistic{} }
 func (m *CollectorStatistic) String() string            { return proto.CompactTextString(m) }
 func (*CollectorStatistic) ProtoMessage()               {}
-func (*CollectorStatistic) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{1} }
+func (*CollectorStatistic) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{1} }
 
 type RoleInformation struct {
 	RoleIdx            int32          `protobuf:"varint,1,opt,name=role_idx,json=roleIdx" json:"role_idx,omitempty"`
@@ -421,7 +356,7 @@ type RoleInformation struct {
 func (m *RoleInformation) Reset()                    { *m = RoleInformation{} }
 func (m *RoleInformation) String() string            { return proto.CompactTextString(m) }
 func (*RoleInformation) ProtoMessage()               {}
-func (*RoleInformation) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{2} }
+func (*RoleInformation) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{2} }
 
 func (m *RoleInformation) GetPasswordValidUntil() *NullTimestamp {
 	if m != nil {
@@ -454,7 +389,7 @@ type DatabaseInformation struct {
 func (m *DatabaseInformation) Reset()                    { *m = DatabaseInformation{} }
 func (m *DatabaseInformation) String() string            { return proto.CompactTextString(m) }
 func (*DatabaseInformation) ProtoMessage()               {}
-func (*DatabaseInformation) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{3} }
+func (*DatabaseInformation) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{3} }
 
 type PostgresVersion struct {
 	Full    string `protobuf:"bytes,1,opt,name=full" json:"full,omitempty"`
@@ -465,7 +400,7 @@ type PostgresVersion struct {
 func (m *PostgresVersion) Reset()                    { *m = PostgresVersion{} }
 func (m *PostgresVersion) String() string            { return proto.CompactTextString(m) }
 func (*PostgresVersion) ProtoMessage()               {}
-func (*PostgresVersion) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{4} }
+func (*PostgresVersion) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{4} }
 
 type LogLine struct {
 	OccurredAt      int64              `protobuf:"varint,1,opt,name=occurred_at,json=occurredAt" json:"occurred_at,omitempty"`
@@ -480,7 +415,7 @@ type LogLine struct {
 func (m *LogLine) Reset()                    { *m = LogLine{} }
 func (m *LogLine) String() string            { return proto.CompactTextString(m) }
 func (*LogLine) ProtoMessage()               {}
-func (*LogLine) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{5} }
+func (*LogLine) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{5} }
 
 func (m *LogLine) GetClientIp() *NullString {
 	if m != nil {
@@ -510,7 +445,7 @@ type Setting struct {
 func (m *Setting) Reset()                    { *m = Setting{} }
 func (m *Setting) String() string            { return proto.CompactTextString(m) }
 func (*Setting) ProtoMessage()               {}
-func (*Setting) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{6} }
+func (*Setting) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{6} }
 
 func (m *Setting) GetUnit() *NullString {
 	if m != nil {
@@ -572,7 +507,7 @@ type Backend struct {
 func (m *Backend) Reset()                    { *m = Backend{} }
 func (m *Backend) String() string            { return proto.CompactTextString(m) }
 func (*Backend) ProtoMessage()               {}
-func (*Backend) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{7} }
+func (*Backend) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{7} }
 
 func (m *Backend) GetBackendStart() *google_protobuf.Timestamp {
 	if m != nil {
@@ -609,7 +544,7 @@ type TablespaceReference struct {
 func (m *TablespaceReference) Reset()                    { *m = TablespaceReference{} }
 func (m *TablespaceReference) String() string            { return proto.CompactTextString(m) }
 func (*TablespaceReference) ProtoMessage()               {}
-func (*TablespaceReference) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{8} }
+func (*TablespaceReference) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{8} }
 
 type TablespaceInformation struct {
 	TablespaceIdx    int32    `protobuf:"varint,1,opt,name=tablespace_idx,json=tablespaceIdx" json:"tablespace_idx,omitempty"`
@@ -621,7 +556,7 @@ type TablespaceInformation struct {
 func (m *TablespaceInformation) Reset()                    { *m = TablespaceInformation{} }
 func (m *TablespaceInformation) String() string            { return proto.CompactTextString(m) }
 func (*TablespaceInformation) ProtoMessage()               {}
-func (*TablespaceInformation) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{9} }
+func (*TablespaceInformation) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{9} }
 
 type System struct {
 	SystemInformation             *SystemInformation          `protobuf:"bytes,1,opt,name=system_information,json=systemInformation" json:"system_information,omitempty"`
@@ -647,7 +582,7 @@ type System struct {
 func (m *System) Reset()                    { *m = System{} }
 func (m *System) String() string            { return proto.CompactTextString(m) }
 func (*System) ProtoMessage()               {}
-func (*System) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{10} }
+func (*System) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{10} }
 
 func (m *System) GetSystemInformation() *SystemInformation {
 	if m != nil {
@@ -759,7 +694,7 @@ type SystemInformation struct {
 func (m *SystemInformation) Reset()                    { *m = SystemInformation{} }
 func (m *SystemInformation) String() string            { return proto.CompactTextString(m) }
 func (*SystemInformation) ProtoMessage()               {}
-func (*SystemInformation) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{11} }
+func (*SystemInformation) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{11} }
 
 type isSystemInformation_Info interface {
 	isSystemInformation_Info()
@@ -891,7 +826,7 @@ type SystemInformationSelfHosted struct {
 func (m *SystemInformationSelfHosted) Reset()                    { *m = SystemInformationSelfHosted{} }
 func (m *SystemInformationSelfHosted) String() string            { return proto.CompactTextString(m) }
 func (*SystemInformationSelfHosted) ProtoMessage()               {}
-func (*SystemInformationSelfHosted) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{12} }
+func (*SystemInformationSelfHosted) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{12} }
 
 type SystemInformationAmazonRDS struct {
 	Region                     string                     `protobuf:"bytes,1,opt,name=region" json:"region,omitempty"`
@@ -920,7 +855,7 @@ type SystemInformationAmazonRDS struct {
 func (m *SystemInformationAmazonRDS) Reset()                    { *m = SystemInformationAmazonRDS{} }
 func (m *SystemInformationAmazonRDS) String() string            { return proto.CompactTextString(m) }
 func (*SystemInformationAmazonRDS) ProtoMessage()               {}
-func (*SystemInformationAmazonRDS) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{13} }
+func (*SystemInformationAmazonRDS) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{13} }
 
 func (m *SystemInformationAmazonRDS) GetLatestRestorableTime() *google_protobuf.Timestamp {
 	if m != nil {
@@ -945,7 +880,7 @@ type SchedulerStatistic struct {
 func (m *SchedulerStatistic) Reset()                    { *m = SchedulerStatistic{} }
 func (m *SchedulerStatistic) String() string            { return proto.CompactTextString(m) }
 func (*SchedulerStatistic) ProtoMessage()               {}
-func (*SchedulerStatistic) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{14} }
+func (*SchedulerStatistic) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{14} }
 
 type MemoryStatistic struct {
 	TotalBytes         uint64 `protobuf:"varint,1,opt,name=total_bytes,json=totalBytes" json:"total_bytes,omitempty"`
@@ -973,7 +908,7 @@ type MemoryStatistic struct {
 func (m *MemoryStatistic) Reset()                    { *m = MemoryStatistic{} }
 func (m *MemoryStatistic) String() string            { return proto.CompactTextString(m) }
 func (*MemoryStatistic) ProtoMessage()               {}
-func (*MemoryStatistic) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{15} }
+func (*MemoryStatistic) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{15} }
 
 type CPUInformation struct {
 	Model             string  `protobuf:"bytes,1,opt,name=model" json:"model,omitempty"`
@@ -987,7 +922,7 @@ type CPUInformation struct {
 func (m *CPUInformation) Reset()                    { *m = CPUInformation{} }
 func (m *CPUInformation) String() string            { return proto.CompactTextString(m) }
 func (*CPUInformation) ProtoMessage()               {}
-func (*CPUInformation) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{16} }
+func (*CPUInformation) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{16} }
 
 type CPUReference struct {
 	CoreId string `protobuf:"bytes,1,opt,name=core_id,json=coreId" json:"core_id,omitempty"`
@@ -996,7 +931,7 @@ type CPUReference struct {
 func (m *CPUReference) Reset()                    { *m = CPUReference{} }
 func (m *CPUReference) String() string            { return proto.CompactTextString(m) }
 func (*CPUReference) ProtoMessage()               {}
-func (*CPUReference) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{17} }
+func (*CPUReference) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{17} }
 
 type CPUStatistic struct {
 	CpuIdx           int32   `protobuf:"varint,1,opt,name=cpu_idx,json=cpuIdx" json:"cpu_idx,omitempty"`
@@ -1015,7 +950,7 @@ type CPUStatistic struct {
 func (m *CPUStatistic) Reset()                    { *m = CPUStatistic{} }
 func (m *CPUStatistic) String() string            { return proto.CompactTextString(m) }
 func (*CPUStatistic) ProtoMessage()               {}
-func (*CPUStatistic) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{18} }
+func (*CPUStatistic) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{18} }
 
 type NetworkReference struct {
 	InterfaceName string `protobuf:"bytes,1,opt,name=interface_name,json=interfaceName" json:"interface_name,omitempty"`
@@ -1024,7 +959,7 @@ type NetworkReference struct {
 func (m *NetworkReference) Reset()                    { *m = NetworkReference{} }
 func (m *NetworkReference) String() string            { return proto.CompactTextString(m) }
 func (*NetworkReference) ProtoMessage()               {}
-func (*NetworkReference) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{19} }
+func (*NetworkReference) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{19} }
 
 type NetworkStatistic struct {
 	NetworkIdx                       int32  `protobuf:"varint,1,opt,name=network_idx,json=networkIdx" json:"network_idx,omitempty"`
@@ -1035,7 +970,7 @@ type NetworkStatistic struct {
 func (m *NetworkStatistic) Reset()                    { *m = NetworkStatistic{} }
 func (m *NetworkStatistic) String() string            { return proto.CompactTextString(m) }
 func (*NetworkStatistic) ProtoMessage()               {}
-func (*NetworkStatistic) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{20} }
+func (*NetworkStatistic) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{20} }
 
 type DiskReference struct {
 	DeviceName string `protobuf:"bytes,1,opt,name=device_name,json=deviceName" json:"device_name,omitempty"`
@@ -1044,7 +979,7 @@ type DiskReference struct {
 func (m *DiskReference) Reset()                    { *m = DiskReference{} }
 func (m *DiskReference) String() string            { return proto.CompactTextString(m) }
 func (*DiskReference) ProtoMessage()               {}
-func (*DiskReference) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{21} }
+func (*DiskReference) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{21} }
 
 type DiskInformation struct {
 	DiskIdx         int32  `protobuf:"varint,1,opt,name=disk_idx,json=diskIdx" json:"disk_idx,omitempty"`
@@ -1057,7 +992,7 @@ type DiskInformation struct {
 func (m *DiskInformation) Reset()                    { *m = DiskInformation{} }
 func (m *DiskInformation) String() string            { return proto.CompactTextString(m) }
 func (*DiskInformation) ProtoMessage()               {}
-func (*DiskInformation) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{22} }
+func (*DiskInformation) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{22} }
 
 type DiskStatistic struct {
 	DiskIdx                  int32   `protobuf:"varint,1,opt,name=disk_idx,json=diskIdx" json:"disk_idx,omitempty"`
@@ -1076,7 +1011,7 @@ type DiskStatistic struct {
 func (m *DiskStatistic) Reset()                    { *m = DiskStatistic{} }
 func (m *DiskStatistic) String() string            { return proto.CompactTextString(m) }
 func (*DiskStatistic) ProtoMessage()               {}
-func (*DiskStatistic) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{23} }
+func (*DiskStatistic) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{23} }
 
 type DiskPartitionReference struct {
 	Mountpoint string `protobuf:"bytes,1,opt,name=mountpoint" json:"mountpoint,omitempty"`
@@ -1085,7 +1020,7 @@ type DiskPartitionReference struct {
 func (m *DiskPartitionReference) Reset()                    { *m = DiskPartitionReference{} }
 func (m *DiskPartitionReference) String() string            { return proto.CompactTextString(m) }
 func (*DiskPartitionReference) ProtoMessage()               {}
-func (*DiskPartitionReference) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{24} }
+func (*DiskPartitionReference) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{24} }
 
 type DiskPartitionInformation struct {
 	DiskPartitionIdx int32  `protobuf:"varint,1,opt,name=disk_partition_idx,json=diskPartitionIdx" json:"disk_partition_idx,omitempty"`
@@ -1098,7 +1033,7 @@ type DiskPartitionInformation struct {
 func (m *DiskPartitionInformation) Reset()                    { *m = DiskPartitionInformation{} }
 func (m *DiskPartitionInformation) String() string            { return proto.CompactTextString(m) }
 func (*DiskPartitionInformation) ProtoMessage()               {}
-func (*DiskPartitionInformation) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{25} }
+func (*DiskPartitionInformation) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{25} }
 
 type DiskPartitionStatistic struct {
 	DiskPartitionIdx int32  `protobuf:"varint,1,opt,name=disk_partition_idx,json=diskPartitionIdx" json:"disk_partition_idx,omitempty"`
@@ -1109,7 +1044,7 @@ type DiskPartitionStatistic struct {
 func (m *DiskPartitionStatistic) Reset()                    { *m = DiskPartitionStatistic{} }
 func (m *DiskPartitionStatistic) String() string            { return proto.CompactTextString(m) }
 func (*DiskPartitionStatistic) ProtoMessage()               {}
-func (*DiskPartitionStatistic) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{26} }
+func (*DiskPartitionStatistic) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{26} }
 
 type QueryStatistic struct {
 	QueryIdx          int32   `protobuf:"varint,1,opt,name=query_idx,json=queryIdx" json:"query_idx,omitempty"`
@@ -1133,7 +1068,7 @@ type QueryStatistic struct {
 func (m *QueryStatistic) Reset()                    { *m = QueryStatistic{} }
 func (m *QueryStatistic) String() string            { return proto.CompactTextString(m) }
 func (*QueryStatistic) ProtoMessage()               {}
-func (*QueryStatistic) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{27} }
+func (*QueryStatistic) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{27} }
 
 type QueryExplain struct {
 	QueryIdx      int32   `protobuf:"varint,1,opt,name=query_idx,json=queryIdx" json:"query_idx,omitempty"`
@@ -1146,7 +1081,7 @@ type QueryExplain struct {
 func (m *QueryExplain) Reset()                    { *m = QueryExplain{} }
 func (m *QueryExplain) String() string            { return proto.CompactTextString(m) }
 func (*QueryExplain) ProtoMessage()               {}
-func (*QueryExplain) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{28} }
+func (*QueryExplain) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{28} }
 
 type RelationInformation struct {
 	RelationIdx            int32                             `protobuf:"varint,1,opt,name=relation_idx,json=relationIdx" json:"relation_idx,omitempty"`
@@ -1169,7 +1104,7 @@ type RelationInformation struct {
 func (m *RelationInformation) Reset()                    { *m = RelationInformation{} }
 func (m *RelationInformation) String() string            { return proto.CompactTextString(m) }
 func (*RelationInformation) ProtoMessage()               {}
-func (*RelationInformation) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{29} }
+func (*RelationInformation) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{29} }
 
 func (m *RelationInformation) GetViewDefinition() *NullString {
 	if m != nil {
@@ -1203,7 +1138,7 @@ type RelationInformation_Column struct {
 func (m *RelationInformation_Column) Reset()                    { *m = RelationInformation_Column{} }
 func (m *RelationInformation_Column) String() string            { return proto.CompactTextString(m) }
 func (*RelationInformation_Column) ProtoMessage()               {}
-func (*RelationInformation_Column) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{29, 0} }
+func (*RelationInformation_Column) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{29, 0} }
 
 func (m *RelationInformation_Column) GetDefaultValue() *NullString {
 	if m != nil {
@@ -1228,7 +1163,7 @@ func (m *RelationInformation_Constraint) Reset()         { *m = RelationInformat
 func (m *RelationInformation_Constraint) String() string { return proto.CompactTextString(m) }
 func (*RelationInformation_Constraint) ProtoMessage()    {}
 func (*RelationInformation_Constraint) Descriptor() ([]byte, []int) {
-	return fileDescriptor0, []int{29, 1}
+	return fileDescriptor2, []int{29, 1}
 }
 
 type RelationStatistic struct {
@@ -1258,7 +1193,7 @@ type RelationStatistic struct {
 func (m *RelationStatistic) Reset()                    { *m = RelationStatistic{} }
 func (m *RelationStatistic) String() string            { return proto.CompactTextString(m) }
 func (*RelationStatistic) ProtoMessage()               {}
-func (*RelationStatistic) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{30} }
+func (*RelationStatistic) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{30} }
 
 type RelationEvent struct {
 	RelationIdx           int32                      `protobuf:"varint,1,opt,name=relation_idx,json=relationIdx" json:"relation_idx,omitempty"`
@@ -1270,7 +1205,7 @@ type RelationEvent struct {
 func (m *RelationEvent) Reset()                    { *m = RelationEvent{} }
 func (m *RelationEvent) String() string            { return proto.CompactTextString(m) }
 func (*RelationEvent) ProtoMessage()               {}
-func (*RelationEvent) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{31} }
+func (*RelationEvent) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{31} }
 
 func (m *RelationEvent) GetOccurredAt() *google_protobuf.Timestamp {
 	if m != nil {
@@ -1295,7 +1230,7 @@ type IndexInformation struct {
 func (m *IndexInformation) Reset()                    { *m = IndexInformation{} }
 func (m *IndexInformation) String() string            { return proto.CompactTextString(m) }
 func (*IndexInformation) ProtoMessage()               {}
-func (*IndexInformation) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{32} }
+func (*IndexInformation) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{32} }
 
 func (m *IndexInformation) GetConstraintDef() *NullString {
 	if m != nil {
@@ -1317,7 +1252,7 @@ type IndexStatistic struct {
 func (m *IndexStatistic) Reset()                    { *m = IndexStatistic{} }
 func (m *IndexStatistic) String() string            { return proto.CompactTextString(m) }
 func (*IndexStatistic) ProtoMessage()               {}
-func (*IndexStatistic) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{33} }
+func (*IndexStatistic) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{33} }
 
 type FunctionInformation struct {
 	FunctionIdx     int32    `protobuf:"varint,1,opt,name=function_idx,json=functionIdx" json:"function_idx,omitempty"`
@@ -1338,7 +1273,7 @@ type FunctionInformation struct {
 func (m *FunctionInformation) Reset()                    { *m = FunctionInformation{} }
 func (m *FunctionInformation) String() string            { return proto.CompactTextString(m) }
 func (*FunctionInformation) ProtoMessage()               {}
-func (*FunctionInformation) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{34} }
+func (*FunctionInformation) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{34} }
 
 type FunctionStatistic struct {
 	FunctionIdx int32   `protobuf:"varint,1,opt,name=function_idx,json=functionIdx" json:"function_idx,omitempty"`
@@ -1350,7 +1285,7 @@ type FunctionStatistic struct {
 func (m *FunctionStatistic) Reset()                    { *m = FunctionStatistic{} }
 func (m *FunctionStatistic) String() string            { return proto.CompactTextString(m) }
 func (*FunctionStatistic) ProtoMessage()               {}
-func (*FunctionStatistic) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{35} }
+func (*FunctionStatistic) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{35} }
 
 func init() {
 	proto.RegisterType((*FullSnapshot)(nil), "pganalyze.collector.FullSnapshot")
@@ -1396,7 +1331,7 @@ func init() {
 	proto.RegisterEnum("pganalyze.collector.RelationEvent_EventType", RelationEvent_EventType_name, RelationEvent_EventType_value)
 }
 
-var fileDescriptor0 = []byte{
+var fileDescriptor2 = []byte{
 	// 5551 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x9c, 0x7b, 0xcb, 0x6f, 0x24, 0xd7,
 	0x75, 0xb7, 0x9b, 0xcd, 0x47, 0xf7, 0x65, 0xbf, 0x58, 0x24, 0x67, 0x7a, 0x66, 0x64, 0x69, 0xd4,

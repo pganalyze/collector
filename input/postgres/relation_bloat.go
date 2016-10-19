@@ -156,6 +156,10 @@ FROM otta_calc AS sub
 		 JOIN pg_stat_user_indexes AS stat ON sub.index_oid = stat.indexrelid
 `
 
+// TODO: Figure out how to introduce precise bloat queries here, e.g.
+// SELECT index_size, index_size * (1.0 - avg_leaf_density / 100.0) FROM pgstatindex('some_index_pkey'::regclass);
+// http://blog.ioguix.net/postgresql/2014/03/28/Playing-with-indexes-and-better-bloat-estimate.html
+
 func GetRelationBloat(db *sql.DB, postgresVersion state.PostgresVersion) (relBloat state.PostgresRelationBloatMap, err error) {
 	stmt, err := db.Prepare(QueryMarkerSQL + tableBloatSQL)
 	if err != nil {
