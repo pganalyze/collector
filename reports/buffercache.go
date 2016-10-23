@@ -30,6 +30,8 @@ func (report *BuffercacheReport) Result() proto.Message {
 	var exists bool
 
 	r.ReportRunUuid = "dummy"
+	r.FreeBytes = report.Data.FreeBytes
+	r.TotalBytes = report.Data.TotalBytes
 
 	databaseNameToIdx := make(map[string]int32)
 

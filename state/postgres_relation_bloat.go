@@ -1,14 +1,21 @@
 package state
 
 type PostgresRelationBloat struct {
-	WastedBytes int64
-	SizeBytes   int64
+	SchemaName   string
+	RelationName string
+	TotalBytes   int64
+	BloatBytes   int64
 }
 
 type PostgresIndexBloat struct {
-	WastedBytes int64
-	SizeBytes   int64
+	SchemaName string
+	IndexName  string
+	TotalBytes int64
+	BloatBytes int64
 }
 
-type PostgresRelationBloatMap map[Oid]PostgresRelationBloat
-type PostgresIndexBloatMap map[Oid]PostgresIndexBloat
+type PostgresBloatStats struct {
+	DatabaseName string
+	Relations    []PostgresRelationBloat
+	Indices      []PostgresIndexBloat
+}

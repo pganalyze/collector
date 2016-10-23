@@ -3,6 +3,9 @@ package postgres
 import (
 	"database/sql"
 	"fmt"
+	"regexp"
+	"strconv"
+	"strings"
 
 	"github.com/lib/pq"
 	"github.com/pganalyze/collector/state"
@@ -14,12 +17,53 @@ const buffercacheSQL string = `WITH buffers AS (
 	FROM pg_buffercache
 	GROUP BY 2, 3
 )
-SELECT block_count * current_setting('block_size')::int, d.datname, nspname, relname, relkind
+SELECT block_count * current_setting('block_size')::int, d.datname, nspname, relname, relkind::text
 FROM buffers b
 JOIN pg_database d ON (d.oid = reldatabase)
 LEFT JOIN pg_class c ON (b.relfilenode = pg_relation_filenode(c.oid) AND (b.reldatabase = 0 OR d.datname = current_database()))
-LEFT JOIN pg_namespace n ON (n.oid = c.relnamespace);
+LEFT JOIN pg_namespace n ON (n.oid = c.relnamespace)
+UNION
+SELECT SUM(block_count) * current_setting('block_size')::int, '', NULL, NULL, 'used' FROM buffers
 `
+
+const sharedBufferSettingSQL string = `SELECT current_setting('shared_buffers')`
+
+func getSharedBufferBytes(db *sql.DB) int64 {
+	var bytesStr string
+
+	err := db.QueryRow(QueryMarkerSQL + sharedBufferSettingSQL).Scan(&bytesStr)
+	if err != nil {
+		return 0
+	}
+
+	re := regexp.MustCompile("(\\d+)\\s*(\\w+)")
+	parts := re.FindStringSubmatch(bytesStr)
+
+	if len(parts) != 3 {
+		return 0
+	}
+
+	var multiplier int64
+	switch strings.ToLower(parts[2]) {
+	case "bytes":
+		multiplier = 1
+	case "kb":
+		multiplier = 1024
+	case "mb":
+		multiplier = 1024 * 1024
+	case "gb":
+		multiplier = 1024 * 1024 * 1024
+	case "tb":
+		multiplier = 1024 * 1024 * 1024 * 1024
+	}
+
+	bytes, err := strconv.ParseInt(parts[1], 10, 64)
+	if err != nil {
+		return 0
+	}
+
+	return bytes * multiplier
+}
 
 func GetBuffercache(logger *util.Logger, db *sql.DB) (report state.PostgresBuffercache, err error) {
 	rows, err := db.Query(QueryMarkerSQL + buffercacheSQL)
@@ -48,6 +92,8 @@ func GetBuffercache(logger *util.Logger, db *sql.DB) (report state.PostgresBuffe
 
 	defer rows.Close()
 
+	var usedBytes int64
+
 	for rows.Next() {
 		var row state.PostgresBuffercacheEntry
 
@@ -58,8 +104,15 @@ func GetBuffercache(logger *util.Logger, db *sql.DB) (report state.PostgresBuffe
 			return
 		}
 
-		report.Entries = append(report.Entries, row)
+		if row.DatabaseName == "" && row.ObjectKind != nil && *row.ObjectKind == "used" {
+			usedBytes = row.Bytes
+		} else {
+			report.Entries = append(report.Entries, row)
+		}
 	}
+
+	report.TotalBytes = getSharedBufferBytes(db)
+	report.FreeBytes = report.TotalBytes - usedBytes
 
 	return
 }
