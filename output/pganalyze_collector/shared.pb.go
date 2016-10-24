@@ -22,7 +22,7 @@ type NullString struct {
 func (m *NullString) Reset()                    { *m = NullString{} }
 func (m *NullString) String() string            { return proto.CompactTextString(m) }
 func (*NullString) ProtoMessage()               {}
-func (*NullString) Descriptor() ([]byte, []int) { return fileDescriptor3, []int{0} }
+func (*NullString) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{0} }
 
 type NullTimestamp struct {
 	Valid bool                       `protobuf:"varint,1,opt,name=valid" json:"valid,omitempty"`
@@ -32,7 +32,7 @@ type NullTimestamp struct {
 func (m *NullTimestamp) Reset()                    { *m = NullTimestamp{} }
 func (m *NullTimestamp) String() string            { return proto.CompactTextString(m) }
 func (*NullTimestamp) ProtoMessage()               {}
-func (*NullTimestamp) Descriptor() ([]byte, []int) { return fileDescriptor3, []int{1} }
+func (*NullTimestamp) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{1} }
 
 func (m *NullTimestamp) GetValue() *google_protobuf.Timestamp {
 	if m != nil {
@@ -48,7 +48,7 @@ type RoleReference struct {
 func (m *RoleReference) Reset()                    { *m = RoleReference{} }
 func (m *RoleReference) String() string            { return proto.CompactTextString(m) }
 func (*RoleReference) ProtoMessage()               {}
-func (*RoleReference) Descriptor() ([]byte, []int) { return fileDescriptor3, []int{2} }
+func (*RoleReference) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{2} }
 
 type DatabaseReference struct {
 	Name string `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
@@ -57,7 +57,7 @@ type DatabaseReference struct {
 func (m *DatabaseReference) Reset()                    { *m = DatabaseReference{} }
 func (m *DatabaseReference) String() string            { return proto.CompactTextString(m) }
 func (*DatabaseReference) ProtoMessage()               {}
-func (*DatabaseReference) Descriptor() ([]byte, []int) { return fileDescriptor3, []int{3} }
+func (*DatabaseReference) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{3} }
 
 type RelationReference struct {
 	DatabaseIdx  int32  `protobuf:"varint,1,opt,name=database_idx,json=databaseIdx" json:"database_idx,omitempty"`
@@ -68,7 +68,7 @@ type RelationReference struct {
 func (m *RelationReference) Reset()                    { *m = RelationReference{} }
 func (m *RelationReference) String() string            { return proto.CompactTextString(m) }
 func (*RelationReference) ProtoMessage()               {}
-func (*RelationReference) Descriptor() ([]byte, []int) { return fileDescriptor3, []int{4} }
+func (*RelationReference) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{4} }
 
 type IndexReference struct {
 	DatabaseIdx int32  `protobuf:"varint,1,opt,name=database_idx,json=databaseIdx" json:"database_idx,omitempty"`
@@ -79,7 +79,7 @@ type IndexReference struct {
 func (m *IndexReference) Reset()                    { *m = IndexReference{} }
 func (m *IndexReference) String() string            { return proto.CompactTextString(m) }
 func (*IndexReference) ProtoMessage()               {}
-func (*IndexReference) Descriptor() ([]byte, []int) { return fileDescriptor3, []int{5} }
+func (*IndexReference) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{5} }
 
 type FunctionReference struct {
 	DatabaseIdx  int32  `protobuf:"varint,1,opt,name=database_idx,json=databaseIdx" json:"database_idx,omitempty"`
@@ -91,7 +91,7 @@ type FunctionReference struct {
 func (m *FunctionReference) Reset()                    { *m = FunctionReference{} }
 func (m *FunctionReference) String() string            { return proto.CompactTextString(m) }
 func (*FunctionReference) ProtoMessage()               {}
-func (*FunctionReference) Descriptor() ([]byte, []int) { return fileDescriptor3, []int{6} }
+func (*FunctionReference) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{6} }
 
 type QueryReference struct {
 	DatabaseIdx int32  `protobuf:"varint,1,opt,name=database_idx,json=databaseIdx" json:"database_idx,omitempty"`
@@ -102,7 +102,7 @@ type QueryReference struct {
 func (m *QueryReference) Reset()                    { *m = QueryReference{} }
 func (m *QueryReference) String() string            { return proto.CompactTextString(m) }
 func (*QueryReference) ProtoMessage()               {}
-func (*QueryReference) Descriptor() ([]byte, []int) { return fileDescriptor3, []int{7} }
+func (*QueryReference) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{7} }
 
 type QueryInformation struct {
 	QueryIdx        int32   `protobuf:"varint,1,opt,name=query_idx,json=queryIdx" json:"query_idx,omitempty"`
@@ -113,7 +113,7 @@ type QueryInformation struct {
 func (m *QueryInformation) Reset()                    { *m = QueryInformation{} }
 func (m *QueryInformation) String() string            { return proto.CompactTextString(m) }
 func (*QueryInformation) ProtoMessage()               {}
-func (*QueryInformation) Descriptor() ([]byte, []int) { return fileDescriptor3, []int{8} }
+func (*QueryInformation) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{8} }
 
 func init() {
 	proto.RegisterType((*NullString)(nil), "pganalyze.collector.NullString")
@@ -127,7 +127,7 @@ func init() {
 	proto.RegisterType((*QueryInformation)(nil), "pganalyze.collector.QueryInformation")
 }
 
-var fileDescriptor3 = []byte{
+var fileDescriptor4 = []byte{
 	// 417 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xb4, 0x92, 0x41, 0x6f, 0xd3, 0x30,
 	0x14, 0xc7, 0xd5, 0x75, 0x83, 0xe6, 0x25, 0x1b, 0x6b, 0xe0, 0x50, 0x06, 0x68, 0x23, 0x1c, 0x18,

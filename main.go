@@ -64,11 +64,19 @@ func run(wg sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *u
 		return nil
 	}
 
-	stop := schedulerGroups["stats"].Schedule(func() {
+	stop := make(chan bool)
+
+	schedulerGroups["stats"].Schedule(func() {
 		wg.Add(1)
 		runner.CollectAllServers(servers, globalCollectionOpts, logger)
 		wg.Done()
-	}, logger, "collection of all databases")
+	}, logger, "collection of all databases", stop)
+
+	schedulerGroups["reports"].Schedule(func() {
+		wg.Add(1)
+		runner.RunRequestedReports(servers, globalCollectionOpts, logger)
+		wg.Done()
+	}, logger, "requested reports for all databases", stop)
 
 	return stop
 }

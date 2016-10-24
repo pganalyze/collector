@@ -4,11 +4,9 @@ import (
 	"bytes"
 	"compress/zlib"
 	"encoding/json"
-	"encoding/xml"
 	"fmt"
 	"io"
 	"io/ioutil"
-	"mime/multipart"
 	"net/http"
 	"net/url"
 	"strings"
@@ -24,7 +22,7 @@ import (
 	"github.com/satori/go.uuid"
 )
 
-func SendFull(db state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, newState state.PersistedState, diffState state.DiffState, transientState state.TransientState, collectedIntervalSecs uint32) error {
+func SendFull(server state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, newState state.PersistedState, diffState state.DiffState, transientState state.TransientState, collectedIntervalSecs uint32) error {
 	var err error
 	var data []byte
 
@@ -56,13 +54,13 @@ func SendFull(db state.Server, collectionOpts state.CollectionOpts, logger *util
 		return nil
 	}
 
-	s3Location, err := uploadSnapshot(db, collectionOpts, logger, compressedData, snapshotUUID)
+	s3Location, err := uploadToS3(server.Grant, logger, compressedData, snapshotUUID.String())
 	if err != nil {
 		logger.PrintError("Error uploading to S3: %s", err)
 		return err
 	}
 
-	return submitSnapshot(db, collectionOpts, logger, s3Location, collectedAt)
+	return submitSnapshot(server, collectionOpts, logger, s3Location, collectedAt)
 }
 
 func debugOutputAsJSON(logger *util.Logger, compressedData bytes.Buffer) {
@@ -94,65 +92,6 @@ func debugOutputAsJSON(logger *util.Logger, compressedData bytes.Buffer) {
 	json.Indent(&out, []byte(dataJSON), "", "\t")
 	logger.PrintInfo("Dry run - data that would have been sent will be output on stdout:\n")
 	fmt.Printf("%s\n", out.String())
-}
-
-type s3UploadResponse struct {
-	Location string
-	Bucket   string
-	Key      string
-}
-
-func uploadSnapshot(server state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, compressedData bytes.Buffer, snapshotUUID uuid.UUID) (string, error) {
-	logger.PrintVerbose("Successfully prepared request - size of request body: %.4f MB", float64(compressedData.Len())/1024.0/1024.0)
-
-	var formBytes bytes.Buffer
-	var err error
-
-	writer := multipart.NewWriter(&formBytes)
-
-	for key, val := range server.Grant.S3Fields {
-		err = writer.WriteField(key, val)
-		if err != nil {
-			return "", err
-		}
-	}
-
-	part, _ := writer.CreateFormFile("file", snapshotUUID.String())
-	_, err = part.Write(compressedData.Bytes())
-	if err != nil {
-		return "", err
-	}
-
-	writer.Close()
-
-	req, err := http.NewRequest("POST", server.Grant.S3URL, &formBytes)
-	if err != nil {
-		return "", err
-	}
-	req.Header.Set("Content-Type", writer.FormDataContentType())
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", err
-	}
-
-	if resp.StatusCode != http.StatusCreated {
-		return "", fmt.Errorf("Bad S3 upload return code %s (should be 201 Created), body: %s", resp.Status, body)
-	}
-
-	var s3Resp s3UploadResponse
-	err = xml.Unmarshal(body, &s3Resp)
-	if err != nil {
-		return "", err
-	}
-
-	return s3Resp.Key, nil
 }
 
 func submitSnapshot(server state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, s3Location string, collectedAt time.Time) error {
