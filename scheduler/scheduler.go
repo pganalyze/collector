@@ -11,9 +11,7 @@ type Group struct {
 	interval *cronexpr.Expression
 }
 
-func (group Group) Schedule(runner func(), logger *util.Logger, logName string) chan bool {
-	stop := make(chan bool)
-
+func (group Group) Schedule(runner func(), logger *util.Logger, logName string, stop chan bool) {
 	go func() {
 		for {
 			delay := group.interval.Next(time.Now()).Sub(time.Now())
@@ -30,11 +28,10 @@ func (group Group) Schedule(runner func(), logger *util.Logger, logName string) 
 			}
 		}
 	}()
-
-	return stop
 }
 
 func GetSchedulerGroups() (groups map[string]Group, err error) {
+	oneMinuteInterval, err := cronexpr.Parse("0 * * * * * *")
 	tenMinuteInterval, err := cronexpr.Parse("0 */10 * * * * *")
 	if err != nil {
 		return
@@ -43,6 +40,7 @@ func GetSchedulerGroups() (groups map[string]Group, err error) {
 	groups = make(map[string]Group)
 
 	groups["stats"] = Group{interval: tenMinuteInterval}
+	groups["reports"] = Group{interval: oneMinuteInterval}
 
 	return
 }

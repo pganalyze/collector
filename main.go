@@ -56,15 +56,27 @@ func run(wg sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *u
 	// We intentionally don't do a test-run in the normal mode, since we're fine with
 	// a later SIGHUP that fixes the config (or a temporarily unreachable server at start)
 	if globalCollectionOpts.TestRun {
-		runner.CollectAllServers(servers, globalCollectionOpts, logger)
+		if globalCollectionOpts.TestReport != "" {
+			runner.RunTestReport(servers, globalCollectionOpts, logger)
+		} else {
+			runner.CollectAllServers(servers, globalCollectionOpts, logger)
+		}
 		return nil
 	}
 
-	stop := schedulerGroups["stats"].Schedule(func() {
+	stop := make(chan bool)
+
+	schedulerGroups["stats"].Schedule(func() {
 		wg.Add(1)
 		runner.CollectAllServers(servers, globalCollectionOpts, logger)
 		wg.Done()
-	}, logger, "collection of all databases")
+	}, logger, "collection of all databases", stop)
+
+	schedulerGroups["reports"].Schedule(func() {
+		wg.Add(1)
+		runner.RunRequestedReports(servers, globalCollectionOpts, logger)
+		wg.Done()
+	}, logger, "requested reports for all databases", stop)
 
 	return stop
 }
@@ -75,6 +87,7 @@ const defaultStateFile = "/var/lib/pganalyze-collector/state"
 func main() {
 	var dryRun bool
 	var testRun bool
+	var testReport string
 	var forceStateUpdate bool
 	var configFilename string
 	var stateFilename string
@@ -89,12 +102,13 @@ func main() {
 	logFlags := log.LstdFlags
 	logger := &util.Logger{}
 
-	flag.BoolVarP(&testRun, "test", "t", false, "Tests whether we can successfully collect data, submits it to the server, and exits afterwards.")
+	flag.BoolVarP(&testRun, "test", "t", false, "Tests whether we can successfully collect data, submits it to the server, and exits afterwards")
+	flag.StringVar(&testReport, "test-report", "", "Tests a particular report and returns its output as JSON")
 	flag.BoolVar(&reloadRun, "reload", false, "Reloads the collector daemon thats running on the host")
-	flag.BoolVarP(&logger.Verbose, "verbose", "v", false, "Outputs additional debugging information, use this if you're encoutering errors or other problems.")
+	flag.BoolVarP(&logger.Verbose, "verbose", "v", false, "Outputs additional debugging information, use this if you're encoutering errors or other problems")
 	flag.BoolVar(&logToSyslog, "syslog", false, "Write all log output to syslog instead of stderr (disabled by default)")
 	flag.BoolVar(&logNoTimestamps, "no-log-timestamps", false, "Disable timestamps in the log output (automatically done when syslog is enabled)")
-	flag.BoolVar(&dryRun, "dry-run", false, "Print JSON data that would get sent to web service (without actually sending) and exit afterwards.")
+	flag.BoolVar(&dryRun, "dry-run", false, "Print JSON data that would get sent to web service (without actually sending) and exit afterwards")
 	flag.BoolVar(&forceStateUpdate, "force-state-update", false, "Updates the state file even if other options would have prevented it (intended to be used together with --dry-run for debugging)")
 	flag.BoolVar(&noPostgresRelations, "no-postgres-relations", false, "Don't collect any Postgres relation information (not recommended)")
 	flag.BoolVar(&noPostgresSettings, "no-postgres-settings", false, "Don't collect Postgres configuration settings")
@@ -107,8 +121,8 @@ func main() {
 	flag.BoolVar(&noSystemInformation, "no-system-information", false, "Don't collect OS level performance data")
 	flag.BoolVar(&diffStatements, "diff-statements", false, "Send a diff of the pg_stat_statements statistics, instead of counter values")
 	flag.BoolVar(&writeHeapProfile, "write-heap-profile", false, "Write a memory heap profile to ~/.pganalyze_collector.mprof when SIGHUP is received (disabled by default, only useful for debugging)")
-	flag.StringVar(&configFilename, "config", defaultConfigFile, "Specify alternative path for config file.")
-	flag.StringVar(&stateFilename, "statefile", defaultStateFile, "Specify alternative path for state file.")
+	flag.StringVar(&configFilename, "config", defaultConfigFile, "Specify alternative path for config file")
+	flag.StringVar(&stateFilename, "statefile", defaultStateFile, "Specify alternative path for state file")
 	flag.StringVar(&pidFilename, "pidfile", "", "Specifies a path that a pidfile should be written to (default is no pidfile being written)")
 	flag.Parse()
 
@@ -137,9 +151,14 @@ func main() {
 		}
 	}
 
+	if testReport != "" {
+		testRun = true
+	}
+
 	globalCollectionOpts := state.CollectionOpts{
 		SubmitCollectedData:      true,
 		TestRun:                  testRun,
+		TestReport:               testReport,
 		CollectPostgresRelations: !noPostgresRelations,
 		CollectPostgresSettings:  !noPostgresSettings,
 		CollectPostgresLocks:     !noPostgresLocks,
@@ -152,7 +171,7 @@ func main() {
 		DiffStatements:           diffStatements,
 		StateFilename:            stateFilename,
 		WriteStateUpdate:         (!dryRun && !testRun) || forceStateUpdate,
-		StatementTimeoutMs:       10000,
+		StatementTimeoutMs:       30000,
 	}
 
 	if reloadRun {
@@ -171,7 +190,7 @@ func main() {
 		}
 	}
 
-	if testRun {
+	if testRun || testReport != "" {
 		globalCollectionOpts.CollectorApplicationName = "pganalyze_test_run"
 	} else {
 		globalCollectionOpts.CollectorApplicationName = "pganalyze_collector"
