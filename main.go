@@ -171,7 +171,7 @@ func main() {
 		DiffStatements:           diffStatements,
 		StateFilename:            stateFilename,
 		WriteStateUpdate:         (!dryRun && !testRun) || forceStateUpdate,
-		StatementTimeoutMs:       10000,
+		StatementTimeoutMs:       30000,
 	}
 
 	if reloadRun {
