@@ -74,6 +74,16 @@ but from here onwards you can use the `pganalyze` user instead.
 The collector will automatically use the helper methods
 if they exist in the `pganalyze` schema - otherwise data will be fetched directly.
 
+If you are using the Buffer Cache report in pganalyze, you will also need to create this additional helper method:
+
+```
+CREATE EXTENSION IF NOT EXISTS pg_buffercache;
+CREATE OR REPLACE FUNCTION pganalyze.get_buffercache() RETURNS SETOF public.pg_buffercache AS
+$$
+  /* pganalyze-collector */ SELECT * FROM public.pg_buffercache;
+$$ LANGUAGE sql VOLATILE SECURITY DEFINER;
+```
+
 
 Example output
 --------------

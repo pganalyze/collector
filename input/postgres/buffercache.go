@@ -14,7 +14,7 @@ import (
 
 const buffercacheSQL string = `WITH buffers AS (
 	SELECT COUNT(*) AS block_count, reldatabase, relfilenode
-	FROM pg_buffercache
+	FROM %s
 	GROUP BY 2, 3
 )
 SELECT block_count * current_setting('block_size')::int, d.datname, nspname, relname, relkind::text
@@ -24,6 +24,13 @@ LEFT JOIN pg_class c ON (b.relfilenode = pg_relation_filenode(c.oid) AND (b.reld
 LEFT JOIN pg_namespace n ON (n.oid = c.relnamespace)
 UNION
 SELECT SUM(block_count) * current_setting('block_size')::int, '', NULL, NULL, 'used' FROM buffers
+`
+
+const buffercacheHelperSQL string = `
+SELECT 1 AS enabled
+	FROM pg_proc
+	JOIN pg_namespace ON (pronamespace = pg_namespace.oid)
+ WHERE nspname = 'pganalyze' AND proname = 'get_buffercache'
 `
 
 const sharedBufferSettingSQL string = `SELECT current_setting('shared_buffers')`
@@ -65,8 +72,33 @@ func getSharedBufferBytes(db *sql.DB) int64 {
 	return bytes * multiplier
 }
 
+func buffercacheHelperExists(db *sql.DB) bool {
+	var enabled bool
+
+	err := db.QueryRow(QueryMarkerSQL + buffercacheHelperSQL).Scan(&enabled)
+	if err != nil {
+		return false
+	}
+
+	return enabled
+}
+
 func GetBuffercache(logger *util.Logger, db *sql.DB) (report state.PostgresBuffercache, err error) {
-	rows, err := db.Query(QueryMarkerSQL + buffercacheSQL)
+	var sourceTable string
+
+	if buffercacheHelperExists(db) {
+		logger.PrintVerbose("Found pganalyze.get_buffercache() stats helper")
+		sourceTable = "pganalyze.get_buffercache()"
+	} else {
+		if !connectedAsSuperUser(db) {
+			logger.PrintInfo("Warning: You are not connecting as superuser. Please setup" +
+				" the monitoring helper functions (https://github.com/pganalyze/collector#setting-up-a-restricted-monitoring-user)" +
+				" or connect as superuser to run the buffercache report.")
+		}
+		sourceTable = "pg_buffercache"
+	}
+
+	rows, err := db.Query(QueryMarkerSQL + fmt.Sprintf(buffercacheSQL, sourceTable))
 	if err != nil {
 		if err.(*pq.Error).Code == "42P01" { // undefined_table
 			logger.PrintInfo("pg_buffercache relation does not exist, trying to create extension...")
