@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.9.6       2016-11-01
+
+* New Heroku support based on user API keys
+* Support for new Reports feature (in private beta right now)
+* Add PGA_ALWAYS_COLLECT_SYSTEM_DATA to force collection of system data
+* Increase statement timeout to 30 seconds to account for some larger databases
+* Support for writing snapshots to local filesystem (needed by pganalyze Enterprise)
+
+
 ## 0.9.5       2016-09-21
 
 * Improved first user experience
