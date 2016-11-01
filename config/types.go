@@ -28,6 +28,10 @@ type ServerConfig struct {
 	AwsSecretAccessKey string `ini:"aws_secret_access_key"`
 
 	SectionName string
+
+	SystemID    string
+	SystemType  string
+	SystemScope string
 }
 
 // GetPqOpenString - Gets the database configuration as a string that can be passed to lib/pq for connecting

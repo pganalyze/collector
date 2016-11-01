@@ -77,7 +77,7 @@ func validateConnectionCount(connection *sql.DB, logger *util.Logger, globalColl
 }
 
 func setStatementTimeout(connection *sql.DB, logger *util.Logger, globalCollectionOpts state.CollectionOpts) {
-	// Assume anything below 100ms to be set in error - its not reasonable to have out queries run faster than that
+	// Assume anything below 100ms to be set in error - its not reasonable to have our queries run faster than that
 	if globalCollectionOpts.StatementTimeoutMs < 100 {
 		logger.PrintVerbose("Ignoring invalid statement timeout of %dms (set it to at least 100ms)", globalCollectionOpts.StatementTimeoutMs)
 		return

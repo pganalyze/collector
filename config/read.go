@@ -90,7 +90,11 @@ func Read(logger *util.Logger, filename string) ([]ServerConfig, error) {
 			logger.PrintError("Error: Configuration is empty, please edit %s and reload the collector", filename)
 		}
 	} else {
-		servers = append(servers, *getDefaultConfig())
+		if os.Getenv("DYNO") != "" && os.Getenv("PORT") != "" {
+			servers = handleHeroku()
+		} else {
+			servers = append(servers, *getDefaultConfig())
+		}
 	}
 
 	return servers, nil

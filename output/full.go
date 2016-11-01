@@ -112,6 +112,9 @@ func submitSnapshot(server state.Server, collectionOpts state.CollectionOpts, lo
 	}
 
 	req.Header.Set("Pganalyze-Api-Key", server.Config.APIKey)
+	req.Header.Set("Pganalyze-System-Id", server.Config.SystemID)
+	req.Header.Set("Pganalyze-System-Type", server.Config.SystemType)
+	req.Header.Set("Pganalyze-System-Scope", server.Config.SystemScope)
 	req.Header.Set("User-Agent", util.CollectorNameAndVersion)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Add("Accept", "application/json,text/plain")

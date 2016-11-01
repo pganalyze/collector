@@ -45,7 +45,10 @@ func processDatabase(server state.Server, globalCollectionOpts state.CollectionO
 
 	diffState := diffState(logger, server.PrevState, newState, collectedIntervalSecs)
 
-	output.SendFull(server, globalCollectionOpts, logger, newState, diffState, transientState, collectedIntervalSecs)
+	err = output.SendFull(server, globalCollectionOpts, logger, newState, diffState, transientState, collectedIntervalSecs)
+	if err != nil {
+		logger.PrintError("Error whilst sending: %s", err)
+	}
 
 	return newState, grant, nil
 }
@@ -57,6 +60,9 @@ func getSnapshotGrant(server state.Server, globalCollectionOpts state.Collection
 	}
 
 	req.Header.Set("Pganalyze-Api-Key", server.Config.APIKey)
+	req.Header.Set("Pganalyze-System-Id", server.Config.SystemID)
+	req.Header.Set("Pganalyze-System-Type", server.Config.SystemType)
+	req.Header.Set("Pganalyze-System-Scope", server.Config.SystemScope)
 	req.Header.Set("User-Agent", util.CollectorNameAndVersion)
 	req.Header.Add("Accept", "application/json")
 
