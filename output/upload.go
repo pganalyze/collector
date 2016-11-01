@@ -23,6 +23,16 @@ func uploadToS3(grant state.Grant, logger *util.Logger, compressedData bytes.Buf
 		return "", fmt.Errorf("Error - can't upload without valid S3 grant")
 	}
 
+	if grant.S3URL == "" && grant.LocalDir != "" {
+		location := grant.LocalDir + filename
+		err := ioutil.WriteFile(location, compressedData.Bytes(), 0644)
+		if err != nil {
+			logger.PrintError("Error writing local file: %s", err)
+			return "", err
+		}
+		return location, nil
+	}
+
 	logger.PrintVerbose("Successfully prepared S3 request - size of request body: %.4f MB", float64(compressedData.Len())/1024.0/1024.0)
 
 	var formBytes bytes.Buffer

@@ -96,6 +96,7 @@ type Grant struct {
 	Config   GrantConfig       `json:"config"`
 	S3URL    string            `json:"s3_url"`
 	S3Fields map[string]string `json:"s3_fields"`
+	LocalDir string            `json:"local_dir"`
 }
 
 type Server struct {
