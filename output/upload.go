@@ -7,6 +7,8 @@ import (
 	"io/ioutil"
 	"mime/multipart"
 	"net/http"
+	"os"
+	"path/filepath"
 
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
@@ -19,13 +21,21 @@ type s3UploadResponse struct {
 }
 
 func uploadToS3(grant state.Grant, logger *util.Logger, compressedData bytes.Buffer, filename string) (string, error) {
+	var err error
+
 	if !grant.Valid {
 		return "", fmt.Errorf("Error - can't upload without valid S3 grant")
 	}
 
 	if grant.S3URL == "" && grant.LocalDir != "" {
 		location := grant.LocalDir + filename
-		err := ioutil.WriteFile(location, compressedData.Bytes(), 0644)
+		err = os.MkdirAll(filepath.Dir(location), 0755)
+		if err != nil {
+			logger.PrintError("Error creating target directory: %s", err)
+			return "", err
+		}
+
+		err = ioutil.WriteFile(location, compressedData.Bytes(), 0644)
 		if err != nil {
 			logger.PrintError("Error writing local file: %s", err)
 			return "", err
@@ -36,7 +46,6 @@ func uploadToS3(grant state.Grant, logger *util.Logger, compressedData bytes.Buf
 	logger.PrintVerbose("Successfully prepared S3 request - size of request body: %.4f MB", float64(compressedData.Len())/1024.0/1024.0)
 
 	var formBytes bytes.Buffer
-	var err error
 
 	writer := multipart.NewWriter(&formBytes)
 
