@@ -25,19 +25,19 @@ import (
 	_ "github.com/lib/pq" // Enable database package to use Postgres
 )
 
-func run(wg sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *util.Logger, configFilename string) chan<- bool {
+func run(wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *util.Logger, configFilename string) (bool, chan<- bool, chan<- bool) {
 	var servers []state.Server
 
 	schedulerGroups, err := scheduler.GetSchedulerGroups()
 	if err != nil {
 		logger.PrintError("Error: Could not get scheduler groups, awaiting SIGHUP or process kill")
-		return nil
+		return false, nil, nil
 	}
 
 	serverConfigs, err := config.Read(logger, configFilename)
 	if err != nil {
 		logger.PrintError("Error: Could not read configuration, awaiting SIGHUP or process kill")
-		return nil
+		return false, nil, nil
 	}
 
 	for _, config := range serverConfigs {
@@ -61,24 +61,22 @@ func run(wg sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *u
 		} else {
 			runner.CollectAllServers(servers, globalCollectionOpts, logger)
 		}
-		return nil
+		return false, nil, nil
 	}
 
-	stop := make(chan bool)
-
-	schedulerGroups["stats"].Schedule(func() {
+	statsStop := schedulerGroups["stats"].Schedule(func() {
 		wg.Add(1)
 		runner.CollectAllServers(servers, globalCollectionOpts, logger)
 		wg.Done()
-	}, logger, "collection of all databases", stop)
+	}, logger, "collection of all databases")
 
-	schedulerGroups["reports"].Schedule(func() {
+	reportsStop := schedulerGroups["reports"].Schedule(func() {
 		wg.Add(1)
 		runner.RunRequestedReports(servers, globalCollectionOpts, logger)
 		wg.Done()
-	}, logger, "requested reports for all databases", stop)
+	}, logger, "requested reports for all databases")
 
-	return stop
+	return true, statsStop, reportsStop
 }
 
 const defaultConfigFile = "/etc/pganalyze-collector.conf"
@@ -211,8 +209,8 @@ func main() {
 	wg := sync.WaitGroup{}
 
 ReadConfigAndRun:
-	stop := run(wg, globalCollectionOpts, logger, configFilename)
-	if stop == nil {
+	keepRunning, statsStop, reportsStop := run(&wg, globalCollectionOpts, logger, configFilename)
+	if !keepRunning {
 		return
 	}
 
@@ -220,7 +218,8 @@ ReadConfigAndRun:
 	s := <-sigs
 
 	// Stop the scheduled runs
-	stop <- true
+	statsStop <- true
+	reportsStop <- true
 
 	if s == syscall.SIGHUP {
 		if writeHeapProfile {
@@ -236,6 +235,7 @@ ReadConfigAndRun:
 			}
 		}
 		logger.PrintInfo("Reloading configuration...")
+		wg.Wait()
 		goto ReadConfigAndRun
 	}
 

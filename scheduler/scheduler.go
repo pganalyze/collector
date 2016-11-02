@@ -11,7 +11,8 @@ type Group struct {
 	interval *cronexpr.Expression
 }
 
-func (group Group) Schedule(runner func(), logger *util.Logger, logName string, stop chan bool) {
+func (group Group) Schedule(runner func(), logger *util.Logger, logName string) chan bool {
+	stop := make(chan bool)
 	go func() {
 		for {
 			delay := group.interval.Next(time.Now()).Sub(time.Now())
@@ -28,6 +29,7 @@ func (group Group) Schedule(runner func(), logger *util.Logger, logName string, 
 			}
 		}
 	}()
+	return stop
 }
 
 func GetSchedulerGroups() (groups map[string]Group, err error) {
