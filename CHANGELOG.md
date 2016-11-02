@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.7       2016-11-02
+
+* Prevent leaks of previous scheduler runs when reloading.
+
+
 ## 0.9.6       2016-11-01
 
 * New Heroku support based on user API keys
