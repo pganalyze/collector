@@ -1,11 +1,13 @@
 OUTFILE := pganalyze-collector
 PROTOBUF_FILES := $(wildcard protobuf/*.proto) $(wildcard protobuf/reports/*.proto)
 
-.PHONY: default build test docker_latest packages
+.PHONY: default build build_dist test docker_latest packages
 
 default: build test
 
-build: output/pganalyze_collector/snapshot.pb.go
+build: output/pganalyze_collector/snapshot.pb.go build_dist
+
+build_dist:
 	go build -o ${OUTFILE}
 	make -C helper
 

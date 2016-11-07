@@ -26,7 +26,7 @@ ENV NAME pganalyze-collector
 COPY . $CODE_DIR
 WORKDIR $CODE_DIR
 RUN git checkout ${GIT_VERSION}
-RUN make build
+RUN make build_dist
 
 # Update contrib and packages directory beyond the tagged release
 COPY ./contrib $CODE_DIR/contrib
