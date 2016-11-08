@@ -138,6 +138,16 @@ The only required arguments are PGA_API_KEY (found in the [pganalyze](https://pg
 Note: You can add ```-v /path/to/database/volume/on/host:/var/lib/postgresql/data``` in order to collect I/O statistics from your database (this requires that it runs on the same machine).
 
 
+Heroku Monitoring
+-----------------
+
+When monitoring a Heroku Postgres database, it is recommended you deploy the collector as its own app inside your Heroku account.
+
+[![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy?template=https://github.com/pganalyze/collector)
+
+Follow the instructions in the pganalyze documentation to add your databases to the collector.
+
+
 Authors
 -------
 
