@@ -63,6 +63,14 @@ $$
   /* pganalyze-collector */ SELECT * FROM pg_catalog.pg_stat_activity;
 $$ LANGUAGE sql VOLATILE SECURITY DEFINER;
 
+CREATE OR REPLACE FUNCTION pganalyze.get_column_stats() RETURNS SETOF pg_stats AS
+$$
+  /* pganalyze-collector */ SELECT schemaname, tablename, attname, inherited, null_frac, avg_width,
+  n_distinct, NULL::anyarray, most_common_freqs, NULL::anyarray, correlation, NULL::anyarray,
+  most_common_elem_freqs, elem_count_histogram
+  FROM pg_catalog.pg_stats;
+$$ LANGUAGE sql VOLATILE SECURITY DEFINER;
+
 CREATE USER pganalyze WITH PASSWORD 'mypassword' CONNECTION LIMIT 5;
 REVOKE ALL ON SCHEMA public FROM pganalyze;
 GRANT USAGE ON SCHEMA pganalyze TO pganalyze;

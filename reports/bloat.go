@@ -29,7 +29,7 @@ func (report BloatReport) ReportType() string {
 
 // Run the report
 func (report *BloatReport) Run(server state.Server, logger *util.Logger) (err error) {
-	report.Data, err = postgres.GetBloatStats(server.Connection)
+	report.Data, err = postgres.GetBloatStats(logger, server.Connection)
 	if err != nil {
 		return
 	}

@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/pganalyze/collector/state"
+	"github.com/pganalyze/collector/util"
 )
 
 // Estimation queries by PostgreSQL Experts, licensed under the BSD-3-Clause license
@@ -16,22 +17,32 @@ WITH constants AS (
 		-- for reference down the query and easy maintenance
 		SELECT current_setting('block_size')::numeric AS bs, 23 AS hdr, 8 AS ma
 ),
+columns AS (
+	SELECT pg_namespace.nspname AS table_schema,
+				 pg_class.relname AS table_name,
+				 pg_attribute.attname AS column_name
+		FROM pg_attribute
+		JOIN pg_class ON (pg_class.oid = pg_attribute.attrelid)
+		JOIN pg_namespace ON (pg_namespace.oid = pg_class.relnamespace)
+	 WHERE pg_class.relkind IN ('r', 'm') AND pg_attribute.attnum > 0
+				 AND nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast')
+				 AND NOT attisdropped
+),
 no_stats AS (
 		-- screen out table who have attributes
 		-- which dont have stats, such as JSON
 		SELECT table_schema, table_name,
 				n_live_tup::numeric as est_rows,
 				pg_table_size(relid)::numeric as table_size
-		FROM information_schema.columns
+		FROM columns
 				JOIN pg_stat_user_tables as psut
 					 ON table_schema = psut.schemaname
 					 AND table_name = psut.relname
-				LEFT OUTER JOIN pg_stats
+				LEFT OUTER JOIN %s
 				ON table_schema = pg_stats.schemaname
 						AND table_name = pg_stats.tablename
 						AND column_name = attname
 		WHERE attname IS NULL
-				AND table_schema NOT IN ('pg_catalog', 'information_schema')
 		GROUP BY table_schema, table_name, relid, n_live_tup
 ),
 null_headers AS (
@@ -45,14 +56,14 @@ null_headers AS (
 				schemaname,
 				tablename,
 				hdr, ma, bs
-		FROM pg_stats CROSS JOIN constants
+		FROM %s CROSS JOIN constants
 				LEFT OUTER JOIN no_stats
 						ON schemaname = no_stats.table_schema
 						AND tablename = no_stats.table_name
 		WHERE schemaname NOT IN ('pg_catalog', 'information_schema')
 				AND no_stats.table_name IS NULL
 				AND EXISTS ( SELECT 1
-						FROM information_schema.columns
+						FROM columns
 								WHERE schemaname = columns.table_schema
 										AND tablename = columns.table_name )
 		GROUP BY schemaname, tablename, hdr, ma, bs
@@ -61,8 +72,8 @@ data_headers AS (
 		-- estimate header and row size
 		SELECT
 				ma, bs, hdr, schemaname, tablename,
-				(datawidth+(hdr+ma-(case when hdr%ma=0 THEN ma ELSE hdr%ma END)))::numeric AS datahdr,
-				(maxfracsum*(nullhdr+ma-(case when nullhdr%ma=0 THEN ma ELSE nullhdr%ma END))) AS nullhdr2
+				(datawidth+(hdr+ma-(case when hdr %% ma=0 THEN ma ELSE hdr %% ma END)))::numeric AS datahdr,
+				(maxfracsum*(nullhdr+ma-(case when nullhdr %% ma=0 THEN ma ELSE nullhdr %% ma END))) AS nullhdr2
 		FROM null_headers
 ),
 table_estimates AS (
@@ -72,8 +83,8 @@ table_estimates AS (
 				reltuples::numeric as est_rows, relpages * bs as table_bytes,
 		CEIL((reltuples*
 						(datahdr + nullhdr2 + 4 + ma -
-								(CASE WHEN datahdr%ma=0
-										THEN ma ELSE datahdr%ma END)
+								(CASE WHEN datahdr %% ma=0
+										THEN ma ELSE datahdr %% ma END)
 								)/(bs-20))) * bs AS expected_bytes,
 				reltoastrelid
 		FROM data_headers
@@ -138,7 +149,7 @@ index_item_sizes AS (
 				 sum( (1-coalesce(pg_stats.null_frac, 0)) * coalesce(pg_stats.avg_width, 1024) ) AS nulldatawidth
 		FROM pg_attribute
 		JOIN btree_index_atts AS ind_atts ON pg_attribute.attrelid = ind_atts.indexrelid AND pg_attribute.attnum = ind_atts.attnum
-		JOIN pg_stats ON pg_stats.schemaname = ind_atts.nspname
+		JOIN %s ON pg_stats.schemaname = ind_atts.nspname
 				 AND ( (pg_stats.tablename = ind_atts.tablename AND pg_stats.attname = pg_catalog.pg_get_indexdef(pg_attribute.attrelid, pg_attribute.attnum, TRUE))
 				 OR   (pg_stats.tablename = ind_atts.index_name AND pg_stats.attname = pg_attribute.attname))
 		WHERE pg_attribute.attnum > 0
@@ -152,14 +163,14 @@ index_aligned_est AS (
 								reltuples * ( 6
 										+ maxalign
 										- CASE
-												WHEN index_tuple_hdr%maxalign = 0 THEN maxalign
-												ELSE index_tuple_hdr%maxalign
+												WHEN index_tuple_hdr %% maxalign = 0 THEN maxalign
+												ELSE index_tuple_hdr %% maxalign
 											END
 										+ nulldatawidth
 										+ maxalign
 										- CASE /* Add padding to the data to align on MAXALIGN */
-												WHEN nulldatawidth::integer%maxalign = 0 THEN maxalign
-												ELSE nulldatawidth::integer%maxalign
+												WHEN nulldatawidth::integer %% maxalign = 0 THEN maxalign
+												ELSE nulldatawidth::integer %% maxalign
 											END
 								)::numeric
 							/ ( bs - pagehdr::NUMERIC )
@@ -179,12 +190,30 @@ SELECT nspname, index_name,
 	JOIN pg_class ON (pg_class.oid = index_aligned_est.table_oid)
 `
 
+const columnStatsHelperSQL string = `
+SELECT 1 AS enabled
+	FROM pg_proc
+	JOIN pg_namespace ON (pronamespace = pg_namespace.oid)
+ WHERE nspname = 'pganalyze' AND proname = 'get_column_stats'
+`
+
+func columnStatsHelperExists(db *sql.DB) bool {
+	var enabled bool
+
+	err := db.QueryRow(QueryMarkerSQL + columnStatsHelperSQL).Scan(&enabled)
+	if err != nil {
+		return false
+	}
+
+	return enabled
+}
+
 // TODO: Figure out how to introduce precise bloat queries here, e.g.
 // SELECT index_size, index_size * (1.0 - avg_leaf_density / 100.0) FROM pgstatindex('some_index_pkey'::regclass);
 // http://blog.ioguix.net/postgresql/2014/03/28/Playing-with-indexes-and-better-bloat-estimate.html
 
-func GetRelationBloat(db *sql.DB) (relBloat []state.PostgresRelationBloat, err error) {
-	rows, err := db.Query(QueryMarkerSQL + tableBloatSQL)
+func GetRelationBloat(logger *util.Logger, db *sql.DB, columnStatsSourceTable string) (relBloat []state.PostgresRelationBloat, err error) {
+	rows, err := db.Query(QueryMarkerSQL + fmt.Sprintf(tableBloatSQL, columnStatsSourceTable, columnStatsSourceTable))
 	if err != nil {
 		err = fmt.Errorf("TableBloat/Query: %s", err)
 		return nil, err
@@ -208,8 +237,8 @@ func GetRelationBloat(db *sql.DB) (relBloat []state.PostgresRelationBloat, err e
 	return
 }
 
-func GetIndexBloat(db *sql.DB) (indexBloat []state.PostgresIndexBloat, err error) {
-	rows, err := db.Query(QueryMarkerSQL + indexBloatSQL)
+func GetIndexBloat(logger *util.Logger, db *sql.DB, columnStatsSourceTable string) (indexBloat []state.PostgresIndexBloat, err error) {
+	rows, err := db.Query(QueryMarkerSQL + fmt.Sprintf(indexBloatSQL, columnStatsSourceTable))
 	if err != nil {
 		err = fmt.Errorf("IndexBloat/Query: %s", err)
 		return nil, err
@@ -233,13 +262,27 @@ func GetIndexBloat(db *sql.DB) (indexBloat []state.PostgresIndexBloat, err error
 	return
 }
 
-func GetBloatStats(db *sql.DB) (report state.PostgresBloatStats, err error) {
-	report.Relations, err = GetRelationBloat(db)
+func GetBloatStats(logger *util.Logger, db *sql.DB) (report state.PostgresBloatStats, err error) {
+	var columnStatsSourceTable string
+
+	if columnStatsHelperExists(db) {
+		logger.PrintVerbose("Found pganalyze.get_column_stats() stats helper")
+		columnStatsSourceTable = "(SELECT * FROM pganalyze.get_column_stats()) pg_stats"
+	} else {
+		if !connectedAsSuperUser(db) {
+			logger.PrintInfo("Warning: You are not connecting as superuser. Please setup" +
+				" the monitoring helper functions (https://github.com/pganalyze/collector#setting-up-a-restricted-monitoring-user)" +
+				" or connect as superuser to run the bloat report.")
+		}
+		columnStatsSourceTable = "pg_stats"
+	}
+
+	report.Relations, err = GetRelationBloat(logger, db, columnStatsSourceTable)
 	if err != nil {
 		return
 	}
 
-	report.Indices, err = GetIndexBloat(db)
+	report.Indices, err = GetIndexBloat(logger, db, columnStatsSourceTable)
 	if err != nil {
 		return
 	}
