@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"os/user"
 	"runtime/pprof"
+	"runtime/trace"
 	"strconv"
 	"sync"
 	"syscall"
@@ -93,6 +94,7 @@ func main() {
 	var noPostgresSettings, noPostgresLocks, noPostgresFunctions, noPostgresBloat, noPostgresViews bool
 	var noPostgresRelations, noLogs, noExplain, noSystemInformation, diffStatements bool
 	var writeHeapProfile bool
+	var testRunAndTrace bool
 	var logToSyslog bool
 	var logNoTimestamps bool
 	var reloadRun bool
@@ -118,7 +120,8 @@ func main() {
 	flag.BoolVar(&noExplain, "no-explain", false, "Don't automatically EXPLAIN slow queries logged in the logfile")
 	flag.BoolVar(&noSystemInformation, "no-system-information", false, "Don't collect OS level performance data")
 	flag.BoolVar(&diffStatements, "diff-statements", false, "Send a diff of the pg_stat_statements statistics, instead of counter values")
-	flag.BoolVar(&writeHeapProfile, "write-heap-profile", false, "Write a memory heap profile to ~/.pganalyze_collector.mprof when SIGHUP is received (disabled by default, only useful for debugging)")
+	flag.BoolVar(&writeHeapProfile, "write-heap-profile", false, "Write a Go memory heap profile to ~/pganalyze_collector.mprof when SIGHUP is received (disabled by default, only useful for debugging)")
+	flag.BoolVar(&testRunAndTrace, "trace", false, "Write a Go trace file to ~/pganalyze_collector.trace for a single test run (only useful for debugging)")
 	flag.StringVar(&configFilename, "config", defaultConfigFile, "Specify alternative path for config file")
 	flag.StringVar(&stateFilename, "statefile", defaultStateFile, "Specify alternative path for state file")
 	flag.StringVar(&pidFilename, "pidfile", "", "Specifies a path that a pidfile should be written to (default is no pidfile being written)")
@@ -150,6 +153,10 @@ func main() {
 	}
 
 	if testReport != "" {
+		testRun = true
+	}
+
+	if testRunAndTrace {
 		testRun = true
 	}
 
@@ -194,6 +201,23 @@ func main() {
 		globalCollectionOpts.CollectorApplicationName = "pganalyze_collector"
 	}
 
+	if testRunAndTrace {
+		usr, err := user.Current()
+		if err != nil {
+			panic(err)
+		}
+		tracePath := usr.HomeDir + "/pganalyze_collector.trace"
+		f, err := os.Create(tracePath)
+		if err != nil {
+			panic(err)
+		}
+		trace.Start(f)
+		run(&sync.WaitGroup{}, globalCollectionOpts, logger, configFilename)
+		trace.Stop()
+		f.Close()
+		return
+	}
+
 	if pidFilename != "" {
 		pid := os.Getpid()
 		err := ioutil.WriteFile(pidFilename, []byte(strconv.Itoa(pid)), 0644)
@@ -225,7 +249,7 @@ ReadConfigAndRun:
 		if writeHeapProfile {
 			usr, err := user.Current()
 			if err == nil {
-				mprofPath := usr.HomeDir + "/.pganalyze_collector.mprof"
+				mprofPath := usr.HomeDir + "/pganalyze_collector.mprof"
 				f, err := os.Create(mprofPath)
 				if err == nil {
 					pprof.WriteHeapProfile(f)
