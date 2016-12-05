@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"time"
 
+	raven "github.com/getsentry/raven-go"
 	"github.com/pganalyze/collector/config"
 )
 
@@ -36,7 +37,8 @@ type PersistedState struct {
 
 // TransientState - State thats only used within a collector run (and not needed for diffs)
 type TransientState struct {
-	Statements PostgresStatementMap
+	Statements   PostgresStatementMap
+	SentryClient *raven.Client
 }
 
 // DiffState - Result of diff-ing two persistent state structs
@@ -88,7 +90,8 @@ type CollectionOpts struct {
 }
 
 type GrantConfig struct {
-	// Here be dragons
+	ServerID  string `json:"server_id"`
+	SentryDsn string `json:"sentry_dsn"`
 }
 
 type Grant struct {

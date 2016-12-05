@@ -6,14 +6,20 @@ import (
 )
 
 type Logger struct {
-	Verbose     bool
-	Quiet       bool
-	Prefix      *string
-	Destination *log.Logger
+	Verbose        bool
+	Quiet          bool
+	Prefix         *string
+	Destination    *log.Logger
+	RememberErrors bool
+	ErrorMessages  []string
 }
 
 func (logger *Logger) WithPrefix(prefix string) *Logger {
 	return &Logger{Verbose: logger.Verbose, Quiet: logger.Quiet, Destination: logger.Destination, Prefix: &prefix}
+}
+
+func (logger *Logger) WithPrefixAndRememberErrors(prefix string) *Logger {
+	return &Logger{Verbose: logger.Verbose, Quiet: logger.Quiet, Destination: logger.Destination, Prefix: &prefix, RememberErrors: true}
 }
 
 func (logger *Logger) print(logLevel string, format string, args ...interface{}) {
@@ -47,5 +53,9 @@ func (logger *Logger) PrintWarning(format string, args ...interface{}) {
 }
 
 func (logger *Logger) PrintError(format string, args ...interface{}) {
+	if logger.RememberErrors {
+		logger.ErrorMessages = append(logger.ErrorMessages, fmt.Sprintf(format, args...))
+	}
+
 	logger.print("E", format, args...)
 }

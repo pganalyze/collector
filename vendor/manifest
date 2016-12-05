@@ -18,6 +18,22 @@
 			"notests": true
 		},
 		{
+			"importpath": "github.com/certifi/gocertifi",
+			"repository": "https://github.com/certifi/gocertifi",
+			"vcs": "git",
+			"revision": "a61bf5eafa3aee233ec8043e9da052447e5463dd",
+			"branch": "master",
+			"notests": true
+		},
+		{
+			"importpath": "github.com/getsentry/raven-go",
+			"repository": "https://github.com/getsentry/raven-go",
+			"vcs": "git",
+			"revision": "3f7439d3e74d88e21d196ba20eb61a5a958bc118",
+			"branch": "master",
+			"notests": true
+		},
+		{
 			"importpath": "github.com/go-ini/ini",
 			"repository": "https://github.com/go-ini/ini",
 			"vcs": "git",

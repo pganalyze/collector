@@ -16,6 +16,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/pganalyze/collector/output/pganalyze_collector"
+	snapshot "github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/output/transform"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
@@ -23,20 +24,29 @@ import (
 )
 
 func SendFull(server state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, newState state.PersistedState, diffState state.DiffState, transientState state.TransientState, collectedIntervalSecs uint32) error {
+	s := transform.StateToSnapshot(newState, diffState, transientState)
+	s.CollectedIntervalSecs = collectedIntervalSecs
+	s.CollectorErrors = logger.ErrorMessages
+
+	return submitFull(s, server, collectionOpts, logger, newState.CollectedAt, false)
+}
+
+func SendFailedFull(server state.Server, collectionOpts state.CollectionOpts, logger *util.Logger) error {
+	s := snapshot.FullSnapshot{FailedRun: true, CollectorErrors: logger.ErrorMessages}
+	return submitFull(s, server, collectionOpts, logger, time.Now(), true)
+}
+
+func submitFull(s snapshot.FullSnapshot, server state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, collectedAt time.Time, quiet bool) error {
 	var err error
 	var data []byte
 
 	snapshotUUID := uuid.NewV4()
-	collectedAt := newState.CollectedAt
-	s := transform.StateToSnapshot(newState, diffState, transientState)
 
 	s.SnapshotVersionMajor = 1
 	s.SnapshotVersionMinor = 0
 	s.CollectorVersion = util.CollectorNameAndVersion
-
 	s.SnapshotUuid = snapshotUUID.String()
 	s.CollectedAt, _ = ptypes.TimestampProto(collectedAt)
-	s.CollectedIntervalSecs = collectedIntervalSecs
 
 	data, err = proto.Marshal(&s)
 	if err != nil {
@@ -60,7 +70,7 @@ func SendFull(server state.Server, collectionOpts state.CollectionOpts, logger *
 		return err
 	}
 
-	return submitSnapshot(server, collectionOpts, logger, s3Location, collectedAt)
+	return submitSnapshot(server, collectionOpts, logger, s3Location, collectedAt, quiet)
 }
 
 func debugOutputAsJSON(logger *util.Logger, compressedData bytes.Buffer) {
@@ -94,7 +104,7 @@ func debugOutputAsJSON(logger *util.Logger, compressedData bytes.Buffer) {
 	fmt.Printf("%s\n", out.String())
 }
 
-func submitSnapshot(server state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, s3Location string, collectedAt time.Time) error {
+func submitSnapshot(server state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, s3Location string, collectedAt time.Time, quiet bool) error {
 	requestURL := server.Config.APIBaseURL + "/v2/snapshots"
 
 	if collectionOpts.TestRun {
@@ -137,7 +147,7 @@ func submitSnapshot(server state.Server, collectionOpts state.CollectionOpts, lo
 
 	if len(body) > 0 {
 		logger.PrintInfo("%s", body)
-	} else {
+	} else if !quiet {
 		logger.PrintInfo("Submitted snapshot successfully")
 	}
 

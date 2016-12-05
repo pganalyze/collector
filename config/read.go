@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"strconv"
 
@@ -87,13 +88,15 @@ func Read(logger *util.Logger, filename string) ([]ServerConfig, error) {
 		}
 
 		if len(servers) == 0 {
-			logger.PrintError("Error: Configuration is empty, please edit %s and reload the collector", filename)
+			return servers, fmt.Errorf("Configuration file is empty, please edit %s and reload the collector", filename)
 		}
 	} else {
 		if os.Getenv("DYNO") != "" && os.Getenv("PORT") != "" {
 			servers = handleHeroku()
-		} else {
+		} else if os.Getenv("PGA_API_KEY") != "" {
 			servers = append(servers, *getDefaultConfig())
+		} else {
+			return servers, fmt.Errorf("No configuration file found at %s, and no environment variables set", filename)
 		}
 	}
 

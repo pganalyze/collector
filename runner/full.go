@@ -9,14 +9,59 @@ import (
 	"os"
 	"time"
 
+	raven "github.com/getsentry/raven-go"
 	"github.com/pganalyze/collector/input"
 	"github.com/pganalyze/collector/output"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
 )
 
+func collectDiffAndSubmit(server state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.PersistedState, error) {
+	var newState state.PersistedState
+	var err error
+
+	server.Connection, err = establishConnection(server, logger, globalCollectionOpts)
+	if err != nil {
+		return newState, fmt.Errorf("Failed to connect to database: %s", err)
+	}
+
+	newState, transientState, err := input.CollectFull(server, globalCollectionOpts, logger)
+	if err != nil {
+		return newState, err
+	}
+
+	// This is the easiest way to avoid opening multiple connections to different databases on the same instance
+	server.Connection.Close()
+	server.Connection = nil
+
+	collectedIntervalSecs := uint32(newState.CollectedAt.Sub(server.PrevState.CollectedAt) / time.Second)
+	if collectedIntervalSecs == 0 {
+		collectedIntervalSecs = 1 // Avoid divide by zero errors for fast consecutive runs
+	}
+
+	diffState := diffState(logger, server.PrevState, newState, collectedIntervalSecs)
+
+	err = output.SendFull(server, globalCollectionOpts, logger, newState, diffState, transientState, collectedIntervalSecs)
+	if err != nil {
+		return newState, err
+	}
+
+	return newState, nil
+}
+
+func capturePanic(f func()) (err interface{}) {
+	defer func() {
+		err = recover()
+	}()
+
+	f()
+
+	return
+}
+
 func processDatabase(server state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.PersistedState, state.Grant, error) {
 	var grant state.Grant
+	var newState state.PersistedState
 	var err error
 
 	if globalCollectionOpts.SubmitCollectedData {
@@ -33,24 +78,33 @@ func processDatabase(server state.Server, globalCollectionOpts state.CollectionO
 		}
 	}
 
-	newState, transientState, err := input.CollectFull(server, globalCollectionOpts, logger)
-	if err != nil {
-		return newState, grant, err
+	transientState := state.TransientState{}
+	if server.Grant.Config.SentryDsn != "" {
+		transientState.SentryClient, err = raven.NewWithTags(server.Grant.Config.SentryDsn, map[string]string{"server_id": server.Grant.Config.ServerID})
+		transientState.SentryClient.SetRelease(util.CollectorVersion)
+		if err != nil {
+			transientState.SentryClient = nil
+			logger.PrintVerbose("Failed to setup Sentry client: %s", err)
+		}
 	}
 
-	collectedIntervalSecs := uint32(newState.CollectedAt.Sub(server.PrevState.CollectedAt) / time.Second)
-	if collectedIntervalSecs == 0 {
-		collectedIntervalSecs = 1 // Avoid divide by zero errors for fast consecutive runs
+	runFunc := func() {
+		newState, err = collectDiffAndSubmit(server, globalCollectionOpts, logger)
 	}
 
-	diffState := diffState(logger, server.PrevState, newState, collectedIntervalSecs)
-
-	err = output.SendFull(server, globalCollectionOpts, logger, newState, diffState, transientState, collectedIntervalSecs)
-	if err != nil {
-		logger.PrintError("Error whilst sending: %s", err)
+	var panicErr interface{}
+	if transientState.SentryClient != nil {
+		panicErr, _ = transientState.SentryClient.CapturePanic(runFunc, nil)
+		transientState.SentryClient.Wait()
+		transientState.SentryClient = nil
+	} else {
+		panicErr = capturePanic(runFunc)
+	}
+	if panicErr != nil {
+		err = fmt.Errorf("%s", panicErr)
 	}
 
-	return newState, grant, nil
+	return newState, grant, err
 }
 
 func getSnapshotGrant(server state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.Grant, error) {
@@ -78,7 +132,7 @@ func getSnapshotGrant(server state.Server, globalCollectionOpts state.Collection
 	}
 
 	if resp.StatusCode != http.StatusOK || len(body) == 0 {
-		return state.Grant{}, fmt.Errorf("Error when getting grant: %s\n", body)
+		return state.Grant{}, fmt.Errorf("Error when getting grant: %s", body)
 	}
 
 	grant := state.Grant{}
@@ -146,25 +200,22 @@ func CollectAllServers(servers []state.Server, globalCollectionOpts state.Collec
 	for idx, server := range servers {
 		var err error
 
-		prefixedLogger := logger.WithPrefix(server.Config.SectionName)
-
-		server.Connection, err = establishConnection(server, logger, globalCollectionOpts)
-		if err != nil {
-			prefixedLogger.PrintError("Error: Failed to connect to database: %s", err)
-			return
-		}
+		prefixedLogger := logger.WithPrefixAndRememberErrors(server.Config.SectionName)
 
 		newState, grant, err := processDatabase(server, globalCollectionOpts, prefixedLogger)
 		if err != nil {
-			prefixedLogger.PrintError("Error: Could not process database: %s", err)
+			prefixedLogger.PrintError("Could not process database: %s", err)
+			if grant.Valid && !globalCollectionOpts.TestRun && globalCollectionOpts.SubmitCollectedData {
+				server.Grant = grant
+				err = output.SendFailedFull(server, globalCollectionOpts, prefixedLogger)
+				if err != nil {
+					prefixedLogger.PrintWarning("Could not send error information to remote server: %s", err)
+				}
+			}
 		} else {
 			servers[idx].Grant = grant
 			servers[idx].PrevState = newState
 		}
-
-		// This is the easiest way to avoid opening multiple connections to different databases on the same instance
-		server.Connection.Close()
-		server.Connection = nil
 	}
 
 	if globalCollectionOpts.WriteStateUpdate {
