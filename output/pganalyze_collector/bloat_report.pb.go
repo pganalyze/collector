@@ -10,7 +10,9 @@ It is generated from these files:
 	buffercache_report.proto
 	full_snapshot.proto
 	report.proto
+	sequence_report.proto
 	shared.proto
+	vacuum_report.proto
 
 It has these top-level messages:
 	BloatReportData
@@ -55,6 +57,10 @@ It has these top-level messages:
 	FunctionInformation
 	FunctionStatistic
 	Report
+	SequenceReportData
+	SequenceReference
+	SequenceInformation
+	SerialColumnInformation
 	NullString
 	NullTimestamp
 	RoleReference
@@ -64,6 +70,8 @@ It has these top-level messages:
 	FunctionReference
 	QueryReference
 	QueryInformation
+	VacuumReportData
+	VacuumStatistic
 */
 package pganalyze_collector
 
