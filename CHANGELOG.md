@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.9.8       2016-12-19
+
+* Make bloat report work under the restricted user
+* Add option to run a Go performance trace on a single test run
+* Improve error tracking
+* Update pg_query_go
+  * Cut off fingerprints at 100 nodes deep to avoid excessive runtimes/memory
+
+
 ## 0.9.7       2016-11-02
 
 * Prevent leaks of previous scheduler runs when reloading.

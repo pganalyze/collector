@@ -31,14 +31,14 @@ func run(wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *
 
 	schedulerGroups, err := scheduler.GetSchedulerGroups()
 	if err != nil {
-		logger.PrintError("Error: Could not get scheduler groups, awaiting SIGHUP or process kill")
+		logger.PrintError("Error: Could not get scheduler groups")
 		return false, nil, nil
 	}
 
 	serverConfigs, err := config.Read(logger, configFilename)
 	if err != nil {
 		logger.PrintError("Config Error: %s", err)
-		return false, nil, nil
+		return !globalCollectionOpts.TestRun, nil, nil
 	}
 
 	for _, config := range serverConfigs {
@@ -242,8 +242,12 @@ ReadConfigAndRun:
 	s := <-sigs
 
 	// Stop the scheduled runs
-	statsStop <- true
-	reportsStop <- true
+	if statsStop != nil {
+		statsStop <- true
+	}
+	if reportsStop != nil {
+		reportsStop <- true
+	}
 
 	if s == syscall.SIGHUP {
 		if writeHeapProfile {
