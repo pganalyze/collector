@@ -26,6 +26,14 @@
 			"notests": true
 		},
 		{
+			"importpath": "github.com/gedex/inflector",
+			"repository": "https://github.com/gedex/inflector",
+			"vcs": "git",
+			"revision": "046f2c31204676e3623730ee70fd0964e05822e7",
+			"branch": "master",
+			"notests": true
+		},
+		{
 			"importpath": "github.com/getsentry/raven-go",
 			"repository": "https://github.com/getsentry/raven-go",
 			"vcs": "git",

@@ -16,7 +16,7 @@ type Report interface {
 	Result() *pganalyze_collector.Report
 }
 
-var SupportedReports = []string{"bloat", "buffercache"}
+var SupportedReports = []string{"bloat", "buffercache", "vacuum", "sequence"}
 
 func InitializeReport(reportType string, reportRunID string) (Report, error) {
 	switch reportType {
@@ -24,6 +24,10 @@ func InitializeReport(reportType string, reportRunID string) (Report, error) {
 		return &BloatReport{ReportRunID: reportRunID, CollectedAt: time.Now()}, nil
 	case "buffercache":
 		return &BuffercacheReport{ReportRunID: reportRunID, CollectedAt: time.Now()}, nil
+	case "vacuum":
+		return &VacuumReport{ReportRunID: reportRunID, CollectedAt: time.Now()}, nil
+	case "sequence":
+		return &SequenceReport{ReportRunID: reportRunID, CollectedAt: time.Now()}, nil
 	default:
 		return nil, fmt.Errorf("Unknown report type: %s", reportType)
 	}
