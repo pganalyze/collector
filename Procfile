@@ -1,1 +1,1 @@
-web: collector -v --statefile=/app/state.out --no-log-timestamps
+web: collector --statefile=/app/state.out --no-log-timestamps
