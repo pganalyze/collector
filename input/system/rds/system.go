@@ -104,8 +104,8 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger) (system sta
 			return
 		}
 
-		event := resp.Events[0]
-		if event != nil {
+		if len(resp.Events) > 0 {
+			event := resp.Events[0]
 			str := event.Message
 			if str != nil {
 				var osSnapshot RdsOsSnapshot
