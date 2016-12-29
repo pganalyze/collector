@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.9       2016-12-29
+
+* Fix edge case that made RDS system metrics code crash
+* Add VACUUM and Sequence reports
+
+
 ## 0.9.8       2016-12-19
 
 * Make bloat report work under the restricted user
