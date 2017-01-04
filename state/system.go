@@ -15,7 +15,6 @@ type SystemState struct {
 	DiskStats      DiskStatsMap
 	DiskPartitions DiskPartitionMap
 
-	SystemId               string // Unique identifier for this system (pg_controldata / AWS instance ID / etc)
 	DataDirectoryPartition string // Partition that the data directory lives on (identified by the partition's mountpoint)
 	XlogPartition          string // Partition that the WAL directory lives on
 	XlogUsedBytes          uint64
@@ -32,7 +31,9 @@ const (
 )
 
 type SystemInfo struct {
-	Type SystemType
+	Type        SystemType
+	SystemScope string
+	SystemID    string
 
 	SelfHosted *SystemInfoSelfHosted
 	AmazonRds  *SystemInfoAmazonRds
@@ -42,14 +43,15 @@ type SystemInfo struct {
 
 // SystemInfoSelfHosted - System information for self-hosted systems (both physical and virtual)
 type SystemInfoSelfHosted struct {
-	Hostname             string
-	Architecture         string
-	OperatingSystem      string
-	Platform             string
-	PlatformFamily       string
-	PlatformVersion      string
-	VirtualizationSystem string // Name of the virtualization system (only if we're a guest)
-	KernelVersion        string
+	Hostname                 string
+	Architecture             string
+	OperatingSystem          string
+	Platform                 string
+	PlatformFamily           string
+	PlatformVersion          string
+	VirtualizationSystem     string // Name of the virtualization system (only if we're a guest)
+	KernelVersion            string
+	DatabaseSystemIdentifier string
 }
 
 // SystemInfoAmazonRds - System information for Amazon RDS systems

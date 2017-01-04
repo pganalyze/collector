@@ -29,9 +29,9 @@ type ServerConfig struct {
 
 	SectionName string
 
-	SystemID    string
-	SystemType  string
-	SystemScope string
+	SystemID    string `ini:"api_system_id"`
+	SystemType  string `ini:"api_system_type"`
+	SystemScope string `ini:"api_system_scope"`
 }
 
 // GetPqOpenString - Gets the database configuration as a string that can be passed to lib/pq for connecting
@@ -91,4 +91,16 @@ func (config ServerConfig) GetDbPort() int {
 	}
 
 	return config.DbPort
+}
+
+// GetDbName - Gets the database name from the given configuration
+func (config ServerConfig) GetDbName() string {
+	if config.DbURL != "" {
+		u, _ := url.Parse(config.DbURL)
+		if len(u.Path) > 0 {
+			return u.Path[1:len(u.Path)]
+		}
+	}
+
+	return config.DbName
 }

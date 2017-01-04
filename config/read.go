@@ -27,6 +27,15 @@ func getDefaultConfig() *ServerConfig {
 	if apiBaseURL := os.Getenv("PGA_API_BASEURL"); apiBaseURL != "" {
 		config.APIBaseURL = apiBaseURL
 	}
+	if systemID := os.Getenv("PGA_API_SYSTEM_ID"); systemID != "" {
+		config.SystemID = systemID
+	}
+	if systemType := os.Getenv("PGA_API_SYSTEM_TYPE"); systemType != "" {
+		config.SystemType = systemType
+	}
+	if systemScope := os.Getenv("PGA_API_SYSTEM_SCOPE"); systemScope != "" {
+		config.SystemScope = systemScope
+	}
 	if dbURL := os.Getenv("DB_URL"); dbURL != "" {
 		config.DbURL = dbURL
 	}
@@ -81,9 +90,23 @@ func Read(logger *util.Logger, filename string) ([]ServerConfig, error) {
 			}
 
 			config.SectionName = section.Name()
+			config.SystemType, config.SystemScope, config.SystemID = identifySystem(*config)
 
-			if config.DbName != "" {
-				servers = append(servers, *config)
+			if config.GetDbName() != "" {
+				// Ensure we have no duplicate System Type+Scope+ID within one collector
+				skip := false
+				for _, server := range servers {
+					if config.SystemType == server.SystemType &&
+						config.SystemScope == server.SystemScope &&
+						config.SystemID == server.SystemID {
+						skip = true
+					}
+				}
+				if skip {
+					logger.PrintError("Skipping config section %s, detected as duplicate", config.SectionName)
+				} else {
+					servers = append(servers, *config)
+				}
 			}
 		}
 
@@ -94,7 +117,9 @@ func Read(logger *util.Logger, filename string) ([]ServerConfig, error) {
 		if os.Getenv("DYNO") != "" && os.Getenv("PORT") != "" {
 			servers = handleHeroku()
 		} else if os.Getenv("PGA_API_KEY") != "" {
-			servers = append(servers, *getDefaultConfig())
+			config := getDefaultConfig()
+			config.SystemType, config.SystemScope, config.SystemID = identifySystem(*config)
+			servers = append(servers, *config)
 		} else {
 			return servers, fmt.Errorf("No configuration file found at %s, and no environment variables set", filename)
 		}

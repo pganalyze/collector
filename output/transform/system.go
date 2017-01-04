@@ -18,14 +18,15 @@ func transformSystem(s snapshot.FullSnapshot, newState state.PersistedState, dif
 		if newState.System.Info.SelfHosted != nil {
 			s.System.SystemInformation.Info = &snapshot.SystemInformation_SelfHosted{
 				SelfHosted: &snapshot.SystemInformationSelfHosted{
-					Hostname:             newState.System.Info.SelfHosted.Hostname,
-					Architecture:         newState.System.Info.SelfHosted.Architecture,
-					OperatingSystem:      newState.System.Info.SelfHosted.OperatingSystem,
-					Platform:             newState.System.Info.SelfHosted.Platform,
-					PlatformFamily:       newState.System.Info.SelfHosted.PlatformFamily,
-					PlatformVersion:      newState.System.Info.SelfHosted.PlatformVersion,
-					VirtualizationSystem: newState.System.Info.SelfHosted.VirtualizationSystem,
-					KernelVersion:        newState.System.Info.SelfHosted.KernelVersion,
+					Hostname:                 newState.System.Info.SelfHosted.Hostname,
+					Architecture:             newState.System.Info.SelfHosted.Architecture,
+					OperatingSystem:          newState.System.Info.SelfHosted.OperatingSystem,
+					Platform:                 newState.System.Info.SelfHosted.Platform,
+					PlatformFamily:           newState.System.Info.SelfHosted.PlatformFamily,
+					PlatformVersion:          newState.System.Info.SelfHosted.PlatformVersion,
+					VirtualizationSystem:     newState.System.Info.SelfHosted.VirtualizationSystem,
+					KernelVersion:            newState.System.Info.SelfHosted.KernelVersion,
+					DatabaseSystemIdentifier: newState.System.Info.SelfHosted.DatabaseSystemIdentifier,
 				},
 			}
 		}
@@ -65,7 +66,8 @@ func transformSystem(s snapshot.FullSnapshot, newState state.PersistedState, dif
 		// TODO: Add Info
 	}
 
-	s.System.SystemId = newState.System.SystemId
+	s.System.SystemId = newState.System.Info.SystemID
+	s.System.SystemScope = newState.System.Info.SystemScope
 	s.System.XlogUsedBytes = newState.System.XlogUsedBytes
 
 	s.System.SchedulerStatistic = &snapshot.SchedulerStatistic{

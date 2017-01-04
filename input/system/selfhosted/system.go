@@ -31,6 +31,9 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger) (system sta
 	var status helperStatus
 
 	system.Info.Type = state.SelfHostedSystem
+	system.Info.SelfHosted = &state.SystemInfoSelfHosted{
+		Architecture: runtime.GOARCH,
+	}
 
 	statusBytes, err := exec.Command("/usr/bin/pganalyze-collector-helper", "status").Output()
 	if err != nil {
@@ -40,25 +43,23 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger) (system sta
 		if err != nil {
 			logger.PrintVerbose("Selfhosted/System: Could not unmarshal helper status: %s", err)
 		}
-	}
 
-	system.XlogUsedBytes = status.XlogUsedBytes
-	system.SystemId = status.SystemIdentifier
+		system.XlogUsedBytes = status.XlogUsedBytes
+		system.Info.SelfHosted.DatabaseSystemIdentifier = status.SystemIdentifier
+	}
 
 	hostInfo, err := host.Info()
 	if err != nil {
 		logger.PrintVerbose("Selfhosted/System: Failed to get host information: %s", err)
 	} else {
 		system.Info.BootTime = time.Unix(int64(hostInfo.BootTime), 0)
-		system.Info.SelfHosted = &state.SystemInfoSelfHosted{
-			Hostname:        hostInfo.Hostname,
-			Architecture:    runtime.GOARCH,
-			OperatingSystem: hostInfo.OS,
-			Platform:        hostInfo.Platform,
-			PlatformFamily:  hostInfo.PlatformFamily,
-			PlatformVersion: hostInfo.PlatformVersion,
-			KernelVersion:   hostInfo.KernelVersion,
-		}
+		system.Info.SelfHosted.Hostname = hostInfo.Hostname
+		system.Info.SelfHosted.OperatingSystem = hostInfo.OS
+		system.Info.SelfHosted.Platform = hostInfo.Platform
+		system.Info.SelfHosted.PlatformFamily = hostInfo.PlatformFamily
+		system.Info.SelfHosted.PlatformVersion = hostInfo.PlatformVersion
+		system.Info.SelfHosted.KernelVersion = hostInfo.KernelVersion
+		system.Info.SelfHosted.KernelVersion = hostInfo.KernelVersion
 
 		if hostInfo.VirtualizationRole == "guest" {
 			system.Info.SelfHosted.VirtualizationSystem = hostInfo.VirtualizationSystem

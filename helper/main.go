@@ -72,7 +72,10 @@ func getStatus() {
 				fmt.Fprintf(os.Stderr, "Failed to run pg_controldata: %s\n", err)
 			} else {
 				re := regexp.MustCompile("Database system identifier:\\s+(\\d+)")
-				status.SystemIdentifier = re.FindStringSubmatch(string(pgControldataOut))[1]
+				match := re.FindStringSubmatch(string(pgControldataOut))
+				if len(match) > 1 {
+					status.SystemIdentifier = match[1]
+				}
 			}
 		}
 	}
