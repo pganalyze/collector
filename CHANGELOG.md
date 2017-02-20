@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.9.10      2017-02-??
+
+* Update to Go 1.8 in all builds
+* Disable verbose logging on Heroku
+* Add SystemID for all types of systems
+* Change default config to be in account-based format
+* Support collecting schema info/stats from multiple databases per server
+* Allow monitoring all databases using DB_ALL_NAMES=1 env variable
+* Fix issue with helper having wrong executable format
+* Cleanup test mechanism in test/ folder
+* Handle null relation sizes for temp tables
+
+
 ## 0.9.9       2016-12-29
 
 * Fix edge case that made RDS system metrics code crash
