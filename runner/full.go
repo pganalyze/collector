@@ -49,9 +49,11 @@ func collectDiffAndSubmit(server state.Server, globalCollectionOpts state.Collec
 	return newState, nil
 }
 
-func capturePanic(f func()) (err interface{}) {
+func capturePanic(f func()) (err interface{}, stackTrace []byte) {
 	defer func() {
-		err = recover()
+		if err = recover(); err != nil {
+			stackTrace = debug.Stack()
+		}
 	}()
 
 	f()
@@ -93,15 +95,17 @@ func processDatabase(server state.Server, globalCollectionOpts state.CollectionO
 	}
 
 	var panicErr interface{}
+	var stackTrace []byte
 	if transientState.SentryClient != nil {
 		panicErr, _ = transientState.SentryClient.CapturePanic(runFunc, nil)
 		transientState.SentryClient.Wait()
 		transientState.SentryClient = nil
 	} else {
-		panicErr = capturePanic(runFunc)
+		panicErr, stackTrace = capturePanic(runFunc)
 	}
 	if panicErr != nil {
 		err = fmt.Errorf("%s", panicErr)
+		logger.PrintVerbose("Panic: %s\n%s", err, stackTrace)
 	}
 
 	return newState, grant, err
