@@ -12,7 +12,7 @@ const relationStatsSQLpg94OptionalFields = "s.n_mod_since_analyze"
 
 const relationStatsSQL = `
 SELECT s.relid,
-			 pg_catalog.pg_table_size(s.relid) AS size_bytes,
+			 COALESCE(pg_catalog.pg_table_size(s.relid), 0) AS size_bytes,
 			 COALESCE(s.seq_scan, 0),
 			 COALESCE(s.seq_tup_read, 0),
 			 COALESCE(s.idx_scan, 0),
@@ -46,7 +46,7 @@ SELECT s.relid,
 
 const indexStatsSQL = `
 SELECT s.indexrelid,
-			 pg_catalog.pg_relation_size(s.indexrelid) AS size_bytes,
+			 COALESCE(pg_catalog.pg_relation_size(s.indexrelid), 0) AS size_bytes,
 			 COALESCE(s.idx_scan, 0),
 			 COALESCE(s.idx_tup_read, 0),
 			 COALESCE(s.idx_tup_fetch, 0),
