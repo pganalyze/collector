@@ -9,7 +9,7 @@ build: output/pganalyze_collector/snapshot.pb.go build_dist
 
 build_dist:
 	go build -o ${OUTFILE}
-	make -C helper
+	make -C helper OUTFILE=../pganalyze-collector-helper
 
 test: build
 	go test -v ./ ./scheduler ./util ./output/transform/
