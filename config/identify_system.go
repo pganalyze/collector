@@ -28,7 +28,10 @@ func identifySystem(config ServerConfig) (systemType string, systemScope string,
 			if hostname == "" || hostname == "localhost" || hostname == "127.0.0.1" {
 				hostname, _ = os.Hostname()
 			}
-			systemID = fmt.Sprintf("%s:%d/%s", hostname, config.GetDbPort(), config.GetDbName())
+			systemID = hostname
+			if systemScope == "" {
+				systemScope = fmt.Sprintf("%d/%s", config.GetDbPort(), config.GetDbName())
+			}
 		}
 	}
 	return
