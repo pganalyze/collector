@@ -1,2 +1,4 @@
 packages/tmp/
 test/
+pganalyze-collector
+pganalyze-collector-helper
