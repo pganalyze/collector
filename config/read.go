@@ -43,6 +43,9 @@ func getDefaultConfig() *ServerConfig {
 	if dbName := os.Getenv("DB_NAME"); dbName != "" {
 		config.DbName = dbName
 	}
+	if dbAllNames := os.Getenv("DB_ALL_NAMES"); dbAllNames == "1" {
+		config.DbAllNames = true
+	}
 	if dbUsername := os.Getenv("DB_USERNAME"); dbUsername != "" {
 		config.DbUsername = dbUsername
 	}
