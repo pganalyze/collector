@@ -1,6 +1,7 @@
 package reports
 
 import (
+	"database/sql"
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
@@ -29,8 +30,8 @@ func (report BuffercacheReport) ReportType() string {
 }
 
 // Run the report
-func (report *BuffercacheReport) Run(server state.Server, logger *util.Logger) (err error) {
-	report.Data, err = postgres.GetBuffercache(logger, server.Connection)
+func (report *BuffercacheReport) Run(server state.Server, logger *util.Logger, connection *sql.DB) (err error) {
+	report.Data, err = postgres.GetBuffercache(logger, connection)
 	if err != nil {
 		return
 	}

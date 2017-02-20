@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/go-ini/ini"
 
@@ -73,20 +74,45 @@ func getDefaultConfig() *ServerConfig {
 // Read - Reads the configuration from the specified filename, or fall back to the default config
 func Read(logger *util.Logger, filename string) ([]ServerConfig, error) {
 	var servers []ServerConfig
+	var err error
 
-	if _, err := os.Stat(filename); err == nil {
+	if _, err = os.Stat(filename); err == nil {
 		configFile, err := ini.Load(filename)
 		if err != nil {
 			return servers, err
 		}
 
+		defaultConfig := getDefaultConfig()
+
+		err = configFile.Section("pganalyze").MapTo(defaultConfig)
+		if err != nil {
+			logger.PrintVerbose("Failed to map pganalyze section: %s", err)
+		}
+
 		sections := configFile.Sections()
 		for _, section := range sections {
-			config := getDefaultConfig()
+			// Skip the special "pganalyze" section, except for cases where someone named their only section like that
+			if section.Name() == "pganalyze" && len(sections) > 1 {
+				continue
+			}
+
+			config := &ServerConfig{}
+			*config = *defaultConfig
 
 			err = section.MapTo(config)
 			if err != nil {
 				return servers, err
+			}
+
+			dbNameParts := []string{}
+			for _, s := range strings.Split(config.DbName, ",") {
+				dbNameParts = append(dbNameParts, strings.TrimSpace(s))
+			}
+			config.DbName = dbNameParts[0]
+			if len(dbNameParts) == 2 && dbNameParts[1] == "*" {
+				config.DbAllNames = true
+			} else {
+				config.DbExtraNames = dbNameParts[1:]
 			}
 
 			config.SectionName = section.Name()

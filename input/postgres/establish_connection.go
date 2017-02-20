@@ -1,4 +1,4 @@
-package runner
+package postgres
 
 import (
 	"database/sql"
@@ -7,17 +7,16 @@ import (
 	"time"
 
 	"github.com/pganalyze/collector/config"
-	"github.com/pganalyze/collector/input/postgres"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
 )
 
-func establishConnection(server state.Server, logger *util.Logger, globalCollectionOpts state.CollectionOpts) (connection *sql.DB, err error) {
-	connection, err = connectToDb(server.Config, logger, globalCollectionOpts)
+func EstablishConnection(server state.Server, logger *util.Logger, globalCollectionOpts state.CollectionOpts, databaseName string) (connection *sql.DB, err error) {
+	connection, err = connectToDb(server.Config, logger, globalCollectionOpts, databaseName)
 	if err != nil {
 		if err.Error() == "pq: SSL is not enabled on the server" && server.RequestedSslMode == "prefer" {
 			server.Config.DbSslMode = "disable"
-			connection, err = connectToDb(server.Config, logger, globalCollectionOpts)
+			connection, err = connectToDb(server.Config, logger, globalCollectionOpts, databaseName)
 		}
 	}
 
@@ -31,8 +30,8 @@ func establishConnection(server state.Server, logger *util.Logger, globalCollect
 	return
 }
 
-func connectToDb(config config.ServerConfig, logger *util.Logger, globalCollectionOpts state.CollectionOpts) (*sql.DB, error) {
-	connectString := config.GetPqOpenString()
+func connectToDb(config config.ServerConfig, logger *util.Logger, globalCollectionOpts state.CollectionOpts, databaseName string) (*sql.DB, error) {
+	connectString := config.GetPqOpenString(databaseName)
 
 	if strings.HasPrefix(connectString, "postgres://") || strings.HasPrefix(connectString, "postgresql://") {
 		if strings.Contains(connectString, "?") {
@@ -66,7 +65,7 @@ func connectToDb(config config.ServerConfig, logger *util.Logger, globalCollecti
 func validateConnectionCount(connection *sql.DB, logger *util.Logger, globalCollectionOpts state.CollectionOpts) {
 	var connectionCount int
 
-	connection.QueryRow(postgres.QueryMarkerSQL + "SELECT COUNT(*) FROM pg_stat_activity WHERE application_name = '" + globalCollectionOpts.CollectorApplicationName + "'").Scan(&connectionCount)
+	connection.QueryRow(QueryMarkerSQL + "SELECT COUNT(*) FROM pg_stat_activity WHERE application_name = '" + globalCollectionOpts.CollectorApplicationName + "'").Scan(&connectionCount)
 
 	if connectionCount > 5 {
 		logger.PrintError("Too many open monitoring connections (current: %d, maximum allowed: 5), exiting", connectionCount)
@@ -83,7 +82,7 @@ func setStatementTimeout(connection *sql.DB, logger *util.Logger, globalCollecti
 		return
 	}
 
-	connection.Exec(fmt.Sprintf("%sSET statement_timeout = %d", postgres.QueryMarkerSQL, globalCollectionOpts.StatementTimeoutMs))
+	connection.Exec(fmt.Sprintf("%sSET statement_timeout = %d", QueryMarkerSQL, globalCollectionOpts.StatementTimeoutMs))
 
 	return
 }

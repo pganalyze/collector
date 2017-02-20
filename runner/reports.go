@@ -2,6 +2,7 @@ package runner
 
 import (
 	"bytes"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/golang/protobuf/jsonpb"
 
+	"github.com/pganalyze/collector/input/postgres"
 	"github.com/pganalyze/collector/output"
 	"github.com/pganalyze/collector/reports"
 	"github.com/pganalyze/collector/state"
@@ -19,10 +21,11 @@ import (
 
 func runReport(reportType string, server state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (report reports.Report) {
 	var err error
+	var connection *sql.DB
 
 	prefixedLogger := logger.WithPrefix(server.Config.SectionName)
 
-	server.Connection, err = establishConnection(server, logger, globalCollectionOpts)
+	connection, err = postgres.EstablishConnection(server, logger, globalCollectionOpts, "")
 	if err != nil {
 		prefixedLogger.PrintError("Error: Failed to connect to database: %s", err)
 		return
@@ -31,18 +34,19 @@ func runReport(reportType string, server state.Server, globalCollectionOpts stat
 	report, err = reports.InitializeReport(reportType, "dummy")
 	if err != nil {
 		logger.PrintError("Failed to initialize report: %s", err)
+		connection.Close()
 		return nil
 	}
 
-	err = report.Run(server, logger)
+	err = report.Run(server, logger, connection)
 	if err != nil {
 		logger.PrintError("Failed to run report: %s", err)
+		connection.Close()
 		return nil
 	}
 
 	// This is the easiest way to avoid opening multiple connections to different databases on the same instance
-	server.Connection.Close()
-	server.Connection = nil
+	connection.Close()
 
 	return
 }
@@ -134,16 +138,8 @@ func RunTestReport(servers []state.Server, globalCollectionOpts state.Collection
 
 // RunRequestedReports - Retrieves current report requests from the server, runs them and submits their data
 func RunRequestedReports(servers []state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
-	var err error
-
 	for _, server := range servers {
 		prefixedLogger := logger.WithPrefix(server.Config.SectionName)
-
-		server.Connection, err = establishConnection(server, prefixedLogger, globalCollectionOpts)
-		if err != nil {
-			prefixedLogger.PrintError("Error: Failed to connect to database: %s", err)
-			continue
-		}
 
 		reports, grant, err := getRequestedReports(server, globalCollectionOpts, prefixedLogger)
 		if err != nil {
@@ -151,18 +147,27 @@ func RunRequestedReports(servers []state.Server, globalCollectionOpts state.Coll
 			continue
 		}
 
+		if len(reports) == 0 {
+			continue
+		}
+
+		connection, err := postgres.EstablishConnection(server, prefixedLogger, globalCollectionOpts, "")
+		if err != nil {
+			prefixedLogger.PrintError("Error: Failed to connect to database: %s", err)
+			continue
+		}
+
 		for _, report := range reports {
-			err = report.Run(server, prefixedLogger)
+			err = report.Run(server, prefixedLogger, connection)
 			if err != nil {
 				prefixedLogger.PrintError("Failed to run report: %s", err)
-				return
+				continue
 			}
 
 			output.SubmitReport(server, grant, report, prefixedLogger)
 		}
 
 		// This is the easiest way to avoid opening multiple connections to different databases on the same instance
-		server.Connection.Close()
-		server.Connection = nil
+		connection.Close()
 	}
 }

@@ -1,16 +1,19 @@
 package runner
 
 import (
+	"database/sql"
 	"encoding/gob"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
+	"runtime/debug"
 	"time"
 
 	raven "github.com/getsentry/raven-go"
 	"github.com/pganalyze/collector/input"
+	"github.com/pganalyze/collector/input/postgres"
 	"github.com/pganalyze/collector/output"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
@@ -19,20 +22,21 @@ import (
 func collectDiffAndSubmit(server state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.PersistedState, error) {
 	var newState state.PersistedState
 	var err error
+	var connection *sql.DB
 
-	server.Connection, err = establishConnection(server, logger, globalCollectionOpts)
+	connection, err = postgres.EstablishConnection(server, logger, globalCollectionOpts, "")
 	if err != nil {
 		return newState, fmt.Errorf("Failed to connect to database: %s", err)
 	}
 
-	newState, transientState, err := input.CollectFull(server, globalCollectionOpts, logger)
+	newState, transientState, err := input.CollectFull(server, connection, globalCollectionOpts, logger)
 	if err != nil {
+		connection.Close()
 		return newState, err
 	}
 
 	// This is the easiest way to avoid opening multiple connections to different databases on the same instance
-	server.Connection.Close()
-	server.Connection = nil
+	connection.Close()
 
 	collectedIntervalSecs := uint32(newState.CollectedAt.Sub(server.PrevState.CollectedAt) / time.Second)
 	if collectedIntervalSecs == 0 {

@@ -22,6 +22,9 @@ type ServerConfig struct {
 	DbPort     int    `ini:"db_port"`
 	DbSslMode  string `ini:"db_sslmode"`
 
+	DbExtraNames []string // Additional databases that should be fetched (determined by additional databases in db_name)
+	DbAllNames   bool     // All databases except template databases should be fetched (determined by * in the db_name list)
+
 	AwsRegion          string `ini:"aws_region"`
 	AwsDbInstanceID    string `ini:"aws_db_instance_id"`
 	AwsAccessKeyID     string `ini:"aws_access_key_id"`
@@ -35,9 +38,13 @@ type ServerConfig struct {
 }
 
 // GetPqOpenString - Gets the database configuration as a string that can be passed to lib/pq for connecting
-func (config ServerConfig) GetPqOpenString() string {
+func (config ServerConfig) GetPqOpenString(databaseName string) string {
 	if config.DbURL != "" {
 		return config.DbURL
+	}
+
+	if databaseName == "" {
+		databaseName = config.DbName
 	}
 
 	dbinfo := []string{}
@@ -48,8 +55,8 @@ func (config ServerConfig) GetPqOpenString() string {
 	if config.DbPassword != "" {
 		dbinfo = append(dbinfo, fmt.Sprintf("password=%s", config.DbPassword))
 	}
-	if config.DbName != "" {
-		dbinfo = append(dbinfo, fmt.Sprintf("dbname=%s", config.DbName))
+	if databaseName != "" {
+		dbinfo = append(dbinfo, fmt.Sprintf("dbname=%s", databaseName))
 	}
 	if config.DbHost != "" {
 		dbinfo = append(dbinfo, fmt.Sprintf("host=%s", config.DbHost))

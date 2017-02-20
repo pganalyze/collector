@@ -1,7 +1,6 @@
 package state
 
 import (
-	"database/sql"
 	"time"
 
 	raven "github.com/getsentry/raven-go"
@@ -104,7 +103,6 @@ type Grant struct {
 
 type Server struct {
 	Config           config.ServerConfig
-	Connection       *sql.DB
 	PrevState        PersistedState
 	RequestedSslMode string
 	Grant            Grant
