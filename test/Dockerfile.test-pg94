@@ -1,5 +1,4 @@
 FROM postgres:9.4
-ADD postgres-pgss.sh /docker-entrypoint-initdb.d/
 
 ENV GOPATH /go
 ENV GOVERSION 1.8
@@ -16,7 +15,10 @@ RUN tar -C /usr/local -xzf go.tar.gz
 # Build the collector
 COPY . $CODE_DIR
 WORKDIR $CODE_DIR
-RUN make build
+RUN make build_dist
+
+# Make sure collector state can be saved
+RUN mkdir /var/lib/pganalyze-collector/
 
 RUN cp $CODE_DIR/pganalyze-collector /usr/bin/
 RUN cp $CODE_DIR/pganalyze-collector-helper /usr/bin/
