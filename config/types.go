@@ -40,6 +40,12 @@ type ServerConfig struct {
 // GetPqOpenString - Gets the database configuration as a string that can be passed to lib/pq for connecting
 func (config ServerConfig) GetPqOpenString(databaseName string) string {
 	if config.DbURL != "" {
+		if databaseName != "" {
+			u, _ := url.Parse(config.DbURL)
+			u.Path = databaseName
+			return u.String()
+		}
+
 		return config.DbURL
 	}
 

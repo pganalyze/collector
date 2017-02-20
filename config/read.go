@@ -94,11 +94,6 @@ func Read(logger *util.Logger, filename string) ([]ServerConfig, error) {
 
 		sections := configFile.Sections()
 		for _, section := range sections {
-			// Skip the special "pganalyze" section, except for cases where someone named their only section like that
-			if section.Name() == "pganalyze" && len(sections) > 1 {
-				continue
-			}
-
 			config := &ServerConfig{}
 			*config = *defaultConfig
 
