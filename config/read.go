@@ -58,6 +58,11 @@ func getDefaultConfig() *ServerConfig {
 	if dbPort := os.Getenv("DB_PORT"); dbPort != "" {
 		config.DbPort, _ = strconv.Atoi(dbPort)
 	}
+	if dbStatementFrequency := os.Getenv("DB_STATEMENT_FREQUENCY"); dbStatementFrequency != "" {
+		config.DbStatementFrequency, _ = strconv.Atoi(dbStatementFrequency)
+	} else {
+		config.DbStatementFrequency = 1
+	}
 	if awsRegion := os.Getenv("AWS_REGION"); awsRegion != "" {
 		config.AwsRegion = awsRegion
 	}

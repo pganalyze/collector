@@ -48,6 +48,7 @@ It has these top-level messages:
 	DiskPartitionInformation
 	DiskPartitionStatistic
 	QueryStatistic
+	HistoricQueryStatistics
 	QueryExplain
 	RelationInformation
 	RelationStatistic

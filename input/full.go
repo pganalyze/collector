@@ -46,10 +46,23 @@ func CollectFull(server state.Server, connection *sql.DB, collectionOpts state.C
 		return
 	}
 
-	ts.Statements, ps.StatementStats, err = postgres.GetStatements(logger, connection, ps.Version)
-	if err != nil {
-		logger.PrintError("Error collecting pg_stat_statements")
-		return
+	ps.StatementFrequencyCounter = server.PrevState.StatementFrequencyCounter + 1
+	if ps.StatementFrequencyCounter >= server.Config.DbStatementFrequency { // Stats and statements
+		ps.StatementFrequencyCounter = 0
+		ts.HasStatementText = true
+		ts.Statements, ps.StatementStats, err = postgres.GetStatements(logger, connection, ps.Version, true)
+		if err != nil {
+			logger.PrintError("Error collecting pg_stat_statements")
+			return
+		}
+	} else { // Stats only
+		logger.PrintVerbose("Collecting pg_stat_statements without statement text (%d of %d)", ps.StatementFrequencyCounter, server.Config.DbStatementFrequency)
+		ts.HasStatementText = false
+		_, ps.StatementStats, err = postgres.GetStatements(logger, connection, ps.Version, false)
+		if err != nil {
+			logger.PrintError("Error collecting pg_stat_statements")
+			return
+		}
 	}
 
 	if collectionOpts.CollectPostgresSettings {

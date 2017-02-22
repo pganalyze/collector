@@ -10,7 +10,7 @@ func identifySystem(config ServerConfig) (systemType string, systemScope string,
 	// Allow overrides from config or env variables
 	systemType = config.SystemType
 	systemScope = config.SystemScope
-	systemID = config.SystemScope
+	systemID = config.SystemID
 
 	// TODO: We need a smarter selection mechanism here, and also consider AWS instances by hostname
 	if config.AwsDbInstanceID != "" || systemType == "amazon_rds" {

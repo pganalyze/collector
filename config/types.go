@@ -25,6 +25,9 @@ type ServerConfig struct {
 	DbExtraNames []string // Additional databases that should be fetched (determined by additional databases in db_name)
 	DbAllNames   bool     // All databases except template databases should be fetched (determined by * in the db_name list)
 
+	// Frequency at which query text should be fetched (0 or 1 = same as full snapshots, 10 = every 10 full snapshots, etc.)
+	DbStatementFrequency int `ini:"db_statement_frequency"`
+
 	AwsRegion          string `ini:"aws_region"`
 	AwsDbInstanceID    string `ini:"aws_db_instance_id"`
 	AwsAccessKeyID     string `ini:"aws_access_key_id"`

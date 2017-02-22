@@ -1,16 +1,13 @@
 package transform
 
 import (
+	"bytes"
+
+	"github.com/golang/protobuf/ptypes"
 	snapshot "github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
 )
-
-func upsertQueryReference(s *snapshot.FullSnapshot, ref *snapshot.QueryReference) int32 {
-	idx := int32(len(s.QueryReferences))
-	s.QueryReferences = append(s.QueryReferences, ref)
-	return idx
-}
 
 type statementKey struct {
 	databaseOid state.Oid
@@ -28,11 +25,10 @@ type statementValue struct {
 func groupStatements(statements state.PostgresStatementMap, statsMap state.DiffedPostgresStatementStatsMap) map[statementKey]statementValue {
 	groupedStatements := make(map[statementKey]statementValue)
 
-	for sKey, statement := range statements {
-		// For now we don't want statements without statistics (first run, consecutive runs with no change)
-		stats, exist := statsMap[sKey]
+	for sKey, stats := range statsMap {
+		statement, exist := statements[sKey]
 		if !exist {
-			continue
+			statement = state.PostgresStatement{NormalizedQuery: "<unidentified query>"}
 		}
 
 		key := statementKey{
@@ -62,54 +58,79 @@ func groupStatements(statements state.PostgresStatementMap, statsMap state.Diffe
 	return groupedStatements
 }
 
+func transformQueryStatistic(stats state.DiffedPostgresStatementStats, idx int32) snapshot.QueryStatistic {
+	return snapshot.QueryStatistic{
+		QueryIdx: idx,
+
+		Calls:             stats.Calls,
+		TotalTime:         stats.TotalTime,
+		Rows:              stats.Rows,
+		SharedBlksHit:     stats.SharedBlksHit,
+		SharedBlksRead:    stats.SharedBlksRead,
+		SharedBlksDirtied: stats.SharedBlksDirtied,
+		SharedBlksWritten: stats.SharedBlksWritten,
+		LocalBlksHit:      stats.LocalBlksHit,
+		LocalBlksRead:     stats.LocalBlksRead,
+		LocalBlksDirtied:  stats.LocalBlksDirtied,
+		LocalBlksWritten:  stats.LocalBlksWritten,
+		TempBlksRead:      stats.TempBlksRead,
+		TempBlksWritten:   stats.TempBlksWritten,
+		BlkReadTime:       stats.BlkReadTime,
+		BlkWriteTime:      stats.BlkWriteTime,
+	}
+}
+
+func upsertQueryReferenceAndInformation(s *snapshot.FullSnapshot, roleOidToIdx OidToIdx, databaseOidToIdx OidToIdx, key statementKey, value statementValue) int32 {
+	newRef := snapshot.QueryReference{
+		DatabaseIdx: databaseOidToIdx[key.databaseOid],
+		RoleIdx:     roleOidToIdx[key.userOid],
+		Fingerprint: key.fingerprint[:],
+	}
+
+	for idx, ref := range s.QueryReferences {
+		if ref.DatabaseIdx == newRef.DatabaseIdx && ref.RoleIdx == newRef.RoleIdx &&
+			bytes.Equal(ref.Fingerprint, newRef.Fingerprint) {
+			return int32(idx)
+		}
+	}
+
+	idx := int32(len(s.QueryReferences))
+	s.QueryReferences = append(s.QueryReferences, &newRef)
+
+	// Information
+	queryInformation := snapshot.QueryInformation{
+		QueryIdx:        idx,
+		NormalizedQuery: value.statement.NormalizedQuery,
+		QueryIds:        value.queryIDs,
+	}
+	s.QueryInformations = append(s.QueryInformations, &queryInformation)
+
+	return idx
+}
+
 func transformPostgresStatements(s snapshot.FullSnapshot, newState state.PersistedState, diffState state.DiffState, transientState state.TransientState, roleOidToIdx OidToIdx, databaseOidToIdx OidToIdx) snapshot.FullSnapshot {
+	// Statement stats from this snapshot
 	groupedStatements := groupStatements(transientState.Statements, diffState.StatementStats)
-
 	for key, value := range groupedStatements {
-		// Note: For whichever reason, we need to use a separate variable here so each fingerprint
-		// gets its own memory location (otherwise they're all the one of the last fingerprint value)
-		fp := key.fingerprint
+		idx := upsertQueryReferenceAndInformation(&s, roleOidToIdx, databaseOidToIdx, key, value)
 
-		ref := snapshot.QueryReference{
-			DatabaseIdx: databaseOidToIdx[key.databaseOid],
-			RoleIdx:     roleOidToIdx[key.userOid],
-			Fingerprint: fp[:],
-		}
-		idx := upsertQueryReference(&s, &ref)
-
-		statement := value.statement
-		stats := value.statementStats
-
-		// Information
-		queryInformation := snapshot.QueryInformation{
-			QueryIdx:        idx,
-			NormalizedQuery: statement.NormalizedQuery,
-			QueryIds:        value.queryIDs,
-		}
-		s.QueryInformations = append(s.QueryInformations, &queryInformation)
-
-		// Statistic
-		statistic := snapshot.QueryStatistic{
-			QueryIdx: idx,
-
-			Calls:             stats.Calls,
-			TotalTime:         stats.TotalTime,
-			Rows:              stats.Rows,
-			SharedBlksHit:     stats.SharedBlksHit,
-			SharedBlksRead:    stats.SharedBlksRead,
-			SharedBlksDirtied: stats.SharedBlksDirtied,
-			SharedBlksWritten: stats.SharedBlksWritten,
-			LocalBlksHit:      stats.LocalBlksHit,
-			LocalBlksRead:     stats.LocalBlksRead,
-			LocalBlksDirtied:  stats.LocalBlksDirtied,
-			LocalBlksWritten:  stats.LocalBlksWritten,
-			TempBlksRead:      stats.TempBlksRead,
-			TempBlksWritten:   stats.TempBlksWritten,
-			BlkReadTime:       stats.BlkReadTime,
-			BlkWriteTime:      stats.BlkWriteTime,
-		}
-
+		statistic := transformQueryStatistic(value.statementStats, idx)
 		s.QueryStatistics = append(s.QueryStatistics, &statistic)
+	}
+
+	// Historic statement stats which are sent now since we got the query text only now
+	for timeKey, diffedStats := range transientState.HistoricStatementStats {
+		h := snapshot.HistoricQueryStatistics{}
+		h.CollectedAt, _ = ptypes.TimestampProto(timeKey.CollectedAt)
+		h.CollectedIntervalSecs = timeKey.CollectedIntervalSecs
+
+		groupedStatements = groupStatements(transientState.Statements, diffedStats)
+		for key, value := range groupedStatements {
+			idx := upsertQueryReferenceAndInformation(&s, roleOidToIdx, databaseOidToIdx, key, value)
+			statistic := transformQueryStatistic(value.statementStats, idx)
+			h.Statistics = append(h.Statistics, &statistic)
+		}
+		s.HistoricQueryStatistics = append(s.HistoricQueryStatistics, &h)
 	}
 
 	return s

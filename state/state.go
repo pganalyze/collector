@@ -32,11 +32,23 @@ type PersistedState struct {
 	System SystemState
 
 	CollectorStats CollectorStats
+
+	// Incremented every run, indicates whether full statement text should be collected.
+	// Text is collected when counter reaches ServerConfig.DbStatementFrequency, and is
+	// reset afterwards.
+	StatementFrequencyCounter int
+
+	// All statement stats that have not been identified (will be cleared by the next snapshot with statement text)
+	UnidentifiedStatementStats HistoricStatementStatsMap
 }
 
 // TransientState - State thats only used within a collector run (and not needed for diffs)
 type TransientState struct {
-	Statements   PostgresStatementMap
+	HasStatementText bool
+	Statements       PostgresStatementMap
+
+	HistoricStatementStats HistoricStatementStatsMap
+
 	SentryClient *raven.Client
 }
 
