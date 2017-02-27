@@ -14,7 +14,7 @@ SELECT in_recovery,
 			 replay_location,
 			 pg_xlog_location_diff(receive_location, replay_location) AS apply_byte_lag,
 			 replay_ts,
-			 extract(epoch from now() - pg_last_xact_replay_timestamp()) AS replay_ts_age
+			 extract(epoch from now() - pg_last_xact_replay_timestamp())::int AS replay_ts_age
 	FROM (SELECT pg_is_in_recovery() AS in_recovery,
 							 pg_last_xlog_receive_location() AS receive_location,
 							 pg_last_xlog_replay_location() AS replay_location,
@@ -60,7 +60,7 @@ func GetReplication(db *sql.DB) (state.PostgresReplication, error) {
 	for rows.Next() {
 		var s state.PostgresReplicationStandby
 
-		err := rows.Scan(&s.ClientAddr, &s.RoleOid, &s.ApplicationName, &s.ClientHostname,
+		err := rows.Scan(&s.ClientAddr, &s.RoleOid, &s.Pid, &s.ApplicationName, &s.ClientHostname,
 			&s.ClientPort, &s.BackendStart, &s.SyncPriority, &s.SyncState, &s.State,
 			&s.SentLocation, &s.WriteLocation, &s.FlushLocation, &s.ReplayLocation,
 			&s.ByteLag)
