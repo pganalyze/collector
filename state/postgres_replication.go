@@ -29,7 +29,7 @@ type PostgresReplicationStandby struct {
 	RoleOid         Oid
 	Pid             int64
 	ApplicationName string
-	ClientHostname  string
+	ClientHostname  null.String
 	ClientPort      int32
 	BackendStart    time.Time
 	SyncPriority    int32

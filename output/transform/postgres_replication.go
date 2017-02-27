@@ -48,10 +48,12 @@ func transformPostgresReplication(s snapshot.FullSnapshot, transientState state.
 			RoleIdx:         roleOidToIdx[standby.RoleOid],
 			Pid:             standby.Pid,
 			ApplicationName: standby.ApplicationName,
-			ClientHostname:  standby.ClientHostname,
 			ClientPort:      standby.ClientPort,
 			SyncPriority:    standby.SyncPriority,
 			SyncState:       standby.SyncState,
+		}
+		if standby.ClientHostname.Valid {
+			info.ClientHostname = standby.ClientHostname.String
 		}
 		info.BackendStart, _ = ptypes.TimestampProto(standby.BackendStart)
 		s.Replication.StandbyInformations = append(s.Replication.StandbyInformations, info)
