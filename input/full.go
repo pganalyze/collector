@@ -17,60 +17,66 @@ func CollectFull(server state.Server, connection *sql.DB, collectionOpts state.C
 
 	ps.CollectedAt = time.Now()
 
-	ps.Version, err = postgres.GetPostgresVersion(logger, connection)
+	ts.Version, err = postgres.GetPostgresVersion(logger, connection)
 	if err != nil {
 		logger.PrintError("Error collecting Postgres Version")
 		return
 	}
 
-	if ps.Version.Numeric < state.MinRequiredPostgresVersion {
-		err = fmt.Errorf("Error: Your PostgreSQL server version (%s) is too old, 9.2 or newer is required.", ps.Version.Short)
+	if ts.Version.Numeric < state.MinRequiredPostgresVersion {
+		err = fmt.Errorf("Error: Your PostgreSQL server version (%s) is too old, 9.2 or newer is required.", ts.Version.Short)
 		return
 	}
 
-	ps.Roles, err = postgres.GetRoles(logger, connection, ps.Version)
+	ts.Roles, err = postgres.GetRoles(logger, connection, ts.Version)
 	if err != nil {
 		logger.PrintError("Error collecting pg_roles")
 		return
 	}
 
-	ps.Databases, err = postgres.GetDatabases(logger, connection, ps.Version)
+	ts.Databases, err = postgres.GetDatabases(logger, connection, ts.Version)
 	if err != nil {
 		logger.PrintError("Error collecting pg_databases")
 		return
 	}
 
-	ps.Backends, err = postgres.GetBackends(logger, connection, ps.Version)
+	ts.Backends, err = postgres.GetBackends(logger, connection, ts.Version)
 	if err != nil {
 		logger.PrintError("Error collecting pg_stat_activity")
 		return
 	}
 
-	ts.Statements, ps.StatementStats, err = postgres.GetStatements(logger, connection, ps.Version)
+	ts.Statements, ps.StatementStats, err = postgres.GetStatements(logger, connection, ts.Version)
 	if err != nil {
 		logger.PrintError("Error collecting pg_stat_statements")
 		return
 	}
 
 	if collectionOpts.CollectPostgresSettings {
-		ps.Settings, err = postgres.GetSettings(connection, ps.Version)
+		ts.Settings, err = postgres.GetSettings(connection, ts.Version)
 		if err != nil {
 			logger.PrintError("Error collecting config settings")
 			return
 		}
 	}
 
-	ps = postgres.CollectAllSchemas(server, collectionOpts, logger, ps)
+	ts.Replication, err = postgres.GetReplication(connection)
+	if err != nil {
+		logger.PrintWarning("Error collecting replication statistics: %s", err)
+		// We intentionally accept this as a non-fatal issue (at least for now)
+	}
+
+	ps, ts = postgres.CollectAllSchemas(server, collectionOpts, logger, ps, ts)
 
 	if collectionOpts.CollectSystemInformation {
 		ps.System = system.GetSystemState(server.Config, logger)
 	}
 
 	if collectionOpts.CollectLogs {
-		ps.Logs, explainInputs = system.GetLogLines(server.Config)
+		ts.Logs, explainInputs = system.GetLogLines(server.Config)
 
 		if collectionOpts.CollectExplain {
-			ps.Explains = postgres.RunExplain(connection, explainInputs)
+			ts.Explains = postgres.RunExplain(connection, explainInputs)
 		}
 	}
 

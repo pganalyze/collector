@@ -11,32 +11,36 @@ import (
 type PersistedState struct {
 	CollectedAt time.Time
 
-	// Databases we connected to and fetched local catalog data (e.g. schema)
-	DatabaseOidsWithLocalCatalog []Oid
-
 	StatementStats PostgresStatementStatsMap
 	RelationStats  PostgresRelationStatsMap
 	IndexStats     PostgresIndexStatsMap
 	FunctionStats  PostgresFunctionStatsMap
 
-	Roles     []PostgresRole
-	Databases []PostgresDatabase
-	Backends  []PostgresBackend
 	Relations []PostgresRelation
-	Settings  []PostgresSetting
 	Functions []PostgresFunction
-	Version   PostgresVersion
-	Logs      []LogLine
-	Explains  []PostgresExplain
 
-	System SystemState
-
+	System         SystemState
 	CollectorStats CollectorStats
 }
 
 // TransientState - State thats only used within a collector run (and not needed for diffs)
 type TransientState struct {
-	Statements   PostgresStatementMap
+	// Databases we connected to and fetched local catalog data (e.g. schema)
+	DatabaseOidsWithLocalCatalog []Oid
+
+	Roles     []PostgresRole
+	Databases []PostgresDatabase
+
+	Statements PostgresStatementMap
+
+	Replication PostgresReplication
+	Backends    []PostgresBackend
+	Logs        []LogLine
+	Explains    []PostgresExplain
+	Settings    []PostgresSetting
+
+	Version PostgresVersion
+
 	SentryClient *raven.Client
 }
 

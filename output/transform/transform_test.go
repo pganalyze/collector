@@ -38,6 +38,7 @@ func TestStatements(t *testing.T) {
 			CpuInformation:     &pganalyze_collector.CPUInformation{},
 		},
 		PostgresVersion: &pganalyze_collector.PostgresVersion{},
+		Replication:     &pganalyze_collector.Replication{},
 		QueryReferences: []*pganalyze_collector.QueryReference{
 			&pganalyze_collector.QueryReference{
 				DatabaseIdx: 0,
@@ -85,6 +86,7 @@ func TestStatements(t *testing.T) {
 			CpuInformation:     &pganalyze_collector.CPUInformation{},
 		},
 		PostgresVersion: &pganalyze_collector.PostgresVersion{},
+		Replication:     &pganalyze_collector.Replication{},
 		QueryReferences: []*pganalyze_collector.QueryReference{
 			&pganalyze_collector.QueryReference{
 				DatabaseIdx: 0,

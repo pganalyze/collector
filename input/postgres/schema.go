@@ -7,11 +7,11 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
-func CollectAllSchemas(server state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, ps state.PersistedState) state.PersistedState {
+func CollectAllSchemas(server state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, ps state.PersistedState, ts state.TransientState) (state.PersistedState, state.TransientState) {
 	schemaDbNames := []string{}
 
 	if server.Config.DbAllNames {
-		for _, database := range ps.Databases {
+		for _, database := range ts.Databases {
 			if !database.IsTemplate && database.AllowConnections {
 				schemaDbNames = append(schemaDbNames, database.Name)
 			}
@@ -40,25 +40,25 @@ func CollectAllSchemas(server state.Server, collectionOpts state.CollectionOpts,
 			continue
 		}
 
-		ps = collectSchemaData(collectionOpts, logger, schemaConnection, ps, databaseOid)
-		ps.DatabaseOidsWithLocalCatalog = append(ps.DatabaseOidsWithLocalCatalog, databaseOid)
+		ps = collectSchemaData(collectionOpts, logger, schemaConnection, ps, databaseOid, ts.Version)
+		ts.DatabaseOidsWithLocalCatalog = append(ts.DatabaseOidsWithLocalCatalog, databaseOid)
 
 		schemaConnection.Close()
 	}
 
-	return ps
+	return ps, ts
 }
 
-func collectSchemaData(collectionOpts state.CollectionOpts, logger *util.Logger, db *sql.DB, ps state.PersistedState, databaseOid state.Oid) state.PersistedState {
+func collectSchemaData(collectionOpts state.CollectionOpts, logger *util.Logger, db *sql.DB, ps state.PersistedState, databaseOid state.Oid, postgresVersion state.PostgresVersion) state.PersistedState {
 	if collectionOpts.CollectPostgresRelations {
-		newRelations, err := GetRelations(db, ps.Version, databaseOid)
+		newRelations, err := GetRelations(db, postgresVersion, databaseOid)
 		if err != nil {
 			logger.PrintError("Error collecting relation/index information: %s", err)
 			return ps
 		}
 		ps.Relations = append(ps.Relations, newRelations...)
 
-		newRelationStats, err := GetRelationStats(db, ps.Version)
+		newRelationStats, err := GetRelationStats(db, postgresVersion)
 		if err != nil {
 			logger.PrintError("Error collecting relation stats: %s", err)
 			return ps
@@ -67,7 +67,7 @@ func collectSchemaData(collectionOpts state.CollectionOpts, logger *util.Logger,
 			ps.RelationStats[k] = v
 		}
 
-		newIndexStats, err := GetIndexStats(db, ps.Version)
+		newIndexStats, err := GetIndexStats(db, postgresVersion)
 		if err != nil {
 			logger.PrintError("Error collecting index stats: %s", err)
 			return ps
@@ -78,7 +78,7 @@ func collectSchemaData(collectionOpts state.CollectionOpts, logger *util.Logger,
 	}
 
 	if collectionOpts.CollectPostgresFunctions {
-		newFunctions, err := GetFunctions(db, ps.Version, databaseOid)
+		newFunctions, err := GetFunctions(db, postgresVersion, databaseOid)
 		if err != nil {
 			logger.PrintError("Error collecting stored procedures")
 			return ps

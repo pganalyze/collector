@@ -27,6 +27,10 @@ It has these top-level messages:
 	PostgresVersion
 	LogLine
 	Setting
+	Replication
+	StandbyReference
+	StandbyInformation
+	StandbyStatistic
 	Backend
 	TablespaceReference
 	TablespaceInformation
@@ -48,6 +52,7 @@ It has these top-level messages:
 	DiskPartitionInformation
 	DiskPartitionStatistic
 	QueryStatistic
+	HistoricQueryStatistics
 	QueryExplain
 	RelationInformation
 	RelationStatistic

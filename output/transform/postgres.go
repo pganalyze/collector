@@ -8,29 +8,33 @@ import (
 type OidToIdx map[state.Oid]int32
 
 func transformPostgres(s snapshot.FullSnapshot, newState state.PersistedState, diffState state.DiffState, transientState state.TransientState) snapshot.FullSnapshot {
-	s, roleOidToIdx := transformPostgresRoles(s, newState)
-	s, databaseOidToIdx := transformPostgresDatabases(s, newState, roleOidToIdx)
+	s, roleOidToIdx := transformPostgresRoles(s, transientState)
+	s, databaseOidToIdx := transformPostgresDatabases(s, transientState, roleOidToIdx)
 
-	s = transformPostgresVersion(s, newState)
-	s = transformPostgresConfig(s, newState)
+	s = transformPostgresVersion(s, transientState)
+	s = transformPostgresConfig(s, transientState)
+	s = transformPostgresReplication(s, transientState, roleOidToIdx)
 	s = transformPostgresStatements(s, newState, diffState, transientState, roleOidToIdx, databaseOidToIdx)
 	s = transformPostgresRelations(s, newState, diffState, roleOidToIdx, databaseOidToIdx)
 	s = transformPostgresFunctions(s, newState, diffState, roleOidToIdx, databaseOidToIdx)
 
+	// Its important this runs after statements, so we can associate backends to the correct queries
+	s = transformPostgresBackends(s, transientState, roleOidToIdx, databaseOidToIdx)
+
 	return s
 }
 
-func transformPostgresRoles(s snapshot.FullSnapshot, newState state.PersistedState) (snapshot.FullSnapshot, OidToIdx) {
+func transformPostgresRoles(s snapshot.FullSnapshot, transientState state.TransientState) (snapshot.FullSnapshot, OidToIdx) {
 	roleOidToIdx := make(OidToIdx)
 
-	for _, role := range newState.Roles {
+	for _, role := range transientState.Roles {
 		ref := snapshot.RoleReference{Name: role.Name}
 		idx := int32(len(s.RoleReferences))
 		s.RoleReferences = append(s.RoleReferences, &ref)
 		roleOidToIdx[role.Oid] = idx
 	}
 
-	for _, role := range newState.Roles {
+	for _, role := range transientState.Roles {
 		info := snapshot.RoleInformation{
 			RoleIdx:            roleOidToIdx[role.Oid],
 			Inherit:            role.Inherit,
@@ -55,19 +59,19 @@ func transformPostgresRoles(s snapshot.FullSnapshot, newState state.PersistedSta
 	return s, roleOidToIdx
 }
 
-func transformPostgresDatabases(s snapshot.FullSnapshot, newState state.PersistedState, roleOidToIdx OidToIdx) (snapshot.FullSnapshot, OidToIdx) {
+func transformPostgresDatabases(s snapshot.FullSnapshot, transientState state.TransientState, roleOidToIdx OidToIdx) (snapshot.FullSnapshot, OidToIdx) {
 	databaseOidToIdx := make(OidToIdx)
 
-	for _, database := range newState.Databases {
+	for _, database := range transientState.Databases {
 		ref := snapshot.DatabaseReference{Name: database.Name}
 		idx := int32(len(s.DatabaseReferences))
 		s.DatabaseReferences = append(s.DatabaseReferences, &ref)
 		databaseOidToIdx[database.Oid] = idx
 	}
 
-	for _, database := range newState.Databases {
+	for _, database := range transientState.Databases {
 		collectedLocalCatalog := false
-		for _, databaseOid := range newState.DatabaseOidsWithLocalCatalog {
+		for _, databaseOid := range transientState.DatabaseOidsWithLocalCatalog {
 			if databaseOid == database.Oid {
 				collectedLocalCatalog = true
 				break
@@ -94,8 +98,8 @@ func transformPostgresDatabases(s snapshot.FullSnapshot, newState state.Persiste
 	return s, databaseOidToIdx
 }
 
-func transformPostgresConfig(s snapshot.FullSnapshot, newState state.PersistedState) snapshot.FullSnapshot {
-	for _, setting := range newState.Settings {
+func transformPostgresConfig(s snapshot.FullSnapshot, transientState state.TransientState) snapshot.FullSnapshot {
+	for _, setting := range transientState.Settings {
 		info := snapshot.Setting{Name: setting.Name}
 
 		if setting.CurrentValue.Valid {
@@ -126,11 +130,11 @@ func transformPostgresConfig(s snapshot.FullSnapshot, newState state.PersistedSt
 	return s
 }
 
-func transformPostgresVersion(s snapshot.FullSnapshot, newState state.PersistedState) snapshot.FullSnapshot {
+func transformPostgresVersion(s snapshot.FullSnapshot, transientState state.TransientState) snapshot.FullSnapshot {
 	s.PostgresVersion = &snapshot.PostgresVersion{
-		Full:    newState.Version.Full,
-		Short:   newState.Version.Short,
-		Numeric: int64(newState.Version.Numeric),
+		Full:    transientState.Version.Full,
+		Short:   transientState.Version.Short,
+		Numeric: int64(transientState.Version.Numeric),
 	}
 	return s
 }

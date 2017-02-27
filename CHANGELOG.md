@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.9.10      2017-02-??
+## 0.9.10      2017-02-27
 
 * Update to Go 1.8 in all builds
 * Disable verbose logging on Heroku
@@ -11,6 +11,7 @@
 * Fix issue with helper having wrong executable format
 * Cleanup test mechanism in test/ folder
 * Handle null relation sizes for temp tables
+* Collect replication statistics
 
 
 ## 0.9.9       2016-12-29
