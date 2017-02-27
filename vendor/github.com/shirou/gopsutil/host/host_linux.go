@@ -70,14 +70,14 @@ func Info() (*InfoStat, error) {
 	case common.PathExists(sysProductUUID):
 		lines, err := common.ReadLines(sysProductUUID)
 		if err == nil && len(lines) > 0 && lines[0] != "" {
-			ret.HostID = lines[0]
+			ret.HostID = strings.ToLower(lines[0])
 			break
 		}
 		fallthrough
 	default:
 		values, err := common.DoSysctrl("kernel.random.boot_id")
 		if err == nil && len(values) == 1 && values[0] != "" {
-			ret.HostID = values[0]
+			ret.HostID = strings.ToLower(values[0])
 		}
 	}
 
@@ -86,6 +86,9 @@ func Info() (*InfoStat, error) {
 
 // BootTime returns the system boot time expressed in seconds since the epoch.
 func BootTime() (uint64, error) {
+	if cachedBootTime != 0 {
+		return cachedBootTime, nil
+	}
 	filename := common.HostProc("stat")
 	lines, err := common.ReadLines(filename)
 	if err != nil {
@@ -101,7 +104,8 @@ func BootTime() (uint64, error) {
 			if err != nil {
 				return 0, err
 			}
-			return uint64(b), nil
+			cachedBootTime = uint64(b)
+			return cachedBootTime, nil
 		}
 	}
 
@@ -127,6 +131,7 @@ func Users() ([]UserStat, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer file.Close()
 
 	buf, err := ioutil.ReadAll(file)
 	if err != nil {

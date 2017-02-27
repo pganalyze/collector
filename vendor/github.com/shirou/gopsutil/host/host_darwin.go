@@ -59,13 +59,16 @@ func Info() (*InfoStat, error) {
 
 	values, err := common.DoSysctrl("kern.uuid")
 	if err == nil && len(values) == 1 && values[0] != "" {
-		ret.HostID = values[0]
+		ret.HostID = strings.ToLower(values[0])
 	}
 
 	return ret, nil
 }
 
 func BootTime() (uint64, error) {
+	if cachedBootTime != 0 {
+		return cachedBootTime, nil
+	}
 	values, err := common.DoSysctrl("kern.boottime")
 	if err != nil {
 		return 0, err
@@ -76,8 +79,9 @@ func BootTime() (uint64, error) {
 	if err != nil {
 		return 0, err
 	}
+	cachedBootTime = uint64(boottime)
 
-	return uint64(boottime), nil
+	return cachedBootTime, nil
 }
 
 func uptime(boot uint64) uint64 {
@@ -100,6 +104,7 @@ func Users() ([]UserStat, error) {
 	if err != nil {
 		return ret, err
 	}
+	defer file.Close()
 
 	buf, err := ioutil.ReadAll(file)
 	if err != nil {
