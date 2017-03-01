@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.11      2017-03-01
+
+* Fix collection of replication statistics for non-superusers
+* Add monitoring helper for replication statistics
+
+
 ## 0.9.10      2017-02-27
 
 * Update to Go 1.8 in all builds

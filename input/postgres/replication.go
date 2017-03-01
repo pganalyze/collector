@@ -2,8 +2,10 @@ package postgres
 
 import (
 	"database/sql"
+	"fmt"
 
 	"github.com/pganalyze/collector/state"
+	"github.com/pganalyze/collector/util"
 )
 
 const replicationSQL string = `
@@ -36,11 +38,25 @@ SELECT client_addr,
 			 flush_location,
 			 replay_location,
 			 pg_xlog_location_diff(sent_location, replay_location) AS byte_lag
-	FROM pg_stat_replication`
+	FROM %s
+ WHERE client_addr IS NOT NULL`
 
-func GetReplication(db *sql.DB) (state.PostgresReplication, error) {
+func GetReplication(logger *util.Logger, db *sql.DB) (state.PostgresReplication, error) {
 	var err error
 	var repl state.PostgresReplication
+	var sourceTable string
+
+	if statsHelperExists(db, "get_stat_replication") {
+		logger.PrintVerbose("Found pganalyze.get_stat_replication() stats helper")
+		sourceTable = "pganalyze.get_stat_replication()"
+	} else {
+		if !connectedAsSuperUser(db) {
+			logger.PrintInfo("Warning: You are not connecting as superuser. Please setup" +
+				" the monitoring helper functions (https://github.com/pganalyze/collector#setting-up-a-restricted-monitoring-user)" +
+				" or connect as superuser, to get replication statistics.")
+		}
+		sourceTable = "pg_stat_replication"
+	}
 
 	err = db.QueryRow(QueryMarkerSQL+replicationSQL).Scan(
 		&repl.InRecovery, &repl.CurrentXlogLocation, &repl.IsStreaming,
@@ -51,7 +67,7 @@ func GetReplication(db *sql.DB) (state.PostgresReplication, error) {
 		return repl, err
 	}
 
-	rows, err := db.Query(QueryMarkerSQL + replicationStandbySQL)
+	rows, err := db.Query(QueryMarkerSQL + fmt.Sprintf(replicationStandbySQL, sourceTable))
 	if err != nil {
 		return repl, err
 	}

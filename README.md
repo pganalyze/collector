@@ -71,6 +71,11 @@ $$
   FROM pg_catalog.pg_stats;
 $$ LANGUAGE sql VOLATILE SECURITY DEFINER;
 
+CREATE OR REPLACE FUNCTION pganalyze.get_stat_replication() RETURNS SETOF pg_stat_replication AS
+$$
+  /* pganalyze-collector */ SELECT * FROM pg_catalog.pg_stat_replication;
+$$ LANGUAGE sql VOLATILE SECURITY DEFINER;
+
 CREATE USER pganalyze WITH PASSWORD 'mypassword' CONNECTION LIMIT 5;
 REVOKE ALL ON SCHEMA public FROM pganalyze;
 GRANT USAGE ON SCHEMA pganalyze TO pganalyze;

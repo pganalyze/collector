@@ -60,10 +60,11 @@ func CollectFull(server state.Server, connection *sql.DB, collectionOpts state.C
 		}
 	}
 
-	ts.Replication, err = postgres.GetReplication(connection)
+	ts.Replication, err = postgres.GetReplication(logger, connection)
 	if err != nil {
 		logger.PrintWarning("Error collecting replication statistics: %s", err)
 		// We intentionally accept this as a non-fatal issue (at least for now)
+		err = nil
 	}
 
 	ps, ts = postgres.CollectAllSchemas(server, collectionOpts, logger, ps, ts)

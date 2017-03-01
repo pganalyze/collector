@@ -25,37 +25,6 @@ SELECT dbid, userid, query, calls, total_time, rows, shared_blks_hit, shared_blk
  WHERE query !~* '^%s' AND query <> '<insufficient privilege>'
 			 AND query NOT LIKE 'DEALLOCATE %%'`
 
-const statementStatsHelperSQL string = `
-SELECT 1 AS enabled
-	FROM pg_proc
-	JOIN pg_namespace ON (pronamespace = pg_namespace.oid)
- WHERE nspname = 'pganalyze' AND proname = 'get_stat_statements'
-`
-
-const connectedAsSuperUserSQL string = `SELECT current_setting('is_superuser') = 'on'`
-
-func statementStatsHelperExists(db *sql.DB) bool {
-	var enabled bool
-
-	err := db.QueryRow(QueryMarkerSQL + statementStatsHelperSQL).Scan(&enabled)
-	if err != nil {
-		return false
-	}
-
-	return enabled
-}
-
-func connectedAsSuperUser(db *sql.DB) bool {
-	var enabled bool
-
-	err := db.QueryRow(QueryMarkerSQL + connectedAsSuperUserSQL).Scan(&enabled)
-	if err != nil {
-		return false
-	}
-
-	return enabled
-}
-
 func GetStatements(logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion) (state.PostgresStatementMap, state.PostgresStatementStatsMap, error) {
 	var err error
 	var optionalFields string
@@ -69,7 +38,7 @@ func GetStatements(logger *util.Logger, db *sql.DB, postgresVersion state.Postgr
 		optionalFields = statementSQLDefaultOptionalFields
 	}
 
-	if statementStatsHelperExists(db) {
+	if statsHelperExists(db, "get_stat_statements") {
 		logger.PrintVerbose("Found pganalyze.get_stat_statements() stats helper")
 		sourceTable = "pganalyze.get_stat_statements()"
 	} else {
