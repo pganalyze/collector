@@ -31,6 +31,9 @@ func identifySystem(config ServerConfig) (systemType string, systemScope string,
 			systemID = hostname
 			if systemScope == "" {
 				systemScope = fmt.Sprintf("%d/%s", config.GetDbPort(), config.GetDbName())
+				if config.DbAllNames {
+					systemScope += "*"
+				}
 			}
 		}
 	}
