@@ -69,13 +69,13 @@ func run(wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *
 		wg.Add(1)
 		runner.CollectAllServers(servers, globalCollectionOpts, logger)
 		wg.Done()
-	}, logger, "collection of all databases")
+	}, logger, "full snapshot of all servers")
 
 	reportsStop := schedulerGroups["reports"].Schedule(func() {
 		wg.Add(1)
 		runner.RunRequestedReports(servers, globalCollectionOpts, logger)
 		wg.Done()
-	}, logger, "requested reports for all databases")
+	}, logger, "requested reports for all servers")
 
 	return true, statsStop, reportsStop
 }
