@@ -8,11 +8,11 @@ default: build test
 build: output/pganalyze_collector/snapshot.pb.go build_dist
 
 build_dist:
-	go build -o ${OUTFILE}
+	go build -ldflags -s -o ${OUTFILE}
 	make -C helper OUTFILE=../pganalyze-collector-helper
 
 test: build
-	go test -v ./ ./scheduler ./util ./output/transform/
+	go test -ldflags -s -v ./ ./scheduler ./util ./output/transform/
 
 packages:
 	make -C packages

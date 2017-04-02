@@ -53,7 +53,7 @@ It has these top-level messages:
 	DiskPartitionStatistic
 	QueryStatistic
 	HistoricQueryStatistics
-	QueryExplain
+	QuerySample
 	RelationInformation
 	RelationStatistic
 	RelationEvent

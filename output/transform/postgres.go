@@ -6,10 +6,11 @@ import (
 )
 
 type OidToIdx map[state.Oid]int32
+type NameToIdx map[string]int32
 
-func transformPostgres(s snapshot.FullSnapshot, newState state.PersistedState, diffState state.DiffState, transientState state.TransientState) snapshot.FullSnapshot {
-	s, roleOidToIdx := transformPostgresRoles(s, transientState)
-	s, databaseOidToIdx := transformPostgresDatabases(s, transientState, roleOidToIdx)
+func transformPostgres(s snapshot.FullSnapshot, newState state.PersistedState, diffState state.DiffState, transientState state.TransientState) (snapshot.FullSnapshot, NameToIdx, NameToIdx) {
+	s, roleOidToIdx, roleNameToIdx := transformPostgresRoles(s, transientState)
+	s, databaseOidToIdx, databaseNameToIdx := transformPostgresDatabases(s, transientState, roleOidToIdx)
 
 	s = transformPostgresVersion(s, transientState)
 	s = transformPostgresConfig(s, transientState)
@@ -18,20 +19,24 @@ func transformPostgres(s snapshot.FullSnapshot, newState state.PersistedState, d
 	s = transformPostgresRelations(s, newState, diffState, roleOidToIdx, databaseOidToIdx)
 	s = transformPostgresFunctions(s, newState, diffState, roleOidToIdx, databaseOidToIdx)
 
-	// Its important this runs after statements, so we can associate backends to the correct queries
+	// Its important this runs after statements, so we can associate to the correct queries
 	s = transformPostgresBackends(s, transientState, roleOidToIdx, databaseOidToIdx)
 
-	return s
+	s = transformPostgresQuerySamples(s, transientState, roleNameToIdx, databaseNameToIdx)
+
+	return s, roleNameToIdx, databaseNameToIdx
 }
 
-func transformPostgresRoles(s snapshot.FullSnapshot, transientState state.TransientState) (snapshot.FullSnapshot, OidToIdx) {
+func transformPostgresRoles(s snapshot.FullSnapshot, transientState state.TransientState) (snapshot.FullSnapshot, OidToIdx, NameToIdx) {
 	roleOidToIdx := make(OidToIdx)
+	roleNameToIdx := make(NameToIdx)
 
 	for _, role := range transientState.Roles {
 		ref := snapshot.RoleReference{Name: role.Name}
 		idx := int32(len(s.RoleReferences))
 		s.RoleReferences = append(s.RoleReferences, &ref)
 		roleOidToIdx[role.Oid] = idx
+		roleNameToIdx[role.Name] = idx
 	}
 
 	for _, role := range transientState.Roles {
@@ -56,17 +61,19 @@ func transformPostgresRoles(s snapshot.FullSnapshot, transientState state.Transi
 		s.RoleInformations = append(s.RoleInformations, &info)
 	}
 
-	return s, roleOidToIdx
+	return s, roleOidToIdx, roleNameToIdx
 }
 
-func transformPostgresDatabases(s snapshot.FullSnapshot, transientState state.TransientState, roleOidToIdx OidToIdx) (snapshot.FullSnapshot, OidToIdx) {
+func transformPostgresDatabases(s snapshot.FullSnapshot, transientState state.TransientState, roleOidToIdx OidToIdx) (snapshot.FullSnapshot, OidToIdx, NameToIdx) {
 	databaseOidToIdx := make(OidToIdx)
+	databaseNameToIdx := make(NameToIdx)
 
 	for _, database := range transientState.Databases {
 		ref := snapshot.DatabaseReference{Name: database.Name}
 		idx := int32(len(s.DatabaseReferences))
 		s.DatabaseReferences = append(s.DatabaseReferences, &ref)
 		databaseOidToIdx[database.Oid] = idx
+		databaseNameToIdx[database.Name] = idx
 	}
 
 	for _, database := range transientState.Databases {
@@ -95,7 +102,7 @@ func transformPostgresDatabases(s snapshot.FullSnapshot, transientState state.Tr
 		s.DatabaseInformations = append(s.DatabaseInformations, &info)
 	}
 
-	return s, databaseOidToIdx
+	return s, databaseOidToIdx, databaseNameToIdx
 }
 
 func transformPostgresConfig(s snapshot.FullSnapshot, transientState state.TransientState) snapshot.FullSnapshot {

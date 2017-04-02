@@ -33,11 +33,11 @@ type TransientState struct {
 
 	Statements PostgresStatementMap
 
-	Replication PostgresReplication
-	Backends    []PostgresBackend
-	Logs        []LogLine
-	Explains    []PostgresExplain
-	Settings    []PostgresSetting
+	Replication  PostgresReplication
+	Backends     []PostgresBackend
+	Logs         []LogLine
+	QuerySamples []PostgresQuerySample
+	Settings     []PostgresSetting
 
 	Version PostgresVersion
 
