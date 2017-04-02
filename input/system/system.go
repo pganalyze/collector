@@ -11,11 +11,9 @@ import (
 )
 
 // GetLogLines - Retrieves all new log lines for this system and returns them
-func GetLogLines(config config.ServerConfig) (lines []state.LogLine, explainInputs []state.PostgresExplainInput) {
-	// TODO: We need a smarter selection mechanism here, and also consider AWS instances by hostname
-	if config.AwsDbInstanceID != "" {
-		// This is disabled for now, until we rework log processing
-		//lines, explainInputs = rds.GetLogLines(config)
+func GetLogLines(config config.ServerConfig) (lines []state.LogLine, querySamples []state.PostgresQuerySample) {
+	if config.SystemType == "amazon_rds" {
+		lines, querySamples = rds.GetLogLines(config)
 	}
 
 	return

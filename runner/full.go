@@ -70,18 +70,16 @@ func processDatabase(server state.Server, globalCollectionOpts state.CollectionO
 	var newState state.PersistedState
 	var err error
 
-	if globalCollectionOpts.SubmitCollectedData {
-		// Note: In case of server errors, we should reuse the old grant if its still recent (i.e. less than 50 minutes ago)
-		grant, err = getSnapshotGrant(server, globalCollectionOpts, logger)
-		if err != nil {
-			if server.Grant.Valid {
-				logger.PrintVerbose("Could not acquire snapshot grant, reusing previous grant: %s", err)
-			} else {
-				return state.PersistedState{}, state.Grant{}, err
-			}
+	// Note: In case of server errors, we should reuse the old grant if its still recent (i.e. less than 50 minutes ago)
+	grant, err = getSnapshotGrant(server, globalCollectionOpts, logger)
+	if err != nil {
+		if server.Grant.Valid {
+			logger.PrintVerbose("Could not acquire snapshot grant, reusing previous grant: %s", err)
 		} else {
-			server.Grant = grant
+			return state.PersistedState{}, state.Grant{}, err
 		}
+	} else {
+		server.Grant = grant
 	}
 
 	transientState := state.TransientState{}

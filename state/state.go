@@ -33,11 +33,11 @@ type TransientState struct {
 
 	Statements PostgresStatementMap
 
-	Replication PostgresReplication
-	Backends    []PostgresBackend
-	Logs        []LogLine
-	Explains    []PostgresExplain
-	Settings    []PostgresSetting
+	Replication  PostgresReplication
+	Backends     []PostgresBackend
+	Logs         []LogLine
+	QuerySamples []PostgresQuerySample
+	Settings     []PostgresSetting
 
 	Version PostgresVersion
 
@@ -95,6 +95,12 @@ type CollectionOpts struct {
 type GrantConfig struct {
 	ServerID  string `json:"server_id"`
 	SentryDsn string `json:"sentry_dsn"`
+
+	Features GrantFeatures `json:"features"`
+}
+
+type GrantFeatures struct {
+	Logs bool `json:"logs"`
 }
 
 type Grant struct {

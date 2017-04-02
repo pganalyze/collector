@@ -3,8 +3,10 @@ package transform
 import (
 	"bytes"
 
+	pg_query "github.com/lfittl/pg_query_go"
 	snapshot "github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
+	"github.com/pganalyze/collector/util"
 )
 
 type statementKey struct {
@@ -41,6 +43,36 @@ func upsertQueryReferenceAndInformation(s *snapshot.FullSnapshot, roleOidToIdx O
 		QueryIdx:        idx,
 		NormalizedQuery: value.statement.NormalizedQuery,
 		QueryIds:        value.queryIDs,
+	}
+	s.QueryInformations = append(s.QueryInformations, &queryInformation)
+
+	return idx
+}
+
+func upsertQueryReferenceAndInformationSimple(s *snapshot.FullSnapshot, databaseIdx int32, roleIdx int32, originalQuery string) int32 {
+	normalizedQuery, _ := pg_query.Normalize(originalQuery)
+	fingerprint := util.FingerprintQuery(normalizedQuery)
+
+	newRef := snapshot.QueryReference{
+		DatabaseIdx: databaseIdx,
+		RoleIdx:     roleIdx,
+		Fingerprint: fingerprint[:],
+	}
+
+	for idx, ref := range s.QueryReferences {
+		if ref.DatabaseIdx == newRef.DatabaseIdx && ref.RoleIdx == newRef.RoleIdx &&
+			bytes.Equal(ref.Fingerprint, newRef.Fingerprint) {
+			return int32(idx)
+		}
+	}
+
+	idx := int32(len(s.QueryReferences))
+	s.QueryReferences = append(s.QueryReferences, &newRef)
+
+	// Information
+	queryInformation := snapshot.QueryInformation{
+		QueryIdx:        idx,
+		NormalizedQuery: normalizedQuery,
 	}
 	s.QueryInformations = append(s.QueryInformations, &queryInformation)
 

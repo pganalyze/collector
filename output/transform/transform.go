@@ -8,8 +8,9 @@ import (
 func StateToSnapshot(newState state.PersistedState, diffState state.DiffState, transientState state.TransientState) snapshot.FullSnapshot {
 	var s snapshot.FullSnapshot
 
-	s = transformPostgres(s, newState, diffState, transientState)
+	s, roleNameToIdx, databaseNameToIdx := transformPostgres(s, newState, diffState, transientState)
 	s = transformSystem(s, newState, diffState)
+	s = transformSystemLogs(s, transientState, roleNameToIdx, databaseNameToIdx)
 	s = transformCollectorStats(s, newState, diffState)
 
 	return s
