@@ -53,9 +53,9 @@ CREATE SCHEMA pganalyze;
 
 CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
 
-CREATE OR REPLACE FUNCTION pganalyze.get_stat_statements() RETURNS SETOF pg_stat_statements AS
+CREATE OR REPLACE FUNCTION pganalyze.get_stat_statements(showtext boolean = true) RETURNS SETOF pg_stat_statements AS
 $$
-  /* pganalyze-collector */ SELECT * FROM public.pg_stat_statements;
+  /* pganalyze-collector */ SELECT * FROM public.pg_stat_statements(showtext);
 $$ LANGUAGE sql VOLATILE SECURITY DEFINER;
 
 CREATE OR REPLACE FUNCTION pganalyze.get_stat_activity() RETURNS SETOF pg_stat_activity AS

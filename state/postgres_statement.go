@@ -1,6 +1,10 @@
 package state
 
-import "github.com/guregu/null"
+import (
+	"time"
+
+	"github.com/guregu/null"
+)
 
 // PostgresStatement - Specific kind of statement that has run one or multiple times
 // on the PostgreSQL server.
@@ -43,11 +47,18 @@ type PostgresStatementKey struct {
 	QueryID     int64 // Postgres 9.4+: Internal hash code, computed from the statement's parse tree
 }
 
+type PostgresStatementStatsTimeKey struct {
+	CollectedAt           time.Time
+	CollectedIntervalSecs uint32
+}
+
 type PostgresStatementMap map[PostgresStatementKey]PostgresStatement
 type PostgresStatementStatsMap map[PostgresStatementKey]PostgresStatementStats
 
 type DiffedPostgresStatementStats PostgresStatementStats
 type DiffedPostgresStatementStatsMap map[PostgresStatementKey]DiffedPostgresStatementStats
+
+type HistoricStatementStatsMap map[PostgresStatementStatsTimeKey]DiffedPostgresStatementStatsMap
 
 func (curr PostgresStatementStats) DiffSince(prev PostgresStatementStats) DiffedPostgresStatementStats {
 	return DiffedPostgresStatementStats{

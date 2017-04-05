@@ -1,6 +1,9 @@
 package transform
 
 import (
+	"fmt"
+
+	"github.com/golang/protobuf/ptypes"
 	snapshot "github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
@@ -9,11 +12,10 @@ import (
 func groupStatements(statements state.PostgresStatementMap, statsMap state.DiffedPostgresStatementStatsMap) map[statementKey]statementValue {
 	groupedStatements := make(map[statementKey]statementValue)
 
-	for sKey, statement := range statements {
-		// For now we don't want statements without statistics (first run, consecutive runs with no change)
-		stats, exist := statsMap[sKey]
+	for sKey, stats := range statsMap {
+		statement, exist := statements[sKey]
 		if !exist {
-			continue
+			statement = state.PostgresStatement{NormalizedQuery: fmt.Sprintf("<unidentified queryid %d>", sKey.QueryID)}
 		}
 
 		key := statementKey{
@@ -64,13 +66,28 @@ func transformQueryStatistic(stats state.DiffedPostgresStatementStats, idx int32
 }
 
 func transformPostgresStatements(s snapshot.FullSnapshot, newState state.PersistedState, diffState state.DiffState, transientState state.TransientState, roleOidToIdx OidToIdx, databaseOidToIdx OidToIdx) snapshot.FullSnapshot {
+	// Statement stats from this snapshot
 	groupedStatements := groupStatements(transientState.Statements, diffState.StatementStats)
-
 	for key, value := range groupedStatements {
 		idx := upsertQueryReferenceAndInformation(&s, roleOidToIdx, databaseOidToIdx, key, value)
 
 		statistic := transformQueryStatistic(value.statementStats, idx)
 		s.QueryStatistics = append(s.QueryStatistics, &statistic)
+	}
+
+	// Historic statement stats which are sent now since we got the query text only now
+	for timeKey, diffedStats := range transientState.HistoricStatementStats {
+		h := snapshot.HistoricQueryStatistics{}
+		h.CollectedAt, _ = ptypes.TimestampProto(timeKey.CollectedAt)
+		h.CollectedIntervalSecs = timeKey.CollectedIntervalSecs
+
+		groupedStatements = groupStatements(transientState.Statements, diffedStats)
+		for key, value := range groupedStatements {
+			idx := upsertQueryReferenceAndInformation(&s, roleOidToIdx, databaseOidToIdx, key, value)
+			statistic := transformQueryStatistic(value.statementStats, idx)
+			h.Statistics = append(h.Statistics, &statistic)
+		}
+		s.HistoricQueryStatistics = append(s.HistoricQueryStatistics, &h)
 	}
 
 	return s

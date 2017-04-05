@@ -21,6 +21,14 @@ type PersistedState struct {
 
 	System         SystemState
 	CollectorStats CollectorStats
+
+	// Incremented every run, indicates whether full statement text should be collected.
+	// Text is collected when counter reaches GrantFeatures.StatementFrequency, and is
+	// reset afterwards.
+	StatementFrequencyCounter int
+
+	// All statement stats that have not been identified (will be cleared by the next snapshot with statement text)
+	UnidentifiedStatementStats HistoricStatementStatsMap
 }
 
 // TransientState - State thats only used within a collector run (and not needed for diffs)
@@ -31,7 +39,9 @@ type TransientState struct {
 	Roles     []PostgresRole
 	Databases []PostgresDatabase
 
-	Statements PostgresStatementMap
+	HasStatementText       bool
+	Statements             PostgresStatementMap
+	HistoricStatementStats HistoricStatementStatsMap
 
 	Replication  PostgresReplication
 	Backends     []PostgresBackend
@@ -80,7 +90,6 @@ type CollectionOpts struct {
 	CollectSystemInformation bool
 
 	CollectorApplicationName string
-	StatementTimeoutMs       int32 // Statement timeout for all SQL statements sent to the database
 
 	DiffStatements bool
 
@@ -101,6 +110,9 @@ type GrantConfig struct {
 
 type GrantFeatures struct {
 	Logs bool `json:"logs"`
+
+	StatementTextFrequency int   `json:"statement_text_frequency"`
+	StatementTimeoutMs     int32 `json:"statement_timeout_ms"` // Statement timeout for all SQL statements sent to the database (defaults to 30s)
 }
 
 type Grant struct {
