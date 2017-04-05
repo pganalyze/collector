@@ -109,7 +109,8 @@ type GrantConfig struct {
 }
 
 type GrantFeatures struct {
-	Logs bool `json:"logs"`
+	Logs    bool `json:"logs"`
+	Explain bool `json:"explain"`
 
 	StatementTextFrequency int   `json:"statement_text_frequency"`
 	StatementTimeoutMs     int32 `json:"statement_timeout_ms"` // Statement timeout for all SQL statements sent to the database (defaults to 30s)
