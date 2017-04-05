@@ -25,7 +25,7 @@ func EstablishConnection(server state.Server, logger *util.Logger, globalCollect
 	}
 
 	validateConnectionCount(connection, logger, globalCollectionOpts)
-	setStatementTimeout(connection, logger, globalCollectionOpts)
+	setStatementTimeout(connection, logger, server.Grant.Config.Features.StatementTimeoutMs)
 
 	return
 }
@@ -75,14 +75,18 @@ func validateConnectionCount(connection *sql.DB, logger *util.Logger, globalColl
 	return
 }
 
-func setStatementTimeout(connection *sql.DB, logger *util.Logger, globalCollectionOpts state.CollectionOpts) {
+func setStatementTimeout(connection *sql.DB, logger *util.Logger, statementTimeoutMs int32) {
+	if statementTimeoutMs == 0 { // Default value
+		statementTimeoutMs = 30000
+	}
+
 	// Assume anything below 100ms to be set in error - its not reasonable to have our queries run faster than that
-	if globalCollectionOpts.StatementTimeoutMs < 100 {
-		logger.PrintVerbose("Ignoring invalid statement timeout of %dms (set it to at least 100ms)", globalCollectionOpts.StatementTimeoutMs)
+	if statementTimeoutMs < 100 {
+		logger.PrintVerbose("Ignoring invalid statement timeout of %dms (set it to at least 100ms)", statementTimeoutMs)
 		return
 	}
 
-	connection.Exec(fmt.Sprintf("%sSET statement_timeout = %d", QueryMarkerSQL, globalCollectionOpts.StatementTimeoutMs))
+	connection.Exec(fmt.Sprintf("%sSET statement_timeout = %d", QueryMarkerSQL, statementTimeoutMs))
 
 	return
 }
