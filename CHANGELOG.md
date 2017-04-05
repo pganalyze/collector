@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.9.12      2017-04-05
+
+* SystemScope: Include DbAllNames status for local collections
+* Fix wording of some log messages
+* Refactor log collection and query sampling / explaining
+* Introduce ability to collect statement text less often
+* Make statement timeout a server-controlled option
+* Allow enabling/disabling automatic EXPLAIN from server-side
+
+
 ## 0.9.11      2017-03-01
 
 * Fix collection of replication statistics for non-superusers
