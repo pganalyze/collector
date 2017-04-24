@@ -31,7 +31,8 @@
 //
 // Marshal Go value type for DynamoDB.PutItem:
 //
-//     sess := session.New()
+//     sess := session.Must(session.NewSession())
+//
 //     svc := dynamodb.New(sess)
 //     item, err := dynamodbattribute.MarshalMap(r)
 //     if err != nil {
@@ -57,4 +58,6 @@
 // the json.Marshaler and json.Unmarshaler interfaces have been removed and
 // replaced with have been replaced with dynamodbattribute.Marshaler and
 // dynamodbattribute.Unmarshaler interfaces.
+//
+// `time.Time` is marshaled as RFC3339 format.
 package dynamodbattribute
