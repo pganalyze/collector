@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"math"
 	"regexp"
 	"strconv"
@@ -13,12 +14,14 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/rds"
 	"github.com/pganalyze/collector/config"
+	"github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
+	"github.com/pganalyze/collector/util"
 	"github.com/pganalyze/collector/util/awsutil"
 )
 
-// GetLogLines - Gets log lines for an Amazon RDS instance
-func GetLogLines(config config.ServerConfig) (result []state.LogLine, samples []state.PostgresQuerySample) {
+// GetLogFiles - Gets log files for an Amazon RDS instance
+func GetLogFiles(config config.ServerConfig, logger *util.Logger) (result []state.LogFile, samples []state.PostgresQuerySample) {
 	sess := awsutil.GetAwsSession(config)
 
 	rdsSvc := rds.New(sess)
@@ -47,59 +50,70 @@ func GetLogLines(config config.ServerConfig) (result []state.LogLine, samples []
 		return
 	}
 
-	for _, logFile := range resp.DescribeDBLogFiles {
-		lastMarker := aws.String("0")
+	for _, rdsLogFile := range resp.DescribeDBLogFiles {
+		var lastMarker *string
+
+		var logFile state.LogFile
+		logFile.TmpFile, err = ioutil.TempFile("", "")
+		if err != nil {
+			logger.PrintError("Could not allocate tempfile for logs: %s", err)
+			break
+		}
+		logFile.OriginalName = *rdsLogFile.LogFileName
+		currentByteStart := int64(0)
 
 		for {
-			params := &rds.DownloadDBLogFilePortionInput{
+			resp, err := rdsSvc.DownloadDBLogFilePortion(&rds.DownloadDBLogFilePortionInput{
 				DBInstanceIdentifier: instance.DBInstanceIdentifier,
-				LogFileName:          logFile.LogFileName,
+				LogFileName:          rdsLogFile.LogFileName,
 				Marker:               lastMarker,
-			}
-
-			resp, err := rdsSvc.DownloadDBLogFilePortion(params)
+				NumberOfLines:        aws.Int64(100), // TODO: Temporary to fix problems
+			})
 
 			if err != nil {
 				// TODO: Check for unauthorized error:
 				// Error: AccessDenied: User: arn:aws:iam::XXX:user/pganalyze_collector is not authorized to perform: rds:DownloadDBLogFilePortion on resource: arn:aws:rds:us-east-1:XXX:db:XXX
 				// status code: 403, request id: XXX
-				fmt.Printf("Error: %v\n", err)
+				logger.PrintError("%s", err)
 				return
+			}
+
+			if resp.LogFileData == nil {
+				logger.PrintVerbose("No log data in response, skipping")
+				break
 			}
 
 			var logLines []state.LogLine
 
-			var incompleteLine = false
+			_, err = logFile.TmpFile.WriteString(*resp.LogFileData)
+			if err != nil {
+				logger.PrintError("%s", err)
+				break
+			}
 
 			reader := bufio.NewReader(strings.NewReader(*resp.LogFileData))
 			for {
-				line, isPrefix, err := reader.ReadLine()
+				line, err := reader.ReadString('\n')
 				if err == io.EOF {
 					break
 				}
 
+				byteStart := currentByteStart
+				currentByteStart += int64(len(line))
+
 				if err != nil {
-					fmt.Printf("Error: %v\n", err)
+					logger.PrintError("%s", err)
 					break
 				}
-
-				if incompleteLine {
-					if len(logLines) > 0 {
-						logLines[len(logLines)-1].Content += string(line)
-					}
-					incompleteLine = isPrefix
-					continue
-				}
-
-				incompleteLine = isPrefix
 
 				var logLine state.LogLine
 
 				// log_line_prefix is always "%t:%r:%u@%d:[%p]:" on RDS
-				parts := strings.SplitN(string(line), ":", 8)
+				parts := strings.SplitN(line, ":", 8)
 				if len(parts) != 8 {
 					if len(logLines) > 0 {
-						logLines[len(logLines)-1].Content += string(line)
+						logLines[len(logLines)-1].Content += line
+						logLines[len(logLines)-1].ByteEnd += int64(len(line))
 					}
 					continue
 				}
@@ -107,7 +121,8 @@ func GetLogLines(config config.ServerConfig) (result []state.LogLine, samples []
 				timestamp, err := time.Parse("2006-01-02 15:04:05 MST", parts[0]+":"+parts[1]+":"+parts[2])
 				if err != nil {
 					if len(logLines) > 0 {
-						logLines[len(logLines)-1].Content += string(line)
+						logLines[len(logLines)-1].Content += line
+						logLines[len(logLines)-1].ByteEnd += int64(len(line))
 					}
 					continue
 				}
@@ -118,18 +133,14 @@ func GetLogLines(config config.ServerConfig) (result []state.LogLine, samples []
 					logLine.Database = userDbParts[1]
 				}
 
-				hostnamePortParts := strings.SplitN(parts[3], "(", 2)
-				if len(hostnamePortParts) == 2 {
-					logLine.ClientHostname = hostnamePortParts[0]
-					clientPort, _ := strconv.Atoi(strings.TrimRight(hostnamePortParts[1], ")"))
-					logLine.ClientPort = int32(clientPort)
-				}
-
 				logLine.OccurredAt = timestamp
 				backendPid, _ := strconv.Atoi(parts[5][1 : len(parts[5])-1])
 				logLine.BackendPid = int32(backendPid)
-				logLine.LogLevel = parts[6]
+				logLine.LogLevel = pganalyze_collector.LogLineInformation_LogLevel(pganalyze_collector.LogLineInformation_LogLevel_value[parts[6]])
 				logLine.Content = strings.TrimLeft(parts[7], " ")
+
+				logLine.ByteStart = byteStart
+				logLine.ByteEnd = byteStart + int64(len(line)) - 1
 
 				logLines = append(logLines, logLine)
 			}
@@ -159,8 +170,9 @@ func GetLogLines(config config.ServerConfig) (result []state.LogLine, samples []
 					lowerBound := int(math.Min(float64(len(logLines)), float64(idx+1)))
 					upperBound := int(math.Min(float64(len(logLines)), float64(idx+3)))
 					for _, futureLine := range logLines[lowerBound:upperBound] {
-						if futureLine.LogLevel == "STATEMENT" || futureLine.LogLevel == "DETAIL" || futureLine.LogLevel == "HINT" {
-							if futureLine.LogLevel == "STATEMENT" && !strings.HasSuffix(futureLine.Content, "[Your log message was truncated]") {
+						if futureLine.LogLevel == pganalyze_collector.LogLineInformation_STATEMENT || futureLine.LogLevel == pganalyze_collector.LogLineInformation_DETAIL ||
+							futureLine.LogLevel == pganalyze_collector.LogLineInformation_HINT || futureLine.LogLevel == pganalyze_collector.LogLineInformation_CONTEXT {
+							if futureLine.LogLevel == pganalyze_collector.LogLineInformation_STATEMENT && !strings.HasSuffix(futureLine.Content, "[Your log message was truncated]") {
 								logLine.Query = futureLine.Content
 							}
 							logLine.AdditionalLines = append(logLine.AdditionalLines, futureLine)
@@ -195,7 +207,7 @@ func GetLogLines(config config.ServerConfig) (result []state.LogLine, samples []
 					// * Clean STATEMENT and "duration: " contents
 					// * Remove DETAIL "parameters: "
 
-					result = append(result, logLine)
+					logFile.LogLines = append(logFile.LogLines, logLine)
 				}
 			}
 
@@ -204,6 +216,8 @@ func GetLogLines(config config.ServerConfig) (result []state.LogLine, samples []
 				break
 			}
 		}
+
+		result = append(result, logFile)
 	}
 
 	return

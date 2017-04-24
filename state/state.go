@@ -35,7 +35,7 @@ type TransientState struct {
 
 	Replication  PostgresReplication
 	Backends     []PostgresBackend
-	Logs         []LogLine
+	LogFiles     []LogFile
 	QuerySamples []PostgresQuerySample
 	Settings     []PostgresSetting
 
@@ -97,10 +97,23 @@ type GrantConfig struct {
 	SentryDsn string `json:"sentry_dsn"`
 
 	Features GrantFeatures `json:"features"`
+	Logs     GrantLogs     `json:"logs"`
 }
 
 type GrantFeatures struct {
 	Logs bool `json:"logs"`
+}
+
+type GrantLogs struct {
+	S3URL         string                 `json:"s3_url"`
+	S3Fields      map[string]string      `json:"s3_fields"`
+	EncryptionKey GrantLogsEncryptionKey `json:"encryption_key"`
+}
+
+type GrantLogsEncryptionKey struct {
+	CiphertextBlob string `json:"ciphertext_blob"`
+	KeyId          string `json:"key_id"`
+	Plaintext      string `json:"plaintext"`
 }
 
 type Grant struct {
@@ -116,4 +129,10 @@ type Server struct {
 	PrevState        PersistedState
 	RequestedSslMode string
 	Grant            Grant
+}
+
+func (ts TransientState) Cleanup() {
+	for _, logFile := range ts.LogFiles {
+		logFile.Cleanup()
+	}
 }

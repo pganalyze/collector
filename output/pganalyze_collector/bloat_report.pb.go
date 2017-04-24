@@ -25,7 +25,8 @@ It has these top-level messages:
 	RoleInformation
 	DatabaseInformation
 	PostgresVersion
-	LogLine
+	LogFileReference
+	LogLineInformation
 	Setting
 	Replication
 	StandbyReference

@@ -64,7 +64,7 @@ func submitFull(s snapshot.FullSnapshot, server state.Server, collectionOpts sta
 		return nil
 	}
 
-	s3Location, err := uploadToS3(server.Grant, logger, compressedData, snapshotUUID.String())
+	s3Location, err := uploadSnapshot(server.Grant, logger, compressedData, snapshotUUID.String())
 	if err != nil {
 		logger.PrintError("Error uploading to S3: %s", err)
 		return err
