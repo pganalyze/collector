@@ -10,10 +10,10 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
-// GetLogLines - Retrieves all new log lines for this system and returns them
-func GetLogLines(config config.ServerConfig) (lines []state.LogLine, querySamples []state.PostgresQuerySample) {
+// GetLogFiles - Retrieves all new log files for this system and returns them
+func GetLogFiles(config config.ServerConfig, logger *util.Logger) (files []state.LogFile, querySamples []state.PostgresQuerySample) {
 	if config.SystemType == "amazon_rds" {
-		lines, querySamples = rds.GetLogLines(config)
+		files, querySamples = rds.GetLogFiles(config, logger)
 	}
 
 	return

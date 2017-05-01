@@ -87,7 +87,7 @@ func CollectFull(server state.Server, connection *sql.DB, collectionOpts state.C
 	}
 
 	if collectionOpts.CollectLogs && server.Grant.Config.Features.Logs {
-		ts.Logs, querySamples = system.GetLogLines(server.Config)
+		ts.LogFiles, querySamples = system.GetLogFiles(server.Config, logger)
 
 		if collectionOpts.CollectExplain && server.Grant.Config.Features.Explain {
 			ts.QuerySamples = postgres.RunExplain(connection, querySamples)
