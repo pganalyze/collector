@@ -73,7 +73,7 @@ func SubmitReport(server state.Server, grant state.Grant, report reports.Report,
 	w.Write(data)
 	w.Close()
 
-	s3Location, err := uploadToS3(grant, logger, compressedData, report.RunID())
+	s3Location, err := uploadSnapshot(grant, logger, compressedData, report.RunID())
 	if err != nil {
 		logger.PrintError("Error uploading to S3: %s", err)
 		return err

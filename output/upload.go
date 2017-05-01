@@ -20,7 +20,7 @@ type s3UploadResponse struct {
 	Key      string
 }
 
-func uploadToS3(grant state.Grant, logger *util.Logger, compressedData bytes.Buffer, filename string) (string, error) {
+func uploadSnapshot(grant state.Grant, logger *util.Logger, data bytes.Buffer, filename string) (string, error) {
 	var err error
 
 	if !grant.Valid {
@@ -35,7 +35,7 @@ func uploadToS3(grant state.Grant, logger *util.Logger, compressedData bytes.Buf
 			return "", err
 		}
 
-		err = ioutil.WriteFile(location, compressedData.Bytes(), 0644)
+		err = ioutil.WriteFile(location, data.Bytes(), 0644)
 		if err != nil {
 			logger.PrintError("Error writing local file: %s", err)
 			return "", err
@@ -43,13 +43,18 @@ func uploadToS3(grant state.Grant, logger *util.Logger, compressedData bytes.Buf
 		return location, nil
 	}
 
-	logger.PrintVerbose("Successfully prepared S3 request - size of request body: %.4f MB", float64(compressedData.Len())/1024.0/1024.0)
+	logger.PrintVerbose("Successfully prepared S3 request - size of request body: %.4f MB", float64(data.Len())/1024.0/1024.0)
 
+	return uploadToS3(grant.S3URL, grant.S3Fields, logger, data.Bytes(), filename)
+}
+
+func uploadToS3(S3URL string, S3Fields map[string]string, logger *util.Logger, data []byte, filename string) (string, error) {
+	var err error
 	var formBytes bytes.Buffer
 
 	writer := multipart.NewWriter(&formBytes)
 
-	for key, val := range grant.S3Fields {
+	for key, val := range S3Fields {
 		err = writer.WriteField(key, val)
 		if err != nil {
 			return "", err
@@ -57,14 +62,14 @@ func uploadToS3(grant state.Grant, logger *util.Logger, compressedData bytes.Buf
 	}
 
 	part, _ := writer.CreateFormFile("file", filename)
-	_, err = part.Write(compressedData.Bytes())
+	_, err = part.Write(data)
 	if err != nil {
 		return "", err
 	}
 
 	writer.Close()
 
-	req, err := http.NewRequest("POST", grant.S3URL, &formBytes)
+	req, err := http.NewRequest("POST", S3URL, &formBytes)
 	if err != nil {
 		return "", err
 	}
