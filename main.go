@@ -84,6 +84,7 @@ const defaultConfigFile = "/etc/pganalyze-collector.conf"
 const defaultStateFile = "/var/lib/pganalyze-collector/state"
 
 func main() {
+	var showVersion bool
 	var dryRun bool
 	var testRun bool
 	var testReport string
@@ -102,6 +103,7 @@ func main() {
 	logFlags := log.LstdFlags
 	logger := &util.Logger{}
 
+	flag.BoolVarP(&showVersion, "version", "", false, "Shows current version of the collector and exits")
 	flag.BoolVarP(&testRun, "test", "t", false, "Tests whether we can successfully collect data, submits it to the server, and exits afterwards")
 	flag.StringVar(&testReport, "test-report", "", "Tests a particular report and returns its output as JSON")
 	flag.BoolVar(&reloadRun, "reload", false, "Reloads the collector daemon thats running on the host")
@@ -126,6 +128,11 @@ func main() {
 	flag.StringVar(&stateFilename, "statefile", defaultStateFile, "Specify alternative path for state file")
 	flag.StringVar(&pidFilename, "pidfile", "", "Specifies a path that a pidfile should be written to (default is no pidfile being written)")
 	flag.Parse()
+
+	if showVersion {
+		fmt.Printf("%s\n", util.CollectorVersion)
+		return
+	}
 
 	if logNoTimestamps || logToSyslog {
 		logFlags = 0
