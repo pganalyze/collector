@@ -163,6 +163,24 @@
 			"notests": true
 		},
 		{
+			"importpath": "github.com/kylelemons/godebug/diff",
+			"repository": "https://github.com/kylelemons/godebug",
+			"vcs": "git",
+			"revision": "a616ab194758ae0a11290d87ca46ee8c440117b0",
+			"branch": "master",
+			"path": "diff",
+			"notests": true
+		},
+		{
+			"importpath": "github.com/kylelemons/godebug/pretty",
+			"repository": "https://github.com/kylelemons/godebug",
+			"vcs": "git",
+			"revision": "a616ab194758ae0a11290d87ca46ee8c440117b0",
+			"branch": "master",
+			"path": "/pretty",
+			"notests": true
+		},
+		{
 			"importpath": "github.com/lfittl/pg_query_go",
 			"repository": "https://github.com/lfittl/pg_query_go",
 			"vcs": "git",

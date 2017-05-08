@@ -1,12 +1,18 @@
 package state
 
-import "time"
+import (
+	"time"
+
+	uuid "github.com/satori/go.uuid"
+)
 
 type PostgresQuerySample struct {
 	OccurredAt time.Time
 	Username   string
 	Database   string
 	Query      string
+
+	LogLineUUID uuid.UUID
 
 	RuntimeMs float64
 

@@ -32,13 +32,11 @@ func collectDiffAndSubmit(server state.Server, globalCollectionOpts state.Collec
 	newState, transientState, err := input.CollectFull(server, connection, globalCollectionOpts, logger)
 	if err != nil {
 		connection.Close()
-		transientState.Cleanup()
 		return newState, err
 	}
 
 	// This is the easiest way to avoid opening multiple connections to different databases on the same instance
 	connection.Close()
-	defer transientState.Cleanup()
 
 	collectedIntervalSecs := uint32(newState.CollectedAt.Sub(server.PrevState.CollectedAt) / time.Second)
 	if collectedIntervalSecs == 0 {
@@ -57,10 +55,6 @@ func collectDiffAndSubmit(server state.Server, globalCollectionOpts state.Collec
 		}
 		newState.UnidentifiedStatementStats[timeKey] = diffState.StatementStats
 		diffState.StatementStats = make(state.DiffedPostgresStatementStatsMap)
-	}
-
-	if server.Grant.Config.Features.Logs && server.Grant.Config.Logs.EncryptionKey.CiphertextBlob != "" {
-		transientState.LogFiles = output.EncryptAndUploadLogfiles(server.Grant.Config.Logs, logger, transientState.LogFiles)
 	}
 
 	err = output.SendFull(server, globalCollectionOpts, logger, newState, diffState, transientState, collectedIntervalSecs)

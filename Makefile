@@ -12,7 +12,7 @@ build_dist:
 	make -C helper OUTFILE=../pganalyze-collector-helper
 
 test: build
-	go test -v ./ ./scheduler ./util ./output/transform/
+	go test -v ./ ./scheduler ./util ./output/transform/ ./input/system/logs/
 
 packages:
 	make -C packages

@@ -49,7 +49,7 @@ func upsertQueryReferenceAndInformation(s *snapshot.FullSnapshot, roleOidToIdx O
 	return idx
 }
 
-func upsertQueryReferenceAndInformationSimple(s *snapshot.FullSnapshot, databaseIdx int32, roleIdx int32, originalQuery string) int32 {
+func upsertQueryReferenceAndInformationSimple(refs []*snapshot.QueryReference, infos []*snapshot.QueryInformation, databaseIdx int32, roleIdx int32, originalQuery string) (int32, []*snapshot.QueryReference, []*snapshot.QueryInformation) {
 	normalizedQuery, _ := pg_query.Normalize(originalQuery)
 	fingerprint := util.FingerprintQuery(normalizedQuery)
 
@@ -59,22 +59,22 @@ func upsertQueryReferenceAndInformationSimple(s *snapshot.FullSnapshot, database
 		Fingerprint: fingerprint[:],
 	}
 
-	for idx, ref := range s.QueryReferences {
+	for idx, ref := range refs {
 		if ref.DatabaseIdx == newRef.DatabaseIdx && ref.RoleIdx == newRef.RoleIdx &&
 			bytes.Equal(ref.Fingerprint, newRef.Fingerprint) {
-			return int32(idx)
+			return int32(idx), refs, infos
 		}
 	}
 
-	idx := int32(len(s.QueryReferences))
-	s.QueryReferences = append(s.QueryReferences, &newRef)
+	idx := int32(len(refs))
+	refs = append(refs, &newRef)
 
 	// Information
 	queryInformation := snapshot.QueryInformation{
 		QueryIdx:        idx,
 		NormalizedQuery: normalizedQuery,
 	}
-	s.QueryInformations = append(s.QueryInformations, &queryInformation)
+	infos = append(infos, &queryInformation)
 
-	return idx
+	return idx, refs, infos
 }

@@ -26,19 +26,19 @@ import (
 	_ "github.com/lib/pq" // Enable database package to use Postgres
 )
 
-func run(wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *util.Logger, configFilename string) (bool, chan<- bool, chan<- bool) {
+func run(wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *util.Logger, configFilename string) (bool, chan<- bool, chan<- bool, chan<- bool) {
 	var servers []state.Server
 
 	schedulerGroups, err := scheduler.GetSchedulerGroups()
 	if err != nil {
 		logger.PrintError("Error: Could not get scheduler groups")
-		return false, nil, nil
+		return false, nil, nil, nil
 	}
 
 	serverConfigs, err := config.Read(logger, configFilename)
 	if err != nil {
 		logger.PrintError("Config Error: %s", err)
-		return !globalCollectionOpts.TestRun, nil, nil
+		return !globalCollectionOpts.TestRun, nil, nil, nil
 	}
 
 	for _, config := range serverConfigs {
@@ -59,10 +59,12 @@ func run(wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *
 	if globalCollectionOpts.TestRun {
 		if globalCollectionOpts.TestReport != "" {
 			runner.RunTestReport(servers, globalCollectionOpts, logger)
+		} else if globalCollectionOpts.TestRunLogs {
+			runner.CollectLogsFromAllServers(servers, globalCollectionOpts, logger)
 		} else {
 			runner.CollectAllServers(servers, globalCollectionOpts, logger)
 		}
-		return false, nil, nil
+		return false, nil, nil, nil
 	}
 
 	statsStop := schedulerGroups["stats"].Schedule(func() {
@@ -77,7 +79,13 @@ func run(wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *
 		wg.Done()
 	}, logger, "requested reports for all servers")
 
-	return true, statsStop, reportsStop
+	logsStop := schedulerGroups["logs"].Schedule(func() {
+		wg.Add(1)
+		runner.CollectLogsFromAllServers(servers, globalCollectionOpts, logger)
+		wg.Done()
+	}, logger, "log snapshot of all servers")
+
+	return true, statsStop, reportsStop, logsStop
 }
 
 const defaultConfigFile = "/etc/pganalyze-collector.conf"
@@ -86,6 +94,7 @@ const defaultStateFile = "/var/lib/pganalyze-collector/state"
 func main() {
 	var showVersion bool
 	var dryRun bool
+	var dryRunLogs bool
 	var testRun bool
 	var testReport string
 	var forceStateUpdate bool
@@ -111,6 +120,7 @@ func main() {
 	flag.BoolVar(&logToSyslog, "syslog", false, "Write all log output to syslog instead of stderr (disabled by default)")
 	flag.BoolVar(&logNoTimestamps, "no-log-timestamps", false, "Disable timestamps in the log output (automatically done when syslog is enabled)")
 	flag.BoolVar(&dryRun, "dry-run", false, "Print JSON data that would get sent to web service (without actually sending) and exit afterwards")
+	flag.BoolVar(&dryRunLogs, "dry-run-logs", false, "Print JSON data for log snapshot (without actually sending) and exit afterwards")
 	flag.BoolVar(&forceStateUpdate, "force-state-update", false, "Updates the state file even if other options would have prevented it (intended to be used together with --dry-run for debugging)")
 	flag.BoolVar(&noPostgresRelations, "no-postgres-relations", false, "Don't collect any Postgres relation information (not recommended)")
 	flag.BoolVar(&noPostgresSettings, "no-postgres-settings", false, "Don't collect Postgres configuration settings")
@@ -171,6 +181,7 @@ func main() {
 		SubmitCollectedData:      true,
 		TestRun:                  testRun,
 		TestReport:               testReport,
+		TestRunLogs:              dryRunLogs,
 		CollectPostgresRelations: !noPostgresRelations,
 		CollectPostgresSettings:  !noPostgresSettings,
 		CollectPostgresLocks:     !noPostgresLocks,
@@ -182,7 +193,7 @@ func main() {
 		CollectSystemInformation: !noSystemInformation,
 		DiffStatements:           diffStatements,
 		StateFilename:            stateFilename,
-		WriteStateUpdate:         (!dryRun && !testRun) || forceStateUpdate,
+		WriteStateUpdate:         (!dryRun && !dryRunLogs && !testRun) || forceStateUpdate,
 	}
 
 	if reloadRun {
@@ -190,7 +201,7 @@ func main() {
 		return
 	}
 
-	if dryRun {
+	if dryRun || dryRunLogs {
 		globalCollectionOpts.SubmitCollectedData = false
 		globalCollectionOpts.TestRun = true
 	} else {
@@ -201,7 +212,7 @@ func main() {
 		}
 	}
 
-	if testRun || testReport != "" {
+	if globalCollectionOpts.TestRun || globalCollectionOpts.TestReport != "" {
 		globalCollectionOpts.CollectorApplicationName = "pganalyze_test_run"
 	} else {
 		globalCollectionOpts.CollectorApplicationName = "pganalyze_collector"
@@ -239,7 +250,7 @@ func main() {
 	wg := sync.WaitGroup{}
 
 ReadConfigAndRun:
-	keepRunning, statsStop, reportsStop := run(&wg, globalCollectionOpts, logger, configFilename)
+	keepRunning, statsStop, reportsStop, logsStop := run(&wg, globalCollectionOpts, logger, configFilename)
 	if !keepRunning {
 		return
 	}
@@ -253,6 +264,9 @@ ReadConfigAndRun:
 	}
 	if reportsStop != nil {
 		reportsStop <- true
+	}
+	if logsStop != nil {
+		logsStop <- true
 	}
 
 	if s == syscall.SIGHUP {

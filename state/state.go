@@ -43,11 +43,9 @@ type TransientState struct {
 	Statements             PostgresStatementMap
 	HistoricStatementStats HistoricStatementStatsMap
 
-	Replication  PostgresReplication
-	Backends     []PostgresBackend
-	LogFiles     []LogFile
-	QuerySamples []PostgresQuerySample
-	Settings     []PostgresSetting
+	Replication PostgresReplication
+	Backends    []PostgresBackend
+	Settings    []PostgresSetting
 
 	Version PostgresVersion
 
@@ -96,6 +94,7 @@ type CollectionOpts struct {
 	SubmitCollectedData bool
 	TestRun             bool
 	TestReport          string
+	TestRunLogs         bool
 
 	StateFilename    string
 	WriteStateUpdate bool
@@ -106,7 +105,6 @@ type GrantConfig struct {
 	SentryDsn string `json:"sentry_dsn"`
 
 	Features GrantFeatures `json:"features"`
-	Logs     GrantLogs     `json:"logs"`
 }
 
 type GrantFeatures struct {
@@ -117,18 +115,6 @@ type GrantFeatures struct {
 	StatementTimeoutMs     int32 `json:"statement_timeout_ms"` // Statement timeout for all SQL statements sent to the database (defaults to 30s)
 }
 
-type GrantLogs struct {
-	S3URL         string                 `json:"s3_url"`
-	S3Fields      map[string]string      `json:"s3_fields"`
-	EncryptionKey GrantLogsEncryptionKey `json:"encryption_key"`
-}
-
-type GrantLogsEncryptionKey struct {
-	CiphertextBlob string `json:"ciphertext_blob"`
-	KeyId          string `json:"key_id"`
-	Plaintext      string `json:"plaintext"`
-}
-
 type Grant struct {
 	Valid    bool
 	Config   GrantConfig       `json:"config"`
@@ -137,15 +123,14 @@ type Grant struct {
 	LocalDir string            `json:"local_dir"`
 }
 
+type GrantS3 struct {
+	S3URL    string            `json:"s3_url"`
+	S3Fields map[string]string `json:"s3_fields"`
+}
+
 type Server struct {
 	Config           config.ServerConfig
 	PrevState        PersistedState
 	RequestedSslMode string
 	Grant            Grant
-}
-
-func (ts TransientState) Cleanup() {
-	for _, logFile := range ts.LogFiles {
-		logFile.Cleanup()
-	}
 }

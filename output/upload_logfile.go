@@ -11,7 +11,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3/s3crypto"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
-	uuid "github.com/satori/go.uuid"
 )
 
 type keyHandler struct {
@@ -46,23 +45,23 @@ func (kh *keyHandler) GenerateCipherData(keySize, ivSize int) (s3crypto.CipherDa
 	return cd, nil
 }
 
-func EncryptAndUploadLogfiles(grant state.GrantLogs, logger *util.Logger, logFiles []state.LogFile) []state.LogFile {
+func EncryptAndUploadLogfiles(s3 state.GrantS3, encryptionKey state.GrantLogsEncryptionKey, logger *util.Logger, logFiles []state.LogFile) []state.LogFile {
 	if len(logFiles) == 0 {
 		return logFiles
 	}
 
-	plaintextKey, err := base64.StdEncoding.DecodeString(grant.EncryptionKey.Plaintext)
+	plaintextKey, err := base64.StdEncoding.DecodeString(encryptionKey.Plaintext)
 	if err != nil {
 		logger.PrintError("Could not decode log encryption key (plaintext)")
 		return logFiles
 	}
-	ciphertextKey, err := base64.StdEncoding.DecodeString(grant.EncryptionKey.CiphertextBlob)
+	ciphertextKey, err := base64.StdEncoding.DecodeString(encryptionKey.CiphertextBlob)
 	if err != nil {
 		logger.PrintError("Could not decode log encryption key (encrypted)")
 		return logFiles
 	}
 
-	kh := keyHandler{plaintextKey: plaintextKey, ciphertextKey: ciphertextKey, cmkID: grant.EncryptionKey.KeyId}
+	kh := keyHandler{plaintextKey: plaintextKey, ciphertextKey: ciphertextKey, cmkID: encryptionKey.KeyId}
 	builder := s3crypto.AESGCMContentCipherBuilder(&kh)
 
 	encryptor, err := builder.ContentCipher()
@@ -103,7 +102,7 @@ func EncryptAndUploadLogfiles(grant state.GrantLogs, logger *util.Logger, logFil
 		}
 
 		formFields := make(map[string]string)
-		for k, v := range grant.S3Fields {
+		for k, v := range s3.S3Fields {
 			formFields[k] = v
 		}
 
@@ -116,10 +115,7 @@ func EncryptAndUploadLogfiles(grant state.GrantLogs, logger *util.Logger, logFil
 		formFields["x-amz-meta-x-amz-unencrypted-content-md5"] = env.UnencryptedMD5
 		formFields["x-amz-meta-x-amz-unencrypted-content-length"] = env.UnencryptedContentLen
 
-		logFileUUID := uuid.NewV4()
-		logFile.UUID = logFileUUID.String()
-
-		s3Location, err := uploadToS3(grant.S3URL, formFields, logger, encryptedContent, logFile.UUID)
+		s3Location, err := uploadToS3(s3.S3URL, formFields, logger, encryptedContent, logFile.UUID.String())
 		if err != nil {
 			logger.PrintError("Log S3 upload failed: %s", err)
 			return logFiles
@@ -127,7 +123,7 @@ func EncryptAndUploadLogfiles(grant state.GrantLogs, logger *util.Logger, logFil
 
 		logFile.S3Location = s3Location
 		logFile.S3CekAlgo = env.CEKAlg
-		logFile.S3CmkKeyID = grant.EncryptionKey.KeyId
+		logFile.S3CmkKeyID = encryptionKey.KeyId
 		logFile.ByteSize = int64(len(content))
 
 		logFiles[idx] = logFile

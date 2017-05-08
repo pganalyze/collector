@@ -5,13 +5,34 @@ import (
 	"time"
 
 	"github.com/pganalyze/collector/output/pganalyze_collector"
+	uuid "github.com/satori/go.uuid"
 )
+
+type GrantLogs struct {
+	Valid         bool
+	Logdata       GrantS3                `json:"logdata"`
+	Snapshot      GrantS3                `json:"snapshot"`
+	EncryptionKey GrantLogsEncryptionKey `json:"encryption_key"`
+}
+
+type GrantLogsEncryptionKey struct {
+	CiphertextBlob string `json:"ciphertext_blob"`
+	KeyId          string `json:"key_id"`
+	Plaintext      string `json:"plaintext"`
+}
+
+type LogState struct {
+	CollectedAt time.Time
+
+	LogFiles     []LogFile
+	QuerySamples []PostgresQuerySample
+}
 
 // LogFile - Log file that we are uploading for reference in log line metadata
 type LogFile struct {
 	LogLines []LogLine
 
-	UUID       string
+	UUID       uuid.UUID
 	S3Location string
 	S3CekAlgo  string
 	S3CmkKeyID string
@@ -24,8 +45,12 @@ type LogFile struct {
 
 // LogLine - "Line" in a PostgreSQL log file - can be multiple lines if they belong together
 type LogLine struct {
-	ByteStart int64
-	ByteEnd   int64
+	UUID       uuid.UUID
+	ParentUUID uuid.UUID
+
+	ByteStart        int64
+	ByteContentStart int64
+	ByteEnd          int64
 
 	OccurredAt time.Time
 	Username   string
@@ -37,11 +62,17 @@ type LogLine struct {
 
 	Content string
 
-	LogClassification pganalyze_collector.LogLineInformation_LogClassification
+	Classification pganalyze_collector.LogLineInformation_LogClassification
 
-	AdditionalLines []LogLine
+	Details map[string]interface{}
 }
 
 func (logFile LogFile) Cleanup() {
 	os.Remove(logFile.TmpFile.Name())
+}
+
+func (ls LogState) Cleanup() {
+	for _, logFile := range ls.LogFiles {
+		logFile.Cleanup()
+	}
 }

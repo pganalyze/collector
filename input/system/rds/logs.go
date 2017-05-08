@@ -2,11 +2,8 @@ package rds
 
 import (
 	"bufio"
-	"fmt"
 	"io"
 	"io/ioutil"
-	"math"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -14,10 +11,12 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/rds"
 	"github.com/pganalyze/collector/config"
+	"github.com/pganalyze/collector/input/system/logs"
 	"github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
 	"github.com/pganalyze/collector/util/awsutil"
+	uuid "github.com/satori/go.uuid"
 )
 
 // GetLogFiles - Gets log files for an Amazon RDS instance
@@ -27,9 +26,8 @@ func GetLogFiles(config config.ServerConfig, logger *util.Logger) (result []stat
 	rdsSvc := rds.New(sess)
 
 	instance, err := awsutil.FindRdsInstance(config, sess)
-
 	if err != nil {
-		fmt.Printf("Error: %v\n", err)
+		logger.PrintError("Could not find RDS instance: %s", err)
 		return
 	}
 
@@ -44,9 +42,8 @@ func GetLogFiles(config config.ServerConfig, logger *util.Logger) (result []stat
 	}
 
 	resp, err := rdsSvc.DescribeDBLogFiles(params)
-
 	if err != nil {
-		fmt.Printf("Error: %v\n", err)
+		logger.PrintError("Could not find RDS log files: %s", err)
 		return
 	}
 
@@ -54,6 +51,7 @@ func GetLogFiles(config config.ServerConfig, logger *util.Logger) (result []stat
 		var lastMarker *string
 
 		var logFile state.LogFile
+		logFile.UUID = uuid.NewV4()
 		logFile.TmpFile, err = ioutil.TempFile("", "")
 		if err != nil {
 			logger.PrintError("Could not allocate tempfile for logs: %s", err)
@@ -127,10 +125,21 @@ func GetLogFiles(config config.ServerConfig, logger *util.Logger) (result []stat
 					continue
 				}
 
+				// Ignore loglines which are outside our time window
+				if timestamp.Before(linesNewerThan) {
+					continue
+				}
+
 				userDbParts := strings.SplitN(parts[4], "@", 2)
 				if len(userDbParts) == 2 {
 					logLine.Username = userDbParts[0]
 					logLine.Database = userDbParts[1]
+				}
+				if logLine.Username == "[unknown]" {
+					logLine.Username = ""
+				}
+				if logLine.Database == "[unknown]" {
+					logLine.Database = ""
 				}
 
 				logLine.OccurredAt = timestamp
@@ -140,76 +149,18 @@ func GetLogFiles(config config.ServerConfig, logger *util.Logger) (result []stat
 				logLine.Content = strings.TrimLeft(parts[7], " ")
 
 				logLine.ByteStart = byteStart
+				logLine.ByteContentStart = byteStart + int64(len(line)-len(logLine.Content))
 				logLine.ByteEnd = byteStart + int64(len(line)) - 1
+
+				// Generate unique ID that can be used to reference this line
+				logLine.UUID = uuid.NewV4()
 
 				logLines = append(logLines, logLine)
 			}
 
-			// Split log lines by backend to ensure we have the right context
-			backendLogLines := make(map[int32][]state.LogLine)
-
-			for _, logLine := range logLines {
-				// Ignore loglines which are outside our time window
-				if logLine.OccurredAt.Before(linesNewerThan) {
-					continue
-				}
-
-				backendLogLines[logLine.BackendPid] = append(backendLogLines[logLine.BackendPid], logLine)
-			}
-
-			skipLines := 0
-
-			for _, logLines := range backendLogLines {
-				for idx, logLine := range logLines {
-					if skipLines > 0 {
-						skipLines--
-						continue
-					}
-
-					// Look up to 2 lines in the future to find context for this line
-					lowerBound := int(math.Min(float64(len(logLines)), float64(idx+1)))
-					upperBound := int(math.Min(float64(len(logLines)), float64(idx+3)))
-					for _, futureLine := range logLines[lowerBound:upperBound] {
-						if futureLine.LogLevel == pganalyze_collector.LogLineInformation_STATEMENT || futureLine.LogLevel == pganalyze_collector.LogLineInformation_DETAIL ||
-							futureLine.LogLevel == pganalyze_collector.LogLineInformation_HINT || futureLine.LogLevel == pganalyze_collector.LogLineInformation_CONTEXT {
-							if futureLine.LogLevel == pganalyze_collector.LogLineInformation_STATEMENT && !strings.HasSuffix(futureLine.Content, "[Your log message was truncated]") {
-								logLine.Query = futureLine.Content
-							}
-							logLine.AdditionalLines = append(logLine.AdditionalLines, futureLine)
-							skipLines++
-						} else {
-							break
-						}
-					}
-
-					if strings.HasPrefix(logLine.Content, "duration: ") {
-						if !strings.HasSuffix(logLine.Content, "[Your log message was truncated]") {
-							parts := regexp.MustCompile(`duration: ([\d\.]+) ms([^:]+): (.+)`).FindStringSubmatch(logLine.Content)
-
-							if len(parts) == 4 {
-								logLine.Query = parts[3]
-
-								if !strings.Contains(parts[2], "bind") && !strings.Contains(parts[2], "parse") {
-									runtime, _ := strconv.ParseFloat(parts[1], 64)
-									samples = append(samples, state.PostgresQuerySample{
-										OccurredAt: logLine.OccurredAt,
-										Username:   logLine.Username,
-										Database:   logLine.Database,
-										Query:      logLine.Query,
-										RuntimeMs:  runtime,
-									})
-								}
-							}
-						}
-					}
-
-					// TODO: Add privacy mode option
-					// * Clean STATEMENT and "duration: " contents
-					// * Remove DETAIL "parameters: "
-
-					logFile.LogLines = append(logFile.LogLines, logLine)
-				}
-			}
+			newLogLines, newSamples := logs.AnalyzeLogLines(logLines)
+			logFile.LogLines = append(logFile.LogLines, newLogLines...)
+			samples = append(samples, newSamples...)
 
 			lastMarker = resp.Marker
 			if !*resp.AdditionalDataPending {

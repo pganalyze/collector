@@ -25,7 +25,7 @@ type VacuumReportData struct {
 func (m *VacuumReportData) Reset()                    { *m = VacuumReportData{} }
 func (m *VacuumReportData) String() string            { return proto.CompactTextString(m) }
 func (*VacuumReportData) ProtoMessage()               {}
-func (*VacuumReportData) Descriptor() ([]byte, []int) { return fileDescriptor6, []int{0} }
+func (*VacuumReportData) Descriptor() ([]byte, []int) { return fileDescriptor8, []int{0} }
 
 func (m *VacuumReportData) GetDatabaseReferences() []*DatabaseReference {
 	if m != nil {
@@ -87,7 +87,7 @@ type VacuumStatistic struct {
 func (m *VacuumStatistic) Reset()                    { *m = VacuumStatistic{} }
 func (m *VacuumStatistic) String() string            { return proto.CompactTextString(m) }
 func (*VacuumStatistic) ProtoMessage()               {}
-func (*VacuumStatistic) Descriptor() ([]byte, []int) { return fileDescriptor6, []int{1} }
+func (*VacuumStatistic) Descriptor() ([]byte, []int) { return fileDescriptor8, []int{1} }
 
 func (m *VacuumStatistic) GetRelationIdx() int32 {
 	if m != nil {
@@ -227,9 +227,9 @@ func init() {
 	proto.RegisterType((*VacuumStatistic)(nil), "pganalyze.collector.VacuumStatistic")
 }
 
-func init() { proto.RegisterFile("vacuum_report.proto", fileDescriptor6) }
+func init() { proto.RegisterFile("vacuum_report.proto", fileDescriptor8) }
 
-var fileDescriptor6 = []byte{
+var fileDescriptor8 = []byte{
 	// 674 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x8c, 0x95, 0xdd, 0x4e, 0xdb, 0x4a,
 	0x10, 0x80, 0x15, 0xa1, 0x73, 0x74, 0xce, 0x26, 0x05, 0xb2, 0x09, 0xb0, 0x04, 0x14, 0xd2, 0x14,

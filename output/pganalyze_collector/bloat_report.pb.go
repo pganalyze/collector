@@ -8,6 +8,8 @@ Package pganalyze_collector is a generated protocol buffer package.
 It is generated from these files:
 	bloat_report.proto
 	buffercache_report.proto
+	compact_log_snapshot.proto
+	compact_snapshot.proto
 	full_snapshot.proto
 	report.proto
 	sequence_report.proto
@@ -20,13 +22,16 @@ It has these top-level messages:
 	IndexBloatStatistic
 	BuffercacheReportData
 	BuffercacheEntry
+	CompactLogSnapshot
+	LogFileReference
+	LogLineInformation
+	QuerySample
+	CompactSnapshot
 	FullSnapshot
 	CollectorStatistic
 	RoleInformation
 	DatabaseInformation
 	PostgresVersion
-	LogFileReference
-	LogLineInformation
 	Setting
 	Replication
 	StandbyReference
@@ -54,7 +59,6 @@ It has these top-level messages:
 	DiskPartitionStatistic
 	QueryStatistic
 	HistoricQueryStatistics
-	QuerySample
 	RelationInformation
 	RelationStatistic
 	RelationEvent

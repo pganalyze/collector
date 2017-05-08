@@ -13,8 +13,6 @@ import (
 
 // CollectFull - Collects a "full" snapshot of all data we need on a regular interval
 func CollectFull(server state.Server, connection *sql.DB, collectionOpts state.CollectionOpts, logger *util.Logger) (ps state.PersistedState, ts state.TransientState, err error) {
-	var querySamples []state.PostgresQuerySample
-
 	ps.CollectedAt = time.Now()
 
 	ts.Version, err = postgres.GetPostgresVersion(logger, connection)
@@ -84,16 +82,6 @@ func CollectFull(server state.Server, connection *sql.DB, collectionOpts state.C
 
 	if collectionOpts.CollectSystemInformation {
 		ps.System = system.GetSystemState(server.Config, logger)
-	}
-
-	if collectionOpts.CollectLogs && server.Grant.Config.Features.Logs {
-		ts.LogFiles, querySamples = system.GetLogFiles(server.Config, logger)
-
-		if collectionOpts.CollectExplain && server.Grant.Config.Features.Explain {
-			ts.QuerySamples = postgres.RunExplain(connection, querySamples)
-		} else {
-			ts.QuerySamples = querySamples
-		}
 	}
 
 	ps.CollectorStats = getCollectorStats()
