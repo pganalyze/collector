@@ -37,6 +37,12 @@ func getDefaultConfig() *ServerConfig {
 	if systemScope := os.Getenv("PGA_API_SYSTEM_SCOPE"); systemScope != "" {
 		config.SystemScope = systemScope
 	}
+	if enableLogs := os.Getenv("PGA_ENABLE_LOGS"); enableLogs != "" && enableLogs != "0" {
+		config.EnableLogs = true
+	}
+	if enableReports := os.Getenv("PGA_ENABLE_REPORTS"); enableReports != "" && enableReports != "0" {
+		config.EnableReports = true
+	}
 	if dbURL := os.Getenv("DB_URL"); dbURL != "" {
 		config.DbURL = dbURL
 	}

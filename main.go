@@ -73,17 +73,35 @@ func run(wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *
 		wg.Done()
 	}, logger, "full snapshot of all servers")
 
-	reportsStop := schedulerGroups["reports"].Schedule(func() {
-		wg.Add(1)
-		runner.RunRequestedReports(servers, globalCollectionOpts, logger)
-		wg.Done()
-	}, logger, "requested reports for all servers")
+	// Avoid even running the scheduler when we already know its not needed
+	hasAnyLogsEnabled := false
+	hasAnyReportsEnabled := false
+	for _, server := range servers {
+		if server.Config.EnableLogs {
+			hasAnyLogsEnabled = true
+		}
+		if server.Config.EnableReports {
+			hasAnyReportsEnabled = true
+		}
+	}
 
-	logsStop := schedulerGroups["logs"].Schedule(func() {
-		wg.Add(1)
-		runner.CollectLogsFromAllServers(servers, globalCollectionOpts, logger)
-		wg.Done()
-	}, logger, "log snapshot of all servers")
+	var reportsStop chan<- bool
+	if hasAnyReportsEnabled {
+		reportsStop = schedulerGroups["reports"].Schedule(func() {
+			wg.Add(1)
+			runner.RunRequestedReports(servers, globalCollectionOpts, logger)
+			wg.Done()
+		}, logger, "requested reports for all servers")
+	}
+
+	var logsStop chan<- bool
+	if hasAnyLogsEnabled {
+		logsStop = schedulerGroups["logs"].Schedule(func() {
+			wg.Add(1)
+			runner.CollectLogsFromAllServers(servers, globalCollectionOpts, logger)
+			wg.Done()
+		}, logger, "log snapshot of all servers")
+	}
 
 	return true, statsStop, reportsStop, logsStop
 }

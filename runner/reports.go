@@ -139,6 +139,10 @@ func RunTestReport(servers []state.Server, globalCollectionOpts state.Collection
 // RunRequestedReports - Retrieves current report requests from the server, runs them and submits their data
 func RunRequestedReports(servers []state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
 	for _, server := range servers {
+		if !server.Config.EnableReports {
+			continue
+		}
+
 		prefixedLogger := logger.WithPrefix(server.Config.SectionName)
 
 		reports, grant, err := getRequestedReports(server, globalCollectionOpts, prefixedLogger)

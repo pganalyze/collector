@@ -45,6 +45,10 @@ func CollectLogsFromAllServers(servers []state.Server, globalCollectionOpts stat
 	}
 
 	for _, server := range servers {
+		if !server.Config.EnableLogs {
+			continue
+		}
+
 		prefixedLogger := logger.WithPrefixAndRememberErrors(server.Config.SectionName)
 
 		success, err := processLogsForServer(server, globalCollectionOpts, prefixedLogger)
