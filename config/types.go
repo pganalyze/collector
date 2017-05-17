@@ -14,6 +14,10 @@ import (
 type ServerConfig struct {
 	APIKey     string `ini:"api_key"`
 	APIBaseURL string `ini:"api_base_url"`
+
+	ErrorCallback   string `ini:"error_callback"`
+	SuccessCallback string `ini:"success_callback"`
+
 	DbURL      string `ini:"db_url"`
 	DbName     string `ini:"db_name"`
 	DbUsername string `ini:"db_username"`

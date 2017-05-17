@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"os/exec"
 	"runtime/debug"
 	"time"
 
@@ -213,6 +214,20 @@ func ReadStateFile(servers []state.Server, globalCollectionOpts state.Collection
 	}
 }
 
+func runCompletionCallback(callbackType string, callbackCmd string, sectionName string, snapshotType string, errIn error, logger *util.Logger) {
+	cmd := exec.Command("bash", "-c", callbackCmd)
+	cmd.Env = append(cmd.Env, "PGA_CALLBACK_TYPE="+callbackType)
+	cmd.Env = append(cmd.Env, "PGA_CONFIG_SECTION="+sectionName)
+	cmd.Env = append(cmd.Env, "PGA_SNAPSHOT_TYPE="+snapshotType)
+	if errIn != nil {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("PGA_ERROR_MESSAGE=%s", errIn))
+	}
+	err := cmd.Run()
+	if err != nil {
+		logger.PrintError("Could not run %s callback (%s snapshot): %s", callbackType, snapshotType, callbackCmd)
+	}
+}
+
 // CollectAllServers - Collects statistics from all servers and sends them as full snapshots to the pganalyze service
 func CollectAllServers(servers []state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
 	for idx, server := range servers {
@@ -230,7 +245,13 @@ func CollectAllServers(servers []state.Server, globalCollectionOpts state.Collec
 					prefixedLogger.PrintWarning("Could not send error information to remote server: %s", err)
 				}
 			}
+			if server.Config.ErrorCallback != "" {
+				go runCompletionCallback("error", server.Config.ErrorCallback, server.Config.SectionName, "full", err, prefixedLogger)
+			}
 		} else {
+			if server.Config.SuccessCallback != "" {
+				go runCompletionCallback("success", server.Config.SuccessCallback, server.Config.SectionName, "full", nil, prefixedLogger)
+			}
 			servers[idx].Grant = grant
 			servers[idx].PrevState = newState
 		}

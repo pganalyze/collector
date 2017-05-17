@@ -161,6 +161,31 @@ When monitoring a Heroku Postgres database, it is recommended you deploy the col
 Follow the instructions in the pganalyze documentation to add your databases to the collector.
 
 
+Success/Error Callbacks
+-----------------------
+
+In case you want to run a script based on data collection running successfully
+and/or failing, you can set the `success_callback` and `error_callback` options:
+
+```
+[pganalyze]
+...
+error_callback=/usr/local/bin/my_error_script.sh
+
+[mydb]
+...
+```
+
+Note that the callback is executed in a shell, so you can use shell expressions as well.
+
+The script will also have the following environment variables set:
+
+* PGA_CALLBACK_TYPE (type of callback, `error` or `success`)
+* PGA_CONFIG_SECTION (server that was processed, `mydb` in this example)
+* PGA_SNAPSHOT_TYPE (type of data that was processed, currently there are `full` snapshots, as well as `logs` snapshots which contain only log data)
+* PGA_ERROR_MESSAGE (error message, in the case of the error callback)
+
+
 Authors
 -------
 
