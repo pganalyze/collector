@@ -49,6 +49,25 @@ func statementStatsHelperExists(db *sql.DB, showtext bool) bool {
 	return enabled
 }
 
+func ResetStatements(logger *util.Logger, db *sql.DB) error {
+	var method string
+	if statsHelperExists(db, "reset_stat_statements") {
+		logger.PrintVerbose("Found pganalyze.reset_stat_statements() stats helper")
+		method = "pganalyze.reset_stat_statements()"
+	} else {
+		if !connectedAsSuperUser(db) {
+			logger.PrintInfo("Warning: You are not connecting as superuser. Please setup" +
+				" contact support to get advice on setting up stat statements reset")
+		}
+		method = "pg_stat_statements_reset()"
+	}
+	_, err := db.Exec(QueryMarkerSQL + "SELECT " + method)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func GetStatements(logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion, showtext bool) (state.PostgresStatementMap, state.PostgresStatementStatsMap, error) {
 	var err error
 	var optionalFields string

@@ -22,10 +22,15 @@ type PersistedState struct {
 	System         SystemState
 	CollectorStats CollectorStats
 
+	// Incremented every run, indicates whether we should run a pg_stat_statements_reset()
+	// on behalf of the user. Only activates once it reaches GrantFeatures.StatementReset,
+	// and is reset afterwards.
+	StatementResetCounter int
+
 	// Incremented every run, indicates whether full statement text should be collected.
 	// Text is collected when counter reaches GrantFeatures.StatementFrequency, and is
 	// reset afterwards.
-	StatementFrequencyCounter int
+	StatementTextCounter int
 
 	// All statement stats that have not been identified (will be cleared by the next snapshot with statement text)
 	UnidentifiedStatementStats HistoricStatementStatsMap
@@ -42,6 +47,10 @@ type TransientState struct {
 	HasStatementText       bool
 	Statements             PostgresStatementMap
 	HistoricStatementStats HistoricStatementStatsMap
+
+	// This is a new zero value that was recorded after a pg_stat_statements_reset(),
+	// in order to enable the next snapshot to be able to diff against something
+	ResetStatementStats PostgresStatementStatsMap
 
 	Replication PostgresReplication
 	Backends    []PostgresBackend
@@ -111,8 +120,9 @@ type GrantFeatures struct {
 	Logs    bool `json:"logs"`
 	Explain bool `json:"explain"`
 
-	StatementTextFrequency int   `json:"statement_text_frequency"`
-	StatementTimeoutMs     int32 `json:"statement_timeout_ms"` // Statement timeout for all SQL statements sent to the database (defaults to 30s)
+	StatementTextFrequency  int   `json:"statement_text_frequency"`
+	StatementResetFrequency int   `json:"statement_reset_frequency"`
+	StatementTimeoutMs      int32 `json:"statement_timeout_ms"` // Statement timeout for all SQL statements sent to the database (defaults to 30s)
 }
 
 type Grant struct {

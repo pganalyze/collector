@@ -63,6 +63,12 @@ func collectDiffAndSubmit(server state.Server, globalCollectionOpts state.Collec
 		return newState, err
 	}
 
+	// After we've done all processing, and in case we did a reset, make sure the
+	// next snapshot has an empty reference point
+	if transientState.ResetStatementStats != nil {
+		newState.StatementStats = transientState.ResetStatementStats
+	}
+
 	return newState, nil
 }
 

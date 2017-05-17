@@ -44,9 +44,9 @@ func CollectFull(server state.Server, connection *sql.DB, collectionOpts state.C
 		return
 	}
 
-	ps.StatementFrequencyCounter = server.PrevState.StatementFrequencyCounter + 1
-	if ps.StatementFrequencyCounter >= server.Grant.Config.Features.StatementTextFrequency { // Stats and statements
-		ps.StatementFrequencyCounter = 0
+	ps.StatementTextCounter = server.PrevState.StatementTextCounter + 1
+	if ps.StatementTextCounter >= server.Grant.Config.Features.StatementTextFrequency { // Stats and statements
+		ps.StatementTextCounter = 0
 		ts.HasStatementText = true
 		ts.Statements, ps.StatementStats, err = postgres.GetStatements(logger, connection, ts.Version, true)
 		if err != nil {
@@ -54,9 +54,24 @@ func CollectFull(server state.Server, connection *sql.DB, collectionOpts state.C
 			return
 		}
 	} else { // Stats only
-		logger.PrintVerbose("Collecting pg_stat_statements without statement text (%d of %d)", ps.StatementFrequencyCounter, server.Grant.Config.Features.StatementTextFrequency)
+		logger.PrintVerbose("Collecting pg_stat_statements without statement text (%d of %d)", ps.StatementTextCounter, server.Grant.Config.Features.StatementTextFrequency)
 		ts.HasStatementText = false
 		_, ps.StatementStats, err = postgres.GetStatements(logger, connection, ts.Version, false)
+		if err != nil {
+			logger.PrintError("Error collecting pg_stat_statements")
+			return
+		}
+	}
+
+	ps.StatementResetCounter = server.PrevState.StatementResetCounter + 1
+	if server.Grant.Config.Features.StatementResetFrequency != 0 && ps.StatementResetCounter >= server.Grant.Config.Features.StatementResetFrequency {
+		ps.StatementResetCounter = 0
+		err = postgres.ResetStatements(logger, connection)
+		if err != nil {
+			logger.PrintError("Error calling pg_stat_statements_reset() as requested: %s", err)
+			return
+		}
+		_, ts.ResetStatementStats, err = postgres.GetStatements(logger, connection, ts.Version, false)
 		if err != nil {
 			logger.PrintError("Error collecting pg_stat_statements")
 			return
