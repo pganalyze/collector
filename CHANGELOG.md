@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.9.13      2017-05-17
+
+* Log Monitoring
+  - Upload encrypted log data to S3, and only send byte ranges in snapshot
+  - Implement log classification
+* Add --version flag to show current collector version
+* Replication stats: Allow replay location to be null
+* Add support for error and success callbacks
+* Introduce server-controlled ability to reset pg_stat_statements
+
+
 ## 0.9.12      2017-04-05
 
 * SystemScope: Include DbAllNames status for local collections
