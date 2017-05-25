@@ -13,6 +13,8 @@ import (
 
 // CollectFull - Collects a "full" snapshot of all data we need on a regular interval
 func CollectFull(server state.Server, connection *sql.DB, collectionOpts state.CollectionOpts, logger *util.Logger) (ps state.PersistedState, ts state.TransientState, err error) {
+	isHeroku := server.Config.SystemType == "heroku"
+
 	ps.CollectedAt = time.Now()
 
 	ts.Version, err = postgres.GetPostgresVersion(logger, connection)
@@ -48,7 +50,7 @@ func CollectFull(server state.Server, connection *sql.DB, collectionOpts state.C
 	if ps.StatementTextCounter >= server.Grant.Config.Features.StatementTextFrequency { // Stats and statements
 		ps.StatementTextCounter = 0
 		ts.HasStatementText = true
-		ts.Statements, ps.StatementStats, err = postgres.GetStatements(logger, connection, ts.Version, true)
+		ts.Statements, ps.StatementStats, err = postgres.GetStatements(logger, connection, ts.Version, true, isHeroku)
 		if err != nil {
 			logger.PrintError("Error collecting pg_stat_statements")
 			return
@@ -56,7 +58,7 @@ func CollectFull(server state.Server, connection *sql.DB, collectionOpts state.C
 	} else { // Stats only
 		logger.PrintVerbose("Collecting pg_stat_statements without statement text (%d of %d)", ps.StatementTextCounter, server.Grant.Config.Features.StatementTextFrequency)
 		ts.HasStatementText = false
-		_, ps.StatementStats, err = postgres.GetStatements(logger, connection, ts.Version, false)
+		_, ps.StatementStats, err = postgres.GetStatements(logger, connection, ts.Version, false, isHeroku)
 		if err != nil {
 			logger.PrintError("Error collecting pg_stat_statements")
 			return
@@ -71,7 +73,7 @@ func CollectFull(server state.Server, connection *sql.DB, collectionOpts state.C
 			logger.PrintError("Error calling pg_stat_statements_reset() as requested: %s", err)
 			return
 		}
-		_, ts.ResetStatementStats, err = postgres.GetStatements(logger, connection, ts.Version, false)
+		_, ts.ResetStatementStats, err = postgres.GetStatements(logger, connection, ts.Version, false, isHeroku)
 		if err != nil {
 			logger.PrintError("Error collecting pg_stat_statements")
 			return
@@ -86,7 +88,7 @@ func CollectFull(server state.Server, connection *sql.DB, collectionOpts state.C
 		}
 	}
 
-	ts.Replication, err = postgres.GetReplication(logger, connection)
+	ts.Replication, err = postgres.GetReplication(logger, connection, isHeroku)
 	if err != nil {
 		logger.PrintWarning("Error collecting replication statistics: %s", err)
 		// We intentionally accept this as a non-fatal issue (at least for now)

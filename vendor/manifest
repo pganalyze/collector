@@ -18,6 +18,14 @@
 			"notests": true
 		},
 		{
+			"importpath": "github.com/bmizerany/lpx",
+			"repository": "https://github.com/bmizerany/lpx",
+			"vcs": "git",
+			"revision": "af85cf24c1567bcb5a2e4c21597cc049eab31f55",
+			"branch": "master",
+			"notests": true
+		},
+		{
 			"importpath": "github.com/certifi/gocertifi",
 			"repository": "https://github.com/certifi/gocertifi",
 			"vcs": "git",
@@ -135,6 +143,14 @@
 			"repository": "https://github.com/keybase/go-ps",
 			"vcs": "git",
 			"revision": "9c11ca40a47944f49e0784b77a66636cb098445a",
+			"branch": "master",
+			"notests": true
+		},
+		{
+			"importpath": "github.com/kr/logfmt",
+			"repository": "https://github.com/kr/logfmt",
+			"vcs": "git",
+			"revision": "b84e30acd515aadc4b783ad4ff83aff3299bdfe0",
 			"branch": "master",
 			"notests": true
 		},

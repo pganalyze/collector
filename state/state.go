@@ -133,6 +133,10 @@ type Grant struct {
 	LocalDir string            `json:"local_dir"`
 }
 
+func (g Grant) S3() GrantS3 {
+	return GrantS3{S3URL: g.S3URL, S3Fields: g.S3Fields}
+}
+
 type GrantS3 struct {
 	S3URL    string            `json:"s3_url"`
 	S3Fields map[string]string `json:"s3_fields"`

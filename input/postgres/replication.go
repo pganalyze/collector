@@ -41,7 +41,7 @@ SELECT client_addr,
 	FROM %s
  WHERE client_addr IS NOT NULL`
 
-func GetReplication(logger *util.Logger, db *sql.DB) (state.PostgresReplication, error) {
+func GetReplication(logger *util.Logger, db *sql.DB, isHeroku bool) (state.PostgresReplication, error) {
 	var err error
 	var repl state.PostgresReplication
 	var sourceTable string
@@ -50,7 +50,7 @@ func GetReplication(logger *util.Logger, db *sql.DB) (state.PostgresReplication,
 		logger.PrintVerbose("Found pganalyze.get_stat_replication() stats helper")
 		sourceTable = "pganalyze.get_stat_replication()"
 	} else {
-		if !connectedAsSuperUser(db) {
+		if !isHeroku && !connectedAsSuperUser(db) {
 			logger.PrintInfo("Warning: You are not connecting as superuser. Please setup" +
 				" the monitoring helper functions (https://github.com/pganalyze/collector#setting-up-a-restricted-monitoring-user)" +
 				" or connect as superuser, to get replication statistics.")

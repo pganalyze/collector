@@ -3,16 +3,14 @@ package runner
 import (
 	"database/sql"
 	"encoding/gob"
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"net/http"
 	"os"
 	"os/exec"
 	"runtime/debug"
 	"time"
 
 	raven "github.com/getsentry/raven-go"
+	"github.com/pganalyze/collector/grant"
 	"github.com/pganalyze/collector/input"
 	"github.com/pganalyze/collector/input/postgres"
 	"github.com/pganalyze/collector/output"
@@ -85,12 +83,12 @@ func capturePanic(f func()) (err interface{}, stackTrace []byte) {
 }
 
 func processDatabase(server state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.PersistedState, state.Grant, error) {
-	var grant state.Grant
+	var newGrant state.Grant
 	var newState state.PersistedState
 	var err error
 
 	// Note: In case of server errors, we should reuse the old grant if its still recent (i.e. less than 50 minutes ago)
-	grant, err = getSnapshotGrant(server, globalCollectionOpts, logger)
+	newGrant, err = grant.GetDefaultGrant(server, globalCollectionOpts, logger)
 	if err != nil {
 		if server.Grant.Valid {
 			logger.PrintVerbose("Could not acquire snapshot grant, reusing previous grant: %s", err)
@@ -98,7 +96,7 @@ func processDatabase(server state.Server, globalCollectionOpts state.CollectionO
 			return state.PersistedState{}, state.Grant{}, err
 		}
 	} else {
-		server.Grant = grant
+		server.Grant = newGrant
 	}
 
 	transientState := state.TransientState{}
@@ -129,45 +127,7 @@ func processDatabase(server state.Server, globalCollectionOpts state.CollectionO
 		logger.PrintVerbose("Panic: %s\n%s", err, stackTrace)
 	}
 
-	return newState, grant, err
-}
-
-func getSnapshotGrant(server state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.Grant, error) {
-	req, err := http.NewRequest("GET", server.Config.APIBaseURL+"/v2/snapshots/grant", nil)
-	if err != nil {
-		return state.Grant{}, err
-	}
-
-	req.Header.Set("Pganalyze-Api-Key", server.Config.APIKey)
-	req.Header.Set("Pganalyze-System-Id", server.Config.SystemID)
-	req.Header.Set("Pganalyze-System-Type", server.Config.SystemType)
-	req.Header.Set("Pganalyze-System-Scope", server.Config.SystemScope)
-	req.Header.Set("User-Agent", util.CollectorNameAndVersion)
-	req.Header.Add("Accept", "application/json")
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return state.Grant{}, err
-	}
-	defer resp.Body.Close()
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return state.Grant{}, err
-	}
-
-	if resp.StatusCode != http.StatusOK || len(body) == 0 {
-		return state.Grant{}, fmt.Errorf("Error when getting grant: %s", body)
-	}
-
-	grant := state.Grant{}
-	err = json.Unmarshal(body, &grant)
-	if err != nil {
-		return state.Grant{}, err
-	}
-	grant.Valid = true
-
-	return grant, nil
+	return newState, newGrant, err
 }
 
 func writeStateFile(servers []state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {

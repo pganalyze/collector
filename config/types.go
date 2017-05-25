@@ -5,7 +5,21 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+
+	"github.com/bmizerany/lpx"
 )
+
+type Config struct {
+	// Only used for Heroku servers to pass log messages to the input handler
+	HerokuLogStream chan HerokuLogStreamItem
+
+	Servers []ServerConfig
+}
+
+type HerokuLogStreamItem struct {
+	Header  lpx.Header
+	Content []byte
+}
 
 // ServerConfig -
 //   Contains the information how to connect to a Postgres instance,
@@ -111,6 +125,18 @@ func (config ServerConfig) GetDbPort() int {
 	}
 
 	return config.DbPort
+}
+
+// GetDbUsername - Gets the database hostname from the given configuration
+func (config ServerConfig) GetDbUsername() string {
+	if config.DbURL != "" {
+		u, _ := url.Parse(config.DbURL)
+		if u != nil && u.User != nil {
+			return u.User.Username()
+		}
+	}
+
+	return config.DbUsername
 }
 
 // GetDbName - Gets the database name from the given configuration

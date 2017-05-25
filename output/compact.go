@@ -14,10 +14,49 @@ import (
 
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/ptypes"
 	"github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
+	uuid "github.com/satori/go.uuid"
 )
+
+func uploadAndSubmitCompactSnapshot(s pganalyze_collector.CompactSnapshot, s3 state.GrantS3, server state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, collectedAt time.Time, quiet bool) error {
+	var err error
+	var data []byte
+
+	snapshotUUID := uuid.NewV4()
+
+	s.SnapshotVersionMajor = 1
+	s.SnapshotVersionMinor = 0
+	s.CollectorVersion = util.CollectorNameAndVersion
+	s.SnapshotUuid = snapshotUUID.String()
+	s.CollectedAt, _ = ptypes.TimestampProto(collectedAt)
+
+	data, err = proto.Marshal(&s)
+	if err != nil {
+		logger.PrintError("Error marshaling protocol buffers")
+		return err
+	}
+
+	var compressedData bytes.Buffer
+	w := zlib.NewWriter(&compressedData)
+	w.Write(data)
+	w.Close()
+
+	if !collectionOpts.SubmitCollectedData {
+		debugCompactOutputAsJSON(logger, compressedData)
+		return nil
+	}
+
+	s3Location, err := uploadCompactSnapshot(s3, logger, compressedData, snapshotUUID.String())
+	if err != nil {
+		logger.PrintError("Error uploading to S3: %s", err)
+		return err
+	}
+
+	return submitCompactSnapshot(server, collectionOpts, logger, s3Location, collectedAt, quiet)
+}
 
 func debugCompactOutputAsJSON(logger *util.Logger, compressedData bytes.Buffer) {
 	var err error

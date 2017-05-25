@@ -29,7 +29,7 @@ type Report struct {
 func (m *Report) Reset()                    { *m = Report{} }
 func (m *Report) String() string            { return proto.CompactTextString(m) }
 func (*Report) ProtoMessage()               {}
-func (*Report) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{0} }
+func (*Report) Descriptor() ([]byte, []int) { return fileDescriptor6, []int{0} }
 
 type isReport_Data interface {
 	isReport_Data()
@@ -225,9 +225,9 @@ func init() {
 	proto.RegisterType((*Report)(nil), "pganalyze.collector.Report")
 }
 
-func init() { proto.RegisterFile("report.proto", fileDescriptor5) }
+func init() { proto.RegisterFile("report.proto", fileDescriptor6) }
 
-var fileDescriptor5 = []byte{
+var fileDescriptor6 = []byte{
 	// 325 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x6c, 0x91, 0xc1, 0x4f, 0x32, 0x31,
 	0x10, 0xc5, 0x3f, 0x3e, 0x09, 0x89, 0xb3, 0x10, 0xb5, 0x48, 0xdc, 0xec, 0x05, 0x42, 0x34, 0x12,
