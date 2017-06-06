@@ -10,6 +10,7 @@ It is generated from these files:
 	buffercache_report.proto
 	compact_log_snapshot.proto
 	compact_snapshot.proto
+	compact_system_snapshot.proto
 	full_snapshot.proto
 	report.proto
 	sequence_report.proto
@@ -27,6 +28,7 @@ It has these top-level messages:
 	LogLineInformation
 	QuerySample
 	CompactSnapshot
+	CompactSystemSnapshot
 	FullSnapshot
 	CollectorStatistic
 	RoleInformation
@@ -40,23 +42,6 @@ It has these top-level messages:
 	Backend
 	TablespaceReference
 	TablespaceInformation
-	System
-	SystemInformation
-	SystemInformationSelfHosted
-	SystemInformationAmazonRDS
-	SchedulerStatistic
-	MemoryStatistic
-	CPUInformation
-	CPUReference
-	CPUStatistic
-	NetworkReference
-	NetworkStatistic
-	DiskReference
-	DiskInformation
-	DiskStatistic
-	DiskPartitionReference
-	DiskPartitionInformation
-	DiskPartitionStatistic
 	QueryStatistic
 	HistoricQueryStatistics
 	RelationInformation
@@ -80,6 +65,23 @@ It has these top-level messages:
 	FunctionReference
 	QueryReference
 	QueryInformation
+	System
+	SystemInformation
+	SystemInformationSelfHosted
+	SystemInformationAmazonRDS
+	SchedulerStatistic
+	MemoryStatistic
+	CPUInformation
+	CPUReference
+	CPUStatistic
+	NetworkReference
+	NetworkStatistic
+	DiskReference
+	DiskInformation
+	DiskStatistic
+	DiskPartitionReference
+	DiskPartitionInformation
+	DiskPartitionStatistic
 	VacuumReportData
 	VacuumStatistic
 */

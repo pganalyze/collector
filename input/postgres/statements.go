@@ -30,7 +30,7 @@ SELECT 1 AS enabled
 	FROM pg_proc
 	JOIN pg_namespace ON (pronamespace = pg_namespace.oid)
  WHERE nspname = 'pganalyze' AND proname = 'get_stat_statements'
-       %s
+			 %s
 `
 
 func statementStatsHelperExists(db *sql.DB, showtext bool) bool {
@@ -68,7 +68,7 @@ func ResetStatements(logger *util.Logger, db *sql.DB) error {
 	return nil
 }
 
-func GetStatements(logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion, showtext bool) (state.PostgresStatementMap, state.PostgresStatementStatsMap, error) {
+func GetStatements(logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion, showtext bool, isHeroku bool) (state.PostgresStatementMap, state.PostgresStatementStatsMap, error) {
 	var err error
 	var optionalFields string
 	var sourceTable string
@@ -93,7 +93,7 @@ func GetStatements(logger *util.Logger, db *sql.DB, postgresVersion state.Postgr
 			sourceTable = "pganalyze.get_stat_statements()"
 		}
 	} else {
-		if !connectedAsSuperUser(db) {
+		if !isHeroku && !connectedAsSuperUser(db) {
 			logger.PrintInfo("Warning: You are not connecting as superuser. Please setup" +
 				" the monitoring helper functions (https://github.com/pganalyze/collector#setting-up-a-restricted-monitoring-user)" +
 				" or connect as superuser, to get query statistics for all roles.")

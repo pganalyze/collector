@@ -1,19 +1,38 @@
 package config
 
 import (
+	"bufio"
 	"net/http"
 	"os"
 	"strings"
+
+	"github.com/bmizerany/lpx"
 )
+
+const bufferLen = 500
 
 func dummyHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "https://app.pganalyze.com/", http.StatusFound)
 }
 
-func handleHeroku() (servers []ServerConfig) {
-	// This is required so Heroku doesn't think the dyno crashed
+func (s *Config) logHandler(w http.ResponseWriter, r *http.Request) {
+	lp := lpx.NewReader(bufio.NewReader(r.Body))
+	for lp.Next() {
+		procID := string(lp.Header().Procid)
+		if procID == "heroku-postgres" || strings.HasPrefix(procID, "postgres.") {
+			s.HerokuLogStream <- HerokuLogStreamItem{Header: *lp.Header(), Content: lp.Bytes()}
+		}
+	}
+}
+
+func handleHeroku() (conf Config) {
+	conf.HerokuLogStream = make(chan HerokuLogStreamItem, bufferLen)
+
+	// This is required to receive logs, as well as so Heroku doesn't think the dyno crashed
 	go func() {
+		defer close(conf.HerokuLogStream)
 		http.HandleFunc("/", dummyHandler)
+		http.HandleFunc("/logs", conf.logHandler)
 		http.ListenAndServe(":"+os.Getenv("PORT"), nil)
 	}()
 
@@ -25,7 +44,7 @@ func handleHeroku() (servers []ServerConfig) {
 			config.SystemID = strings.Replace(parts[0], "_URL", "", 1)
 			config.SystemType = "heroku"
 			config.DbURL = parts[1]
-			servers = append(servers, *config)
+			conf.Servers = append(conf.Servers, *config)
 		}
 	}
 

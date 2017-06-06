@@ -9,7 +9,7 @@ func StateToSnapshot(newState state.PersistedState, diffState state.DiffState, t
 	var s snapshot.FullSnapshot
 
 	s = transformPostgres(s, newState, diffState, transientState)
-	s = transformSystem(s, newState, diffState)
+	s = systemStateToFullSnapshot(s, newState, diffState)
 	s = transformCollectorStats(s, newState, diffState)
 
 	return s

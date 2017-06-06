@@ -81,14 +81,14 @@ func getDefaultConfig() *ServerConfig {
 }
 
 // Read - Reads the configuration from the specified filename, or fall back to the default config
-func Read(logger *util.Logger, filename string) ([]ServerConfig, error) {
-	var servers []ServerConfig
+func Read(logger *util.Logger, filename string) (Config, error) {
+	var conf Config
 	var err error
 
 	if _, err = os.Stat(filename); err == nil {
 		configFile, err := ini.Load(filename)
 		if err != nil {
-			return servers, err
+			return conf, err
 		}
 
 		defaultConfig := getDefaultConfig()
@@ -105,7 +105,7 @@ func Read(logger *util.Logger, filename string) ([]ServerConfig, error) {
 
 			err = section.MapTo(config)
 			if err != nil {
-				return servers, err
+				return conf, err
 			}
 
 			dbNameParts := []string{}
@@ -125,7 +125,7 @@ func Read(logger *util.Logger, filename string) ([]ServerConfig, error) {
 			if config.GetDbName() != "" {
 				// Ensure we have no duplicate System Type+Scope+ID within one collector
 				skip := false
-				for _, server := range servers {
+				for _, server := range conf.Servers {
 					if config.SystemType == server.SystemType &&
 						config.SystemScope == server.SystemScope &&
 						config.SystemID == server.SystemID {
@@ -135,25 +135,25 @@ func Read(logger *util.Logger, filename string) ([]ServerConfig, error) {
 				if skip {
 					logger.PrintError("Skipping config section %s, detected as duplicate", config.SectionName)
 				} else {
-					servers = append(servers, *config)
+					conf.Servers = append(conf.Servers, *config)
 				}
 			}
 		}
 
-		if len(servers) == 0 {
-			return servers, fmt.Errorf("Configuration file is empty, please edit %s and reload the collector", filename)
+		if len(conf.Servers) == 0 {
+			return conf, fmt.Errorf("Configuration file is empty, please edit %s and reload the collector", filename)
 		}
 	} else {
 		if os.Getenv("DYNO") != "" && os.Getenv("PORT") != "" {
-			servers = handleHeroku()
+			conf = handleHeroku()
 		} else if os.Getenv("PGA_API_KEY") != "" {
 			config := getDefaultConfig()
 			config.SystemType, config.SystemScope, config.SystemID = identifySystem(*config)
-			servers = append(servers, *config)
+			conf.Servers = append(conf.Servers, *config)
 		} else {
-			return servers, fmt.Errorf("No configuration file found at %s, and no environment variables set", filename)
+			return conf, fmt.Errorf("No configuration file found at %s, and no environment variables set", filename)
 		}
 	}
 
-	return servers, nil
+	return conf, nil
 }

@@ -8,112 +8,121 @@ import (
 	"github.com/pganalyze/collector/state"
 )
 
-func transformSystem(s snapshot.FullSnapshot, newState state.PersistedState, diffState state.DiffState) snapshot.FullSnapshot {
-	s.System = &snapshot.System{}
+func SystemStateToCompactSystemSnapshot(systemState state.SystemState) snapshot.CompactSystemSnapshot {
+	system := transformSystem(systemState, state.DiffState{})
+	return snapshot.CompactSystemSnapshot{System: system}
+}
 
-	s.System.SystemInformation = &snapshot.SystemInformation{}
+func systemStateToFullSnapshot(s snapshot.FullSnapshot, newState state.PersistedState, diffState state.DiffState) snapshot.FullSnapshot {
+	s.System = transformSystem(newState.System, diffState)
+	return s
+}
 
-	if newState.System.Info.Type == state.SelfHostedSystem {
-		s.System.SystemInformation.Type = snapshot.SystemInformation_SELF_HOSTED_SYSTEM
-		if newState.System.Info.SelfHosted != nil {
-			s.System.SystemInformation.Info = &snapshot.SystemInformation_SelfHosted{
+func transformSystem(systemState state.SystemState, diffState state.DiffState) *snapshot.System {
+	system := &snapshot.System{}
+
+	system.SystemInformation = &snapshot.SystemInformation{}
+
+	if systemState.Info.Type == state.SelfHostedSystem {
+		system.SystemInformation.Type = snapshot.SystemInformation_SELF_HOSTED_SYSTEM
+		if systemState.Info.SelfHosted != nil {
+			system.SystemInformation.Info = &snapshot.SystemInformation_SelfHosted{
 				SelfHosted: &snapshot.SystemInformationSelfHosted{
-					Hostname:                 newState.System.Info.SelfHosted.Hostname,
-					Architecture:             newState.System.Info.SelfHosted.Architecture,
-					OperatingSystem:          newState.System.Info.SelfHosted.OperatingSystem,
-					Platform:                 newState.System.Info.SelfHosted.Platform,
-					PlatformFamily:           newState.System.Info.SelfHosted.PlatformFamily,
-					PlatformVersion:          newState.System.Info.SelfHosted.PlatformVersion,
-					VirtualizationSystem:     newState.System.Info.SelfHosted.VirtualizationSystem,
-					KernelVersion:            newState.System.Info.SelfHosted.KernelVersion,
-					DatabaseSystemIdentifier: newState.System.Info.SelfHosted.DatabaseSystemIdentifier,
+					Hostname:                 systemState.Info.SelfHosted.Hostname,
+					Architecture:             systemState.Info.SelfHosted.Architecture,
+					OperatingSystem:          systemState.Info.SelfHosted.OperatingSystem,
+					Platform:                 systemState.Info.SelfHosted.Platform,
+					PlatformFamily:           systemState.Info.SelfHosted.PlatformFamily,
+					PlatformVersion:          systemState.Info.SelfHosted.PlatformVersion,
+					VirtualizationSystem:     systemState.Info.SelfHosted.VirtualizationSystem,
+					KernelVersion:            systemState.Info.SelfHosted.KernelVersion,
+					DatabaseSystemIdentifier: systemState.Info.SelfHosted.DatabaseSystemIdentifier,
 				},
 			}
 		}
-	} else if newState.System.Info.Type == state.AmazonRdsSystem {
-		s.System.SystemInformation.Type = snapshot.SystemInformation_AMAZON_RDS_SYSTEM
-		if newState.System.Info.AmazonRds != nil {
-			latestRestorableTime, _ := ptypes.TimestampProto(newState.System.Info.AmazonRds.LatestRestorableTime)
-			createdAt, _ := ptypes.TimestampProto(newState.System.Info.AmazonRds.CreatedAt)
+	} else if systemState.Info.Type == state.AmazonRdsSystem {
+		system.SystemInformation.Type = snapshot.SystemInformation_AMAZON_RDS_SYSTEM
+		if systemState.Info.AmazonRds != nil {
+			latestRestorableTime, _ := ptypes.TimestampProto(systemState.Info.AmazonRds.LatestRestorableTime)
+			createdAt, _ := ptypes.TimestampProto(systemState.Info.AmazonRds.CreatedAt)
 
-			s.System.SystemInformation.Info = &snapshot.SystemInformation_AmazonRds{
+			system.SystemInformation.Info = &snapshot.SystemInformation_AmazonRds{
 				AmazonRds: &snapshot.SystemInformationAmazonRDS{
-					Region:                     newState.System.Info.AmazonRds.Region,
-					InstanceClass:              newState.System.Info.AmazonRds.InstanceClass,
-					InstanceId:                 newState.System.Info.AmazonRds.InstanceID,
-					Status:                     newState.System.Info.AmazonRds.Status,
-					AvailabilityZone:           newState.System.Info.AmazonRds.AvailabilityZone,
-					PubliclyAccessible:         newState.System.Info.AmazonRds.PubliclyAccessible,
-					MultiAz:                    newState.System.Info.AmazonRds.MultiAz,
-					SecondaryAvailabilityZone:  newState.System.Info.AmazonRds.SecondaryAvailabilityZone,
-					CaCertificate:              newState.System.Info.AmazonRds.CaCertificate,
-					AutoMinorVersionUpgrade:    newState.System.Info.AmazonRds.AutoMinorVersionUpgrade,
-					PreferredMaintenanceWindow: newState.System.Info.AmazonRds.PreferredMaintenanceWindow,
-					PreferredBackupWindow:      newState.System.Info.AmazonRds.PreferredBackupWindow,
+					Region:                     systemState.Info.AmazonRds.Region,
+					InstanceClass:              systemState.Info.AmazonRds.InstanceClass,
+					InstanceId:                 systemState.Info.AmazonRds.InstanceID,
+					Status:                     systemState.Info.AmazonRds.Status,
+					AvailabilityZone:           systemState.Info.AmazonRds.AvailabilityZone,
+					PubliclyAccessible:         systemState.Info.AmazonRds.PubliclyAccessible,
+					MultiAz:                    systemState.Info.AmazonRds.MultiAz,
+					SecondaryAvailabilityZone:  systemState.Info.AmazonRds.SecondaryAvailabilityZone,
+					CaCertificate:              systemState.Info.AmazonRds.CaCertificate,
+					AutoMinorVersionUpgrade:    systemState.Info.AmazonRds.AutoMinorVersionUpgrade,
+					PreferredMaintenanceWindow: systemState.Info.AmazonRds.PreferredMaintenanceWindow,
+					PreferredBackupWindow:      systemState.Info.AmazonRds.PreferredBackupWindow,
 					LatestRestorableTime:       latestRestorableTime,
-					BackupRetentionPeriodDays:  newState.System.Info.AmazonRds.BackupRetentionPeriodDays,
-					MasterUsername:             newState.System.Info.AmazonRds.MasterUsername,
-					InitialDbName:              newState.System.Info.AmazonRds.InitialDbName,
+					BackupRetentionPeriodDays:  systemState.Info.AmazonRds.BackupRetentionPeriodDays,
+					MasterUsername:             systemState.Info.AmazonRds.MasterUsername,
+					InitialDbName:              systemState.Info.AmazonRds.InitialDbName,
 					CreatedAt:                  createdAt,
-					EnhancedMonitoring:         newState.System.Info.AmazonRds.EnhancedMonitoring,
-					ParameterApplyStatus:       newState.System.Info.AmazonRds.ParameterApplyStatus,
-					ParameterPgssEnabled:       newState.System.Info.AmazonRds.ParameterPgssEnabled,
+					EnhancedMonitoring:         systemState.Info.AmazonRds.EnhancedMonitoring,
+					ParameterApplyStatus:       systemState.Info.AmazonRds.ParameterApplyStatus,
+					ParameterPgssEnabled:       systemState.Info.AmazonRds.ParameterPgssEnabled,
 				},
 			}
 		}
-	} else if newState.System.Info.Type == state.HerokuSystem {
-		s.System.SystemInformation.Type = snapshot.SystemInformation_HEROKU_SYSTEM
-		// TODO: Add Info
+	} else if systemState.Info.Type == state.HerokuSystem {
+		system.SystemInformation.Type = snapshot.SystemInformation_HEROKU_SYSTEM
 	}
 
-	s.System.SystemId = newState.System.Info.SystemID
-	s.System.SystemScope = newState.System.Info.SystemScope
-	s.System.XlogUsedBytes = newState.System.XlogUsedBytes
+	system.SystemId = systemState.Info.SystemID
+	system.SystemScope = systemState.Info.SystemScope
+	system.XlogUsedBytes = systemState.XlogUsedBytes
 
-	s.System.SchedulerStatistic = &snapshot.SchedulerStatistic{
-		LoadAverage_1Min:  newState.System.Scheduler.Loadavg1min,
-		LoadAverage_5Min:  newState.System.Scheduler.Loadavg5min,
-		LoadAverage_15Min: newState.System.Scheduler.Loadavg15min,
+	system.SchedulerStatistic = &snapshot.SchedulerStatistic{
+		LoadAverage_1Min:  systemState.Scheduler.Loadavg1min,
+		LoadAverage_5Min:  systemState.Scheduler.Loadavg5min,
+		LoadAverage_15Min: systemState.Scheduler.Loadavg15min,
 	}
 
-	s.System.MemoryStatistic = &snapshot.MemoryStatistic{
-		TotalBytes:         newState.System.Memory.TotalBytes,
-		CachedBytes:        newState.System.Memory.CachedBytes,
-		BuffersBytes:       newState.System.Memory.BuffersBytes,
-		FreeBytes:          newState.System.Memory.FreeBytes,
-		WritebackBytes:     newState.System.Memory.WritebackBytes,
-		DirtyBytes:         newState.System.Memory.DirtyBytes,
-		SlabBytes:          newState.System.Memory.SlabBytes,
-		MappedBytes:        newState.System.Memory.MappedBytes,
-		PageTablesBytes:    newState.System.Memory.PageTablesBytes,
-		ActiveBytes:        newState.System.Memory.ActiveBytes,
-		InactiveBytes:      newState.System.Memory.InactiveBytes,
-		AvailableBytes:     newState.System.Memory.AvailableBytes,
-		SwapUsedBytes:      newState.System.Memory.SwapUsedBytes,
-		SwapTotalBytes:     newState.System.Memory.SwapTotalBytes,
-		HugePagesSizeBytes: newState.System.Memory.HugePagesSizeBytes,
-		HugePagesFree:      newState.System.Memory.HugePagesFree,
-		HugePagesTotal:     newState.System.Memory.HugePagesTotal,
-		HugePagesReserved:  newState.System.Memory.HugePagesReserved,
-		HugePagesSurplus:   newState.System.Memory.HugePagesSurplus,
+	system.MemoryStatistic = &snapshot.MemoryStatistic{
+		TotalBytes:         systemState.Memory.TotalBytes,
+		CachedBytes:        systemState.Memory.CachedBytes,
+		BuffersBytes:       systemState.Memory.BuffersBytes,
+		FreeBytes:          systemState.Memory.FreeBytes,
+		WritebackBytes:     systemState.Memory.WritebackBytes,
+		DirtyBytes:         systemState.Memory.DirtyBytes,
+		SlabBytes:          systemState.Memory.SlabBytes,
+		MappedBytes:        systemState.Memory.MappedBytes,
+		PageTablesBytes:    systemState.Memory.PageTablesBytes,
+		ActiveBytes:        systemState.Memory.ActiveBytes,
+		InactiveBytes:      systemState.Memory.InactiveBytes,
+		AvailableBytes:     systemState.Memory.AvailableBytes,
+		SwapUsedBytes:      systemState.Memory.SwapUsedBytes,
+		SwapTotalBytes:     systemState.Memory.SwapTotalBytes,
+		HugePagesSizeBytes: systemState.Memory.HugePagesSizeBytes,
+		HugePagesFree:      systemState.Memory.HugePagesFree,
+		HugePagesTotal:     systemState.Memory.HugePagesTotal,
+		HugePagesReserved:  systemState.Memory.HugePagesReserved,
+		HugePagesSurplus:   systemState.Memory.HugePagesSurplus,
 	}
 
-	s.System.CpuInformation = &snapshot.CPUInformation{
-		Model:             newState.System.CPUInfo.Model,
-		CacheSizeBytes:    newState.System.CPUInfo.CacheSizeBytes,
-		SpeedMhz:          newState.System.CPUInfo.SpeedMhz,
-		SocketCount:       newState.System.CPUInfo.SocketCount,
-		PhysicalCoreCount: newState.System.CPUInfo.PhysicalCoreCount,
-		LogicalCoreCount:  newState.System.CPUInfo.LogicalCoreCount,
+	system.CpuInformation = &snapshot.CPUInformation{
+		Model:             systemState.CPUInfo.Model,
+		CacheSizeBytes:    systemState.CPUInfo.CacheSizeBytes,
+		SpeedMhz:          systemState.CPUInfo.SpeedMhz,
+		SocketCount:       systemState.CPUInfo.SocketCount,
+		PhysicalCoreCount: systemState.CPUInfo.PhysicalCoreCount,
+		LogicalCoreCount:  systemState.CPUInfo.LogicalCoreCount,
 	}
 
 	for cpuID, cpuStats := range diffState.SystemCPUStats {
 		ref := snapshot.CPUReference{
 			CoreId: cpuID,
 		}
-		idx := int32(len(s.System.CpuReferences))
-		s.System.CpuReferences = append(s.System.CpuReferences, &ref)
-		s.System.CpuStatistics = append(s.System.CpuStatistics, &snapshot.CPUStatistic{
+		idx := int32(len(system.CpuReferences))
+		system.CpuReferences = append(system.CpuReferences, &ref)
+		system.CpuStatistics = append(system.CpuStatistics, &snapshot.CPUStatistic{
 			CpuIdx:           idx,
 			UserPercent:      cpuStats.UserPercent,
 			SystemPercent:    cpuStats.SystemPercent,
@@ -139,9 +148,9 @@ func transformSystem(s snapshot.FullSnapshot, newState state.PersistedState, dif
 		ref := snapshot.NetworkReference{
 			InterfaceName: interfaceName,
 		}
-		idx := int32(len(s.System.NetworkReferences))
-		s.System.NetworkReferences = append(s.System.NetworkReferences, &ref)
-		s.System.NetworkStatistics = append(s.System.NetworkStatistics, &snapshot.NetworkStatistic{
+		idx := int32(len(system.NetworkReferences))
+		system.NetworkReferences = append(system.NetworkReferences, &ref)
+		system.NetworkStatistics = append(system.NetworkStatistics, &snapshot.NetworkStatistic{
 			NetworkIdx:                       idx,
 			TransmitThroughputBytesPerSecond: interfaceStats.TransmitThroughputBytesPerSecond,
 			ReceiveThroughputBytesPerSecond:  interfaceStats.ReceiveThroughputBytesPerSecond,
@@ -149,7 +158,7 @@ func transformSystem(s snapshot.FullSnapshot, newState state.PersistedState, dif
 	}
 
 	deviceNames := []string{}
-	for k := range newState.System.Disks {
+	for k := range systemState.Disks {
 		deviceNames = append(deviceNames, k)
 	}
 	sort.Strings(deviceNames)
@@ -157,15 +166,15 @@ func transformSystem(s snapshot.FullSnapshot, newState state.PersistedState, dif
 	diskNameToIdx := make(map[string]int32)
 
 	for _, deviceName := range deviceNames {
-		disk := newState.System.Disks[deviceName]
+		disk := systemState.Disks[deviceName]
 		ref := snapshot.DiskReference{
 			DeviceName: deviceName,
 		}
-		idx := int32(len(s.System.DiskReferences))
-		s.System.DiskReferences = append(s.System.DiskReferences, &ref)
+		idx := int32(len(system.DiskReferences))
+		system.DiskReferences = append(system.DiskReferences, &ref)
 		diskNameToIdx[deviceName] = idx
 
-		s.System.DiskInformations = append(s.System.DiskInformations, &snapshot.DiskInformation{
+		system.DiskInformations = append(system.DiskInformations, &snapshot.DiskInformation{
 			DiskIdx:         idx,
 			DiskType:        disk.DiskType,
 			Scheduler:       disk.Scheduler,
@@ -175,7 +184,7 @@ func transformSystem(s snapshot.FullSnapshot, newState state.PersistedState, dif
 
 		diskStats, exists := diffState.SystemDiskStats[deviceName]
 		if exists {
-			s.System.DiskStatistics = append(s.System.DiskStatistics, &snapshot.DiskStatistic{
+			system.DiskStatistics = append(system.DiskStatistics, &snapshot.DiskStatistic{
 				DiskIdx:                 idx,
 				ReadOperationsPerSecond: diskStats.ReadOperationsPerSecond,
 				ReadsMergedPerSecond:    diskStats.ReadsMergedPerSecond,
@@ -193,22 +202,22 @@ func transformSystem(s snapshot.FullSnapshot, newState state.PersistedState, dif
 	}
 
 	mountpoints := []string{}
-	for k := range newState.System.DiskPartitions {
+	for k := range systemState.DiskPartitions {
 		mountpoints = append(mountpoints, k)
 	}
 	sort.Strings(mountpoints)
 
 	for _, mountpoint := range mountpoints {
-		diskPartition := newState.System.DiskPartitions[mountpoint]
+		diskPartition := systemState.DiskPartitions[mountpoint]
 		ref := snapshot.DiskPartitionReference{
 			Mountpoint: mountpoint,
 		}
-		idx := int32(len(s.System.DiskPartitionReferences))
-		s.System.DiskPartitionReferences = append(s.System.DiskPartitionReferences, &ref)
+		idx := int32(len(system.DiskPartitionReferences))
+		system.DiskPartitionReferences = append(system.DiskPartitionReferences, &ref)
 
 		diskIdx := diskNameToIdx[diskPartition.DiskName]
 
-		s.System.DiskPartitionInformations = append(s.System.DiskPartitionInformations, &snapshot.DiskPartitionInformation{
+		system.DiskPartitionInformations = append(system.DiskPartitionInformations, &snapshot.DiskPartitionInformation{
 			DiskPartitionIdx: idx,
 			DiskIdx:          diskIdx,
 			FilesystemType:   diskPartition.FilesystemType,
@@ -216,19 +225,19 @@ func transformSystem(s snapshot.FullSnapshot, newState state.PersistedState, dif
 			PartitionName:    diskPartition.PartitionName,
 		})
 
-		s.System.DiskPartitionStatistics = append(s.System.DiskPartitionStatistics, &snapshot.DiskPartitionStatistic{
+		system.DiskPartitionStatistics = append(system.DiskPartitionStatistics, &snapshot.DiskPartitionStatistic{
 			DiskPartitionIdx: idx,
 			UsedBytes:        diskPartition.UsedBytes,
 			TotalBytes:       diskPartition.TotalBytes,
 		})
 
-		if mountpoint == newState.System.DataDirectoryPartition {
-			s.System.DataDirectoryDiskPartitionIdx = idx
+		if mountpoint == systemState.DataDirectoryPartition {
+			system.DataDirectoryDiskPartitionIdx = idx
 		}
-		if mountpoint == newState.System.XlogPartition {
-			s.System.XlogDiskPartitionIdx = idx
+		if mountpoint == systemState.XlogPartition {
+			system.XlogDiskPartitionIdx = idx
 		}
 	}
 
-	return s
+	return system
 }

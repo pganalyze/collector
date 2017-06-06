@@ -112,6 +112,8 @@ type Memory struct {
 	HugePagesTotal     uint64
 	HugePagesReserved  uint64
 	HugePagesSurplus   uint64
+
+	ApplicationBytes uint64
 }
 
 type CPUInformation struct {

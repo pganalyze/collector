@@ -18,6 +18,7 @@ import (
 	flag "github.com/ogier/pflag"
 
 	"github.com/pganalyze/collector/config"
+	"github.com/pganalyze/collector/input/system/heroku"
 	"github.com/pganalyze/collector/runner"
 	"github.com/pganalyze/collector/scheduler"
 	"github.com/pganalyze/collector/state"
@@ -35,11 +36,13 @@ func run(wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *
 		return false, nil, nil, nil
 	}
 
-	serverConfigs, err := config.Read(logger, configFilename)
+	conf, err := config.Read(logger, configFilename)
 	if err != nil {
 		logger.PrintError("Config Error: %s", err)
 		return !globalCollectionOpts.TestRun, nil, nil, nil
 	}
+
+	serverConfigs := conf.Servers
 
 	for _, config := range serverConfigs {
 		server := state.Server{Config: config, RequestedSslMode: config.DbSslMode}
@@ -96,11 +99,15 @@ func run(wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *
 
 	var logsStop chan<- bool
 	if hasAnyLogsEnabled {
-		logsStop = schedulerGroups["logs"].Schedule(func() {
-			wg.Add(1)
-			runner.CollectLogsFromAllServers(servers, globalCollectionOpts, logger)
-			wg.Done()
-		}, logger, "log snapshot of all servers")
+		if conf.HerokuLogStream != nil {
+			heroku.SetupLogReceiver(conf, servers, globalCollectionOpts, logger)
+		} else {
+			logsStop = schedulerGroups["logs"].Schedule(func() {
+				wg.Add(1)
+				runner.CollectLogsFromAllServers(servers, globalCollectionOpts, logger)
+				wg.Done()
+			}, logger, "log snapshot of all servers")
+		}
 	}
 
 	return true, statsStop, reportsStop, logsStop
