@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.14      2017-06-06
+
+* Add support for Heroku logdrains
+
+
 ## 0.9.13      2017-05-17
 
 * Log Monitoring
