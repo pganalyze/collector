@@ -194,6 +194,7 @@ func logReceiver(servers []state.Server, in <-chan config.HerokuLogStreamItem, g
 			server, exists := nameToServer["HEROKU_POSTGRESQL_"+sourceName]
 			if !exists {
 				logger.PrintInfo("Ignoring log line since server can't be matched yet - if this keeps showing up you have a configuration error")
+				logLinesByName[sourceName] = []state.LogLine{}
 				continue
 			}
 
