@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.9.15      UNRELEASED
+
+* Update pg_query_go / libpg_query to 9.5-1.6.2
+  * Updates the query fingerprinting logic to avoid seeing different
+    FETCH/DECLARE/CLOSE cursor names as unique queries - statistics on this
+    are not going to be useful in most cases, and will clog the processing
+    pipeline
+  * Updates the query fingerprinting logic to ignore the table name for
+    CREATE TEMPORARY TABLE
+  * Updates the query fingerprinting logic to better handle the values list
+    for INSERT statements to group complex, but similar statements together
+
+
 ## 0.9.14      2017-06-06
 
 * Add support for Heroku logdrains
