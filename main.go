@@ -45,14 +45,7 @@ func run(wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *
 	serverConfigs := conf.Servers
 
 	for _, config := range serverConfigs {
-		server := state.Server{Config: config, RequestedSslMode: config.DbSslMode}
-
-		// Go's lib/pq does not support sslmode properly, so we have to implement the "prefer" mode ourselves
-		if server.RequestedSslMode == "prefer" {
-			server.Config.DbSslMode = "require"
-		}
-
-		servers = append(servers, server)
+		servers = append(servers, state.Server{Config: config})
 	}
 
 	runner.ReadStateFile(servers, globalCollectionOpts, logger)

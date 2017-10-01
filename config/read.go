@@ -14,9 +14,6 @@ import (
 func getDefaultConfig() *ServerConfig {
 	config := &ServerConfig{
 		APIBaseURL:  "https://api.pganalyze.com",
-		DbHost:      "localhost",
-		DbPort:      5432,
-		DbSslMode:   "prefer",
 		AwsRegion:   "us-east-1",
 		SectionName: "default",
 	}
@@ -63,6 +60,12 @@ func getDefaultConfig() *ServerConfig {
 	}
 	if dbPort := os.Getenv("DB_PORT"); dbPort != "" {
 		config.DbPort, _ = strconv.Atoi(dbPort)
+	}
+	if dbSslMode := os.Getenv("DB_SSLMODE"); dbSslMode != "" {
+		config.DbSslMode = dbSslMode
+	}
+	if dbSslRootCert := os.Getenv("DB_SSLROOTCERT"); dbSslRootCert != "" {
+		config.DbSslRootCert = dbSslRootCert
 	}
 	if awsRegion := os.Getenv("AWS_REGION"); awsRegion != "" {
 		config.AwsRegion = awsRegion

@@ -46,6 +46,8 @@ RUN ln -s /lib/init/upstart-job $SOURCE_DIR/etc/init.d/pganalyze-collector
 RUN mkdir -p $SOURCE_DIR/etc/init
 RUN cp $CODE_DIR/contrib/upstart/pganalyze-collector.conf $SOURCE_DIR/etc/init/pganalyze-collector.conf
 RUN chmod 0644 $SOURCE_DIR/etc/init/pganalyze-collector.conf
+RUN mkdir -p $SOURCE_DIR/usr/share/pganalyze-collector/sslrootcert
+RUN cp $CODE_DIR/contrib/sslrootcert/* $SOURCE_DIR/usr/share/pganalyze-collector/sslrootcert
 
 # Build the package
 WORKDIR $ROOT_DIR

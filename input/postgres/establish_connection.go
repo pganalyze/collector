@@ -3,7 +3,6 @@ package postgres
 import (
 	"database/sql"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/pganalyze/collector/config"
@@ -14,8 +13,8 @@ import (
 func EstablishConnection(server state.Server, logger *util.Logger, globalCollectionOpts state.CollectionOpts, databaseName string) (connection *sql.DB, err error) {
 	connection, err = connectToDb(server.Config, logger, globalCollectionOpts, databaseName)
 	if err != nil {
-		if err.Error() == "pq: SSL is not enabled on the server" && server.RequestedSslMode == "prefer" {
-			server.Config.DbSslMode = "disable"
+		if err.Error() == "pq: SSL is not enabled on the server" && (server.Config.DbSslMode == "prefer" || server.Config.DbSslMode == "") {
+			server.Config.DbSslModePreferFailed = true
 			connection, err = connectToDb(server.Config, logger, globalCollectionOpts, databaseName)
 		}
 	}
@@ -32,17 +31,7 @@ func EstablishConnection(server state.Server, logger *util.Logger, globalCollect
 
 func connectToDb(config config.ServerConfig, logger *util.Logger, globalCollectionOpts state.CollectionOpts, databaseName string) (*sql.DB, error) {
 	connectString := config.GetPqOpenString(databaseName)
-
-	if strings.HasPrefix(connectString, "postgres://") || strings.HasPrefix(connectString, "postgresql://") {
-		if strings.Contains(connectString, "?") {
-			connectString += "&"
-		} else {
-			connectString += "?"
-		}
-	} else {
-		connectString += " "
-	}
-	connectString += "application_name=" + globalCollectionOpts.CollectorApplicationName
+	connectString += " application_name=" + globalCollectionOpts.CollectorApplicationName
 
 	// logger.PrintVerbose("sql.Open(\"postgres\", \"%s\")", connectString)
 

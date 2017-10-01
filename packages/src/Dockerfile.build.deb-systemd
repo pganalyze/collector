@@ -41,6 +41,8 @@ RUN chmod +x $SOURCE_DIR/usr/bin/pganalyze-collector
 RUN chmod +x $SOURCE_DIR/usr/bin/pganalyze-collector-helper
 RUN mkdir -p $SOURCE_DIR/etc/
 RUN cp $CODE_DIR/contrib/pganalyze-collector.conf $SOURCE_DIR/etc/pganalyze-collector.conf
+RUN mkdir -p $SOURCE_DIR/usr/share/pganalyze-collector/sslrootcert
+RUN cp $CODE_DIR/contrib/sslrootcert/* $SOURCE_DIR/usr/share/pganalyze-collector/sslrootcert
 
 # Build the package
 WORKDIR $ROOT_DIR
