@@ -31,9 +31,10 @@ func GetLogFiles(config config.ServerConfig, logger *util.Logger) (result []stat
 		return
 	}
 
-	// Retrieve all possibly matching logfiles in the last 10 minutes
-	// TODO: Use prevState here instead to get the last collectedAt
-	linesNewerThan := time.Now().Add(-10 * time.Minute)
+	// Retrieve all possibly matching logfiles in the last two minutes, assuming
+	// a scheduler that runs once a minute
+	// TODO: Use prevState here instead to get the last logline we saw
+	linesNewerThan := time.Now().Add(-2 * time.Minute)
 	lastWritten := linesNewerThan.Unix() * 1000
 
 	params := &rds.DescribeDBLogFilesInput{
