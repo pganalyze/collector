@@ -26,7 +26,7 @@ update_rpm:
 	docker run --name pga-collector-repo -v $(REPO_DIR):/repo -d \
 		-e REPO_GPG_KEY=$(REPO_GPG_KEY) -e RPM_PACKAGE=$(RPM_PACKAGE_OUT) \
 		pga-collector-repo /sbin/init
-	keybase pgp export -s -q $(REPO_GPG_KEY) | docker exec -i pga-collector-repo gpg --allow-secret-key-import --import
+	keybase pgp export --unencrypted -s -q $(REPO_GPG_KEY) | docker exec -i pga-collector-repo gpg --allow-secret-key-import --import
 	docker exec -i pga-collector-repo /root/sync_rpm.sh
 	$(call docker_clean)
 
@@ -39,6 +39,6 @@ update_deb:
 	docker run --name pga-collector-repo -v $(REPO_DIR):/repo -d \
 		-e REPO_GPG_KEY=$(REPO_GPG_KEY) -e DEB_PACKAGE=$(DEB_PACKAGE_OUT) \
 		pga-collector-repo /sbin/init
-	keybase pgp export -s -q $(REPO_GPG_KEY) | docker exec -i pga-collector-repo gpg --allow-secret-key-import --import
+	keybase pgp export --unencrypted -s -q $(REPO_GPG_KEY) | docker exec -i pga-collector-repo gpg --allow-secret-key-import --import
 	docker exec -i pga-collector-repo /root/sync_deb.sh
 	$(call docker_clean)
