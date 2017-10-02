@@ -3,7 +3,7 @@ DOCKER_RUN_CMD = docker run --name pganalyze-collector-test -v `pwd`/docker-entr
 
 .PHONY: pg92 pg93 pg94 pg95 pg96 pg10
 
-all: pg92 pg93 pg94 pg95 pg96 #pg10
+all: pg92 pg93 pg94 pg95 pg96 pg10
 
 pg92:
 	docker build -f Dockerfile.test-pg92 $(DOCKER_BUILD_OPTS)
@@ -81,9 +81,9 @@ pg10:
 	sleep 10
 	docker exec pganalyze-collector-test pgbench -U postgres -i
 	docker exec pganalyze-collector-test pgbench -U postgres
-	docker exec pganalyze-collector-test sh -c "DB_USERNAME=postgres PGA_API_KEY=dummy pganalyze-collector --dry-run --force-state-update -v" > pg96_1.json
+	docker exec pganalyze-collector-test sh -c "DB_USERNAME=postgres PGA_API_KEY=dummy pganalyze-collector --dry-run --force-state-update -v" > pg10_1.json
 	docker exec pganalyze-collector-test pgbench -U postgres
-	docker exec pganalyze-collector-test sh -c "DB_USERNAME=postgres PGA_API_KEY=dummy pganalyze-collector --dry-run --force-state-update -v" > pg96_2.json
+	docker exec pganalyze-collector-test sh -c "DB_USERNAME=postgres PGA_API_KEY=dummy pganalyze-collector --dry-run --force-state-update -v" > pg10_2.json
 	docker rm -f pganalyze-collector-test
 	docker rmi pganalyze-collector-test
 	jq '.queryInformations[].normalizedQuery' pg10_2.json | sort -f > pg10.out

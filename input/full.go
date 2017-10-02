@@ -88,7 +88,7 @@ func CollectFull(server state.Server, connection *sql.DB, collectionOpts state.C
 		}
 	}
 
-	ts.Replication, err = postgres.GetReplication(logger, connection, isHeroku)
+	ts.Replication, err = postgres.GetReplication(logger, connection, isHeroku, ts.Version)
 	if err != nil {
 		logger.PrintWarning("Error collecting replication statistics: %s", err)
 		// We intentionally accept this as a non-fatal issue (at least for now)

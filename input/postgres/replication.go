@@ -8,7 +8,21 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
-const replicationSQL string = `
+const replicationSQLPg10 string = `
+SELECT in_recovery,
+			 CASE WHEN in_recovery THEN NULL ELSE pg_current_wal_lsn() END AS current_xlog_location,
+			 COALESCE(receive_location, '0/0') >= replay_location AS is_streaming,
+			 receive_location,
+			 replay_location,
+			 pg_wal_lsn_diff(receive_location, replay_location) AS apply_byte_lag,
+			 replay_ts,
+			 extract(epoch from now() - pg_last_xact_replay_timestamp())::int AS replay_ts_age
+	FROM (SELECT pg_is_in_recovery() AS in_recovery,
+							 pg_last_wal_receive_lsn() AS receive_location,
+							 pg_last_wal_replay_lsn() AS replay_location,
+							 pg_last_xact_replay_timestamp() AS replay_ts) r`
+
+const replicationSQLPg9 string = `
 SELECT in_recovery,
 			 CASE WHEN in_recovery THEN NULL ELSE pg_current_xlog_location() END AS current_xlog_location,
 			 COALESCE(receive_location, '0/0') >= replay_location AS is_streaming,
@@ -22,7 +36,26 @@ SELECT in_recovery,
 							 pg_last_xlog_replay_location() AS replay_location,
 							 pg_last_xact_replay_timestamp() AS replay_ts) r`
 
-const replicationStandbySQL string = `
+const replicationStandbySQLPg10 string = `
+SELECT client_addr,
+			 usesysid,
+			 pid,
+			 application_name,
+			 client_hostname,
+			 client_port,
+			 backend_start,
+			 sync_priority,
+			 sync_state,
+			 state,
+			 sent_lsn,
+			 write_lsn,
+			 flush_lsn,
+			 replay_lsn,
+			 pg_wal_lsn_diff(sent_lsn, replay_lsn) AS byte_lag
+	FROM %s
+ WHERE client_addr IS NOT NULL`
+
+const replicationStandbySQLPg9 string = `
 SELECT client_addr,
 			 usesysid,
 			 pid,
@@ -41,10 +74,12 @@ SELECT client_addr,
 	FROM %s
  WHERE client_addr IS NOT NULL`
 
-func GetReplication(logger *util.Logger, db *sql.DB, isHeroku bool) (state.PostgresReplication, error) {
+func GetReplication(logger *util.Logger, db *sql.DB, isHeroku bool, postgresVersion state.PostgresVersion) (state.PostgresReplication, error) {
 	var err error
 	var repl state.PostgresReplication
 	var sourceTable string
+	var replicationStandbySQL string
+	var replicationSQL string
 
 	if statsHelperExists(db, "get_stat_replication") {
 		logger.PrintVerbose("Found pganalyze.get_stat_replication() stats helper")
@@ -56,6 +91,14 @@ func GetReplication(logger *util.Logger, db *sql.DB, isHeroku bool) (state.Postg
 				" or connect as superuser, to get replication statistics.")
 		}
 		sourceTable = "pg_stat_replication"
+	}
+
+	if postgresVersion.Numeric >= state.PostgresVersion10 {
+		replicationStandbySQL = replicationStandbySQLPg10
+		replicationSQL = replicationSQLPg10
+	} else {
+		replicationStandbySQL = replicationStandbySQLPg9
+		replicationSQL = replicationSQLPg9
 	}
 
 	err = db.QueryRow(QueryMarkerSQL+replicationSQL).Scan(
