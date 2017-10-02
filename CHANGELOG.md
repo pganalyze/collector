@@ -11,6 +11,12 @@
     CREATE TEMPORARY TABLE
   * Updates the query fingerprinting logic to better handle the values list
     for INSERT statements to group complex, but similar statements together
+* Support specifying db_sslmode=verify-full and passing certificate information
+  using db_sslrootcert / db_sslrootcert_contents
+  * The collector packages now also ship a set of known DB-as-a-Service CA
+    certificates, starting with the often needed rds-ca-2015-root certificate
+    (just pass that term instead of a path to db_sslrootcert)
+* Support for Postgres 10
 
 
 ## 0.9.14      2017-06-06
