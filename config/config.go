@@ -35,14 +35,15 @@ type ServerConfig struct {
 	EnableLogs    bool `ini:"enable_logs"`
 	EnableReports bool `ini:"enable_reports"`
 
-	DbURL         string `ini:"db_url"`
-	DbName        string `ini:"db_name"`
-	DbUsername    string `ini:"db_username"`
-	DbPassword    string `ini:"db_password"`
-	DbHost        string `ini:"db_host"`
-	DbPort        int    `ini:"db_port"`
-	DbSslMode     string `ini:"db_sslmode"`
-	DbSslRootCert string `ini:"db_sslrootcert"`
+	DbURL                 string `ini:"db_url"`
+	DbName                string `ini:"db_name"`
+	DbUsername            string `ini:"db_username"`
+	DbPassword            string `ini:"db_password"`
+	DbHost                string `ini:"db_host"`
+	DbPort                int    `ini:"db_port"`
+	DbSslMode             string `ini:"db_sslmode"`
+	DbSslRootCert         string `ini:"db_sslrootcert"`
+	DbSslRootCertContents string `ini:"db_sslrootcert_contents"`
 
 	// We have to do some tricks to support sslmode=prefer, namely we have to
 	// first try an SSL connection (= require), and if that fails change the

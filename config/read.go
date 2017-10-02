@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
@@ -67,6 +68,9 @@ func getDefaultConfig() *ServerConfig {
 	if dbSslRootCert := os.Getenv("DB_SSLROOTCERT"); dbSslRootCert != "" {
 		config.DbSslRootCert = dbSslRootCert
 	}
+	if dbSslRootCertContents := os.Getenv("DB_SSLROOTCERT_CONTENTS"); dbSslRootCertContents != "" {
+		config.DbSslRootCertContents = dbSslRootCertContents
+	}
 	if awsRegion := os.Getenv("AWS_REGION"); awsRegion != "" {
 		config.AwsRegion = awsRegion
 	}
@@ -120,6 +124,22 @@ func Read(logger *util.Logger, filename string) (Config, error) {
 				config.DbAllNames = true
 			} else {
 				config.DbExtraNames = dbNameParts[1:]
+			}
+
+			if config.DbSslRootCertContents != "" {
+				sslRootTmpFile, err := ioutil.TempFile("", "")
+				if err != nil {
+					return conf, err
+				}
+				_, err = sslRootTmpFile.WriteString(config.DbSslRootCertContents)
+				if err != nil {
+					return conf, err
+				}
+				err = sslRootTmpFile.Close()
+				if err != nil {
+					return conf, err
+				}
+				config.DbSslRootCert = sslRootTmpFile.Name()
 			}
 
 			config.SectionName = section.Name()
