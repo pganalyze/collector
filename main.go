@@ -212,6 +212,7 @@ func main() {
 		DiffStatements:           diffStatements,
 		StateFilename:            stateFilename,
 		WriteStateUpdate:         (!dryRun && !dryRunLogs && !testRun) || forceStateUpdate,
+		ForceEmptyGrant:          dryRun || dryRunLogs,
 	}
 
 	if reloadRun {

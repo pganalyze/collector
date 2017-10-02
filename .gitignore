@@ -1,4 +1,5 @@
 pganalyze-collector
 pganalyze-collector-helper
 packages/tmp
-test/*.json
+integration_test/*.json
+integration_test/*.out

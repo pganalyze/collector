@@ -107,6 +107,7 @@ type CollectionOpts struct {
 
 	StateFilename    string
 	WriteStateUpdate bool
+	ForceEmptyGrant  bool
 }
 
 type GrantConfig struct {
