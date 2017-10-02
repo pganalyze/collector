@@ -1,1 +1,1 @@
-{ "rootPath": "github.com/pganalyze/collector", "heroku": { "goVersion": "go1.8.3", "install": ["."] } }
+{ "rootPath": "github.com/pganalyze/collector", "heroku": { "goVersion": "go1.9", "install": ["."] } }
