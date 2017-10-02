@@ -2,14 +2,13 @@ language: go
 sudo: required
 go:
 - 1.9
-script: make OUTFILE=pganalyze-collector-linux-amd64
 before_install:
   - wget https://github.com/google/protobuf/releases/download/v3.2.0/protoc-3.2.0-linux-x86_64.zip
   - unzip protoc-3.2.0-linux-x86_64.zip -d $HOME
   - export PATH=$HOME/protoc-3.2.0-linux-x86_64/bin:$PATH
   - go get -u github.com/golang/protobuf/{proto,protoc-gen-go}
 script:
-  - make build
+  - make build OUTFILE=pganalyze-collector-linux-amd64
   - make test
   - make integration_test
 deploy:

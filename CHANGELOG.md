@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.9.15      UNRELEASED
+## 0.9.15      2017-10-01
 
 * Update pg_query_go / libpg_query to 9.5-1.6.2
   * Updates the query fingerprinting logic to avoid seeing different
@@ -18,6 +18,7 @@
     (just pass that term instead of a path to db_sslrootcert)
 * Support for Postgres 10
 * Heroku: Support specifying configuration name in log drain endpoints
+* RDS: Ensure to delete temporary log files quickly after they are submitted
 
 
 ## 0.9.14      2017-06-06

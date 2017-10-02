@@ -1,6 +1,6 @@
 export NAME=pganalyze-collector
-export VERSION=0.9.14
-export GIT_VERSION=v0.9.14
+export VERSION=0.9.15
+export GIT_VERSION=v0.9.15
 #export GIT_VERSION=HEAD
 #export GIT_VERSION=618e85ce5ed5365bc7d9d9da866fdeb73bac5a55
 #export VERSION=$(shell git show -s --format=%ct.%h HEAD)
