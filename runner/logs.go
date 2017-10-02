@@ -22,6 +22,7 @@ func processLogsForServer(server state.Server, globalCollectionOpts state.Collec
 
 	// TODO: We'll need to pass a connection here for EXPLAINs to run (or hand them over to the next full snapshot run)
 	logState, err := input.CollectLogs(server, nil, globalCollectionOpts, logger)
+	defer logState.Cleanup()
 	if err != nil {
 		return false, errors.Wrap(err, "could not collect logs")
 	}
