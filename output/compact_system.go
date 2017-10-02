@@ -15,5 +15,5 @@ func SubmitCompactSystemSnapshot(server state.Server, grant state.Grant, collect
 	s := pganalyze_collector.CompactSnapshot{
 		Data: &pganalyze_collector.CompactSnapshot_SystemSnapshot{SystemSnapshot: &ss},
 	}
-	return uploadAndSubmitCompactSnapshot(s, grant.S3(), server, collectionOpts, logger, collectedAt, false)
+	return uploadAndSubmitCompactSnapshot(s, grant.S3(), server, collectionOpts, logger, collectedAt, false, "system")
 }

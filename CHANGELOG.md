@@ -17,6 +17,7 @@
     certificates, starting with the often needed rds-ca-2015-root certificate
     (just pass that term instead of a path to db_sslrootcert)
 * Support for Postgres 10
+* Heroku: Support specifying configuration name in log drain endpoints
 
 
 ## 0.9.14      2017-06-06

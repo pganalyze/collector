@@ -18,5 +18,5 @@ func UploadAndSendLogs(server state.Server, grant state.GrantLogs, collectionOpt
 		Data:     &pganalyze_collector.CompactSnapshot_LogSnapshot{LogSnapshot: &ls},
 	}
 
-	return uploadAndSubmitCompactSnapshot(s, grant.Snapshot, server, collectionOpts, logger, logState.CollectedAt, false)
+	return uploadAndSubmitCompactSnapshot(s, grant.Snapshot, server, collectionOpts, logger, logState.CollectedAt, false, "logs")
 }

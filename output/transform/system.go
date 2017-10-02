@@ -9,7 +9,18 @@ import (
 )
 
 func SystemStateToCompactSystemSnapshot(systemState state.SystemState) snapshot.CompactSystemSnapshot {
-	system := transformSystem(systemState, state.DiffState{})
+	// TODO: We should probably have the caller handle this - if we wanted to
+	// support compact system snapshots for self-hosted systems there needs to be
+	// actual diff-ing going on
+	diffState := state.DiffState{}
+	diffState.SystemDiskStats = make(state.DiffedDiskStatsMap)
+	for deviceName, stats := range systemState.DiskStats {
+		if stats.DiffedOnInput && stats.DiffedValues != nil {
+			diffState.SystemDiskStats[deviceName] = *stats.DiffedValues
+		}
+	}
+
+	system := transformSystem(systemState, diffState)
 	return snapshot.CompactSystemSnapshot{System: system}
 }
 
@@ -86,6 +97,7 @@ func transformSystem(systemState state.SystemState, diffState state.DiffState) *
 	}
 
 	system.MemoryStatistic = &snapshot.MemoryStatistic{
+		ApplicationBytes:   systemState.Memory.ApplicationBytes,
 		TotalBytes:         systemState.Memory.TotalBytes,
 		CachedBytes:        systemState.Memory.CachedBytes,
 		BuffersBytes:       systemState.Memory.BuffersBytes,

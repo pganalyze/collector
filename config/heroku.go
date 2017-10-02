@@ -16,11 +16,15 @@ func dummyHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Config) logHandler(w http.ResponseWriter, r *http.Request) {
+	var specifiedConfigName string
+	if strings.HasPrefix(r.URL.Path, "/logs/") {
+		specifiedConfigName = strings.Replace(r.URL.Path, "/logs/", "", 1)
+	}
 	lp := lpx.NewReader(bufio.NewReader(r.Body))
 	for lp.Next() {
 		procID := string(lp.Header().Procid)
 		if procID == "heroku-postgres" || strings.HasPrefix(procID, "postgres.") {
-			s.HerokuLogStream <- HerokuLogStreamItem{Header: *lp.Header(), Content: lp.Bytes()}
+			s.HerokuLogStream <- HerokuLogStreamItem{Header: *lp.Header(), Content: lp.Bytes(), SpecifiedConfigName: specifiedConfigName}
 		}
 	}
 }
@@ -33,6 +37,7 @@ func handleHeroku() (conf Config) {
 		defer close(conf.HerokuLogStream)
 		http.HandleFunc("/", dummyHandler)
 		http.HandleFunc("/logs", conf.logHandler)
+		http.HandleFunc("/logs/", conf.logHandler)
 		http.ListenAndServe(":"+os.Getenv("PORT"), nil)
 	}()
 

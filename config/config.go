@@ -17,8 +17,9 @@ type Config struct {
 }
 
 type HerokuLogStreamItem struct {
-	Header  lpx.Header
-	Content []byte
+	Header              lpx.Header
+	Content             []byte
+	SpecifiedConfigName string
 }
 
 // ServerConfig -

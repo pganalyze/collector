@@ -59,61 +59,76 @@ func catchIdentifyServerLine(sourceName string, content string, nameToServer map
 	return nameToServer
 }
 
-func processSystemMetrics(timestamp time.Time, content []byte, nameToServer map[string]state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
+func processSystemMetrics(timestamp time.Time, content []byte, nameToServer map[string]state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger, specifiedConfigName string) {
 	var sample SystemSample
 	err := logfmt.Unmarshal(content, &sample)
-	if err == nil {
-		server, exists := nameToServer[sample.Source]
-		if !exists {
-			logger.PrintInfo("Ignoring system data since server can't be matched yet - if this keeps showing up you have a configuration error")
-		} else {
-			grant, err := grant.GetDefaultGrant(server, globalCollectionOpts, logger)
-			if err != nil {
-				logger.PrintError("Could not get default grant for system snapshot: %s", err)
-				return
-			}
-
-			system := state.SystemState{}
-			system.Info.Type = state.HerokuSystem
-			system.Info.SystemID = server.Config.SystemID
-			system.Info.SystemScope = server.Config.SystemScope
-			system.Scheduler = state.Scheduler{Loadavg1min: sample.LoadAvg1min, Loadavg5min: sample.LoadAvg5min, Loadavg15min: sample.LoadAvg15min}
-
-			memoryPostgresKb, _ := strconv.ParseInt(strings.TrimSuffix(sample.MemoryPostgresKb, "kb"), 10, 64)
-			memoryTotalUsedKb, _ := strconv.ParseInt(strings.TrimSuffix(sample.MemoryTotalUsedKb, "kb"), 10, 64)
-			memoryFreeKb, _ := strconv.ParseInt(strings.TrimSuffix(sample.MemoryFreeKb, "kb"), 10, 64)
-			memoryCachedKb, _ := strconv.ParseInt(strings.TrimSuffix(sample.MemoryCachedKb, "kb"), 10, 64)
-
-			system.Memory = state.Memory{
-				ApplicationBytes: uint64(memoryPostgresKb * 1024),
-				TotalBytes:       uint64(memoryFreeKb*1024) + uint64(memoryTotalUsedKb*1024),
-				FreeBytes:        uint64(memoryFreeKb * 1024),
-				CachedBytes:      uint64(memoryCachedKb * 1024),
-			}
-
-			storageBytesUsed, _ := strconv.ParseUint(strings.TrimSuffix(sample.StorageBytesUsed, "bytes"), 10, 64)
-			system.DiskPartitions = make(state.DiskPartitionMap)
-			system.DiskPartitions["/"] = state.DiskPartition{
-				DiskName:  "default",
-				UsedBytes: storageBytesUsed,
-			}
-
-			system.DiskStats = make(state.DiskStatsMap)
-			system.DiskStats["default"] = state.DiskStats{
-				DiffedOnInput: true,
-				DiffedValues: &state.DiffedDiskStats{
-					ReadOperationsPerSecond:  sample.ReadIops,
-					WriteOperationsPerSecond: sample.WriteIops,
-				},
-			}
-
-			err = output.SubmitCompactSystemSnapshot(server, grant, globalCollectionOpts, logger, system, timestamp)
-			if err != nil {
-				logger.PrintError("Failed to upload/send logs: %s", err)
-				return
-			}
-		}
+	if err != nil {
+		logger.PrintError("Failed to unmarshal message: %s\n  %s", err, content)
+		return
 	}
+	var sourceName string
+	if specifiedConfigName != "" {
+		sourceName = specifiedConfigName
+	} else if strings.HasPrefix(sourceName, "HEROKU_POSTGRESQL_") {
+		sourceName = sample.Source
+	} else {
+		sourceName = "HEROKU_POSTGRESQL_" + sample.Source
+	}
+	server, exists := nameToServer[sourceName]
+	if !exists {
+		logger.PrintInfo("Ignoring system data since server can't be matched yet - if this keeps showing up you have a configuration error for %s", sourceName)
+		return
+	}
+
+	grant, err := grant.GetDefaultGrant(server, globalCollectionOpts, logger)
+	if err != nil {
+		logger.PrintError("Could not get default grant for system snapshot: %s", err)
+		return
+	}
+
+	system := state.SystemState{}
+	system.Info.Type = state.HerokuSystem
+	system.Info.SystemID = server.Config.SystemID
+	system.Info.SystemScope = server.Config.SystemScope
+	system.Scheduler = state.Scheduler{Loadavg1min: sample.LoadAvg1min, Loadavg5min: sample.LoadAvg5min, Loadavg15min: sample.LoadAvg15min}
+
+	memoryPostgresKb, _ := strconv.ParseInt(strings.TrimSuffix(sample.MemoryPostgresKb, "kB"), 10, 64)
+	memoryTotalUsedKb, _ := strconv.ParseInt(strings.TrimSuffix(sample.MemoryTotalUsedKb, "kB"), 10, 64)
+	memoryFreeKb, _ := strconv.ParseInt(strings.TrimSuffix(sample.MemoryFreeKb, "kB"), 10, 64)
+	memoryCachedKb, _ := strconv.ParseInt(strings.TrimSuffix(sample.MemoryCachedKb, "kB"), 10, 64)
+
+	system.Memory = state.Memory{
+		ApplicationBytes: uint64(memoryPostgresKb * 1024),
+		TotalBytes:       uint64(memoryFreeKb*1024) + uint64(memoryTotalUsedKb*1024),
+		FreeBytes:        uint64(memoryFreeKb * 1024),
+		CachedBytes:      uint64(memoryCachedKb * 1024),
+	}
+
+	system.Disks = make(state.DiskMap)
+	system.Disks["default"] = state.Disk{}
+
+	storageBytesUsed, _ := strconv.ParseUint(strings.TrimSuffix(sample.StorageBytesUsed, "bytes"), 10, 64)
+	system.DiskPartitions = make(state.DiskPartitionMap)
+	system.DiskPartitions["/"] = state.DiskPartition{
+		DiskName:  "default",
+		UsedBytes: storageBytesUsed,
+	}
+
+	system.DiskStats = make(state.DiskStatsMap)
+	system.DiskStats["default"] = state.DiskStats{
+		DiffedOnInput: true,
+		DiffedValues: &state.DiffedDiskStats{
+			ReadOperationsPerSecond:  sample.ReadIops,
+			WriteOperationsPerSecond: sample.WriteIops,
+		},
+	}
+
+	err = output.SubmitCompactSystemSnapshot(server, grant, globalCollectionOpts, logger, system, timestamp)
+	if err != nil {
+		logger.PrintError("Failed to upload/send logs: %s", err)
+		return
+	}
+
 	return
 }
 
@@ -143,7 +158,7 @@ func processItem(item config.HerokuLogStreamItem, servers []state.Server, nameTo
 	}
 
 	if string(item.Header.Procid) == "heroku-postgres" {
-		processSystemMetrics(timestamp, item.Content, nameToServer, globalCollectionOpts, logger)
+		processSystemMetrics(timestamp, item.Content, nameToServer, globalCollectionOpts, logger, item.SpecifiedConfigName)
 		return nameToServer, nil, ""
 	}
 
@@ -161,15 +176,26 @@ func processItem(item config.HerokuLogStreamItem, servers []state.Server, nameTo
 
 	backendPid, _ := strconv.ParseInt(parts[1], 10, 32)
 	newLogLine := processLogLine(timestamp, backendPid, contentParts[3], contentParts[4], nameToServer)
-	return nameToServer, newLogLine, contentParts[1]
+
+	if item.SpecifiedConfigName != "" {
+		return nameToServer, newLogLine, item.SpecifiedConfigName
+	} else {
+		return nameToServer, newLogLine, "HEROKU_POSTGRESQL_" + contentParts[1]
+	}
 }
 
 func logReceiver(servers []state.Server, in <-chan config.HerokuLogStreamItem, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
 	var logLinesByName map[string][]state.LogLine
 	var nameToServer map[string]state.Server
+	var configNameToServer map[string]state.Server
 
 	logLinesByName = make(map[string][]state.LogLine)
 	nameToServer = make(map[string]state.Server)
+	configNameToServer = make(map[string]state.Server)
+
+	for _, server := range servers {
+		configNameToServer[server.Config.SectionName] = server
+	}
 
 	for {
 		item, ok := <-in
@@ -190,12 +216,23 @@ func logReceiver(servers []state.Server, in <-chan config.HerokuLogStreamItem, g
 		for sourceName, logLines := range logLinesByName {
 			var readyLogLines []state.LogLine
 			var tooFreshLogLines []state.LogLine
+			var server state.Server
+			var exists bool
 
-			server, exists := nameToServer["HEROKU_POSTGRESQL_"+sourceName]
-			if !exists {
-				logger.PrintInfo("Ignoring log line since server can't be matched yet - if this keeps showing up you have a configuration error")
-				logLinesByName[sourceName] = []state.LogLine{}
-				continue
+			if strings.HasPrefix(sourceName, "HEROKU_POSTGRESQL_") {
+				server, exists = nameToServer[sourceName]
+				if !exists {
+					logger.PrintInfo("Ignoring log line since server can't be matched yet - if this keeps showing up you have a configuration error for %s", sourceName)
+					logLinesByName[sourceName] = []state.LogLine{}
+					continue
+				}
+			} else {
+				server, exists = configNameToServer[sourceName]
+				if !exists {
+					logger.PrintInfo("Ignoring log line since server can't be matched - unknown config name %s", sourceName)
+					logLinesByName[sourceName] = []state.LogLine{}
+					continue
+				}
 			}
 
 			// Setup temporary file that will be used for encryption

@@ -21,7 +21,7 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
-func uploadAndSubmitCompactSnapshot(s pganalyze_collector.CompactSnapshot, s3 state.GrantS3, server state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, collectedAt time.Time, quiet bool) error {
+func uploadAndSubmitCompactSnapshot(s pganalyze_collector.CompactSnapshot, s3 state.GrantS3, server state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, collectedAt time.Time, quiet bool, kind string) error {
 	var err error
 	var data []byte
 
@@ -55,7 +55,7 @@ func uploadAndSubmitCompactSnapshot(s pganalyze_collector.CompactSnapshot, s3 st
 		return err
 	}
 
-	return submitCompactSnapshot(server, collectionOpts, logger, s3Location, collectedAt, quiet)
+	return submitCompactSnapshot(server, collectionOpts, logger, s3Location, collectedAt, quiet, kind)
 }
 
 func debugCompactOutputAsJSON(logger *util.Logger, compressedData bytes.Buffer) {
@@ -89,7 +89,7 @@ func debugCompactOutputAsJSON(logger *util.Logger, compressedData bytes.Buffer) 
 	fmt.Printf("%s\n", out.String())
 }
 
-func submitCompactSnapshot(server state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, s3Location string, collectedAt time.Time, quiet bool) error {
+func submitCompactSnapshot(server state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, s3Location string, collectedAt time.Time, quiet bool, kind string) error {
 	requestURL := server.Config.APIBaseURL + "/v2/snapshots/compact"
 
 	data := url.Values{
@@ -129,7 +129,7 @@ func submitCompactSnapshot(server state.Server, collectionOpts state.CollectionO
 	if len(body) > 0 {
 		logger.PrintInfo("%s", body)
 	} else if !quiet {
-		logger.PrintInfo("Submitted compact snapshot successfully")
+		logger.PrintInfo("Submitted compact %s snapshot successfully", kind)
 	}
 
 	return nil
