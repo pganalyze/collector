@@ -85,7 +85,7 @@ func GetReplication(logger *util.Logger, db *sql.DB, isHeroku bool, postgresVers
 		logger.PrintVerbose("Found pganalyze.get_stat_replication() stats helper")
 		sourceTable = "pganalyze.get_stat_replication()"
 	} else {
-		if !isHeroku && !connectedAsSuperUser(db) {
+		if !isHeroku && !connectedAsSuperUser(db) && !connectedAsMonitoringRole(db) {
 			logger.PrintInfo("Warning: You are not connecting as superuser. Please setup" +
 				" the monitoring helper functions (https://github.com/pganalyze/collector#setting-up-a-restricted-monitoring-user)" +
 				" or connect as superuser, to get replication statistics.")

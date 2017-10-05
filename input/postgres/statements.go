@@ -55,7 +55,7 @@ func ResetStatements(logger *util.Logger, db *sql.DB) error {
 		logger.PrintVerbose("Found pganalyze.reset_stat_statements() stats helper")
 		method = "pganalyze.reset_stat_statements()"
 	} else {
-		if !connectedAsSuperUser(db) {
+		if !connectedAsSuperUser(db) && !connectedAsMonitoringRole(db) {
 			logger.PrintInfo("Warning: You are not connecting as superuser. Please setup" +
 				" contact support to get advice on setting up stat statements reset")
 		}
@@ -93,7 +93,7 @@ func GetStatements(logger *util.Logger, db *sql.DB, postgresVersion state.Postgr
 			sourceTable = "pganalyze.get_stat_statements()"
 		}
 	} else {
-		if !isHeroku && !connectedAsSuperUser(db) {
+		if !isHeroku && !connectedAsSuperUser(db) && !connectedAsMonitoringRole(db) {
 			logger.PrintInfo("Warning: You are not connecting as superuser. Please setup" +
 				" the monitoring helper functions (https://github.com/pganalyze/collector#setting-up-a-restricted-monitoring-user)" +
 				" or connect as superuser, to get query statistics for all roles.")
