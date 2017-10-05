@@ -73,6 +73,8 @@ func transformPostgresQuerySamples(s snapshot.CompactLogSnapshot, r snapshot.Com
 			OccurredAt:  occurredAt,
 			RuntimeMs:   sampleIn.RuntimeMs,
 			LogLineUuid: sampleIn.LogLineUUID.String(),
+			QueryText:   sampleIn.Query,
+			Parameters:  sampleIn.Parameters,
 
 			HasExplain:    sampleIn.HasExplain,
 			ExplainOutput: sampleIn.ExplainOutput,

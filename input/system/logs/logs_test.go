@@ -20,16 +20,38 @@ var tests = []testpair{
 	// Statement duration
 	{
 		[]state.LogLine{{
-			Content: "duration: 3205.800 ms execute a2: SELECT \"servers\".* FROM \"servers\" WHERE \"servers\".\"id\" = $1 LIMIT $2",
+			Content: "duration: 3205.800 ms execute a2: SELECT \"servers\".* FROM \"servers\" WHERE \"servers\".\"id\" = 1 LIMIT 2",
 		}},
 		[]state.LogLine{{
-			Query:          "SELECT \"servers\".* FROM \"servers\" WHERE \"servers\".\"id\" = $1 LIMIT $2",
+			Query:          "SELECT \"servers\".* FROM \"servers\" WHERE \"servers\".\"id\" = 1 LIMIT 2",
 			Classification: pganalyze_collector.LogLineInformation_STATEMENT_DURATION,
 			Details:        map[string]interface{}{"duration_ms": 3205.8},
 		}},
 		[]state.PostgresQuerySample{{
-			Query:     "SELECT \"servers\".* FROM \"servers\" WHERE \"servers\".\"id\" = $1 LIMIT $2",
+			Query:     "SELECT \"servers\".* FROM \"servers\" WHERE \"servers\".\"id\" = 1 LIMIT 2",
 			RuntimeMs: 3205.8,
+		}},
+	},
+	{
+		[]state.LogLine{{
+			Content:  "duration: 4079.697 ms execute <unnamed>: \nSELECT * FROM x WHERE y = $1 LIMIT $2",
+			LogLevel: pganalyze_collector.LogLineInformation_LOG,
+		}, {
+			Content:  "parameters: $1 = 'long string', $2 = '1'",
+			LogLevel: pganalyze_collector.LogLineInformation_DETAIL,
+		}},
+		[]state.LogLine{{
+			Query:          "SELECT * FROM x WHERE y = $1 LIMIT $2",
+			Classification: pganalyze_collector.LogLineInformation_STATEMENT_DURATION,
+			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
+			Details:        map[string]interface{}{"duration_ms": 4079.697},
+		}, {
+			LogLevel: pganalyze_collector.LogLineInformation_DETAIL,
+		}},
+		[]state.PostgresQuerySample{{
+			Query:      "SELECT * FROM x WHERE y = $1 LIMIT $2",
+			RuntimeMs:  4079.697,
+			Parameters: []string{"long string", "1"},
 		}},
 	},
 	{

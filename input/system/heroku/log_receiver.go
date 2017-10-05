@@ -51,7 +51,7 @@ func catchIdentifyServerLine(sourceName string, content string, nameToServer map
 	if len(identifyParts) == 2 {
 		for _, server := range servers {
 			if server.Config.SectionName == identifyParts[1] {
-				nameToServer["HEROKU_POSTGRESQL_"+sourceName] = server
+				nameToServer[sourceName] = server
 			}
 		}
 	}
@@ -59,30 +59,28 @@ func catchIdentifyServerLine(sourceName string, content string, nameToServer map
 	return nameToServer
 }
 
-func processSystemMetrics(timestamp time.Time, content []byte, nameToServer map[string]state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger, specifiedConfigName string) {
+func processSystemMetrics(timestamp time.Time, content []byte, nameToServer map[string]state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger, namespace string) {
 	var sample SystemSample
 	err := logfmt.Unmarshal(content, &sample)
 	if err != nil {
 		logger.PrintError("Failed to unmarshal message: %s\n  %s", err, content)
 		return
 	}
-	var sourceName string
-	if specifiedConfigName != "" {
-		sourceName = specifiedConfigName
-	} else if strings.HasPrefix(sourceName, "HEROKU_POSTGRESQL_") {
-		sourceName = sample.Source
-	} else {
-		sourceName = "HEROKU_POSTGRESQL_" + sample.Source
+	sourceName := sample.Source
+	if !strings.HasPrefix(sourceName, "HEROKU_POSTGRESQL_") {
+		sourceName = "HEROKU_POSTGRESQL_" + sourceName
 	}
-	server, exists := nameToServer[sourceName]
+	server, exists := nameToServer[namespace+" / "+sourceName]
 	if !exists {
-		logger.PrintInfo("Ignoring system data since server can't be matched yet - if this keeps showing up you have a configuration error for %s", sourceName)
+		logger.PrintInfo("Ignoring system data since server can't be matched yet - if this keeps showing up you have a configuration error for %s", namespace+" / "+sourceName)
 		return
 	}
 
-	grant, err := grant.GetDefaultGrant(server, globalCollectionOpts, logger)
+	prefixedLogger := logger.WithPrefix(server.Config.SectionName)
+
+	grant, err := grant.GetDefaultGrant(server, globalCollectionOpts, prefixedLogger)
 	if err != nil {
-		logger.PrintError("Could not get default grant for system snapshot: %s", err)
+		prefixedLogger.PrintError("Could not get default grant for system snapshot: %s", err)
 		return
 	}
 
@@ -123,9 +121,9 @@ func processSystemMetrics(timestamp time.Time, content []byte, nameToServer map[
 		},
 	}
 
-	err = output.SubmitCompactSystemSnapshot(server, grant, globalCollectionOpts, logger, system, timestamp)
+	err = output.SubmitCompactSystemSnapshot(server, grant, globalCollectionOpts, prefixedLogger, system, timestamp)
 	if err != nil {
-		logger.PrintError("Failed to upload/send logs: %s", err)
+		prefixedLogger.PrintError("Failed to upload/send logs: %s", err)
 		return
 	}
 
@@ -135,6 +133,7 @@ func processSystemMetrics(timestamp time.Time, content []byte, nameToServer map[
 func processLogLine(timestamp time.Time, backendPid int64, logLevel string, content string, nameToServer map[string]state.Server) *state.LogLine {
 	var logLine state.LogLine
 
+	logLine.CollectedAt = time.Now()
 	logLine.OccurredAt = timestamp
 	logLine.BackendPid = int32(backendPid)
 	logLine.Content = content
@@ -158,7 +157,7 @@ func processItem(item config.HerokuLogStreamItem, servers []state.Server, nameTo
 	}
 
 	if string(item.Header.Procid) == "heroku-postgres" {
-		processSystemMetrics(timestamp, item.Content, nameToServer, globalCollectionOpts, logger, item.SpecifiedConfigName)
+		processSystemMetrics(timestamp, item.Content, nameToServer, globalCollectionOpts, logger, item.Namespace)
 		return nameToServer, nil, ""
 	}
 
@@ -172,30 +171,25 @@ func processItem(item config.HerokuLogStreamItem, servers []state.Server, nameTo
 		return nameToServer, nil, ""
 	}
 
-	nameToServer = catchIdentifyServerLine(contentParts[1], contentParts[4], nameToServer, servers)
+	sourceName := contentParts[1]
+	if !strings.HasPrefix(sourceName, "HEROKU_POSTGRESQL_") {
+		sourceName = "HEROKU_POSTGRESQL_" + sourceName
+	}
+
+	nameToServer = catchIdentifyServerLine(item.Namespace+" / "+sourceName, contentParts[4], nameToServer, servers)
 
 	backendPid, _ := strconv.ParseInt(parts[1], 10, 32)
 	newLogLine := processLogLine(timestamp, backendPid, contentParts[3], contentParts[4], nameToServer)
 
-	if item.SpecifiedConfigName != "" {
-		return nameToServer, newLogLine, item.SpecifiedConfigName
-	} else {
-		return nameToServer, newLogLine, "HEROKU_POSTGRESQL_" + contentParts[1]
-	}
+	return nameToServer, newLogLine, item.Namespace + " / " + sourceName
 }
 
 func logReceiver(servers []state.Server, in <-chan config.HerokuLogStreamItem, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
 	var logLinesByName map[string][]state.LogLine
 	var nameToServer map[string]state.Server
-	var configNameToServer map[string]state.Server
 
 	logLinesByName = make(map[string][]state.LogLine)
 	nameToServer = make(map[string]state.Server)
-	configNameToServer = make(map[string]state.Server)
-
-	for _, server := range servers {
-		configNameToServer[server.Config.SectionName] = server
-	}
 
 	for {
 		item, ok := <-in
@@ -210,7 +204,7 @@ func logReceiver(servers []state.Server, in <-chan config.HerokuLogStreamItem, g
 			logLinesByName[sourceName] = append(logLinesByName[sourceName], *newLogLine)
 		}
 
-		// Submit all logLines that are older than 10 seconds
+		// Submit all logLines that are older than 3 seconds
 		var now time.Time
 		now = time.Now()
 		for sourceName, logLines := range logLinesByName {
@@ -219,21 +213,14 @@ func logReceiver(servers []state.Server, in <-chan config.HerokuLogStreamItem, g
 			var server state.Server
 			var exists bool
 
-			if strings.HasPrefix(sourceName, "HEROKU_POSTGRESQL_") {
-				server, exists = nameToServer[sourceName]
-				if !exists {
-					logger.PrintInfo("Ignoring log line since server can't be matched yet - if this keeps showing up you have a configuration error for %s", sourceName)
-					logLinesByName[sourceName] = []state.LogLine{}
-					continue
-				}
-			} else {
-				server, exists = configNameToServer[sourceName]
-				if !exists {
-					logger.PrintInfo("Ignoring log line since server can't be matched - unknown config name %s", sourceName)
-					logLinesByName[sourceName] = []state.LogLine{}
-					continue
-				}
+			server, exists = nameToServer[sourceName]
+			if !exists {
+				logger.PrintInfo("Ignoring log line since server can't be matched yet - if this keeps showing up you have a configuration error for %s", sourceName)
+				logLinesByName[sourceName] = []state.LogLine{}
+				continue
 			}
+
+			prefixedLogger := logger.WithPrefix(server.Config.SectionName)
 
 			// Setup temporary file that will be used for encryption
 			var logFile state.LogFile
@@ -241,7 +228,7 @@ func logReceiver(servers []state.Server, in <-chan config.HerokuLogStreamItem, g
 			logFile.UUID = uuid.NewV4()
 			logFile.TmpFile, err = ioutil.TempFile("", "")
 			if err != nil {
-				logger.PrintError("Could not allocate tempfile for logs: %s", err)
+				prefixedLogger.PrintError("Could not allocate tempfile for logs: %s", err)
 				continue
 			}
 
@@ -250,13 +237,13 @@ func logReceiver(servers []state.Server, in <-chan config.HerokuLogStreamItem, g
 
 			currentByteStart := int64(0)
 			for _, logLine := range logLines {
-				if now.Sub(logLine.OccurredAt) > 10*time.Second {
+				if now.Sub(logLine.CollectedAt) > 3*time.Second {
 					logLine.Username = server.Config.GetDbUsername()
 					logLine.Database = server.Config.GetDbName()
 
 					_, err = logFile.TmpFile.WriteString(logLine.Content)
 					if err != nil {
-						logger.PrintError("%s", err)
+						prefixedLogger.PrintError("%s", err)
 						break
 					}
 					logLine.ByteStart = currentByteStart
@@ -272,23 +259,50 @@ func logReceiver(servers []state.Server, in <-chan config.HerokuLogStreamItem, g
 			logLinesByName[sourceName] = tooFreshLogLines
 
 			if len(readyLogLines) > 0 {
-				logFile.LogLines, logState.QuerySamples = logs.AnalyzeLogLines(readyLogLines)
+				// Ensure that log lines that span multiple lines are already concated together before passing them to analyze
+				// Split log lines by backend to ensure we have the right context
+				backendLogLines := make(map[int32][]state.LogLine)
+
+				for _, logLine := range readyLogLines {
+					backendLogLines[logLine.BackendPid] = append(backendLogLines[logLine.BackendPid], logLine)
+				}
+
+				for _, logLines := range backendLogLines {
+					var analyzableLogLines []state.LogLine
+					for _, logLine := range logLines {
+						if logLine.LogLevel == pganalyze_collector.LogLineInformation_UNKNOWN && len(analyzableLogLines) > 0 {
+							analyzableLogLines[len(analyzableLogLines)-1].Content += logLine.Content
+							analyzableLogLines[len(analyzableLogLines)-1].ByteEnd += int64(len(logLine.Content))
+							continue
+						}
+						analyzableLogLines = append(analyzableLogLines, logLine)
+					}
+
+					backendLogLinesOut, backendSamples := logs.AnalyzeBackendLogLines(analyzableLogLines)
+					for _, logLine := range backendLogLinesOut {
+						logFile.LogLines = append(logFile.LogLines, logLine)
+					}
+					for _, sample := range backendSamples {
+						logState.QuerySamples = append(logState.QuerySamples, sample)
+					}
+				}
+
 				logState.LogFiles = []state.LogFile{logFile}
 
-				grant, err := grant.GetLogsGrant(server, globalCollectionOpts, logger)
+				grant, err := grant.GetLogsGrant(server, globalCollectionOpts, prefixedLogger)
 				if err != nil {
-					logger.PrintError("Could not get log grant: %s", err)
+					prefixedLogger.PrintError("Could not get log grant: %s", err)
 					continue
 				}
 
 				if !grant.Valid {
-					logger.PrintVerbose("Log collection disabled from server, skipping")
+					prefixedLogger.PrintVerbose("Log collection disabled from server, skipping")
 					continue
 				}
 
-				err = output.UploadAndSendLogs(server, grant, globalCollectionOpts, logger, logState)
+				err = output.UploadAndSendLogs(server, grant, globalCollectionOpts, prefixedLogger, logState)
 				if err != nil {
-					logger.PrintError("Failed to upload/send logs: %s", err)
+					prefixedLogger.PrintError("Failed to upload/send logs: %s", err)
 					continue
 				}
 			}

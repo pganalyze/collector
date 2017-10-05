@@ -11,6 +11,7 @@ type PostgresQuerySample struct {
 	Username   string
 	Database   string
 	Query      string
+	Parameters []string
 
 	LogLineUUID uuid.UUID
 
@@ -19,8 +20,6 @@ type PostgresQuerySample struct {
 	HasExplain    bool
 	ExplainOutput string
 	ExplainError  string
-
-	//Parameters []string // TODO: Not implemented
 
 	// FUTURE: Could use parameters (and query values) to determine whether
 	// the given value is included in most_common_vals (and which most_common_freqs it has)

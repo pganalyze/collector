@@ -57,6 +57,10 @@ type LogLine struct {
 	Database   string
 	Query      string
 
+	// Only used for collector-internal bookkeeping to determine how long to wait
+	// for associating related loglines with each other
+	CollectedAt time.Time
+
 	LogLevel   pganalyze_collector.LogLineInformation_LogLevel
 	BackendPid int32
 

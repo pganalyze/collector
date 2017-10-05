@@ -2,6 +2,7 @@ package config
 
 import (
 	"bufio"
+	"fmt"
 	"net/http"
 	"os"
 	"strings"
@@ -16,15 +17,22 @@ func dummyHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Config) logHandler(w http.ResponseWriter, r *http.Request) {
-	var specifiedConfigName string
+	var namespace string
 	if strings.HasPrefix(r.URL.Path, "/logs/") {
-		specifiedConfigName = strings.Replace(r.URL.Path, "/logs/", "", 1)
+		namespace = strings.Replace(r.URL.Path, "/logs/", "", 1)
+	} else {
+		namespace = "default"
 	}
 	lp := lpx.NewReader(bufio.NewReader(r.Body))
 	for lp.Next() {
 		procID := string(lp.Header().Procid)
 		if procID == "heroku-postgres" || strings.HasPrefix(procID, "postgres.") {
-			s.HerokuLogStream <- HerokuLogStreamItem{Header: *lp.Header(), Content: lp.Bytes(), SpecifiedConfigName: specifiedConfigName}
+			select {
+			case s.HerokuLogStream <- HerokuLogStreamItem{Header: *lp.Header(), Content: lp.Bytes(), Namespace: namespace}:
+				// Handed over successfully
+			default:
+				fmt.Printf("WARNING: Channel buffer exceeded, skipping message\n")
+			}
 		}
 	}
 }
