@@ -49,7 +49,7 @@ func upsertQueryReferenceAndInformation(s *snapshot.FullSnapshot, roleOidToIdx O
 	return idx
 }
 
-func upsertQueryReferenceAndInformationSimple(refs []*snapshot.QueryReference, infos []*snapshot.QueryInformation, databaseIdx int32, roleIdx int32, originalQuery string) (int32, []*snapshot.QueryReference, []*snapshot.QueryInformation) {
+func upsertQueryReferenceAndInformationSimple(refs []*snapshot.QueryReference, infos []*snapshot.QueryInformation, roleIdx int32, databaseIdx int32, originalQuery string) (int32, []*snapshot.QueryReference, []*snapshot.QueryInformation) {
 	normalizedQuery, _ := pg_query.Normalize(originalQuery)
 	fingerprint := util.FingerprintQuery(normalizedQuery)
 
