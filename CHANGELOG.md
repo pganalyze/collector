@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.9.16      2017-10-05
+
+* Support for Postgres 10 monitoring role
+* Log Insights improvements
+  - Fix bug where referenced query wouldn't be correctly identified
+  - Collect query text and parameters for all query samples
+  - Fix issues with Heroku Postgres log collection
+
+
 ## 0.9.15      2017-10-01
 
 * Update pg_query_go / libpg_query to 9.5-1.6.2
