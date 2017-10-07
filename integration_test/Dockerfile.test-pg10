@@ -1,4 +1,4 @@
-FROM postgres:10-rc1
+FROM postgres:10
 
 ENV GOPATH /go
 ENV GOVERSION 1.9.1
