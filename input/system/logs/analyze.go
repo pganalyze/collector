@@ -329,7 +329,7 @@ func AnalyzeBackendLogLines(logLines []state.LogLine) (logLinesOut []state.LogLi
 			logLine.Classification = pganalyze_collector.LogLineInformation_AUTOVACUUM_LAUNCHER_SHUTTING_DOWN
 		}
 		parts = regexp.MustCompile(`^automatic vacuum of table "(.+?)": index scans: (\d+)\s*` +
-			`pages: (\d+) removed, (\d+) remain(?:, (\d+) skipped due to pins, (\d+) skipped frozen)?\s*` +
+			`pages: (\d+) removed, (\d+) remain(?:, (\d+) skipped due to pins)?(?:, (\d+) skipped frozen)?\s*` +
 			`tuples: (\d+) removed, (\d+) remain, (\d+) are dead but not yet removable\s*` +
 			`buffer usage: (\d+) hits, (\d+) misses, (\d+) dirtied\s*` +
 			`avg read rate: ([\d.]+) MB/s, avg write rate: ([\d.]+) MB/s\s*` +

@@ -785,6 +785,39 @@ var tests = []testpair{
 	},
 	{
 		[]state.LogLine{{
+			Content: "automatic vacuum of table \"mydb.public.mytable\": index scans: 1" +
+				" pages: 0 removed, 597092 remain, 0 skipped due to pins" +
+				"	tuples: 466347 removed, 17314747 remain, 0 are dead but not yet removable" +
+				"	buffer usage: 1854343 hits, 1447635 misses, 272945 dirtied" +
+				"	avg read rate: 5.215 MB/s, avg write rate: 0.983 MB/s" +
+				"	system usage: CPU 2.86s/16.36u sec elapsed 2168.76 sec",
+			LogLevel: pganalyze_collector.LogLineInformation_LOG,
+		}},
+		[]state.LogLine{{
+			Classification: pganalyze_collector.LogLineInformation_AUTOVACUUM_COMPLETED,
+			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
+			Details: map[string]interface{}{
+				"num_index_scans":   1,
+				"pages_removed":     0,
+				"rel_pages":         597092,
+				"pinskipped_pages":  0,
+				"tuples_deleted":    466347,
+				"new_rel_tuples":    17314747,
+				"new_dead_tuples":   0,
+				"vacuum_page_hit":   1854343,
+				"vacuum_page_miss":  1447635,
+				"vacuum_page_dirty": 272945,
+				"read_rate_mb":      5.215,
+				"write_rate_mb":     0.983,
+				"rusage_kernel":     2.86,
+				"rusage_user":       16.36,
+				"elapsed_secs":      2168.76,
+			},
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
 			Content:  "automatic analyze of table \"postgres.public.pgbench_branches\" system usage: CPU 1.02s/2.08u sec elapsed 108.25 sec",
 			LogLevel: pganalyze_collector.LogLineInformation_LOG,
 		}},
