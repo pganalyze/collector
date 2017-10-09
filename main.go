@@ -236,12 +236,6 @@ func main() {
 	if dryRun || dryRunLogs {
 		globalCollectionOpts.SubmitCollectedData = false
 		globalCollectionOpts.TestRun = true
-	} else {
-		// Check some cases we can't support from a pganalyze perspective right now
-		if noPostgresRelations {
-			logger.PrintError("Error: You can only disable relation data collection for dry test runs (the API can't accept the snapshot otherwise)")
-			return
-		}
 	}
 
 	if globalCollectionOpts.TestRun || globalCollectionOpts.TestReport != "" {
