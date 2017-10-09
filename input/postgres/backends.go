@@ -16,10 +16,11 @@ const activitySQLpg10OptionalFields = "wait_event IS NOT NULL, backend_xid, back
 const activitySQL string = `SELECT (extract(epoch from COALESCE(backend_start, pg_postmaster_start_time()))::int::text || to_char(pid, 'FM00000'))::bigint,
 				datid, datname, usesysid, usename, pid, application_name, client_addr::text, client_port,
 				backend_start, xact_start, query_start, state_change, %s, state, query
-	 FROM pg_stat_activity`
+	 FROM %s`
 
 func GetBackends(logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion) ([]state.PostgresBackend, error) {
 	var optionalFields string
+	var sourceTable string
 
 	if postgresVersion.Numeric >= state.PostgresVersion10 {
 		optionalFields = activitySQLpg10OptionalFields
@@ -31,7 +32,13 @@ func GetBackends(logger *util.Logger, db *sql.DB, postgresVersion state.Postgres
 		optionalFields = activitySQLDefaultOptionalFields
 	}
 
-	stmt, err := db.Prepare(QueryMarkerSQL + fmt.Sprintf(activitySQL, optionalFields))
+	if statsHelperExists(db, "get_stat_activity") {
+		sourceTable = "pganalyze.get_stat_activity()"
+	} else {
+		sourceTable = "pg_stat_activity"
+	}
+
+	stmt, err := db.Prepare(QueryMarkerSQL + fmt.Sprintf(activitySQL, optionalFields, sourceTable))
 	if err != nil {
 		return nil, err
 	}
