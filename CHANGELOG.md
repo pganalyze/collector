@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.9.17      2017-10-09
+
+* Logs: Fix regexp for 9.5 vacuum output (skip pins, but not skip frozen)
+* Update to Go 1.9.1 release
+* Allow disabling collection of relation/schema information
+* Add experimental activity snapshots
+  - This is not for public consumption yet, and trying to use it will result in
+    an error from the server - but watch this space :)
+
+
 ## 0.9.16      2017-10-05
 
 * Support for Postgres 10 monitoring role
