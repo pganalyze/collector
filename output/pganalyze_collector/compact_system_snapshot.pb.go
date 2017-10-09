@@ -21,7 +21,7 @@ type CompactSystemSnapshot struct {
 func (m *CompactSystemSnapshot) Reset()                    { *m = CompactSystemSnapshot{} }
 func (m *CompactSystemSnapshot) String() string            { return proto.CompactTextString(m) }
 func (*CompactSystemSnapshot) ProtoMessage()               {}
-func (*CompactSystemSnapshot) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{0} }
+func (*CompactSystemSnapshot) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{0} }
 
 func (m *CompactSystemSnapshot) GetSystem() *System {
 	if m != nil {
@@ -34,9 +34,9 @@ func init() {
 	proto.RegisterType((*CompactSystemSnapshot)(nil), "pganalyze.collector.CompactSystemSnapshot")
 }
 
-func init() { proto.RegisterFile("compact_system_snapshot.proto", fileDescriptor4) }
+func init() { proto.RegisterFile("compact_system_snapshot.proto", fileDescriptor5) }
 
-var fileDescriptor4 = []byte{
+var fileDescriptor5 = []byte{
 	// 154 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xe2, 0x92, 0x4d, 0xce, 0xcf, 0x2d,
 	0x48, 0x4c, 0x2e, 0x89, 0x2f, 0xae, 0x2c, 0x2e, 0x49, 0xcd, 0x8d, 0x2f, 0xce, 0x4b, 0x2c, 0x28,

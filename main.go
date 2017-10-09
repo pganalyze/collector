@@ -27,19 +27,19 @@ import (
 	_ "github.com/lib/pq" // Enable database package to use Postgres
 )
 
-func run(wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *util.Logger, configFilename string) (bool, chan<- bool, chan<- bool, chan<- bool) {
+func run(wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *util.Logger, configFilename string) (bool, chan<- bool, chan<- bool, chan<- bool, chan<- bool) {
 	var servers []state.Server
 
 	schedulerGroups, err := scheduler.GetSchedulerGroups()
 	if err != nil {
 		logger.PrintError("Error: Could not get scheduler groups")
-		return false, nil, nil, nil
+		return false, nil, nil, nil, nil
 	}
 
 	conf, err := config.Read(logger, configFilename)
 	if err != nil {
 		logger.PrintError("Config Error: %s", err)
-		return !globalCollectionOpts.TestRun, nil, nil, nil
+		return !globalCollectionOpts.TestRun, nil, nil, nil, nil
 	}
 
 	serverConfigs := conf.Servers
@@ -60,7 +60,7 @@ func run(wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *
 		} else {
 			runner.CollectAllServers(servers, globalCollectionOpts, logger)
 		}
-		return false, nil, nil, nil
+		return false, nil, nil, nil, nil
 	}
 
 	statsStop := schedulerGroups["stats"].Schedule(func() {
@@ -72,12 +72,16 @@ func run(wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *
 	// Avoid even running the scheduler when we already know its not needed
 	hasAnyLogsEnabled := false
 	hasAnyReportsEnabled := false
+	hasAnyActivityEnabled := false
 	for _, server := range servers {
 		if server.Config.EnableLogs {
 			hasAnyLogsEnabled = true
 		}
 		if server.Config.EnableReports {
 			hasAnyReportsEnabled = true
+		}
+		if server.Config.EnableActivity {
+			hasAnyActivityEnabled = true
 		}
 	}
 
@@ -103,7 +107,16 @@ func run(wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *
 		}
 	}
 
-	return true, statsStop, reportsStop, logsStop
+	var activityStop chan<- bool
+	if hasAnyActivityEnabled {
+		activityStop = schedulerGroups["activity"].Schedule(func() {
+			wg.Add(1)
+			runner.CollectActivityFromAllServers(servers, globalCollectionOpts, logger)
+			wg.Done()
+		}, logger, "activity snapshot of all servers")
+	}
+
+	return true, statsStop, reportsStop, logsStop, activityStop
 }
 
 const defaultConfigFile = "/etc/pganalyze-collector.conf"
@@ -269,7 +282,7 @@ func main() {
 	wg := sync.WaitGroup{}
 
 ReadConfigAndRun:
-	keepRunning, statsStop, reportsStop, logsStop := run(&wg, globalCollectionOpts, logger, configFilename)
+	keepRunning, statsStop, reportsStop, logsStop, activityStop := run(&wg, globalCollectionOpts, logger, configFilename)
 	if !keepRunning {
 		return
 	}
@@ -286,6 +299,9 @@ ReadConfigAndRun:
 	}
 	if logsStop != nil {
 		logsStop <- true
+	}
+	if activityStop != nil {
+		activityStop <- true
 	}
 
 	if s == syscall.SIGHUP {

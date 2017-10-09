@@ -41,6 +41,9 @@ func getDefaultConfig() *ServerConfig {
 	if enableReports := os.Getenv("PGA_ENABLE_REPORTS"); enableReports != "" && enableReports != "0" {
 		config.EnableReports = true
 	}
+	if enableActivity := os.Getenv("PGA_ENABLE_ACTIVITY"); enableActivity != "" && enableActivity != "0" {
+		config.EnableActivity = true
+	}
 	if dbURL := os.Getenv("DB_URL"); dbURL != "" {
 		config.DbURL = dbURL
 	}

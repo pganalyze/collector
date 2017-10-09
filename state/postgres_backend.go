@@ -7,8 +7,11 @@ import "github.com/guregu/null"
 //
 // See https://www.postgresql.org/docs/9.5/static/monitoring-stats.html#PG-STAT-ACTIVITY-VIEW
 type PostgresBackend struct {
-	DatabaseOid     Oid         // OID of the database this backend is connected to
-	RoleOid         Oid         // OID of the user logged into this backend
+	Identity        uint64      // Combination of process start time and PID, used to identify a process over time
+	DatabaseOid     null.Int    // OID of the database this backend is connected to
+	DatabaseName    null.String // Name of the database this backend is connected to
+	RoleOid         null.Int    // OID of the user logged into this backend
+	RoleName        null.String // Name of the user logged into this backend
 	Pid             int32       // Process ID of this backend
 	ApplicationName null.String // Name of the application that is connected to this backend
 	ClientAddr      null.String // IP address of the client connected to this backend. If this field is null, it indicates either that the client is connected via a Unix socket on the server machine or that this is an internal process such as autovacuum.
@@ -24,7 +27,9 @@ type PostgresBackend struct {
 	WaitEventType null.String // 9.6+ The type of event for which the backend is waiting, if any; otherwise NULL
 	WaitEvent     null.String // 9.6+ Wait event name if backend is currently waiting, otherwise NULL
 
-	NormalizedQuery null.String // Text of this backend's most recent query, normalized using pg_stat_statement's logic
+	BackendType null.String // 10+ The process type of this backend
+
+	Query null.String // Text of this backend's most recent query
 
 	// Current overall state of this backend. Possible values are:
 	// - active: The backend is executing a query.

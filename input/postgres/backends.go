@@ -4,26 +4,26 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/guregu/null"
-	"github.com/lfittl/pg_query_go"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
 )
 
-const activitySQLDefaultOptionalFields = "waiting, NULL, NULL, NULL, NULL"
-const activitySQLpg94OptionalFields = "waiting, backend_xid, backend_xmin, NULL, NULL"
-const activitySQLpg96OptionalFields = "wait_event IS NOT NULL, backend_xid, backend_xmin, wait_event_type, wait_event"
+const activitySQLDefaultOptionalFields = "waiting, NULL, NULL, NULL, NULL, NULL"
+const activitySQLpg94OptionalFields = "waiting, backend_xid, backend_xmin, NULL, NULL, NULL"
+const activitySQLpg96OptionalFields = "wait_event IS NOT NULL, backend_xid, backend_xmin, wait_event_type, wait_event, NULL"
+const activitySQLpg10OptionalFields = "wait_event IS NOT NULL, backend_xid, backend_xmin, wait_event_type, wait_event, backend_type"
 
-// https://www.postgresql.org/docs/9.5/static/monitoring-stats.html#PG-STAT-ACTIVITY-VIEW
-const activitySQL string = `SELECT datid, usesysid, pid, application_name, client_addr::text, client_port,
+const activitySQL string = `SELECT (extract(epoch from COALESCE(backend_start, pg_postmaster_start_time()))::int::text || to_char(pid, 'FM00000'))::bigint,
+				datid, datname, usesysid, usename, pid, application_name, client_addr::text, client_port,
 				backend_start, xact_start, query_start, state_change, %s, state, query
-	 FROM pg_stat_activity
-	WHERE pid <> pg_backend_pid() AND datname = current_database()`
+	 FROM pg_stat_activity`
 
 func GetBackends(logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion) ([]state.PostgresBackend, error) {
 	var optionalFields string
 
-	if postgresVersion.Numeric >= state.PostgresVersion96 {
+	if postgresVersion.Numeric >= state.PostgresVersion10 {
+		optionalFields = activitySQLpg10OptionalFields
+	} else if postgresVersion.Numeric >= state.PostgresVersion96 {
 		optionalFields = activitySQLpg96OptionalFields
 	} else if postgresVersion.Numeric >= state.PostgresVersion94 {
 		optionalFields = activitySQLpg94OptionalFields
@@ -49,23 +49,14 @@ func GetBackends(logger *util.Logger, db *sql.DB, postgresVersion state.Postgres
 
 	for rows.Next() {
 		var row state.PostgresBackend
-		var query null.String
 
-		err := rows.Scan(&row.DatabaseOid, &row.RoleOid, &row.Pid, &row.ApplicationName,
-			&row.ClientAddr, &row.ClientPort, &row.BackendStart, &row.XactStart, &row.QueryStart,
+		err := rows.Scan(&row.Identity, &row.DatabaseOid, &row.DatabaseName,
+			&row.RoleOid, &row.RoleName, &row.Pid, &row.ApplicationName, &row.ClientAddr,
+			&row.ClientPort, &row.BackendStart, &row.XactStart, &row.QueryStart,
 			&row.StateChange, &row.Waiting, &row.BackendXid, &row.BackendXmin,
-			&row.WaitEventType, &row.WaitEvent, &row.State, &query)
+			&row.WaitEventType, &row.WaitEvent, &row.BackendType, &row.State, &row.Query)
 		if err != nil {
 			return nil, err
-		}
-
-		if query.Valid && query.String != "<insufficient privilege>" {
-			normalizedQuery, err := pg_query.Normalize(query.String)
-			if err != nil {
-				logger.PrintVerbose("Failed to normalize query, excluding from statistics: %s", err)
-			} else {
-				row.NormalizedQuery = null.StringFrom(normalizedQuery)
-			}
 		}
 
 		activities = append(activities, row)

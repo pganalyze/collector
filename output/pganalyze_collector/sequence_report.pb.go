@@ -24,7 +24,7 @@ type SequenceReportData struct {
 func (m *SequenceReportData) Reset()                    { *m = SequenceReportData{} }
 func (m *SequenceReportData) String() string            { return proto.CompactTextString(m) }
 func (*SequenceReportData) ProtoMessage()               {}
-func (*SequenceReportData) Descriptor() ([]byte, []int) { return fileDescriptor7, []int{0} }
+func (*SequenceReportData) Descriptor() ([]byte, []int) { return fileDescriptor8, []int{0} }
 
 func (m *SequenceReportData) GetDatabaseReferences() []*DatabaseReference {
 	if m != nil {
@@ -70,7 +70,7 @@ type SequenceReference struct {
 func (m *SequenceReference) Reset()                    { *m = SequenceReference{} }
 func (m *SequenceReference) String() string            { return proto.CompactTextString(m) }
 func (*SequenceReference) ProtoMessage()               {}
-func (*SequenceReference) Descriptor() ([]byte, []int) { return fileDescriptor7, []int{1} }
+func (*SequenceReference) Descriptor() ([]byte, []int) { return fileDescriptor8, []int{1} }
 
 func (m *SequenceReference) GetDatabaseIdx() int32 {
 	if m != nil {
@@ -107,7 +107,7 @@ type SequenceInformation struct {
 func (m *SequenceInformation) Reset()                    { *m = SequenceInformation{} }
 func (m *SequenceInformation) String() string            { return proto.CompactTextString(m) }
 func (*SequenceInformation) ProtoMessage()               {}
-func (*SequenceInformation) Descriptor() ([]byte, []int) { return fileDescriptor7, []int{2} }
+func (*SequenceInformation) Descriptor() ([]byte, []int) { return fileDescriptor8, []int{2} }
 
 func (m *SequenceInformation) GetSequenceIdx() int32 {
 	if m != nil {
@@ -177,7 +177,7 @@ type SerialColumnInformation struct {
 func (m *SerialColumnInformation) Reset()                    { *m = SerialColumnInformation{} }
 func (m *SerialColumnInformation) String() string            { return proto.CompactTextString(m) }
 func (*SerialColumnInformation) ProtoMessage()               {}
-func (*SerialColumnInformation) Descriptor() ([]byte, []int) { return fileDescriptor7, []int{3} }
+func (*SerialColumnInformation) Descriptor() ([]byte, []int) { return fileDescriptor8, []int{3} }
 
 func (m *SerialColumnInformation) GetSequenceIdx() int32 {
 	if m != nil {
@@ -234,7 +234,7 @@ func (m *SerialColumnInformation_ForeignColumn) Reset()         { *m = SerialCol
 func (m *SerialColumnInformation_ForeignColumn) String() string { return proto.CompactTextString(m) }
 func (*SerialColumnInformation_ForeignColumn) ProtoMessage()    {}
 func (*SerialColumnInformation_ForeignColumn) Descriptor() ([]byte, []int) {
-	return fileDescriptor7, []int{3, 0}
+	return fileDescriptor8, []int{3, 0}
 }
 
 func (m *SerialColumnInformation_ForeignColumn) GetRelationIdx() int32 {
@@ -280,9 +280,9 @@ func init() {
 	proto.RegisterType((*SerialColumnInformation_ForeignColumn)(nil), "pganalyze.collector.SerialColumnInformation.ForeignColumn")
 }
 
-func init() { proto.RegisterFile("sequence_report.proto", fileDescriptor7) }
+func init() { proto.RegisterFile("sequence_report.proto", fileDescriptor8) }
 
-var fileDescriptor7 = []byte{
+var fileDescriptor8 = []byte{
 	// 562 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xb4, 0x54, 0xcd, 0x6e, 0xd3, 0x4c,
 	0x14, 0x95, 0xe3, 0xb6, 0x9f, 0x73, 0xed, 0x7e, 0x08, 0xb7, 0x15, 0x56, 0x2a, 0x44, 0x1a, 0x24,

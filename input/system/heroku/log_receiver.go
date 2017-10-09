@@ -123,7 +123,7 @@ func processSystemMetrics(timestamp time.Time, content []byte, nameToServer map[
 
 	err = output.SubmitCompactSystemSnapshot(server, grant, globalCollectionOpts, prefixedLogger, system, timestamp)
 	if err != nil {
-		prefixedLogger.PrintError("Failed to upload/send logs: %s", err)
+		prefixedLogger.PrintError("Failed to upload/send compact system snapshot: %s", err)
 		return
 	}
 

@@ -33,6 +33,7 @@ func (group Group) Schedule(runner func(), logger *util.Logger, logName string) 
 }
 
 func GetSchedulerGroups() (groups map[string]Group, err error) {
+	tenSecondInterval, err := cronexpr.Parse("*/10 * * * * * *")
 	oneMinuteInterval, err := cronexpr.Parse("0 * * * * * *")
 	tenMinuteInterval, err := cronexpr.Parse("0 */10 * * * * *")
 	if err != nil {
@@ -44,6 +45,7 @@ func GetSchedulerGroups() (groups map[string]Group, err error) {
 	groups["stats"] = Group{interval: tenMinuteInterval}
 	groups["reports"] = Group{interval: oneMinuteInterval}
 	groups["logs"] = Group{interval: oneMinuteInterval}
+	groups["activity"] = Group{interval: tenSecondInterval}
 
 	return
 }

@@ -72,7 +72,7 @@ func (x LogLineInformation_LogLevel) String() string {
 	return proto.EnumName(LogLineInformation_LogLevel_name, int32(x))
 }
 func (LogLineInformation_LogLevel) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor2, []int{2, 0}
+	return fileDescriptor3, []int{2, 0}
 }
 
 type LogLineInformation_LogClassification int32
@@ -263,7 +263,7 @@ func (x LogLineInformation_LogClassification) String() string {
 	return proto.EnumName(LogLineInformation_LogClassification_name, int32(x))
 }
 func (LogLineInformation_LogClassification) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor2, []int{2, 1}
+	return fileDescriptor3, []int{2, 1}
 }
 
 type CompactLogSnapshot struct {
@@ -275,7 +275,7 @@ type CompactLogSnapshot struct {
 func (m *CompactLogSnapshot) Reset()                    { *m = CompactLogSnapshot{} }
 func (m *CompactLogSnapshot) String() string            { return proto.CompactTextString(m) }
 func (*CompactLogSnapshot) ProtoMessage()               {}
-func (*CompactLogSnapshot) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{0} }
+func (*CompactLogSnapshot) Descriptor() ([]byte, []int) { return fileDescriptor3, []int{0} }
 
 func (m *CompactLogSnapshot) GetLogFileReferences() []*LogFileReference {
 	if m != nil {
@@ -310,7 +310,7 @@ type LogFileReference struct {
 func (m *LogFileReference) Reset()                    { *m = LogFileReference{} }
 func (m *LogFileReference) String() string            { return proto.CompactTextString(m) }
 func (*LogFileReference) ProtoMessage()               {}
-func (*LogFileReference) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{1} }
+func (*LogFileReference) Descriptor() ([]byte, []int) { return fileDescriptor3, []int{1} }
 
 func (m *LogFileReference) GetUuid() string {
 	if m != nil {
@@ -377,7 +377,7 @@ type LogLineInformation struct {
 func (m *LogLineInformation) Reset()                    { *m = LogLineInformation{} }
 func (m *LogLineInformation) String() string            { return proto.CompactTextString(m) }
 func (*LogLineInformation) ProtoMessage()               {}
-func (*LogLineInformation) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{2} }
+func (*LogLineInformation) Descriptor() ([]byte, []int) { return fileDescriptor3, []int{2} }
 
 func (m *LogLineInformation) GetLogFileIdx() int32 {
 	if m != nil {
@@ -513,7 +513,7 @@ type QuerySample struct {
 func (m *QuerySample) Reset()                    { *m = QuerySample{} }
 func (m *QuerySample) String() string            { return proto.CompactTextString(m) }
 func (*QuerySample) ProtoMessage()               {}
-func (*QuerySample) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{3} }
+func (*QuerySample) Descriptor() ([]byte, []int) { return fileDescriptor3, []int{3} }
 
 func (m *QuerySample) GetQueryIdx() int32 {
 	if m != nil {
@@ -587,9 +587,9 @@ func init() {
 	proto.RegisterEnum("pganalyze.collector.LogLineInformation_LogClassification", LogLineInformation_LogClassification_name, LogLineInformation_LogClassification_value)
 }
 
-func init() { proto.RegisterFile("compact_log_snapshot.proto", fileDescriptor2) }
+func init() { proto.RegisterFile("compact_log_snapshot.proto", fileDescriptor3) }
 
-var fileDescriptor2 = []byte{
+var fileDescriptor3 = []byte{
 	// 1659 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x94, 0x56, 0x6d, 0x53, 0xdb, 0xca,
 	0x15, 0xae, 0x71, 0x08, 0x78, 0x0d, 0x64, 0x59, 0x42, 0x22, 0xe0, 0x92, 0x38, 0xdc, 0x66, 0x2e,

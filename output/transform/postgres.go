@@ -18,9 +18,6 @@ func transformPostgres(s snapshot.FullSnapshot, newState state.PersistedState, d
 	s = transformPostgresRelations(s, newState, diffState, roleOidToIdx, databaseOidToIdx)
 	s = transformPostgresFunctions(s, newState, diffState, roleOidToIdx, databaseOidToIdx)
 
-	// Its important this runs after statements, so we can associate to the correct queries
-	s = transformPostgresBackends(s, transientState, roleOidToIdx, databaseOidToIdx)
-
 	return s
 }
 
