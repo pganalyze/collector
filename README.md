@@ -87,6 +87,15 @@ but from here onwards you can use the `pganalyze` user instead.
 The collector will automatically use the helper methods
 if they exist in the `pganalyze` schema - otherwise data will be fetched directly.
 
+If you are on Postgres 9.6 and use activity snapshots:
+
+```
+CREATE OR REPLACE FUNCTION pganalyze.get_stat_progress_vacuum() RETURNS SETOF pg_stat_progress_vacuum AS
+$$
+  /* pganalyze-collector */ SELECT * FROM pg_catalog.pg_stat_progress_vacuum;
+$$ LANGUAGE sql VOLATILE SECURITY DEFINER;
+```
+
 If you are using the Buffer Cache report in pganalyze, you will also need to create this additional helper method:
 
 ```
