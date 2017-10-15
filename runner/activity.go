@@ -43,6 +43,12 @@ func processActivityForServer(server state.Server, globalCollectionOpts state.Co
 	if err != nil {
 		return false, errors.Wrap(err, "error collecting pg_stat_activity")
 	}
+
+	activity.Vacuums, err = postgres.GetVacuumProgress(logger, connection, activity.Version)
+	if err != nil {
+		return false, errors.Wrap(err, "error collecting pg_stat_vacuum_progress")
+	}
+
 	activity.CollectedAt = time.Now()
 
 	err = output.SubmitCompactActivitySnapshot(server, grant, globalCollectionOpts, logger, activity)

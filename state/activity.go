@@ -7,4 +7,6 @@ type ActivityState struct {
 
 	Version  PostgresVersion
 	Backends []PostgresBackend
+
+	Vacuums []PostgresVacuumProgress
 }

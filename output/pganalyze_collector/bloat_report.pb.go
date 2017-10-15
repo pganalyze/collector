@@ -26,6 +26,8 @@ It has these top-level messages:
 	BuffercacheEntry
 	CompactActivitySnapshot
 	Backend
+	VacuumProgressInformation
+	VacuumProgressStatistic
 	CompactLogSnapshot
 	LogFileReference
 	LogLineInformation
