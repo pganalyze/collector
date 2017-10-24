@@ -52,10 +52,13 @@ type LogLine struct {
 	ByteContentStart int64
 	ByteEnd          int64
 
-	OccurredAt time.Time
-	Username   string
-	Database   string
-	Query      string
+	OccurredAt     time.Time
+	Username       string
+	Database       string
+	Query          string
+	SchemaName     string
+	RelationName   string
+	ConstraintName string
 
 	// Only used for collector-internal bookkeeping to determine how long to wait
 	// for associating related loglines with each other

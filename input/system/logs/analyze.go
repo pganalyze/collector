@@ -336,7 +336,11 @@ func AnalyzeBackendLogLines(logLines []state.LogLine) (logLinesOut []state.LogLi
 			`system usage: CPU ([\d.]+)s/([\d.]+)u sec elapsed ([\d.]+) sec`).FindStringSubmatch(logLine.Content)
 		if len(parts) == 18 {
 			logLine.Classification = pganalyze_collector.LogLineInformation_AUTOVACUUM_COMPLETED
-			// FIXME: Associate relation (parts[1])
+			relationParts := strings.SplitN(parts[1], ".", 3)
+			if len(relationParts) == 3 {
+				logLine.SchemaName = relationParts[1]
+				logLine.RelationName = relationParts[2]
+			}
 
 			numIndexScans, _ := strconv.ParseInt(parts[2], 10, 64)
 			pagesRemoved, _ := strconv.ParseInt(parts[3], 10, 64)
@@ -373,7 +377,11 @@ func AnalyzeBackendLogLines(logLines []state.LogLine) (logLinesOut []state.LogLi
 		parts = regexp.MustCompile(`^automatic analyze of table "(.+?)" system usage: CPU ([\d.]+)s/([\d.]+)u sec elapsed ([\d.]+) sec`).FindStringSubmatch(logLine.Content)
 		if len(parts) == 5 {
 			logLine.Classification = pganalyze_collector.LogLineInformation_AUTOANALYZE_COMPLETED
-			// FIXME: Associate relation (parts[1])
+			relationParts := strings.SplitN(parts[1], ".", 3)
+			if len(relationParts) == 3 {
+				logLine.SchemaName = relationParts[1]
+				logLine.RelationName = relationParts[2]
+			}
 			rusageKernelMode, _ := strconv.ParseFloat(parts[2], 64)
 			rusageUserMode, _ := strconv.ParseFloat(parts[3], 64)
 			rusageElapsed, _ := strconv.ParseFloat(parts[4], 64)
@@ -472,17 +480,23 @@ func AnalyzeBackendLogLines(logLines []state.LogLine) (logLinesOut []state.LogLi
 		parts = regexp.MustCompile(`^duplicate key value violates unique constraint "(.+?)"`).FindStringSubmatch(logLine.Content)
 		if len(parts) == 2 {
 			logLine.Classification = pganalyze_collector.LogLineInformation_UNIQUE_CONSTRAINT_VIOLATION
-			// FIXME: Store constraint name
+			// TODO: Find schema and relation name
+			logLine.ConstraintName = parts[1]
 		}
 		parts = regexp.MustCompile(`^insert or update on table "(.+?)" violates foreign key constraint "(.+?)"`).FindStringSubmatch(logLine.Content)
 		if len(parts) == 3 {
 			logLine.Classification = pganalyze_collector.LogLineInformation_FOREIGN_KEY_CONSTRAINT_VIOLATION
-			// FIXME: Store constraint name and relation name
+			logLine.SchemaName = "public" // TODO: Find a way to determine this
+			logLine.RelationName = parts[1]
+			logLine.ConstraintName = parts[2]
 		}
 		parts = regexp.MustCompile(`^update or delete on table "(.+?)" violates foreign key constraint "(.+?)" on table "(.+?)"`).FindStringSubmatch(logLine.Content)
 		if len(parts) == 4 {
 			logLine.Classification = pganalyze_collector.LogLineInformation_FOREIGN_KEY_CONSTRAINT_VIOLATION
-			// FIXME: Store constraint name and both relation names
+			logLine.SchemaName = "public" // TODO: Find a way to determine this
+			logLine.RelationName = parts[1]
+			logLine.ConstraintName = parts[2]
+			logLine.Details = map[string]interface{}{"referenced_table_name": parts[3]}
 		}
 		parts = regexp.MustCompile(`^null value in column "(.+?)" violates not-null constraint`).FindStringSubmatch(logLine.Content)
 		if len(parts) == 2 {
@@ -491,27 +505,34 @@ func AnalyzeBackendLogLines(logLines []state.LogLine) (logLinesOut []state.LogLi
 		parts = regexp.MustCompile(`^new row for relation "(.+?)" violates check constraint "(.+?)"`).FindStringSubmatch(logLine.Content)
 		if len(parts) == 3 {
 			logLine.Classification = pganalyze_collector.LogLineInformation_CHECK_CONSTRAINT_VIOLATION
-			// FIXME: Store constraint name and relation name
+			logLine.SchemaName = "public" // TODO: Find a way to determine this
+			logLine.RelationName = parts[1]
+			logLine.ConstraintName = parts[2]
 		}
 		parts = regexp.MustCompile(`^check constraint "(.+?)" is violated by some row`).FindStringSubmatch(logLine.Content)
 		if len(parts) == 2 {
 			logLine.Classification = pganalyze_collector.LogLineInformation_CHECK_CONSTRAINT_VIOLATION
-			// FIXME: Store constraint name
+			// TODO: Find schema and relation name
+			logLine.ConstraintName = parts[1]
 		}
 		parts = regexp.MustCompile(`^column "(.+?)" of table "(.+?)" contains values that violate the new constraint`).FindStringSubmatch(logLine.Content)
 		if len(parts) == 3 {
 			logLine.Classification = pganalyze_collector.LogLineInformation_CHECK_CONSTRAINT_VIOLATION
-			// FIXME: Store relation name
+			logLine.SchemaName = "public" // TODO: Find a way to determine this
+			logLine.RelationName = parts[1]
 		}
 		parts = regexp.MustCompile(`^value for domain (.+?) violates check constraint "(.+?)"`).FindStringSubmatch(logLine.Content)
 		if len(parts) == 3 {
 			logLine.Classification = pganalyze_collector.LogLineInformation_CHECK_CONSTRAINT_VIOLATION
-			// FIXME: Store constraint name
+			// TODO: Find schema and relation name
+			logLine.ConstraintName = parts[2]
+			logLine.Details = map[string]interface{}{"domain": parts[1]}
 		}
 		parts = regexp.MustCompile(`^conflicting key value violates exclusion constraint "(.+?)"`).FindStringSubmatch(logLine.Content)
 		if len(parts) == 2 {
 			logLine.Classification = pganalyze_collector.LogLineInformation_EXCLUSION_CONSTRAINT_VIOLATION
-			// FIXME: Store constraint name
+			// TODO: Find schema and relation name
+			logLine.ConstraintName = parts[1]
 		}
 
 		//if logLine.Classification == pganalyze_collector.LogLineInformation_UNKNOWN_LOG_CLASSIFICATION {
