@@ -53,7 +53,6 @@ type TransientState struct {
 	ResetStatementStats PostgresStatementStatsMap
 
 	Replication PostgresReplication
-	Backends    []PostgresBackend
 	Settings    []PostgresSetting
 
 	Version PostgresVersion

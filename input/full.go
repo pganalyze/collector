@@ -40,12 +40,6 @@ func CollectFull(server state.Server, connection *sql.DB, collectionOpts state.C
 		return
 	}
 
-	ts.Backends, err = postgres.GetBackends(logger, connection, ts.Version)
-	if err != nil {
-		logger.PrintError("Error collecting pg_stat_activity")
-		return
-	}
-
 	ps.StatementTextCounter = server.PrevState.StatementTextCounter + 1
 	if ps.StatementTextCounter >= server.Grant.Config.Features.StatementTextFrequency { // Stats and statements
 		ps.StatementTextCounter = 0
