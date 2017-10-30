@@ -3,6 +3,7 @@ package rds
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/cloudwatchlogs"
@@ -55,8 +56,11 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger) (system sta
 	group := instance.DBParameterGroups[0]
 
 	pgssParam, _ := awsutil.GetRdsParameter(group, "shared_preload_libraries", rdsSvc)
-
-	system.Info.AmazonRds.ParameterPgssEnabled = pgssParam != nil && *pgssParam.ParameterValue == "pg_stat_statements"
+	if pgssParam != nil && pgssParam.ParameterValue != nil {
+		system.Info.AmazonRds.ParameterPgssEnabled = strings.Contains(*pgssParam.ParameterValue, "pg_stat_statements")
+	} else {
+		system.Info.AmazonRds.ParameterPgssEnabled = false
+	}
 	system.Info.AmazonRds.ParameterApplyStatus = *group.ParameterApplyStatus
 
 	dbInstanceID := *instance.DBInstanceIdentifier
