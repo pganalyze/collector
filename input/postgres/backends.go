@@ -13,7 +13,7 @@ const activitySQLpg94OptionalFields = "waiting, backend_xid, backend_xmin, NULL,
 const activitySQLpg96OptionalFields = "wait_event IS NOT NULL, backend_xid, backend_xmin, wait_event_type, wait_event, NULL"
 const activitySQLpg10OptionalFields = "wait_event IS NOT NULL, backend_xid, backend_xmin, wait_event_type, wait_event, backend_type"
 
-const activitySQL string = `SELECT (extract(epoch from COALESCE(backend_start, pg_postmaster_start_time()))::int::text || to_char(pid, 'FM00000'))::bigint,
+const activitySQL string = `SELECT (extract(epoch from COALESCE(backend_start, pg_postmaster_start_time()))::int::text || to_char(pid, 'FM000000'))::bigint,
 				datid, datname, usesysid, usename, pid, application_name, client_addr::text, client_port,
 				backend_start, xact_start, query_start, state_change, %s, state, query
 	 FROM %s
