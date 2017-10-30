@@ -9,8 +9,8 @@ import (
 )
 
 const vacuumProgressSQL string = `
-SELECT (extract(epoch from a.query_start)::int::text || to_char(pid, 'FM00000'))::bigint,
-			 (extract(epoch from COALESCE(backend_start, pg_postmaster_start_time()))::int::text || to_char(pid, 'FM00000'))::bigint,
+SELECT (extract(epoch from a.query_start)::int::text || to_char(pid, 'FM000000'))::bigint,
+			 (extract(epoch from COALESCE(backend_start, pg_postmaster_start_time()))::int::text || to_char(pid, 'FM000000'))::bigint,
 			 v.datname,
 			 n.nspname,
 			 c.relname,
