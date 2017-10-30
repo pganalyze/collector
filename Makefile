@@ -8,7 +8,6 @@ default: build test
 build: output/pganalyze_collector/snapshot.pb.go build_dist
 
 build_dist:
-	ulimit -n 2048 # https://github.com/golang/go/issues/21621
 	go build -o ${OUTFILE}
 	make -C helper OUTFILE=../pganalyze-collector-helper
 

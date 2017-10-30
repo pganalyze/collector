@@ -1,7 +1,7 @@
 FROM postgres:10
 
 ENV GOPATH /go
-ENV GOVERSION 1.9.1
+ENV GOVERSION 1.9.2
 ENV CODE_DIR $GOPATH/src/github.com/pganalyze/collector
 ENV PATH $PATH:/usr/local/go/bin
 
