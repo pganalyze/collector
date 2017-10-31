@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.10.0      2017-10-31
+
+* Update pg_query_go to Postgres 10 and fingerprint version 2
+  - This is a breaking change in collector output, as queries will now
+    be fingerprinted differently
+* Activity snapshots
+  - Use pg_stat_activity helper when it exists
+  - Track VACUUM progress in activity snapshots
+  - Activity data: Ignore backends that are not visible to the user
+  - Allow additional digits for PID in pg_stat_activity [Joseph Bylund](https://github.com/jbylund)
+* Don't collect backend data for full snapshot anymore, this is all delegated
+  to activity snapshots now
+* Update to Go 1.9.2
+* RDS pgss check: Add additional safety against nil pointer dereferences
+
+
 ## 0.9.17      2017-10-09
 
 * Logs: Fix regexp for 9.5 vacuum output (skip pins, but not skip frozen)
