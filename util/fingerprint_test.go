@@ -14,7 +14,7 @@ var fingerprintTests = []struct {
 }{
 	{
 		"SELECT 1",
-		"018e1acac181c6d28f4a923392cf1c4eda49ee4cd2",
+		"02a281c251c3a43d2fe7457dff01f76c5cc523f8c8",
 	},
 	{
 		"SELINVALID",
@@ -30,31 +30,31 @@ var fingerprintTests = []struct {
 	},
 	{
 		"DELETE FROM x WHERE \"id\" IN (?)",
-		"016df58609447fc943efc2d07800fb57aa912cdfb7",
+		"02a52764bd41f8f4ca6a399039553faee86d2e8c82",
 	},
 	{
 		"DELETE FROM x WHERE \"id\" IN (12450548, 12450547, 12450546, 124",
-		"016df58609447fc943efc2d07800fb57aa912cdfb7",
+		"02a52764bd41f8f4ca6a399039553faee86d2e8c82",
 	},
 	{
 		"DELETE FROM x WHERE \"id\" IN (15485697, 15485694, 15485693, 154",
-		"016df58609447fc943efc2d07800fb57aa912cdfb7",
+		"02a52764bd41f8f4ca6a399039553faee86d2e8c82",
 	},
 	{
 		"SELECT * FROM x WHERE y = ''",
-		"01789da74d0b82bf2fb200ece6016136e57259fcf5",
+		"02000980540197a51fb2e6736a28747cf6dbe52afd",
 	},
 	{
 		"SELECT * FROM x WHERE y = '",
-		"01789da74d0b82bf2fb200ece6016136e57259fcf5",
+		"02000980540197a51fb2e6736a28747cf6dbe52afd",
 	},
 	{
 		"SELECT * FROM x AS \"abc\"",
-		"01e03715d33b89af5262a23d33cea681c474d99acf",
+		"027a97a97ec7663a04add95792e3e9d71a6411ee31",
 	},
 	{
 		"SELECT * FROM x AS \"a",
-		"01e03715d33b89af5262a23d33cea681c474d99acf",
+		"027a97a97ec7663a04add95792e3e9d71a6411ee31",
 	},
 }
 
