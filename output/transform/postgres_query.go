@@ -50,8 +50,7 @@ func upsertQueryReferenceAndInformation(s *snapshot.FullSnapshot, roleOidToIdx O
 }
 
 func upsertQueryReferenceAndInformationSimple(refs []*snapshot.QueryReference, infos []*snapshot.QueryInformation, roleIdx int32, databaseIdx int32, originalQuery string) (int32, []*snapshot.QueryReference, []*snapshot.QueryInformation) {
-	normalizedQuery, _ := pg_query.Normalize(originalQuery)
-	fingerprint := util.FingerprintQuery(normalizedQuery)
+	fingerprint := util.FingerprintQuery(originalQuery)
 
 	newRef := snapshot.QueryReference{
 		DatabaseIdx: databaseIdx,
@@ -70,6 +69,10 @@ func upsertQueryReferenceAndInformationSimple(refs []*snapshot.QueryReference, i
 	refs = append(refs, &newRef)
 
 	// Information
+	normalizedQuery, err := pg_query.Normalize(originalQuery)
+	if err != nil {
+		normalizedQuery = "<truncated query>"
+	}
 	queryInformation := snapshot.QueryInformation{
 		QueryIdx:        idx,
 		NormalizedQuery: normalizedQuery,
