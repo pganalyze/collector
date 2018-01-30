@@ -1,18 +1,40 @@
 package logs
 
 import (
-  "fmt"
+	"fmt"
+
+	"github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
-  "github.com/pganalyze/collector/output/pganalyze_collector"
+	uuid "github.com/satori/go.uuid"
 )
 
-func PrintDebugInfo(logLines []state.LogLine, samples []state.PostgresQuerySample) {
-  fmt.Printf("log lines: %d, query samples: %d\n", len(logLines), len(samples))
-  groups := map[pganalyze_collector.LogLineInformation_LogClassification]int{}
-  for _, logLine := range logLines {
-    groups[logLine.Classification] += 1
-  }
-  for classification, count := range groups {
-    fmt.Printf("%d x %s\n", count, classification)
-  }
+func PrintDebugInfo(logFileContents string, logLines []state.LogLine, samples []state.PostgresQuerySample) {
+	fmt.Printf("log lines: %d, query samples: %d\n", len(logLines), len(samples))
+	groups := map[pganalyze_collector.LogLineInformation_LogClassification]int{}
+	unclassifiedLogLines := []state.LogLine{}
+	for _, logLine := range logLines {
+		if logLine.ParentUUID != uuid.Nil {
+			continue
+		}
+
+		groups[logLine.Classification] += 1
+
+		if logLine.Classification == pganalyze_collector.LogLineInformation_UNKNOWN_LOG_CLASSIFICATION {
+			unclassifiedLogLines = append(unclassifiedLogLines, logLine)
+		}
+	}
+
+	for classification, count := range groups {
+		fmt.Printf("%d x %s\n", count, classification)
+	}
+
+	if len(unclassifiedLogLines) > 0 {
+		fmt.Printf("\nUnclassified log lines:\n")
+		for _, logLine := range unclassifiedLogLines {
+			fmt.Printf("%s\n", logFileContents[logLine.ByteStart:logLine.ByteEnd])
+			fmt.Printf("  Level: %s\n", logLine.LogLevel)
+			fmt.Printf("  Content: %#v\n", logFileContents[logLine.ByteContentStart:logLine.ByteEnd])
+			fmt.Printf("---\n")
+		}
+	}
 }

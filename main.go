@@ -255,7 +255,7 @@ func main() {
 			return
 		}
 		logLines, samples, _ := logs.ParseAndAnalyzeBuffer(string(content), 0, time.Time{})
-		logs.PrintDebugInfo(logLines, samples)
+		logs.PrintDebugInfo(string(content), logLines, samples)
 		return
 	}
 

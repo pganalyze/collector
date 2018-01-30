@@ -64,6 +64,47 @@ var tests = []testpair{
 		}},
 		nil,
 	},
+	// Statement log
+	{
+		[]state.LogLine{{
+			Content:  "execute <unnamed>: SELECT $1, $2",
+			LogLevel: pganalyze_collector.LogLineInformation_LOG,
+			UUID:     uuid.UUID{1},
+		}, {
+			Content:  "parameters: $1 = '1', $2 = 't'",
+			LogLevel: pganalyze_collector.LogLineInformation_DETAIL,
+		}},
+		[]state.LogLine{{
+			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
+			Classification: pganalyze_collector.LogLineInformation_STATEMENT_LOG,
+			UUID:           uuid.UUID{1},
+			Query:          "SELECT $1, $2",
+		}, {
+			LogLevel:   pganalyze_collector.LogLineInformation_DETAIL,
+			ParentUUID: uuid.UUID{1},
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
+			Content:  "statement: EXECUTE x(1);",
+			LogLevel: pganalyze_collector.LogLineInformation_LOG,
+			UUID:     uuid.UUID{1},
+		}, {
+			Content:  "prepare: PREPARE x AS SELECT $1;",
+			LogLevel: pganalyze_collector.LogLineInformation_DETAIL,
+		}},
+		[]state.LogLine{{
+			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
+			Classification: pganalyze_collector.LogLineInformation_STATEMENT_LOG,
+			UUID:           uuid.UUID{1},
+			Query:          "EXECUTE x(1);",
+		}, {
+			LogLevel:   pganalyze_collector.LogLineInformation_DETAIL,
+			ParentUUID: uuid.UUID{1},
+		}},
+		nil,
+	},
 	// Connects/Disconnects
 	{
 		[]state.LogLine{{
@@ -118,7 +159,8 @@ var tests = []testpair{
 			Details:        map[string]interface{}{"session_time_secs": 6781.198},
 		}},
 		nil,
-	}, {
+	},
+	{
 		[]state.LogLine{{
 			Content: "incomplete startup packet",
 		}},
@@ -126,7 +168,8 @@ var tests = []testpair{
 			Classification: pganalyze_collector.LogLineInformation_CONNECTION_CLIENT_FAILED_TO_CONNECT,
 		}},
 		nil,
-	}, {
+	},
+	{
 		[]state.LogLine{{
 			Content: "could not receive data from client: Connection reset by peer",
 		}},
@@ -134,7 +177,8 @@ var tests = []testpair{
 			Classification: pganalyze_collector.LogLineInformation_CONNECTION_LOST,
 		}},
 		nil,
-	}, {
+	},
+	{
 		[]state.LogLine{{
 			Content: "could not send data to client: Broken pipe",
 		}},
@@ -142,7 +186,8 @@ var tests = []testpair{
 			Classification: pganalyze_collector.LogLineInformation_CONNECTION_LOST,
 		}},
 		nil,
-	}, {
+	},
+	{
 		[]state.LogLine{{
 			Content:  "terminating connection because protocol synchronization was lost",
 			LogLevel: pganalyze_collector.LogLineInformation_FATAL,
@@ -152,7 +197,8 @@ var tests = []testpair{
 			Classification: pganalyze_collector.LogLineInformation_CONNECTION_LOST,
 		}},
 		nil,
-	}, {
+	},
+	{
 		[]state.LogLine{{
 			Content:  "connection to client lost",
 			LogLevel: pganalyze_collector.LogLineInformation_FATAL,
@@ -162,7 +208,8 @@ var tests = []testpair{
 			LogLevel:       pganalyze_collector.LogLineInformation_FATAL,
 		}},
 		nil,
-	}, {
+	},
+	{
 		[]state.LogLine{{
 			Content: "unexpected EOF on client connection",
 		}},
@@ -170,7 +217,19 @@ var tests = []testpair{
 			Classification: pganalyze_collector.LogLineInformation_CONNECTION_LOST,
 		}},
 		nil,
-	}, {
+	},
+	{
+		[]state.LogLine{{
+			Content:  "terminating connection due to administrator command",
+			LogLevel: pganalyze_collector.LogLineInformation_FATAL,
+		}},
+		[]state.LogLine{{
+			LogLevel:       pganalyze_collector.LogLineInformation_FATAL,
+			Classification: pganalyze_collector.LogLineInformation_CONNECTION_TERMINATED,
+		}},
+		nil,
+	},
+	{
 		[]state.LogLine{{
 			Content:  "unexpected EOF on client connection with an open transaction",
 			LogLevel: pganalyze_collector.LogLineInformation_LOG,
@@ -180,7 +239,8 @@ var tests = []testpair{
 			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
 		}},
 		nil,
-	}, {
+	},
+	{
 		[]state.LogLine{{
 			Content:  "remaining connection slots are reserved for non-replication superuser connections",
 			LogLevel: pganalyze_collector.LogLineInformation_FATAL,
@@ -190,7 +250,8 @@ var tests = []testpair{
 			Classification: pganalyze_collector.LogLineInformation_OUT_OF_CONNECTIONS,
 		}},
 		nil,
-	}, {
+	},
+	{
 		[]state.LogLine{{
 			Content:  "too many connections for role \"postgres\"",
 			LogLevel: pganalyze_collector.LogLineInformation_FATAL,
@@ -200,14 +261,58 @@ var tests = []testpair{
 			Classification: pganalyze_collector.LogLineInformation_TOO_MANY_CONNECTIONS_ROLE,
 		}},
 		nil,
-	}, {
+	},
+	{
 		[]state.LogLine{{
-			Content:  "terminating connection due to administrator command",
+			Content:  "could not accept SSL connection: EOF detected",
+			LogLevel: pganalyze_collector.LogLineInformation_LOG,
+		}, {
+			Content:  "could not accept SSL connection: Connection reset by peer",
+			LogLevel: pganalyze_collector.LogLineInformation_LOG,
+		}},
+		[]state.LogLine{{
+			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
+			Classification: pganalyze_collector.LogLineInformation_COULD_NOT_ACCEPT_SSL_CONNECTION,
+		}, {
+			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
+			Classification: pganalyze_collector.LogLineInformation_COULD_NOT_ACCEPT_SSL_CONNECTION,
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
+			Content:  "unsupported frontend protocol 65363.12345: server supports 1.0 to 3.0",
 			LogLevel: pganalyze_collector.LogLineInformation_FATAL,
 		}},
 		[]state.LogLine{{
 			LogLevel:       pganalyze_collector.LogLineInformation_FATAL,
-			Classification: pganalyze_collector.LogLineInformation_CONNECTION_TERMINATED,
+			Classification: pganalyze_collector.LogLineInformation_PROTOCOL_ERROR_UNSUPPORTED_VERSION,
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
+			Content:  "incomplete message from client",
+			LogLevel: pganalyze_collector.LogLineInformation_LOG,
+			UUID:     uuid.UUID{1},
+		}, {
+			Content:  "COPY \"abc\" (\"x\") FROM STDIN BINARY",
+			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
+		}, {
+			Content:  "COPY abc, line 1234, column x",
+			LogLevel: pganalyze_collector.LogLineInformation_CONTEXT,
+		}},
+		[]state.LogLine{{
+			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
+			Classification: pganalyze_collector.LogLineInformation_PROTOCOL_ERROR_INCOMPLETE_MESSAGE,
+			Query:          "COPY \"abc\" (\"x\") FROM STDIN BINARY",
+			UUID:           uuid.UUID{1},
+		}, {
+			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
+			ParentUUID: uuid.UUID{1},
+		}, {
+			LogLevel:   pganalyze_collector.LogLineInformation_CONTEXT,
+			ParentUUID: uuid.UUID{1},
 		}},
 		nil,
 	},
@@ -374,6 +479,22 @@ var tests = []testpair{
 				"after_ms":  1129279.295,
 				"lock_mode": "ExclusiveLock",
 				"lock_type": "tuple",
+			},
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
+			Content:  "process 21813 acquired ExclusiveLock on extension of relation 419652 of database 16400 after 1003.994 ms",
+			LogLevel: pganalyze_collector.LogLineInformation_LOG,
+		}},
+		[]state.LogLine{{
+			Classification: pganalyze_collector.LogLineInformation_LOCK_ACQUIRED,
+			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
+			Details: map[string]interface{}{
+				"after_ms":  1003.994,
+				"lock_mode": "ExclusiveLock",
+				"lock_type": "extension",
 			},
 		}},
 		nil,
@@ -975,9 +1096,13 @@ var tests = []testpair{
 		}, {
 			Content: "shutting down",
 		}, {
+			Content: "the database system is shutting down",
+		}, {
 			Content: "database system is shut down",
 		}},
 		[]state.LogLine{{
+			Classification: pganalyze_collector.LogLineInformation_SERVER_SHUTDOWN,
+		}, {
 			Classification: pganalyze_collector.LogLineInformation_SERVER_SHUTDOWN,
 		}, {
 			Classification: pganalyze_collector.LogLineInformation_SERVER_SHUTDOWN,
@@ -1369,6 +1494,634 @@ var tests = []testpair{
 		}, {
 			LogLevel:   pganalyze_collector.LogLineInformation_DETAIL,
 			ParentUUID: uuid.UUID{1},
+		}, {
+			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
+			ParentUUID: uuid.UUID{1},
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
+			Content:  "syntax error at or near \"WHERE\" at character 26",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+			UUID:     uuid.UUID{1},
+		}, {
+			Content:  "SELECT * FROM abc LIMIT 2 WHERE id=1",
+			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
+		}},
+		[]state.LogLine{{
+			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
+			Classification: pganalyze_collector.LogLineInformation_SYNTAX_ERROR,
+			UUID:           uuid.UUID{1},
+			Query:          "SELECT * FROM abc LIMIT 2 WHERE id=1",
+		}, {
+			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
+			ParentUUID: uuid.UUID{1},
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
+			Content:  "syntax error at end of input",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+			UUID:     uuid.UUID{1},
+		}, {
+			Content:  "SELECT * FROM (SELECT 1",
+			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
+		}},
+		[]state.LogLine{{
+			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
+			Classification: pganalyze_collector.LogLineInformation_SYNTAX_ERROR,
+			UUID:           uuid.UUID{1},
+			Query:          "SELECT * FROM (SELECT 1",
+		}, {
+			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
+			ParentUUID: uuid.UUID{1},
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
+			Content:  "invalid input syntax for integer: \"\" at character 40",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+			UUID:     uuid.UUID{1},
+		}, {
+			Content:  "SELECT * FROM table WHERE int_column = ''",
+			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
+		}},
+		[]state.LogLine{{
+			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
+			Classification: pganalyze_collector.LogLineInformation_INVALID_INPUT_SYNTAX,
+			UUID:           uuid.UUID{1},
+			Query:          "SELECT * FROM table WHERE int_column = ''",
+		}, {
+			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
+			ParentUUID: uuid.UUID{1},
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
+			Content:  "value too long for type character varying(3)",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+			UUID:     uuid.UUID{1},
+		}, {
+			Content:  "INSERT INTO x(y) VALUES ('zzzzz')",
+			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
+		}},
+		[]state.LogLine{{
+			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
+			Classification: pganalyze_collector.LogLineInformation_VALUE_TOO_LONG_FOR_TYPE,
+			UUID:           uuid.UUID{1},
+			Query:          "INSERT INTO x(y) VALUES ('zzzzz')",
+		}, {
+			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
+			ParentUUID: uuid.UUID{1},
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
+			Content:  "invalid value \"string\" for \"YYYY\"",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+			UUID:     uuid.UUID{1},
+		}, {
+			Content:  "Value must be an integer.",
+			LogLevel: pganalyze_collector.LogLineInformation_DETAIL,
+		}, {
+			Content:  "SELECT to_timestamp($1, 'YYYY-mm-DD')",
+			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
+		}},
+		[]state.LogLine{{
+			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
+			Classification: pganalyze_collector.LogLineInformation_INVALID_VALUE,
+			UUID:           uuid.UUID{1},
+			Query:          "SELECT to_timestamp($1, 'YYYY-mm-DD')",
+		}, {
+			LogLevel:   pganalyze_collector.LogLineInformation_DETAIL,
+			ParentUUID: uuid.UUID{1},
+		}, {
+			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
+			ParentUUID: uuid.UUID{1},
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
+			Content:  "malformed array literal: \"a, b\" at character 33",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+			UUID:     uuid.UUID{1},
+		}, {
+			Content:  "Array value must start with \"{\" or dimension information.",
+			LogLevel: pganalyze_collector.LogLineInformation_DETAIL,
+		}, {
+			Content:  "SELECT * FROM x WHERE id = ANY ('a, b')",
+			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
+		}},
+		[]state.LogLine{{
+			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
+			Classification: pganalyze_collector.LogLineInformation_MALFORMED_ARRAY_LITERAL,
+			UUID:           uuid.UUID{1},
+			Query:          "SELECT * FROM x WHERE id = ANY ('a, b')",
+		}, {
+			LogLevel:   pganalyze_collector.LogLineInformation_DETAIL,
+			ParentUUID: uuid.UUID{1},
+		}, {
+			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
+			ParentUUID: uuid.UUID{1},
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
+			Content:  "subquery in FROM must have an alias at character 15",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+			UUID:     uuid.UUID{1},
+		}, {
+			Content:  "For example, FROM (SELECT ...) [AS] foo.",
+			LogLevel: pganalyze_collector.LogLineInformation_HINT,
+		}, {
+			Content:  "SELECT * FROM (SELECT 1)",
+			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
+		}},
+		[]state.LogLine{{
+			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
+			Classification: pganalyze_collector.LogLineInformation_SUBQUERY_MISSING_ALIAS,
+			UUID:           uuid.UUID{1},
+			Query:          "SELECT * FROM (SELECT 1)",
+		}, {
+			LogLevel:   pganalyze_collector.LogLineInformation_HINT,
+			ParentUUID: uuid.UUID{1},
+		}, {
+			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
+			ParentUUID: uuid.UUID{1},
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
+			Content:  "INSERT has more expressions than target columns at character 341",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+			UUID:     uuid.UUID{1},
+		}, {
+			Content:  "INSERT INTO x(y) VALUES (1, 2)",
+			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
+		}},
+		[]state.LogLine{{
+			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
+			Classification: pganalyze_collector.LogLineInformation_INSERT_TARGET_COLUMN_MISMATCH,
+			UUID:           uuid.UUID{1},
+			Query:          "INSERT INTO x(y) VALUES (1, 2)",
+		}, {
+			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
+			ParentUUID: uuid.UUID{1},
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
+			Content:  "op ANY/ALL (array) requires array on right side at character 33",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+			UUID:     uuid.UUID{1},
+		}, {
+			Content:  "SELECT * FROM x WHERE id = ANY ($1)",
+			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
+		}},
+		[]state.LogLine{{
+			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
+			Classification: pganalyze_collector.LogLineInformation_ANY_ALL_REQUIRES_ARRAY,
+			UUID:           uuid.UUID{1},
+			Query:          "SELECT * FROM x WHERE id = ANY ($1)",
+		}, {
+			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
+			ParentUUID: uuid.UUID{1},
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
+			Content:  "column \"abc.def\" must appear in the GROUP BY clause or be used in an aggregate function at character 8",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+			UUID:     uuid.UUID{1},
+		}, {
+			Content:  "SELECT def, MAX(def) FROM abc",
+			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
+		}},
+		[]state.LogLine{{
+			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
+			Classification: pganalyze_collector.LogLineInformation_COLUMN_MISSING_FROM_GROUP_BY,
+			UUID:           uuid.UUID{1},
+			Query:          "SELECT def, MAX(def) FROM abc",
+		}, {
+			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
+			ParentUUID: uuid.UUID{1},
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
+			Content:  "relation \"x\" does not exist at character 15",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+			UUID:     uuid.UUID{1},
+		}, {
+			Content:  "SELECT * FROM x",
+			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
+		}},
+		[]state.LogLine{{
+			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
+			Classification: pganalyze_collector.LogLineInformation_RELATION_DOES_NOT_EXIST,
+			UUID:           uuid.UUID{1},
+			Query:          "SELECT * FROM x",
+		}, {
+			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
+			ParentUUID: uuid.UUID{1},
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
+			Content:  "column \"y\" does not exist at character 8",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+			UUID:     uuid.UUID{1},
+		}, {
+			Content:  "SELECT y FROM x",
+			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
+		}},
+		[]state.LogLine{{
+			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
+			Classification: pganalyze_collector.LogLineInformation_COLUMN_DOES_NOT_EXIST,
+			UUID:           uuid.UUID{1},
+			Query:          "SELECT y FROM x",
+		}, {
+			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
+			ParentUUID: uuid.UUID{1},
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
+			Content:  "column \"y\" of relation \"x\" does not exist",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+			UUID:     uuid.UUID{1},
+		}, {
+			Content:  "ALTER TABLE x DROP COLUMN y;",
+			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
+		}},
+		[]state.LogLine{{
+			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
+			Classification: pganalyze_collector.LogLineInformation_COLUMN_DOES_NOT_EXIST,
+			UUID:           uuid.UUID{1},
+			Query:          "ALTER TABLE x DROP COLUMN y;",
+		}, {
+			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
+			ParentUUID: uuid.UUID{1},
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
+			Content:  "column reference \"z\" is ambiguous at character 8",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+			UUID:     uuid.UUID{1},
+		}, {
+			Content:  "SELECT z FROM x, y",
+			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
+		}},
+		[]state.LogLine{{
+			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
+			Classification: pganalyze_collector.LogLineInformation_COLUMN_REFERENCE_AMBIGUOUS,
+			UUID:           uuid.UUID{1},
+			Query:          "SELECT z FROM x, y",
+		}, {
+			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
+			ParentUUID: uuid.UUID{1},
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
+			Content:  "operator does not exist: boolean || boolean at character 13",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+			UUID:     uuid.UUID{1},
+		}, {
+			Content:  "No operator matches the given name and argument type(s). You might need to add explicit type casts.",
+			LogLevel: pganalyze_collector.LogLineInformation_HINT,
+		}, {
+			Content:  "SELECT true || true",
+			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
+		}},
+		[]state.LogLine{{
+			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
+			Classification: pganalyze_collector.LogLineInformation_OPERATOR_DOES_NOT_EXIST,
+			UUID:           uuid.UUID{1},
+			Query:          "SELECT true || true",
+		}, {
+			LogLevel:   pganalyze_collector.LogLineInformation_HINT,
+			ParentUUID: uuid.UUID{1},
+		}, {
+			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
+			ParentUUID: uuid.UUID{1},
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
+			Content:  "function x(integer) does not exist at character 8",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+			UUID:     uuid.UUID{1},
+		}, {
+			Content:  "No function matches the given name and argument types. You might need to add explicit type casts.",
+			LogLevel: pganalyze_collector.LogLineInformation_HINT,
+		}, {
+			Content:  "SELECT x(1);",
+			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
+		}},
+		[]state.LogLine{{
+			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
+			Classification: pganalyze_collector.LogLineInformation_FUNCTION_DOES_NOT_EXIST,
+			UUID:           uuid.UUID{1},
+			Query:          "SELECT x(1);",
+		}, {
+			LogLevel:   pganalyze_collector.LogLineInformation_HINT,
+			ParentUUID: uuid.UUID{1},
+		}, {
+			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
+			ParentUUID: uuid.UUID{1},
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
+			Content:  "permission denied for schema my_schema at character 25",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+			UUID:     uuid.UUID{1},
+		}, {
+			Content:  "SELECT * FROM my_schema.table",
+			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
+		}},
+		[]state.LogLine{{
+			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
+			Classification: pganalyze_collector.LogLineInformation_PERMISSION_DENIED,
+			UUID:           uuid.UUID{1},
+			Query:          "SELECT * FROM my_schema.table",
+		}, {
+			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
+			ParentUUID: uuid.UUID{1},
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
+			Content:  "current transaction is aborted, commands ignored until end of transaction block",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+			UUID:     uuid.UUID{1},
+		}, {
+			Content:  "SELECT 1",
+			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
+		}},
+		[]state.LogLine{{
+			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
+			Classification: pganalyze_collector.LogLineInformation_TRANSACTION_IS_ABORTED,
+			UUID:           uuid.UUID{1},
+			Query:          "SELECT 1",
+		}, {
+			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
+			ParentUUID: uuid.UUID{1},
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
+			Content:  "there is no unique or exclusion constraint matching the ON CONFLICT specification",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+			UUID:     uuid.UUID{1},
+		}, {
+			Content:  "INSERT INTO x (y, z) VALUES ('a', 1) ON CONFLICT (y) DO UPDATE SET z = EXCLUDED.z",
+			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
+		}},
+		[]state.LogLine{{
+			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
+			Classification: pganalyze_collector.LogLineInformation_ON_CONFLICT_NO_CONSTRAINT_MATCH,
+			UUID:           uuid.UUID{1},
+			Query:          "INSERT INTO x (y, z) VALUES ('a', 1) ON CONFLICT (y) DO UPDATE SET z = EXCLUDED.z",
+		}, {
+			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
+			ParentUUID: uuid.UUID{1},
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
+			Content:  "ON CONFLICT DO UPDATE command cannot affect row a second time",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+			UUID:     uuid.UUID{1},
+		}, {
+			Content:  "INSERT INTO x (y, z) VALUES ('a', 1), ('a', 2) ON CONFLICT (y) DO UPDATE SET z = EXCLUDED.z",
+			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
+		}, {
+			Content:  "Ensure that no rows proposed for insertion within the same command have duplicate constrained values.",
+			LogLevel: pganalyze_collector.LogLineInformation_HINT,
+		}},
+		[]state.LogLine{{
+			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
+			Classification: pganalyze_collector.LogLineInformation_ON_CONFLICT_ROW_AFFECTED_TWICE,
+			UUID:           uuid.UUID{1},
+			Query:          "INSERT INTO x (y, z) VALUES ('a', 1), ('a', 2) ON CONFLICT (y) DO UPDATE SET z = EXCLUDED.z",
+		}, {
+			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
+			ParentUUID: uuid.UUID{1},
+		}, {
+			LogLevel:   pganalyze_collector.LogLineInformation_HINT,
+			ParentUUID: uuid.UUID{1},
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
+			Content:  "column \"abc\" cannot be cast to type \"date\"",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+			UUID:     uuid.UUID{1},
+		}, {
+			Content:  "SELECT abc::date FROM x",
+			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
+		}},
+		[]state.LogLine{{
+			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
+			Classification: pganalyze_collector.LogLineInformation_COLUMN_CANNOT_BE_CAST,
+			UUID:           uuid.UUID{1},
+			Query:          "SELECT abc::date FROM x",
+		}, {
+			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
+			ParentUUID: uuid.UUID{1},
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
+			Content:  "division by zero",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+			UUID:     uuid.UUID{1},
+		}, {
+			Content:  "SELECT 1/0",
+			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
+		}},
+		[]state.LogLine{{
+			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
+			Classification: pganalyze_collector.LogLineInformation_DIVISION_BY_ZERO,
+			UUID:           uuid.UUID{1},
+			Query:          "SELECT 1/0",
+		}, {
+			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
+			ParentUUID: uuid.UUID{1},
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
+			Content:  "cannot drop table x because other objects depend on it",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+			UUID:     uuid.UUID{1},
+		}, {
+			Content:  "view a depends on table x",
+			LogLevel: pganalyze_collector.LogLineInformation_DETAIL,
+		}, {
+			Content:  "Use DROP ... CASCADE to drop the dependent objects too.",
+			LogLevel: pganalyze_collector.LogLineInformation_HINT,
+		}, {
+			Content:  "DROP TABLE x",
+			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
+		}},
+		[]state.LogLine{{
+			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
+			Classification: pganalyze_collector.LogLineInformation_CANNOT_DROP,
+			UUID:           uuid.UUID{1},
+			Query:          "DROP TABLE x",
+		}, {
+			LogLevel:   pganalyze_collector.LogLineInformation_DETAIL,
+			ParentUUID: uuid.UUID{1},
+		}, {
+			LogLevel:   pganalyze_collector.LogLineInformation_HINT,
+			ParentUUID: uuid.UUID{1},
+		}, {
+			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
+			ParentUUID: uuid.UUID{1},
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
+			Content:  "integer out of range",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+			UUID:     uuid.UUID{1},
+		}, {
+			Content:  "INSERT INTO x(y) VALUES (10000000000000)",
+			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
+		}},
+		[]state.LogLine{{
+			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
+			Classification: pganalyze_collector.LogLineInformation_INTEGER_OUT_OF_RANGE,
+			UUID:           uuid.UUID{1},
+			Query:          "INSERT INTO x(y) VALUES (10000000000000)",
+		}, {
+			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
+			ParentUUID: uuid.UUID{1},
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
+			Content:  "invalid regular expression: quantifier operand invalid",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+			UUID:     uuid.UUID{1},
+		}, {
+			Content:  "SELECT regexp_replace('test', '<(?i:test)', '');",
+			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
+		}},
+		[]state.LogLine{{
+			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
+			Classification: pganalyze_collector.LogLineInformation_INVALID_REGEXP,
+			UUID:           uuid.UUID{1},
+			Query:          "SELECT regexp_replace('test', '<(?i:test)', '');",
+		}, {
+			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
+			ParentUUID: uuid.UUID{1},
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
+			Content:  "there is no parameter $1 at character 8",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+			UUID:     uuid.UUID{1},
+		}, {
+			Content:  "SELECT $1;",
+			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
+		}},
+		[]state.LogLine{{
+			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
+			Classification: pganalyze_collector.LogLineInformation_PARAM_MISSING,
+			UUID:           uuid.UUID{1},
+			Query:          "SELECT $1;",
+		}, {
+			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
+			ParentUUID: uuid.UUID{1},
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
+			Content:  "no such savepoint",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+			UUID:     uuid.UUID{1},
+		}, {
+			Content:  "ROLLBACK TO x",
+			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
+		}},
+		[]state.LogLine{{
+			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
+			Classification: pganalyze_collector.LogLineInformation_NO_SUCH_SAVEPOINT,
+			UUID:           uuid.UUID{1},
+			Query:          "ROLLBACK TO x",
+		}, {
+			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
+			ParentUUID: uuid.UUID{1},
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
+			Content:  "unterminated quoted string at or near \"some string",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+			UUID:     uuid.UUID{1},
+		}, {
+			Content:  "SELECT 1",
+			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
+		}},
+		[]state.LogLine{{
+			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
+			Classification: pganalyze_collector.LogLineInformation_UNTERMINATED_QUOTED_STRING,
+			UUID:           uuid.UUID{1},
+			Query:          "SELECT 1",
+		}, {
+			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
+			ParentUUID: uuid.UUID{1},
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
+			Content:  "unterminated quoted identifier at or near \"\"1\" at character 8",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+			UUID:     uuid.UUID{1},
+		}, {
+			Content:  "SELECT \"1",
+			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
+		}},
+		[]state.LogLine{{
+			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
+			Classification: pganalyze_collector.LogLineInformation_UNTERMINATED_QUOTED_IDENTIFIER,
+			UUID:           uuid.UUID{1},
+			Query:          "SELECT \"1",
 		}, {
 			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
 			ParentUUID: uuid.UUID{1},
