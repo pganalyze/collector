@@ -1,18 +1,13 @@
 package rds
 
 import (
-	"bufio"
-	"io"
 	"io/ioutil"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/rds"
 	"github.com/pganalyze/collector/config"
 	"github.com/pganalyze/collector/input/system/logs"
-	"github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
 	"github.com/pganalyze/collector/util/awsutil"
@@ -82,84 +77,15 @@ func GetLogFiles(config config.ServerConfig, logger *util.Logger) (result []stat
 				break
 			}
 
-			var logLines []state.LogLine
-
 			_, err = logFile.TmpFile.WriteString(*resp.LogFileData)
 			if err != nil {
 				logger.PrintError("%s", err)
 				break
 			}
 
-			reader := bufio.NewReader(strings.NewReader(*resp.LogFileData))
-			for {
-				line, err := reader.ReadString('\n')
-				if err == io.EOF {
-					break
-				}
-
-				byteStart := currentByteStart
-				currentByteStart += int64(len(line))
-
-				if err != nil {
-					logger.PrintError("%s", err)
-					break
-				}
-
-				var logLine state.LogLine
-
-				// log_line_prefix is always "%t:%r:%u@%d:[%p]:" on RDS
-				parts := strings.SplitN(line, ":", 8)
-				if len(parts) != 8 {
-					if len(logLines) > 0 {
-						logLines[len(logLines)-1].Content += line
-						logLines[len(logLines)-1].ByteEnd += int64(len(line))
-					}
-					continue
-				}
-
-				timestamp, err := time.Parse("2006-01-02 15:04:05 MST", parts[0]+":"+parts[1]+":"+parts[2])
-				if err != nil {
-					if len(logLines) > 0 {
-						logLines[len(logLines)-1].Content += line
-						logLines[len(logLines)-1].ByteEnd += int64(len(line))
-					}
-					continue
-				}
-
-				// Ignore loglines which are outside our time window
-				if timestamp.Before(linesNewerThan) {
-					continue
-				}
-
-				userDbParts := strings.SplitN(parts[4], "@", 2)
-				if len(userDbParts) == 2 {
-					logLine.Username = userDbParts[0]
-					logLine.Database = userDbParts[1]
-				}
-				if logLine.Username == "[unknown]" {
-					logLine.Username = ""
-				}
-				if logLine.Database == "[unknown]" {
-					logLine.Database = ""
-				}
-
-				logLine.OccurredAt = timestamp
-				backendPid, _ := strconv.Atoi(parts[5][1 : len(parts[5])-1])
-				logLine.BackendPid = int32(backendPid)
-				logLine.LogLevel = pganalyze_collector.LogLineInformation_LogLevel(pganalyze_collector.LogLineInformation_LogLevel_value[parts[6]])
-				logLine.Content = strings.TrimLeft(parts[7], " ")
-
-				logLine.ByteStart = byteStart
-				logLine.ByteContentStart = byteStart + int64(len(line)-len(logLine.Content))
-				logLine.ByteEnd = byteStart + int64(len(line)) - 1
-
-				// Generate unique ID that can be used to reference this line
-				logLine.UUID = uuid.NewV4()
-
-				logLines = append(logLines, logLine)
-			}
-
-			newLogLines, newSamples := logs.AnalyzeLogLines(logLines)
+			var newLogLines []state.LogLine
+			var newSamples []state.PostgresQuerySample
+			newLogLines, newSamples, currentByteStart = logs.ParseAndAnalyzeBuffer(*resp.LogFileData, currentByteStart, linesNewerThan)
 			logFile.LogLines = append(logFile.LogLines, newLogLines...)
 			samples = append(samples, newSamples...)
 

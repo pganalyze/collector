@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/juju/syslog"
 
@@ -19,6 +20,7 @@ import (
 
 	"github.com/pganalyze/collector/config"
 	"github.com/pganalyze/collector/input/system/heroku"
+	"github.com/pganalyze/collector/input/system/logs"
 	"github.com/pganalyze/collector/runner"
 	"github.com/pganalyze/collector/scheduler"
 	"github.com/pganalyze/collector/state"
@@ -126,6 +128,7 @@ func main() {
 	var showVersion bool
 	var dryRun bool
 	var dryRunLogs bool
+	var analyzeLogfile string
 	var testRun bool
 	var testReport string
 	var forceStateUpdate bool
@@ -152,6 +155,7 @@ func main() {
 	flag.BoolVar(&logNoTimestamps, "no-log-timestamps", false, "Disable timestamps in the log output (automatically done when syslog is enabled)")
 	flag.BoolVar(&dryRun, "dry-run", false, "Print JSON data that would get sent to web service (without actually sending) and exit afterwards")
 	flag.BoolVar(&dryRunLogs, "dry-run-logs", false, "Print JSON data for log snapshot (without actually sending) and exit afterwards")
+	flag.StringVar(&analyzeLogfile, "analyze-logfile", "", "Analyzes the content of the given log file and returns debug output about it")
 	flag.BoolVar(&forceStateUpdate, "force-state-update", false, "Updates the state file even if other options would have prevented it (intended to be used together with --dry-run for debugging)")
 	flag.BoolVar(&noPostgresRelations, "no-postgres-relations", false, "Don't collect any Postgres relation information (not recommended)")
 	flag.BoolVar(&noPostgresSettings, "no-postgres-settings", false, "Don't collect Postgres configuration settings")
@@ -242,6 +246,17 @@ func main() {
 		globalCollectionOpts.CollectorApplicationName = "pganalyze_test_run"
 	} else {
 		globalCollectionOpts.CollectorApplicationName = "pganalyze_collector"
+	}
+
+	if analyzeLogfile != "" {
+		content, err := ioutil.ReadFile(analyzeLogfile)
+		if err != nil {
+			fmt.Printf("ERROR: %s\n", err)
+			return
+		}
+		logLines, samples, _ := logs.ParseAndAnalyzeBuffer(string(content), 0, time.Time{})
+		logs.PrintDebugInfo(logLines, samples)
+		return
 	}
 
 	if testRunAndTrace {
