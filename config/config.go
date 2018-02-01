@@ -65,6 +65,10 @@ type ServerConfig struct {
 	SystemID    string `ini:"api_system_id"`
 	SystemType  string `ini:"api_system_type"`
 	SystemScope string `ini:"api_system_scope"`
+
+	// Configures the location where logfiles are - this can either be a directory,
+	// or a file - needs to readable by the regular pganalyze user
+	LogLocation string `ini:"db_log_location"`
 }
 
 // GetPqOpenString - Gets the database configuration as a string that can be passed to lib/pq for connecting

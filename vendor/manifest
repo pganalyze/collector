@@ -34,6 +34,14 @@
 			"notests": true
 		},
 		{
+			"importpath": "github.com/fsnotify/fsnotify",
+			"repository": "https://github.com/fsnotify/fsnotify",
+			"vcs": "git",
+			"revision": "c2828203cd70a50dcccfb2761f8b1f8ceef9a8e9",
+			"branch": "master",
+			"notests": true
+		},
+		{
 			"importpath": "github.com/gedex/inflector",
 			"repository": "https://github.com/gedex/inflector",
 			"vcs": "git",
@@ -120,6 +128,14 @@
 			"vcs": "git",
 			"revision": "41961cea0328defc5f95c1c473f89ebf0d1813f6",
 			"branch": "HEAD",
+			"notests": true
+		},
+		{
+			"importpath": "github.com/hpcloud/tail",
+			"repository": "https://github.com/hpcloud/tail",
+			"vcs": "git",
+			"revision": "37f4271387456dd1bf82ab1ad9229f060cc45386",
+			"branch": "master",
 			"notests": true
 		},
 		{
@@ -328,6 +344,15 @@
 			"revision": "3797cd8864994d713d909eda5e61ede8683fdc12",
 			"branch": "master",
 			"path": "/context",
+			"notests": true
+		},
+		{
+			"importpath": "golang.org/x/sys/unix",
+			"repository": "https://go.googlesource.com/sys",
+			"vcs": "git",
+			"revision": "3dbebcf8efb6a5011a60c2b4591c1022a759af8a",
+			"branch": "master",
+			"path": "/unix",
 			"notests": true
 		}
 	]

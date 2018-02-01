@@ -103,6 +103,7 @@ type CollectionOpts struct {
 	TestRun             bool
 	TestReport          string
 	TestRunLogs         bool
+	DebugLogs           bool
 
 	StateFilename    string
 	WriteStateUpdate bool

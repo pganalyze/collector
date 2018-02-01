@@ -2,7 +2,6 @@ package heroku
 
 import (
 	"fmt"
-	"io/ioutil"
 	"regexp"
 	"strconv"
 	"strings"
@@ -204,108 +203,21 @@ func logReceiver(servers []state.Server, in <-chan config.HerokuLogStreamItem, g
 			logLinesByName[sourceName] = append(logLinesByName[sourceName], *newLogLine)
 		}
 
-		// Submit all logLines that are older than 3 seconds
-		var now time.Time
-		now = time.Now()
 		for sourceName, logLines := range logLinesByName {
-			var readyLogLines []state.LogLine
-			var tooFreshLogLines []state.LogLine
-			var server state.Server
-			var exists bool
-
-			server, exists = nameToServer[sourceName]
+			server, exists := nameToServer[sourceName]
 			if !exists {
 				logger.PrintInfo("Ignoring log line since server can't be matched yet - if this keeps showing up you have a configuration error for %s", sourceName)
 				logLinesByName[sourceName] = []state.LogLine{}
 				continue
 			}
 
-			prefixedLogger := logger.WithPrefix(server.Config.SectionName)
-
-			// Setup temporary file that will be used for encryption
-			var logFile state.LogFile
-			var err error
-			logFile.UUID = uuid.NewV4()
-			logFile.TmpFile, err = ioutil.TempFile("", "")
-			if err != nil {
-				prefixedLogger.PrintError("Could not allocate tempfile for logs: %s", err)
-				continue
-			}
-
-			logState := state.LogState{CollectedAt: time.Now()}
-			defer logState.Cleanup()
-
-			currentByteStart := int64(0)
 			for _, logLine := range logLines {
-				if now.Sub(logLine.CollectedAt) > 3*time.Second {
-					logLine.Username = server.Config.GetDbUsername()
-					logLine.Database = server.Config.GetDbName()
-
-					_, err = logFile.TmpFile.WriteString(logLine.Content)
-					if err != nil {
-						prefixedLogger.PrintError("%s", err)
-						break
-					}
-					logLine.ByteStart = currentByteStart
-					logLine.ByteContentStart = currentByteStart
-					logLine.ByteEnd = currentByteStart + int64(len(logLine.Content)) - 1
-					currentByteStart += int64(len(logLine.Content))
-
-					readyLogLines = append(readyLogLines, logLine)
-				} else {
-					tooFreshLogLines = append(tooFreshLogLines, logLine)
-				}
+				logLine.Username = server.Config.GetDbUsername()
+				logLine.Database = server.Config.GetDbName()
 			}
-			logLinesByName[sourceName] = tooFreshLogLines
 
-			if len(readyLogLines) > 0 {
-				// Ensure that log lines that span multiple lines are already concated together before passing them to analyze
-				// Split log lines by backend to ensure we have the right context
-				backendLogLines := make(map[int32][]state.LogLine)
-
-				for _, logLine := range readyLogLines {
-					backendLogLines[logLine.BackendPid] = append(backendLogLines[logLine.BackendPid], logLine)
-				}
-
-				for _, logLines := range backendLogLines {
-					var analyzableLogLines []state.LogLine
-					for _, logLine := range logLines {
-						if logLine.LogLevel == pganalyze_collector.LogLineInformation_UNKNOWN && len(analyzableLogLines) > 0 {
-							analyzableLogLines[len(analyzableLogLines)-1].Content += logLine.Content
-							analyzableLogLines[len(analyzableLogLines)-1].ByteEnd += int64(len(logLine.Content))
-							continue
-						}
-						analyzableLogLines = append(analyzableLogLines, logLine)
-					}
-
-					backendLogLinesOut, backendSamples := logs.AnalyzeBackendLogLines(analyzableLogLines)
-					for _, logLine := range backendLogLinesOut {
-						logFile.LogLines = append(logFile.LogLines, logLine)
-					}
-					for _, sample := range backendSamples {
-						logState.QuerySamples = append(logState.QuerySamples, sample)
-					}
-				}
-
-				logState.LogFiles = []state.LogFile{logFile}
-
-				grant, err := grant.GetLogsGrant(server, globalCollectionOpts, prefixedLogger)
-				if err != nil {
-					prefixedLogger.PrintError("Could not get log grant: %s", err)
-					continue
-				}
-
-				if !grant.Valid {
-					prefixedLogger.PrintVerbose("Log collection disabled from server, skipping")
-					continue
-				}
-
-				err = output.UploadAndSendLogs(server, grant, globalCollectionOpts, prefixedLogger, logState)
-				if err != nil {
-					prefixedLogger.PrintError("Failed to upload/send logs: %s", err)
-					continue
-				}
-			}
+			prefixedLogger := logger.WithPrefix(server.Config.SectionName)
+			logLinesByName[sourceName] = logs.AnalyzeInGroupsAndSend(server, logLines, globalCollectionOpts, prefixedLogger)
 		}
 	}
 }

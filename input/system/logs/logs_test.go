@@ -130,6 +130,11 @@ var tests = []testpair{
 			Content:  "role \"abc\" is not permitted to log in",
 			LogLevel: pganalyze_collector.LogLineInformation_FATAL,
 		}, {
+			Content: "could not connect to Ident server at address \"127.0.0.1\", port 113: Connection refused",
+		}, {
+			Content:  "Ident authentication failed for user \"postgres\"",
+			LogLevel: pganalyze_collector.LogLineInformation_FATAL,
+		}, {
 			Content: "disconnection: session time: 1:53:01.198 user=myuser database=mydb host=172.30.0.165 port=56902",
 		}},
 		[]state.LogLine{{
@@ -151,6 +156,11 @@ var tests = []testpair{
 		}, {
 			Classification: pganalyze_collector.LogLineInformation_CONNECTION_REJECTED,
 			LogLevel:       pganalyze_collector.LogLineInformation_FATAL,
+		}, {
+			Classification: pganalyze_collector.LogLineInformation_CONNECTION_REJECTED,
+			LogLevel:       pganalyze_collector.LogLineInformation_FATAL,
+		}, {
+			Classification: pganalyze_collector.LogLineInformation_CONNECTION_REJECTED,
 		}, {
 			Classification: pganalyze_collector.LogLineInformation_CONNECTION_REJECTED,
 			LogLevel:       pganalyze_collector.LogLineInformation_FATAL,
@@ -1047,6 +1057,10 @@ var tests = []testpair{
 	},
 	{
 		[]state.LogLine{{
+			Content: "redirecting log output to logging collector process",
+		}, {
+			Content: "ending log output to stderr",
+		}, {
 			Content: "database system was shut down in recovery at 2017-05-05 20:17:07 UTC",
 		}, {
 			Content: "entering standby mode",
@@ -1060,6 +1074,10 @@ var tests = []testpair{
 			Content: "database system is ready to accept connections",
 		}},
 		[]state.LogLine{{
+			Classification: pganalyze_collector.LogLineInformation_SERVER_START,
+		}, {
+			Classification: pganalyze_collector.LogLineInformation_SERVER_START,
+		}, {
 			Classification: pganalyze_collector.LogLineInformation_SERVER_START,
 		}, {
 			Classification: pganalyze_collector.LogLineInformation_SERVER_START,

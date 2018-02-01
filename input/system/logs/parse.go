@@ -18,6 +18,9 @@ const LogPrefixAmazonRds string = "%t:%r:%u@%d:[%p]:"
 const LogPrefixCustom1 string = "%m [%p][%v] : [%l-1] %q[app=%a] "
 const LogPrefixCustom2 string = "%t [%p-%l] %q%u@%d "
 
+// This is a special keyword that assumes standard rsyslog template and empty log_line_prefix
+const LogPrefixRsyslog string = "rsyslog"
+
 // Every one of these regexps should produce exactly one matching group
 var TimeRegexp = `(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(?:\.\d+)? \w+)` // %t or %m
 var IpAndPortRegexp = `([\d:.]+\(\d+\))?`                              // %r
@@ -41,8 +44,19 @@ var LogPrefixAmazonRdsRegxp = regexp.MustCompile(`^` + TimeRegexp + `:` + IpAndP
 var LogPrefixCustom1Regexp = regexp.MustCompile(`^` + TimeRegexp + ` \[` + PidRegexp + `\]\[` + VirtualTxRegexp + `\] : \[` + LogLineCounterRegexp + `-1\] (?:\[app=` + AppRegexp + `\] )?` + LevelAndContentRegexp)
 var LogPrefixCustom2Regexp = regexp.MustCompile(`^` + TimeRegexp + ` \[` + PidRegexp + `-` + LogLineCounterRegexp + `\] ` + `(?:` + UserRegexp + `@` + DbRegexp + ` )?` + LevelAndContentRegexp)
 
-func parseLogLineWithPrefix(prefix string, line string) (logLine state.LogLine, ok bool) {
+var SyslogSequenceAndSplitRegexp = `(\[[\d-]+\])?`
+
+var RsyslogLevelAndContentRegexp = `(?:(\w+):\s+)?(.*\n?)$`
+var RsyslogTimeRegexp = `(\w+\s+\d+ \d{2}:\d{2}:\d{2})`
+var RsyslogHostnameRegxp = `(\S+)`
+var RsyslogProcessNameRegexp = `(\w+)`
+var RsyslogRegexp = regexp.MustCompile(`^` + RsyslogTimeRegexp + ` ` + RsyslogHostnameRegxp + ` ` + RsyslogProcessNameRegexp + `\[` + PidRegexp + `\]: ` + SyslogSequenceAndSplitRegexp + ` ` + RsyslogLevelAndContentRegexp)
+
+func ParseLogLineWithPrefix(prefix string, line string) (logLine state.LogLine, ok bool) {
 	var timePart, userPart, dbPart, appPart, pidPart, levelPart, contentPart string
+
+	// Assume Postgres time format unless overriden by the prefix (e.g. syslog)
+	timeFormat := "2006-01-02 15:04:05 MST"
 
 	if prefix == "" {
 		if LogPrefixAmazonRdsRegxp.MatchString(line) {
@@ -51,6 +65,8 @@ func parseLogLineWithPrefix(prefix string, line string) (logLine state.LogLine, 
 			prefix = LogPrefixCustom1
 		} else if LogPrefixCustom2Regexp.MatchString(line) {
 			prefix = LogPrefixCustom2
+		} else if RsyslogRegexp.MatchString(line) {
+			prefix = LogPrefixRsyslog
 		}
 	}
 
@@ -92,12 +108,26 @@ func parseLogLineWithPrefix(prefix string, line string) (logLine state.LogLine, 
 		dbPart = parts[5]
 		levelPart = parts[6]
 		contentPart = parts[7]
+	case LogPrefixRsyslog:
+		parts := RsyslogRegexp.FindStringSubmatch(line)
+		if len(parts) == 0 {
+			return
+		}
+		timeFormat = "2006 Jan  2 15:04:05"
+		timePart = fmt.Sprintf("%d %s", time.Now().Year(), parts[1])
+		// ignore syslog hostname
+		// ignore syslog process name
+		pidPart = parts[4]
+		// ignore syslog postgres sequence and split number
+		levelPart = parts[6]
+		contentPart = strings.Replace(parts[7], "#011", "\t", -1)
 	default:
-		return
+		// Some callers use the content of unparsed lines to stitch multi-line logs together
+		logLine.Content = line
 	}
 
 	var err error
-	logLine.OccurredAt, err = time.Parse("2006-01-02 15:04:05 MST", timePart)
+	logLine.OccurredAt, err = time.Parse(timeFormat, timePart)
 	if err != nil {
 		ok = false
 		return
@@ -115,9 +145,14 @@ func parseLogLineWithPrefix(prefix string, line string) (logLine state.LogLine, 
 
 	backendPid, _ := strconv.Atoi(pidPart)
 	logLine.BackendPid = int32(backendPid)
-	logLine.LogLevel = pganalyze_collector.LogLineInformation_LogLevel(pganalyze_collector.LogLineInformation_LogLevel_value[levelPart])
 	logLine.Content = contentPart
 
+	// This is actually a continuation of a previous line
+	if levelPart == "" {
+		return
+	}
+
+	logLine.LogLevel = pganalyze_collector.LogLineInformation_LogLevel(pganalyze_collector.LogLineInformation_LogLevel_value[levelPart])
 	ok = true
 
 	return
@@ -142,13 +177,13 @@ func ParseAndAnalyzeBuffer(buffer string, initialByteStart int64, linesNewerThan
 			break
 		}
 
-		logLine, ok := parseLogLineWithPrefix("", line)
+		logLine, ok := ParseLogLineWithPrefix("", line)
 		if !ok {
 			// Assume that a parsing error in a follow-on line means that we actually
 			// got additional data for the previous line
-			if len(logLines) > 0 {
-				logLines[len(logLines)-1].Content += line
-				logLines[len(logLines)-1].ByteEnd += int64(len(line))
+			if len(logLines) > 0 && logLine.Content != "" {
+				logLines[len(logLines)-1].Content += logLine.Content
+				logLines[len(logLines)-1].ByteEnd += int64(len(logLine.Content))
 			}
 			continue
 		}

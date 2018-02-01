@@ -21,6 +21,7 @@ import (
 	"github.com/pganalyze/collector/config"
 	"github.com/pganalyze/collector/input/system/heroku"
 	"github.com/pganalyze/collector/input/system/logs"
+	"github.com/pganalyze/collector/input/system/selfhosted"
 	"github.com/pganalyze/collector/runner"
 	"github.com/pganalyze/collector/scheduler"
 	"github.com/pganalyze/collector/state"
@@ -65,6 +66,13 @@ func run(wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *
 		return false, nil, nil, nil, nil
 	}
 
+	if globalCollectionOpts.DebugLogs {
+		selfhosted.SetupLogTails(servers, globalCollectionOpts, logger)
+
+		// Keep running but only running log processing
+		return true, nil, nil, nil, nil
+	}
+
 	statsStop := schedulerGroups["stats"].Schedule(func() {
 		wg.Add(1)
 		runner.CollectAllServers(servers, globalCollectionOpts, logger)
@@ -76,7 +84,7 @@ func run(wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *
 	hasAnyReportsEnabled := false
 	hasAnyActivityEnabled := false
 	for _, server := range servers {
-		if server.Config.EnableLogs {
+		if server.Config.EnableLogs || server.Config.LogLocation != "" {
 			hasAnyLogsEnabled = true
 		}
 		if server.Config.EnableReports {
@@ -98,6 +106,8 @@ func run(wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *
 
 	var logsStop chan<- bool
 	if hasAnyLogsEnabled {
+		selfhosted.SetupLogTails(servers, globalCollectionOpts, logger)
+
 		if conf.HerokuLogStream != nil {
 			heroku.SetupLogReceiver(conf, servers, globalCollectionOpts, logger)
 		} else {
@@ -129,6 +139,7 @@ func main() {
 	var dryRun bool
 	var dryRunLogs bool
 	var analyzeLogfile string
+	var debugLogs bool
 	var testRun bool
 	var testReport string
 	var forceStateUpdate bool
@@ -156,6 +167,7 @@ func main() {
 	flag.BoolVar(&dryRun, "dry-run", false, "Print JSON data that would get sent to web service (without actually sending) and exit afterwards")
 	flag.BoolVar(&dryRunLogs, "dry-run-logs", false, "Print JSON data for log snapshot (without actually sending) and exit afterwards")
 	flag.StringVar(&analyzeLogfile, "analyze-logfile", "", "Analyzes the content of the given log file and returns debug output about it")
+	flag.BoolVar(&debugLogs, "debug-logs", false, "Outputs all log analysis that would be sent, doesn't send any other data (use for debugging only)")
 	flag.BoolVar(&forceStateUpdate, "force-state-update", false, "Updates the state file even if other options would have prevented it (intended to be used together with --dry-run for debugging)")
 	flag.BoolVar(&noPostgresRelations, "no-postgres-relations", false, "Don't collect any Postgres relation information (not recommended)")
 	flag.BoolVar(&noPostgresSettings, "no-postgres-settings", false, "Don't collect Postgres configuration settings")
@@ -217,6 +229,7 @@ func main() {
 		TestRun:                  testRun,
 		TestReport:               testReport,
 		TestRunLogs:              dryRunLogs,
+		DebugLogs:                debugLogs,
 		CollectPostgresRelations: !noPostgresRelations,
 		CollectPostgresSettings:  !noPostgresSettings,
 		CollectPostgresLocks:     !noPostgresLocks,

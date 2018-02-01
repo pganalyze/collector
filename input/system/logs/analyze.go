@@ -99,6 +99,10 @@ func classifyAndSetDetails(logLine state.LogLine, detailLine state.LogLine, samp
 		logLine.Classification = pganalyze_collector.LogLineInformation_CONNECTION_REJECTED
 		return logLine, samples
 	}
+	if strings.HasPrefix(logLine.Content, "Ident authentication failed for user") || strings.HasPrefix(logLine.Content, "could not connect to Ident server") {
+		logLine.Classification = pganalyze_collector.LogLineInformation_CONNECTION_REJECTED
+		return logLine, samples
+	}
 	if strings.HasPrefix(logLine.Content, "database") {
 		if ContentDatabaseNotAcceptingConnectionsRegexp.MatchString(logLine.Content) {
 			logLine.Classification = pganalyze_collector.LogLineInformation_CONNECTION_REJECTED
@@ -505,6 +509,14 @@ func classifyAndSetDetails(logLine state.LogLine, detailLine state.LogLine, samp
 		return logLine, samples
 	}
 	if strings.HasPrefix(logLine.Content, "entering standby mode") {
+		logLine.Classification = pganalyze_collector.LogLineInformation_SERVER_START
+		return logLine, samples
+	}
+	if strings.HasPrefix(logLine.Content, "redirecting log output to logging collector process") {
+		logLine.Classification = pganalyze_collector.LogLineInformation_SERVER_START
+		return logLine, samples
+	}
+	if strings.HasPrefix(logLine.Content, "ending log output to stderr") {
 		logLine.Classification = pganalyze_collector.LogLineInformation_SERVER_START
 		return logLine, samples
 	}
