@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.11.0      2018-01-31
+
+* Add support for Log Insights on self-hosted systems
+* Add additional log classifications, speed up analysis by reusing regexps
+* Add "--analyze-logfile" option to test collector with local logfiles
+* Associate truncated queries to the correct error fingerprint
+* Update to Go 1.9.3
+
+
 ## 0.10.0      2017-10-31
 
 * Update pg_query_go to Postgres 10 and fingerprint version 2
