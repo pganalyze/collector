@@ -211,9 +211,10 @@ func logReceiver(servers []state.Server, in <-chan config.HerokuLogStreamItem, g
 				continue
 			}
 
-			for _, logLine := range logLines {
+			for idx, logLine := range logLines {
 				logLine.Username = server.Config.GetDbUsername()
 				logLine.Database = server.Config.GetDbName()
+				logLines[idx] = logLine
 			}
 
 			prefixedLogger := logger.WithPrefix(server.Config.SectionName)
