@@ -16,12 +16,23 @@ import (
 func AnalyzeInGroupsAndSend(server state.Server, logLines []state.LogLine, globalCollectionOpts state.CollectionOpts, prefixedLogger *util.Logger) []state.LogLine {
 	var readyLogLines []state.LogLine
 	var tooFreshLogLines []state.LogLine
+	var stitchedLogLines []state.LogLine
 
 	// Submit all logLines that are older than 3 seconds
 	var now time.Time
 	now = time.Now()
 
+	// Always stitch together log lines ahead of time that are missing level and PID
+	// - this is mostly to support the output of the Postgres logging collector to files
 	for _, logLine := range logLines {
+		if logLine.LogLevel != pganalyze_collector.LogLineInformation_UNKNOWN || logLine.BackendPid != 0 {
+			stitchedLogLines = append(stitchedLogLines, logLine)
+		} else if len(stitchedLogLines) > 0 {
+			stitchedLogLines[len(stitchedLogLines)-1].Content += " " + logLine.Content
+		}
+	}
+
+	for _, logLine := range stitchedLogLines {
 		// TODO: The intent here is to wait 3 seconds so we get follow-on log lines
 		// (e.g. STATEMENT, HINT, DETAIL). This doesn't actually work, since we don't
 		// peek into newer messages for these additional lines
