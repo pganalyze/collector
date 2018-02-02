@@ -1,4 +1,4 @@
-FROM golang:1.9.2-alpine
+FROM golang:1.9.3-alpine
 MAINTAINER team@pganalyze.com
 
 RUN adduser -D pganalyze pganalyze
