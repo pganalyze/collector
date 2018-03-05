@@ -216,7 +216,7 @@
 			"importpath": "github.com/lfittl/pg_query_go",
 			"repository": "https://github.com/lfittl/pg_query_go",
 			"vcs": "git",
-			"revision": "6cbcbb4ac4153727ac9cb555fba78129a01d7565",
+			"revision": "9665303293bf90a8d376ad869b0ed347e2fd667a",
 			"branch": "master",
 			"notests": true
 		},
