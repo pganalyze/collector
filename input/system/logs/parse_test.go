@@ -41,6 +41,19 @@ var parseTests = []parseTestpair{
 		},
 		false,
 	},
+	{
+		"",
+		"Feb  1 21:48:31 ip-172-31-14-41 postgres[123]: [8-1] [user=postgres,db=postgres,app=[unknown]] LOG: connection received: host=[local]",
+		state.LogLine{
+			OccurredAt: time.Date(time.Now().Year(), time.February, 1, 21, 48, 31, 0, time.UTC),
+			LogLevel:   pganalyze_collector.LogLineInformation_LOG,
+			BackendPid: 123,
+			Username:   "postgres",
+			Database:   "postgres",
+			Content:    "connection received: host=[local]",
+		},
+		true,
+	},
 }
 
 func TestParseLogLineWithPrefix(t *testing.T) {

@@ -18,9 +18,6 @@ const LogPrefixAmazonRds string = "%t:%r:%u@%d:[%p]:"
 const LogPrefixCustom1 string = "%m [%p][%v] : [%l-1] %q[app=%a] "
 const LogPrefixCustom2 string = "%t [%p-%l] %q%u@%d "
 
-// This is a special keyword that assumes standard rsyslog template and empty log_line_prefix
-const LogPrefixRsyslog string = "rsyslog"
-
 // Every one of these regexps should produce exactly one matching group
 var TimeRegexp = `(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(?:\.\d+)? \w+)` // %t or %m
 var IpAndPortRegexp = `([\d:.]+\(\d+\))?`                              // %r
@@ -43,6 +40,7 @@ var LevelAndContentRegexp = `(\w+):\s+(.*\n?)$`
 var LogPrefixAmazonRdsRegxp = regexp.MustCompile(`^` + TimeRegexp + `:` + IpAndPortRegexp + `:` + UserRegexp + `@` + DbRegexp + `:\[` + PidRegexp + `\]:` + LevelAndContentRegexp)
 var LogPrefixCustom1Regexp = regexp.MustCompile(`^` + TimeRegexp + ` \[` + PidRegexp + `\]\[` + VirtualTxRegexp + `\] : \[` + LogLineCounterRegexp + `-1\] (?:\[app=` + AppRegexp + `\] )?` + LevelAndContentRegexp)
 var LogPrefixCustom2Regexp = regexp.MustCompile(`^` + TimeRegexp + ` \[` + PidRegexp + `-` + LogLineCounterRegexp + `\] ` + `(?:` + UserRegexp + `@` + DbRegexp + ` )?` + LevelAndContentRegexp)
+var LogPrefixNoTimestampUserDatabaseAppRegexp = regexp.MustCompile(`^\[user=` + UserRegexp + `,db=` + DbRegexp + `,app=` + AppRegexp + `\] ` + LevelAndContentRegexp)
 
 var SyslogSequenceAndSplitRegexp = `(\[[\d-]+\])?`
 
@@ -58,6 +56,8 @@ func ParseLogLineWithPrefix(prefix string, line string) (logLine state.LogLine, 
 	// Assume Postgres time format unless overriden by the prefix (e.g. syslog)
 	timeFormat := "2006-01-02 15:04:05 MST"
 
+	rsyslog := false
+
 	if prefix == "" {
 		if LogPrefixAmazonRdsRegxp.MatchString(line) {
 			prefix = LogPrefixAmazonRds
@@ -66,49 +66,11 @@ func ParseLogLineWithPrefix(prefix string, line string) (logLine state.LogLine, 
 		} else if LogPrefixCustom2Regexp.MatchString(line) {
 			prefix = LogPrefixCustom2
 		} else if RsyslogRegexp.MatchString(line) {
-			prefix = LogPrefixRsyslog
+			rsyslog = true
 		}
 	}
 
-	switch prefix {
-	case LogPrefixAmazonRds: // "%t:%r:%u@%d:[%p]:"
-		parts := LogPrefixAmazonRdsRegxp.FindStringSubmatch(line)
-		if len(parts) == 0 {
-			return
-		}
-
-		timePart = parts[1]
-		// skip %r (ip+port)
-		userPart = parts[3]
-		dbPart = parts[4]
-		pidPart = parts[5]
-		levelPart = parts[6]
-		contentPart = parts[7]
-	case LogPrefixCustom1: // "%m [%p][%v] : [%l-1] %q[app=%a] "
-		parts := LogPrefixCustom1Regexp.FindStringSubmatch(line)
-		if len(parts) == 0 {
-			return
-		}
-		timePart = parts[1]
-		pidPart = parts[2]
-		// skip %v (virtual TX)
-		// skip %l (log line counter)
-		appPart = parts[5]
-		levelPart = parts[6]
-		contentPart = parts[7]
-	case LogPrefixCustom2: // "%t [%p-1] %q%u@%d "
-		parts := LogPrefixCustom2Regexp.FindStringSubmatch(line)
-		if len(parts) == 0 {
-			return
-		}
-		timePart = parts[1]
-		pidPart = parts[2]
-		// skip %l (log line counter)
-		userPart = parts[4]
-		dbPart = parts[5]
-		levelPart = parts[6]
-		contentPart = parts[7]
-	case LogPrefixRsyslog:
+	if rsyslog {
 		parts := RsyslogRegexp.FindStringSubmatch(line)
 		if len(parts) == 0 {
 			return
@@ -121,9 +83,58 @@ func ParseLogLineWithPrefix(prefix string, line string) (logLine state.LogLine, 
 		// ignore syslog postgres sequence and split number
 		levelPart = parts[6]
 		contentPart = strings.Replace(parts[7], "#011", "\t", -1)
-	default:
-		// Some callers use the content of unparsed lines to stitch multi-line logs together
-		logLine.Content = line
+
+		parts = LogPrefixNoTimestampUserDatabaseAppRegexp.FindStringSubmatch(contentPart)
+		if len(parts) == 6 {
+			userPart = parts[1]
+			dbPart = parts[2]
+			appPart = parts[3]
+			levelPart = parts[4]
+			contentPart = parts[5]
+		}
+	} else {
+		switch prefix {
+		case LogPrefixAmazonRds: // "%t:%r:%u@%d:[%p]:"
+			parts := LogPrefixAmazonRdsRegxp.FindStringSubmatch(line)
+			if len(parts) == 0 {
+				return
+			}
+
+			timePart = parts[1]
+			// skip %r (ip+port)
+			userPart = parts[3]
+			dbPart = parts[4]
+			pidPart = parts[5]
+			levelPart = parts[6]
+			contentPart = parts[7]
+		case LogPrefixCustom1: // "%m [%p][%v] : [%l-1] %q[app=%a] "
+			parts := LogPrefixCustom1Regexp.FindStringSubmatch(line)
+			if len(parts) == 0 {
+				return
+			}
+			timePart = parts[1]
+			pidPart = parts[2]
+			// skip %v (virtual TX)
+			// skip %l (log line counter)
+			appPart = parts[5]
+			levelPart = parts[6]
+			contentPart = parts[7]
+		case LogPrefixCustom2: // "%t [%p-1] %q%u@%d "
+			parts := LogPrefixCustom2Regexp.FindStringSubmatch(line)
+			if len(parts) == 0 {
+				return
+			}
+			timePart = parts[1]
+			pidPart = parts[2]
+			// skip %l (log line counter)
+			userPart = parts[4]
+			dbPart = parts[5]
+			levelPart = parts[6]
+			contentPart = parts[7]
+		default:
+			// Some callers use the content of unparsed lines to stitch multi-line logs together
+			logLine.Content = line
+		}
 	}
 
 	var err error
