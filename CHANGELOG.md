@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.12.0      2018-03-05
+
+* Set username/database name correct for Heroku logstreams
+* Support additional ryslog format that contains user/db/app information
+* Update to Go 1.10
+
+
 ## 0.11.0      2018-01-31
 
 * Add support for Log Insights on self-hosted systems
