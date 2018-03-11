@@ -77,6 +77,8 @@ func transformPostgresQuerySamples(s snapshot.CompactLogSnapshot, r snapshot.Com
 			Parameters:  sampleIn.Parameters,
 
 			HasExplain:    sampleIn.HasExplain,
+			ExplainSource: sampleIn.ExplainSource,
+			ExplainFormat: sampleIn.ExplainFormat,
 			ExplainOutput: sampleIn.ExplainOutput,
 			ExplainError:  sampleIn.ExplainError,
 		}
