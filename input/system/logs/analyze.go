@@ -16,14 +16,14 @@ var ContentDurationRegexp = regexp.MustCompile(`(?ms)^duration: ([\d\.]+) ms([^:
 var ContentDurationDetailsRegexp = regexp.MustCompile(`\$\d+ = '([^']*)',?\s*`)
 var ContentAutoVacuumRegexp = regexp.MustCompile(`^automatic vacuum of table "(.+?)": index scans: (\d+)\s*` +
 	`pages: (\d+) removed, (\d+) remain(?:, (\d+) skipped due to pins)?(?:, (\d+) skipped frozen)?\s*` +
-	`tuples: (\d+) removed, (\d+) remain, (\d+) are dead but not yet removable\s*` +
+	`tuples: (\d+) removed, (\d+) remain, (\d+) are dead but not yet removable(?:, oldest xmin: (\d+))?\s*` +
 	`buffer usage: (\d+) hits, (\d+) misses, (\d+) dirtied\s*` +
 	`avg read rate: ([\d.]+) MB/s, avg write rate: ([\d.]+) MB/s\s*` +
-	`system usage: CPU ([\d.]+)s/([\d.]+)u sec elapsed ([\d.]+) sec`)
-var ContentAutoAnalyzeRegexp = regexp.MustCompile(`^automatic analyze of table "(.+?)" system usage: CPU ([\d.]+)s/([\d.]+)u sec elapsed ([\d.]+) sec`)
+	`system usage: CPU(?:(?: ([\d.]+)s/([\d.]+)u sec elapsed ([\d.]+) sec)|(?:: user: ([\d.]+) s, system: ([\d.]+) s, elapsed: ([\d.]+) s))`)
+var ContentAutoAnalyzeRegexp = regexp.MustCompile(`^automatic analyze of table "(.+?)" system usage: CPU(?:(?: ([\d.]+)s/([\d.]+)u sec elapsed ([\d.]+) sec)|(?:: user: ([\d.]+) s, system: ([\d.]+) s, elapsed: ([\d.]+) s))`)
 var ContentCheckpointStartingRegexp = regexp.MustCompile(`^(checkpoint|restartpoint) starting: (.+)`)
 var ContentCheckpointCompleteRegexp = regexp.MustCompile(`^(checkpoint|restartpoint) complete: wrote (\d+) buffers \(([\d\.]+)%\); ` +
-	`(\d+) transaction log file\(s\) added, (\d+) removed, (\d+) recycled; ` +
+	`(\d+) (?:transaction log|WAL) file\(s\) added, (\d+) removed, (\d+) recycled; ` +
 	`write=([\d\.]+) s, sync=([\d\.]+) s, total=([\d\.]+) s; ` +
 	`sync files=(\d+), longest=([\d\.]+) s, average=([\d\.]+) s` +
 	`(; distance=(\d+) kB, estimate=(\d+) kB)?`)
@@ -246,7 +246,7 @@ func classifyAndSetDetails(logLine state.LogLine, detailLine state.LogLine, samp
 		parts = ContentCheckpointsTooFrequentRegexp.FindStringSubmatch(logLine.Content)
 		if len(parts) == 2 {
 			logLine.Classification = pganalyze_collector.LogLineInformation_CHECKPOINT_TOO_FREQUENT
-			elapsedSecs, _ := strconv.ParseInt(parts[1], 10, 64)
+			elapsedSecs, _ := strconv.ParseFloat(parts[1], 64)
 			logLine.Details = map[string]interface{}{
 				"elapsed_secs": elapsedSecs,
 			}
@@ -499,7 +499,9 @@ func classifyAndSetDetails(logLine state.LogLine, detailLine state.LogLine, samp
 	}
 	if strings.HasPrefix(logLine.Content, "automatic vacuum of table") {
 		parts = ContentAutoVacuumRegexp.FindStringSubmatch(logLine.Content)
-		if len(parts) == 18 {
+		if len(parts) == 22 {
+			var kernelPart, userPart, elapsedPart string
+
 			logLine.Classification = pganalyze_collector.LogLineInformation_AUTOVACUUM_COMPLETED
 			// FIXME: Associate relation (parts[1])
 
@@ -509,14 +511,25 @@ func classifyAndSetDetails(logLine state.LogLine, detailLine state.LogLine, samp
 			tuplesDeleted, _ := strconv.ParseInt(parts[7], 10, 64)
 			newRelTuples, _ := strconv.ParseInt(parts[8], 10, 64)
 			newDeadTuples, _ := strconv.ParseInt(parts[9], 10, 64)
-			vacuumPageHit, _ := strconv.ParseInt(parts[10], 10, 64)
-			vacuumPageMiss, _ := strconv.ParseInt(parts[11], 10, 64)
-			vacuumPageDirty, _ := strconv.ParseInt(parts[12], 10, 64)
-			readRateMb, _ := strconv.ParseFloat(parts[13], 64)
-			writeRateMb, _ := strconv.ParseFloat(parts[14], 64)
-			rusageKernelMode, _ := strconv.ParseFloat(parts[15], 64)
-			rusageUserMode, _ := strconv.ParseFloat(parts[16], 64)
-			rusageElapsed, _ := strconv.ParseFloat(parts[17], 64)
+			vacuumPageHit, _ := strconv.ParseInt(parts[11], 10, 64)
+			vacuumPageMiss, _ := strconv.ParseInt(parts[12], 10, 64)
+			vacuumPageDirty, _ := strconv.ParseInt(parts[13], 10, 64)
+			readRateMb, _ := strconv.ParseFloat(parts[14], 64)
+			writeRateMb, _ := strconv.ParseFloat(parts[15], 64)
+
+			if parts[16] != "" {
+				kernelPart = parts[16]
+				userPart = parts[17]
+				elapsedPart = parts[18]
+			} else {
+				userPart = parts[19]
+				kernelPart = parts[20]
+				elapsedPart = parts[21]
+			}
+			rusageKernelMode, _ := strconv.ParseFloat(kernelPart, 64)
+			rusageUserMode, _ := strconv.ParseFloat(userPart, 64)
+			rusageElapsed, _ := strconv.ParseFloat(elapsedPart, 64)
+
 			logLine.Details = map[string]interface{}{
 				"num_index_scans": numIndexScans, "pages_removed": pagesRemoved,
 				"rel_pages": relPages, "tuples_deleted": tuplesDeleted,
@@ -534,17 +547,31 @@ func classifyAndSetDetails(logLine state.LogLine, detailLine state.LogLine, samp
 				frozenskippedPages, _ := strconv.ParseInt(parts[6], 10, 64)
 				logLine.Details["frozenskipped_pages"] = frozenskippedPages
 			}
+			if parts[10] != "" {
+				oldestXmin, _ := strconv.ParseInt(parts[10], 10, 64)
+				logLine.Details["oldest_xmin"] = oldestXmin
+			}
 			return logLine, samples
 		}
 	}
 	if strings.HasPrefix(logLine.Content, "automatic analyze of table") {
 		parts = ContentAutoAnalyzeRegexp.FindStringSubmatch(logLine.Content)
-		if len(parts) == 5 {
+		if len(parts) == 8 {
+			var kernelPart, userPart, elapsedPart string
 			logLine.Classification = pganalyze_collector.LogLineInformation_AUTOANALYZE_COMPLETED
 			// FIXME: Associate relation (parts[1])
-			rusageKernelMode, _ := strconv.ParseFloat(parts[2], 64)
-			rusageUserMode, _ := strconv.ParseFloat(parts[3], 64)
-			rusageElapsed, _ := strconv.ParseFloat(parts[4], 64)
+			if parts[2] != "" {
+				kernelPart = parts[2]
+				userPart = parts[3]
+				elapsedPart = parts[4]
+			} else {
+				userPart = parts[5]
+				kernelPart = parts[6]
+				elapsedPart = parts[7]
+			}
+			rusageKernelMode, _ := strconv.ParseFloat(kernelPart, 64)
+			rusageUserMode, _ := strconv.ParseFloat(userPart, 64)
+			rusageElapsed, _ := strconv.ParseFloat(elapsedPart, 64)
 			logLine.Details = map[string]interface{}{
 				"rusage_kernel": rusageKernelMode, "rusage_user": rusageUserMode,
 				"elapsed_secs": rusageElapsed,

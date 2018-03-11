@@ -336,7 +336,23 @@ var tests = []testpair{
 			Details:        map[string]interface{}{"reason": "xlog"},
 		}},
 		nil,
-	}, {
+	},
+	{
+		[]state.LogLine{{
+			Content: "checkpoint complete: wrote 111906 buffers (10.9%); 0 WAL file(s) added, 22 removed, 29 recycled; write=215.895 s, sync=0.014 s, total=216.130 s; sync files=94, longest=0.014 s, average=0.000 s; distance=850730 kB, estimate=910977 kB",
+		}},
+		[]state.LogLine{{
+			Classification: pganalyze_collector.LogLineInformation_CHECKPOINT_COMPLETE,
+			Details: map[string]interface{}{
+				"bufs_written_pct": 10.9, "write_secs": 215.895, "sync_secs": 0.014,
+				"total_secs": 216.130, "longest_secs": 0.014, "average_secs": 0.0,
+				"bufs_written": 111906, "segs_added": 0, "segs_removed": 22, "segs_recycled": 29,
+				"sync_rels": 94, "distance_kb": 850730, "estimate_kb": 910977,
+			},
+		}},
+		nil,
+	},
+	{ // Pre 10 syntax (WAL instead of transaction files)
 		[]state.LogLine{{
 			Content: "checkpoint complete: wrote 111906 buffers (10.9%); 0 transaction log file(s) added, 22 removed, 29 recycled; write=215.895 s, sync=0.014 s, total=216.130 s; sync files=94, longest=0.014 s, average=0.000 s; distance=850730 kB, estimate=910977 kB",
 		}},
@@ -350,7 +366,8 @@ var tests = []testpair{
 			},
 		}},
 		nil,
-	}, { // Pre 9.5 syntax (without distance/estimate)
+	},
+	{ // Pre 9.5 syntax (without distance/estimate)
 		[]state.LogLine{{
 			Content: "checkpoint complete: wrote 15047 buffers (1.4%); 0 transaction log file(s) added, 0 removed, 30 recycled; write=68.980 s, sync=1.542 s, total=70.548 s; sync files=925, longest=0.216 s, average=0.001 s",
 		}},
@@ -363,7 +380,8 @@ var tests = []testpair{
 				"longest_secs": 0.216, "average_secs": 0.001},
 		}},
 		nil,
-	}, {
+	},
+	{
 		[]state.LogLine{{
 			Content:  "checkpoints are occurring too frequently (18 seconds apart)",
 			LogLevel: pganalyze_collector.LogLineInformation_LOG,
@@ -949,6 +967,41 @@ var tests = []testpair{
 	},
 	{
 		[]state.LogLine{{
+			Content: "automatic vacuum of table \"demo_pgbench.public.pgbench_tellers\": index scans: 0" +
+				" pages: 0 removed, 839 remain, 0 skipped due to pins, 705 skipped frozen" +
+				"	tuples: 1849 removed, 2556 remain, 5 are dead but not yet removable, oldest xmin: 448424944" +
+				"	buffer usage: 569 hits, 1 misses, 0 dirtied" +
+				"	avg read rate: 0.064 MB/s, avg write rate: 0.000 MB/s" +
+				"	system usage: CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.12 s",
+			LogLevel: pganalyze_collector.LogLineInformation_LOG,
+		}},
+		[]state.LogLine{{
+			Classification: pganalyze_collector.LogLineInformation_AUTOVACUUM_COMPLETED,
+			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
+			Details: map[string]interface{}{
+				"num_index_scans":     0,
+				"pages_removed":       0,
+				"rel_pages":           839,
+				"pinskipped_pages":    0,
+				"frozenskipped_pages": 705,
+				"tuples_deleted":      1849,
+				"new_rel_tuples":      2556,
+				"new_dead_tuples":     5,
+				"oldest_xmin":         448424944,
+				"vacuum_page_hit":     569,
+				"vacuum_page_miss":    1,
+				"vacuum_page_dirty":   0,
+				"read_rate_mb":        0.064,
+				"write_rate_mb":       0.000,
+				"rusage_kernel":       0.00,
+				"rusage_user":         0.00,
+				"elapsed_secs":        0.12,
+			},
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
 			Content:  "automatic analyze of table \"postgres.public.pgbench_branches\" system usage: CPU 1.02s/2.08u sec elapsed 108.25 sec",
 			LogLevel: pganalyze_collector.LogLineInformation_LOG,
 		}},
@@ -959,6 +1012,22 @@ var tests = []testpair{
 				"rusage_kernel": 1.02,
 				"rusage_user":   2.08,
 				"elapsed_secs":  108.25,
+			},
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
+			Content:  "automatic analyze of table \"demo_pgbench.public.pgbench_history\" system usage: CPU: user: 0.23 s, system: 0.01 s, elapsed: 0.89 s",
+			LogLevel: pganalyze_collector.LogLineInformation_LOG,
+		}},
+		[]state.LogLine{{
+			Classification: pganalyze_collector.LogLineInformation_AUTOANALYZE_COMPLETED,
+			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
+			Details: map[string]interface{}{
+				"rusage_kernel": 0.01,
+				"rusage_user":   0.23,
+				"elapsed_secs":  0.89,
 			},
 		}},
 		nil,
