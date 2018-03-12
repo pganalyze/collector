@@ -121,6 +121,7 @@ func transformSystemLogLine(r *snapshot.CompactSnapshot_BaseRefs, logFileIdx int
 		BackendPid:       logLineIn.BackendPid,
 		Level:            logLineIn.LogLevel,
 		Classification:   logLineIn.Classification,
+		RelatedPids:      logLineIn.RelatedPids,
 	}
 
 	if logLineIn.ParentUUID != uuid.Nil {

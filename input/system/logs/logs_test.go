@@ -469,6 +469,53 @@ var tests = []testpair{
 		}},
 		nil,
 	},
+	{
+		[]state.LogLine{{
+			Content: "redo starts at 25DFA/2B000098",
+		}, {
+			Content: "invalid record length at 25DFA/2B000548: wanted 24, got 0",
+		}, {
+			Content: "redo done at 25DFA/2B000500",
+		}, {
+			Content: "last completed transaction was at log time 2018-03-12 02:09:12.585354+00",
+		}},
+		[]state.LogLine{{
+			Classification: pganalyze_collector.LogLineInformation_WAL_REDO,
+		}, {
+			Classification: pganalyze_collector.LogLineInformation_WAL_INVALID_RECORD_LENGTH,
+		}, {
+			Classification: pganalyze_collector.LogLineInformation_WAL_REDO,
+		}, {
+			Classification: pganalyze_collector.LogLineInformation_WAL_REDO,
+			Details: map[string]interface{}{
+				"last_transaction": "2018-03-12 02:09:12.585354+00",
+			},
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
+			Content:  "archive command failed with exit code 1",
+			LogLevel: pganalyze_collector.LogLineInformation_LOG,
+			UUID:     uuid.UUID{1},
+		}, {
+			Content:  "The failed archive command was: /etc/rds/dbbin/pgscripts/rds_wal_archive pg_xlog/0000000100025DFA00000023",
+			LogLevel: pganalyze_collector.LogLineInformation_DETAIL,
+		}},
+		[]state.LogLine{{
+			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
+			Classification: pganalyze_collector.LogLineInformation_WAL_ARCHIVE_COMMAND_FAILED,
+			UUID:           uuid.UUID{1},
+			Details: map[string]interface{}{
+				"archive_command": "/etc/rds/dbbin/pgscripts/rds_wal_archive pg_xlog/0000000100025DFA00000023",
+				"exit_code":       1,
+			},
+		}, {
+			LogLevel:   pganalyze_collector.LogLineInformation_DETAIL,
+			ParentUUID: uuid.UUID{1},
+		}},
+		nil,
+	},
 	// Lock waits
 	{
 		[]state.LogLine{{
@@ -556,7 +603,8 @@ var tests = []testpair{
 				"lock_mode":    "ShareLock",
 				"lock_type":    "transactionid",
 			},
-			UUID: uuid.UUID{1},
+			RelatedPids: []int32{583, 2078, 456},
+			UUID:        uuid.UUID{1},
 		}, {
 			LogLevel:   pganalyze_collector.LogLineInformation_DETAIL,
 			ParentUUID: uuid.UUID{1},
@@ -617,7 +665,8 @@ var tests = []testpair{
 				"lock_mode":    "AccessExclusiveLock",
 				"lock_type":    "relation",
 			},
-			UUID: uuid.UUID{1},
+			RelatedPids: []int32{583, 123, 2078},
+			UUID:        uuid.UUID{1},
 		}, {
 			LogLevel:   pganalyze_collector.LogLineInformation_DETAIL,
 			ParentUUID: uuid.UUID{1},
@@ -664,6 +713,7 @@ var tests = []testpair{
 			Classification: pganalyze_collector.LogLineInformation_LOCK_DEADLOCK_DETECTED,
 			Query:          "INSERT INTO x (id, name, email) VALUES (1, 'ABC', 'abc@example.com') ON CONFLICT(email) DO UPDATE SET name = excluded.name RETURNING id",
 			UUID:           uuid.UUID{1},
+			RelatedPids:    []int32{9788, 91, 98, 91},
 		}, {
 			LogLevel:   pganalyze_collector.LogLineInformation_DETAIL,
 			ParentUUID: uuid.UUID{1},
@@ -715,8 +765,9 @@ var tests = []testpair{
 				"lock_waiters": []int64{663},
 				"after_ms":     1000.365,
 			},
-			Query: "SELECT pg_advisory_lock(1, 2);",
-			UUID:  uuid.UUID{1},
+			RelatedPids: []int32{660, 663},
+			Query:       "SELECT pg_advisory_lock(1, 2);",
+			UUID:        uuid.UUID{1},
 		}, {
 			LogLevel:   pganalyze_collector.LogLineInformation_DETAIL,
 			ParentUUID: uuid.UUID{1},
@@ -828,6 +879,15 @@ var tests = []testpair{
 	{
 		[]state.LogLine{{
 			Content: "autovacuum launcher shutting down",
+		}},
+		[]state.LogLine{{
+			Classification: pganalyze_collector.LogLineInformation_AUTOVACUUM_LAUNCHER_SHUTTING_DOWN,
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
+			Content: "terminating autovacuum process due to administrator command",
 		}},
 		[]state.LogLine{{
 			Classification: pganalyze_collector.LogLineInformation_AUTOVACUUM_LAUNCHER_SHUTTING_DOWN,
@@ -1102,6 +1162,12 @@ var tests = []testpair{
 			Classification: pganalyze_collector.LogLineInformation_SERVER_CRASHED,
 			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
 			UUID:           uuid.UUID{1},
+			RelatedPids:    []int32{660},
+			Details: map[string]interface{}{
+				"process_type": "server process",
+				"process_pid":  660,
+				"signal":       6,
+			},
 		}, {
 			LogLevel:   pganalyze_collector.LogLineInformation_DETAIL,
 			ParentUUID: uuid.UUID{1},
@@ -1277,6 +1343,12 @@ var tests = []testpair{
 		[]state.LogLine{{
 			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
 			Classification: pganalyze_collector.LogLineInformation_SERVER_OUT_OF_MEMORY,
+			Details: map[string]interface{}{
+				"process_type": "server process",
+				"process_pid":  123,
+				"signal":       9,
+			},
+			RelatedPids: []int32{123},
 		}},
 		nil,
 	}, {
@@ -1327,6 +1399,41 @@ var tests = []testpair{
 			Classification: pganalyze_collector.LogLineInformation_SERVER_RELOAD,
 		}, {
 			Classification: pganalyze_collector.LogLineInformation_SERVER_RELOAD,
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
+			Content:  "worker process: parallel worker for PID 30491 (PID 31458) exited with exit code 1",
+			LogLevel: pganalyze_collector.LogLineInformation_LOG,
+		}},
+		[]state.LogLine{{
+			Classification: pganalyze_collector.LogLineInformation_SERVER_PROCESS_EXITED,
+			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
+			Details: map[string]interface{}{
+				"process_type": "parallel worker",
+				"process_pid":  31458,
+				"parent_pid":   30491,
+				"exit_code":    1,
+			},
+			RelatedPids: []int32{31458, 30491},
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
+			Content:  "worker process: logical replication launcher (PID 17443) exited with exit code 1",
+			LogLevel: pganalyze_collector.LogLineInformation_LOG,
+		}},
+		[]state.LogLine{{
+			Classification: pganalyze_collector.LogLineInformation_SERVER_PROCESS_EXITED,
+			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
+			Details: map[string]interface{}{
+				"process_type": "logical replication launcher",
+				"process_pid":  17443,
+				"exit_code":    1,
+			},
+			RelatedPids: []int32{17443},
 		}},
 		nil,
 	},

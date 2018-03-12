@@ -70,6 +70,8 @@ type LogLine struct {
 	Classification pganalyze_collector.LogLineInformation_LogClassification
 
 	Details map[string]interface{}
+
+	RelatedPids []int32
 }
 
 func (logFile LogFile) Cleanup() {

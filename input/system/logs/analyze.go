@@ -31,18 +31,24 @@ var ContentDisconnectionRegexp = regexp.MustCompile(`^disconnection: session tim
 var ContentRoleNotAllowedLoginRegexp = regexp.MustCompile(`^role ".+?" is not permitted to log in`)
 var ContentDatabaseNotAcceptingConnectionsRegexp = regexp.MustCompile(`^database ".+?" is not currently accepting connections`)
 var ContentCheckpointsTooFrequentRegexp = regexp.MustCompile(`^checkpoints are occurring too frequently \((\d+) seconds? apart\)`)
+var ContentRedoLastTxRegexp = regexp.MustCompile(`^last completed transaction was at log time (.+)`)
+var ContentArchiveCommandFailedRegexp = regexp.MustCompile(`^archive command failed with exit code (\d+)`)
+var ContentArchiveCommandFailedDetailsRegexp = regexp.MustCompile(`^The failed archive command was: (.+)`)
 var ContentLockAcquiredRegexp = regexp.MustCompile(`^process \d+ acquired (\w+Lock) on (\w+)(?: [\(\)\d,]+)?( of \w+ \d+)* after ([\d\.]+) ms`)
 var ContentLockWaitRegexp = regexp.MustCompile(`^process \d+ (still waiting|avoided deadlock|detected deadlock while waiting) for (\w+) on (\w+) (?:.+?) after ([\d\.]+) ms`)
 var ContentLockWaitDetailsRegexp = regexp.MustCompile(`^Process(?:es)? holding the lock: ([\d, ]+). Wait queue: ([\d, ]+)`)
+var ContentDeadlockDetailsRegexp = regexp.MustCompile(`(?m)^Process (\d+)`)
 var ContentWraparoundWarningRegexp = regexp.MustCompile(`^database (with OID (\d+)|"(.+?)") must be vacuumed within (\d+) transactions`)
 var ContentWraparoundErrorRegexp = regexp.MustCompile(`^database is not accepting commands to avoid wraparound data loss in database (with OID (\d+)|"(.+?)")`)
-var ContentServerCrashedRegexp = regexp.MustCompile(`^server process \(PID \d+\) was terminated by signal (6|11)`)
-var ContentServerOutOfMemoryRegexp = regexp.MustCompile(`^server process \(PID \d+\) was terminated by signal 9`)
+var ContentServerCrashedRegexp = regexp.MustCompile(`^server process \(PID (\d+)\) was terminated by signal (6|11)`)
+var ContentServerOutOfMemoryRegexp = regexp.MustCompile(`^server process \(PID (\d+)\) was terminated by signal (9)`)
 var ContentTemporaryFileRegexp = regexp.MustCompile(`^temporary file: path "(.+?)", size (\d+)`)
 var ContentReceivedShutdownRequestRegexp = regexp.MustCompile(`^received \w+ shutdown request`)
 var ContentInvalidChecksumRegexp = regexp.MustCompile(`^invalid page in block (\d+) of relation (.+)`)
 var ContentParameterCannotBeChangedRegexp = regexp.MustCompile(`^parameter ".+?" (changed|cannot be changed)`)
 var ContentConfigFileContainsErrorsRegexp = regexp.MustCompile(`^configuration file ".+?" contains errors`)
+var ContentParallelWorkerExited = regexp.MustCompile(`^worker process: parallel worker for PID (\d+) \(PID (\d+)\) exited with exit code (\d+)`)
+var ContentLogicalReplicationLauncherExited = regexp.MustCompile(`^worker process: logical replication launcher \(PID (\d+)\) exited with exit code (\d+)`)
 var ContentRegexpInvalidTimelineRegexp = regexp.MustCompile(`^according to history file, WAL location .+? belongs to timeline \d+, but previous recovered WAL file came from timeline \d+`)
 var ContentUniqueConstraintViolationRegexp = regexp.MustCompile(`^duplicate key value violates unique constraint "(.+?)"`)
 var ContentForeignKeyConstraintViolation1Regexp = regexp.MustCompile(`^insert or update on table "(.+?)" violates foreign key constraint "(.+?)"`)
@@ -267,6 +273,33 @@ func classifyAndSetDetails(logLine state.LogLine, detailLine state.LogLine, samp
 		logLine.Classification = pganalyze_collector.LogLineInformation_WAL_REDO
 		return logLine, samples
 	}
+	if strings.HasPrefix(logLine.Content, "last completed transaction was at log time ") {
+		parts = ContentRedoLastTxRegexp.FindStringSubmatch(logLine.Content)
+		if len(parts) == 2 {
+			logLine.Classification = pganalyze_collector.LogLineInformation_WAL_REDO
+			logLine.Details = map[string]interface{}{
+				"last_transaction": parts[1],
+			}
+			return logLine, samples
+		}
+	}
+	if strings.HasPrefix(logLine.Content, "archive command failed with exit code") {
+		parts = ContentArchiveCommandFailedRegexp.FindStringSubmatch(logLine.Content)
+		if len(parts) == 2 {
+			logLine.Classification = pganalyze_collector.LogLineInformation_WAL_ARCHIVE_COMMAND_FAILED
+			exitCode, _ := strconv.ParseInt(parts[1], 10, 32)
+			logLine.Details = map[string]interface{}{
+				"exit_code": exitCode,
+			}
+			if detailLine.Content != "" {
+				parts = ContentArchiveCommandFailedDetailsRegexp.FindStringSubmatch(detailLine.Content)
+				if len(parts) == 2 {
+					logLine.Details["archive_command"] = parts[1]
+				}
+			}
+			return logLine, samples
+		}
+	}
 
 	// Lock waits
 	if strings.HasPrefix(logLine.Content, "process") {
@@ -305,15 +338,18 @@ func classifyAndSetDetails(logLine state.LogLine, detailLine state.LogLine, samp
 			if detailLine.Content != "" {
 				parts = ContentLockWaitDetailsRegexp.FindStringSubmatch(detailLine.Content)
 				if len(parts) == 3 {
+					logLine.RelatedPids = []int32{}
 					lockHolders := []int64{}
 					for _, s := range strings.Split(parts[1], ", ") {
 						i, _ := strconv.ParseInt(s, 10, 64)
 						lockHolders = append(lockHolders, i)
+						logLine.RelatedPids = append(logLine.RelatedPids, int32(i))
 					}
 					lockWaiters := []int64{}
 					for _, s := range strings.Split(parts[2], ", ") {
 						i, _ := strconv.ParseInt(s, 10, 64)
 						lockWaiters = append(lockWaiters, i)
+						logLine.RelatedPids = append(logLine.RelatedPids, int32(i))
 					}
 					logLine.Details["lock_holders"] = lockHolders
 					logLine.Details["lock_waiters"] = lockWaiters
@@ -324,6 +360,12 @@ func classifyAndSetDetails(logLine state.LogLine, detailLine state.LogLine, samp
 	}
 	if strings.HasPrefix(logLine.Content, "deadlock detected") {
 		logLine.Classification = pganalyze_collector.LogLineInformation_LOCK_DEADLOCK_DETECTED
+		logLine.RelatedPids = []int32{}
+		allParts := ContentDeadlockDetailsRegexp.FindAllStringSubmatch(detailLine.Content, -1)
+		for _, parts = range allParts {
+			pid, _ := strconv.ParseInt(parts[1], 10, 32)
+			logLine.RelatedPids = append(logLine.RelatedPids, int32(pid))
+		}
 		return logLine, samples
 	}
 	if strings.HasPrefix(logLine.Content, "canceling statement due to lock timeout") {
@@ -493,7 +535,7 @@ func classifyAndSetDetails(logLine state.LogLine, detailLine state.LogLine, samp
 		logLine.Classification = pganalyze_collector.LogLineInformation_AUTOVACUUM_LAUNCHER_STARTED
 		return logLine, samples
 	}
-	if strings.HasPrefix(logLine.Content, "autovacuum launcher shutting down") {
+	if strings.HasPrefix(logLine.Content, "autovacuum launcher shutting down") || strings.HasPrefix(logLine.Content, "terminating autovacuum process due to administrator command") {
 		logLine.Classification = pganalyze_collector.LogLineInformation_AUTOVACUUM_LAUNCHER_SHUTTING_DOWN
 		return logLine, samples
 	}
@@ -582,12 +624,30 @@ func classifyAndSetDetails(logLine state.LogLine, detailLine state.LogLine, samp
 
 	// Server events
 	if strings.HasPrefix(logLine.Content, "server process") {
-		if ContentServerCrashedRegexp.MatchString(logLine.Content) {
+		parts = ContentServerCrashedRegexp.FindStringSubmatch(logLine.Content)
+		if len(parts) == 3 {
 			logLine.Classification = pganalyze_collector.LogLineInformation_SERVER_CRASHED
+			processPid, _ := strconv.ParseInt(parts[1], 10, 32)
+			signal, _ := strconv.ParseInt(parts[2], 10, 32)
+			logLine.Details = map[string]interface{}{
+				"process_type": "server process",
+				"process_pid":  processPid,
+				"signal":       signal,
+			}
+			logLine.RelatedPids = []int32{int32(processPid)}
 			return logLine, samples
 		}
-		if ContentServerOutOfMemoryRegexp.MatchString(logLine.Content) {
+		parts = ContentServerOutOfMemoryRegexp.FindStringSubmatch(logLine.Content)
+		if len(parts) == 3 {
 			logLine.Classification = pganalyze_collector.LogLineInformation_SERVER_OUT_OF_MEMORY
+			processPid, _ := strconv.ParseInt(parts[1], 10, 32)
+			signal, _ := strconv.ParseInt(parts[2], 10, 32)
+			logLine.Details = map[string]interface{}{
+				"process_type": "server process",
+				"process_pid":  processPid,
+				"signal":       signal,
+			}
+			logLine.RelatedPids = []int32{int32(processPid)}
 			return logLine, samples
 		}
 	}
@@ -675,6 +735,38 @@ func classifyAndSetDetails(logLine state.LogLine, detailLine state.LogLine, samp
 	if strings.HasPrefix(logLine.Content, "configuration file") {
 		if ContentConfigFileContainsErrorsRegexp.MatchString(logLine.Content) {
 			logLine.Classification = pganalyze_collector.LogLineInformation_SERVER_RELOAD
+			return logLine, samples
+		}
+	}
+	if strings.HasPrefix(logLine.Content, "worker process: parallel worker for PID") {
+		parts = ContentParallelWorkerExited.FindStringSubmatch(logLine.Content)
+		if len(parts) == 4 {
+			logLine.Classification = pganalyze_collector.LogLineInformation_SERVER_PROCESS_EXITED
+			parentPid, _ := strconv.ParseInt(parts[1], 10, 32)
+			processPid, _ := strconv.ParseInt(parts[2], 10, 32)
+			exitCode, _ := strconv.ParseInt(parts[3], 10, 32)
+			logLine.Details = map[string]interface{}{
+				"process_type": "parallel worker",
+				"process_pid":  processPid,
+				"parent_pid":   parentPid,
+				"exit_code":    exitCode,
+			}
+			logLine.RelatedPids = []int32{int32(processPid), int32(parentPid)}
+			return logLine, samples
+		}
+	}
+	if strings.HasPrefix(logLine.Content, "worker process: logical replication launcher") {
+		parts = ContentLogicalReplicationLauncherExited.FindStringSubmatch(logLine.Content)
+		if len(parts) == 3 {
+			logLine.Classification = pganalyze_collector.LogLineInformation_SERVER_PROCESS_EXITED
+			processPid, _ := strconv.ParseInt(parts[1], 10, 32)
+			exitCode, _ := strconv.ParseInt(parts[2], 10, 32)
+			logLine.Details = map[string]interface{}{
+				"process_type": "logical replication launcher",
+				"process_pid":  processPid,
+				"exit_code":    exitCode,
+			}
+			logLine.RelatedPids = []int32{int32(processPid)}
 			return logLine, samples
 		}
 	}
