@@ -27,8 +27,7 @@ func GetLogFiles(config config.ServerConfig, logger *util.Logger) (result []stat
 	}
 
 	// Retrieve all possibly matching logfiles in the last two minutes, assuming
-	// a scheduler that runs once a minute
-	// TODO: Use prevState here instead to get the last logline we saw
+	// a scheduler that runs more frequently than that
 	linesNewerThan := time.Now().Add(-2 * time.Minute)
 	lastWritten := linesNewerThan.Unix() * 1000
 
@@ -56,12 +55,16 @@ func GetLogFiles(config config.ServerConfig, logger *util.Logger) (result []stat
 		logFile.OriginalName = *rdsLogFile.LogFileName
 		currentByteStart := int64(0)
 
+		// Some day this logic needs to be changed so we remember the marker in the
+		// collector state - then we can still pass no marker for the initial call
+		// (as we do now), but then afterwards keep tracking a position in the file
+		// instead of only getting the most recent data (and skipping lines)
 		for {
 			resp, err := rdsSvc.DownloadDBLogFilePortion(&rds.DownloadDBLogFilePortionInput{
 				DBInstanceIdentifier: instance.DBInstanceIdentifier,
 				LogFileName:          rdsLogFile.LogFileName,
-				Marker:               lastMarker,
-				NumberOfLines:        aws.Int64(100), // TODO: Temporary to fix problems
+				Marker:               lastMarker,     // This is not set for the initial call, so we only get the most recent lines
+				NumberOfLines:        aws.Int64(500), // This is the effective maximum lines retrieved per run
 			})
 
 			if err != nil {
@@ -90,6 +93,10 @@ func GetLogFiles(config config.ServerConfig, logger *util.Logger) (result []stat
 			samples = append(samples, newSamples...)
 
 			lastMarker = resp.Marker
+
+			// We are unlikely to ever get additional data, as we are tailing the file
+			// - however we may get additional data if the initial load exceeds 1MB
+			// See https://docs.aws.amazon.com/AmazonRDS/latest/APIReference/API_DownloadDBLogFilePortion.html
 			if !*resp.AdditionalDataPending {
 				break
 			}
