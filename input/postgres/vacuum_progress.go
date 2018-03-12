@@ -14,7 +14,7 @@ SELECT (extract(epoch from a.query_start)::int::text || to_char(pid, 'FM000000')
 			 v.datname,
 			 n.nspname,
 			 c.relname,
-			 a.usename,
+			 COALESCE(a.usename, ''),
 			 a.query_start,
 			 a.query LIKE 'autovacuum:%%',
 			 v.phase,

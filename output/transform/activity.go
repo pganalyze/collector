@@ -45,7 +45,12 @@ func ActivityStateToCompactActivitySnapshot(activityState state.ActivityState) (
 			Autovacuum:      vacuum.Autovacuum,
 		}
 
-		vacuumInfo.RoleIdx, r.RoleReferences = upsertRoleReference(r.RoleReferences, vacuum.RoleName)
+		if vacuum.RoleName != "" {
+			vacuumInfo.RoleIdx, r.RoleReferences = upsertRoleReference(r.RoleReferences, vacuum.RoleName)
+		} else {
+			vacuumInfo.RoleIdx = -1
+		}
+
 		vacuumInfo.DatabaseIdx, r.DatabaseReferences = upsertDatabaseReference(r.DatabaseReferences, vacuum.DatabaseName)
 		relationRef := snapshot.RelationReference{
 			DatabaseIdx:  vacuumInfo.DatabaseIdx,
