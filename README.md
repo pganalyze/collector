@@ -53,6 +53,10 @@ CREATE SCHEMA pganalyze;
 
 CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
 
+/* HINT: Postgres 9.3 does not know the showtext-flag in public.pg_stat_statements, so you need to replace with with: */
+/* SELECT * FROM public.pg_stat_statements(); */
+/* in the following block, if you use 9.3 (The showtext-flag has been added in 9.4) */
+
 CREATE OR REPLACE FUNCTION pganalyze.get_stat_statements(showtext boolean = true) RETURNS SETOF pg_stat_statements AS
 $$
   /* pganalyze-collector */ SELECT * FROM public.pg_stat_statements(showtext);
