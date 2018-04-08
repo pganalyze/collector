@@ -2378,6 +2378,18 @@ var tests = []testpair{
 	},
 	{
 		[]state.LogLine{{
+			Content: "duration: 2334.085 ms  plan:\n" +
+				"	{\n" +
+				"	  \"Query Text\": \"SELECT abalance FROM pgbench_accounts WHERE aid = [Your log message was truncated]",
+		}},
+		[]state.LogLine{{
+			Classification: pganalyze_collector.LogLineInformation_STATEMENT_AUTO_EXPLAIN,
+			Details:        map[string]interface{}{"duration_ms": 2334.085, "truncated": true},
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
 			Content: "duration: 1681.452 ms  plan:\n" +
 				"  Query Text: UPDATE pgbench_branches SET bbalance = bbalance + 2656 WHERE bid = 59;\n" +
 				"  Update on public.pgbench_branches  (cost=0.27..8.29 rows=1 width=370) (actual rows=0 loops=1)\n" +

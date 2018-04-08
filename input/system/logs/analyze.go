@@ -384,7 +384,9 @@ func classifyAndSetDetails(logLine state.LogLine, detailLine state.LogLine, samp
 			explainText := strings.TrimSpace(parts[2])
 			if strings.HasPrefix(explainText, "{") { // json format
 				var planDetails autoExplainJsonPlanDetails
-				if err := json.Unmarshal([]byte(explainText), &planDetails); err != nil {
+				if strings.HasSuffix(explainText, "[Your log message was truncated]") {
+					logLine.Details["truncated"] = true
+				} else if err := json.Unmarshal([]byte(explainText), &planDetails); err != nil {
 					logLine.Details["unparsed_explain_text"] = explainText
 				} else {
 					logLine.Query = strings.TrimSpace(planDetails.QueryText)
