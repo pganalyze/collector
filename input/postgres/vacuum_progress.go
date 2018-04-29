@@ -28,6 +28,7 @@ SELECT (extract(epoch from a.query_start)::int::text || to_char(pid, 'FM000000')
 			 JOIN %s a USING (pid)
 			 LEFT JOIN pg_class c ON (c.oid = v.relid)
 			 LEFT JOIN pg_namespace n ON (n.oid = c.relnamespace)
+ WHERE NOT v.relid IS NULL
 `
 
 func GetVacuumProgress(logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion) ([]state.PostgresVacuumProgress, error) {
