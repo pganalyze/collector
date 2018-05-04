@@ -31,7 +31,10 @@ func SetupLogTails(servers []state.Server, globalCollectionOpts state.Collection
 		}
 
 		logStream := logReceiver(server, globalCollectionOpts, prefixedLogger, nil)
-		setupLogLocationTail(server.Config.LogLocation, logStream, prefixedLogger)
+		err := setupLogLocationTail(server.Config.LogLocation, logStream, prefixedLogger)
+		if err != nil {
+			prefixedLogger.PrintError("ERROR - %s", err)
+		}
 	}
 }
 
@@ -41,7 +44,10 @@ func TestLogTail(server state.Server, globalCollectionOpts state.CollectionOpts,
 	logTestSucceeded := make(chan bool, 1)
 
 	logStream := logReceiver(server, globalCollectionOpts, prefixedLogger, logTestSucceeded)
-	setupLogLocationTail(server.Config.LogLocation, logStream, prefixedLogger)
+	err := setupLogLocationTail(server.Config.LogLocation, logStream, prefixedLogger)
+	if err != nil {
+		return err
+	}
 
 	db, err := postgres.EstablishConnection(server, prefixedLogger, globalCollectionOpts, "")
 	if err == nil {
@@ -62,7 +68,7 @@ func tailFile(path string, out chan<- string, prefixedLogger *util.Logger) {
 
 	t, err := tail.TailFile(path, tail.Config{Follow: true, MustExist: true, ReOpen: true, Logger: tail.DiscardingLogger})
 	if err != nil {
-		prefixedLogger.PrintError("Error: %s", err)
+		prefixedLogger.PrintError("ERROR - %s", err)
 		return
 	}
 	defer t.Cleanup()
@@ -71,24 +77,22 @@ func tailFile(path string, out chan<- string, prefixedLogger *util.Logger) {
 	}
 }
 
-func setupLogLocationTail(logLocation string, out chan<- string, prefixedLogger *util.Logger) {
+func setupLogLocationTail(logLocation string, out chan<- string, prefixedLogger *util.Logger) error {
 	prefixedLogger.PrintVerbose("Searching for log file(s) in %s", logLocation)
 
 	statInfo, err := os.Stat(logLocation)
 	if err != nil {
-		prefixedLogger.PrintError("Error: %s", err)
-		return
+		return err
 	}
 
 	if !statInfo.IsDir() {
 		go tailFile(logLocation, out, prefixedLogger)
-		return
+		return nil
 	}
 
 	files, err := ioutil.ReadDir(logLocation)
 	if err != nil {
-		prefixedLogger.PrintError("Error: %s", err)
-		return
+		return err
 	}
 
 	for _, f := range files {
@@ -99,8 +103,7 @@ func setupLogLocationTail(logLocation string, out chan<- string, prefixedLogger 
 
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		prefixedLogger.PrintError("Error: %s", err)
-		return
+		return err
 	}
 
 	go func() {
@@ -112,18 +115,17 @@ func setupLogLocationTail(logLocation string, out chan<- string, prefixedLogger 
 					go tailFile(event.Name, out, prefixedLogger)
 				}
 			case err = <-watcher.Errors:
-				prefixedLogger.PrintError("Error: %s", err)
+				prefixedLogger.PrintError("ERROR - %s", err)
 			}
 		}
 	}()
 
 	err = watcher.Add(logLocation)
 	if err != nil {
-		prefixedLogger.PrintError("Error: %s", err)
-		return
+		return err
 	}
 
-	return
+	return nil
 }
 
 func logReceiver(server state.Server, globalCollectionOpts state.CollectionOpts, prefixedLogger *util.Logger, logTestSucceeded chan<- bool) chan<- string {
