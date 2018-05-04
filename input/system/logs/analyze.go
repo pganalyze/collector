@@ -69,6 +69,7 @@ var ContentColumnCannotBeCastRegexp = regexp.MustCompile(`^column "(.+?)" cannot
 var ContentCannotDropRegexp = regexp.MustCompile(`^cannot drop (.+?) because other objects depend on it`)
 var ContentStatementLogRegexp = regexp.MustCompile(`^statement: (.*)`)
 var ContentStatementLogExecuteRegexp = regexp.MustCompile(`^execute (.+?): (.*)`)
+var ContentPgaCollectorIdentifyRegexp = regexp.MustCompile(`^pganalyze-collector-identify: (.*)`)
 
 type autoExplainJsonPlanDetails struct {
 	QueryText string                 `json:"Query Text"`
@@ -1000,6 +1001,17 @@ func classifyAndSetDetails(logLine state.LogLine, detailLine state.LogLine, samp
 	}
 	if strings.HasPrefix(logLine.Content, "unterminated quoted identifier at or near") {
 		logLine.Classification = pganalyze_collector.LogLineInformation_UNTERMINATED_QUOTED_IDENTIFIER
+		return logLine, samples
+	}
+	// pganalyze-collector-identify
+	if strings.HasPrefix(logLine.Content, "pganalyze-collector-identify: ") {
+		parts = ContentPgaCollectorIdentifyRegexp.FindStringSubmatch(logLine.Content)
+		if len(parts) == 2 {
+			logLine.Classification = pganalyze_collector.LogLineInformation_PGA_COLLECTOR_IDENTIFY
+			logLine.Details = map[string]interface{}{
+				"config_section": strings.TrimSpace(parts[1]),
+			}
+		}
 		return logLine, samples
 	}
 

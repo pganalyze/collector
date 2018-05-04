@@ -39,7 +39,7 @@ func SetupLogReceiver(conf config.Config, servers []state.Server, globalCollecti
 	for _, server := range servers {
 		db, err := postgres.EstablishConnection(server, logger, globalCollectionOpts, "")
 		if err == nil {
-			db.Exec(postgres.QueryMarkerSQL + fmt.Sprintf("DO $$BEGIN\nRAISE NOTICE 'pganalyze-collector-identify: %s';\nEND$$;", server.Config.SectionName))
+			db.Exec(postgres.QueryMarkerSQL + fmt.Sprintf("DO $$BEGIN\nRAISE LOG 'pganalyze-collector-identify: %s';\nEND$$;", server.Config.SectionName))
 			db.Close()
 		}
 	}
@@ -218,7 +218,7 @@ func logReceiver(servers []state.Server, in <-chan config.HerokuLogStreamItem, g
 			}
 
 			prefixedLogger := logger.WithPrefix(server.Config.SectionName)
-			logLinesByName[sourceName] = logs.AnalyzeInGroupsAndSend(server, logLines, globalCollectionOpts, prefixedLogger)
+			logLinesByName[sourceName] = logs.AnalyzeInGroupsAndSend(server, logLines, globalCollectionOpts, prefixedLogger, nil)
 		}
 	}
 }

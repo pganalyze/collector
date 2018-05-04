@@ -10,10 +10,10 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
-// GetLogFiles - Retrieves all new log files for this system and returns them
-func GetLogFiles(config config.ServerConfig, logger *util.Logger) (files []state.LogFile, querySamples []state.PostgresQuerySample) {
+// DownloadLogFiles - Downloads all new log files for the remote system and returns them
+func DownloadLogFiles(config config.ServerConfig, logger *util.Logger) (files []state.LogFile, querySamples []state.PostgresQuerySample) {
 	if config.SystemType == "amazon_rds" {
-		files, querySamples = rds.GetLogFiles(config, logger)
+		files, querySamples = rds.DownloadLogFiles(config, logger)
 	}
 
 	return

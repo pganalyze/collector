@@ -14,8 +14,8 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
-// GetLogFiles - Gets log files for an Amazon RDS instance
-func GetLogFiles(config config.ServerConfig, logger *util.Logger) (result []state.LogFile, samples []state.PostgresQuerySample) {
+// DownloadLogFiles - Gets log files for an Amazon RDS instance
+func DownloadLogFiles(config config.ServerConfig, logger *util.Logger) (result []state.LogFile, samples []state.PostgresQuerySample) {
 	sess := awsutil.GetAwsSession(config)
 
 	rdsSvc := rds.New(sess)

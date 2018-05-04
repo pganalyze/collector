@@ -12,8 +12,8 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
-// Sends all log lines that are ready, and returns the one that are not ready yet
-func AnalyzeInGroupsAndSend(server state.Server, logLines []state.LogLine, globalCollectionOpts state.CollectionOpts, prefixedLogger *util.Logger) []state.LogLine {
+// AnalyzeInGroupsAndSend - Sends all log lines that are ready, and returns the one that are not ready yet
+func AnalyzeInGroupsAndSend(server state.Server, logLines []state.LogLine, globalCollectionOpts state.CollectionOpts, prefixedLogger *util.Logger, logTestSucceeded chan<- bool) []state.LogLine {
 	var readyLogLines []state.LogLine
 	var tooFreshLogLines []state.LogLine
 	var stitchedLogLines []state.LogLine
@@ -113,6 +113,16 @@ func AnalyzeInGroupsAndSend(server state.Server, logLines []state.LogLine, globa
 		prefixedLogger.PrintInfo("Would have sent log state:\n")
 		content, _ := ioutil.ReadFile(logFile.TmpFile.Name())
 		PrintDebugInfo(string(content), logFile.LogLines, logState.QuerySamples)
+		return tooFreshLogLines
+	}
+
+	if globalCollectionOpts.TestRun {
+		for _, logLine := range logFile.LogLines {
+			if logLine.Classification == pganalyze_collector.LogLineInformation_PGA_COLLECTOR_IDENTIFY &&
+				logLine.Details["config_section"] == server.Config.SectionName {
+				logTestSucceeded <- true
+			}
+		}
 		return tooFreshLogLines
 	}
 

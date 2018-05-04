@@ -17,7 +17,7 @@ func PrintDebugInfo(logFileContents string, logLines []state.LogLine, samples []
 			continue
 		}
 
-		groups[logLine.Classification] += 1
+		groups[logLine.Classification]++
 
 		if logLine.Classification == pganalyze_collector.LogLineInformation_UNKNOWN_LOG_CLASSIFICATION {
 			unclassifiedLogLines = append(unclassifiedLogLines, logLine)
@@ -31,9 +31,9 @@ func PrintDebugInfo(logFileContents string, logLines []state.LogLine, samples []
 	if len(unclassifiedLogLines) > 0 {
 		fmt.Printf("\nUnclassified log lines:\n")
 		for _, logLine := range unclassifiedLogLines {
-			fmt.Printf("%s\n", logFileContents[logLine.ByteStart:logLine.ByteEnd])
+			fmt.Printf("%s\n", logFileContents[logLine.ByteStart:logLine.ByteEnd+1])
 			fmt.Printf("  Level: %s\n", logLine.LogLevel)
-			fmt.Printf("  Content: %#v\n", logFileContents[logLine.ByteContentStart:logLine.ByteEnd])
+			fmt.Printf("  Content: %#v\n", logFileContents[logLine.ByteContentStart:logLine.ByteEnd+1])
 			fmt.Printf("---\n")
 		}
 	}

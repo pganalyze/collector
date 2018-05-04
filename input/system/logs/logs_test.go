@@ -2416,6 +2416,34 @@ var tests = []testpair{
 				"          Index Cond: (pgbench_branches.bid = 59)",
 		}},
 	},
+	// pganalyze-collector-identify
+	{
+		[]state.LogLine{{
+			Content:  "pganalyze-collector-identify: server1",
+			LogLevel: pganalyze_collector.LogLineInformation_LOG,
+			UUID:     uuid.UUID{1},
+		}, {
+			Content:  "PL/pgSQL function inline_code_block line 2 at RAISE",
+			LogLevel: pganalyze_collector.LogLineInformation_CONTEXT,
+		}, {
+			Content:  "/* pganalyze-collector */ DO $$BEGIN\nRAISE LOG 'pganalyze-collector-identify: server1';\nEND$$;",
+			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
+		}},
+		[]state.LogLine{{
+			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
+			Classification: pganalyze_collector.LogLineInformation_PGA_COLLECTOR_IDENTIFY,
+			UUID:           uuid.UUID{1},
+			Query:          "/* pganalyze-collector */ DO $$BEGIN\nRAISE LOG 'pganalyze-collector-identify: server1';\nEND$$;",
+			Details:        map[string]interface{}{"config_section": "server1"},
+		}, {
+			LogLevel:   pganalyze_collector.LogLineInformation_CONTEXT,
+			ParentUUID: uuid.UUID{1},
+		}, {
+			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
+			ParentUUID: uuid.UUID{1},
+		}},
+		nil,
+	},
 }
 
 func TestAnalyzeLogLines(t *testing.T) {

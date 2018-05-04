@@ -45,10 +45,23 @@ func run(wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *
 		return !globalCollectionOpts.TestRun, nil, nil, nil, nil
 	}
 
-	serverConfigs := conf.Servers
+	// Avoid even running the scheduler when we already know its not needed
+	hasAnyLogsEnabled := false
+	hasAnyReportsEnabled := false
+	hasAnyActivityEnabled := false
 
+	serverConfigs := conf.Servers
 	for _, config := range serverConfigs {
 		servers = append(servers, state.Server{Config: config})
+		if config.EnableLogs || config.LogLocation != "" {
+			hasAnyLogsEnabled = true
+		}
+		if config.EnableReports {
+			hasAnyReportsEnabled = true
+		}
+		if config.EnableActivity {
+			hasAnyActivityEnabled = true
+		}
 	}
 
 	runner.ReadStateFile(servers, globalCollectionOpts, logger)
@@ -59,9 +72,12 @@ func run(wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *
 		if globalCollectionOpts.TestReport != "" {
 			runner.RunTestReport(servers, globalCollectionOpts, logger)
 		} else if globalCollectionOpts.TestRunLogs {
-			runner.CollectLogsFromAllServers(servers, globalCollectionOpts, logger)
+			runner.DownloadLogsFromAllServers(servers, globalCollectionOpts, logger)
 		} else {
 			runner.CollectAllServers(servers, globalCollectionOpts, logger)
+			if hasAnyLogsEnabled {
+				runner.TestLogsForAllServers(servers, globalCollectionOpts, logger)
+			}
 		}
 		return false, nil, nil, nil, nil
 	}
@@ -78,22 +94,6 @@ func run(wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *
 		runner.CollectAllServers(servers, globalCollectionOpts, logger)
 		wg.Done()
 	}, logger, "full snapshot of all servers")
-
-	// Avoid even running the scheduler when we already know its not needed
-	hasAnyLogsEnabled := false
-	hasAnyReportsEnabled := false
-	hasAnyActivityEnabled := false
-	for _, server := range servers {
-		if server.Config.EnableLogs || server.Config.LogLocation != "" {
-			hasAnyLogsEnabled = true
-		}
-		if server.Config.EnableReports {
-			hasAnyReportsEnabled = true
-		}
-		if server.Config.EnableActivity {
-			hasAnyActivityEnabled = true
-		}
-	}
 
 	var reportsStop chan<- bool
 	if hasAnyReportsEnabled {
@@ -113,7 +113,7 @@ func run(wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *
 		} else {
 			logsStop = schedulerGroups["logs"].Schedule(func() {
 				wg.Add(1)
-				runner.CollectLogsFromAllServers(servers, globalCollectionOpts, logger)
+				runner.DownloadLogsFromAllServers(servers, globalCollectionOpts, logger)
 				wg.Done()
 			}, logger, "log snapshot of all servers")
 		}

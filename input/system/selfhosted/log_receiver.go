@@ -1,6 +1,7 @@
 package selfhosted
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path"
@@ -8,12 +9,15 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/hpcloud/tail"
+	"github.com/pganalyze/collector/input/postgres"
 	"github.com/pganalyze/collector/input/system/logs"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
 	uuid "github.com/satori/go.uuid"
 )
 
+// SetupLogTails - Sets up continuously running log tails for all servers with a
+// local log directory or file specified
 func SetupLogTails(servers []state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
 	for _, server := range servers {
 		if server.Config.LogLocation == "" {
@@ -22,16 +26,40 @@ func SetupLogTails(servers []state.Server, globalCollectionOpts state.Collection
 
 		prefixedLogger := logger.WithPrefix(server.Config.SectionName)
 
-		if globalCollectionOpts.DebugLogs {
+		if globalCollectionOpts.DebugLogs || globalCollectionOpts.TestRun {
 			prefixedLogger.PrintInfo("Setting up log tail for %s", server.Config.LogLocation)
 		}
 
-		logStream := logReceiver(server, globalCollectionOpts, prefixedLogger)
+		logStream := logReceiver(server, globalCollectionOpts, prefixedLogger, nil)
 		setupLogLocationTail(server.Config.LogLocation, logStream, prefixedLogger)
 	}
 }
 
+// TestLogTail - Tests the tailing of a log file (without watching it continously)
+// as well as parsing and analyzing the log data
+func TestLogTail(server state.Server, globalCollectionOpts state.CollectionOpts, prefixedLogger *util.Logger) error {
+	logTestSucceeded := make(chan bool, 1)
+
+	logStream := logReceiver(server, globalCollectionOpts, prefixedLogger, logTestSucceeded)
+	setupLogLocationTail(server.Config.LogLocation, logStream, prefixedLogger)
+
+	db, err := postgres.EstablishConnection(server, prefixedLogger, globalCollectionOpts, "")
+	if err == nil {
+		db.Exec(postgres.QueryMarkerSQL + fmt.Sprintf("DO $$BEGIN\nRAISE LOG 'pganalyze-collector-identify: %s';\nEND$$;", server.Config.SectionName))
+		db.Close()
+	}
+
+	select {
+	case <-logTestSucceeded:
+		return nil
+	case <-time.After(10 * time.Second):
+		return fmt.Errorf("Timeout")
+	}
+}
+
 func tailFile(path string, out chan<- string, prefixedLogger *util.Logger) {
+	prefixedLogger.PrintVerbose("Tailing log file %s", path)
+
 	t, err := tail.TailFile(path, tail.Config{Follow: true, MustExist: true, ReOpen: true, Logger: tail.DiscardingLogger})
 	if err != nil {
 		prefixedLogger.PrintError("Error: %s", err)
@@ -44,6 +72,8 @@ func tailFile(path string, out chan<- string, prefixedLogger *util.Logger) {
 }
 
 func setupLogLocationTail(logLocation string, out chan<- string, prefixedLogger *util.Logger) {
+	prefixedLogger.PrintVerbose("Searching for log file(s) in %s", logLocation)
+
 	statInfo, err := os.Stat(logLocation)
 	if err != nil {
 		prefixedLogger.PrintError("Error: %s", err)
@@ -81,7 +111,7 @@ func setupLogLocationTail(logLocation string, out chan<- string, prefixedLogger 
 				if event.Op&fsnotify.Create == fsnotify.Create {
 					go tailFile(event.Name, out, prefixedLogger)
 				}
-			case err := <-watcher.Errors:
+			case err = <-watcher.Errors:
 				prefixedLogger.PrintError("Error: %s", err)
 			}
 		}
@@ -96,7 +126,7 @@ func setupLogLocationTail(logLocation string, out chan<- string, prefixedLogger 
 	return
 }
 
-func logReceiver(server state.Server, globalCollectionOpts state.CollectionOpts, prefixedLogger *util.Logger) chan<- string {
+func logReceiver(server state.Server, globalCollectionOpts state.CollectionOpts, prefixedLogger *util.Logger, logTestSucceeded chan<- bool) chan<- string {
 	logStream := make(chan string)
 
 	go func() {
@@ -135,10 +165,10 @@ func logReceiver(server state.Server, globalCollectionOpts state.CollectionOpts,
 				}
 
 				logLines = append(logLines, logLine)
-				logLines = logs.AnalyzeInGroupsAndSend(server, logLines, globalCollectionOpts, prefixedLogger)
+				logLines = logs.AnalyzeInGroupsAndSend(server, logLines, globalCollectionOpts, prefixedLogger, logTestSucceeded)
 			case <-timeout:
 				if len(logLines) > 0 {
-					logLines = logs.AnalyzeInGroupsAndSend(server, logLines, globalCollectionOpts, prefixedLogger)
+					logLines = logs.AnalyzeInGroupsAndSend(server, logLines, globalCollectionOpts, prefixedLogger, logTestSucceeded)
 				}
 				go func() {
 					time.Sleep(3 * time.Second)

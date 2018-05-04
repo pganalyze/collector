@@ -17,6 +17,7 @@ import (
 const LogPrefixAmazonRds string = "%t:%r:%u@%d:[%p]:"
 const LogPrefixCustom1 string = "%m [%p][%v] : [%l-1] %q[app=%a] "
 const LogPrefixCustom2 string = "%t [%p-%l] %q%u@%d "
+const LogPrefixSimple string = "%m [%p] "
 
 // Every one of these regexps should produce exactly one matching group
 var TimeRegexp = `(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(?:\.\d+)? \w+)` // %t or %m
@@ -40,6 +41,7 @@ var LevelAndContentRegexp = `(\w+):\s+(.*\n?)$`
 var LogPrefixAmazonRdsRegxp = regexp.MustCompile(`^` + TimeRegexp + `:` + IpAndPortRegexp + `:` + UserRegexp + `@` + DbRegexp + `:\[` + PidRegexp + `\]:` + LevelAndContentRegexp)
 var LogPrefixCustom1Regexp = regexp.MustCompile(`^` + TimeRegexp + ` \[` + PidRegexp + `\]\[` + VirtualTxRegexp + `\] : \[` + LogLineCounterRegexp + `-1\] (?:\[app=` + AppRegexp + `\] )?` + LevelAndContentRegexp)
 var LogPrefixCustom2Regexp = regexp.MustCompile(`^` + TimeRegexp + ` \[` + PidRegexp + `-` + LogLineCounterRegexp + `\] ` + `(?:` + UserRegexp + `@` + DbRegexp + ` )?` + LevelAndContentRegexp)
+var LogPrefixSimpleRegexp = regexp.MustCompile(`^` + TimeRegexp + ` \[` + PidRegexp + `\] ` + LevelAndContentRegexp)
 var LogPrefixNoTimestampUserDatabaseAppRegexp = regexp.MustCompile(`^\[user=` + UserRegexp + `,db=` + DbRegexp + `,app=` + AppRegexp + `\] ` + LevelAndContentRegexp)
 
 var SyslogSequenceAndSplitRegexp = `(\[[\d-]+\])?`
@@ -65,6 +67,8 @@ func ParseLogLineWithPrefix(prefix string, line string) (logLine state.LogLine, 
 			prefix = LogPrefixCustom1
 		} else if LogPrefixCustom2Regexp.MatchString(line) {
 			prefix = LogPrefixCustom2
+		} else if LogPrefixSimpleRegexp.MatchString(line) {
+			prefix = LogPrefixSimple
 		} else if RsyslogRegexp.MatchString(line) {
 			rsyslog = true
 		}
@@ -131,6 +135,15 @@ func ParseLogLineWithPrefix(prefix string, line string) (logLine state.LogLine, 
 			dbPart = parts[5]
 			levelPart = parts[6]
 			contentPart = parts[7]
+		case LogPrefixSimple: // "%t [%p] "
+			parts := LogPrefixSimpleRegexp.FindStringSubmatch(line)
+			if len(parts) == 0 {
+				return
+			}
+			timePart = parts[1]
+			pidPart = parts[2]
+			levelPart = parts[3]
+			contentPart = parts[4]
 		default:
 			// Some callers use the content of unparsed lines to stitch multi-line logs together
 			logLine.Content = line

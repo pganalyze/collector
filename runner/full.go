@@ -203,6 +203,10 @@ func CollectAllServers(servers []state.Server, globalCollectionOpts state.Collec
 
 		prefixedLogger := logger.WithPrefixAndRememberErrors(server.Config.SectionName)
 
+		if globalCollectionOpts.TestRun {
+			prefixedLogger.PrintInfo("Testing statistics collection...")
+		}
+
 		newState, grant, err := processDatabase(server, globalCollectionOpts, prefixedLogger)
 		if err != nil {
 			prefixedLogger.PrintError("Could not process database: %s", err)
