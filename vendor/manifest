@@ -77,7 +77,7 @@
 			"importpath": "github.com/golang/protobuf",
 			"repository": "https://github.com/golang/protobuf",
 			"vcs": "git",
-			"revision": "c3cefd437628a0b7d31b34fe44b3a7a540e98527",
+			"revision": "b4deda0973fb4c70b50d226b1af49f3da59f5265",
 			"branch": "master",
 			"notests": true
 		},
