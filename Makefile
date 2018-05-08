@@ -1,5 +1,6 @@
 OUTFILE := pganalyze-collector
 PROTOBUF_FILES := $(wildcard protobuf/*.proto) $(wildcard protobuf/reports/*.proto)
+PROTOC_VERSION := $(shell protoc --version 2>/dev/null)
 
 .PHONY: default build build_dist test docker_latest packages integration_test
 
@@ -25,4 +26,8 @@ docker_latest:
 	docker push quay.io/pganalyze/collector:latest
 
 output/pganalyze_collector/snapshot.pb.go: $(PROTOBUF_FILES)
+ifdef PROTOC_VERSION
 	protoc --go_out=Mgoogle/protobuf/timestamp.proto=github.com/golang/protobuf/ptypes/timestamp:output/pganalyze_collector -I protobuf $(PROTOBUF_FILES)
+else
+	@echo 'Warning: protoc not found, skipping protocol buffer regeneration'
+endif
