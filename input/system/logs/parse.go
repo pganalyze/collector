@@ -18,6 +18,7 @@ const LogPrefixAmazonRds string = "%t:%r:%u@%d:[%p]:"
 const LogPrefixCustom1 string = "%m [%p][%v] : [%l-1] %q[app=%a] "
 const LogPrefixCustom2 string = "%t [%p-%l] %q%u@%d "
 const LogPrefixSimple string = "%m [%p] "
+const LogPrefixEmpty string = ""
 
 // Every one of these regexps should produce exactly one matching group
 var TimeRegexp = `(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(?:\.\d+)? \w+)` // %t or %m
@@ -51,6 +52,16 @@ var RsyslogTimeRegexp = `(\w+\s+\d+ \d{2}:\d{2}:\d{2})`
 var RsyslogHostnameRegxp = `(\S+)`
 var RsyslogProcessNameRegexp = `(\w+)`
 var RsyslogRegexp = regexp.MustCompile(`^` + RsyslogTimeRegexp + ` ` + RsyslogHostnameRegxp + ` ` + RsyslogProcessNameRegexp + `\[` + PidRegexp + `\]: ` + SyslogSequenceAndSplitRegexp + ` ` + RsyslogLevelAndContentRegexp)
+
+var SupportedPrefixes = []string{LogPrefixAmazonRds, LogPrefixCustom1, LogPrefixCustom2, LogPrefixSimple, LogPrefixEmpty}
+func IsSupportedPrefix(prefix string) bool {
+	for _, supportedPrefix := range SupportedPrefixes {
+		if supportedPrefix == prefix {
+			return true
+		}
+	}
+	return false
+}
 
 func ParseLogLineWithPrefix(prefix string, line string) (logLine state.LogLine, ok bool) {
 	var timePart, userPart, dbPart, appPart, pidPart, levelPart, contentPart string

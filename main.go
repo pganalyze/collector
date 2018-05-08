@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"os/exec"
 	"os/signal"
 	"os/user"
 	"runtime/pprof"
@@ -30,19 +31,19 @@ import (
 	_ "github.com/lib/pq" // Enable database package to use Postgres
 )
 
-func run(wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *util.Logger, configFilename string) (bool, chan<- bool, chan<- bool, chan<- bool, chan<- bool) {
+func run(wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *util.Logger, configFilename string) (bool, chan<- bool, chan<- bool, chan<- bool, chan<- bool, chan<- bool) {
 	var servers []state.Server
 
 	schedulerGroups, err := scheduler.GetSchedulerGroups()
 	if err != nil {
 		logger.PrintError("Error: Could not get scheduler groups")
-		return false, nil, nil, nil, nil
+		return false, nil, nil, nil, nil, nil
 	}
 
 	conf, err := config.Read(logger, configFilename)
 	if err != nil {
 		logger.PrintError("Config Error: %s", err)
-		return !globalCollectionOpts.TestRun, nil, nil, nil, nil
+		return !globalCollectionOpts.TestRun, nil, nil, nil, nil, nil
 	}
 
 	// Avoid even running the scheduler when we already know its not needed
@@ -72,21 +73,62 @@ func run(wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *
 		if globalCollectionOpts.TestReport != "" {
 			runner.RunTestReport(servers, globalCollectionOpts, logger)
 		} else if globalCollectionOpts.TestRunLogs {
-			runner.DownloadLogsFromAllServers(servers, globalCollectionOpts, logger)
+			runner.TestLogsForAllServers(servers, globalCollectionOpts, logger)
 		} else {
 			runner.CollectAllServers(servers, globalCollectionOpts, logger)
 			if hasAnyLogsEnabled {
-				runner.TestLogsForAllServers(servers, globalCollectionOpts, logger)
+				// Initial test
+				hasSuccessfulLocalServers := runner.TestLogsForAllServers(servers, globalCollectionOpts, logger)
+
+				// Re-test using lower privileges
+				if hasSuccessfulLocalServers {
+					curUser, err := user.Current()
+					if err != nil {
+						logger.PrintError("Could not determine current user for privilege drop test")
+					} else {
+						pgaUser, err := user.Lookup("pganalyze")
+						if err != nil {
+							logger.PrintVerbose("Could not locate pganalyze user, skipping privilege drop test: %s", err)
+						} else if curUser.Name != "root" {
+							logger.PrintVerbose("Current user is not root, skipping privilege drop test")
+						} else if curUser.Uid == pgaUser.Uid {
+							logger.PrintVerbose("Current user is already pganalyze user, skipping privilege drop test")
+						} else {
+							uid, _ := strconv.ParseUint(pgaUser.Uid, 10, 32)
+							gid, _ := strconv.ParseUint(pgaUser.Gid, 10, 32)
+							groupIDStrs, _ := pgaUser.GroupIds()
+							var groupIDs []uint32
+							for _, groupIDStr := range groupIDStrs {
+								groupID, _ := strconv.ParseUint(groupIDStr, 10, 32)
+								groupIDs = append(groupIDs, uint32(groupID))
+							}
+							logger.PrintInfo("Re-running log test with reduced privileges of \"pganalyze\" user (uid = %d, gid = %d)", uid, gid)
+							collectorBinaryPath, err := os.Executable()
+							if err != nil {
+								logger.PrintError("Could not run collector log test as \"pganalyze\" user due to missing executable: %s", err)
+							}
+							cmd := exec.Command(collectorBinaryPath, "--test-logs")
+							cmd.Stdout = os.Stdout
+							cmd.Stderr = os.Stderr
+							cmd.SysProcAttr = &syscall.SysProcAttr{}
+							cmd.SysProcAttr.Credential = &syscall.Credential{Uid: uint32(uid), Gid: uint32(gid), Groups: groupIDs}
+							err = cmd.Run()
+							if err != nil {
+								logger.PrintError("Could not run collector log test as \"pganalyze\" user: %s", err)
+							}
+						}
+					}
+				}
 			}
 		}
-		return false, nil, nil, nil, nil
+		return false, nil, nil, nil, nil, nil
 	}
 
 	if globalCollectionOpts.DebugLogs {
 		selfhosted.SetupLogTails(servers, globalCollectionOpts, logger)
 
 		// Keep running but only running log processing
-		return true, nil, nil, nil, nil
+		return true, nil, nil, nil, nil, nil
 	}
 
 	statsStop := schedulerGroups["stats"].Schedule(func() {
@@ -104,14 +146,30 @@ func run(wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *
 		}, logger, "requested reports for all servers")
 	}
 
-	var logsStop chan<- bool
+	var logsTailStop chan<- bool
+	var logsDownloadStop chan<- bool
 	if hasAnyLogsEnabled {
-		selfhosted.SetupLogTails(servers, globalCollectionOpts, logger)
+		var hasAnyLogDownloads bool
+		var hasAnyLogTails bool
+
+		for _, server := range servers {
+			if server.Config.LogLocation != "" {
+				hasAnyLogTails = true
+			} else if server.Config.EnableLogs && conf.HerokuLogStream == nil {
+				hasAnyLogDownloads = true
+			}
+		}
 
 		if conf.HerokuLogStream != nil {
 			heroku.SetupLogReceiver(conf, servers, globalCollectionOpts, logger)
-		} else {
-			logsStop = schedulerGroups["logs"].Schedule(func() {
+		}
+
+		if hasAnyLogTails {
+			logsTailStop = selfhosted.SetupLogTails(servers, globalCollectionOpts, logger)
+		}
+
+		if hasAnyLogDownloads {
+			logsDownloadStop = schedulerGroups["logs"].Schedule(func() {
 				wg.Add(1)
 				runner.DownloadLogsFromAllServers(servers, globalCollectionOpts, logger)
 				wg.Done()
@@ -128,7 +186,7 @@ func run(wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *
 		}, logger, "activity snapshot of all servers")
 	}
 
-	return true, statsStop, reportsStop, logsStop, activityStop
+	return true, statsStop, reportsStop, logsTailStop, logsDownloadStop, activityStop
 }
 
 const defaultConfigFile = "/etc/pganalyze-collector.conf"
@@ -142,6 +200,7 @@ func main() {
 	var debugLogs bool
 	var testRun bool
 	var testReport string
+	var testRunLogs bool
 	var forceStateUpdate bool
 	var configFilename string
 	var stateFilename string
@@ -158,8 +217,9 @@ func main() {
 	logger := &util.Logger{}
 
 	flag.BoolVarP(&showVersion, "version", "", false, "Shows current version of the collector and exits")
-	flag.BoolVarP(&testRun, "test", "t", false, "Tests whether we can successfully collect data, submits it to the server, and exits afterwards")
+	flag.BoolVarP(&testRun, "test", "t", false, "Tests whether we can successfully collect statistics (including log data if configured), submits it to the server, and exits afterwards")
 	flag.StringVar(&testReport, "test-report", "", "Tests a particular report and returns its output as JSON")
+	flag.BoolVar(&testRunLogs, "test-logs", false, "Tests whether log collection works (does not test privilege dropping for local log collection, use --test for that)")
 	flag.BoolVar(&reloadRun, "reload", false, "Reloads the collector daemon thats running on the host")
 	flag.BoolVarP(&logger.Verbose, "verbose", "v", false, "Outputs additional debugging information, use this if you're encoutering errors or other problems")
 	flag.BoolVar(&logToSyslog, "syslog", false, "Write all log output to syslog instead of stderr (disabled by default)")
@@ -216,11 +276,7 @@ func main() {
 		}
 	}
 
-	if testReport != "" {
-		testRun = true
-	}
-
-	if testRunAndTrace {
+	if testReport != "" || testRunLogs || testRunAndTrace {
 		testRun = true
 	}
 
@@ -228,7 +284,7 @@ func main() {
 		SubmitCollectedData:      true,
 		TestRun:                  testRun,
 		TestReport:               testReport,
-		TestRunLogs:              dryRunLogs,
+		TestRunLogs:              testRunLogs || dryRunLogs,
 		DebugLogs:                debugLogs,
 		CollectPostgresRelations: !noPostgresRelations,
 		CollectPostgresSettings:  !noPostgresSettings,
@@ -304,7 +360,7 @@ func main() {
 	wg := sync.WaitGroup{}
 
 ReadConfigAndRun:
-	keepRunning, statsStop, reportsStop, logsStop, activityStop := run(&wg, globalCollectionOpts, logger, configFilename)
+	keepRunning, statsStop, reportsStop, logsTailStop, logsDownloadStop, activityStop := run(&wg, globalCollectionOpts, logger, configFilename)
 	if !keepRunning {
 		return
 	}
@@ -319,8 +375,11 @@ ReadConfigAndRun:
 	if reportsStop != nil {
 		reportsStop <- true
 	}
-	if logsStop != nil {
-		logsStop <- true
+	if logsTailStop != nil {
+		logsTailStop <- true
+	}
+	if logsDownloadStop != nil {
+		logsDownloadStop <- true
 	}
 	if activityStop != nil {
 		activityStop <- true
