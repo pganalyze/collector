@@ -274,6 +274,17 @@ var tests = []testpair{
 	},
 	{
 		[]state.LogLine{{
+			Content:  "too many connections for database \"postgres\"",
+			LogLevel: pganalyze_collector.LogLineInformation_FATAL,
+		}},
+		[]state.LogLine{{
+			LogLevel:       pganalyze_collector.LogLineInformation_FATAL,
+			Classification: pganalyze_collector.LogLineInformation_TOO_MANY_CONNECTIONS_DATABASE,
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
 			Content:  "could not accept SSL connection: EOF detected",
 			LogLevel: pganalyze_collector.LogLineInformation_LOG,
 		}, {
@@ -513,6 +524,35 @@ var tests = []testpair{
 		}, {
 			LogLevel:   pganalyze_collector.LogLineInformation_DETAIL,
 			ParentUUID: uuid.UUID{1},
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
+			Content:  "archive command was terminated by signal 6: Abort trap",
+			LogLevel: pganalyze_collector.LogLineInformation_FATAL,
+			UUID:     uuid.UUID{1},
+		}, {
+			Content:  "The failed archive command was: /usr/local/bin/envdir /usr/local/etc/wal-e.d/env /usr/local/bin/wal-e wal-push pg_xlog/000000040000023B000000CC",
+			LogLevel: pganalyze_collector.LogLineInformation_DETAIL,
+		}, {
+			Content:  "archiver process (PID 5886) exited with exit code 1",
+			LogLevel: pganalyze_collector.LogLineInformation_LOG,
+		}},
+		[]state.LogLine{{
+			LogLevel:       pganalyze_collector.LogLineInformation_FATAL,
+			Classification: pganalyze_collector.LogLineInformation_WAL_ARCHIVE_COMMAND_FAILED,
+			UUID:           uuid.UUID{1},
+			Details: map[string]interface{}{
+				"archive_command": "/usr/local/bin/envdir /usr/local/etc/wal-e.d/env /usr/local/bin/wal-e wal-push pg_xlog/000000040000023B000000CC",
+				"signal":          6,
+			},
+		}, {
+			LogLevel:   pganalyze_collector.LogLineInformation_DETAIL,
+			ParentUUID: uuid.UUID{1},
+		}, {
+			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
+			Classification: pganalyze_collector.LogLineInformation_WAL_ARCHIVE_COMMAND_FAILED,
 		}},
 		nil,
 	},
@@ -803,7 +843,7 @@ var tests = []testpair{
 			LogLevel: pganalyze_collector.LogLineInformation_WARNING,
 			UUID:     uuid.UUID{1},
 		}, {
-			Content:  "To avoid a database shutdown, execute a full-database VACUUM in \"template1\".",
+			Content:  "To avoid a database shutdown, execute a full-database VACUUM in \"template1\".\nYou might also need to commit or roll back old prepared transactions.",
 			LogLevel: pganalyze_collector.LogLineInformation_HINT,
 		}},
 		[]state.LogLine{{
@@ -1192,38 +1232,54 @@ var tests = []testpair{
 	},
 	{
 		[]state.LogLine{{
-			Content: "redirecting log output to logging collector process",
+			Content:  "redirecting log output to logging collector process",
+			LogLevel: pganalyze_collector.LogLineInformation_LOG,
 		}, {
-			Content: "ending log output to stderr",
+			Content:  "ending log output to stderr",
+			LogLevel: pganalyze_collector.LogLineInformation_LOG,
 		}, {
-			Content: "database system was shut down in recovery at 2017-05-05 20:17:07 UTC",
+			Content:  "database system was shut down at 2017-05-03 23:23:37 UTC",
+			LogLevel: pganalyze_collector.LogLineInformation_LOG,
 		}, {
-			Content: "entering standby mode",
+			Content:  "MultiXact member wraparound protections are now enabled",
+			LogLevel: pganalyze_collector.LogLineInformation_LOG,
 		}, {
-			Content: "database system is ready to accept read only connections",
+			Content:  "database system is ready to accept connections",
+			LogLevel: pganalyze_collector.LogLineInformation_LOG,
 		}, {
-			Content: "database system was shut down at 2017-05-03 23:23:37 UTC",
+			Content:  "database system was shut down in recovery at 2017-05-05 20:17:07 UTC",
+			LogLevel: pganalyze_collector.LogLineInformation_LOG,
 		}, {
-			Content: "MultiXact member wraparound protections are now enabled",
+			Content:  "entering standby mode",
+			LogLevel: pganalyze_collector.LogLineInformation_LOG,
 		}, {
-			Content: "database system is ready to accept connections",
+			Content:  "database system is ready to accept read only connections",
+			LogLevel: pganalyze_collector.LogLineInformation_LOG,
 		}},
 		[]state.LogLine{{
 			Classification: pganalyze_collector.LogLineInformation_SERVER_START,
+			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
 		}, {
 			Classification: pganalyze_collector.LogLineInformation_SERVER_START,
+			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
 		}, {
 			Classification: pganalyze_collector.LogLineInformation_SERVER_START,
+			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
 		}, {
 			Classification: pganalyze_collector.LogLineInformation_SERVER_START,
+			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
 		}, {
 			Classification: pganalyze_collector.LogLineInformation_SERVER_START,
+			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
 		}, {
 			Classification: pganalyze_collector.LogLineInformation_SERVER_START,
+			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
 		}, {
 			Classification: pganalyze_collector.LogLineInformation_SERVER_START,
+			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
 		}, {
 			Classification: pganalyze_collector.LogLineInformation_SERVER_START,
+			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
 		}},
 		nil,
 	},
@@ -1232,11 +1288,45 @@ var tests = []testpair{
 			Content: "database system was interrupted; last known up at 2017-05-07 22:33:02 UTC",
 		}, {
 			Content: "database system was not properly shut down; automatic recovery in progress",
+		}, {
+			Content:  "database system shutdown was interrupted; last known up at 2017-05-05 20:17:07 UTC",
+			LogLevel: pganalyze_collector.LogLineInformation_LOG,
+		}, {
+			Content:  "database system was interrupted while in recovery at 2017-05-05 20:17:07 UTC",
+			LogLevel: pganalyze_collector.LogLineInformation_LOG,
+			UUID:     uuid.UUID{1},
+		}, {
+			Content:  "This probably means that some data is corrupted and you will have to use the last backup for recovery.",
+			LogLevel: pganalyze_collector.LogLineInformation_HINT,
+		}, {
+			Content:  "database system was interrupted while in recovery at log time 2017-05-05 20:17:07 UTC",
+			LogLevel: pganalyze_collector.LogLineInformation_LOG,
+			UUID:     uuid.UUID{2},
+		}, {
+			Content:  "If this has occurred more than once some data might be corrupted and you might need to choose an earlier recovery target.",
+			LogLevel: pganalyze_collector.LogLineInformation_HINT,
 		}},
 		[]state.LogLine{{
 			Classification: pganalyze_collector.LogLineInformation_SERVER_START_RECOVERING,
 		}, {
 			Classification: pganalyze_collector.LogLineInformation_SERVER_START_RECOVERING,
+		}, {
+			Classification: pganalyze_collector.LogLineInformation_SERVER_START_RECOVERING,
+			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
+		}, {
+			Classification: pganalyze_collector.LogLineInformation_SERVER_START_RECOVERING,
+			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
+			UUID:           uuid.UUID{1},
+		}, {
+			LogLevel:   pganalyze_collector.LogLineInformation_HINT,
+			ParentUUID: uuid.UUID{1},
+		}, {
+			Classification: pganalyze_collector.LogLineInformation_SERVER_START_RECOVERING,
+			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
+			UUID:           uuid.UUID{2},
+		}, {
+			LogLevel:   pganalyze_collector.LogLineInformation_HINT,
+			ParentUUID: uuid.UUID{2},
 		}},
 		nil,
 	}, {
@@ -1294,15 +1384,11 @@ var tests = []testpair{
 		[]state.LogLine{{
 			Content: "could not open usermap file \"/var/lib/pgsql/9.5/data/pg_ident.conf\": No such file or directory",
 		}, {
-			Content: "invalid byte sequence for encoding \"UTF8\": 0xd0 0x2e",
-		}, {
 			Content: "could not link file \"pg_xlog/xlogtemp.26115\" to \"pg_xlog/000000010000021B000000C5\": File exists",
 		}, {
 			Content: "unexpected pageaddr 2D5/12000000 in log segment 00000001000002D500000022, offset 0",
 		}},
 		[]state.LogLine{{
-			Classification: pganalyze_collector.LogLineInformation_SERVER_MISC,
-		}, {
 			Classification: pganalyze_collector.LogLineInformation_SERVER_MISC,
 		}, {
 			Classification: pganalyze_collector.LogLineInformation_SERVER_MISC,
@@ -1406,10 +1492,15 @@ var tests = []testpair{
 		[]state.LogLine{{
 			Content:  "worker process: parallel worker for PID 30491 (PID 31458) exited with exit code 1",
 			LogLevel: pganalyze_collector.LogLineInformation_LOG,
+			UUID:     uuid.UUID{1},
+		}, {
+			Content:  "Failed process was running: SELECT 1",
+			LogLevel: pganalyze_collector.LogLineInformation_DETAIL,
 		}},
 		[]state.LogLine{{
 			Classification: pganalyze_collector.LogLineInformation_SERVER_PROCESS_EXITED,
 			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
+			UUID:           uuid.UUID{1},
 			Details: map[string]interface{}{
 				"process_type": "parallel worker",
 				"process_pid":  31458,
@@ -1417,6 +1508,9 @@ var tests = []testpair{
 				"exit_code":    1,
 			},
 			RelatedPids: []int32{31458, 30491},
+		}, {
+			LogLevel:   pganalyze_collector.LogLineInformation_DETAIL,
+			ParentUUID: uuid.UUID{1},
 		}},
 		nil,
 	},
@@ -1437,6 +1531,23 @@ var tests = []testpair{
 		}},
 		nil,
 	},
+	{
+		[]state.LogLine{{
+			Content:  "worker process: logical replication launcher (PID 17443) was terminated by signal 9",
+			LogLevel: pganalyze_collector.LogLineInformation_LOG,
+		}},
+		[]state.LogLine{{
+			Classification: pganalyze_collector.LogLineInformation_SERVER_PROCESS_EXITED,
+			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
+			Details: map[string]interface{}{
+				"process_type": "logical replication launcher",
+				"process_pid":  17443,
+				"signal":       9,
+			},
+			RelatedPids: []int32{17443},
+		}},
+		nil,
+	},
 	// Standby
 	{
 		[]state.LogLine{{
@@ -1452,6 +1563,17 @@ var tests = []testpair{
 	{
 		[]state.LogLine{{
 			Content:  "started streaming WAL from primary at 4E8/9E000000 on timeline 6",
+			LogLevel: pganalyze_collector.LogLineInformation_LOG,
+		}},
+		[]state.LogLine{{
+			Classification: pganalyze_collector.LogLineInformation_STANDBY_STARTED_STREAMING,
+			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
+			Content:  "restarted WAL streaming at 3E/62000000 on timeline 3",
 			LogLevel: pganalyze_collector.LogLineInformation_LOG,
 		}},
 		[]state.LogLine{{
@@ -1519,10 +1641,10 @@ var tests = []testpair{
 	{
 		[]state.LogLine{{
 			Content:  "according to history file, WAL location 2D5/22000000 belongs to timeline 3, but previous recovered WAL file came from timeline 4",
-			LogLevel: pganalyze_collector.LogLineInformation_FATAL,
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
 		}},
 		[]state.LogLine{{
-			LogLevel:       pganalyze_collector.LogLineInformation_FATAL,
+			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
 			Classification: pganalyze_collector.LogLineInformation_STANDBY_INVALID_TIMELINE,
 		}},
 		nil,
@@ -2319,6 +2441,17 @@ var tests = []testpair{
 		}, {
 			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
 			ParentUUID: uuid.UUID{1},
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
+			Content:  "invalid byte sequence for encoding \"UTF8\": 0xd0 0x2e",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}},
+		[]state.LogLine{{
+			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
+			Classification: pganalyze_collector.LogLineInformation_INVALID_BYTE_SEQUENCE,
 		}},
 		nil,
 	},
