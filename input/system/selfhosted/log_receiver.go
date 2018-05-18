@@ -19,6 +19,28 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
+const settingValueSQL string = `
+SELECT setting
+	FROM pg_settings
+ WHERE name = '%s'`
+
+func getPostgresSetting(settingName string, server state.Server, globalCollectionOpts state.CollectionOpts, prefixedLogger *util.Logger) (string, error) {
+	var value string
+
+	db, err := postgres.EstablishConnection(server, prefixedLogger, globalCollectionOpts, "")
+	if err != nil {
+		return "", fmt.Errorf("Could not connect to database to retrieve \"%s\": %s", settingName, err)
+	}
+
+	err = db.QueryRow(postgres.QueryMarkerSQL + fmt.Sprintf(settingValueSQL, settingName)).Scan(&value)
+	db.Close()
+	if err != nil {
+		return "", fmt.Errorf("Could not read \"%s\" setting: %s", settingName, err)
+	}
+
+	return value, nil
+}
+
 // SetupLogTails - Sets up continuously running log tails for all servers with a
 // local log directory or file specified
 func SetupLogTails(servers []state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) chan bool {
@@ -44,30 +66,16 @@ func SetupLogTails(servers []state.Server, globalCollectionOpts state.Collection
 	return stop
 }
 
-const logLinePrefixSettingSQL string = `
-SELECT setting
-	FROM pg_settings
- WHERE name = 'log_line_prefix'`
-
-// TestLogTail - Tests the tailing of a log file (without watching it continously)
+// TestLogTail - Tests the tailing of a log file (without watching it continuously)
 // as well as parsing and analyzing the log data
 func TestLogTail(server state.Server, globalCollectionOpts state.CollectionOpts, prefixedLogger *util.Logger) error {
 	stop := make(chan bool)
 
-	db, err := postgres.EstablishConnection(server, prefixedLogger, globalCollectionOpts, "")
-	if err == nil {
-		var logLinePrefix string
-
-		err = db.QueryRow(postgres.QueryMarkerSQL + logLinePrefixSettingSQL).Scan(&logLinePrefix)
-		db.Close()
-		if err != nil {
-			return fmt.Errorf("Could not read log_line_prefix setting: %s", err)
-		}
-		if !logs.IsSupportedPrefix(logLinePrefix) {
-			return fmt.Errorf("Unsupported log_line_prefix setting: '%s'", logLinePrefix)
-		}
-	} else {
-		return fmt.Errorf("Could not connect to database for reading log_line_prefix setting: %s", err)
+	logLinePrefix, err := getPostgresSetting("log_line_prefix", server, globalCollectionOpts, prefixedLogger)
+	if err != nil {
+		return err
+	} else if !logs.IsSupportedPrefix(logLinePrefix) {
+		return fmt.Errorf("Unsupported log_line_prefix setting: '%s'", logLinePrefix)
 	}
 
 	logTestSucceeded := make(chan bool, 1)
@@ -78,7 +86,7 @@ func TestLogTail(server state.Server, globalCollectionOpts state.CollectionOpts,
 		return err
 	}
 
-	db, err = postgres.EstablishConnection(server, prefixedLogger, globalCollectionOpts, "")
+	db, err := postgres.EstablishConnection(server, prefixedLogger, globalCollectionOpts, "")
 	if err == nil {
 		db.Exec(postgres.QueryMarkerSQL + fmt.Sprintf("DO $$BEGIN\nRAISE LOG 'pganalyze-collector-identify: %s';\nEND$$;", server.Config.SectionName))
 		db.Close()
