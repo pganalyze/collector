@@ -131,6 +131,11 @@ func run(wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *
 		return true, nil, nil, nil, nil, nil
 	}
 
+	if globalCollectionOpts.DiscoverLogLocation {
+		selfhosted.DiscoverLogLocation(servers, globalCollectionOpts, logger)
+		return false, nil, nil, nil, nil, nil
+	}
+
 	statsStop := schedulerGroups["stats"].Schedule(func() {
 		wg.Add(1)
 		runner.CollectAllServers(servers, globalCollectionOpts, logger)
@@ -198,6 +203,7 @@ func main() {
 	var dryRunLogs bool
 	var analyzeLogfile string
 	var debugLogs bool
+	var discoverLogLocation bool
 	var testRun bool
 	var testReport string
 	var testRunLogs bool
@@ -228,6 +234,7 @@ func main() {
 	flag.BoolVar(&dryRunLogs, "dry-run-logs", false, "Print JSON data for log snapshot (without actually sending) and exit afterwards")
 	flag.StringVar(&analyzeLogfile, "analyze-logfile", "", "Analyzes the content of the given log file and returns debug output about it")
 	flag.BoolVar(&debugLogs, "debug-logs", false, "Outputs all log analysis that would be sent, doesn't send any other data (use for debugging only)")
+	flag.BoolVar(&discoverLogLocation, "discover-log-location", false, "Tries to automatically discover the location of the Postgres log directory, to support configuring the 'db_log_location' setting")
 	flag.BoolVar(&forceStateUpdate, "force-state-update", false, "Updates the state file even if other options would have prevented it (intended to be used together with --dry-run for debugging)")
 	flag.BoolVar(&noPostgresRelations, "no-postgres-relations", false, "Don't collect any Postgres relation information (not recommended)")
 	flag.BoolVar(&noPostgresSettings, "no-postgres-settings", false, "Don't collect Postgres configuration settings")
@@ -286,6 +293,7 @@ func main() {
 		TestReport:               testReport,
 		TestRunLogs:              testRunLogs || dryRunLogs,
 		DebugLogs:                debugLogs,
+		DiscoverLogLocation:      discoverLogLocation,
 		CollectPostgresRelations: !noPostgresRelations,
 		CollectPostgresSettings:  !noPostgresSettings,
 		CollectPostgresLocks:     !noPostgresLocks,
@@ -311,7 +319,9 @@ func main() {
 		globalCollectionOpts.TestRun = true
 	}
 
-	if globalCollectionOpts.TestRun || globalCollectionOpts.TestReport != "" {
+	if globalCollectionOpts.TestRun || globalCollectionOpts.TestReport != "" ||
+		globalCollectionOpts.TestRunLogs || globalCollectionOpts.DebugLogs ||
+		globalCollectionOpts.DiscoverLogLocation {
 		globalCollectionOpts.CollectorApplicationName = "pganalyze_test_run"
 	} else {
 		globalCollectionOpts.CollectorApplicationName = "pganalyze_collector"

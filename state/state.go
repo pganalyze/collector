@@ -104,6 +104,7 @@ type CollectionOpts struct {
 	TestReport          string
 	TestRunLogs         bool
 	DebugLogs           bool
+	DiscoverLogLocation bool
 
 	StateFilename    string
 	WriteStateUpdate bool

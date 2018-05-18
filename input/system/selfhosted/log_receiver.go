@@ -1,12 +1,15 @@
 package selfhosted
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -39,6 +42,69 @@ func getPostgresSetting(settingName string, server state.Server, globalCollectio
 	}
 
 	return value, nil
+}
+
+// DiscoverLogLocation - Tries to find the log location for a currently running Postgres
+// process and outputs the presumed location using the logger
+func DiscoverLogLocation(servers []state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
+	for _, server := range servers {
+		prefixedLogger := logger.WithPrefix(server.Config.SectionName)
+
+		if server.Config.DbHost != "localhost" && server.Config.DbHost != "127.0.0.1" {
+			prefixedLogger.PrintError("ERROR - Detected remote server - Log Insights requires the collector to run on the database server directly for self-hosted systems")
+			continue
+		}
+
+		logDestination, err := getPostgresSetting("log_destination", server, globalCollectionOpts, prefixedLogger)
+		if err != nil {
+			prefixedLogger.PrintError("ERROR - %s", err)
+			continue
+		}
+
+		if logDestination == "syslog" {
+			prefixedLogger.PrintInfo("Log location detected as syslog - please check our setup guide for rsyslogd or syslog-ng instructions")
+			continue
+		} else if logDestination != "stderr" {
+			prefixedLogger.PrintError("ERROR - Unsupported log_destination \"%s\"", logDestination)
+			continue
+		}
+
+		loggingCollector, err := getPostgresSetting("logging_collector", server, globalCollectionOpts, prefixedLogger)
+		if err != nil {
+			prefixedLogger.PrintError("ERROR - %s", err)
+			continue
+		}
+
+		var status helperStatus
+		statusBytes, err := exec.Command("/usr/bin/pganalyze-collector-helper", "status").Output()
+		if err != nil {
+			prefixedLogger.PrintError("ERROR - Could not run helper process: %s", err)
+			continue
+		} else {
+			err = json.Unmarshal(statusBytes, &status)
+			if err != nil {
+				prefixedLogger.PrintVerbose("ERROR - Could not unmarshal helper status: %s", err)
+				continue
+			}
+		}
+
+		if loggingCollector == "on" {
+			logDirectory, err := getPostgresSetting("log_directory", server, globalCollectionOpts, prefixedLogger)
+			if err != nil {
+				prefixedLogger.PrintError("ERROR - %s", err)
+				continue
+			}
+			prefixedLogger.PrintInfo("Found log location, add this to your pganalyze-collector.conf in the [%s] section:\ndb_log_location = %s", server.Config.SectionName, status.DataDirectory+"/"+logDirectory)
+		} else { // assume stdout/stderr redirect to logfile, typical with postgresql-common on Ubuntu/Debian
+			prefixedLogger.PrintInfo("Discovering log directory using open files in postmaster (PID %d)...", status.PostmasterPid)
+			logFile, err := filepath.EvalSymlinks("/proc/" + strconv.FormatInt(int64(status.PostmasterPid), 10) + "/fd/1")
+			if err != nil {
+				prefixedLogger.PrintError("ERROR - %s", err)
+				continue
+			}
+			prefixedLogger.PrintInfo("Found log location, add this to your pganalyze-collector.conf in the [%s] section:\ndb_log_location = %s", server.Config.SectionName, logFile)
+		}
+	}
 }
 
 // SetupLogTails - Sets up continuously running log tails for all servers with a
