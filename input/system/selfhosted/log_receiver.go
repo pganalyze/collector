@@ -94,17 +94,15 @@ func DiscoverLogLocation(servers []state.Server, globalCollectionOpts state.Coll
 				prefixedLogger.PrintError("ERROR - %s", err)
 				continue
 			}
-			prefixedLogger.PrintInfo("Found Log Location: %s", status.DataDirectory+"/"+logDirectory)
-			// TODO: log_file_mode is relevant (should be "0640" instead of "0600", and then add the pganalyze user to the postgres group)
-		} else { // typical with postgresql-common on Ubuntu/Debian, Docker setup with ports bound to host
+			prefixedLogger.PrintInfo("Found log location, add this to your pganalyze-collector.conf in the [%s] section:\ndb_log_location = %s", server.Config.SectionName, status.DataDirectory+"/"+logDirectory)
+		} else { // assume stdout/stderr redirect to logfile, typical with postgresql-common on Ubuntu/Debian
 			prefixedLogger.PrintInfo("Discovering log directory using open files in postmaster (PID %d)...", status.PostmasterPid)
 			logFile, err := filepath.EvalSymlinks("/proc/" + strconv.FormatInt(int64(status.PostmasterPid), 10) + "/fd/1")
 			if err != nil {
 				prefixedLogger.PrintError("ERROR - %s", err)
 				continue
 			}
-			prefixedLogger.PrintInfo("Found Log Location: %s", logFile)
-			// TODO: Verify permissions
+			prefixedLogger.PrintInfo("Found log location, add this to your pganalyze-collector.conf in the [%s] section:\ndb_log_location = %s", server.Config.SectionName, logFile)
 		}
 	}
 }
