@@ -131,8 +131,14 @@ If you are monitoring an RDS database and want to run the collector inside Docke
 
 ```
 docker pull quay.io/pganalyze/collector:stable
-docker run --rm --name pganalyze-mydb -e DB_URL=postgres://username:password@hostname.us-east-1.rds.amazonaws.com/mydb \
--e PGA_API_KEY=YOUR_PGANALYZE_API_KEY -e AWS_INSTANCE_ID=my-instance-id -e AWS_REGION=us-east-1 quay.io/pganalyze/collector:stable
+docker run \
+  --rm \
+  --name pganalyze-mydb \
+  -e DB_URL=postgres://username:password@hostname.us-east-1.rds.amazonaws.com/mydb \
+  -e PGA_API_KEY=YOUR_PGANALYZE_API_KEY \
+  -e AWS_INSTANCE_ID=my-instance-id \
+  -e AWS_REGION=us-east-1 \
+  quay.io/pganalyze/collector:stable
 ```
 
 You'll need to set PGA_API_KEY, AWS_INSTANCE_ID and AWS_REGION with the correct values.
@@ -143,6 +149,7 @@ To get better data quality for server metrics, enable "Enhanced Monitoring" in y
 
 We currently require one Docker container per RDS instance monitored.
 
+If you have multiple databases on the same RDS instance, you can monitor them all by specifying DB_ALL_NAMES=1 as an environment variable.
 
 Docker Container (non-RDS)
 --------------------------
@@ -151,7 +158,11 @@ If the database you want to monitor is running inside a Docker environment you c
 
 ```
 docker pull quay.io/pganalyze/collector:stable
-docker run --name my-app-pga-collector --link my-app-db:db --env-file collector_config.env quay.io/pganalyze/collector:stable
+docker run \
+  --name my-app-pga-collector \
+  --link my-app-db:db \
+  --env-file collector_config.env \
+  quay.io/pganalyze/collector:stable
 ```
 
 collector_config.env needs to look like this:
