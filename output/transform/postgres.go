@@ -17,6 +17,7 @@ func transformPostgres(s snapshot.FullSnapshot, newState state.PersistedState, d
 	s = transformPostgresStatements(s, newState, diffState, transientState, roleOidToIdx, databaseOidToIdx)
 	s = transformPostgresRelations(s, newState, diffState, roleOidToIdx, databaseOidToIdx)
 	s = transformPostgresFunctions(s, newState, diffState, roleOidToIdx, databaseOidToIdx)
+	s = transformPostgresBackendCounts(s, transientState, roleOidToIdx, databaseOidToIdx)
 
 	return s
 }

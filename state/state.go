@@ -52,8 +52,9 @@ type TransientState struct {
 	// in order to enable the next snapshot to be able to diff against something
 	ResetStatementStats PostgresStatementStatsMap
 
-	Replication PostgresReplication
-	Settings    []PostgresSetting
+	Replication   PostgresReplication
+	Settings      []PostgresSetting
+	BackendCounts []PostgresBackendCount
 
 	Version PostgresVersion
 

@@ -10,8 +10,8 @@ import (
 
 const activitySQLDefaultOptionalFields = "waiting, NULL, NULL, NULL, NULL, NULL"
 const activitySQLpg94OptionalFields = "waiting, backend_xid, backend_xmin, NULL, NULL, NULL"
-const activitySQLpg96OptionalFields = "wait_event IS NOT NULL, backend_xid, backend_xmin, wait_event_type, wait_event, NULL"
-const activitySQLpg10OptionalFields = "wait_event IS NOT NULL, backend_xid, backend_xmin, wait_event_type, wait_event, backend_type"
+const activitySQLpg96OptionalFields = "COALESCE(wait_event_type, '') = 'Lock', backend_xid, backend_xmin, wait_event_type, wait_event, NULL"
+const activitySQLpg10OptionalFields = "COALESCE(wait_event_type, '') = 'Lock', backend_xid, backend_xmin, wait_event_type, wait_event, backend_type"
 
 const activitySQL string = `SELECT (extract(epoch from COALESCE(backend_start, pg_postmaster_start_time()))::int::text || to_char(pid, 'FM000000'))::bigint,
 				datid, datname, usesysid, usename, pid, application_name, client_addr::text, client_port,

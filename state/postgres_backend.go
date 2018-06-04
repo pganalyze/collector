@@ -40,3 +40,12 @@ type PostgresBackend struct {
 	// - disabled: This state is reported if track_activities is disabled in this backend.
 	State null.String
 }
+
+type PostgresBackendCount struct {
+	DatabaseOid    null.Int // OID of the database
+	RoleOid        null.Int // OID of the user
+	State          string   // Current overall state of this backend
+	BackendType    string   // The process type of this backend
+	WaitingForLock bool     // True if this backend is currently waiting on a heavyweight lock
+	Count          int32    // Number of this kind of backends
+}
