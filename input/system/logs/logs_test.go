@@ -1131,6 +1131,30 @@ var tests = []testpair{
 			},
 		}},
 		nil,
+	}, {
+		[]state.LogLine{{
+			Content:  "skipping vacuum of \"mytable\" --- lock not available",
+			LogLevel: pganalyze_collector.LogLineInformation_LOG,
+			UUID:     uuid.UUID{1},
+		}},
+		[]state.LogLine{{
+			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
+			Classification: pganalyze_collector.LogLineInformation_SKIPPING_VACUUM_LOCK_NOT_AVAILABLE,
+			UUID:           uuid.UUID{1},
+		}},
+		nil,
+	}, {
+		[]state.LogLine{{
+			Content:  "skipping analyze of \"pgbench_tellers\" --- lock not available",
+			LogLevel: pganalyze_collector.LogLineInformation_LOG,
+			UUID:     uuid.UUID{1},
+		}},
+		[]state.LogLine{{
+			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
+			Classification: pganalyze_collector.LogLineInformation_SKIPPING_ANALYZE_LOCK_NOT_AVAILABLE,
+			UUID:           uuid.UUID{1},
+		}},
+		nil,
 	},
 	// Statement cancellation (other than lock timeout)
 	{

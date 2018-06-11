@@ -518,6 +518,14 @@ func classifyAndSetDetails(logLine state.LogLine, detailLine state.LogLine, samp
 		logLine.Classification = pganalyze_collector.LogLineInformation_AUTOVACUUM_CANCEL
 		return logLine, samples
 	}
+	if strings.HasPrefix(logLine.Content, "skipping vacuum of") {
+		logLine.Classification = pganalyze_collector.LogLineInformation_SKIPPING_VACUUM_LOCK_NOT_AVAILABLE
+		return logLine, samples
+	}
+	if strings.HasPrefix(logLine.Content, "skipping analyze of") {
+		logLine.Classification = pganalyze_collector.LogLineInformation_SKIPPING_ANALYZE_LOCK_NOT_AVAILABLE
+		return logLine, samples
+	}
 	if strings.HasPrefix(logLine.Content, "database") {
 		parts = ContentWraparoundWarningRegexp.FindStringSubmatch(logLine.Content)
 		if len(parts) == 5 {
