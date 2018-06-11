@@ -64,34 +64,36 @@ func ActivityStateToCompactActivitySnapshot(activityState state.ActivityState) (
 
 		s.VacuumProgressInformations = append(s.VacuumProgressInformations, &vacuumInfo)
 
-		vacuumStats := snapshot.VacuumProgressStatistic{
-			VacuumIdentity:   vacuum.VacuumIdentity,
-			HeapBlksTotal:    vacuum.HeapBlksTotal,
-			HeapBlksScanned:  vacuum.HeapBlksScanned,
-			HeapBlksVacuumed: vacuum.HeapBlksVacuumed,
-			IndexVacuumCount: vacuum.IndexVacuumCount,
-			MaxDeadTuples:    vacuum.MaxDeadTuples,
-			NumDeadTuples:    vacuum.NumDeadTuples,
-		}
+		if vacuum.Phase != "" {
+			vacuumStats := snapshot.VacuumProgressStatistic{
+				VacuumIdentity:   vacuum.VacuumIdentity,
+				HeapBlksTotal:    vacuum.HeapBlksTotal,
+				HeapBlksScanned:  vacuum.HeapBlksScanned,
+				HeapBlksVacuumed: vacuum.HeapBlksVacuumed,
+				IndexVacuumCount: vacuum.IndexVacuumCount,
+				MaxDeadTuples:    vacuum.MaxDeadTuples,
+				NumDeadTuples:    vacuum.NumDeadTuples,
+			}
 
-		switch vacuum.Phase {
-		case "initializing":
-			vacuumStats.Phase = snapshot.VacuumProgressStatistic_INITIALIZING
-		case "scanning heap":
-			vacuumStats.Phase = snapshot.VacuumProgressStatistic_SCAN_HEAP
-		case "vacuuming indexes":
-			vacuumStats.Phase = snapshot.VacuumProgressStatistic_VACUUM_INDEX
-		case "vacuuming heap":
-			vacuumStats.Phase = snapshot.VacuumProgressStatistic_VACUUM_HEAP
-		case "cleaning up indexes":
-			vacuumStats.Phase = snapshot.VacuumProgressStatistic_INDEX_CLEANUP
-		case "truncating heap":
-			vacuumStats.Phase = snapshot.VacuumProgressStatistic_TRUNCATE
-		case "performing final cleanup":
-			vacuumStats.Phase = snapshot.VacuumProgressStatistic_FINAL_CLEANUP
-		}
+			switch vacuum.Phase {
+			case "initializing":
+				vacuumStats.Phase = snapshot.VacuumProgressStatistic_INITIALIZING
+			case "scanning heap":
+				vacuumStats.Phase = snapshot.VacuumProgressStatistic_SCAN_HEAP
+			case "vacuuming indexes":
+				vacuumStats.Phase = snapshot.VacuumProgressStatistic_VACUUM_INDEX
+			case "vacuuming heap":
+				vacuumStats.Phase = snapshot.VacuumProgressStatistic_VACUUM_HEAP
+			case "cleaning up indexes":
+				vacuumStats.Phase = snapshot.VacuumProgressStatistic_INDEX_CLEANUP
+			case "truncating heap":
+				vacuumStats.Phase = snapshot.VacuumProgressStatistic_TRUNCATE
+			case "performing final cleanup":
+				vacuumStats.Phase = snapshot.VacuumProgressStatistic_FINAL_CLEANUP
+			}
 
-		s.VacuumProgressStatistics = append(s.VacuumProgressStatistics, &vacuumStats)
+			s.VacuumProgressStatistics = append(s.VacuumProgressStatistics, &vacuumStats)
+		}
 	}
 
 	return s, r
