@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.13.0      2018-06-15
+
+* Support basic vacuum information for Postgres 9.5 and older
+* Track connection counts per database and per role
+* Add ignore_table_pattern / IGNORE_TABLE_PATTERN option
+* Avoid errors when collecting from AWS Aurora for Postgres instances
+* Log Insights improvements
+  * Better setup help
+  * Increase read rate for RDS log downloader from 100 to 1000 lines
+  * Add support for extracting EXPLAIN plans from auto_explain output
+  * Fix autovacuum, autoanalyze and checkpoint completed parsing for PG 10
+  * Avoid sending unparsed explain text for truncated log lines
+  * Detect vacuum/analyze skipped log lines
+
+
 ## 0.12.0      2018-03-05
 
 * Set username/database name correct for Heroku logstreams
