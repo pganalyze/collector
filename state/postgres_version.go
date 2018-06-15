@@ -18,4 +18,7 @@ type PostgresVersion struct {
 	Full    string `json:"full"`    // e.g. "PostgreSQL 9.5.1 on x86_64-pc-linux-gnu, compiled by gcc (Debian 4.9.2-10) 4.9.2, 64-bit"
 	Short   string `json:"short"`   // e.g. "9.5.1"
 	Numeric int    `json:"numeric"` // e.g. 90501
+
+	// For collector use only, to avoid calling functions that don't work in AWS Aurora
+	IsAwsAurora bool
 }

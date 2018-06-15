@@ -24,6 +24,11 @@ func GetPostgresVersion(logger *util.Logger, db *sql.DB) (version state.Postgres
 		return
 	}
 
+	err = db.QueryRow(QueryMarkerSQL + "SELECT COUNT(1) = 1 FROM pg_settings WHERE name = 'rds.extensions' AND setting LIKE '%aurora_stat_utils%'").Scan(&version.IsAwsAurora)
+	if err != nil {
+		return
+	}
+
 	logger.PrintVerbose("Detected PostgreSQL Version %d (%s)", version.Numeric, version.Full)
 
 	return

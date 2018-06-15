@@ -81,6 +81,11 @@ func GetReplication(logger *util.Logger, db *sql.DB, isHeroku bool, postgresVers
 	var replicationStandbySQL string
 	var replicationSQL string
 
+	if postgresVersion.IsAwsAurora {
+		// Most replication functions are not supported on AWS Aurora Postgres
+		return repl, nil
+	}
+
 	if statsHelperExists(db, "get_stat_replication") {
 		logger.PrintVerbose("Found pganalyze.get_stat_replication() stats helper")
 		sourceTable = "pganalyze.get_stat_replication()"

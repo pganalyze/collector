@@ -79,6 +79,7 @@ func transformSystem(systemState state.SystemState, diffState state.DiffState) *
 					EnhancedMonitoring:         systemState.Info.AmazonRds.EnhancedMonitoring,
 					ParameterApplyStatus:       systemState.Info.AmazonRds.ParameterApplyStatus,
 					ParameterPgssEnabled:       systemState.Info.AmazonRds.ParameterPgssEnabled,
+					IsAuroraPostgres:           systemState.Info.AmazonRds.IsAuroraPostgres,
 				},
 			}
 		}

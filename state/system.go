@@ -81,6 +81,7 @@ type SystemInfoAmazonRds struct {
 	EnhancedMonitoring         bool
 	ParameterApplyStatus       string
 	ParameterPgssEnabled       bool
+	IsAuroraPostgres           bool
 }
 
 // Scheduler - Information about the OS scheduler

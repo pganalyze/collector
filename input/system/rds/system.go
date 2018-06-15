@@ -14,6 +14,10 @@ import (
 	"github.com/pganalyze/collector/util/awsutil"
 )
 
+// Aurora storage is automatically extended up until 64TB, so we should always
+// report that limit as the total disk space (to avoid bogus disk space warnings)
+const AuroraMaxStorage = 64 * 1024 * 1024 * 1024 * 1024
+
 // GetSystemState - Gets system information about an Amazon RDS instance
 func GetSystemState(config config.ServerConfig, logger *util.Logger) (system state.SystemState) {
 	system.Info.Type = state.AmazonRdsSystem
@@ -33,6 +37,8 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger) (system sta
 		return
 	}
 
+	isAurora := util.StringPtrToString(instance.Engine) == "aurora-postgresql"
+
 	system.Info.AmazonRds = &state.SystemInfoAmazonRds{
 		Region:                     config.AwsRegion,
 		InstanceClass:              util.StringPtrToString(instance.DBInstanceClass),
@@ -51,6 +57,7 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger) (system sta
 		MasterUsername:             util.StringPtrToString(instance.MasterUsername),
 		InitialDbName:              util.StringPtrToString(instance.DBName),
 		CreatedAt:                  util.TimePtrToTime(instance.InstanceCreateTime),
+		IsAuroraPostgres:						 isAurora,
 	}
 
 	group := instance.DBParameterGroups[0]
@@ -178,11 +185,15 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger) (system sta
 
 				system.DiskPartitions = make(state.DiskPartitionMap)
 				for _, diskPartition := range osSnapshot.FileSystems {
+					totalBytes := uint64(diskPartition.Total * 1024)
+					if isAurora {
+						totalBytes = AuroraMaxStorage
+					}
 					system.DiskPartitions[diskPartition.MountPoint] = state.DiskPartition{
 						DiskName:      "default",
 						PartitionName: diskPartition.Name,
 						UsedBytes:     uint64(diskPartition.Used * 1024),
-						TotalBytes:    uint64(diskPartition.Total * 1024),
+						TotalBytes:    totalBytes,
 					}
 				}
 			}
@@ -213,11 +224,16 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger) (system sta
 			bytesTotal = *instance.AllocatedStorage * 1024 * 1024 * 1024
 			bytesFree = cloudWatchReader.GetRdsIntMetric("FreeStorageSpace", "Bytes")
 
+			totalBytes := uint64(bytesTotal)
+			if isAurora {
+				totalBytes = AuroraMaxStorage
+			}
+
 			system.DiskPartitions = make(state.DiskPartitionMap)
 			system.DiskPartitions["/"] = state.DiskPartition{
 				DiskName:   "default",
 				UsedBytes:  uint64(bytesTotal - bytesFree),
-				TotalBytes: uint64(bytesTotal),
+				TotalBytes: totalBytes,
 			}
 		}
 	}
