@@ -3,6 +3,8 @@ package input
 import (
 	"database/sql"
 	"fmt"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/pganalyze/collector/input/postgres"
@@ -96,6 +98,24 @@ func CollectFull(server state.Server, connection *sql.DB, collectionOpts state.C
 	}
 
 	ps, ts = postgres.CollectAllSchemas(server, collectionOpts, logger, ps, ts)
+
+	if server.Config.IgnoreTablePattern != "" {
+		var filteredRelations []state.PostgresRelation
+		patterns := strings.Split(server.Config.IgnoreTablePattern, ",")
+		for _, relation := range ps.Relations {
+			var matched bool
+			for _, pattern := range patterns {
+				matched, _ = filepath.Match(pattern, relation.SchemaName + "." + relation.RelationName)
+				if matched {
+					break
+				}
+			}
+			if !matched {
+				filteredRelations = append(filteredRelations, relation)
+			}
+		}
+		ps.Relations = filteredRelations
+	}
 
 	if collectionOpts.CollectSystemInformation {
 		ps.System = system.GetSystemState(server.Config, logger)

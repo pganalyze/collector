@@ -86,6 +86,9 @@ func getDefaultConfig() *ServerConfig {
 	if awsSecretAccessKey := os.Getenv("AWS_SECRET_ACCESS_KEY"); awsSecretAccessKey != "" {
 		config.AwsSecretAccessKey = awsSecretAccessKey
 	}
+	if ignoreTablePattern := os.Getenv("IGNORE_TABLE_PATTERN"); ignoreTablePattern != "" {
+		config.IgnoreTablePattern = ignoreTablePattern
+	}
 
 	return config
 }

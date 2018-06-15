@@ -69,6 +69,11 @@ type ServerConfig struct {
 	// Configures the location where logfiles are - this can either be a directory,
 	// or a file - needs to readable by the regular pganalyze user
 	LogLocation string `ini:"db_log_location"`
+
+	// Specifies a table pattern to ignore - no statistics will be collected for
+	// tables that match the name. This uses Golang's filepath.Match function for
+	// comparison, so you can e.g. use "*" for wildcard matching.
+	IgnoreTablePattern string `ini:"ignore_table_pattern"`
 }
 
 // GetPqOpenString - Gets the database configuration as a string that can be passed to lib/pq for connecting
