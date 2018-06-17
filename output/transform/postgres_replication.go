@@ -63,10 +63,14 @@ func transformPostgresReplication(s snapshot.FullSnapshot, transientState state.
 			SentLocation:  standby.SentLocation,
 			WriteLocation: standby.WriteLocation,
 			FlushLocation: standby.FlushLocation,
-			ByteLag:       standby.ByteLag,
 		}
 		if standby.ReplayLocation.Valid {
 			stats.ReplayLocation = standby.ReplayLocation.String
+		}
+		if standby.ByteLag.Valid {
+			stats.ByteLag = standby.ByteLag.Int64
+		} else {
+			stats.ByteLag = -1
 		}
 
 		s.Replication.StandbyStatistics = append(s.Replication.StandbyStatistics,

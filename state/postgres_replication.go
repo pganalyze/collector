@@ -40,5 +40,5 @@ type PostgresReplicationStandby struct {
 	WriteLocation  string
 	FlushLocation  string
 	ReplayLocation null.String
-	ByteLag        int64
+	ByteLag        null.Int
 }
