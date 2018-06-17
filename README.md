@@ -81,6 +81,9 @@ REVOKE ALL ON SCHEMA public FROM pganalyze;
 GRANT USAGE ON SCHEMA pganalyze TO pganalyze;
 ```
 
+If you are using PostgreSQL 9.3 or older, replace `public.pg_stat_statements(showtext)`
+with `public.pg_stat_statements()` in the `pganalyze.get_stat_statements` helper method.
+
 Note that these statements must be run as a superuser (to create the `SECURITY DEFINER` function),
 but from here onwards you can use the `pganalyze` user instead.
 
