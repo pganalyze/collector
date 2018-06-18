@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.13.1      2018-06-18
+
+* Don't error out on pg_stat_replication.replay_lsn being NULL [#21](https://github.com/pganalyze/collector/issues/21)
+
+
 ## 0.13.0      2018-06-15
 
 * Support basic vacuum information for Postgres 9.5 and older
