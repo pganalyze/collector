@@ -2479,6 +2479,58 @@ var tests = []testpair{
 		}},
 		nil,
 	},
+	{
+		[]state.LogLine{{
+			Content:  "could not serialize access due to concurrent update",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+			UUID:     uuid.UUID{1},
+		}, {
+			Content:  "SELECT \"1",
+			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
+		}},
+		[]state.LogLine{{
+			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
+			Classification: pganalyze_collector.LogLineInformation_COULD_NOT_SERIALIZE_REPEATABLE_READ,
+			UUID:           uuid.UUID{1},
+			Query:          "SELECT \"1",
+		}, {
+			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
+			ParentUUID: uuid.UUID{1},
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
+			Content:  "could not serialize access due to read/write dependencies among transactions",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+			UUID:     uuid.UUID{1},
+		}, {
+			Content:  "Reason code: Canceled on identification as a pivot, during write.",
+			LogLevel: pganalyze_collector.LogLineInformation_DETAIL,
+		}, {
+			Content:  "The transaction might succeed if retried.",
+			LogLevel: pganalyze_collector.LogLineInformation_HINT,
+		}, {
+			Content:  "SELECT \"1",
+			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
+		}},
+		[]state.LogLine{{
+			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
+			Classification: pganalyze_collector.LogLineInformation_COULD_NOT_SERIALIZE_SERIALIZABLE,
+			UUID:           uuid.UUID{1},
+			Query:          "SELECT \"1",
+		}, {
+			LogLevel:   pganalyze_collector.LogLineInformation_DETAIL,
+			ParentUUID: uuid.UUID{1},
+		}, {
+			LogLevel:   pganalyze_collector.LogLineInformation_HINT,
+			ParentUUID: uuid.UUID{1},
+		}, {
+			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
+			ParentUUID: uuid.UUID{1},
+		}},
+		nil,
+	},
 	// auto_explain
 	{
 		[]state.LogLine{{

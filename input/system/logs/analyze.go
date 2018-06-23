@@ -1028,6 +1028,14 @@ func classifyAndSetDetails(logLine state.LogLine, detailLine state.LogLine, samp
 		logLine.Classification = pganalyze_collector.LogLineInformation_INVALID_BYTE_SEQUENCE
 		return logLine, samples
 	}
+	if strings.HasPrefix(logLine.Content, "could not serialize access due to concurrent update") {
+		logLine.Classification = pganalyze_collector.LogLineInformation_COULD_NOT_SERIALIZE_REPEATABLE_READ
+		return logLine, samples
+	}
+	if strings.HasPrefix(logLine.Content, "could not serialize access due to read/write dependencies among transactions") {
+		logLine.Classification = pganalyze_collector.LogLineInformation_COULD_NOT_SERIALIZE_SERIALIZABLE
+		return logLine, samples
+	}
 	// pganalyze-collector-identify
 	if strings.HasPrefix(logLine.Content, "pganalyze-collector-identify: ") {
 		parts = ContentPgaCollectorIdentifyRegexp.FindStringSubmatch(logLine.Content)
