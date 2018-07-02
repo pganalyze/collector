@@ -948,6 +948,7 @@ var tests = []testpair{
 			Classification: pganalyze_collector.LogLineInformation_AUTOVACUUM_COMPLETED,
 			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
 			Details: map[string]interface{}{
+				"aggressive":          false,
 				"num_index_scans":     1,
 				"pages_removed":       0,
 				"rel_pages":           1,
@@ -982,6 +983,7 @@ var tests = []testpair{
 			Classification: pganalyze_collector.LogLineInformation_AUTOVACUUM_COMPLETED,
 			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
 			Details: map[string]interface{}{
+				"aggressive":        false,
 				"num_index_scans":   1,
 				"pages_removed":     0,
 				"rel_pages":         12,
@@ -1014,6 +1016,7 @@ var tests = []testpair{
 			Classification: pganalyze_collector.LogLineInformation_AUTOVACUUM_COMPLETED,
 			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
 			Details: map[string]interface{}{
+				"aggressive":        false,
 				"num_index_scans":   1,
 				"pages_removed":     0,
 				"rel_pages":         29457,
@@ -1046,6 +1049,7 @@ var tests = []testpair{
 			Classification: pganalyze_collector.LogLineInformation_AUTOVACUUM_COMPLETED,
 			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
 			Details: map[string]interface{}{
+				"aggressive":        false,
 				"num_index_scans":   1,
 				"pages_removed":     0,
 				"rel_pages":         597092,
@@ -1079,6 +1083,43 @@ var tests = []testpair{
 			Classification: pganalyze_collector.LogLineInformation_AUTOVACUUM_COMPLETED,
 			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
 			Details: map[string]interface{}{
+				"aggressive":          false,
+				"num_index_scans":     0,
+				"pages_removed":       0,
+				"rel_pages":           839,
+				"pinskipped_pages":    0,
+				"frozenskipped_pages": 705,
+				"tuples_deleted":      1849,
+				"new_rel_tuples":      2556,
+				"new_dead_tuples":     5,
+				"oldest_xmin":         448424944,
+				"vacuum_page_hit":     569,
+				"vacuum_page_miss":    1,
+				"vacuum_page_dirty":   0,
+				"read_rate_mb":        0.064,
+				"write_rate_mb":       0.000,
+				"rusage_kernel":       0.00,
+				"rusage_user":         0.00,
+				"elapsed_secs":        0.12,
+			},
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
+			Content: "automatic aggressive vacuum of table \"demo_pgbench.public.pgbench_tellers\": index scans: 0" +
+				" pages: 0 removed, 839 remain, 0 skipped due to pins, 705 skipped frozen" +
+				"	tuples: 1849 removed, 2556 remain, 5 are dead but not yet removable, oldest xmin: 448424944" +
+				"	buffer usage: 569 hits, 1 misses, 0 dirtied" +
+				"	avg read rate: 0.064 MB/s, avg write rate: 0.000 MB/s" +
+				"	system usage: CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.12 s",
+			LogLevel: pganalyze_collector.LogLineInformation_LOG,
+		}},
+		[]state.LogLine{{
+			Classification: pganalyze_collector.LogLineInformation_AUTOVACUUM_COMPLETED,
+			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
+			Details: map[string]interface{}{
+				"aggressive":          true,
 				"num_index_scans":     0,
 				"pages_removed":       0,
 				"rel_pages":           839,

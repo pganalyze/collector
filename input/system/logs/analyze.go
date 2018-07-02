@@ -14,7 +14,7 @@ import (
 var ContentAutoExplainRegexp = regexp.MustCompile(`^duration: ([\d\.]+) ms\s+ plan:([\s\S]+)`)
 var ContentDurationRegexp = regexp.MustCompile(`(?ms)^duration: ([\d\.]+) ms([^:]+):(.+)`)
 var ContentDurationDetailsRegexp = regexp.MustCompile(`\$\d+ = '([^']*)',?\s*`)
-var ContentAutoVacuumRegexp = regexp.MustCompile(`^automatic vacuum of table "(.+?)": index scans: (\d+)\s*` +
+var ContentAutoVacuumRegexp = regexp.MustCompile(`^automatic (aggressive )?vacuum of table "(.+?)": index scans: (\d+)\s*` +
 	`pages: (\d+) removed, (\d+) remain(?:, (\d+) skipped due to pins)?(?:, (\d+) skipped frozen)?\s*` +
 	`tuples: (\d+) removed, (\d+) remain, (\d+) are dead but not yet removable(?:, oldest xmin: (\d+))?\s*` +
 	`buffer usage: (\d+) hits, (\d+) misses, (\d+) dirtied\s*` +
@@ -564,40 +564,42 @@ func classifyAndSetDetails(logLine state.LogLine, detailLine state.LogLine, samp
 		logLine.Classification = pganalyze_collector.LogLineInformation_AUTOVACUUM_LAUNCHER_SHUTTING_DOWN
 		return logLine, samples
 	}
-	if strings.HasPrefix(logLine.Content, "automatic vacuum of table") {
+	if strings.HasPrefix(logLine.Content, "automatic vacuum of table") || strings.HasPrefix(logLine.Content, "automatic aggressive vacuum of table") {
 		parts = ContentAutoVacuumRegexp.FindStringSubmatch(logLine.Content)
-		if len(parts) == 22 {
+		if len(parts) == 23 {
 			var kernelPart, userPart, elapsedPart string
 
 			logLine.Classification = pganalyze_collector.LogLineInformation_AUTOVACUUM_COMPLETED
-			// FIXME: Associate relation (parts[1])
+			// FIXME: Associate relation (parts[2])
 
-			numIndexScans, _ := strconv.ParseInt(parts[2], 10, 64)
-			pagesRemoved, _ := strconv.ParseInt(parts[3], 10, 64)
-			relPages, _ := strconv.ParseInt(parts[4], 10, 64)
-			tuplesDeleted, _ := strconv.ParseInt(parts[7], 10, 64)
-			newRelTuples, _ := strconv.ParseInt(parts[8], 10, 64)
-			newDeadTuples, _ := strconv.ParseInt(parts[9], 10, 64)
-			vacuumPageHit, _ := strconv.ParseInt(parts[11], 10, 64)
-			vacuumPageMiss, _ := strconv.ParseInt(parts[12], 10, 64)
-			vacuumPageDirty, _ := strconv.ParseInt(parts[13], 10, 64)
-			readRateMb, _ := strconv.ParseFloat(parts[14], 64)
-			writeRateMb, _ := strconv.ParseFloat(parts[15], 64)
+			aggressiveVacuum := parts[1] == "aggressive "
+			numIndexScans, _ := strconv.ParseInt(parts[3], 10, 64)
+			pagesRemoved, _ := strconv.ParseInt(parts[4], 10, 64)
+			relPages, _ := strconv.ParseInt(parts[5], 10, 64)
+			tuplesDeleted, _ := strconv.ParseInt(parts[8], 10, 64)
+			newRelTuples, _ := strconv.ParseInt(parts[9], 10, 64)
+			newDeadTuples, _ := strconv.ParseInt(parts[10], 10, 64)
+			vacuumPageHit, _ := strconv.ParseInt(parts[12], 10, 64)
+			vacuumPageMiss, _ := strconv.ParseInt(parts[13], 10, 64)
+			vacuumPageDirty, _ := strconv.ParseInt(parts[14], 10, 64)
+			readRateMb, _ := strconv.ParseFloat(parts[15], 64)
+			writeRateMb, _ := strconv.ParseFloat(parts[16], 64)
 
-			if parts[16] != "" {
-				kernelPart = parts[16]
-				userPart = parts[17]
-				elapsedPart = parts[18]
+			if parts[17] != "" {
+				kernelPart = parts[17]
+				userPart = parts[18]
+				elapsedPart = parts[19]
 			} else {
-				userPart = parts[19]
-				kernelPart = parts[20]
-				elapsedPart = parts[21]
+				userPart = parts[20]
+				kernelPart = parts[21]
+				elapsedPart = parts[22]
 			}
 			rusageKernelMode, _ := strconv.ParseFloat(kernelPart, 64)
 			rusageUserMode, _ := strconv.ParseFloat(userPart, 64)
 			rusageElapsed, _ := strconv.ParseFloat(elapsedPart, 64)
 
 			logLine.Details = map[string]interface{}{
+				"aggressive":      aggressiveVacuum,
 				"num_index_scans": numIndexScans, "pages_removed": pagesRemoved,
 				"rel_pages": relPages, "tuples_deleted": tuplesDeleted,
 				"new_rel_tuples": newRelTuples, "new_dead_tuples": newDeadTuples,
@@ -606,16 +608,16 @@ func classifyAndSetDetails(logLine state.LogLine, detailLine state.LogLine, samp
 				"write_rate_mb": writeRateMb, "rusage_kernel": rusageKernelMode,
 				"rusage_user": rusageUserMode, "elapsed_secs": rusageElapsed,
 			}
-			if parts[5] != "" {
-				pinskippedPages, _ := strconv.ParseInt(parts[5], 10, 64)
+			if parts[6] != "" {
+				pinskippedPages, _ := strconv.ParseInt(parts[6], 10, 64)
 				logLine.Details["pinskipped_pages"] = pinskippedPages
 			}
-			if parts[6] != "" {
-				frozenskippedPages, _ := strconv.ParseInt(parts[6], 10, 64)
+			if parts[7] != "" {
+				frozenskippedPages, _ := strconv.ParseInt(parts[7], 10, 64)
 				logLine.Details["frozenskipped_pages"] = frozenskippedPages
 			}
-			if parts[10] != "" {
-				oldestXmin, _ := strconv.ParseInt(parts[10], 10, 64)
+			if parts[11] != "" {
+				oldestXmin, _ := strconv.ParseInt(parts[11], 10, 64)
 				logLine.Details["oldest_xmin"] = oldestXmin
 			}
 			return logLine, samples
