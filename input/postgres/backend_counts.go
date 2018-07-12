@@ -8,7 +8,7 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
-const backendCountsSQLDefaultOptionalFields = "CASE WHEN query LIKE 'autovacuum: %' THEN 'autovacuum worker' ELSE 'client backend' END, waiting AS waiting_for_lock,"
+const backendCountsSQLDefaultOptionalFields = "CASE WHEN query LIKE 'autovacuum: %' THEN 'autovacuum worker' ELSE 'client backend' END, COALESCE(waiting, false) AS waiting_for_lock,"
 const backendCountsSQLpg96OptionalFields = "CASE WHEN query LIKE 'autovacuum: %' THEN 'autovacuum worker' ELSE 'client backend' END, COALESCE(wait_event_type, '') = 'Lock' AS waiting_for_lock,"
 const backendCountsSQLpg10OptionalFields = "COALESCE(backend_type, 'unknown'), COALESCE(wait_event_type, '') = 'Lock' AS waiting_for_lock,"
 
