@@ -42,23 +42,10 @@ func CollectFull(server state.Server, connection *sql.DB, collectionOpts state.C
 		return
 	}
 
-	ps.StatementTextCounter = server.PrevState.StatementTextCounter + 1
-	if ps.StatementTextCounter >= server.Grant.Config.Features.StatementTextFrequency { // Stats and statements
-		ps.StatementTextCounter = 0
-		ts.HasStatementText = true
-		ts.Statements, ps.StatementStats, err = postgres.GetStatements(logger, connection, ts.Version, true, isHeroku)
-		if err != nil {
-			logger.PrintError("Error collecting pg_stat_statements")
-			return
-		}
-	} else { // Stats only
-		logger.PrintVerbose("Collecting pg_stat_statements without statement text (%d of %d)", ps.StatementTextCounter, server.Grant.Config.Features.StatementTextFrequency)
-		ts.HasStatementText = false
-		_, ps.StatementStats, err = postgres.GetStatements(logger, connection, ts.Version, false, isHeroku)
-		if err != nil {
-			logger.PrintError("Error collecting pg_stat_statements")
-			return
-		}
+	ts.Statements, ps.StatementStats, err = postgres.GetStatements(logger, connection, ts.Version, true, isHeroku)
+	if err != nil {
+		logger.PrintError("Error collecting pg_stat_statements")
+		return
 	}
 
 	ps.StatementResetCounter = server.PrevState.StatementResetCounter + 1
@@ -105,7 +92,7 @@ func CollectFull(server state.Server, connection *sql.DB, collectionOpts state.C
 		for _, relation := range ps.Relations {
 			var matched bool
 			for _, pattern := range patterns {
-				matched, _ = filepath.Match(pattern, relation.SchemaName + "." + relation.RelationName)
+				matched, _ = filepath.Match(pattern, relation.SchemaName+"."+relation.RelationName)
 				if matched {
 					break
 				}

@@ -31,19 +31,19 @@ import (
 	_ "github.com/lib/pq" // Enable database package to use Postgres
 )
 
-func run(wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *util.Logger, configFilename string) (bool, chan<- bool, chan<- bool, chan<- bool, chan<- bool, chan<- bool) {
+func run(wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *util.Logger, configFilename string) (bool, chan<- bool, chan<- bool, chan<- bool, chan<- bool, chan<- bool, chan<- bool) {
 	var servers []state.Server
 
 	schedulerGroups, err := scheduler.GetSchedulerGroups()
 	if err != nil {
 		logger.PrintError("Error: Could not get scheduler groups")
-		return false, nil, nil, nil, nil, nil
+		return false, nil, nil, nil, nil, nil, nil
 	}
 
 	conf, err := config.Read(logger, configFilename)
 	if err != nil {
 		logger.PrintError("Config Error: %s", err)
-		return !globalCollectionOpts.TestRun, nil, nil, nil, nil, nil
+		return !globalCollectionOpts.TestRun, nil, nil, nil, nil, nil, nil
 	}
 
 	// Avoid even running the scheduler when we already know its not needed
@@ -53,7 +53,7 @@ func run(wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *
 
 	serverConfigs := conf.Servers
 	for _, config := range serverConfigs {
-		servers = append(servers, state.Server{Config: config})
+		servers = append(servers, state.Server{Config: config, StateMutex: &sync.Mutex{}})
 		if config.EnableLogs || config.LogLocation != "" {
 			hasAnyLogsEnabled = true
 		}
@@ -121,19 +121,19 @@ func run(wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *
 				}
 			}
 		}
-		return false, nil, nil, nil, nil, nil
+		return false, nil, nil, nil, nil, nil, nil
 	}
 
 	if globalCollectionOpts.DebugLogs {
 		selfhosted.SetupLogTails(servers, globalCollectionOpts, logger)
 
 		// Keep running but only running log processing
-		return true, nil, nil, nil, nil, nil
+		return true, nil, nil, nil, nil, nil, nil
 	}
 
 	if globalCollectionOpts.DiscoverLogLocation {
 		selfhosted.DiscoverLogLocation(servers, globalCollectionOpts, logger)
-		return false, nil, nil, nil, nil, nil
+		return false, nil, nil, nil, nil, nil, nil
 	}
 
 	statsStop := schedulerGroups["stats"].Schedule(func() {
@@ -191,7 +191,14 @@ func run(wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *
 		}, logger, "activity snapshot of all servers")
 	}
 
-	return true, statsStop, reportsStop, logsTailStop, logsDownloadStop, activityStop
+	var queriesStop chan<- bool
+	queriesStop = schedulerGroups["query_stats"].ScheduleSecondary(func() {
+		wg.Add(1)
+		runner.GatherQueryStatsFromAllServers(servers, globalCollectionOpts, logger)
+		wg.Done()
+	}, logger, "high frequency query statistics of all servers", schedulerGroups["stats"])
+
+	return true, statsStop, reportsStop, logsTailStop, logsDownloadStop, activityStop, queriesStop
 }
 
 const defaultConfigFile = "/etc/pganalyze-collector.conf"
@@ -370,7 +377,7 @@ func main() {
 	wg := sync.WaitGroup{}
 
 ReadConfigAndRun:
-	keepRunning, statsStop, reportsStop, logsTailStop, logsDownloadStop, activityStop := run(&wg, globalCollectionOpts, logger, configFilename)
+	keepRunning, statsStop, reportsStop, logsTailStop, logsDownloadStop, activityStop, queriesStop := run(&wg, globalCollectionOpts, logger, configFilename)
 	if !keepRunning {
 		return
 	}
@@ -393,6 +400,9 @@ ReadConfigAndRun:
 	}
 	if activityStop != nil {
 		activityStop <- true
+	}
+	if queriesStop != nil {
+		queriesStop <- true
 	}
 
 	if s == syscall.SIGHUP {

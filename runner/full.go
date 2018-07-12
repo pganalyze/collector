@@ -44,17 +44,7 @@ func collectDiffAndSubmit(server state.Server, globalCollectionOpts state.Collec
 
 	diffState := diffState(logger, server.PrevState, newState, collectedIntervalSecs)
 
-	if transientState.HasStatementText {
-		transientState.HistoricStatementStats = server.PrevState.UnidentifiedStatementStats
-	} else {
-		timeKey := state.PostgresStatementStatsTimeKey{CollectedAt: newState.CollectedAt, CollectedIntervalSecs: collectedIntervalSecs}
-		newState.UnidentifiedStatementStats = server.PrevState.UnidentifiedStatementStats
-		if newState.UnidentifiedStatementStats == nil {
-			newState.UnidentifiedStatementStats = make(state.HistoricStatementStatsMap)
-		}
-		newState.UnidentifiedStatementStats[timeKey] = diffState.StatementStats
-		diffState.StatementStats = make(state.DiffedPostgresStatementStatsMap)
-	}
+	transientState.HistoricStatementStats = server.PrevState.UnidentifiedStatementStats
 
 	err = output.SendFull(server, globalCollectionOpts, logger, newState, diffState, transientState, collectedIntervalSecs)
 	if err != nil {
@@ -207,8 +197,10 @@ func CollectAllServers(servers []state.Server, globalCollectionOpts state.Collec
 			prefixedLogger.PrintInfo("Testing statistics collection...")
 		}
 
+		servers[idx].StateMutex.Lock()
 		newState, grant, err := processDatabase(server, globalCollectionOpts, prefixedLogger)
 		if err != nil {
+			servers[idx].StateMutex.Unlock()
 			prefixedLogger.PrintError("Could not process database: %s", err)
 			if grant.Valid && !globalCollectionOpts.TestRun && globalCollectionOpts.SubmitCollectedData {
 				server.Grant = grant
@@ -221,11 +213,12 @@ func CollectAllServers(servers []state.Server, globalCollectionOpts state.Collec
 				go runCompletionCallback("error", server.Config.ErrorCallback, server.Config.SectionName, "full", err, prefixedLogger)
 			}
 		} else {
+			servers[idx].Grant = grant
+			servers[idx].PrevState = newState
+			servers[idx].StateMutex.Unlock()
 			if server.Config.SuccessCallback != "" {
 				go runCompletionCallback("success", server.Config.SuccessCallback, server.Config.SectionName, "full", nil, prefixedLogger)
 			}
-			servers[idx].Grant = grant
-			servers[idx].PrevState = newState
 		}
 	}
 

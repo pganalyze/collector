@@ -1,6 +1,7 @@
 package state
 
 import (
+	"sync"
 	"time"
 
 	raven "github.com/getsentry/raven-go"
@@ -27,12 +28,10 @@ type PersistedState struct {
 	// and is reset afterwards.
 	StatementResetCounter int
 
-	// Incremented every run, indicates whether full statement text should be collected.
-	// Text is collected when counter reaches GrantFeatures.StatementFrequency, and is
-	// reset afterwards.
-	StatementTextCounter int
+	// Keep track of when we last collected statement stats, to calculate time distance
+	LastStatementStatsAt time.Time
 
-	// All statement stats that have not been identified (will be cleared by the next snapshot with statement text)
+	// All statement stats that have not been identified (will be cleared by the next full snapshot)
 	UnidentifiedStatementStats HistoricStatementStatsMap
 }
 
@@ -44,7 +43,6 @@ type TransientState struct {
 	Roles     []PostgresRole
 	Databases []PostgresDatabase
 
-	HasStatementText       bool
 	Statements             PostgresStatementMap
 	HistoricStatementStats HistoricStatementStatsMap
 
@@ -123,7 +121,6 @@ type GrantFeatures struct {
 	Logs    bool `json:"logs"`
 	Explain bool `json:"explain"`
 
-	StatementTextFrequency  int   `json:"statement_text_frequency"`
 	StatementResetFrequency int   `json:"statement_reset_frequency"`
 	StatementTimeoutMs      int32 `json:"statement_timeout_ms"` // Statement timeout for all SQL statements sent to the database (defaults to 30s)
 }
@@ -148,6 +145,7 @@ type GrantS3 struct {
 type Server struct {
 	Config           config.ServerConfig
 	PrevState        PersistedState
+	StateMutex       *sync.Mutex
 	RequestedSslMode string
 	Grant            Grant
 }

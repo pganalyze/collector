@@ -1,13 +1,18 @@
 package transform
 
 import (
-	"fmt"
+	"strings"
 
 	"github.com/golang/protobuf/ptypes"
+	"github.com/pganalyze/collector/input/postgres"
 	snapshot "github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
 )
+
+func ignoredStatement(query string) bool {
+	return strings.HasPrefix(query, postgres.QueryMarkerSQL) || strings.HasPrefix(query, "DEALLOCATE") || query == "<insufficient privilege>"
+}
 
 func groupStatements(statements state.PostgresStatementMap, statsMap state.DiffedPostgresStatementStatsMap) map[statementKey]statementValue {
 	groupedStatements := make(map[statementKey]statementValue)
@@ -15,7 +20,9 @@ func groupStatements(statements state.PostgresStatementMap, statsMap state.Diffe
 	for sKey, stats := range statsMap {
 		statement, exist := statements[sKey]
 		if !exist {
-			statement = state.PostgresStatement{NormalizedQuery: fmt.Sprintf("<unidentified queryid %d>", sKey.QueryID)}
+			statement = state.PostgresStatement{NormalizedQuery: "<unidentified queryid>"}
+		} else if ignoredStatement(statement.NormalizedQuery) {
+			continue
 		}
 
 		key := statementKey{
