@@ -2,7 +2,6 @@ package transform
 
 import (
 	"strings"
-	"fmt"
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/pganalyze/collector/input/postgres"
@@ -21,7 +20,7 @@ func groupStatements(statements state.PostgresStatementMap, statsMap state.Diffe
 	for sKey, stats := range statsMap {
 		statement, exist := statements[sKey]
 		if !exist {
-			statement = state.PostgresStatement{NormalizedQuery: fmt.Sprintf("<unidentified queryid %d>", sKey.QueryID)}
+			statement = state.PostgresStatement{NormalizedQuery: "<unidentified queryid>"}
 		} else if ignoredStatement(statement.NormalizedQuery) {
 			continue
 		}
