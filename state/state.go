@@ -28,8 +28,10 @@ type PersistedState struct {
 	// and is reset afterwards.
 	StatementResetCounter int
 
+	// Keep track of when we last collected statement stats, to calculate time distance
+	LastStatementStatsAt time.Time
 
-	// All statement stats that have not been identified (will be cleared by the next snapshot with statement text)
+	// All statement stats that have not been identified (will be cleared by the next full snapshot)
 	UnidentifiedStatementStats HistoricStatementStatsMap
 }
 

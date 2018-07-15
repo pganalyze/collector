@@ -42,6 +42,7 @@ func CollectFull(server state.Server, connection *sql.DB, collectionOpts state.C
 		return
 	}
 
+	ps.LastStatementStatsAt = time.Now()
 	ts.Statements, ps.StatementStats, err = postgres.GetStatements(logger, connection, ts.Version, true, isHeroku)
 	if err != nil {
 		logger.PrintError("Error collecting pg_stat_statements")
@@ -92,7 +93,7 @@ func CollectFull(server state.Server, connection *sql.DB, collectionOpts state.C
 		for _, relation := range ps.Relations {
 			var matched bool
 			for _, pattern := range patterns {
-				matched, _ = filepath.Match(pattern, relation.SchemaName + "." + relation.RelationName)
+				matched, _ = filepath.Match(pattern, relation.SchemaName+"."+relation.RelationName)
 				if matched {
 					break
 				}
