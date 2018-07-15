@@ -53,7 +53,7 @@ func run(wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *
 
 	serverConfigs := conf.Servers
 	for _, config := range serverConfigs {
-		servers = append(servers, state.Server{Config: config})
+		servers = append(servers, state.Server{Config: config, StateMutex: &sync.Mutex{}})
 		if config.EnableLogs || config.LogLocation != "" {
 			hasAnyLogsEnabled = true
 		}

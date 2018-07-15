@@ -1,6 +1,7 @@
 package state
 
 import (
+	"sync"
 	"time"
 
 	raven "github.com/getsentry/raven-go"
@@ -142,6 +143,7 @@ type GrantS3 struct {
 type Server struct {
 	Config           config.ServerConfig
 	PrevState        PersistedState
+	StateMutex       *sync.Mutex
 	RequestedSslMode string
 	Grant            Grant
 }
