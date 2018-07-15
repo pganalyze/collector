@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"fmt"
 	"hash/fnv"
-	"strings"
 
 	"github.com/guregu/null"
 	"github.com/lib/pq"
@@ -21,9 +20,7 @@ SELECT dbid, userid, query, calls, total_time, rows, shared_blks_hit, shared_blk
 			 shared_blks_dirtied, shared_blks_written, local_blks_hit, local_blks_read,
 			 local_blks_dirtied, local_blks_written, temp_blks_read, temp_blks_written,
 			 blk_read_time, blk_write_time, %s
-	FROM %s
- WHERE query IS NULL OR (query !~* '^%s' AND query <> '<insufficient privilege>'
-			 AND query NOT LIKE 'DEALLOCATE %%')`
+	FROM %s`
 
 const statementStatsHelperSQL string = `
 SELECT 1 AS enabled
@@ -105,11 +102,7 @@ func GetStatements(logger *util.Logger, db *sql.DB, postgresVersion state.Postgr
 		}
 	}
 
-	queryMarkerRegex := strings.Trim(QueryMarkerSQL, " ")
-	queryMarkerRegex = strings.Replace(queryMarkerRegex, "*", "\\*", -1)
-	queryMarkerRegex = strings.Replace(queryMarkerRegex, "/", "\\/", -1)
-
-	sql := QueryMarkerSQL + fmt.Sprintf(statementSQL, optionalFields, sourceTable, queryMarkerRegex)
+	sql := QueryMarkerSQL + fmt.Sprintf(statementSQL, optionalFields, sourceTable)
 
 	stmt, err := db.Prepare(sql)
 	if err != nil {
