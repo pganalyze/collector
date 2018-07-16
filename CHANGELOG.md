@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.14.0      2018-07-15
+
+* Introduce once-per-minute query statistics collection
+  - Enabled for PostgreSQL 9.4+
+  - This replaces the old logic for query stats without text (statement_text_frequency),
+    and is always active
+  - Statistics data gets sent with every full snapshot
+* Backend counts: Support retrieving stats for Postgres 9.5 and older
+* Log Insights: Add support for detecting aggressive vacuums (Postgres 11+)
+* Parse serialization failure log events (U138 and U139)
+* Have systemd restart the collector after crashes [Dom Hutton](https://github.com/Dombo) [#23](https://github.com/pganalyze/collector/pull/23)
+
+
 ## 0.13.1      2018-06-18
 
 * Don't error out on pg_stat_replication.replay_lsn being NULL [#21](https://github.com/pganalyze/collector/issues/21)
