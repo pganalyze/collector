@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.14.1      2018-07-18
+
+* Fixes to experimental sequences report
+* Document monitoring helper functions for sequences report
+
+
 ## 0.14.0      2018-07-15
 
 * Introduce once-per-minute query statistics collection
