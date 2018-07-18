@@ -19,7 +19,7 @@ WHERE relkind = 'S' AND relpersistence = 'p'
 
 const sequenceStateSQL = `
 SELECT last_value, start_value, increment_by, max_value, min_value, cache_value, is_cycled
-	FROM %s.%s
+	FROM pganalyze.get_sequence_state(%s, %s)
 `
 
 const serialColumnSQL = `
@@ -29,7 +29,7 @@ SELECT c.oid,
 			 a.attname,
 			 format_type(t.oid, a.atttypmod),
 			 (power(2, typlen * 8) / 2)::numeric,
-			 pg_get_serial_sequence(ad.adrelid::regclass::text, a.attname)::regclass::oid
+			 pganalyze.get_sequence_oid_for_column(ad.adrelid::regclass::text, a.attname) AS sequence_oid
 	FROM pg_attrdef ad
 	JOIN pg_class c ON (c.oid = adrelid)
 	JOIN pg_namespace n ON (c.relnamespace = n.oid)

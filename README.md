@@ -109,6 +109,43 @@ $$
 $$ LANGUAGE sql VOLATILE SECURITY DEFINER;
 ```
 
+If you are using the Sequence report in pganalyze, you will also need these helper methods:
+
+```
+CREATE OR REPLACE FUNCTION pganalyze.get_sequence_oid_for_column(table_name text, column_name text) RETURNS text AS
+$$
+  /* pganalyze-collector */ SELECT pg_get_serial_sequence(table_name, column_name)::regclass::oid;
+$$ LANGUAGE sql VOLATILE SECURITY DEFINER;
+
+
+CREATE OR REPLACE FUNCTION pganalyze.get_sequence_state(schema_name text, sequence_name text) RETURNS TABLE(
+  last_value bigint, start_value bigint, increment_by bigint,
+  max_value bigint, min_value bigint, cache_size bigint, cycle boolean
+) AS
+$$
+  /* pganalyze-collector */ SELECT last_value, start_value, increment_by, max_value, min_value, cache_size, cycle
+    FROM pg_sequences WHERE schemaname = schema_name AND sequencename = sequence_name;
+$$ LANGUAGE sql VOLATILE SECURITY DEFINER;
+
+--- For Postgres 9.6 and older, use the following for get_sequence_state:
+
+CREATE OR REPLACE FUNCTION pganalyze.get_sequence_state(schema_name text, sequence_name text) RETURNS TABLE(
+  last_value bigint, start_value bigint, increment_by bigint,
+  max_value bigint, min_value bigint, cache_size bigint, cycle boolean
+) AS
+$$
+BEGIN
+  IF NOT EXISTS(SELECT 1 FROM pg_class c JOIN pg_namespace n ON (c.relnamespace = n.oid) WHERE n.nspname = schema_name AND c.relname = sequence_name AND relkind = 'S') THEN
+    RETURN;
+  END IF;
+
+  RETURN QUERY EXECUTE 'SELECT last_value, start_value, increment_by, max_value, min_value, '
+     || 'cache_value AS cache_size, is_cycled AS cycle FROM '
+     || quote_ident(schema_name) || '.' || quote_ident(sequence_name);
+END
+$$ LANGUAGE plpgsql VOLATILE SECURITY DEFINER;
+```
+
 If you enabled the optional reset mode (usually not required), you will also need this helper method:
 
 ```
