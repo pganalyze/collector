@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/gedex/inflector"
-	"github.com/lib/pq"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
 )
@@ -18,8 +17,8 @@ WHERE relkind = 'S' AND relpersistence = 'p'
 `
 
 const sequenceStateSQL = `
-SELECT last_value, start_value, increment_by, max_value, min_value, cache_value, is_cycled
-	FROM pganalyze.get_sequence_state(%s, %s)
+SELECT last_value, start_value, increment_by, max_value, min_value, cache_size, cycle
+	FROM pganalyze.get_sequence_state($1, $2)
 `
 
 const serialColumnSQL = `
@@ -79,7 +78,7 @@ func GetSequenceReport(logger *util.Logger, db *sql.DB) (report state.PostgresSe
 	}
 
 	for oid, seq := range report.Sequences {
-		err = db.QueryRow(QueryMarkerSQL+fmt.Sprintf(sequenceStateSQL, pq.QuoteIdentifier(seq.SchemaName), pq.QuoteIdentifier(seq.SequenceName))).Scan(
+		err = db.QueryRow(QueryMarkerSQL+sequenceStateSQL, seq.SchemaName, seq.SequenceName).Scan(
 			&seq.LastValue, &seq.StartValue, &seq.IncrementBy, &seq.MaxValue, &seq.MinValue, &seq.CacheValue, &seq.IsCycled)
 		if err != nil {
 			err = fmt.Errorf("SequenceReport/Sequence/Query: %s", err)

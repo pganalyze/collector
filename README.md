@@ -112,11 +112,12 @@ $$ LANGUAGE sql VOLATILE SECURITY DEFINER;
 If you are using the Sequence report in pganalyze, you will also need these helper methods:
 
 ```
-CREATE OR REPLACE FUNCTION pganalyze.get_sequence_oid_for_column(table_name text, column_name text) RETURNS text AS
+CREATE OR REPLACE FUNCTION pganalyze.get_sequence_oid_for_column(table_name text, column_name text) RETURNS oid AS
 $$
   /* pganalyze-collector */ SELECT pg_get_serial_sequence(table_name, column_name)::regclass::oid;
 $$ LANGUAGE sql VOLATILE SECURITY DEFINER;
 
+--- The following is needed for Postgres 10+:
 
 CREATE OR REPLACE FUNCTION pganalyze.get_sequence_state(schema_name text, sequence_name text) RETURNS TABLE(
   last_value bigint, start_value bigint, increment_by bigint,
@@ -127,7 +128,7 @@ $$
     FROM pg_sequences WHERE schemaname = schema_name AND sequencename = sequence_name;
 $$ LANGUAGE sql VOLATILE SECURITY DEFINER;
 
---- For Postgres 9.6 and older, use the following for get_sequence_state:
+--- For Postgres 9.6 and older, use this:
 
 CREATE OR REPLACE FUNCTION pganalyze.get_sequence_state(schema_name text, sequence_name text) RETURNS TABLE(
   last_value bigint, start_value bigint, increment_by bigint,
