@@ -21,14 +21,14 @@ const LogPrefixSimple string = "%m [%p] "
 const LogPrefixEmpty string = ""
 
 // Every one of these regexps should produce exactly one matching group
-var TimeRegexp = `(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(?:\.\d+)? \w+)` // %t or %m
-var IpAndPortRegexp = `([\d:.]+\(\d+\))?`                              // %r
-var PidRegexp = `(\d+)`                                                // %p
-var UserRegexp = `(\S*)`                                               // %u
-var DbRegexp = `(\S*)`                                                 // %d
-var AppRegexp = `(\S*)`                                                // %a
-var VirtualTxRegexp = `(\d+/\d+)?`                                     // %v
-var LogLineCounterRegexp = `(\d+)`                                     // %l
+var TimeRegexp = `(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(?:\.\d+)? [\-+]?\w+)` // %t or %m
+var IpAndPortRegexp = `([\d:.]+\(\d+\))?`                                    // %r
+var PidRegexp = `(\d+)`                                                      // %p
+var UserRegexp = `(\S*)`                                                     // %u
+var DbRegexp = `(\S*)`                                                       // %d
+var AppRegexp = `(\S*)`                                                      // %a
+var VirtualTxRegexp = `(\d+/\d+)?`                                           // %v
+var LogLineCounterRegexp = `(\d+)`                                           // %l
 // Missing:
 // - %h (host without port)
 // - %n (unix timestamp)
@@ -54,6 +54,7 @@ var RsyslogProcessNameRegexp = `(\w+)`
 var RsyslogRegexp = regexp.MustCompile(`^` + RsyslogTimeRegexp + ` ` + RsyslogHostnameRegxp + ` ` + RsyslogProcessNameRegexp + `\[` + PidRegexp + `\]: ` + SyslogSequenceAndSplitRegexp + ` ` + RsyslogLevelAndContentRegexp)
 
 var SupportedPrefixes = []string{LogPrefixAmazonRds, LogPrefixCustom1, LogPrefixCustom2, LogPrefixSimple, LogPrefixEmpty}
+
 func IsSupportedPrefix(prefix string) bool {
 	for _, supportedPrefix := range SupportedPrefixes {
 		if supportedPrefix == prefix {
@@ -67,7 +68,8 @@ func ParseLogLineWithPrefix(prefix string, line string) (logLine state.LogLine, 
 	var timePart, userPart, dbPart, appPart, pidPart, levelPart, contentPart string
 
 	// Assume Postgres time format unless overriden by the prefix (e.g. syslog)
-	timeFormat := "2006-01-02 15:04:05 MST"
+	timeFormat := "2006-01-02 15:04:05 -0700"
+	timeFormatAlt := "2006-01-02 15:04:05 MST"
 
 	rsyslog := false
 
@@ -91,6 +93,7 @@ func ParseLogLineWithPrefix(prefix string, line string) (logLine state.LogLine, 
 			return
 		}
 		timeFormat = "2006 Jan  2 15:04:05"
+		timeFormatAlt = ""
 		timePart = fmt.Sprintf("%d %s", time.Now().Year(), parts[1])
 		// ignore syslog hostname
 		// ignore syslog process name
@@ -164,8 +167,13 @@ func ParseLogLineWithPrefix(prefix string, line string) (logLine state.LogLine, 
 	var err error
 	logLine.OccurredAt, err = time.Parse(timeFormat, timePart)
 	if err != nil {
-		ok = false
-		return
+		if timeFormatAlt != "" {
+			logLine.OccurredAt, err = time.Parse(timeFormatAlt, timePart)
+		}
+		if err != nil {
+			ok = false
+			return
+		}
 	}
 
 	if userPart != "[unknown]" {
