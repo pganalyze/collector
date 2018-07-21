@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.14.2      2018-07-21
+
+* Log parser: Add support for offset-based timezone identifier
+  - Previously we assumed that Postgres always outputs the timezone name,
+    that is not correct for some timezones, where instead an offset like
+    "+0100" would be printed.
+
+
 ## 0.14.1      2018-07-18
 
 * Fixes to experimental sequences report
