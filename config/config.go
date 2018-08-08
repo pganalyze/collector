@@ -74,6 +74,13 @@ type ServerConfig struct {
 	// tables that match the name. This uses Golang's filepath.Match function for
 	// comparison, so you can e.g. use "*" for wildcard matching.
 	IgnoreTablePattern string `ini:"ignore_table_pattern"`
+
+	// Specifies the frequency of query statistics collection in seconds
+	//
+	// Currently supported values: 600 (10 minutes), 60 (1 minute)
+	//
+	// Defaults to once per minute (60)
+	QueryStatsInterval int `ini:"query_stats_interval"`
 }
 
 // GetPqOpenString - Gets the database configuration as a string that can be passed to lib/pq for connecting

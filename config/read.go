@@ -14,9 +14,10 @@ import (
 
 func getDefaultConfig() *ServerConfig {
 	config := &ServerConfig{
-		APIBaseURL:  "https://api.pganalyze.com",
-		AwsRegion:   "us-east-1",
-		SectionName: "default",
+		APIBaseURL:  				"https://api.pganalyze.com",
+		AwsRegion:   			  "us-east-1",
+		SectionName: 			  "default",
+		QueryStatsInterval: 60,
 	}
 
 	// The environment variables are the default way to configure when running inside a Docker container.
@@ -88,6 +89,9 @@ func getDefaultConfig() *ServerConfig {
 	}
 	if ignoreTablePattern := os.Getenv("IGNORE_TABLE_PATTERN"); ignoreTablePattern != "" {
 		config.IgnoreTablePattern = ignoreTablePattern
+	}
+	if queryStatsInterval := os.Getenv("QUERY_STATS_INTERVAL"); queryStatsInterval != "" {
+		config.QueryStatsInterval, _ = strconv.Atoi(queryStatsInterval)
 	}
 
 	return config

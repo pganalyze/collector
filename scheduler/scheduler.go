@@ -42,11 +42,18 @@ func (group Group) ScheduleSecondary(runner func(), logger *util.Logger, logName
 			delay := group.interval.Next(timeNow).Sub(timeNow)
 			delayPrimary := primaryGroup.interval.Next(timeNow).Sub(timeNow)
 
+			// Make sure to not run more often than once a second - this can happen
+			// due to rounding errors in the interval logic
+			if delay.Seconds() < 1.0 {
+				time.Sleep(delay)
+				continue
+			}
+
 			logger.PrintVerbose("Scheduled next run for %s in %+v", logName, delay)
 
 			select {
 			case <-time.After(delay):
-				if int(delay) == int(delayPrimary) {
+				if int(delay.Seconds()) == int(delayPrimary.Seconds()) {
 					logger.PrintVerbose("Skipping run for %s since it overlaps with primary group time", logName)
 				} else {
 					runner()

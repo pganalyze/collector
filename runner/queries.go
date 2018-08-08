@@ -61,6 +61,10 @@ func gatherQueryStatsForServer(server state.Server, globalCollectionOpts state.C
 
 func GatherQueryStatsFromAllServers(servers []state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
 	for idx, server := range servers {
+		if server.Config.QueryStatsInterval != 60 {
+			continue
+		}
+
 		prefixedLogger := logger.WithPrefixAndRememberErrors(server.Config.SectionName)
 
 		servers[idx].StateMutex.Lock()
@@ -75,6 +79,7 @@ func GatherQueryStatsFromAllServers(servers []state.Server, globalCollectionOpts
 		} else {
 			servers[idx].PrevState = newState
 			servers[idx].StateMutex.Unlock()
+			prefixedLogger.PrintVerbose("Successfully collected high frequency query statistics")
 			if server.Config.SuccessCallback != "" {
 				go runCompletionCallback("success", server.Config.SuccessCallback, server.Config.SectionName, "query_stats", nil, prefixedLogger)
 			}
