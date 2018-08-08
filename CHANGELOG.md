@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.14.3      2018-08-08
+
+* Add configuration setting to disable high-frequency query statistics
+
+
 ## 0.14.2      2018-07-21
 
 * Log parser: Add support for offset-based timezone identifier
