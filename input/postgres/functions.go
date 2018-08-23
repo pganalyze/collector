@@ -8,6 +8,9 @@ import (
 	"github.com/pganalyze/collector/state"
 )
 
+const functionsSQLDefaultKindFields = "pp.proisagg, pp.proiswindow"
+const functionsSQLpg11KindFields = "pp.prokind = 'a', pp.prokind = 'w'"
+
 const functionsSQL string = `
 SELECT pp.oid,
 			 pn.nspname,
@@ -18,8 +21,7 @@ SELECT pp.oid,
 			 pp.proconfig,
 			 pg_get_function_arguments(pp.oid),
 			 pg_get_function_result(pp.oid),
-			 pp.proisagg,
-			 pp.proiswindow,
+			 %s,
 			 pp.prosecdef,
 			 pp.proleakproof,
 			 pp.proisstrict,
@@ -37,7 +39,15 @@ SELECT funcid, calls, total_time, self_time
 	FROM pg_stat_user_functions`
 
 func GetFunctions(db *sql.DB, postgresVersion state.PostgresVersion, currentDatabaseOid state.Oid) ([]state.PostgresFunction, error) {
-	stmt, err := db.Prepare(QueryMarkerSQL + functionsSQL)
+	var kindFields string
+
+	if postgresVersion.Numeric >= state.PostgresVersion11 {
+		kindFields = functionsSQLpg11KindFields
+	} else {
+		kindFields = functionsSQLDefaultKindFields
+	}
+
+	stmt, err := db.Prepare(QueryMarkerSQL + fmt.Sprintf(functionsSQL, kindFields))
 	if err != nil {
 		return nil, err
 	}
