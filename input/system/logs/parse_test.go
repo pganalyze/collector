@@ -54,6 +54,33 @@ var parseTests = []parseTestpair{
 		},
 		true,
 	},
+	// RDS format
+	{
+		"",
+		"2018-08-22 16:00:04 UTC:ec2-1-1-1-1.compute-1.amazonaws.com(48808):myuser@mydb:[18762]:LOG:  duration: 3668.685 ms  execute <unnamed>: SELECT 1",
+		state.LogLine{
+			OccurredAt: time.Date(2018, time.August, 22, 16, 0, 4, 0, time.UTC),
+			Username:   "myuser",
+			Database:   "mydb",
+			LogLevel:   pganalyze_collector.LogLineInformation_LOG,
+			BackendPid: 18762,
+			Content:    "duration: 3668.685 ms  execute <unnamed>: SELECT 1",
+		},
+		true,
+	},
+	{
+		"",
+		"2018-08-22 16:00:03 UTC:127.0.0.1(36404):myuser@mydb:[21495]:LOG:  duration: 1630.946 ms  execute 3: SELECT 1",
+		state.LogLine{
+			OccurredAt: time.Date(2018, time.August, 22, 16, 0, 3, 0, time.UTC),
+			Username:   "myuser",
+			Database:   "mydb",
+			LogLevel:   pganalyze_collector.LogLineInformation_LOG,
+			BackendPid: 21495,
+			Content:    "duration: 1630.946 ms  execute 3: SELECT 1",
+		},
+		true,
+	},
 	// Simple format
 	{
 		"",

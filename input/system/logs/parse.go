@@ -22,7 +22,7 @@ const LogPrefixEmpty string = ""
 
 // Every one of these regexps should produce exactly one matching group
 var TimeRegexp = `(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(?:\.\d+)? [\-+]?\w+)` // %t or %m
-var IpAndPortRegexp = `([\d:.]+\(\d+\))?`                                    // %r
+var HostAndPortRegexp = `(.+\(\d+\))?`                                       // %r
 var PidRegexp = `(\d+)`                                                      // %p
 var UserRegexp = `(\S*)`                                                     // %u
 var DbRegexp = `(\S*)`                                                       // %d
@@ -39,7 +39,7 @@ var LogLineCounterRegexp = `(\d+)`                                           // 
 // - %x (transaction ID)
 
 var LevelAndContentRegexp = `(\w+):\s+(.*\n?)$`
-var LogPrefixAmazonRdsRegxp = regexp.MustCompile(`^` + TimeRegexp + `:` + IpAndPortRegexp + `:` + UserRegexp + `@` + DbRegexp + `:\[` + PidRegexp + `\]:` + LevelAndContentRegexp)
+var LogPrefixAmazonRdsRegxp = regexp.MustCompile(`^` + TimeRegexp + `:` + HostAndPortRegexp + `:` + UserRegexp + `@` + DbRegexp + `:\[` + PidRegexp + `\]:` + LevelAndContentRegexp)
 var LogPrefixCustom1Regexp = regexp.MustCompile(`^` + TimeRegexp + ` \[` + PidRegexp + `\]\[` + VirtualTxRegexp + `\] : \[` + LogLineCounterRegexp + `-1\] (?:\[app=` + AppRegexp + `\] )?` + LevelAndContentRegexp)
 var LogPrefixCustom2Regexp = regexp.MustCompile(`^` + TimeRegexp + ` \[` + PidRegexp + `-` + LogLineCounterRegexp + `\] ` + `(?:` + UserRegexp + `@` + DbRegexp + ` )?` + LevelAndContentRegexp)
 var LogPrefixSimpleRegexp = regexp.MustCompile(`^` + TimeRegexp + ` \[` + PidRegexp + `\] ` + LevelAndContentRegexp)
