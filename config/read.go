@@ -161,7 +161,9 @@ func Read(logger *util.Logger, filename string) (Config, error) {
 				for _, server := range conf.Servers {
 					if config.SystemType == server.SystemType &&
 						config.SystemScope == server.SystemScope &&
-						config.SystemID == server.SystemID {
+						config.SystemID == server.SystemID &&
+						config.APIKey == server.APIKey &&
+						config.APIBaseURL == server.APIBaseURL {
 						skip = true
 					}
 				}
