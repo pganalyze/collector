@@ -14,7 +14,7 @@ export DEB_SYSTEMD_PACKAGE=$(NAME)_$(VERSION)_systemd_amd64.deb
 
 export TMP_DIR=$(shell pwd)/tmp
 
-.PHONY: default setup build test clean
+.PHONY: default setup build test clean repo
 
 default: test repo
 

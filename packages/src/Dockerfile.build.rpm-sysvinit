@@ -11,11 +11,11 @@ ENV SOURCE_DIR /source
 RUN yum install -y -q tar make git rpmdevtools centos-release-scl
 
 # GCC 4.6+ needed for __int128 type used by libpg_query
-RUN yum install -y -q devtoolset-4-gcc
+RUN yum install -y -q devtoolset-7-gcc
 
 # Ruby 1.9.3+ needed for FPM
-RUN yum install -y -q rh-ruby22 rh-ruby22-ruby-devel
-RUN scl enable rh-ruby22 devtoolset-4 "gem install fpm"
+RUN yum install -y -q rh-ruby24 rh-ruby24-ruby-devel
+RUN scl enable rh-ruby24 devtoolset-7 "gem install fpm"
 
 # Golang
 RUN curl -o go.tar.gz -sSL "https://storage.googleapis.com/golang/go${GOVERSION}.linux-amd64.tar.gz"
@@ -30,7 +30,7 @@ ENV NAME pganalyze-collector
 COPY . $CODE_DIR
 WORKDIR $CODE_DIR
 RUN git checkout ${GIT_VERSION}
-RUN scl enable devtoolset-4 "make build_dist"
+RUN scl enable devtoolset-7 "make build_dist"
 
 # Update contrib and packages directory beyond the tagged release
 COPY ./contrib $CODE_DIR/contrib
@@ -52,7 +52,7 @@ RUN cp $CODE_DIR/contrib/sslrootcert/* $SOURCE_DIR/usr/share/pganalyze-collector
 
 # Build the package
 WORKDIR $ROOT_DIR
-RUN scl enable rh-ruby22 "/opt/rh/rh-ruby22/root/usr/local/bin/fpm \
+RUN scl enable rh-ruby24 "/opt/rh/rh-ruby24/root/usr/local/bin/fpm \
   -n $NAME -v ${VERSION} -t rpm --rpm-os linux \
   --config-files /etc/pganalyze-collector.conf \
   --after-install $CODE_DIR/packages/src/rpm-sysvinit/post.sh \
