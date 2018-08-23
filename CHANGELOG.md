@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.14.4      2018-08-23
+
+* Add support for Postgres 11
+* Support log_hostname=1 when using log_line_prefix that contains %r
+* Duplicate config detection: Differentiate by API key and API base url
+
+
 ## 0.14.3      2018-08-08
 
 * Add configuration setting to disable high-frequency query statistics
