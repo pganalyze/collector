@@ -33,9 +33,10 @@ type ServerConfig struct {
 	ErrorCallback   string `ini:"error_callback"`
 	SuccessCallback string `ini:"success_callback"`
 
-	EnableLogs     bool `ini:"enable_logs"`
-	EnableReports  bool `ini:"enable_reports"`
-	EnableActivity bool `ini:"enable_activity"`
+	EnableLogs           bool `ini:"enable_logs"`
+	EnableReports        bool `ini:"enable_reports"`
+	EnableActivity       bool `ini:"enable_activity"`
+	EnableGenericExplain bool `ini:"enable_generic_explain"`
 
 	DbURL                 string `ini:"db_url"`
 	DbName                string `ini:"db_name"`

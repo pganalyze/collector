@@ -49,6 +49,14 @@ func CollectFull(server state.Server, connection *sql.DB, collectionOpts state.C
 		return
 	}
 
+	if server.Config.EnableGenericExplain {
+		ts.StatementExplains, err = postgres.GetGenericExplains(logger, connection, ts.Statements)
+		if err != nil {
+			logger.PrintError("Error collecting generic explain plans")
+			return
+		}
+	}
+
 	ps.StatementResetCounter = server.PrevState.StatementResetCounter + 1
 	if server.Grant.Config.Features.StatementResetFrequency != 0 && ps.StatementResetCounter >= server.Grant.Config.Features.StatementResetFrequency {
 		ps.StatementResetCounter = 0

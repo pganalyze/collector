@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/guregu/null"
+	"github.com/pganalyze/collector/output/pganalyze_collector"
 )
 
 // PostgresStatement - Specific kind of statement that has run one or multiple times
@@ -59,6 +60,9 @@ type DiffedPostgresStatementStats PostgresStatementStats
 type DiffedPostgresStatementStatsMap map[PostgresStatementKey]DiffedPostgresStatementStats
 
 type HistoricStatementStatsMap map[PostgresStatementStatsTimeKey]DiffedPostgresStatementStatsMap
+
+type PostgresStatementExplain pganalyze_collector.QueryExplainInformation
+type PostgresStatementExplainMap map[PostgresStatementKey]PostgresStatementExplain
 
 func (curr PostgresStatementStats) DiffSince(prev PostgresStatementStats) DiffedPostgresStatementStats {
 	return DiffedPostgresStatementStats{

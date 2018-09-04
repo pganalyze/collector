@@ -46,6 +46,8 @@ type TransientState struct {
 	Statements             PostgresStatementMap
 	HistoricStatementStats HistoricStatementStatsMap
 
+	StatementExplains PostgresStatementExplainMap
+
 	// This is a new zero value that was recorded after a pg_stat_statements_reset(),
 	// in order to enable the next snapshot to be able to diff against something
 	ResetStatementStats PostgresStatementStatsMap

@@ -14,9 +14,9 @@ import (
 
 func getDefaultConfig() *ServerConfig {
 	config := &ServerConfig{
-		APIBaseURL:  				"https://api.pganalyze.com",
-		AwsRegion:   			  "us-east-1",
-		SectionName: 			  "default",
+		APIBaseURL:         "https://api.pganalyze.com",
+		AwsRegion:          "us-east-1",
+		SectionName:        "default",
 		QueryStatsInterval: 60,
 	}
 
@@ -44,6 +44,9 @@ func getDefaultConfig() *ServerConfig {
 	}
 	if enableActivity := os.Getenv("PGA_ENABLE_ACTIVITY"); enableActivity != "" && enableActivity != "0" {
 		config.EnableActivity = true
+	}
+	if enableGenericExplain := os.Getenv("PGA_ENABLE_GENERIC_EXPLAIN"); enableGenericExplain != "" && enableGenericExplain != "0" {
+		config.EnableGenericExplain = true
 	}
 	if dbURL := os.Getenv("DB_URL"); dbURL != "" {
 		config.DbURL = dbURL

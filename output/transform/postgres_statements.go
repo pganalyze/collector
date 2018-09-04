@@ -14,7 +14,7 @@ func ignoredStatement(query string) bool {
 	return strings.HasPrefix(query, postgres.QueryMarkerSQL) || strings.HasPrefix(query, "DEALLOCATE") || query == "<insufficient privilege>"
 }
 
-func groupStatements(statements state.PostgresStatementMap, statsMap state.DiffedPostgresStatementStatsMap) map[statementKey]statementValue {
+func groupStatements(statements state.PostgresStatementMap, statsMap state.DiffedPostgresStatementStatsMap, explainMap state.PostgresStatementExplainMap) map[statementKey]statementValue {
 	groupedStatements := make(map[statementKey]statementValue)
 
 	for sKey, stats := range statsMap {
@@ -33,17 +33,37 @@ func groupStatements(statements state.PostgresStatementMap, statsMap state.Diffe
 
 		value, exist := groupedStatements[key]
 		if exist {
-			groupedStatements[key] = statementValue{
+			newValue := statementValue{
 				statement:      value.statement,
 				statementStats: value.statementStats.Add(stats),
 				queryIDs:       append(value.queryIDs, sKey.QueryID),
 			}
+			explain, exist := explainMap[sKey]
+			if exist {
+				newValue.explains = append(newValue.explains, snapshot.QueryExplainInformation{
+					ExplainOutput: explain.ExplainOutput,
+					ExplainError:  explain.ExplainError,
+					ExplainFormat: explain.ExplainFormat,
+					ExplainSource: explain.ExplainSource,
+				})
+			}
+			groupedStatements[key] = newValue
 		} else {
-			groupedStatements[key] = statementValue{
+			newValue := statementValue{
 				statement:      statement,
 				statementStats: stats,
 				queryIDs:       []int64{sKey.QueryID},
 			}
+			explain, exist := explainMap[sKey]
+			if exist {
+				newValue.explains = []snapshot.QueryExplainInformation{snapshot.QueryExplainInformation{
+					ExplainOutput: explain.ExplainOutput,
+					ExplainError:  explain.ExplainError,
+					ExplainFormat: explain.ExplainFormat,
+					ExplainSource: explain.ExplainSource,
+				}}
+			}
+			groupedStatements[key] = newValue
 		}
 	}
 
@@ -74,12 +94,17 @@ func transformQueryStatistic(stats state.DiffedPostgresStatementStats, idx int32
 
 func transformPostgresStatements(s snapshot.FullSnapshot, newState state.PersistedState, diffState state.DiffState, transientState state.TransientState, roleOidToIdx OidToIdx, databaseOidToIdx OidToIdx) snapshot.FullSnapshot {
 	// Statement stats from this snapshot
-	groupedStatements := groupStatements(transientState.Statements, diffState.StatementStats)
+	groupedStatements := groupStatements(transientState.Statements, diffState.StatementStats, transientState.StatementExplains)
 	for key, value := range groupedStatements {
 		idx := upsertQueryReferenceAndInformation(&s, roleOidToIdx, databaseOidToIdx, key, value)
 
 		statistic := transformQueryStatistic(value.statementStats, idx)
 		s.QueryStatistics = append(s.QueryStatistics, &statistic)
+
+		for _, explain := range value.explains {
+			explain.QueryIdx = idx
+			s.QueryExplains = append(s.QueryExplains, &explain)
+		}
 	}
 
 	// Historic statement stats which are sent now since we got the query text only now
@@ -88,7 +113,7 @@ func transformPostgresStatements(s snapshot.FullSnapshot, newState state.Persist
 		h.CollectedAt, _ = ptypes.TimestampProto(timeKey.CollectedAt)
 		h.CollectedIntervalSecs = timeKey.CollectedIntervalSecs
 
-		groupedStatements = groupStatements(transientState.Statements, diffedStats)
+		groupedStatements = groupStatements(transientState.Statements, diffedStats, nil)
 		for key, value := range groupedStatements {
 			idx := upsertQueryReferenceAndInformation(&s, roleOidToIdx, databaseOidToIdx, key, value)
 			statistic := transformQueryStatistic(value.statementStats, idx)

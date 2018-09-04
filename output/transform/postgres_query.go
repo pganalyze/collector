@@ -19,6 +19,7 @@ type statementValue struct {
 	statement      state.PostgresStatement
 	statementStats state.DiffedPostgresStatementStats
 	queryIDs       []int64
+	explains       []snapshot.QueryExplainInformation
 }
 
 func upsertQueryReferenceAndInformation(s *snapshot.FullSnapshot, roleOidToIdx OidToIdx, databaseOidToIdx OidToIdx, key statementKey, value statementValue) int32 {
