@@ -54,7 +54,7 @@ func run(wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *
 	serverConfigs := conf.Servers
 	for _, config := range serverConfigs {
 		servers = append(servers, state.Server{Config: config, StateMutex: &sync.Mutex{}})
-		if config.EnableLogs || config.LogLocation != "" {
+		if config.EnableLogs || config.LogLocation != "" || config.LogDockerTail != "" {
 			hasAnyLogsEnabled = true
 		}
 		if config.EnableReports {
@@ -158,7 +158,7 @@ func run(wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *
 		var hasAnyLogTails bool
 
 		for _, server := range servers {
-			if server.Config.LogLocation != "" {
+			if server.Config.LogLocation != "" || server.Config.LogDockerTail != "" {
 				hasAnyLogTails = true
 			} else if server.Config.EnableLogs && conf.HerokuLogStream == nil {
 				hasAnyLogDownloads = true

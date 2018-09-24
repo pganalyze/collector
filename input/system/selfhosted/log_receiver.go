@@ -1,6 +1,7 @@
 package selfhosted
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -113,20 +114,28 @@ func SetupLogTails(servers []state.Server, globalCollectionOpts state.Collection
 	stop := make(chan bool)
 
 	for _, server := range servers {
-		if server.Config.LogLocation == "" {
-			continue
-		}
-
 		prefixedLogger := logger.WithPrefix(server.Config.SectionName)
 
-		if globalCollectionOpts.DebugLogs || globalCollectionOpts.TestRun {
-			prefixedLogger.PrintInfo("Setting up log tail for %s", server.Config.LogLocation)
-		}
+		if server.Config.LogLocation != "" {
+			if globalCollectionOpts.DebugLogs || globalCollectionOpts.TestRun {
+				prefixedLogger.PrintInfo("Setting up log tail for %s", server.Config.LogLocation)
+			}
 
-		logStream := logReceiver(server, globalCollectionOpts, prefixedLogger, nil, stop)
-		err := setupLogLocationTail(server.Config.LogLocation, logStream, prefixedLogger, stop)
-		if err != nil {
-			prefixedLogger.PrintError("ERROR - %s", err)
+			logStream := logReceiver(server, globalCollectionOpts, prefixedLogger, nil, stop)
+			err := setupLogLocationTail(server.Config.LogLocation, logStream, prefixedLogger, stop)
+			if err != nil {
+				prefixedLogger.PrintError("ERROR - %s", err)
+			}
+		} else if server.Config.LogDockerTail != "" {
+			if globalCollectionOpts.DebugLogs || globalCollectionOpts.TestRun {
+				prefixedLogger.PrintInfo("Setting up docker logs tail for %s", server.Config.LogDockerTail)
+			}
+
+			logStream := logReceiver(server, globalCollectionOpts, prefixedLogger, nil, stop)
+			err := setupDockerTail(server.Config.LogDockerTail, logStream, prefixedLogger, stop)
+			if err != nil {
+				prefixedLogger.PrintError("ERROR - %s", err)
+			}
 		}
 	}
 	return stop
@@ -325,6 +334,41 @@ func setupLogLocationTail(logLocation string, out chan<- string, prefixedLogger 
 	if err != nil {
 		return err
 	}
+
+	return nil
+}
+
+func setupDockerTail(containerName string, out chan<- string, prefixedLogger *util.Logger, stop <-chan bool) error {
+	var err error
+
+  cmd := exec.Command("docker", "logs", containerName, "-f", "--tail", "0")
+  stderr, _ := cmd.StderrPipe()
+
+	scanner := bufio.NewScanner(stderr)
+	go func() {
+		for scanner.Scan() {
+			out <- scanner.Text()
+		}
+	}()
+
+	err = cmd.Start()
+	if err != nil {
+		return fmt.Errorf("Error starting docker log tail: %s", err)
+	}
+
+	go func() {
+		defer cmd.Wait()
+		for {
+			select {
+			case <-stop:
+				prefixedLogger.PrintVerbose("Docker log tail received stop signal")
+				if err := cmd.Process.Kill(); err != nil {
+			    prefixedLogger.PrintError("Failed to kill docker log tail process when stop received: ", err)
+				}
+				return
+			}
+		}
+	}()
 
 	return nil
 }

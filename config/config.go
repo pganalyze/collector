@@ -70,6 +70,11 @@ type ServerConfig struct {
 	// or a file - needs to readable by the regular pganalyze user
 	LogLocation string `ini:"db_log_location"`
 
+	// Configures the collector to tail a local docker container using
+	// "docker logs -t" - this is currently experimental and mostly intended for
+	// development and debugging. The value needs to be the name of the container.
+	LogDockerTail string `ini:"db_log_docker_tail"`
+
 	// Specifies a table pattern to ignore - no statistics will be collected for
 	// tables that match the name. This uses Golang's filepath.Match function for
 	// comparison, so you can e.g. use "*" for wildcard matching.
