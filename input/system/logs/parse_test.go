@@ -81,6 +81,58 @@ var parseTests = []parseTestpair{
 		},
 		true,
 	},
+	// Custom 3 format
+	{
+		"",
+		"2018-09-27 06:57:01.030 UTC [20194] [user=[unknown],db=[unknown],app=[unknown]] LOG:  connection received: host=[local]",
+		state.LogLine{
+			OccurredAt: time.Date(2018, time.September, 27, 6, 57, 1, 30*1000*1000, time.UTC),
+			LogLevel:   pganalyze_collector.LogLineInformation_LOG,
+			BackendPid: 20194,
+			Content:    "connection received: host=[local]",
+		},
+		true,
+	},
+	{
+		"",
+		"2018-09-27 06:57:02.779 UTC [20194] [user=postgres,db=postgres,app=psql] ERROR:  canceling statement due to user request",
+		state.LogLine{
+			OccurredAt:  time.Date(2018, time.September, 27, 6, 57, 2, 779*1000*1000, time.UTC),
+			Username:    "postgres",
+			Database:    "postgres",
+			Application: "psql",
+			LogLevel:    pganalyze_collector.LogLineInformation_ERROR,
+			BackendPid:  20194,
+			Content:     "canceling statement due to user request",
+		},
+		true,
+	},
+	// Custom 4 format
+	{
+		"",
+		"2018-09-27 06:57:01.030 UTC [20194] [user=[unknown],db=[unknown],app=[unknown],host=[local]] LOG:  connection received: host=[local]",
+		state.LogLine{
+			OccurredAt: time.Date(2018, time.September, 27, 6, 57, 1, 30*1000*1000, time.UTC),
+			LogLevel:   pganalyze_collector.LogLineInformation_LOG,
+			BackendPid: 20194,
+			Content:    "connection received: host=[local]",
+		},
+		true,
+	},
+	{
+		"",
+		"2018-09-27 06:57:02.779 UTC [20194] [user=postgres,db=postgres,app=psql,host=127.0.0.1] ERROR:  canceling statement due to user request",
+		state.LogLine{
+			OccurredAt:  time.Date(2018, time.September, 27, 6, 57, 2, 779*1000*1000, time.UTC),
+			Username:    "postgres",
+			Database:    "postgres",
+			Application: "psql",
+			LogLevel:    pganalyze_collector.LogLineInformation_ERROR,
+			BackendPid:  20194,
+			Content:     "canceling statement due to user request",
+		},
+		true,
+	},
 	// Simple format
 	{
 		"",
