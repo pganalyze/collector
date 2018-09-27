@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.15.0      2018-09-27
+
+* Add additional supported log_line_prefix settings
+  * 1) '%m [%p] %q[user=%u,db=%d,app=%a] '
+  * 2) '%m [%p] %q[user=%u,db=%d,app=%a,host=%h] '
+* Add support for [local] when using %r in log_line_prefix
+* Make --discover-log-location work when using monitoring user
+* Correctly detect pg_wal directory for Postgres 10 and newer
+* Introduce setting for maximum collector connections
+  * This previously existed as a hard-coded 5 connection maximum based on the
+    pganalyze-collector application name in pg_stat_activity
+  * Adds "max_collector_connections" configuration setting to override
+  * Increases default max connections to 10 to better support activity snapshots
+  * Writes an error to the log instead of panicing when limit is reached
+* Add experimental support for Docker log monitoring
+  * Adds "db_log_docker_tail" setting to specify the container name
+  * Allows monitoring the logs of a Postgres instance running inside
+    Docker, when running the collector outside (on the Docker Host)
+
+
 ## 0.14.4      2018-08-23
 
 * Add support for Postgres 11
