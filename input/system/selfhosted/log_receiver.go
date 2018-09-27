@@ -90,12 +90,15 @@ func DiscoverLogLocation(servers []state.Server, globalCollectionOpts state.Coll
 		}
 
 		if loggingCollector == "on" {
-			logDirectory, err := getPostgresSetting("log_directory", server, globalCollectionOpts, prefixedLogger)
+			logDirectory, err := exec.Command("/usr/bin/pganalyze-collector-helper", "log_directory").Output()
 			if err != nil {
-				prefixedLogger.PrintError("ERROR - %s", err)
+				prefixedLogger.PrintError("ERROR - Could not run helper process: %s", err)
+				continue
+			} else if string(logDirectory) == "" {
+				prefixedLogger.PrintError("ERROR - Could not retrieve log_directory setting from Postgres")
 				continue
 			}
-			prefixedLogger.PrintInfo("Found log location, add this to your pganalyze-collector.conf in the [%s] section:\ndb_log_location = %s", server.Config.SectionName, status.DataDirectory+"/"+logDirectory)
+			prefixedLogger.PrintInfo("Found log location, add this to your pganalyze-collector.conf in the [%s] section:\ndb_log_location = %s", server.Config.SectionName, string(logDirectory))
 		} else { // assume stdout/stderr redirect to logfile, typical with postgresql-common on Ubuntu/Debian
 			prefixedLogger.PrintInfo("Discovering log directory using open files in postmaster (PID %d)...", status.PostmasterPid)
 			logFile, err := filepath.EvalSymlinks("/proc/" + strconv.FormatInt(int64(status.PostmasterPid), 10) + "/fd/1")
@@ -341,8 +344,8 @@ func setupLogLocationTail(logLocation string, out chan<- string, prefixedLogger 
 func setupDockerTail(containerName string, out chan<- string, prefixedLogger *util.Logger, stop <-chan bool) error {
 	var err error
 
-  cmd := exec.Command("docker", "logs", containerName, "-f", "--tail", "0")
-  stderr, _ := cmd.StderrPipe()
+	cmd := exec.Command("docker", "logs", containerName, "-f", "--tail", "0")
+	stderr, _ := cmd.StderrPipe()
 
 	scanner := bufio.NewScanner(stderr)
 	go func() {
@@ -363,7 +366,7 @@ func setupDockerTail(containerName string, out chan<- string, prefixedLogger *ut
 			case <-stop:
 				prefixedLogger.PrintVerbose("Docker log tail received stop signal")
 				if err := cmd.Process.Kill(); err != nil {
-			    prefixedLogger.PrintError("Failed to kill docker log tail process when stop received: ", err)
+					prefixedLogger.PrintError("Failed to kill docker log tail process when stop received: ", err)
 				}
 				return
 			}

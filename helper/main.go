@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"os/user"
 	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
+	"syscall"
 )
 
 type helperStatus struct {
@@ -93,15 +95,34 @@ func getStatus() {
 	fmt.Printf("%s\n", out)
 }
 
+func getLogDirectory() {
+	postgresUser, err := user.Lookup("postgres")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error retrieving postgres UID: %s", err)
+	}
+	postgresUID, _ := strconv.Atoi(postgresUser.Uid)
+
+	cmd := exec.Command("psql", "-t", "-A", "-c", "SHOW log_directory")
+	cmd.SysProcAttr = &syscall.SysProcAttr{Credential: &syscall.Credential{Uid: uint32(postgresUID)}}
+	logDirectory, err := cmd.Output()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error running psql: %s", err)
+	} else {
+		fmt.Printf("%s", logDirectory)
+	}
+}
+
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Fprintf(os.Stderr, "Please pass a command to run as the first argument - valid choices are: status\n")
+		fmt.Fprintf(os.Stderr, "Please pass a command to run as the first argument - valid choices are: status, log_directory\n")
 		return
 	}
 
 	switch os.Args[1] {
 	case "status":
 		getStatus()
+	case "log_directory":
+		getLogDirectory()
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown command: %s\n", os.Args[1])
 	}
