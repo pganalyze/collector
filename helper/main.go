@@ -41,11 +41,16 @@ func getStatus() {
 				}
 			}
 
-			status.XlogDirectory, err = filepath.EvalSymlinks(status.DataDirectory + "/pg_xlog")
+			xlogDirectoryName := "pg_wal"
+			if _, err = os.Stat(status.DataDirectory + "/" + xlogDirectoryName); os.IsNotExist(err) {
+				xlogDirectoryName = "pg_xlog"
+			}
+
+			status.XlogDirectory, err = filepath.EvalSymlinks(status.DataDirectory + "/" + xlogDirectoryName)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Failed to resolve xlog path: %s\n", err)
 				if status.DataDirectory != "" {
-					status.XlogDirectory = status.DataDirectory + "/pg_xlog"
+					status.XlogDirectory = status.DataDirectory + "/" + xlogDirectoryName
 				}
 			}
 
