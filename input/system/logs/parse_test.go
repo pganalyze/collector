@@ -81,6 +81,19 @@ var parseTests = []parseTestpair{
 		},
 		true,
 	},
+	{
+		"",
+		"2018-08-22 16:00:03 UTC:[local]:myuser@mydb:[21495]:LOG:  duration: 1630.946 ms  execute 3: SELECT 1",
+		state.LogLine{
+			OccurredAt: time.Date(2018, time.August, 22, 16, 0, 3, 0, time.UTC),
+			Username:   "myuser",
+			Database:   "mydb",
+			LogLevel:   pganalyze_collector.LogLineInformation_LOG,
+			BackendPid: 21495,
+			Content:    "duration: 1630.946 ms  execute 3: SELECT 1",
+		},
+		true,
+	},
 	// Custom 3 format
 	{
 		"",

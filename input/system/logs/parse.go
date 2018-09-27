@@ -25,7 +25,7 @@ const LogPrefixEmpty string = ""
 // Every one of these regexps should produce exactly one matching group
 var TimeRegexp = `(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(?:\.\d+)? [\-+]?\w+)` // %t or %m
 var HostRegexp = `(.+)?`                                                     // %h
-var HostAndPortRegexp = `(.+\(\d+\))?`                                       // %r
+var HostAndPortRegexp = `(.+(?:\(\d+\))?)?`                                  // %r
 var PidRegexp = `(\d+)`                                                      // %p
 var UserRegexp = `(\S*)`                                                     // %u
 var DbRegexp = `(\S*)`                                                       // %d
