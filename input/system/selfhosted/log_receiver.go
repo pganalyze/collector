@@ -90,15 +90,20 @@ func DiscoverLogLocation(servers []state.Server, globalCollectionOpts state.Coll
 		}
 
 		if loggingCollector == "on" {
-			logDirectory, err := exec.Command("/usr/bin/pganalyze-collector-helper", "log_directory").Output()
+			logDirectoryBytes, err := exec.Command("/usr/bin/pganalyze-collector-helper", "log_directory").Output()
 			if err != nil {
 				prefixedLogger.PrintError("ERROR - Could not run helper process: %s", err)
 				continue
-			} else if string(logDirectory) == "" {
+			}
+			logDirectory := string(logDirectoryBytes)
+			if logDirectory == "" {
 				prefixedLogger.PrintError("ERROR - Could not retrieve log_directory setting from Postgres")
 				continue
 			}
-			prefixedLogger.PrintInfo("Found log location, add this to your pganalyze-collector.conf in the [%s] section:\ndb_log_location = %s", server.Config.SectionName, string(logDirectory))
+			if !strings.HasPrefix(logDirectory, "/") {
+				logDirectory = status.DataDirectory + "/" + logDirectory
+			}
+			prefixedLogger.PrintInfo("Found log location, add this to your pganalyze-collector.conf in the [%s] section:\ndb_log_location = %s", server.Config.SectionName, logDirectory)
 		} else { // assume stdout/stderr redirect to logfile, typical with postgresql-common on Ubuntu/Debian
 			prefixedLogger.PrintInfo("Discovering log directory using open files in postmaster (PID %d)...", status.PostmasterPid)
 			logFile, err := filepath.EvalSymlinks("/proc/" + strconv.FormatInt(int64(status.PostmasterPid), 10) + "/fd/1")
