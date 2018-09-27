@@ -86,6 +86,14 @@ type ServerConfig struct {
 	//
 	// Defaults to once per minute (60)
 	QueryStatsInterval int `ini:"query_stats_interval"`
+
+	// Maximum connections allowed to the database with the collector
+	// application_name, in order to protect against accidental connection leaks
+	// in the collector
+	//
+	// This defaults to 10 connections, but you may want to raise this when running
+	// the collector multiple times against the same database server
+	MaxCollectorConnections int `ini:"max_collector_connections"`
 }
 
 // GetPqOpenString - Gets the database configuration as a string that can be passed to lib/pq for connecting

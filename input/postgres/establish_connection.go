@@ -23,7 +23,11 @@ func EstablishConnection(server state.Server, logger *util.Logger, globalCollect
 		return
 	}
 
-	validateConnectionCount(connection, logger, globalCollectionOpts)
+	err = validateConnectionCount(connection, logger, server.Config.MaxCollectorConnections, globalCollectionOpts)
+	if err != nil {
+		return
+	}
+
 	setStatementTimeout(connection, logger, server.Grant.Config.Features.StatementTimeoutMs)
 
 	return
@@ -51,17 +55,16 @@ func connectToDb(config config.ServerConfig, logger *util.Logger, globalCollecti
 	return db, nil
 }
 
-func validateConnectionCount(connection *sql.DB, logger *util.Logger, globalCollectionOpts state.CollectionOpts) {
+func validateConnectionCount(connection *sql.DB, logger *util.Logger, maxCollectorConnections int, globalCollectionOpts state.CollectionOpts) error {
 	var connectionCount int
 
 	connection.QueryRow(QueryMarkerSQL + "SELECT COUNT(*) FROM pg_stat_activity WHERE application_name = '" + globalCollectionOpts.CollectorApplicationName + "'").Scan(&connectionCount)
 
-	if connectionCount > 5 {
-		logger.PrintError("Too many open monitoring connections (current: %d, maximum allowed: 5), exiting", connectionCount)
-		panic("Too many open monitoring connections")
+	if connectionCount > maxCollectorConnections {
+		return fmt.Errorf("Too many open monitoring connections (current: %d, maximum allowed: %d), exiting", connectionCount, maxCollectorConnections)
 	}
 
-	return
+	return nil
 }
 
 func setStatementTimeout(connection *sql.DB, logger *util.Logger, statementTimeoutMs int32) {
