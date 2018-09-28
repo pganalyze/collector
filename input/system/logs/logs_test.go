@@ -556,6 +556,17 @@ var tests = []testpair{
 		}},
 		nil,
 	},
+	{
+		[]state.LogLine{{
+			Content:  "pg_stop_backup complete, all required WAL segments have been archived",
+			LogLevel: pganalyze_collector.LogLineInformation_NOTICE,
+		}},
+		[]state.LogLine{{
+			Classification: pganalyze_collector.LogLineInformation_WAL_BASE_BACKUP_COMPLETE,
+			LogLevel:       pganalyze_collector.LogLineInformation_NOTICE,
+		}},
+		nil,
+	},
 	// Lock waits
 	{
 		[]state.LogLine{{
@@ -1610,6 +1621,28 @@ var tests = []testpair{
 				"signal":       9,
 			},
 			RelatedPids: []int32{17443},
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
+			Content:  "using stale statistics instead of current ones because stats collector is not responding",
+			LogLevel: pganalyze_collector.LogLineInformation_LOG,
+		}},
+		[]state.LogLine{{
+			Classification: pganalyze_collector.LogLineInformation_SERVER_STATS_COLLECTOR_TIMEOUT,
+			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
+			Content:  "pgstat wait timeout",
+			LogLevel: pganalyze_collector.LogLineInformation_WARNING,
+		}},
+		[]state.LogLine{{
+			Classification: pganalyze_collector.LogLineInformation_SERVER_STATS_COLLECTOR_TIMEOUT,
+			LogLevel:       pganalyze_collector.LogLineInformation_WARNING,
 		}},
 		nil,
 	},

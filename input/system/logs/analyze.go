@@ -315,6 +315,10 @@ func classifyAndSetDetails(logLine state.LogLine, detailLine state.LogLine, samp
 		logLine.Classification = pganalyze_collector.LogLineInformation_WAL_ARCHIVE_COMMAND_FAILED
 		return logLine, samples
 	}
+	if strings.HasPrefix(logLine.Content, "pg_stop_backup complete, all required WAL segments have been archived") {
+		logLine.Classification = pganalyze_collector.LogLineInformation_WAL_BASE_BACKUP_COMPLETE
+		return logLine, samples
+	}
 
 	// Lock waits
 	if strings.HasPrefix(logLine.Content, "process") {
@@ -795,6 +799,10 @@ func classifyAndSetDetails(logLine state.LogLine, detailLine state.LogLine, samp
 			}
 			return logLine, samples
 		}
+	}
+	if strings.HasPrefix(logLine.Content, "using stale statistics instead of current ones because stats collector is not responding") || strings.HasPrefix(logLine.Content, "pgstat wait timeout") {
+		logLine.Classification = pganalyze_collector.LogLineInformation_SERVER_STATS_COLLECTOR_TIMEOUT
+		return logLine, samples
 	}
 
 	// Standby
