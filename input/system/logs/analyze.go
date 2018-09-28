@@ -179,6 +179,10 @@ func classifyAndSetDetails(logLine state.LogLine, detailLine state.LogLine, samp
 		logLine.Classification = pganalyze_collector.LogLineInformation_OUT_OF_CONNECTIONS
 		return logLine, samples
 	}
+	if strings.HasPrefix(logLine.Content, "sorry, too many clients already") {
+		logLine.Classification = pganalyze_collector.LogLineInformation_OUT_OF_CONNECTIONS
+		return logLine, samples
+	}
 	if strings.HasPrefix(logLine.Content, "too many connections for role") {
 		logLine.Classification = pganalyze_collector.LogLineInformation_TOO_MANY_CONNECTIONS_ROLE
 		return logLine, samples

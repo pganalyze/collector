@@ -263,6 +263,17 @@ var tests = []testpair{
 	},
 	{
 		[]state.LogLine{{
+			Content:  "sorry, too many clients already",
+			LogLevel: pganalyze_collector.LogLineInformation_FATAL,
+		}},
+		[]state.LogLine{{
+			LogLevel:       pganalyze_collector.LogLineInformation_FATAL,
+			Classification: pganalyze_collector.LogLineInformation_OUT_OF_CONNECTIONS,
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
 			Content:  "too many connections for role \"postgres\"",
 			LogLevel: pganalyze_collector.LogLineInformation_FATAL,
 		}},
