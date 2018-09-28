@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.15.2      2018-09-28
+
+* Fix supported log_line_prefix list to include recently added prefixes
+
+
 ## 0.15.1      2018-09-28
 
 * Add additional supported log_line_prefix settings
