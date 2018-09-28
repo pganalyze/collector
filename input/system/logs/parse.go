@@ -23,6 +23,8 @@ const LogPrefixCustom5 string = "%t [%p]: [%l-1] user=%u,db=%d - PG-%e "
 const LogPrefixSimple string = "%m [%p] "
 const LogPrefixEmpty string = ""
 
+var SupportedPrefixes = []string{LogPrefixAmazonRds, LogPrefixCustom1, LogPrefixCustom2, LogPrefixCustom3, LogPrefixCustom4, LogPrefixCustom5, LogPrefixSimple, LogPrefixEmpty}
+
 // Every one of these regexps should produce exactly one matching group
 var TimeRegexp = `(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(?:\.\d+)? [\-+]?\w+)` // %t or %m
 var HostRegexp = `(.+)?`                                                     // %h
@@ -58,8 +60,6 @@ var RsyslogTimeRegexp = `(\w+\s+\d+ \d{2}:\d{2}:\d{2})`
 var RsyslogHostnameRegxp = `(\S+)`
 var RsyslogProcessNameRegexp = `(\w+)`
 var RsyslogRegexp = regexp.MustCompile(`^` + RsyslogTimeRegexp + ` ` + RsyslogHostnameRegxp + ` ` + RsyslogProcessNameRegexp + `\[` + PidRegexp + `\]: ` + SyslogSequenceAndSplitRegexp + ` ` + RsyslogLevelAndContentRegexp)
-
-var SupportedPrefixes = []string{LogPrefixAmazonRds, LogPrefixCustom1, LogPrefixCustom2, LogPrefixSimple, LogPrefixEmpty}
 
 func IsSupportedPrefix(prefix string) bool {
 	for _, supportedPrefix := range SupportedPrefixes {
