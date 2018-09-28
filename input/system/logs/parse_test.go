@@ -146,6 +146,31 @@ var parseTests = []parseTestpair{
 		},
 		true,
 	},
+	// Custom 5 format
+	{
+		"",
+		"2018-09-28 07:37:59 UTC [331]: [1-1] user=[unknown],db=[unknown] - PG-00000 LOG:  connection received: host=127.0.0.1 port=49738",
+		state.LogLine{
+			OccurredAt: time.Date(2018, time.September, 28, 7, 37, 59, 0, time.UTC),
+			LogLevel:   pganalyze_collector.LogLineInformation_LOG,
+			BackendPid: 331,
+			Content:    "connection received: host=127.0.0.1 port=49738",
+		},
+		true,
+	},
+	{
+		"",
+		"2018-09-28 07:39:48 UTC [347]: [3-1] user=postgres,db=postgres - PG-57014 ERROR:  canceling statement due to user request",
+		state.LogLine{
+			OccurredAt: time.Date(2018, time.September, 28, 7, 39, 48, 0, time.UTC),
+			Username:   "postgres",
+			Database:   "postgres",
+			LogLevel:   pganalyze_collector.LogLineInformation_ERROR,
+			BackendPid: 347,
+			Content:    "canceling statement due to user request",
+		},
+		true,
+	},
 	// Simple format
 	{
 		"",
