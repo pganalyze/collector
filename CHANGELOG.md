@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.15.1      2018-09-28
+
+* Add additional supported log_line_prefix settings
+  * '%t [%p]: [%l-1] user=%u,db=%d - PG-%e '
+* Add new log classifications
+  * WAL_BASE_BACKUP_COMPLETE
+  * SERVER_STATS_COLLECTOR_TIMEOUT
+* Add "sorry, too many clients already" out of connections log classification
+
+
 ## 0.15.0      2018-09-27
 
 * Add additional supported log_line_prefix settings
