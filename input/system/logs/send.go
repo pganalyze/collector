@@ -103,16 +103,17 @@ func AnalyzeInGroupsAndSend(server state.Server, logLines []state.LogLine, globa
 
 	// Nothing to send, so just skip getting the grant and other work
 	if len(logFile.LogLines) == 0 && len(logState.QuerySamples) == 0 {
+		logState.Cleanup()
 		return tooFreshLogLines
 	}
 
 	logState.LogFiles = []state.LogFile{logFile}
-	defer logState.Cleanup()
 
 	if globalCollectionOpts.DebugLogs {
 		prefixedLogger.PrintInfo("Would have sent log state:\n")
 		content, _ := ioutil.ReadFile(logFile.TmpFile.Name())
 		PrintDebugInfo(string(content), logFile.LogLines, logState.QuerySamples)
+		logState.Cleanup()
 		return tooFreshLogLines
 	}
 
@@ -123,25 +124,30 @@ func AnalyzeInGroupsAndSend(server state.Server, logLines []state.LogLine, globa
 				logTestSucceeded <- true
 			}
 		}
+		logState.Cleanup()
 		return tooFreshLogLines
 	}
 
 	grant, err := grant.GetLogsGrant(server, globalCollectionOpts, prefixedLogger)
 	if err != nil {
 		prefixedLogger.PrintError("Could not get log grant: %s", err)
+		logState.Cleanup()
 		return logLines // Retry
 	}
 
 	if !grant.Valid {
 		prefixedLogger.PrintVerbose("Log collection disabled from server, skipping")
+		logState.Cleanup()
 		return tooFreshLogLines
 	}
 
 	err = output.UploadAndSendLogs(server, grant, globalCollectionOpts, prefixedLogger, logState)
 	if err != nil {
 		prefixedLogger.PrintError("Failed to upload/send logs: %s", err)
+		logState.Cleanup()
 		return logLines // Retry
 	}
 
+	logState.Cleanup()
 	return tooFreshLogLines
 }

@@ -23,16 +23,18 @@ func downloadLogsForServer(server state.Server, globalCollectionOpts state.Colle
 
 	// TODO: We'll need to pass a connection here for EXPLAINs to run (or hand them over to the next full snapshot run)
 	logState, err := input.DownloadLogs(server, nil, globalCollectionOpts, logger)
-	defer logState.Cleanup()
 	if err != nil {
+		logState.Cleanup()
 		return false, errors.Wrap(err, "could not collect logs")
 	}
 
 	err = output.UploadAndSendLogs(server, grant, globalCollectionOpts, logger, logState)
 	if err != nil {
+		logState.Cleanup()
 		return false, errors.Wrap(err, "failed to upload/send logs")
 	}
 
+	logState.Cleanup()
 	return true, nil
 }
 

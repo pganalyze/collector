@@ -72,6 +72,7 @@ func DownloadLogFiles(config config.ServerConfig, logger *util.Logger) (result [
 				// Error: AccessDenied: User: arn:aws:iam::XXX:user/pganalyze_collector is not authorized to perform: rds:DownloadDBLogFilePortion on resource: arn:aws:rds:us-east-1:XXX:db:XXX
 				// status code: 403, request id: XXX
 				logger.PrintError("%s", err)
+				logFile.Cleanup()
 				return
 			}
 
