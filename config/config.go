@@ -22,6 +22,14 @@ type HerokuLogStreamItem struct {
 	Namespace string
 }
 
+type ServerIdentifier struct {
+	APIKey      string
+	APIBaseURL  string
+	SystemID    string
+	SystemType  string
+	SystemScope string
+}
+
 // ServerConfig -
 //   Contains the information how to connect to a Postgres instance,
 //   with optional AWS credentials to get metrics
@@ -61,6 +69,7 @@ type ServerConfig struct {
 	AwsSecretAccessKey string `ini:"aws_secret_access_key"`
 
 	SectionName string
+	Identifier  ServerIdentifier
 
 	SystemID    string `ini:"api_system_id"`
 	SystemType  string `ini:"api_system_type"`

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	raven "github.com/getsentry/raven-go"
+	"github.com/pganalyze/collector/config"
 	"github.com/pganalyze/collector/grant"
 	"github.com/pganalyze/collector/input"
 	"github.com/pganalyze/collector/input/postgres"
@@ -123,10 +124,10 @@ func processDatabase(server state.Server, globalCollectionOpts state.CollectionO
 }
 
 func writeStateFile(servers []state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
-	stateOnDisk := state.StateOnDisk{PrevStateByAPIKey: make(map[string]state.PersistedState), FormatVersion: state.StateOnDiskFormatVersion}
+	stateOnDisk := state.StateOnDisk{PrevStateByServer: make(map[config.ServerIdentifier]state.PersistedState), FormatVersion: state.StateOnDiskFormatVersion}
 
 	for _, server := range servers {
-		stateOnDisk.PrevStateByAPIKey[server.Config.APIKey] = server.PrevState
+		stateOnDisk.PrevStateByServer[server.Config.Identifier] = server.PrevState
 	}
 
 	file, err := os.Create(globalCollectionOpts.StateFilename)
@@ -163,7 +164,7 @@ func ReadStateFile(servers []state.Server, globalCollectionOpts state.Collection
 	}
 
 	for idx, server := range servers {
-		prevState, exist := stateOnDisk.PrevStateByAPIKey[server.Config.APIKey]
+		prevState, exist := stateOnDisk.PrevStateByServer[server.Config.Identifier]
 		if exist {
 			prefixedLogger := logger.WithPrefix(server.Config.SectionName)
 			prefixedLogger.PrintVerbose("Successfully recovered state from on-disk file")

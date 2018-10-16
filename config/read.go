@@ -159,15 +159,19 @@ func Read(logger *util.Logger, filename string) (Config, error) {
 			config.SectionName = section.Name()
 			config.SystemType, config.SystemScope, config.SystemID = identifySystem(*config)
 
+			config.Identifier = ServerIdentifier{
+				APIKey:      config.APIKey,
+				APIBaseURL:  config.APIBaseURL,
+				SystemID:    config.SystemID,
+				SystemType:  config.SystemType,
+				SystemScope: config.SystemScope,
+			}
+
 			if config.GetDbName() != "" {
-				// Ensure we have no duplicate System Type+Scope+ID within one collector
+				// Ensure we have no duplicate identifiers within one collector
 				skip := false
 				for _, server := range conf.Servers {
-					if config.SystemType == server.SystemType &&
-						config.SystemScope == server.SystemScope &&
-						config.SystemID == server.SystemID &&
-						config.APIKey == server.APIKey &&
-						config.APIBaseURL == server.APIBaseURL {
+					if config.Identifier == server.Identifier {
 						skip = true
 					}
 				}

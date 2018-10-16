@@ -74,12 +74,12 @@ type DiffState struct {
 }
 
 // StateOnDiskFormatVersion - Increment this when an old state preserved to disk should be ignored
-const StateOnDiskFormatVersion = 1
+const StateOnDiskFormatVersion = 2
 
 type StateOnDisk struct {
 	FormatVersion uint
 
-	PrevStateByAPIKey map[string]PersistedState
+	PrevStateByServer map[config.ServerIdentifier]PersistedState
 }
 
 type CollectionOpts struct {
