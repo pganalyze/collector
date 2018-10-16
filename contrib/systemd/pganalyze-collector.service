@@ -10,8 +10,8 @@ ProtectSystem=full
 ProtectHome=true
 CapabilityBoundingSet=
 NoNewPrivileges=true
-MemoryLimit=256MB
-Restart=Always
+MemoryLimit=256M
+Restart=always
 
 [Install]
 WantedBy=multi-user.target
