@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.16.0      2018-10-16
+
+* Fix scoping of on-disk state to reflect system type/scope/id
+  * Previously we only considered API key to determine which state to save,
+    which meant that in configurations with multiple servers but a single
+    organization API key we'd usually loose statistics on restarts, or
+    get the wrong values for diff-ing the query statistics
+  * This is a backwards-incompatible change for the on-disk format and
+    therefore bumps the version from 1 to 2. Effectively this will show
+    as one period of no data after upgrading to this version, as the
+    previously saved counter values in the state file won't be used
+* Add support for "%t [%p]: [%l-1] user=%u,db=%d,app=%a,client=%h " log_line_prefix
+* Use explicit log file clean up instead of deferrals
+  * There have been reports of old temporary files containing log lines
+    not being cleaned up fully - attempt to fix that
+* systemd config: Fix incorrect specification of memory limit & restart event [Dom Hutton](https://github.com/Dombo) [#26](https://github.com/pganalyze/collector/pull/26)
+
+
 ## 0.15.2      2018-09-28
 
 * Fix supported log_line_prefix list to include recently added prefixes
