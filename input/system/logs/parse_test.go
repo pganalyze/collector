@@ -171,6 +171,42 @@ var parseTests = []parseTestpair{
 		},
 		true,
 	},
+	// Custom 6 format
+	{
+		"",
+		"2018-10-16 01:25:58 UTC [93897]: [4-1] user=,db=,app=,client= LOG:  database system is ready to accept connections",
+		state.LogLine{
+			OccurredAt: time.Date(2018, time.October, 16, 1, 25, 58, 0, time.UTC),
+			LogLevel:   pganalyze_collector.LogLineInformation_LOG,
+			BackendPid: 93897,
+			Content:    "database system is ready to accept connections",
+		},
+		true,
+	},
+	{
+		"",
+		"2018-10-16 01:26:09 UTC [93907]: [1-1] user=[unknown],db=[unknown],app=[unknown],client=::1 LOG:  connection received: host=::1 port=61349",
+		state.LogLine{
+			OccurredAt: time.Date(2018, time.October, 16, 1, 26, 9, 0, time.UTC),
+			LogLevel:   pganalyze_collector.LogLineInformation_LOG,
+			BackendPid: 93907,
+			Content:    "connection received: host=::1 port=61349",
+		},
+		true,
+	},
+	{
+		"",
+		"2018-10-16 01:26:33 UTC [93911]: [3-1] user=postgres,db=postgres,app=psql,client=::1 ERROR:  canceling statement due to user request",
+		state.LogLine{
+			OccurredAt: time.Date(2018, time.October, 16, 1, 26, 33, 0, time.UTC),
+			Username:   "postgres",
+			Database:   "postgres",
+			LogLevel:   pganalyze_collector.LogLineInformation_ERROR,
+			BackendPid: 93911,
+			Content:    "canceling statement due to user request",
+		},
+		true,
+	},
 	// Simple format
 	{
 		"",
