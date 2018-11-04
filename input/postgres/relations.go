@@ -23,7 +23,7 @@ const relationsSQL string = `
 				c.relhasoids AS relation_has_oids,
 				c.relpersistence AS relation_persistence,
 				c.relhassubclass AS relation_has_inheritance_children,
-				c.reltoastrelid IS NULL AS relation_has_toast,
+				c.reltoastrelid IS NOT NULL AS relation_has_toast,
 				c.relfrozenxid AS relation_frozen_xid,
 				%s,
 				locked_relids.relid IS NOT NULL
