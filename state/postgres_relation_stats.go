@@ -3,7 +3,8 @@ package state
 import "github.com/guregu/null"
 
 type PostgresRelationStats struct {
-	SizeBytes        int64
+	SizeBytes        int64     // On-disk size including FSM and VM, plus TOAST table if any, excluding indices
+	ToastSizeBytes   int64     // TOAST table and TOAST index size (included in SizeBytes as well)
 	SeqScan          int64     // Number of sequential scans initiated on this table
 	SeqTupRead       int64     // Number of live rows fetched by sequential scans
 	IdxScan          int64     // Number of index scans initiated on this table
@@ -53,6 +54,7 @@ type DiffedPostgresIndexStatsMap map[Oid]DiffedPostgresIndexStats
 func (curr PostgresRelationStats) DiffSince(prev PostgresRelationStats) DiffedPostgresRelationStats {
 	return DiffedPostgresRelationStats{
 		SizeBytes:        curr.SizeBytes,
+		ToastSizeBytes:   curr.ToastSizeBytes,
 		SeqScan:          curr.SeqScan - prev.SeqScan,
 		SeqTupRead:       curr.SeqTupRead - prev.SeqTupRead,
 		IdxScan:          curr.IdxScan - prev.IdxScan,

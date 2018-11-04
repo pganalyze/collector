@@ -13,6 +13,7 @@ const relationStatsSQLpg94OptionalFields = "s.n_mod_since_analyze"
 const relationStatsSQL = `
 SELECT s.relid,
 			 COALESCE(pg_catalog.pg_table_size(s.relid), 0) AS size_bytes,
+			 CASE c.reltoastrelid WHEN NULL THEN 0 ELSE COALESCE(pg_catalog.pg_total_relation_size(c.reltoastrelid), 0) END AS toast_bytes,
 			 COALESCE(s.seq_scan, 0),
 			 COALESCE(s.seq_tup_read, 0),
 			 COALESCE(s.idx_scan, 0),
@@ -40,8 +41,9 @@ SELECT s.relid,
 			 COALESCE(sio.toast_blks_hit, 0),
 			 COALESCE(sio.tidx_blks_read, 0),
 			 COALESCE(sio.tidx_blks_hit, 0)
-	FROM pg_stat_user_tables s
-			 LEFT JOIN pg_statio_user_tables sio USING (relid);
+	FROM pg_catalog.pg_stat_user_tables s
+			 JOIN pg_catalog.pg_class c ON (s.relid = c.oid)
+			 LEFT JOIN pg_catalog.pg_statio_user_tables sio USING (relid)
 `
 
 const indexStatsSQL = `
@@ -52,8 +54,8 @@ SELECT s.indexrelid,
 			 COALESCE(s.idx_tup_fetch, 0),
 			 COALESCE(sio.idx_blks_read, 0),
 			 COALESCE(sio.idx_blks_hit, 0)
-	FROM pg_stat_user_indexes s
-			 LEFT JOIN pg_statio_user_indexes sio USING (indexrelid);
+	FROM pg_catalog.pg_stat_user_indexes s
+			 LEFT JOIN pg_catalog.pg_statio_user_indexes sio USING (indexrelid)
 `
 
 func GetRelationStats(db *sql.DB, postgresVersion state.PostgresVersion) (relStats state.PostgresRelationStatsMap, err error) {
@@ -84,7 +86,8 @@ func GetRelationStats(db *sql.DB, postgresVersion state.PostgresVersion) (relSta
 		var oid state.Oid
 		var stats state.PostgresRelationStats
 
-		err = rows.Scan(&oid, &stats.SizeBytes, &stats.SeqScan, &stats.SeqTupRead,
+		err = rows.Scan(&oid, &stats.SizeBytes, &stats.ToastSizeBytes,
+			&stats.SeqScan, &stats.SeqTupRead,
 			&stats.IdxScan, &stats.IdxTupFetch, &stats.NTupIns,
 			&stats.NTupUpd, &stats.NTupDel, &stats.NTupHotUpd,
 			&stats.NLiveTup, &stats.NDeadTup, &stats.NModSinceAnalyze,
