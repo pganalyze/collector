@@ -55,7 +55,7 @@ func (report *BuffercacheReport) Result() *pganalyze_collector.Report {
 	databaseNameToIdx := make(map[string]int32)
 
 	for _, entry := range report.Data.Entries {
-		e := pganalyze_collector.BuffercacheEntry{Bytes: entry.Bytes}
+		e := pganalyze_collector.BuffercacheEntry{Bytes: entry.Bytes, Toast: entry.Toast}
 		e.DatabaseIdx, exists = databaseNameToIdx[entry.DatabaseName]
 		if !exists {
 			ref := pganalyze_collector.DatabaseReference{Name: entry.DatabaseName}

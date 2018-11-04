@@ -7,6 +7,7 @@ type PostgresBuffercacheEntry struct {
 	SchemaName   *string
 	ObjectName   *string
 	ObjectKind   *string
+	Toast        bool
 }
 
 // PostgresBuffercache - Details on whats contained in the Postgres buffer cache

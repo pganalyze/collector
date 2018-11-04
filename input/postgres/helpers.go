@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"database/sql"
 	"strconv"
 	"strings"
 
@@ -41,5 +42,18 @@ func unpackPostgresStringArray(input null.String) (result []string) {
 
 	result = strings.Split(strings.Trim(input.String, "{}"), ",")
 
+	return
+}
+
+const resolveToastSQL string = `
+SELECT n.nspname, c.relname
+  FROM pg_class c
+	JOIN pg_namespace n ON (n.oid = c.relnamespace)
+ WHERE reltoastrelid = (SELECT c2.oid FROM pg_class c2 JOIN pg_namespace n2 ON (n2.oid = c2.relnamespace)
+                        WHERE n2.nspname = 'pg_toast' AND c2.relname = $1)
+`
+
+func resolveToastTable(db *sql.DB, toastName string) (schemaName string, relationName string, err error) {
+	err = db.QueryRow(QueryMarkerSQL+resolveToastSQL, toastName).Scan(&schemaName, &relationName)
 	return
 }

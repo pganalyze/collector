@@ -26,13 +26,6 @@ UNION
 SELECT SUM(block_count) * current_setting('block_size')::int, '', NULL, NULL, 'used' FROM buffers
 `
 
-const buffercacheHelperSQL string = `
-SELECT 1 AS enabled
-	FROM pg_proc
-	JOIN pg_namespace ON (pronamespace = pg_namespace.oid)
- WHERE nspname = 'pganalyze' AND proname = 'get_buffercache'
-`
-
 const sharedBufferSettingSQL string = `SELECT current_setting('shared_buffers')`
 
 func getSharedBufferBytes(db *sql.DB) int64 {
@@ -72,21 +65,10 @@ func getSharedBufferBytes(db *sql.DB) int64 {
 	return bytes * multiplier
 }
 
-func buffercacheHelperExists(db *sql.DB) bool {
-	var enabled bool
-
-	err := db.QueryRow(QueryMarkerSQL + buffercacheHelperSQL).Scan(&enabled)
-	if err != nil {
-		return false
-	}
-
-	return enabled
-}
-
 func GetBuffercache(logger *util.Logger, db *sql.DB) (report state.PostgresBuffercache, err error) {
 	var sourceTable string
 
-	if buffercacheHelperExists(db) {
+	if statsHelperExists(db, "get_buffercache") {
 		logger.PrintVerbose("Found pganalyze.get_buffercache() stats helper")
 		sourceTable = "pganalyze.get_buffercache()"
 	} else {
@@ -134,6 +116,15 @@ func GetBuffercache(logger *util.Logger, db *sql.DB) (report state.PostgresBuffe
 		if err != nil {
 			err = fmt.Errorf("Buffercache/Scan: %s", err)
 			return
+		}
+
+		if row.SchemaName != nil && *row.SchemaName == "pg_toast" {
+			schemaName, relationName, err := resolveToastTable(db, *row.ObjectName)
+			if err != nil && schemaName != "" && relationName != "" {
+				row.SchemaName = &schemaName
+				row.ObjectName = &relationName
+				row.Toast = true
+			}
 		}
 
 		if row.DatabaseName == "" && row.ObjectKind != nil && *row.ObjectKind == "used" {

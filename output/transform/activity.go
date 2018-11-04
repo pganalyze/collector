@@ -43,6 +43,7 @@ func ActivityStateToCompactActivitySnapshot(activityState state.ActivityState) (
 			VacuumIdentity:  vacuum.VacuumIdentity,
 			BackendIdentity: vacuum.BackendIdentity,
 			Autovacuum:      vacuum.Autovacuum,
+			Toast:           vacuum.Toast,
 		}
 
 		if vacuum.RoleName != "" {

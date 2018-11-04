@@ -99,6 +99,15 @@ func GetVacuumProgress(logger *util.Logger, db *sql.DB, postgresVersion state.Po
 			return nil, err
 		}
 
+		if row.SchemaName == "pg_toast" {
+			schemaName, relationName, err := resolveToastTable(db, row.RelationName)
+			if err != nil && schemaName != "" && relationName != "" {
+				row.SchemaName = schemaName
+				row.RelationName = relationName
+				row.Toast = true
+			}
+		}
+
 		vacuums = append(vacuums, row)
 	}
 
