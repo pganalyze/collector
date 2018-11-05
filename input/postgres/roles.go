@@ -25,9 +25,9 @@ SELECT oid,
 			 rolconnlimit,
 			 CASE WHEN rolvaliduntil = 'infinity' THEN NULL ELSE rolvaliduntil END,
 			 rolconfig,
-			 (SELECT array_agg(roleid) FROM pg_auth_members WHERE pg_roles.oid = pg_auth_members.member) AS member_of,
+			 (SELECT pg_catalog.array_agg(roleid) FROM pg_auth_members am WHERE r.oid = am.member) AS member_of,
 			 %s
-	FROM pg_roles
+	FROM pg_roles r
 	 `
 
 func GetRoles(logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion) ([]state.PostgresRole, error) {

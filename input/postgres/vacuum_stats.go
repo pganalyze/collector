@@ -21,15 +21,16 @@ SELECT n.nspname,
 			 s.last_analyze,
 			 s.last_autoanalyze,
 			 c.reloptions
-	FROM pg_class c
-	JOIN pg_namespace n ON (c.relnamespace = n.oid)
-	JOIN pg_stat_user_tables s ON (s.relid = c.oid)
- WHERE c.relkind IN ('r', 'm') AND c.relpersistence IN ('p', 'u')
+	FROM pg_catalog.pg_class c
+	JOIN pg_catalog.pg_namespace n ON (c.relnamespace = n.oid)
+	JOIN pg_catalog.pg_stat_user_tables s ON (s.relid = c.oid)
+ WHERE c.relkind IN ('r', 'm')
+ 			 AND c.relpersistence IN ('p', 'u')
 `
 
 const globalVacuumSettingsSQL string = `
 SELECT name, setting
-	FROM pg_settings
+	FROM pg_catalog.pg_settings
  WHERE name LIKE 'autovacuum%'`
 
 func GetVacuumStats(logger *util.Logger, db *sql.DB) (report state.PostgresVacuumStats, err error) {

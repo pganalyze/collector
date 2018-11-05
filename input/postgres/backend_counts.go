@@ -17,7 +17,7 @@ const backendCountsSQL string = `
 				usesysid,
 				COALESCE(state, 'unknown'),
 				%s
-				COUNT(*)
+				pg_catalog.count(*)
 	 FROM %s
 	GROUP BY 1, 2, 3, 4, 5`
 
@@ -36,7 +36,7 @@ func GetBackendCounts(logger *util.Logger, db *sql.DB, postgresVersion state.Pos
 	if statsHelperExists(db, "get_stat_activity") {
 		sourceTable = "pganalyze.get_stat_activity()"
 	} else {
-		sourceTable = "pg_stat_activity"
+		sourceTable = "pg_catalog.pg_stat_activity"
 	}
 
 	stmt, err := db.Prepare(QueryMarkerSQL + fmt.Sprintf(backendCountsSQL, optionalFields, sourceTable))

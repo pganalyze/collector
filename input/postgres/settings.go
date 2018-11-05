@@ -16,7 +16,7 @@ SELECT name,
 			 source,
 			 sourcefile,
 			 sourceline
-	FROM pg_settings`
+	FROM pg_catalog.pg_settings`
 
 func GetSettings(db *sql.DB, postgresVersion state.PostgresVersion) ([]state.PostgresSetting, error) {
 	stmt, err := db.Prepare(QueryMarkerSQL + settingsSQL)

@@ -19,17 +19,17 @@ SELECT pp.oid,
 			 pp.prosrc,
 			 pp.probin,
 			 pp.proconfig,
-			 pg_get_function_arguments(pp.oid),
-			 pg_get_function_result(pp.oid),
+			 pg_catalog.pg_get_function_arguments(pp.oid),
+			 pg_catalog.pg_get_function_result(pp.oid),
 			 %s,
 			 pp.prosecdef,
 			 pp.proleakproof,
 			 pp.proisstrict,
 			 pp.proretset,
 			 pp.provolatile
-	FROM pg_proc pp
- INNER JOIN pg_namespace pn ON (pp.pronamespace = pn.oid)
- INNER JOIN pg_language pl ON (pp.prolang = pl.oid)
+	FROM pg_catalog.pg_proc pp
+ INNER JOIN pg_catalog.pg_namespace pn ON (pp.pronamespace = pn.oid)
+ INNER JOIN pg_catalog.pg_language pl ON (pp.prolang = pl.oid)
  WHERE pl.lanname NOT IN ('internal', 'c')
 			 AND pn.nspname NOT IN ('pg_catalog', 'information_schema')
 			 AND pp.proname NOT IN ('pg_stat_statements', 'pg_stat_statements_reset')`

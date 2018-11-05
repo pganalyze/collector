@@ -58,7 +58,7 @@ func connectToDb(config config.ServerConfig, logger *util.Logger, globalCollecti
 func validateConnectionCount(connection *sql.DB, logger *util.Logger, maxCollectorConnections int, globalCollectionOpts state.CollectionOpts) error {
 	var connectionCount int
 
-	connection.QueryRow(QueryMarkerSQL + "SELECT COUNT(*) FROM pg_stat_activity WHERE application_name = '" + globalCollectionOpts.CollectorApplicationName + "'").Scan(&connectionCount)
+	connection.QueryRow(QueryMarkerSQL + "SELECT pg_catalog.count(*) FROM pg_catalog.pg_stat_activity WHERE application_name = '" + globalCollectionOpts.CollectorApplicationName + "'").Scan(&connectionCount)
 
 	if connectionCount > maxCollectorConnections {
 		return fmt.Errorf("Too many open monitoring connections (current: %d, maximum allowed: %d), exiting", connectionCount, maxCollectorConnections)

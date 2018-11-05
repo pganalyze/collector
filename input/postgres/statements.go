@@ -24,9 +24,9 @@ SELECT dbid, userid, query, calls, total_time, rows, shared_blks_hit, shared_blk
 
 const statementStatsHelperSQL string = `
 SELECT 1 AS enabled
-	FROM pg_proc
-	JOIN pg_namespace ON (pronamespace = pg_namespace.oid)
- WHERE nspname = 'pganalyze' AND proname = 'get_stat_statements'
+	FROM pg_catalog.pg_proc p
+	JOIN pg_catalog.pg_namespace n ON (p.pronamespace = n.oid)
+ WHERE n.nspname = 'pganalyze' AND p.proname = 'get_stat_statements'
 			 %s
 `
 
@@ -110,7 +110,7 @@ func GetStatements(logger *util.Logger, db *sql.DB, postgresVersion state.Postgr
 		if !usingStatsHelper && (errCode == "42P01" || errCode == "42883") { // undefined_table / undefined_function
 			logger.PrintInfo("pg_stat_statements does not exist, trying to create extension...")
 
-			_, err = db.Exec(QueryMarkerSQL + "CREATE EXTENSION IF NOT EXISTS pg_stat_statements")
+			_, err = db.Exec(QueryMarkerSQL + "CREATE EXTENSION IF NOT EXISTS pg_stat_statements SCHEMA public")
 			if err != nil {
 				return nil, nil, err
 			}

@@ -20,9 +20,9 @@ func connectedAsSuperUser(db *sql.DB) bool {
 
 const connectedAsMonitoringRoleSQL string = `
 SELECT true
-	FROM pg_auth_members
- WHERE roleid = (SELECT oid FROM pg_roles WHERE rolname = 'pg_monitor')
-			 AND member = (SELECT oid FROM pg_roles WHERE rolname = current_user);`
+	FROM pg_catalog.pg_auth_members
+ WHERE roleid = (SELECT oid FROM pg_catalog.pg_roles WHERE rolname = 'pg_monitor')
+			 AND member = (SELECT oid FROM pg_catalog.pg_roles WHERE rolname = current_user);`
 
 func connectedAsMonitoringRole(db *sql.DB) bool {
 	var enabled bool
@@ -37,9 +37,9 @@ func connectedAsMonitoringRole(db *sql.DB) bool {
 
 const statsHelperSQL string = `
 SELECT 1 AS enabled
-	FROM pg_proc
-	JOIN pg_namespace ON (pronamespace = pg_namespace.oid)
- WHERE nspname = 'pganalyze' AND proname = '%s'
+	FROM pg_catalog.pg_proc p
+	JOIN pg_catalog.pg_namespace n ON (p.pronamespace = n.oid)
+ WHERE n.nspname = 'pganalyze' AND p.proname = '%s'
 `
 
 func statsHelperExists(db *sql.DB, statsHelper string) bool {

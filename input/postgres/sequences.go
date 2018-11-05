@@ -11,8 +11,8 @@ import (
 
 const sequenceListSQL = `
 SELECT c.oid, n.nspname, c.relname
- FROM pg_class c
- JOIN pg_namespace n ON (c.relnamespace = n.oid)
+ FROM pg_catalog.pg_class c
+ JOIN pg_catalog.pg_namespace n ON (c.relnamespace = n.oid)
 WHERE relkind = 'S' AND relpersistence = 'p'
 `
 
@@ -26,15 +26,15 @@ SELECT c.oid,
 			 n.nspname,
 			 c.relname,
 			 a.attname,
-			 format_type(t.oid, a.atttypmod),
-			 (power(2, typlen * 8) / 2)::numeric,
+			 pg_catalog.format_type(t.oid, a.atttypmod),
+			 (pg_catalog.power(2, typlen * 8) / 2)::numeric,
 			 pganalyze.get_sequence_oid_for_column(ad.adrelid::regclass::text, a.attname) AS sequence_oid
-	FROM pg_attrdef ad
-	JOIN pg_class c ON (c.oid = adrelid)
-	JOIN pg_namespace n ON (c.relnamespace = n.oid)
-	JOIN pg_attribute a ON (ad.adrelid = a.attrelid AND ad.adnum = a.attnum)
-	JOIN pg_type t ON (a.atttypid = t.oid)
- WHERE pg_get_expr(adbin, adrelid) LIKE 'nextval%'
+	FROM pg_catalog.pg_attrdef ad
+	JOIN pg_catalog.pg_class c ON (c.oid = adrelid)
+	JOIN pg_catalog.pg_namespace n ON (c.relnamespace = n.oid)
+	JOIN pg_catalog.pg_attribute a ON (ad.adrelid = a.attrelid AND ad.adnum = a.attnum)
+	JOIN pg_catalog.pg_type t ON (a.atttypid = t.oid)
+ WHERE pg_catalog.pg_get_expr(adbin, adrelid) LIKE 'nextval%'
 			 AND relkind = 'r' AND NOT attisdropped
 `
 
@@ -42,14 +42,14 @@ const inferredForeignColumnSQL = `
 SELECT c.oid,
 			 n.nspname,
 			 c.relname,
-			 format_type(t.oid, a.atttypmod),
-			 (power(2, typlen * 8) / 2)::numeric
-	FROM pg_attribute a
-	JOIN pg_class c ON (c.oid = a.attrelid)
-	JOIN pg_namespace n ON (c.relnamespace = n.oid)
-	JOIN pg_type t ON (a.atttypid = t.oid)
+			 pg_catalog.format_type(t.oid, a.atttypmod),
+			 (pg_catalog.power(2, typlen * 8) / 2)::numeric
+	FROM pg_catalog.pg_attribute a
+	JOIN pg_catalog.pg_class c ON (c.oid = a.attrelid)
+	JOIN pg_catalog.pg_namespace n ON (c.relnamespace = n.oid)
+	JOIN pg_catalog.pg_type t ON (a.atttypid = t.oid)
  WHERE attname = $1 AND relkind = 'r'
-			 AND format_type(t.oid, a.atttypmod) IN ('bigint', 'integer')
+			 AND pg_catalog.format_type(t.oid, a.atttypmod) IN ('bigint', 'integer')
 			 AND NOT attisdropped
 `
 

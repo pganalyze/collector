@@ -14,7 +14,7 @@ const relationsSQLDefaultOptionalFields = "0"
 const relationsSQLpg93OptionalFields = "c.relminmxid"
 
 const relationsSQL string = `
-	 WITH locked_relids AS (SELECT DISTINCT relation relid FROM pg_locks WHERE mode = 'AccessExclusiveLock')
+	 WITH locked_relids AS (SELECT DISTINCT relation relid FROM pg_catalog.pg_locks WHERE mode = 'AccessExclusiveLock')
  SELECT c.oid,
 				n.nspname AS schema_name,
 				c.relname AS table_name,
@@ -36,7 +36,7 @@ const relationsSQL string = `
 				AND n.nspname NOT IN ('pg_catalog','pg_toast','information_schema')`
 
 const columnsSQL string = `
-	 WITH locked_relids AS (SELECT DISTINCT relation relid FROM pg_locks WHERE mode = 'AccessExclusiveLock')
+	 WITH locked_relids AS (SELECT DISTINCT relation relid FROM pg_catalog.pg_locks WHERE mode = 'AccessExclusiveLock')
  SELECT c.oid,
 				a.attname AS name,
 				pg_catalog.format_type(a.atttypid, a.atttypmod) AS data_type,
@@ -60,7 +60,7 @@ const columnsSQL string = `
  ORDER BY a.attnum`
 
 const indicesSQL string = `
-	WITH locked_relids AS (SELECT DISTINCT relation relid FROM pg_locks WHERE mode = 'AccessExclusiveLock')
+	WITH locked_relids AS (SELECT DISTINCT relation relid FROM pg_catalog.pg_locks WHERE mode = 'AccessExclusiveLock')
 SELECT c.oid,
 			 c2.oid,
 			 i.indkey::text,
@@ -71,7 +71,7 @@ SELECT c.oid,
 			 pg_catalog.pg_get_indexdef(i.indexrelid, 0, TRUE),
 			 pg_catalog.pg_get_constraintdef(con.oid, TRUE),
 			 c2.reloptions,
-			 (SELECT pg_am.amname FROM pg_am JOIN pg_opclass ON (pg_am.oid = pg_opclass.opcmethod) WHERE pg_opclass.oid = i.indclass[0])
+			 (SELECT a.amname FROM pg_catalog.pg_am a JOIN pg_catalog.pg_opclass o ON (a.oid = o.opcmethod) WHERE o.oid = i.indclass[0])
 	FROM pg_catalog.pg_class c
 	JOIN pg_catalog.pg_namespace n ON (n.oid = c.relnamespace)
 	JOIN pg_catalog.pg_index i ON (c.oid = i.indrelid)
@@ -86,7 +86,7 @@ SELECT c.oid,
 			 AND c2.oid NOT IN (SELECT relid FROM locked_relids)`
 
 const constraintsSQL string = `
-	WITH locked_relids AS (SELECT DISTINCT relation relid FROM pg_locks WHERE mode = 'AccessExclusiveLock')
+	WITH locked_relids AS (SELECT DISTINCT relation relid FROM pg_catalog.pg_locks WHERE mode = 'AccessExclusiveLock')
 SELECT c.oid,
 			 conname,
 			 contype,
@@ -98,13 +98,13 @@ SELECT c.oid,
 			 confdeltype,
 			 confmatchtype
 	FROM pg_catalog.pg_constraint r
-			 JOIN pg_catalog.pg_class c ON r.conrelid = c.oid
-			 JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+			 JOIN pg_catalog.pg_class c ON (r.conrelid = c.oid)
+			 JOIN pg_catalog.pg_namespace n ON (n.oid = c.relnamespace)
 WHERE n.nspname NOT IN ('pg_catalog','pg_toast','information_schema')
 			AND c.oid NOT IN (SELECT relid FROM locked_relids)`
 
 const viewDefinitionSQL string = `
-	WITH locked_relids AS (SELECT DISTINCT relation relid FROM pg_locks WHERE mode = 'AccessExclusiveLock')
+	WITH locked_relids AS (SELECT DISTINCT relation relid FROM pg_catalog.pg_locks WHERE mode = 'AccessExclusiveLock')
 SELECT c.oid,
 			 pg_catalog.pg_get_viewdef(c.oid) AS view_definition
 	FROM pg_catalog.pg_class c

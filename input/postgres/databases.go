@@ -16,7 +16,7 @@ const databasesSQL string = `
 SELECT oid,
 			 datname,
 			 datdba,
-			 pg_encoding_to_char(encoding),
+			 pg_catalog.pg_encoding_to_char(encoding),
 			 datcollate,
 			 datctype,
 			 datistemplate,
@@ -24,7 +24,7 @@ SELECT oid,
 			 datconnlimit,
 			 datfrozenxid,
 			 %s
-	FROM pg_database`
+	FROM pg_catalog.pg_database`
 
 func GetDatabases(logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion) ([]state.PostgresDatabase, error) {
 	var optionalFields string

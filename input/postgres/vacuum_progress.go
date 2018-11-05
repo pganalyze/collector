@@ -9,11 +9,11 @@ import (
 )
 
 const vacuumProgressSQLpg95 string = `
-SELECT (extract(epoch from a.query_start)::int::text || to_char(pid, 'FM000000'))::bigint AS vacuum_identity,
-			 (extract(epoch from COALESCE(backend_start, pg_postmaster_start_time()))::int::text || to_char(pid, 'FM000000'))::bigint AS backend_identity,
+SELECT (EXTRACT(epoch FROM a.query_start)::int::text || pg_catalog.to_char(pid, 'FM000000'))::bigint AS vacuum_identity,
+			 (EXTRACT(epoch FROM COALESCE(backend_start, pg_catalog.pg_postmaster_start_time()))::int::text || pg_catalog.to_char(pid, 'FM000000'))::bigint AS backend_identity,
 			 a.datname,
-			 (SELECT regexp_matches(query, 'autovacuum: VACUUM (ANALYZE )?([^\.]+).(.+)'))[2] AS nspname,
-			 (SELECT regexp_matches(query, 'autovacuum: VACUUM (ANALYZE )?([^\.]+).(.+)'))[3] AS relname,
+			 (SELECT pg_catalog.regexp_matches(query, 'autovacuum: VACUUM (ANALYZE )?([^\.]+).(.+)'))[2] AS nspname,
+			 (SELECT pg_catalog.regexp_matches(query, 'autovacuum: VACUUM (ANALYZE )?([^\.]+).(.+)'))[3] AS relname,
 			 COALESCE(a.usename, '') AS usename,
 			 a.query_start AS started_at,
 			 a.query LIKE 'autovacuum: VACUUM%%' AS autovacuum,
@@ -29,11 +29,11 @@ SELECT (extract(epoch from a.query_start)::int::text || to_char(pid, 'FM000000')
 `
 
 const vacuumProgressSQLDefault string = `
-SELECT (extract(epoch from a.query_start)::int::text || to_char(pid, 'FM000000'))::bigint AS vacuum_identity,
-			 (extract(epoch from COALESCE(backend_start, pg_postmaster_start_time()))::int::text || to_char(pid, 'FM000000'))::bigint AS backend_identity,
+SELECT (EXTRACT(epoch FROM a.query_start)::int::text || pg_catalog.to_char(pid, 'FM000000'))::bigint AS vacuum_identity,
+			 (EXTRACT(epoch FROM COALESCE(backend_start, pg_catalog.pg_postmaster_start_time()))::int::text || pg_catalog.to_char(pid, 'FM000000'))::bigint AS backend_identity,
 			 a.datname,
-			 COALESCE(n.nspname, (SELECT regexp_matches(query, 'autovacuum: VACUUM (ANALYZE )?([^\.]+).(.+)'))[2]) AS nspname,
-			 COALESCE(c.relname, (SELECT regexp_matches(query, 'autovacuum: VACUUM (ANALYZE )?([^\.]+).(.+)'))[3]) AS relname,
+			 COALESCE(n.nspname, (SELECT pg_catalog.regexp_matches(query, 'autovacuum: VACUUM (ANALYZE )?([^\.]+).(.+)'))[2]) AS nspname,
+			 COALESCE(c.relname, (SELECT pg_catalog.regexp_matches(query, 'autovacuum: VACUUM (ANALYZE )?([^\.]+).(.+)'))[3]) AS relname,
 			 COALESCE(a.usename, '') AS usename,
 			 a.query_start AS started_at,
 			 a.query LIKE 'autovacuum: VACUUM%%' AS autovacuum,
@@ -46,8 +46,8 @@ SELECT (extract(epoch from a.query_start)::int::text || to_char(pid, 'FM000000')
 			 COALESCE(v.num_dead_tuples, 0) AS num_dead_tuples
 	FROM %s v
 			 JOIN %s a USING (pid)
-			 LEFT JOIN pg_class c ON (c.oid = v.relid)
-			 LEFT JOIN pg_namespace n ON (n.oid = c.relnamespace)
+			 LEFT JOIN pg_catalog.pg_class c ON (c.oid = v.relid)
+			 LEFT JOIN pg_catalog.pg_namespace n ON (n.oid = c.relnamespace)
 `
 
 func GetVacuumProgress(logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion) ([]state.PostgresVacuumProgress, error) {
@@ -57,7 +57,7 @@ func GetVacuumProgress(logger *util.Logger, db *sql.DB, postgresVersion state.Po
 	if statsHelperExists(db, "get_stat_activity") {
 		activitySourceTable = "pganalyze.get_stat_activity()"
 	} else {
-		activitySourceTable = "pg_stat_activity"
+		activitySourceTable = "pg_catalog.pg_stat_activity"
 	}
 
 	if postgresVersion.Numeric < state.PostgresVersion96 {
@@ -67,7 +67,7 @@ func GetVacuumProgress(logger *util.Logger, db *sql.DB, postgresVersion state.Po
 		if statsHelperExists(db, "get_stat_progress_vacuum") {
 			vacuumSourceTable = "pganalyze.get_stat_progress_vacuum()"
 		} else {
-			vacuumSourceTable = "pg_stat_progress_vacuum"
+			vacuumSourceTable = "pg_catalog.pg_stat_progress_vacuum"
 		}
 		sql = fmt.Sprintf(vacuumProgressSQLDefault, vacuumSourceTable, activitySourceTable)
 	}

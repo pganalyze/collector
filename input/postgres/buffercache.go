@@ -12,21 +12,23 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
-const buffercacheSQL string = `WITH buffers AS (
-	SELECT COUNT(*) AS block_count, reldatabase, relfilenode
-	FROM %s
-	GROUP BY 2, 3
+const buffercacheSQL string = `
+WITH buffers AS (
+	SELECT pg_catalog.count(*) AS block_count, reldatabase, relfilenode
+	  FROM %s
+	 GROUP BY 2, 3
 )
-SELECT block_count * current_setting('block_size')::int, d.datname, nspname, relname, relkind::text
-FROM buffers b
-JOIN pg_database d ON (d.oid = reldatabase)
-LEFT JOIN pg_class c ON (b.relfilenode = pg_relation_filenode(c.oid) AND (b.reldatabase = 0 OR d.datname = current_database()))
-LEFT JOIN pg_namespace n ON (n.oid = c.relnamespace)
+SELECT block_count * pg_catalog.current_setting('block_size')::int, d.datname, nspname, relname, relkind::text
+  FROM buffers b
+  JOIN pg_catalog.pg_database d ON (d.oid = reldatabase)
+       LEFT JOIN pg_catalog.pg_class c ON (b.relfilenode = pg_catalog.pg_relation_filenode(c.oid) AND (b.reldatabase = 0 OR d.datname = pg_catalog.current_database()))
+       LEFT JOIN pg_catalog.pg_namespace n ON (n.oid = c.relnamespace)
 UNION
-SELECT SUM(block_count) * current_setting('block_size')::int, '', NULL, NULL, 'used' FROM buffers
+SELECT pg_catalog.sum(block_count) * pg_catalog.current_setting('block_size')::int, '', NULL, NULL, 'used'
+  FROM buffers
 `
 
-const sharedBufferSettingSQL string = `SELECT current_setting('shared_buffers')`
+const sharedBufferSettingSQL string = `SELECT pg_catalog.current_setting('shared_buffers')`
 
 func getSharedBufferBytes(db *sql.DB) int64 {
 	var bytesStr string
@@ -77,7 +79,7 @@ func GetBuffercache(logger *util.Logger, db *sql.DB) (report state.PostgresBuffe
 				" the monitoring helper functions (https://github.com/pganalyze/collector#setting-up-a-restricted-monitoring-user)" +
 				" or connect as superuser to run the buffercache report.")
 		}
-		sourceTable = "pg_buffercache"
+		sourceTable = "public.pg_buffercache"
 	}
 
 	rows, err := db.Query(QueryMarkerSQL + fmt.Sprintf(buffercacheSQL, sourceTable))
@@ -85,12 +87,12 @@ func GetBuffercache(logger *util.Logger, db *sql.DB) (report state.PostgresBuffe
 		if err.(*pq.Error).Code == "42P01" { // undefined_table
 			logger.PrintInfo("pg_buffercache relation does not exist, trying to create extension...")
 
-			_, err = db.Exec(QueryMarkerSQL + "CREATE EXTENSION IF NOT EXISTS pg_buffercache")
+			_, err = db.Exec(QueryMarkerSQL + "CREATE EXTENSION IF NOT EXISTS pg_buffercache SCHEMA public")
 			if err != nil {
 				return
 			}
 
-			rows, err = db.Query(QueryMarkerSQL + buffercacheSQL)
+			rows, err = db.Query(QueryMarkerSQL + fmt.Sprintf(buffercacheSQL, sourceTable))
 			if err != nil {
 				return
 			}
