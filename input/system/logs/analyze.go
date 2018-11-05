@@ -14,6 +14,9 @@ import (
 var ContentAutoExplainRegexp = regexp.MustCompile(`^duration: ([\d\.]+) ms\s+ plan:([\s\S]+)`)
 var ContentDurationRegexp = regexp.MustCompile(`(?ms)^duration: ([\d\.]+) ms([^:]+):(.+)`)
 var ContentDurationDetailsRegexp = regexp.MustCompile(`\$\d+ = '([^']*)',?\s*`)
+var ContentCancelAutovacuumRegexp = regexp.MustCompile(`automatic analyze of table "(.+?)"`)
+var ContentSkippingAnalyzeRegexp = regexp.MustCompile(`skipping analyze of "(.+?)"`)
+var ContentSkippingVacuumRegexp = regexp.MustCompile(`skipping vacuum of "(.+?)"`)
 var ContentAutoVacuumRegexp = regexp.MustCompile(`^automatic (aggressive )?vacuum of table "(.+?)": index scans: (\d+)\s*` +
 	`pages: (\d+) removed, (\d+) remain(?:, (\d+) skipped due to pins)?(?:, (\d+) skipped frozen)?\s*` +
 	`tuples: (\d+) removed, (\d+) remain, (\d+) are dead but not yet removable(?:, oldest xmin: (\d+))?\s*` +
@@ -100,7 +103,7 @@ func AnalyzeLogLines(logLinesIn []state.LogLine) (logLinesOut []state.LogLine, s
 	return
 }
 
-func classifyAndSetDetails(logLine state.LogLine, detailLine state.LogLine, samples []state.PostgresQuerySample) (state.LogLine, []state.PostgresQuerySample) {
+func classifyAndSetDetails(logLine state.LogLine, detailLine state.LogLine, contextLine state.LogLine, samples []state.PostgresQuerySample) (state.LogLine, []state.PostgresQuerySample) {
 	var parts []string
 
 	// Connects/Disconnects
@@ -524,14 +527,29 @@ func classifyAndSetDetails(logLine state.LogLine, detailLine state.LogLine, samp
 	// Autovacuum
 	if strings.HasPrefix(logLine.Content, "canceling autovacuum task") {
 		logLine.Classification = pganalyze_collector.LogLineInformation_AUTOVACUUM_CANCEL
+		parts = ContentCancelAutovacuumRegexp.FindStringSubmatch(contextLine.Content)
+		if len(parts) == 2 {
+			subParts := strings.SplitN(parts[1], ".", 3)
+			logLine.Database = subParts[0]
+			logLine.SchemaName = subParts[1]
+			logLine.RelationName = subParts[2]
+		}
 		return logLine, samples
 	}
 	if strings.HasPrefix(logLine.Content, "skipping vacuum of") {
 		logLine.Classification = pganalyze_collector.LogLineInformation_SKIPPING_VACUUM_LOCK_NOT_AVAILABLE
+		parts = ContentSkippingVacuumRegexp.FindStringSubmatch(logLine.Content)
+		if len(parts) == 2 {
+			logLine.RelationName = parts[1]
+		}
 		return logLine, samples
 	}
 	if strings.HasPrefix(logLine.Content, "skipping analyze of") {
 		logLine.Classification = pganalyze_collector.LogLineInformation_SKIPPING_ANALYZE_LOCK_NOT_AVAILABLE
+		parts = ContentSkippingAnalyzeRegexp.FindStringSubmatch(logLine.Content)
+		if len(parts) == 2 {
+			logLine.RelationName = parts[1]
+		}
 		return logLine, samples
 	}
 	if strings.HasPrefix(logLine.Content, "database") {
@@ -578,7 +596,10 @@ func classifyAndSetDetails(logLine state.LogLine, detailLine state.LogLine, samp
 			var kernelPart, userPart, elapsedPart string
 
 			logLine.Classification = pganalyze_collector.LogLineInformation_AUTOVACUUM_COMPLETED
-			// FIXME: Associate relation (parts[2])
+			subParts := strings.SplitN(parts[2], ".", 3)
+			logLine.Database = subParts[0]
+			logLine.SchemaName = subParts[1]
+			logLine.RelationName = subParts[2]
 
 			aggressiveVacuum := parts[1] == "aggressive "
 			numIndexScans, _ := strconv.ParseInt(parts[3], 10, 64)
@@ -636,7 +657,10 @@ func classifyAndSetDetails(logLine state.LogLine, detailLine state.LogLine, samp
 		if len(parts) == 8 {
 			var kernelPart, userPart, elapsedPart string
 			logLine.Classification = pganalyze_collector.LogLineInformation_AUTOANALYZE_COMPLETED
-			// FIXME: Associate relation (parts[1])
+			subParts := strings.SplitN(parts[1], ".", 3)
+			logLine.Database = subParts[0]
+			logLine.SchemaName = subParts[1]
+			logLine.RelationName = subParts[2]
 			if parts[2] != "" {
 				kernelPart = parts[2]
 				userPart = parts[3]
@@ -1077,6 +1101,7 @@ func AnalyzeBackendLogLines(logLines []state.LogLine) (logLinesOut []state.LogLi
 
 		// Look up to 3 lines in the future to find context for this line
 		var detailLine state.LogLine
+		var contextLine state.LogLine
 
 		lowerBound := int(math.Min(float64(len(logLines)), float64(idx+1)))
 		upperBound := int(math.Min(float64(len(logLines)), float64(idx+5)))
@@ -1086,9 +1111,10 @@ func AnalyzeBackendLogLines(logLines []state.LogLine) (logLinesOut []state.LogLi
 				futureLine.LogLevel == pganalyze_collector.LogLineInformation_QUERY {
 				if futureLine.LogLevel == pganalyze_collector.LogLineInformation_STATEMENT && !strings.HasSuffix(futureLine.Content, "[Your log message was truncated]") {
 					logLine.Query = futureLine.Content
-				}
-				if futureLine.LogLevel == pganalyze_collector.LogLineInformation_DETAIL {
+				} else if futureLine.LogLevel == pganalyze_collector.LogLineInformation_DETAIL {
 					detailLine = futureLine
+				} else if futureLine.LogLevel == pganalyze_collector.LogLineInformation_CONTEXT {
+					contextLine = futureLine
 				}
 				logLines[lowerBound+idx].ParentUUID = logLine.UUID
 				additionalLines++
@@ -1097,7 +1123,7 @@ func AnalyzeBackendLogLines(logLines []state.LogLine) (logLinesOut []state.LogLi
 			}
 		}
 
-		logLine, samples = classifyAndSetDetails(logLine, detailLine, samples)
+		logLine, samples = classifyAndSetDetails(logLine, detailLine, contextLine, samples)
 
 		logLinesOut = append(logLinesOut, logLine)
 	}

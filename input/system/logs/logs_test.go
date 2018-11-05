@@ -853,6 +853,9 @@ var tests = []testpair{
 			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
 			Classification: pganalyze_collector.LogLineInformation_AUTOVACUUM_CANCEL,
 			UUID:           uuid.UUID{1},
+			Database:       "dbname",
+			SchemaName:     "schemaname",
+			RelationName:   "tablename",
 		}, {
 			LogLevel:   pganalyze_collector.LogLineInformation_CONTEXT,
 			ParentUUID: uuid.UUID{1},
@@ -969,6 +972,9 @@ var tests = []testpair{
 		[]state.LogLine{{
 			Classification: pganalyze_collector.LogLineInformation_AUTOVACUUM_COMPLETED,
 			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
+			Database:       "mydb",
+			SchemaName:     "public",
+			RelationName:   "vac_test",
 			Details: map[string]interface{}{
 				"aggressive":          false,
 				"num_index_scans":     1,
@@ -1004,6 +1010,9 @@ var tests = []testpair{
 		[]state.LogLine{{
 			Classification: pganalyze_collector.LogLineInformation_AUTOVACUUM_COMPLETED,
 			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
+			Database:       "postgres",
+			SchemaName:     "public",
+			RelationName:   "pgbench_branches",
 			Details: map[string]interface{}{
 				"aggressive":        false,
 				"num_index_scans":   1,
@@ -1037,6 +1046,9 @@ var tests = []testpair{
 		[]state.LogLine{{
 			Classification: pganalyze_collector.LogLineInformation_AUTOVACUUM_COMPLETED,
 			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
+			Database:       "my_db",
+			SchemaName:     "public",
+			RelationName:   "my_dimension",
 			Details: map[string]interface{}{
 				"aggressive":        false,
 				"num_index_scans":   1,
@@ -1070,6 +1082,9 @@ var tests = []testpair{
 		[]state.LogLine{{
 			Classification: pganalyze_collector.LogLineInformation_AUTOVACUUM_COMPLETED,
 			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
+			Database:       "mydb",
+			SchemaName:     "public",
+			RelationName:   "mytable",
 			Details: map[string]interface{}{
 				"aggressive":        false,
 				"num_index_scans":   1,
@@ -1104,6 +1119,9 @@ var tests = []testpair{
 		[]state.LogLine{{
 			Classification: pganalyze_collector.LogLineInformation_AUTOVACUUM_COMPLETED,
 			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
+			Database:       "demo_pgbench",
+			SchemaName:     "public",
+			RelationName:   "pgbench_tellers",
 			Details: map[string]interface{}{
 				"aggressive":          false,
 				"num_index_scans":     0,
@@ -1140,6 +1158,9 @@ var tests = []testpair{
 		[]state.LogLine{{
 			Classification: pganalyze_collector.LogLineInformation_AUTOVACUUM_COMPLETED,
 			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
+			Database:       "demo_pgbench",
+			SchemaName:     "public",
+			RelationName:   "pgbench_tellers",
 			Details: map[string]interface{}{
 				"aggressive":          true,
 				"num_index_scans":     0,
@@ -1171,6 +1192,9 @@ var tests = []testpair{
 		[]state.LogLine{{
 			Classification: pganalyze_collector.LogLineInformation_AUTOANALYZE_COMPLETED,
 			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
+			Database:       "postgres",
+			SchemaName:     "public",
+			RelationName:   "pgbench_branches",
 			Details: map[string]interface{}{
 				"rusage_kernel": 1.02,
 				"rusage_user":   2.08,
@@ -1187,6 +1211,9 @@ var tests = []testpair{
 		[]state.LogLine{{
 			Classification: pganalyze_collector.LogLineInformation_AUTOANALYZE_COMPLETED,
 			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
+			Database:       "demo_pgbench",
+			SchemaName:     "public",
+			RelationName:   "pgbench_history",
 			Details: map[string]interface{}{
 				"rusage_kernel": 0.01,
 				"rusage_user":   0.23,
@@ -1204,6 +1231,7 @@ var tests = []testpair{
 			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
 			Classification: pganalyze_collector.LogLineInformation_SKIPPING_VACUUM_LOCK_NOT_AVAILABLE,
 			UUID:           uuid.UUID{1},
+			RelationName:   "mytable",
 		}},
 		nil,
 	}, {
@@ -1216,6 +1244,7 @@ var tests = []testpair{
 			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
 			Classification: pganalyze_collector.LogLineInformation_SKIPPING_ANALYZE_LOCK_NOT_AVAILABLE,
 			UUID:           uuid.UUID{1},
+			RelationName:   "pgbench_tellers",
 		}},
 		nil,
 	},

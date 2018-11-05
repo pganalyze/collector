@@ -47,6 +47,21 @@ func upsertDatabaseReference(refs []*snapshot.DatabaseReference, databaseName st
 	return idx, refs
 }
 
+func upsertRelationReference(refs []*snapshot.RelationReference, databaseIdx int32, schemaName string, relationName string) (int32, []*snapshot.RelationReference) {
+	newRef := snapshot.RelationReference{DatabaseIdx: databaseIdx, SchemaName: schemaName, RelationName: relationName}
+
+	for idx, ref := range refs {
+		if ref.DatabaseIdx == newRef.DatabaseIdx && ref.SchemaName == newRef.SchemaName && ref.RelationName == newRef.RelationName {
+			return int32(idx), refs
+		}
+	}
+
+	idx := int32(len(refs))
+	refs = append(refs, &newRef)
+
+	return idx, refs
+}
+
 func transformPostgresQuerySamples(s snapshot.CompactLogSnapshot, r snapshot.CompactSnapshot_BaseRefs, logState state.LogState) (snapshot.CompactLogSnapshot, snapshot.CompactSnapshot_BaseRefs) {
 	for _, sampleIn := range logState.QuerySamples {
 		occurredAt, _ := ptypes.TimestampProto(sampleIn.OccurredAt)
@@ -142,6 +157,11 @@ func transformSystemLogLine(r *snapshot.CompactSnapshot_BaseRefs, logFileIdx int
 	if logLineIn.Database != "" {
 		logLine.DatabaseIdx, r.DatabaseReferences = upsertDatabaseReference(r.DatabaseReferences, logLineIn.Database)
 		logLine.HasDatabaseIdx = true
+
+		if logLineIn.SchemaName != "" && logLineIn.RelationName != "" {
+			logLine.RelationIdx, r.RelationReferences = upsertRelationReference(r.RelationReferences, logLine.DatabaseIdx, logLineIn.SchemaName, logLineIn.RelationName)
+			logLine.HasRelationIdx = true
+		}
 	}
 
 	if logLine.HasRoleIdx && logLine.HasDatabaseIdx && logLineIn.Query != "" {

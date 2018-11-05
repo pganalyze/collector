@@ -58,6 +58,9 @@ type LogLine struct {
 	Query       string
 	Application string
 
+	SchemaName   string
+	RelationName string
+
 	// Only used for collector-internal bookkeeping to determine how long to wait
 	// for associating related loglines with each other
 	CollectedAt time.Time
