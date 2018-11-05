@@ -104,8 +104,6 @@ func GetBuffercache(logger *util.Logger, db *sql.DB) (report state.PostgresBuffe
 		return
 	}
 
-	defer rows.Close()
-
 	var usedBytes int64
 
 	for rows.Next() {
@@ -115,22 +113,34 @@ func GetBuffercache(logger *util.Logger, db *sql.DB) (report state.PostgresBuffe
 			&row.ObjectName, &row.ObjectKind)
 		if err != nil {
 			err = fmt.Errorf("Buffercache/Scan: %s", err)
+			rows.Close()
 			return
-		}
-
-		if row.SchemaName != nil && *row.SchemaName == "pg_toast" {
-			schemaName, relationName, err := resolveToastTable(db, *row.ObjectName)
-			if err != nil && schemaName != "" && relationName != "" {
-				row.SchemaName = &schemaName
-				row.ObjectName = &relationName
-				row.Toast = true
-			}
 		}
 
 		if row.DatabaseName == "" && row.ObjectKind != nil && *row.ObjectKind == "used" {
 			usedBytes = row.Bytes
 		} else {
 			report.Entries = append(report.Entries, row)
+		}
+	}
+
+	rows.Close()
+
+	for idx, row := range report.Entries {
+		if row.SchemaName != nil && *row.SchemaName == "pg_toast" && row.ObjectName != nil {
+			toastTable := *row.ObjectName
+			if row.ObjectKind != nil && *row.ObjectKind == "i" {
+				toastTable = strings.Replace(toastTable, "_index", "", 1)
+			}
+			schemaName, relationName, err := resolveToastTable(db, toastTable)
+			if err != nil {
+				logger.PrintVerbose("Failed to resolve TOAST table \"%s\": %s", *row.ObjectName, err)
+			} else if schemaName != "" && relationName != "" {
+				row.SchemaName = &schemaName
+				row.ObjectName = &relationName
+				row.Toast = true
+			}
+			report.Entries[idx] = row
 		}
 	}
 
