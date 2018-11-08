@@ -136,13 +136,13 @@ func GetBuffercache(logger *util.Logger, db *sql.DB) (report state.PostgresBuffe
 			}
 			schemaName, relationName, err := resolveToastTable(db, toastTable)
 			if err != nil {
-				logger.PrintVerbose("Failed to resolve TOAST table \"%s\": %s", *row.ObjectName, err)
+				logger.PrintVerbose("Failed to resolve TOAST table \"%s\": %s", toastTable, err)
 			} else if schemaName != "" && relationName != "" {
 				row.SchemaName = &schemaName
 				row.ObjectName = &relationName
 				row.Toast = true
+				report.Entries[idx] = row
 			}
-			report.Entries[idx] = row
 		}
 	}
 
