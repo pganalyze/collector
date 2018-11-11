@@ -2,6 +2,7 @@ package transform
 
 import (
 	"strings"
+	"time"
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/pganalyze/collector/input/postgres"
@@ -84,6 +85,12 @@ func transformPostgresStatements(s snapshot.FullSnapshot, newState state.Persist
 
 	// Historic statement stats which are sent now since we got the query text only now
 	for timeKey, diffedStats := range transientState.HistoricStatementStats {
+		// Ignore any data older than an hour, as a safety measure in case of many
+		// failed full snapshot runs (which don't reset state)
+		if time.Since(timeKey.CollectedAt).Hours() >= 1 {
+			continue
+		}
+
 		h := snapshot.HistoricQueryStatistics{}
 		h.CollectedAt, _ = ptypes.TimestampProto(timeKey.CollectedAt)
 		h.CollectedIntervalSecs = timeKey.CollectedIntervalSecs
