@@ -30,7 +30,7 @@ const relationsSQL string = `
 	 FROM pg_catalog.pg_class c
 	 LEFT JOIN pg_catalog.pg_namespace n ON (n.oid = c.relnamespace)
 	 LEFT JOIN locked_relids ON (c.oid = locked_relids.relid)
-	WHERE c.relkind IN ('r','v','m')
+	WHERE c.relkind IN ('r','v','m','p')
 				AND c.relpersistence <> 't'
 				AND c.relname NOT IN ('pg_stat_statements')
 				AND n.nspname NOT IN ('pg_catalog','pg_toast','information_schema')`
@@ -50,7 +50,7 @@ const columnsSQL string = `
  FROM pg_catalog.pg_class c
  LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
  LEFT JOIN pg_catalog.pg_attribute a ON c.oid = a.attrelid
- WHERE c.relkind IN ('r','v','m')
+ WHERE c.relkind IN ('r','v','m','p')
 			 AND c.relpersistence <> 't'
 			 AND c.relname NOT IN ('pg_stat_statements')
 			 AND n.nspname NOT IN ('pg_catalog','pg_toast','information_schema')
@@ -79,7 +79,7 @@ SELECT c.oid,
 	LEFT JOIN pg_catalog.pg_constraint con ON (conrelid = i.indrelid
 																						 AND conindid = i.indexrelid
 																						 AND contype IN ('p', 'u', 'x'))
- WHERE c.relkind IN ('r','v','m')
+ WHERE c.relkind IN ('r','v','m','p')
 			 AND c.relpersistence <> 't'
 			 AND n.nspname NOT IN ('pg_catalog','pg_toast','information_schema')
 			 AND c.oid NOT IN (SELECT relid FROM locked_relids)
