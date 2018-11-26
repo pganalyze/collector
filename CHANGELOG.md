@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.17.0      2018-11-26
+
+* TOAST handling
+  - Track size of TOAST table separately
+    - This can often be useful to determine whether the bulk of a table is in
+      TOAST storage, or in the main storage, and thus reads may behave slightly
+      differently
+  - Fix bug in detection of HasToast for tables
+    - Previously we recorded this the wrong way around, i.e. tables that had
+      no TOAST would have been flagged as having TOAST. This hasn't been used
+      thusfar in terms of stats processing, but might be in the future, so
+      better to have this correct
+  - Track TOAST flag for autovacuum and buffercache statistics
+* Schema-qualify functions/tables wherever possible
+  - Whilst not much of problem in practice, since the collector doesn't run
+    as superuser, it doesn't hurt to schema-qualify everything
+  - This also introduces an explicit "SCHEMA public" for CREATE EXTENSION
+    statements to support non-standard search paths better
+* Extract schema/relation name from autovacuum log events
+  - This is done to make it easier to link autovacuum log events to the
+    corresponding vacuum statistics records
+* Include partitioned base tables in the table information gathered
+* Historic statement stats: Ignore any data older than 1 hour
+  - There has been some cases where the state structure doesn't get reset
+    and the historic statement stats keeps growing and growing. Add this
+    as a safety measure to ensure a run can complete successfully
+
+
 ## 0.16.0      2018-10-16
 
 * Fix scoping of on-disk state to reflect system type/scope/id
