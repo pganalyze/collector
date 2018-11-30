@@ -88,6 +88,15 @@ func getDefaultConfig() *ServerConfig {
 	if awsSecretAccessKey := os.Getenv("AWS_SECRET_ACCESS_KEY"); awsSecretAccessKey != "" {
 		config.AwsSecretAccessKey = awsSecretAccessKey
 	}
+	if logLocation := os.Getenv("LOG_LOCATION"); logLocation != "" {
+		config.LogLocation = logLocation
+		config.EnableLogs = true
+	}
+	// Note: We don't support LogDockerTail here since it would require the "docker"
+	// binary inside the pganalyze container (as well as full Docker access), instead
+	// the approach for using pganalyze as a sidecar container alongside Postgres
+	// currently requires writing to a file and then mounting that as a volume
+	// inside the pganalyze container.
 	if ignoreTablePattern := os.Getenv("IGNORE_TABLE_PATTERN"); ignoreTablePattern != "" {
 		config.IgnoreTablePattern = ignoreTablePattern
 	}
