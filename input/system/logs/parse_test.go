@@ -207,6 +207,42 @@ var parseTests = []parseTestpair{
 		},
 		true,
 	},
+	// Custom 7 format
+	{
+		"",
+		"2019-01-01 01:59:42 UTC [1]: [4-1] [trx_id=0] user=,db= LOG:  database system is ready to accept connections",
+		state.LogLine{
+			OccurredAt: time.Date(2019, time.January, 1, 1, 59, 42, 0, time.UTC),
+			LogLevel:   pganalyze_collector.LogLineInformation_LOG,
+			BackendPid: 1,
+			Content:    "database system is ready to accept connections",
+		},
+		true,
+	},
+	{
+		"",
+		"2019-01-01 02:00:28 UTC [35]: [1-1] [trx_id=0] user=[unknown],db=[unknown] LOG:  connection received: host=::1 port=38842",
+		state.LogLine{
+			OccurredAt: time.Date(2019, time.January, 1, 2, 0, 28, 0, time.UTC),
+			LogLevel:   pganalyze_collector.LogLineInformation_LOG,
+			BackendPid: 35,
+			Content:    "connection received: host=::1 port=38842",
+		},
+		true,
+	},
+	{
+		"",
+		"2019-01-01 02:00:28 UTC [34]: [3-1] [trx_id=120950] user=postgres,db=postgres ERROR:  canceling statement due to user request",
+		state.LogLine{
+			OccurredAt: time.Date(2019, time.January, 1, 2, 0, 28, 0, time.UTC),
+			Username:   "postgres",
+			Database:   "postgres",
+			LogLevel:   pganalyze_collector.LogLineInformation_ERROR,
+			BackendPid: 34,
+			Content:    "canceling statement due to user request",
+		},
+		true,
+	},
 	// Simple format
 	{
 		"",
