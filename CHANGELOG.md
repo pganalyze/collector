@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.17.1      2018-12-31
+
+* Vacuum monitoring
+  - Filter out results with insufficient privileges
+    - Previously we would error out hard in this case, which isn't helpful and
+      can stop the usage of activity snapshots on shared systems
+  - Correctly close DB connection on error
+* Connection establishment: Make sure to close connection on early errors
+* Add support for "%t [%p]: [%l-1] [trx_id=%x] user=%u,db=%d " log_line_prefix
+* Add LOG_LOCATION environment config variable (same as db_log_location)
+  * Note: We don't support the equivalent of the experimental setting
+    db_log_docker_tail since it would require the "docker" binary inside
+    the pganalyze container (as well as full Docker access), instead the
+    approach for using pganalyze as a sidecar container alongside Postgres
+    currently requires writing to a file and then mounting that as a
+    volume inside the pganalyze container
+
+
 ## 0.17.0      2018-11-26
 
 * TOAST handling
