@@ -25,6 +25,7 @@ func EstablishConnection(server state.Server, logger *util.Logger, globalCollect
 
 	err = validateConnectionCount(connection, logger, server.Config.MaxCollectorConnections, globalCollectionOpts)
 	if err != nil {
+		connection.Close()
 		return
 	}
 
@@ -49,6 +50,7 @@ func connectToDb(config config.ServerConfig, logger *util.Logger, globalCollecti
 
 	err = db.Ping()
 	if err != nil {
+		db.Close()
 		return nil, err
 	}
 
