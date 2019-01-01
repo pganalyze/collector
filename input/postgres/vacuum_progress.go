@@ -83,6 +83,7 @@ func GetVacuumProgress(logger *util.Logger, db *sql.DB, postgresVersion state.Po
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
 	var vacuums []state.PostgresVacuumProgress
 
@@ -99,8 +100,6 @@ func GetVacuumProgress(logger *util.Logger, db *sql.DB, postgresVersion state.Po
 
 		vacuums = append(vacuums, row)
 	}
-
-	rows.Close()
 
 	for idx, row := range vacuums {
 		if row.SchemaName == "pg_toast" {

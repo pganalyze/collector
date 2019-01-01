@@ -105,6 +105,7 @@ func GetBuffercache(logger *util.Logger, db *sql.DB) (report state.PostgresBuffe
 		err = fmt.Errorf("Buffercache/Query: %s", err)
 		return
 	}
+	defer rows.Close()
 
 	var usedBytes int64
 
@@ -115,7 +116,6 @@ func GetBuffercache(logger *util.Logger, db *sql.DB) (report state.PostgresBuffe
 			&row.ObjectName, &row.ObjectKind)
 		if err != nil {
 			err = fmt.Errorf("Buffercache/Scan: %s", err)
-			rows.Close()
 			return
 		}
 
@@ -125,8 +125,6 @@ func GetBuffercache(logger *util.Logger, db *sql.DB) (report state.PostgresBuffe
 			report.Entries = append(report.Entries, row)
 		}
 	}
-
-	rows.Close()
 
 	for idx, row := range report.Entries {
 		if row.SchemaName != nil && *row.SchemaName == "pg_toast" && row.ObjectName != nil {

@@ -132,7 +132,6 @@ func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 		err = fmt.Errorf("Relations/Query: %s", err)
 		return nil, err
 	}
-
 	defer rows.Close()
 
 	for rows.Next() {
