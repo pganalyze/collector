@@ -48,6 +48,7 @@ SELECT (EXTRACT(epoch FROM a.query_start)::int::text || pg_catalog.to_char(pid, 
 			 JOIN %s a USING (pid)
 			 LEFT JOIN pg_catalog.pg_class c ON (c.oid = v.relid)
 			 LEFT JOIN pg_catalog.pg_namespace n ON (n.oid = c.relnamespace)
+ WHERE v.relid IS NOT NULL OR a.query <> '<insufficient privilege>'
 `
 
 func GetVacuumProgress(logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion) ([]state.PostgresVacuumProgress, error) {
