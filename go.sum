@@ -2,6 +2,8 @@ github.com/StackExchange/wmi v0.0.0-20150520194626-f3e2bae1e0cb h1:DkaUUcxmj7OTQ
 github.com/StackExchange/wmi v0.0.0-20150520194626-f3e2bae1e0cb/go.mod h1:3eOhrUMpNV+6aFIbp5/iudMxNCF27Vw2OZgy4xEx0Fg=
 github.com/aws/aws-sdk-go v0.0.0-20170421183129-0e1d7f7c9ff5 h1:YQ/cZiDYwRAAmWjcYtRn4mWPx//KdRTuObOOPBngroc=
 github.com/aws/aws-sdk-go v0.0.0-20170421183129-0e1d7f7c9ff5/go.mod h1:ZRmQr0FajVIyZ4ZzBYKG5P3ZqPz9IHG41ZoMu1ADI3k=
+github.com/aws/aws-sdk-go v1.16.17 h1:hHRKZhoB4qEY17aGNp71UxQFyYpx6WZXGMUzx9y/A4w=
+github.com/aws/aws-sdk-go v1.16.17/go.mod h1:KmX6BPdI08NWTb3/sm4ZGu5ShLoqVDhKgpiN924inxo=
 github.com/bmizerany/lpx v0.0.0-20130503172629-af85cf24c156 h1:0ywL+47/N2nSZUMM4VUYMZus+FPVfXbbXb2qhGpzsS8=
 github.com/bmizerany/lpx v0.0.0-20130503172629-af85cf24c156/go.mod h1:sBo9Xky5Lv+sFCp5t1OH7lwY/qRcheGrbjsvb0FdUwM=
 github.com/certifi/gocertifi v0.0.0-20160926115448-a61bf5eafa3a h1:zmAIZ9hpjwOsxZ/no776lftrcUR2w0lPiDq3tOBZjh4=

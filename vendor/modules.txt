@@ -1,17 +1,16 @@
 # github.com/StackExchange/wmi v0.0.0-20150520194626-f3e2bae1e0cb
 github.com/StackExchange/wmi
-# github.com/aws/aws-sdk-go v0.0.0-20170421183129-0e1d7f7c9ff5
+# github.com/aws/aws-sdk-go v1.16.17
 github.com/aws/aws-sdk-go/aws
 github.com/aws/aws-sdk-go/service/cloudwatchlogs
 github.com/aws/aws-sdk-go/service/rds
 github.com/aws/aws-sdk-go/service/s3/s3crypto
 github.com/aws/aws-sdk-go/aws/credentials
-github.com/aws/aws-sdk-go/aws/credentials/ec2rolecreds
-github.com/aws/aws-sdk-go/aws/ec2metadata
 github.com/aws/aws-sdk-go/aws/session
 github.com/aws/aws-sdk-go/service/cloudwatch
 github.com/aws/aws-sdk-go/aws/awserr
 github.com/aws/aws-sdk-go/aws/endpoints
+github.com/aws/aws-sdk-go/internal/sdkio
 github.com/aws/aws-sdk-go/aws/awsutil
 github.com/aws/aws-sdk-go/aws/client
 github.com/aws/aws-sdk-go/aws/client/metadata
@@ -24,16 +23,27 @@ github.com/aws/aws-sdk-go/service/kms
 github.com/aws/aws-sdk-go/service/kms/kmsiface
 github.com/aws/aws-sdk-go/service/s3
 github.com/aws/aws-sdk-go/service/s3/s3iface
+github.com/aws/aws-sdk-go/internal/ini
+github.com/aws/aws-sdk-go/internal/shareddefaults
 github.com/aws/aws-sdk-go/aws/corehandlers
+github.com/aws/aws-sdk-go/aws/credentials/processcreds
 github.com/aws/aws-sdk-go/aws/credentials/stscreds
+github.com/aws/aws-sdk-go/aws/csm
 github.com/aws/aws-sdk-go/aws/defaults
+github.com/aws/aws-sdk-go/internal/sdkrand
 github.com/aws/aws-sdk-go/private/protocol/rest
 github.com/aws/aws-sdk-go/private/protocol/json/jsonutil
 github.com/aws/aws-sdk-go/private/protocol/query/queryutil
 github.com/aws/aws-sdk-go/private/protocol/xml/xmlutil
+github.com/aws/aws-sdk-go/internal/s3err
+github.com/aws/aws-sdk-go/private/protocol/eventstream
+github.com/aws/aws-sdk-go/private/protocol/eventstream/eventstreamapi
 github.com/aws/aws-sdk-go/private/protocol/restxml
 github.com/aws/aws-sdk-go/service/sts
+github.com/aws/aws-sdk-go/aws/credentials/ec2rolecreds
 github.com/aws/aws-sdk-go/aws/credentials/endpointcreds
+github.com/aws/aws-sdk-go/aws/ec2metadata
+github.com/aws/aws-sdk-go/internal/sdkuri
 # github.com/bmizerany/lpx v0.0.0-20130503172629-af85cf24c156
 github.com/bmizerany/lpx
 # github.com/certifi/gocertifi v0.0.0-20160926115448-a61bf5eafa3a
