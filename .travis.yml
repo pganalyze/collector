@@ -1,7 +1,7 @@
 language: go
 sudo: required
 go:
-- "1.10"
+- "1.11"
 before_install:
   - wget https://github.com/google/protobuf/releases/download/v3.2.0/protoc-3.2.0-linux-x86_64.zip
   - unzip protoc-3.2.0-linux-x86_64.zip -d $HOME
@@ -23,4 +23,4 @@ deploy:
   on:
     repo: pganalyze/collector
     tags: true
-    go: "1.10"
+    go: "1.11"
