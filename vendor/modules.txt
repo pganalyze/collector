@@ -79,7 +79,7 @@ github.com/kr/logfmt
 # github.com/kylelemons/godebug v0.0.0-20170224010052-a616ab194758
 github.com/kylelemons/godebug/pretty
 github.com/kylelemons/godebug/diff
-# github.com/lfittl/pg_query_go v0.0.0-20180518170915-169e80957094
+# github.com/lfittl/pg_query_go v1.0.0
 github.com/lfittl/pg_query_go
 github.com/lfittl/pg_query_go/nodes
 github.com/lfittl/pg_query_go/parser
