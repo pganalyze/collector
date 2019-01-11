@@ -3,8 +3,6 @@ package awsutil
 import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/credentials/ec2rolecreds"
-	"github.com/aws/aws-sdk-go/aws/ec2metadata"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/pganalyze/collector/config"
 )
@@ -14,10 +12,6 @@ func GetAwsSession(config config.ServerConfig) *session.Session {
 
 	if config.AwsAccessKeyID != "" {
 		creds = credentials.NewStaticCredentials(config.AwsAccessKeyID, config.AwsSecretAccessKey, "")
-	} else {
-		creds = credentials.NewCredentials(&ec2rolecreds.EC2RoleProvider{
-			Client: ec2metadata.New(session.New()),
-		})
 	}
 
 	return session.New(&aws.Config{Credentials: creds, Region: aws.String(config.AwsRegion)})
