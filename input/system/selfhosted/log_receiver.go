@@ -371,7 +371,7 @@ func setupDockerTail(containerName string, out chan<- string, prefixedLogger *ut
 			case <-stop:
 				prefixedLogger.PrintVerbose("Docker log tail received stop signal")
 				if err := cmd.Process.Kill(); err != nil {
-					prefixedLogger.PrintError("Failed to kill docker log tail process when stop received: ", err)
+					prefixedLogger.PrintError("Failed to kill docker log tail process when stop received: %s", err)
 				}
 				return
 			}

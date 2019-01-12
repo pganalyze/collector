@@ -18,7 +18,8 @@ vendor:
 	modvendor -copy="**/*.c **/*.h **/*.proto" -v
 
 test: build
-	go test -v ./ ./scheduler ./util ./output/transform/ ./input/system/logs/
+	go test -coverprofile=coverage.out ./...
+	# go tool cover -html=coverage.out
 
 integration_test:
 	make -C integration_test

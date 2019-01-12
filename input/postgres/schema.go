@@ -35,7 +35,7 @@ func CollectAllSchemas(server state.Server, collectionOpts state.CollectionOpts,
 
 		databaseOid, err := CurrentDatabaseOid(schemaConnection)
 		if err != nil {
-			logger.PrintError("Error getting OID of database %s")
+			logger.PrintError("Error getting OID of database %s", dbName)
 			schemaConnection.Close()
 			continue
 		}
