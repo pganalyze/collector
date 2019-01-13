@@ -11,7 +11,7 @@ import (
 	"github.com/pganalyze/collector/config"
 	"github.com/pganalyze/collector/grant"
 	"github.com/pganalyze/collector/input/postgres"
-	"github.com/pganalyze/collector/input/system/logs"
+	"github.com/pganalyze/collector/logs"
 	"github.com/pganalyze/collector/output"
 	"github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"

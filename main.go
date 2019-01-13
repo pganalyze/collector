@@ -21,8 +21,8 @@ import (
 
 	"github.com/pganalyze/collector/config"
 	"github.com/pganalyze/collector/input/system/heroku"
-	"github.com/pganalyze/collector/input/system/logs"
 	"github.com/pganalyze/collector/input/system/selfhosted"
+	"github.com/pganalyze/collector/logs"
 	"github.com/pganalyze/collector/runner"
 	"github.com/pganalyze/collector/scheduler"
 	"github.com/pganalyze/collector/state"

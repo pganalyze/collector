@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/kylelemons/godebug/pretty"
-	"github.com/pganalyze/collector/input/system/logs"
+	"github.com/pganalyze/collector/logs"
 	"github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
 	uuid "github.com/satori/go.uuid"
