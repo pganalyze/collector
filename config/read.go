@@ -106,6 +106,12 @@ func getDefaultConfig() *ServerConfig {
 	if maxCollectorConnections := os.Getenv("MAX_COLLECTOR_CONNECTION"); maxCollectorConnections != "" {
 		config.MaxCollectorConnections, _ = strconv.Atoi(maxCollectorConnections)
 	}
+	if filterLogSecret := os.Getenv("FILTER_LOG_SECRET"); filterLogSecret != "" {
+		config.FilterLogSecret = filterLogSecret
+	}
+	if filterQuerySample := os.Getenv("FILTER_QUERY_SAMPLE"); filterQuerySample != "" {
+		config.FilterQuerySample = filterQuerySample
+	}
 
 	return config
 }

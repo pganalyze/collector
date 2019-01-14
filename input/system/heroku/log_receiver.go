@@ -11,9 +11,9 @@ import (
 	"github.com/pganalyze/collector/config"
 	"github.com/pganalyze/collector/grant"
 	"github.com/pganalyze/collector/input/postgres"
-	"github.com/pganalyze/collector/logs"
 	"github.com/pganalyze/collector/output"
 	"github.com/pganalyze/collector/output/pganalyze_collector"
+	"github.com/pganalyze/collector/runner/stream"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
 	uuid "github.com/satori/go.uuid"
@@ -218,7 +218,7 @@ func logReceiver(servers []state.Server, in <-chan config.HerokuLogStreamItem, g
 			}
 
 			prefixedLogger := logger.WithPrefix(server.Config.SectionName)
-			logLinesByName[sourceName] = logs.AnalyzeInGroupsAndSend(server, logLines, globalCollectionOpts, prefixedLogger, nil)
+			logLinesByName[sourceName] = stream.ProcessLogs(server, logLines, globalCollectionOpts, prefixedLogger, nil)
 		}
 	}
 }

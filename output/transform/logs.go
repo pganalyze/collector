@@ -106,14 +106,33 @@ func transformPostgresQuerySamples(s snapshot.CompactLogSnapshot, r snapshot.Com
 func transformSystemLogs(s snapshot.CompactLogSnapshot, r snapshot.CompactSnapshot_BaseRefs, logState state.LogState) (snapshot.CompactLogSnapshot, snapshot.CompactSnapshot_BaseRefs) {
 	for _, logFileIn := range logState.LogFiles {
 		fileIdx := int32(len(s.LogFileReferences))
-		s.LogFileReferences = append(s.LogFileReferences, &snapshot.LogFileReference{
+		logFileReference := &snapshot.LogFileReference{
 			Uuid:         logFileIn.UUID.String(),
 			S3Location:   logFileIn.S3Location,
 			S3CekAlgo:    logFileIn.S3CekAlgo,
 			S3CmkKeyId:   logFileIn.S3CmkKeyID,
 			ByteSize:     logFileIn.ByteSize,
 			OriginalName: logFileIn.OriginalName,
-		})
+		}
+		for _, kind := range logFileIn.FilterLogSecret {
+			switch kind {
+			case state.CredentialLogSecret:
+				logFileReference.FilterLogSecret = append(logFileReference.FilterLogSecret, snapshot.LogFileReference_CREDENTIAL_LOG_SECRET)
+			case state.ParsingErrorLogSecret:
+				logFileReference.FilterLogSecret = append(logFileReference.FilterLogSecret, snapshot.LogFileReference_PARSING_ERROR_LOG_SECRET)
+			case state.StatementTextLogSecret:
+				logFileReference.FilterLogSecret = append(logFileReference.FilterLogSecret, snapshot.LogFileReference_STATEMENT_TEXT_LOG_SECRET)
+			case state.StatementParameterLogSecret:
+				logFileReference.FilterLogSecret = append(logFileReference.FilterLogSecret, snapshot.LogFileReference_STATEMENT_PARAMETER_LOG_SECRET)
+			case state.TableDataLogSecret:
+				logFileReference.FilterLogSecret = append(logFileReference.FilterLogSecret, snapshot.LogFileReference_TABLE_DATA_LOG_SECRET)
+			case state.OpsLogSecret:
+				logFileReference.FilterLogSecret = append(logFileReference.FilterLogSecret, snapshot.LogFileReference_OPS_LOG_SECRET)
+			case state.UnidentifiedLogSecret:
+				logFileReference.FilterLogSecret = append(logFileReference.FilterLogSecret, snapshot.LogFileReference_UNIDENTIFIED_LOG_SECRET)
+			}
+		}
+		s.LogFileReferences = append(s.LogFileReferences)
 		for _, logLineIn := range logFileIn.LogLines {
 			logLine := transformSystemLogLine(&r, fileIdx, logLineIn)
 			s.LogLineInformations = append(s.LogLineInformations, &logLine)

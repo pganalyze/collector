@@ -20,12 +20,20 @@ var tests = []testpair{
 	// Statement duration
 	{
 		[]state.LogLine{{
-			Content: "duration: 3205.800 ms execute a2: SELECT \"servers\".* FROM \"servers\" WHERE \"servers\".\"id\" = 1 LIMIT 2",
+			Content:  "duration: 3205.800 ms  execute a2: SELECT \"servers\".* FROM \"servers\" WHERE \"servers\".\"id\" = 1 LIMIT 2",
+			LogLevel: pganalyze_collector.LogLineInformation_LOG,
 		}},
 		[]state.LogLine{{
-			Query:          "SELECT \"servers\".* FROM \"servers\" WHERE \"servers\".\"id\" = 1 LIMIT 2",
-			Classification: pganalyze_collector.LogLineInformation_STATEMENT_DURATION,
-			Details:        map[string]interface{}{"duration_ms": 3205.8},
+			Query:              "SELECT \"servers\".* FROM \"servers\" WHERE \"servers\".\"id\" = 1 LIMIT 2",
+			LogLevel:           pganalyze_collector.LogLineInformation_LOG,
+			Classification:     pganalyze_collector.LogLineInformation_STATEMENT_DURATION,
+			Details:            map[string]interface{}{"duration_ms": 3205.8},
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 35,
+				ByteEnd:   101,
+				Kind:      state.StatementTextLogSecret,
+			}},
 		}},
 		[]state.PostgresQuerySample{{
 			Query:     "SELECT \"servers\".* FROM \"servers\" WHERE \"servers\".\"id\" = 1 LIMIT 2",
@@ -34,19 +42,35 @@ var tests = []testpair{
 	},
 	{
 		[]state.LogLine{{
-			Content:  "duration: 4079.697 ms execute <unnamed>: \nSELECT * FROM x WHERE y = $1 LIMIT $2",
+			Content:  "duration: 4079.697 ms  execute <unnamed>: \nSELECT * FROM x WHERE y = $1 LIMIT $2",
 			LogLevel: pganalyze_collector.LogLineInformation_LOG,
 		}, {
 			Content:  "parameters: $1 = 'long string', $2 = '1'",
 			LogLevel: pganalyze_collector.LogLineInformation_DETAIL,
 		}},
 		[]state.LogLine{{
-			Query:          "SELECT * FROM x WHERE y = $1 LIMIT $2",
-			Classification: pganalyze_collector.LogLineInformation_STATEMENT_DURATION,
-			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
-			Details:        map[string]interface{}{"duration_ms": 4079.697},
+			Query:              "SELECT * FROM x WHERE y = $1 LIMIT $2",
+			Classification:     pganalyze_collector.LogLineInformation_STATEMENT_DURATION,
+			LogLevel:           pganalyze_collector.LogLineInformation_LOG,
+			Details:            map[string]interface{}{"duration_ms": 4079.697},
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 43,
+				ByteEnd:   80,
+				Kind:      state.StatementTextLogSecret,
+			}},
 		}, {
-			LogLevel: pganalyze_collector.LogLineInformation_DETAIL,
+			LogLevel:           pganalyze_collector.LogLineInformation_DETAIL,
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 18,
+				ByteEnd:   29,
+				Kind:      state.StatementParameterLogSecret,
+			}, {
+				ByteStart: 38,
+				ByteEnd:   39,
+				Kind:      state.StatementParameterLogSecret,
+			}},
 		}},
 		[]state.PostgresQuerySample{{
 			Query:      "SELECT * FROM x WHERE y = $1 LIMIT $2",
@@ -56,11 +80,31 @@ var tests = []testpair{
 	},
 	{
 		[]state.LogLine{{
-			Content: "duration: 3205.800 ms execute a2: SELECT ...[Your log message was truncated]",
+			Content:  "duration: 3205.800 ms  execute a2: SELECT ...[Your log message was truncated]",
+			LogLevel: pganalyze_collector.LogLineInformation_LOG,
 		}},
 		[]state.LogLine{{
-			Classification: pganalyze_collector.LogLineInformation_STATEMENT_DURATION,
-			Details:        map[string]interface{}{"truncated": true},
+			LogLevel:           pganalyze_collector.LogLineInformation_LOG,
+			Classification:     pganalyze_collector.LogLineInformation_STATEMENT_DURATION,
+			Details:            map[string]interface{}{"truncated": true},
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 35,
+				ByteEnd:   77,
+				Kind:      state.StatementTextLogSecret,
+			}},
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
+			Content:  "duration: 123.500 ms",
+			LogLevel: pganalyze_collector.LogLineInformation_LOG,
+		}},
+		[]state.LogLine{{
+			LogLevel:           pganalyze_collector.LogLineInformation_LOG,
+			Classification:     pganalyze_collector.LogLineInformation_STATEMENT_DURATION,
+			ReviewedForSecrets: true,
 		}},
 		nil,
 	},
@@ -75,13 +119,29 @@ var tests = []testpair{
 			LogLevel: pganalyze_collector.LogLineInformation_DETAIL,
 		}},
 		[]state.LogLine{{
-			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
-			Classification: pganalyze_collector.LogLineInformation_STATEMENT_LOG,
-			UUID:           uuid.UUID{1},
-			Query:          "SELECT $1, $2",
+			LogLevel:           pganalyze_collector.LogLineInformation_LOG,
+			Classification:     pganalyze_collector.LogLineInformation_STATEMENT_LOG,
+			UUID:               uuid.UUID{1},
+			Query:              "SELECT $1, $2",
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 19,
+				ByteEnd:   32,
+				Kind:      state.StatementTextLogSecret,
+			}},
 		}, {
-			LogLevel:   pganalyze_collector.LogLineInformation_DETAIL,
-			ParentUUID: uuid.UUID{1},
+			LogLevel:           pganalyze_collector.LogLineInformation_DETAIL,
+			ParentUUID:         uuid.UUID{1},
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 18,
+				ByteEnd:   19,
+				Kind:      state.StatementParameterLogSecret,
+			}, {
+				ByteStart: 28,
+				ByteEnd:   29,
+				Kind:      state.StatementParameterLogSecret,
+			}},
 		}},
 		nil,
 	},
@@ -95,13 +155,25 @@ var tests = []testpair{
 			LogLevel: pganalyze_collector.LogLineInformation_DETAIL,
 		}},
 		[]state.LogLine{{
-			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
-			Classification: pganalyze_collector.LogLineInformation_STATEMENT_LOG,
-			UUID:           uuid.UUID{1},
-			Query:          "EXECUTE x(1);",
+			LogLevel:           pganalyze_collector.LogLineInformation_LOG,
+			Classification:     pganalyze_collector.LogLineInformation_STATEMENT_LOG,
+			UUID:               uuid.UUID{1},
+			Query:              "EXECUTE x(1);",
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 11,
+				ByteEnd:   24,
+				Kind:      state.StatementTextLogSecret,
+			}},
 		}, {
-			LogLevel:   pganalyze_collector.LogLineInformation_DETAIL,
-			ParentUUID: uuid.UUID{1},
+			LogLevel:           pganalyze_collector.LogLineInformation_DETAIL,
+			ParentUUID:         uuid.UUID{1},
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 9,
+				ByteEnd:   32,
+				Kind:      state.StatementTextLogSecret,
+			}},
 		}},
 		nil,
 	},
@@ -109,6 +181,10 @@ var tests = []testpair{
 	{
 		[]state.LogLine{{
 			Content: "connection received: host=172.30.0.165 port=56902",
+		}, {
+			Content: "connection received: host=ec2-102-13-140-150.compute-1.amazonaws.com port=12345",
+		}, {
+			Content: "connection received: host=[local]",
 		}, {
 			Content: "connection authorized: user=myuser database=mydb SSL enabled (protocol=TLSv1.2, cipher=ECDHE-RSA-AES256-GCM-SHA384, compression=off)",
 		}, {
@@ -130,43 +206,73 @@ var tests = []testpair{
 			Content:  "role \"abc\" is not permitted to log in",
 			LogLevel: pganalyze_collector.LogLineInformation_FATAL,
 		}, {
-			Content: "could not connect to Ident server at address \"127.0.0.1\", port 113: Connection refused",
+			Content:  "could not connect to Ident server at address \"127.0.0.1\", port 113: Connection refused",
+			LogLevel: pganalyze_collector.LogLineInformation_LOG,
 		}, {
 			Content:  "Ident authentication failed for user \"postgres\"",
 			LogLevel: pganalyze_collector.LogLineInformation_FATAL,
 		}, {
 			Content: "disconnection: session time: 1:53:01.198 user=myuser database=mydb host=172.30.0.165 port=56902",
+		}, {
+			Content: "disconnection: session time: 0:00:00.199 user=user database=db host=ec2-102-13-140-150.compute-1.amazonaws.com port=12345",
 		}},
 		[]state.LogLine{{
-			Classification: pganalyze_collector.LogLineInformation_CONNECTION_RECEIVED,
+			Classification:     pganalyze_collector.LogLineInformation_CONNECTION_RECEIVED,
+			ReviewedForSecrets: true,
 		}, {
-			Classification: pganalyze_collector.LogLineInformation_CONNECTION_AUTHORIZED,
+			Classification:     pganalyze_collector.LogLineInformation_CONNECTION_RECEIVED,
+			ReviewedForSecrets: true,
 		}, {
-			Classification: pganalyze_collector.LogLineInformation_CONNECTION_REJECTED,
+			Classification:     pganalyze_collector.LogLineInformation_CONNECTION_RECEIVED,
+			ReviewedForSecrets: true,
 		}, {
-			Classification: pganalyze_collector.LogLineInformation_CONNECTION_REJECTED,
-			LogLevel:       pganalyze_collector.LogLineInformation_FATAL,
+			Classification:     pganalyze_collector.LogLineInformation_CONNECTION_AUTHORIZED,
+			ReviewedForSecrets: true,
 		}, {
-			Classification: pganalyze_collector.LogLineInformation_CONNECTION_REJECTED,
-			LogLevel:       pganalyze_collector.LogLineInformation_FATAL,
-			UUID:           uuid.UUID{1},
+			Classification:     pganalyze_collector.LogLineInformation_CONNECTION_REJECTED,
+			ReviewedForSecrets: true,
 		}, {
-			LogLevel:   pganalyze_collector.LogLineInformation_DETAIL,
-			ParentUUID: uuid.UUID{1},
+			Classification:     pganalyze_collector.LogLineInformation_CONNECTION_REJECTED,
+			LogLevel:           pganalyze_collector.LogLineInformation_FATAL,
+			ReviewedForSecrets: true,
 		}, {
-			Classification: pganalyze_collector.LogLineInformation_CONNECTION_REJECTED,
-			LogLevel:       pganalyze_collector.LogLineInformation_FATAL,
+			Classification:     pganalyze_collector.LogLineInformation_CONNECTION_REJECTED,
+			LogLevel:           pganalyze_collector.LogLineInformation_FATAL,
+			UUID:               uuid.UUID{1},
+			ReviewedForSecrets: true,
 		}, {
-			Classification: pganalyze_collector.LogLineInformation_CONNECTION_REJECTED,
-			LogLevel:       pganalyze_collector.LogLineInformation_FATAL,
+			LogLevel:           pganalyze_collector.LogLineInformation_DETAIL,
+			ParentUUID:         uuid.UUID{1},
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 40,
+				ByteEnd:   107,
+				Kind:      state.UnidentifiedLogSecret,
+			}},
 		}, {
-			Classification: pganalyze_collector.LogLineInformation_CONNECTION_REJECTED,
+			Classification:     pganalyze_collector.LogLineInformation_CONNECTION_REJECTED,
+			LogLevel:           pganalyze_collector.LogLineInformation_FATAL,
+			ReviewedForSecrets: true,
 		}, {
-			Classification: pganalyze_collector.LogLineInformation_CONNECTION_REJECTED,
-			LogLevel:       pganalyze_collector.LogLineInformation_FATAL,
+			Classification:     pganalyze_collector.LogLineInformation_CONNECTION_REJECTED,
+			LogLevel:           pganalyze_collector.LogLineInformation_FATAL,
+			ReviewedForSecrets: true,
 		}, {
-			Classification: pganalyze_collector.LogLineInformation_CONNECTION_DISCONNECTED,
-			Details:        map[string]interface{}{"session_time_secs": 6781.198},
+			Classification:     pganalyze_collector.LogLineInformation_CONNECTION_REJECTED,
+			LogLevel:           pganalyze_collector.LogLineInformation_LOG,
+			ReviewedForSecrets: true,
+		}, {
+			Classification:     pganalyze_collector.LogLineInformation_CONNECTION_REJECTED,
+			LogLevel:           pganalyze_collector.LogLineInformation_FATAL,
+			ReviewedForSecrets: true,
+		}, {
+			Classification:     pganalyze_collector.LogLineInformation_CONNECTION_DISCONNECTED,
+			Details:            map[string]interface{}{"session_time_secs": 6781.198},
+			ReviewedForSecrets: true,
+		}, {
+			Classification:     pganalyze_collector.LogLineInformation_CONNECTION_DISCONNECTED,
+			Details:            map[string]interface{}{"session_time_secs": 0.199},
+			ReviewedForSecrets: true,
 		}},
 		nil,
 	},
@@ -175,67 +281,8 @@ var tests = []testpair{
 			Content: "incomplete startup packet",
 		}},
 		[]state.LogLine{{
-			Classification: pganalyze_collector.LogLineInformation_CONNECTION_CLIENT_FAILED_TO_CONNECT,
-		}},
-		nil,
-	},
-	{
-		[]state.LogLine{{
-			Content: "could not receive data from client: Connection reset by peer",
-		}},
-		[]state.LogLine{{
-			Classification: pganalyze_collector.LogLineInformation_CONNECTION_LOST,
-		}},
-		nil,
-	},
-	{
-		[]state.LogLine{{
-			Content: "could not send data to client: Broken pipe",
-		}},
-		[]state.LogLine{{
-			Classification: pganalyze_collector.LogLineInformation_CONNECTION_LOST,
-		}},
-		nil,
-	},
-	{
-		[]state.LogLine{{
-			Content:  "terminating connection because protocol synchronization was lost",
-			LogLevel: pganalyze_collector.LogLineInformation_FATAL,
-		}},
-		[]state.LogLine{{
-			LogLevel:       pganalyze_collector.LogLineInformation_FATAL,
-			Classification: pganalyze_collector.LogLineInformation_CONNECTION_LOST,
-		}},
-		nil,
-	},
-	{
-		[]state.LogLine{{
-			Content:  "connection to client lost",
-			LogLevel: pganalyze_collector.LogLineInformation_FATAL,
-		}},
-		[]state.LogLine{{
-			Classification: pganalyze_collector.LogLineInformation_CONNECTION_LOST,
-			LogLevel:       pganalyze_collector.LogLineInformation_FATAL,
-		}},
-		nil,
-	},
-	{
-		[]state.LogLine{{
-			Content: "unexpected EOF on client connection",
-		}},
-		[]state.LogLine{{
-			Classification: pganalyze_collector.LogLineInformation_CONNECTION_LOST,
-		}},
-		nil,
-	},
-	{
-		[]state.LogLine{{
-			Content:  "terminating connection due to administrator command",
-			LogLevel: pganalyze_collector.LogLineInformation_FATAL,
-		}},
-		[]state.LogLine{{
-			LogLevel:       pganalyze_collector.LogLineInformation_FATAL,
-			Classification: pganalyze_collector.LogLineInformation_CONNECTION_TERMINATED,
+			Classification:     pganalyze_collector.LogLineInformation_CONNECTION_CLIENT_FAILED_TO_CONNECT,
+			ReviewedForSecrets: true,
 		}},
 		nil,
 	},
@@ -245,8 +292,75 @@ var tests = []testpair{
 			LogLevel: pganalyze_collector.LogLineInformation_LOG,
 		}},
 		[]state.LogLine{{
-			Classification: pganalyze_collector.LogLineInformation_CONNECTION_LOST_OPEN_TX,
-			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
+			Classification:     pganalyze_collector.LogLineInformation_CONNECTION_LOST_OPEN_TX,
+			LogLevel:           pganalyze_collector.LogLineInformation_LOG,
+			ReviewedForSecrets: true,
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
+			Content: "could not receive data from client: Connection reset by peer",
+		}},
+		[]state.LogLine{{
+			Classification:     pganalyze_collector.LogLineInformation_CONNECTION_LOST,
+			ReviewedForSecrets: true,
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
+			Content: "could not send data to client: Broken pipe",
+		}},
+		[]state.LogLine{{
+			Classification:     pganalyze_collector.LogLineInformation_CONNECTION_LOST,
+			ReviewedForSecrets: true,
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
+			Content:  "terminating connection because protocol synchronization was lost",
+			LogLevel: pganalyze_collector.LogLineInformation_FATAL,
+		}},
+		[]state.LogLine{{
+			LogLevel:           pganalyze_collector.LogLineInformation_FATAL,
+			Classification:     pganalyze_collector.LogLineInformation_CONNECTION_LOST,
+			ReviewedForSecrets: true,
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
+			Content:  "connection to client lost",
+			LogLevel: pganalyze_collector.LogLineInformation_FATAL,
+		}},
+		[]state.LogLine{{
+			Classification:     pganalyze_collector.LogLineInformation_CONNECTION_LOST,
+			LogLevel:           pganalyze_collector.LogLineInformation_FATAL,
+			ReviewedForSecrets: true,
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
+			Content: "unexpected EOF on client connection",
+		}},
+		[]state.LogLine{{
+			Classification:     pganalyze_collector.LogLineInformation_CONNECTION_LOST,
+			ReviewedForSecrets: true,
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
+			Content:  "terminating connection due to administrator command",
+			LogLevel: pganalyze_collector.LogLineInformation_FATAL,
+		}},
+		[]state.LogLine{{
+			LogLevel:           pganalyze_collector.LogLineInformation_FATAL,
+			Classification:     pganalyze_collector.LogLineInformation_CONNECTION_TERMINATED,
+			ReviewedForSecrets: true,
 		}},
 		nil,
 	},
@@ -256,8 +370,9 @@ var tests = []testpair{
 			LogLevel: pganalyze_collector.LogLineInformation_FATAL,
 		}},
 		[]state.LogLine{{
-			LogLevel:       pganalyze_collector.LogLineInformation_FATAL,
-			Classification: pganalyze_collector.LogLineInformation_OUT_OF_CONNECTIONS,
+			LogLevel:           pganalyze_collector.LogLineInformation_FATAL,
+			Classification:     pganalyze_collector.LogLineInformation_OUT_OF_CONNECTIONS,
+			ReviewedForSecrets: true,
 		}},
 		nil,
 	},
@@ -267,8 +382,9 @@ var tests = []testpair{
 			LogLevel: pganalyze_collector.LogLineInformation_FATAL,
 		}},
 		[]state.LogLine{{
-			LogLevel:       pganalyze_collector.LogLineInformation_FATAL,
-			Classification: pganalyze_collector.LogLineInformation_OUT_OF_CONNECTIONS,
+			LogLevel:           pganalyze_collector.LogLineInformation_FATAL,
+			Classification:     pganalyze_collector.LogLineInformation_OUT_OF_CONNECTIONS,
+			ReviewedForSecrets: true,
 		}},
 		nil,
 	},
@@ -278,8 +394,9 @@ var tests = []testpair{
 			LogLevel: pganalyze_collector.LogLineInformation_FATAL,
 		}},
 		[]state.LogLine{{
-			LogLevel:       pganalyze_collector.LogLineInformation_FATAL,
-			Classification: pganalyze_collector.LogLineInformation_TOO_MANY_CONNECTIONS_ROLE,
+			LogLevel:           pganalyze_collector.LogLineInformation_FATAL,
+			Classification:     pganalyze_collector.LogLineInformation_TOO_MANY_CONNECTIONS_ROLE,
+			ReviewedForSecrets: true,
 		}},
 		nil,
 	},
@@ -289,8 +406,9 @@ var tests = []testpair{
 			LogLevel: pganalyze_collector.LogLineInformation_FATAL,
 		}},
 		[]state.LogLine{{
-			LogLevel:       pganalyze_collector.LogLineInformation_FATAL,
-			Classification: pganalyze_collector.LogLineInformation_TOO_MANY_CONNECTIONS_DATABASE,
+			LogLevel:           pganalyze_collector.LogLineInformation_FATAL,
+			Classification:     pganalyze_collector.LogLineInformation_TOO_MANY_CONNECTIONS_DATABASE,
+			ReviewedForSecrets: true,
 		}},
 		nil,
 	},
@@ -303,11 +421,13 @@ var tests = []testpair{
 			LogLevel: pganalyze_collector.LogLineInformation_LOG,
 		}},
 		[]state.LogLine{{
-			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
-			Classification: pganalyze_collector.LogLineInformation_COULD_NOT_ACCEPT_SSL_CONNECTION,
+			LogLevel:           pganalyze_collector.LogLineInformation_LOG,
+			Classification:     pganalyze_collector.LogLineInformation_COULD_NOT_ACCEPT_SSL_CONNECTION,
+			ReviewedForSecrets: true,
 		}, {
-			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
-			Classification: pganalyze_collector.LogLineInformation_COULD_NOT_ACCEPT_SSL_CONNECTION,
+			LogLevel:           pganalyze_collector.LogLineInformation_LOG,
+			Classification:     pganalyze_collector.LogLineInformation_COULD_NOT_ACCEPT_SSL_CONNECTION,
+			ReviewedForSecrets: true,
 		}},
 		nil,
 	},
@@ -317,8 +437,9 @@ var tests = []testpair{
 			LogLevel: pganalyze_collector.LogLineInformation_FATAL,
 		}},
 		[]state.LogLine{{
-			LogLevel:       pganalyze_collector.LogLineInformation_FATAL,
-			Classification: pganalyze_collector.LogLineInformation_PROTOCOL_ERROR_UNSUPPORTED_VERSION,
+			LogLevel:           pganalyze_collector.LogLineInformation_FATAL,
+			Classification:     pganalyze_collector.LogLineInformation_PROTOCOL_ERROR_UNSUPPORTED_VERSION,
+			ReviewedForSecrets: true,
 		}},
 		nil,
 	},
@@ -335,16 +456,18 @@ var tests = []testpair{
 			LogLevel: pganalyze_collector.LogLineInformation_CONTEXT,
 		}},
 		[]state.LogLine{{
-			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
-			Classification: pganalyze_collector.LogLineInformation_PROTOCOL_ERROR_INCOMPLETE_MESSAGE,
-			Query:          "COPY \"abc\" (\"x\") FROM STDIN BINARY",
-			UUID:           uuid.UUID{1},
+			LogLevel:           pganalyze_collector.LogLineInformation_LOG,
+			Classification:     pganalyze_collector.LogLineInformation_PROTOCOL_ERROR_INCOMPLETE_MESSAGE,
+			Query:              "COPY \"abc\" (\"x\") FROM STDIN BINARY",
+			UUID:               uuid.UUID{1},
+			ReviewedForSecrets: true,
 		}, {
 			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
 			ParentUUID: uuid.UUID{1},
 		}, {
-			LogLevel:   pganalyze_collector.LogLineInformation_CONTEXT,
-			ParentUUID: uuid.UUID{1},
+			LogLevel:           pganalyze_collector.LogLineInformation_CONTEXT,
+			ParentUUID:         uuid.UUID{1},
+			ReviewedForSecrets: true,
 		}},
 		nil,
 	},
@@ -354,8 +477,9 @@ var tests = []testpair{
 			Content: "checkpoint starting: xlog",
 		}},
 		[]state.LogLine{{
-			Classification: pganalyze_collector.LogLineInformation_CHECKPOINT_STARTING,
-			Details:        map[string]interface{}{"reason": "xlog"},
+			Classification:     pganalyze_collector.LogLineInformation_CHECKPOINT_STARTING,
+			Details:            map[string]interface{}{"reason": "xlog"},
+			ReviewedForSecrets: true,
 		}},
 		nil,
 	},
@@ -371,6 +495,7 @@ var tests = []testpair{
 				"bufs_written": 111906, "segs_added": 0, "segs_removed": 22, "segs_recycled": 29,
 				"sync_rels": 94, "distance_kb": 850730, "estimate_kb": 910977,
 			},
+			ReviewedForSecrets: true,
 		}},
 		nil,
 	},
@@ -386,6 +511,7 @@ var tests = []testpair{
 				"bufs_written": 111906, "segs_added": 0, "segs_removed": 22, "segs_recycled": 29,
 				"sync_rels": 94, "distance_kb": 850730, "estimate_kb": 910977,
 			},
+			ReviewedForSecrets: true,
 		}},
 		nil,
 	},
@@ -400,6 +526,7 @@ var tests = []testpair{
 				"sync_rels":        925,
 				"bufs_written_pct": 1.4, "write_secs": 68.98, "sync_secs": 1.542, "total_secs": 70.548,
 				"longest_secs": 0.216, "average_secs": 0.001},
+			ReviewedForSecrets: true,
 		}},
 		nil,
 	},
@@ -418,10 +545,12 @@ var tests = []testpair{
 			Details: map[string]interface{}{
 				"elapsed_secs": 18,
 			},
-			UUID: uuid.UUID{1},
+			UUID:               uuid.UUID{1},
+			ReviewedForSecrets: true,
 		}, {
-			LogLevel:   pganalyze_collector.LogLineInformation_HINT,
-			ParentUUID: uuid.UUID{1},
+			LogLevel:           pganalyze_collector.LogLineInformation_HINT,
+			ParentUUID:         uuid.UUID{1},
+			ReviewedForSecrets: true,
 		}},
 		nil,
 	},
@@ -430,8 +559,9 @@ var tests = []testpair{
 			Content: "restartpoint starting: shutdown immediate",
 		}},
 		[]state.LogLine{{
-			Classification: pganalyze_collector.LogLineInformation_RESTARTPOINT_STARTING,
-			Details:        map[string]interface{}{"reason": "shutdown immediate"},
+			Classification:     pganalyze_collector.LogLineInformation_RESTARTPOINT_STARTING,
+			Details:            map[string]interface{}{"reason": "shutdown immediate"},
+			ReviewedForSecrets: true,
 		}},
 		nil,
 	}, {
@@ -446,6 +576,7 @@ var tests = []testpair{
 				"bufs_written": 693, "segs_added": 0, "segs_removed": 0, "segs_recycled": 5,
 				"sync_rels": 74, "distance_kb": 81503, "estimate_kb": 81503,
 			},
+			ReviewedForSecrets: true,
 		}},
 		nil,
 	},
@@ -459,12 +590,14 @@ var tests = []testpair{
 			LogLevel: pganalyze_collector.LogLineInformation_DETAIL,
 		}},
 		[]state.LogLine{{
-			Classification: pganalyze_collector.LogLineInformation_RESTARTPOINT_AT,
-			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
-			UUID:           uuid.UUID{1},
+			Classification:     pganalyze_collector.LogLineInformation_RESTARTPOINT_AT,
+			LogLevel:           pganalyze_collector.LogLineInformation_LOG,
+			UUID:               uuid.UUID{1},
+			ReviewedForSecrets: true,
 		}, {
-			LogLevel:   pganalyze_collector.LogLineInformation_DETAIL,
-			ParentUUID: uuid.UUID{1},
+			LogLevel:           pganalyze_collector.LogLineInformation_DETAIL,
+			ParentUUID:         uuid.UUID{1},
+			ReviewedForSecrets: true,
 		}},
 		nil,
 	},
@@ -474,7 +607,8 @@ var tests = []testpair{
 			Content: "invalid record length at 4E8/9E0979A8",
 		}},
 		[]state.LogLine{{
-			Classification: pganalyze_collector.LogLineInformation_WAL_INVALID_RECORD_LENGTH,
+			Classification:     pganalyze_collector.LogLineInformation_WAL_INVALID_RECORD_LENGTH,
+			ReviewedForSecrets: true,
 		}},
 		nil,
 	},
@@ -485,9 +619,11 @@ var tests = []testpair{
 			Content: "redo is not required",
 		}},
 		[]state.LogLine{{
-			Classification: pganalyze_collector.LogLineInformation_WAL_REDO,
+			Classification:     pganalyze_collector.LogLineInformation_WAL_REDO,
+			ReviewedForSecrets: true,
 		}, {
-			Classification: pganalyze_collector.LogLineInformation_WAL_REDO,
+			Classification:     pganalyze_collector.LogLineInformation_WAL_REDO,
+			ReviewedForSecrets: true,
 		}},
 		nil,
 	},
@@ -502,16 +638,20 @@ var tests = []testpair{
 			Content: "last completed transaction was at log time 2018-03-12 02:09:12.585354+00",
 		}},
 		[]state.LogLine{{
-			Classification: pganalyze_collector.LogLineInformation_WAL_REDO,
+			Classification:     pganalyze_collector.LogLineInformation_WAL_REDO,
+			ReviewedForSecrets: true,
 		}, {
-			Classification: pganalyze_collector.LogLineInformation_WAL_INVALID_RECORD_LENGTH,
+			Classification:     pganalyze_collector.LogLineInformation_WAL_INVALID_RECORD_LENGTH,
+			ReviewedForSecrets: true,
 		}, {
-			Classification: pganalyze_collector.LogLineInformation_WAL_REDO,
+			Classification:     pganalyze_collector.LogLineInformation_WAL_REDO,
+			ReviewedForSecrets: true,
 		}, {
 			Classification: pganalyze_collector.LogLineInformation_WAL_REDO,
 			Details: map[string]interface{}{
 				"last_transaction": "2018-03-12 02:09:12.585354+00",
 			},
+			ReviewedForSecrets: true,
 		}},
 		nil,
 	},
@@ -529,12 +669,18 @@ var tests = []testpair{
 			Classification: pganalyze_collector.LogLineInformation_WAL_ARCHIVE_COMMAND_FAILED,
 			UUID:           uuid.UUID{1},
 			Details: map[string]interface{}{
-				"archive_command": "/etc/rds/dbbin/pgscripts/rds_wal_archive pg_xlog/0000000100025DFA00000023",
-				"exit_code":       1,
+				"exit_code": 1,
 			},
+			ReviewedForSecrets: true,
 		}, {
-			LogLevel:   pganalyze_collector.LogLineInformation_DETAIL,
-			ParentUUID: uuid.UUID{1},
+			LogLevel:           pganalyze_collector.LogLineInformation_DETAIL,
+			ParentUUID:         uuid.UUID{1},
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 32,
+				ByteEnd:   105,
+				Kind:      state.OpsLogSecret,
+			}},
 		}},
 		nil,
 	},
@@ -555,15 +701,22 @@ var tests = []testpair{
 			Classification: pganalyze_collector.LogLineInformation_WAL_ARCHIVE_COMMAND_FAILED,
 			UUID:           uuid.UUID{1},
 			Details: map[string]interface{}{
-				"archive_command": "/usr/local/bin/envdir /usr/local/etc/wal-e.d/env /usr/local/bin/wal-e wal-push pg_xlog/000000040000023B000000CC",
-				"signal":          6,
+				"signal": 6,
 			},
+			ReviewedForSecrets: true,
 		}, {
-			LogLevel:   pganalyze_collector.LogLineInformation_DETAIL,
-			ParentUUID: uuid.UUID{1},
+			LogLevel:           pganalyze_collector.LogLineInformation_DETAIL,
+			ParentUUID:         uuid.UUID{1},
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 32,
+				ByteEnd:   143,
+				Kind:      state.OpsLogSecret,
+			}},
 		}, {
-			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
-			Classification: pganalyze_collector.LogLineInformation_WAL_ARCHIVE_COMMAND_FAILED,
+			LogLevel:           pganalyze_collector.LogLineInformation_LOG,
+			Classification:     pganalyze_collector.LogLineInformation_WAL_ARCHIVE_COMMAND_FAILED,
+			ReviewedForSecrets: true,
 		}},
 		nil,
 	},
@@ -573,8 +726,9 @@ var tests = []testpair{
 			LogLevel: pganalyze_collector.LogLineInformation_NOTICE,
 		}},
 		[]state.LogLine{{
-			Classification: pganalyze_collector.LogLineInformation_WAL_BASE_BACKUP_COMPLETE,
-			LogLevel:       pganalyze_collector.LogLineInformation_NOTICE,
+			Classification:     pganalyze_collector.LogLineInformation_WAL_BASE_BACKUP_COMPLETE,
+			LogLevel:           pganalyze_collector.LogLineInformation_NOTICE,
+			ReviewedForSecrets: true,
 		}},
 		nil,
 	},
@@ -597,7 +751,8 @@ var tests = []testpair{
 				"lock_mode": "AccessExclusiveLock",
 				"lock_type": "relation",
 			},
-			UUID: uuid.UUID{1},
+			UUID:               uuid.UUID{1},
+			ReviewedForSecrets: true,
 		}, {
 			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
 			ParentUUID: uuid.UUID{1},
@@ -617,6 +772,7 @@ var tests = []testpair{
 				"lock_mode": "ExclusiveLock",
 				"lock_type": "tuple",
 			},
+			ReviewedForSecrets: true,
 		}},
 		nil,
 	},
@@ -633,6 +789,7 @@ var tests = []testpair{
 				"lock_mode": "ExclusiveLock",
 				"lock_type": "extension",
 			},
+			ReviewedForSecrets: true,
 		}},
 		nil,
 	},
@@ -665,17 +822,20 @@ var tests = []testpair{
 				"lock_mode":    "ShareLock",
 				"lock_type":    "transactionid",
 			},
-			RelatedPids: []int32{583, 2078, 456},
-			UUID:        uuid.UUID{1},
+			RelatedPids:        []int32{583, 2078, 456},
+			UUID:               uuid.UUID{1},
+			ReviewedForSecrets: true,
 		}, {
-			LogLevel:   pganalyze_collector.LogLineInformation_DETAIL,
-			ParentUUID: uuid.UUID{1},
+			LogLevel:           pganalyze_collector.LogLineInformation_DETAIL,
+			ParentUUID:         uuid.UUID{1},
+			ReviewedForSecrets: true,
 		}, {
 			LogLevel:   pganalyze_collector.LogLineInformation_QUERY,
 			ParentUUID: uuid.UUID{1},
 		}, {
-			LogLevel:   pganalyze_collector.LogLineInformation_CONTEXT,
-			ParentUUID: uuid.UUID{1},
+			LogLevel:           pganalyze_collector.LogLineInformation_CONTEXT,
+			ParentUUID:         uuid.UUID{1},
+			ReviewedForSecrets: true,
 		}, {
 			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
 			ParentUUID: uuid.UUID{1},
@@ -695,13 +855,15 @@ var tests = []testpair{
 			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
 		}},
 		[]state.LogLine{{
-			Classification: pganalyze_collector.LogLineInformation_LOCK_TIMEOUT,
-			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
-			Query:          "UPDATE mytable SET y = 2 WHERE x = 1",
-			UUID:           uuid.UUID{1},
+			Classification:     pganalyze_collector.LogLineInformation_LOCK_TIMEOUT,
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Query:              "UPDATE mytable SET y = 2 WHERE x = 1",
+			UUID:               uuid.UUID{1},
+			ReviewedForSecrets: true,
 		}, {
-			LogLevel:   pganalyze_collector.LogLineInformation_CONTEXT,
-			ParentUUID: uuid.UUID{1},
+			LogLevel:           pganalyze_collector.LogLineInformation_CONTEXT,
+			ParentUUID:         uuid.UUID{1},
+			ReviewedForSecrets: true,
 		}, {
 			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
 			ParentUUID: uuid.UUID{1},
@@ -727,11 +889,13 @@ var tests = []testpair{
 				"lock_mode":    "AccessExclusiveLock",
 				"lock_type":    "relation",
 			},
-			RelatedPids: []int32{583, 123, 2078},
-			UUID:        uuid.UUID{1},
+			RelatedPids:        []int32{583, 123, 2078},
+			UUID:               uuid.UUID{1},
+			ReviewedForSecrets: true,
 		}, {
-			LogLevel:   pganalyze_collector.LogLineInformation_DETAIL,
-			ParentUUID: uuid.UUID{1},
+			LogLevel:           pganalyze_collector.LogLineInformation_DETAIL,
+			ParentUUID:         uuid.UUID{1},
+			ReviewedForSecrets: true,
 		}},
 		nil,
 	}, {
@@ -747,6 +911,7 @@ var tests = []testpair{
 				"lock_type": "extend",
 				"after_ms":  456.0,
 			},
+			ReviewedForSecrets: true,
 		}},
 		nil,
 	}, {
@@ -771,20 +936,33 @@ var tests = []testpair{
 			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
 		}},
 		[]state.LogLine{{
-			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
-			Classification: pganalyze_collector.LogLineInformation_LOCK_DEADLOCK_DETECTED,
-			Query:          "INSERT INTO x (id, name, email) VALUES (1, 'ABC', 'abc@example.com') ON CONFLICT(email) DO UPDATE SET name = excluded.name RETURNING id",
-			UUID:           uuid.UUID{1},
-			RelatedPids:    []int32{9788, 91, 98, 91},
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_LOCK_DEADLOCK_DETECTED,
+			Query:              "INSERT INTO x (id, name, email) VALUES (1, 'ABC', 'abc@example.com') ON CONFLICT(email) DO UPDATE SET name = excluded.name RETURNING id",
+			UUID:               uuid.UUID{1},
+			RelatedPids:        []int32{9788, 91, 98, 91},
+			ReviewedForSecrets: true,
 		}, {
-			LogLevel:   pganalyze_collector.LogLineInformation_DETAIL,
-			ParentUUID: uuid.UUID{1},
+			LogLevel:           pganalyze_collector.LogLineInformation_DETAIL,
+			ParentUUID:         uuid.UUID{1},
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 165,
+				ByteEnd:   304,
+				Kind:      state.StatementTextLogSecret,
+			}, {
+				ByteStart: 317,
+				ByteEnd:   456,
+				Kind:      state.StatementTextLogSecret,
+			}},
 		}, {
-			LogLevel:   pganalyze_collector.LogLineInformation_HINT,
-			ParentUUID: uuid.UUID{1},
+			LogLevel:           pganalyze_collector.LogLineInformation_HINT,
+			ParentUUID:         uuid.UUID{1},
+			ReviewedForSecrets: true,
 		}, {
-			LogLevel:   pganalyze_collector.LogLineInformation_CONTEXT,
-			ParentUUID: uuid.UUID{1},
+			LogLevel:           pganalyze_collector.LogLineInformation_CONTEXT,
+			ParentUUID:         uuid.UUID{1},
+			ReviewedForSecrets: true,
 		}, {
 			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
 			ParentUUID: uuid.UUID{1},
@@ -803,6 +981,7 @@ var tests = []testpair{
 				"lock_type": "virtualxid",
 				"after_ms":  1000.123,
 			},
+			ReviewedForSecrets: true,
 		}},
 		nil,
 	}, {
@@ -827,12 +1006,14 @@ var tests = []testpair{
 				"lock_waiters": []int64{663},
 				"after_ms":     1000.365,
 			},
-			RelatedPids: []int32{660, 663},
-			Query:       "SELECT pg_advisory_lock(1, 2);",
-			UUID:        uuid.UUID{1},
+			RelatedPids:        []int32{660, 663},
+			Query:              "SELECT pg_advisory_lock(1, 2);",
+			UUID:               uuid.UUID{1},
+			ReviewedForSecrets: true,
 		}, {
-			LogLevel:   pganalyze_collector.LogLineInformation_DETAIL,
-			ParentUUID: uuid.UUID{1},
+			LogLevel:           pganalyze_collector.LogLineInformation_DETAIL,
+			ParentUUID:         uuid.UUID{1},
+			ReviewedForSecrets: true,
 		}, {
 			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
 			ParentUUID: uuid.UUID{1},
@@ -850,15 +1031,17 @@ var tests = []testpair{
 			LogLevel: pganalyze_collector.LogLineInformation_CONTEXT,
 		}},
 		[]state.LogLine{{
-			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
-			Classification: pganalyze_collector.LogLineInformation_AUTOVACUUM_CANCEL,
-			UUID:           uuid.UUID{1},
-			Database:       "dbname",
-			SchemaName:     "schemaname",
-			RelationName:   "tablename",
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_AUTOVACUUM_CANCEL,
+			UUID:               uuid.UUID{1},
+			Database:           "dbname",
+			SchemaName:         "schemaname",
+			RelationName:       "tablename",
+			ReviewedForSecrets: true,
 		}, {
-			LogLevel:   pganalyze_collector.LogLineInformation_CONTEXT,
-			ParentUUID: uuid.UUID{1},
+			LogLevel:           pganalyze_collector.LogLineInformation_CONTEXT,
+			ParentUUID:         uuid.UUID{1},
+			ReviewedForSecrets: true,
 		}},
 		nil,
 	},
@@ -878,10 +1061,12 @@ var tests = []testpair{
 				"database_name":  "template1",
 				"remaining_xids": 938860,
 			},
-			UUID: uuid.UUID{1},
+			UUID:               uuid.UUID{1},
+			ReviewedForSecrets: true,
 		}, {
-			LogLevel:   pganalyze_collector.LogLineInformation_HINT,
-			ParentUUID: uuid.UUID{1},
+			LogLevel:           pganalyze_collector.LogLineInformation_HINT,
+			ParentUUID:         uuid.UUID{1},
+			ReviewedForSecrets: true,
 		}},
 		nil,
 	},
@@ -895,6 +1080,7 @@ var tests = []testpair{
 				"database_oid":   10,
 				"remaining_xids": 100,
 			},
+			ReviewedForSecrets: true,
 		}},
 		nil,
 	},
@@ -913,10 +1099,12 @@ var tests = []testpair{
 			Details: map[string]interface{}{
 				"database_name": "mydb",
 			},
-			UUID: uuid.UUID{1},
+			UUID:               uuid.UUID{1},
+			ReviewedForSecrets: true,
 		}, {
-			LogLevel:   pganalyze_collector.LogLineInformation_HINT,
-			ParentUUID: uuid.UUID{1},
+			LogLevel:           pganalyze_collector.LogLineInformation_HINT,
+			ParentUUID:         uuid.UUID{1},
+			ReviewedForSecrets: true,
 		}},
 		nil,
 	},
@@ -929,6 +1117,7 @@ var tests = []testpair{
 			Details: map[string]interface{}{
 				"database_oid": 16384,
 			},
+			ReviewedForSecrets: true,
 		}},
 		nil,
 	},
@@ -937,7 +1126,8 @@ var tests = []testpair{
 			Content: "autovacuum launcher started",
 		}},
 		[]state.LogLine{{
-			Classification: pganalyze_collector.LogLineInformation_AUTOVACUUM_LAUNCHER_STARTED,
+			Classification:     pganalyze_collector.LogLineInformation_AUTOVACUUM_LAUNCHER_STARTED,
+			ReviewedForSecrets: true,
 		}},
 		nil,
 	},
@@ -946,7 +1136,8 @@ var tests = []testpair{
 			Content: "autovacuum launcher shutting down",
 		}},
 		[]state.LogLine{{
-			Classification: pganalyze_collector.LogLineInformation_AUTOVACUUM_LAUNCHER_SHUTTING_DOWN,
+			Classification:     pganalyze_collector.LogLineInformation_AUTOVACUUM_LAUNCHER_SHUTTING_DOWN,
+			ReviewedForSecrets: true,
 		}},
 		nil,
 	},
@@ -955,7 +1146,8 @@ var tests = []testpair{
 			Content: "terminating autovacuum process due to administrator command",
 		}},
 		[]state.LogLine{{
-			Classification: pganalyze_collector.LogLineInformation_AUTOVACUUM_LAUNCHER_SHUTTING_DOWN,
+			Classification:     pganalyze_collector.LogLineInformation_AUTOVACUUM_LAUNCHER_SHUTTING_DOWN,
+			ReviewedForSecrets: true,
 		}},
 		nil,
 	},
@@ -994,6 +1186,7 @@ var tests = []testpair{
 				"rusage_user":         0,
 				"elapsed_secs":        0,
 			},
+			ReviewedForSecrets: true,
 		}},
 		nil,
 	},
@@ -1030,6 +1223,7 @@ var tests = []testpair{
 				"rusage_user":       0,
 				"elapsed_secs":      0,
 			},
+			ReviewedForSecrets: true,
 		}},
 		nil,
 	},
@@ -1040,7 +1234,7 @@ var tests = []testpair{
 				"\n  tuples: 3454 removed, 429481 remain, 0 are dead but not yet removable" +
 				"\n  buffer usage: 64215 hits, 8056 misses, 22588 dirtied" +
 				"\n  avg read rate: 1.018 MB/s, avg write rate: 2.855 MB/s" +
-				"\n  system usage: CPU 0.10s/0.88u sec elapsed 61.80 seconds",
+				"\n  system usage: CPU 0.10s/0.88u sec elapsed 61.80 sec",
 			LogLevel: pganalyze_collector.LogLineInformation_LOG,
 		}},
 		[]state.LogLine{{
@@ -1066,6 +1260,7 @@ var tests = []testpair{
 				"rusage_user":       0.88,
 				"elapsed_secs":      61.80,
 			},
+			ReviewedForSecrets: true,
 		}},
 		nil,
 	},
@@ -1103,6 +1298,7 @@ var tests = []testpair{
 				"rusage_user":       16.36,
 				"elapsed_secs":      2168.76,
 			},
+			ReviewedForSecrets: true,
 		}},
 		nil,
 	},
@@ -1142,6 +1338,7 @@ var tests = []testpair{
 				"rusage_user":         0.00,
 				"elapsed_secs":        0.12,
 			},
+			ReviewedForSecrets: true,
 		}},
 		nil,
 	},
@@ -1181,6 +1378,7 @@ var tests = []testpair{
 				"rusage_user":         0.00,
 				"elapsed_secs":        0.12,
 			},
+			ReviewedForSecrets: true,
 		}},
 		nil,
 	},
@@ -1200,6 +1398,7 @@ var tests = []testpair{
 				"rusage_user":   2.08,
 				"elapsed_secs":  108.25,
 			},
+			ReviewedForSecrets: true,
 		}},
 		nil,
 	},
@@ -1219,6 +1418,7 @@ var tests = []testpair{
 				"rusage_user":   0.23,
 				"elapsed_secs":  0.89,
 			},
+			ReviewedForSecrets: true,
 		}},
 		nil,
 	}, {
@@ -1228,10 +1428,11 @@ var tests = []testpair{
 			UUID:     uuid.UUID{1},
 		}},
 		[]state.LogLine{{
-			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
-			Classification: pganalyze_collector.LogLineInformation_SKIPPING_VACUUM_LOCK_NOT_AVAILABLE,
-			UUID:           uuid.UUID{1},
-			RelationName:   "mytable",
+			LogLevel:           pganalyze_collector.LogLineInformation_LOG,
+			Classification:     pganalyze_collector.LogLineInformation_SKIPPING_VACUUM_LOCK_NOT_AVAILABLE,
+			UUID:               uuid.UUID{1},
+			RelationName:       "mytable",
+			ReviewedForSecrets: true,
 		}},
 		nil,
 	}, {
@@ -1241,10 +1442,11 @@ var tests = []testpair{
 			UUID:     uuid.UUID{1},
 		}},
 		[]state.LogLine{{
-			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
-			Classification: pganalyze_collector.LogLineInformation_SKIPPING_ANALYZE_LOCK_NOT_AVAILABLE,
-			UUID:           uuid.UUID{1},
-			RelationName:   "pgbench_tellers",
+			LogLevel:           pganalyze_collector.LogLineInformation_LOG,
+			Classification:     pganalyze_collector.LogLineInformation_SKIPPING_ANALYZE_LOCK_NOT_AVAILABLE,
+			UUID:               uuid.UUID{1},
+			RelationName:       "pgbench_tellers",
+			ReviewedForSecrets: true,
 		}},
 		nil,
 	},
@@ -1259,10 +1461,11 @@ var tests = []testpair{
 			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
 		}},
 		[]state.LogLine{{
-			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
-			Classification: pganalyze_collector.LogLineInformation_STATEMENT_CANCELED_USER,
-			Query:          "SELECT 1",
-			UUID:           uuid.UUID{1},
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_STATEMENT_CANCELED_USER,
+			Query:              "SELECT 1",
+			UUID:               uuid.UUID{1},
+			ReviewedForSecrets: true,
 		}, {
 			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
 			ParentUUID: uuid.UUID{1},
@@ -1278,10 +1481,11 @@ var tests = []testpair{
 			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
 		}},
 		[]state.LogLine{{
-			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
-			Classification: pganalyze_collector.LogLineInformation_STATEMENT_CANCELED_TIMEOUT,
-			Query:          "SELECT 1",
-			UUID:           uuid.UUID{1},
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_STATEMENT_CANCELED_TIMEOUT,
+			Query:              "SELECT 1",
+			UUID:               uuid.UUID{1},
+			ReviewedForSecrets: true,
 		}, {
 			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
 			ParentUUID: uuid.UUID{1},
@@ -1324,25 +1528,37 @@ var tests = []testpair{
 				"process_pid":  660,
 				"signal":       6,
 			},
+			ReviewedForSecrets: true,
 		}, {
-			LogLevel:   pganalyze_collector.LogLineInformation_DETAIL,
-			ParentUUID: uuid.UUID{1},
+			LogLevel:           pganalyze_collector.LogLineInformation_DETAIL,
+			ParentUUID:         uuid.UUID{1},
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 28,
+				ByteEnd:   58,
+				Kind:      state.StatementTextLogSecret,
+			}},
 		}, {
-			Classification: pganalyze_collector.LogLineInformation_SERVER_CRASHED,
-			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
+			Classification:     pganalyze_collector.LogLineInformation_SERVER_CRASHED,
+			LogLevel:           pganalyze_collector.LogLineInformation_LOG,
+			ReviewedForSecrets: true,
 		}, {
-			Classification: pganalyze_collector.LogLineInformation_SERVER_CRASHED,
-			LogLevel:       pganalyze_collector.LogLineInformation_WARNING,
-			UUID:           uuid.UUID{2},
+			Classification:     pganalyze_collector.LogLineInformation_SERVER_CRASHED,
+			LogLevel:           pganalyze_collector.LogLineInformation_WARNING,
+			UUID:               uuid.UUID{2},
+			ReviewedForSecrets: true,
 		}, {
-			LogLevel:   pganalyze_collector.LogLineInformation_DETAIL,
-			ParentUUID: uuid.UUID{2},
+			LogLevel:           pganalyze_collector.LogLineInformation_DETAIL,
+			ParentUUID:         uuid.UUID{2},
+			ReviewedForSecrets: true,
 		}, {
-			LogLevel:   pganalyze_collector.LogLineInformation_HINT,
-			ParentUUID: uuid.UUID{2},
+			LogLevel:           pganalyze_collector.LogLineInformation_HINT,
+			ParentUUID:         uuid.UUID{2},
+			ReviewedForSecrets: true,
 		}, {
-			Classification: pganalyze_collector.LogLineInformation_SERVER_CRASHED,
-			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
+			Classification:     pganalyze_collector.LogLineInformation_SERVER_CRASHED,
+			LogLevel:           pganalyze_collector.LogLineInformation_LOG,
+			ReviewedForSecrets: true,
 		}},
 		nil,
 	},
@@ -1373,29 +1589,37 @@ var tests = []testpair{
 			LogLevel: pganalyze_collector.LogLineInformation_LOG,
 		}},
 		[]state.LogLine{{
-			Classification: pganalyze_collector.LogLineInformation_SERVER_START,
-			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
+			Classification:     pganalyze_collector.LogLineInformation_SERVER_START,
+			LogLevel:           pganalyze_collector.LogLineInformation_LOG,
+			ReviewedForSecrets: true,
 		}, {
-			Classification: pganalyze_collector.LogLineInformation_SERVER_START,
-			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
+			Classification:     pganalyze_collector.LogLineInformation_SERVER_START,
+			LogLevel:           pganalyze_collector.LogLineInformation_LOG,
+			ReviewedForSecrets: true,
 		}, {
-			Classification: pganalyze_collector.LogLineInformation_SERVER_START,
-			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
+			Classification:     pganalyze_collector.LogLineInformation_SERVER_START,
+			LogLevel:           pganalyze_collector.LogLineInformation_LOG,
+			ReviewedForSecrets: true,
 		}, {
-			Classification: pganalyze_collector.LogLineInformation_SERVER_START,
-			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
+			Classification:     pganalyze_collector.LogLineInformation_SERVER_START,
+			LogLevel:           pganalyze_collector.LogLineInformation_LOG,
+			ReviewedForSecrets: true,
 		}, {
-			Classification: pganalyze_collector.LogLineInformation_SERVER_START,
-			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
+			Classification:     pganalyze_collector.LogLineInformation_SERVER_START,
+			LogLevel:           pganalyze_collector.LogLineInformation_LOG,
+			ReviewedForSecrets: true,
 		}, {
-			Classification: pganalyze_collector.LogLineInformation_SERVER_START,
-			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
+			Classification:     pganalyze_collector.LogLineInformation_SERVER_START,
+			LogLevel:           pganalyze_collector.LogLineInformation_LOG,
+			ReviewedForSecrets: true,
 		}, {
-			Classification: pganalyze_collector.LogLineInformation_SERVER_START,
-			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
+			Classification:     pganalyze_collector.LogLineInformation_SERVER_START,
+			LogLevel:           pganalyze_collector.LogLineInformation_LOG,
+			ReviewedForSecrets: true,
 		}, {
-			Classification: pganalyze_collector.LogLineInformation_SERVER_START,
-			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
+			Classification:     pganalyze_collector.LogLineInformation_SERVER_START,
+			LogLevel:           pganalyze_collector.LogLineInformation_LOG,
+			ReviewedForSecrets: true,
 		}},
 		nil,
 	},
@@ -1423,26 +1647,33 @@ var tests = []testpair{
 			LogLevel: pganalyze_collector.LogLineInformation_HINT,
 		}},
 		[]state.LogLine{{
-			Classification: pganalyze_collector.LogLineInformation_SERVER_START_RECOVERING,
+			Classification:     pganalyze_collector.LogLineInformation_SERVER_START_RECOVERING,
+			ReviewedForSecrets: true,
 		}, {
-			Classification: pganalyze_collector.LogLineInformation_SERVER_START_RECOVERING,
+			Classification:     pganalyze_collector.LogLineInformation_SERVER_START_RECOVERING,
+			ReviewedForSecrets: true,
 		}, {
-			Classification: pganalyze_collector.LogLineInformation_SERVER_START_RECOVERING,
-			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
+			Classification:     pganalyze_collector.LogLineInformation_SERVER_START_RECOVERING,
+			LogLevel:           pganalyze_collector.LogLineInformation_LOG,
+			ReviewedForSecrets: true,
 		}, {
-			Classification: pganalyze_collector.LogLineInformation_SERVER_START_RECOVERING,
-			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
-			UUID:           uuid.UUID{1},
+			Classification:     pganalyze_collector.LogLineInformation_SERVER_START_RECOVERING,
+			LogLevel:           pganalyze_collector.LogLineInformation_LOG,
+			UUID:               uuid.UUID{1},
+			ReviewedForSecrets: true,
 		}, {
-			LogLevel:   pganalyze_collector.LogLineInformation_HINT,
-			ParentUUID: uuid.UUID{1},
+			LogLevel:           pganalyze_collector.LogLineInformation_HINT,
+			ParentUUID:         uuid.UUID{1},
+			ReviewedForSecrets: true,
 		}, {
-			Classification: pganalyze_collector.LogLineInformation_SERVER_START_RECOVERING,
-			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
-			UUID:           uuid.UUID{2},
+			Classification:     pganalyze_collector.LogLineInformation_SERVER_START_RECOVERING,
+			LogLevel:           pganalyze_collector.LogLineInformation_LOG,
+			UUID:               uuid.UUID{2},
+			ReviewedForSecrets: true,
 		}, {
-			LogLevel:   pganalyze_collector.LogLineInformation_HINT,
-			ParentUUID: uuid.UUID{2},
+			LogLevel:           pganalyze_collector.LogLineInformation_HINT,
+			ParentUUID:         uuid.UUID{2},
+			ReviewedForSecrets: true,
 		}},
 		nil,
 	}, {
@@ -1460,17 +1691,23 @@ var tests = []testpair{
 			Content: "database system is shut down",
 		}},
 		[]state.LogLine{{
-			Classification: pganalyze_collector.LogLineInformation_SERVER_SHUTDOWN,
+			Classification:     pganalyze_collector.LogLineInformation_SERVER_SHUTDOWN,
+			ReviewedForSecrets: true,
 		}, {
-			Classification: pganalyze_collector.LogLineInformation_SERVER_SHUTDOWN,
+			Classification:     pganalyze_collector.LogLineInformation_SERVER_SHUTDOWN,
+			ReviewedForSecrets: true,
 		}, {
-			Classification: pganalyze_collector.LogLineInformation_SERVER_SHUTDOWN,
+			Classification:     pganalyze_collector.LogLineInformation_SERVER_SHUTDOWN,
+			ReviewedForSecrets: true,
 		}, {
-			Classification: pganalyze_collector.LogLineInformation_SERVER_SHUTDOWN,
+			Classification:     pganalyze_collector.LogLineInformation_SERVER_SHUTDOWN,
+			ReviewedForSecrets: true,
 		}, {
-			Classification: pganalyze_collector.LogLineInformation_SERVER_SHUTDOWN,
+			Classification:     pganalyze_collector.LogLineInformation_SERVER_SHUTDOWN,
+			ReviewedForSecrets: true,
 		}, {
-			Classification: pganalyze_collector.LogLineInformation_SERVER_SHUTDOWN,
+			Classification:     pganalyze_collector.LogLineInformation_SERVER_SHUTDOWN,
+			ReviewedForSecrets: true,
 		}},
 		nil,
 	}, {
@@ -1491,6 +1728,7 @@ var tests = []testpair{
 				"file": "base/pgsql_tmp/pgsql_tmp15967.0",
 				"size": 200204288,
 			},
+			ReviewedForSecrets: true,
 		}, {
 			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
 			ParentUUID: uuid.UUID{1},
@@ -1505,11 +1743,36 @@ var tests = []testpair{
 			Content: "unexpected pageaddr 2D5/12000000 in log segment 00000001000002D500000022, offset 0",
 		}},
 		[]state.LogLine{{
-			Classification: pganalyze_collector.LogLineInformation_SERVER_MISC,
+			Classification:     pganalyze_collector.LogLineInformation_SERVER_MISC,
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 29,
+				ByteEnd:   66,
+				Kind:      state.OpsLogSecret,
+			}, {
+				ByteStart: 69,
+				ByteEnd:   94,
+				Kind:      state.OpsLogSecret,
+			}},
 		}, {
-			Classification: pganalyze_collector.LogLineInformation_SERVER_MISC,
+			Classification:     pganalyze_collector.LogLineInformation_SERVER_MISC,
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 21,
+				ByteEnd:   43,
+				Kind:      state.OpsLogSecret,
+			}, {
+				ByteStart: 49,
+				ByteEnd:   81,
+				Kind:      state.OpsLogSecret,
+			}, {
+				ByteStart: 84,
+				ByteEnd:   95,
+				Kind:      state.OpsLogSecret,
+			}},
 		}, {
-			Classification: pganalyze_collector.LogLineInformation_SERVER_MISC,
+			Classification:     pganalyze_collector.LogLineInformation_SERVER_MISC,
+			ReviewedForSecrets: true,
 		}},
 		nil,
 	}, {
@@ -1525,13 +1788,15 @@ var tests = []testpair{
 			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
 		}},
 		[]state.LogLine{{
-			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
-			Classification: pganalyze_collector.LogLineInformation_SERVER_OUT_OF_MEMORY,
-			UUID:           uuid.UUID{1},
-			Query:          "SELECT 123",
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_SERVER_OUT_OF_MEMORY,
+			UUID:               uuid.UUID{1},
+			Query:              "SELECT 123",
+			ReviewedForSecrets: true,
 		}, {
-			LogLevel:   pganalyze_collector.LogLineInformation_DETAIL,
-			ParentUUID: uuid.UUID{1},
+			LogLevel:           pganalyze_collector.LogLineInformation_DETAIL,
+			ParentUUID:         uuid.UUID{1},
+			ReviewedForSecrets: true,
 		}, {
 			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
 			ParentUUID: uuid.UUID{1},
@@ -1550,7 +1815,8 @@ var tests = []testpair{
 				"process_pid":  123,
 				"signal":       9,
 			},
-			RelatedPids: []int32{123},
+			RelatedPids:        []int32{123},
+			ReviewedForSecrets: true,
 		}},
 		nil,
 	}, {
@@ -1566,8 +1832,9 @@ var tests = []testpair{
 			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
 		}},
 		[]state.LogLine{{
-			LogLevel:       pganalyze_collector.LogLineInformation_WARNING,
-			Classification: pganalyze_collector.LogLineInformation_SERVER_INVALID_CHECKSUM,
+			LogLevel:           pganalyze_collector.LogLineInformation_WARNING,
+			Classification:     pganalyze_collector.LogLineInformation_SERVER_INVALID_CHECKSUM,
+			ReviewedForSecrets: true,
 		}, {
 			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
 			Classification: pganalyze_collector.LogLineInformation_SERVER_INVALID_CHECKSUM,
@@ -1577,6 +1844,7 @@ var tests = []testpair{
 				"block": 335458,
 				"file":  "base/16385/99454",
 			},
+			ReviewedForSecrets: true,
 		}, {
 			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
 			ParentUUID: uuid.UUID{1},
@@ -1594,13 +1862,17 @@ var tests = []testpair{
 			Content: "configuration file \"/var/lib/postgresql/data/postgresql.auto.conf\" contains errors; unaffected changes were applied",
 		}},
 		[]state.LogLine{{
-			Classification: pganalyze_collector.LogLineInformation_SERVER_RELOAD,
+			Classification:     pganalyze_collector.LogLineInformation_SERVER_RELOAD,
+			ReviewedForSecrets: true,
 		}, {
-			Classification: pganalyze_collector.LogLineInformation_SERVER_RELOAD,
+			Classification:     pganalyze_collector.LogLineInformation_SERVER_RELOAD,
+			ReviewedForSecrets: true,
 		}, {
-			Classification: pganalyze_collector.LogLineInformation_SERVER_RELOAD,
+			Classification:     pganalyze_collector.LogLineInformation_SERVER_RELOAD,
+			ReviewedForSecrets: true,
 		}, {
-			Classification: pganalyze_collector.LogLineInformation_SERVER_RELOAD,
+			Classification:     pganalyze_collector.LogLineInformation_SERVER_RELOAD,
+			ReviewedForSecrets: true,
 		}},
 		nil,
 	},
@@ -1623,10 +1895,17 @@ var tests = []testpair{
 				"parent_pid":   30491,
 				"exit_code":    1,
 			},
-			RelatedPids: []int32{31458, 30491},
+			RelatedPids:        []int32{31458, 30491},
+			ReviewedForSecrets: true,
 		}, {
-			LogLevel:   pganalyze_collector.LogLineInformation_DETAIL,
-			ParentUUID: uuid.UUID{1},
+			LogLevel:           pganalyze_collector.LogLineInformation_DETAIL,
+			ParentUUID:         uuid.UUID{1},
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 28,
+				ByteEnd:   36,
+				Kind:      state.StatementTextLogSecret,
+			}},
 		}},
 		nil,
 	},
@@ -1643,7 +1922,8 @@ var tests = []testpair{
 				"process_pid":  17443,
 				"exit_code":    1,
 			},
-			RelatedPids: []int32{17443},
+			RelatedPids:        []int32{17443},
+			ReviewedForSecrets: true,
 		}},
 		nil,
 	},
@@ -1660,7 +1940,8 @@ var tests = []testpair{
 				"process_pid":  17443,
 				"signal":       9,
 			},
-			RelatedPids: []int32{17443},
+			RelatedPids:        []int32{17443},
+			ReviewedForSecrets: true,
 		}},
 		nil,
 	},
@@ -1670,8 +1951,9 @@ var tests = []testpair{
 			LogLevel: pganalyze_collector.LogLineInformation_LOG,
 		}},
 		[]state.LogLine{{
-			Classification: pganalyze_collector.LogLineInformation_SERVER_STATS_COLLECTOR_TIMEOUT,
-			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
+			Classification:     pganalyze_collector.LogLineInformation_SERVER_STATS_COLLECTOR_TIMEOUT,
+			LogLevel:           pganalyze_collector.LogLineInformation_LOG,
+			ReviewedForSecrets: true,
 		}},
 		nil,
 	},
@@ -1681,8 +1963,9 @@ var tests = []testpair{
 			LogLevel: pganalyze_collector.LogLineInformation_WARNING,
 		}},
 		[]state.LogLine{{
-			Classification: pganalyze_collector.LogLineInformation_SERVER_STATS_COLLECTOR_TIMEOUT,
-			LogLevel:       pganalyze_collector.LogLineInformation_WARNING,
+			Classification:     pganalyze_collector.LogLineInformation_SERVER_STATS_COLLECTOR_TIMEOUT,
+			LogLevel:           pganalyze_collector.LogLineInformation_WARNING,
+			ReviewedForSecrets: true,
 		}},
 		nil,
 	},
@@ -1693,8 +1976,9 @@ var tests = []testpair{
 			LogLevel: pganalyze_collector.LogLineInformation_LOG,
 		}},
 		[]state.LogLine{{
-			Classification: pganalyze_collector.LogLineInformation_STANDBY_RESTORED_WAL_FROM_ARCHIVE,
-			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
+			Classification:     pganalyze_collector.LogLineInformation_STANDBY_RESTORED_WAL_FROM_ARCHIVE,
+			LogLevel:           pganalyze_collector.LogLineInformation_LOG,
+			ReviewedForSecrets: true,
 		}},
 		nil,
 	},
@@ -1704,8 +1988,9 @@ var tests = []testpair{
 			LogLevel: pganalyze_collector.LogLineInformation_LOG,
 		}},
 		[]state.LogLine{{
-			Classification: pganalyze_collector.LogLineInformation_STANDBY_STARTED_STREAMING,
-			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
+			Classification:     pganalyze_collector.LogLineInformation_STANDBY_STARTED_STREAMING,
+			LogLevel:           pganalyze_collector.LogLineInformation_LOG,
+			ReviewedForSecrets: true,
 		}},
 		nil,
 	},
@@ -1715,8 +2000,9 @@ var tests = []testpair{
 			LogLevel: pganalyze_collector.LogLineInformation_LOG,
 		}},
 		[]state.LogLine{{
-			Classification: pganalyze_collector.LogLineInformation_STANDBY_STARTED_STREAMING,
-			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
+			Classification:     pganalyze_collector.LogLineInformation_STANDBY_STARTED_STREAMING,
+			LogLevel:           pganalyze_collector.LogLineInformation_LOG,
+			ReviewedForSecrets: true,
 		}},
 		nil,
 	},
@@ -1726,8 +2012,14 @@ var tests = []testpair{
 			LogLevel: pganalyze_collector.LogLineInformation_FATAL,
 		}},
 		[]state.LogLine{{
-			Classification: pganalyze_collector.LogLineInformation_STANDBY_STREAMING_INTERRUPTED,
-			LogLevel:       pganalyze_collector.LogLineInformation_FATAL,
+			Classification:     pganalyze_collector.LogLineInformation_STANDBY_STREAMING_INTERRUPTED,
+			LogLevel:           pganalyze_collector.LogLineInformation_FATAL,
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 40,
+				ByteEnd:   81,
+				Kind:      state.OpsLogSecret,
+			}},
 		}},
 		nil,
 	}, {
@@ -1736,8 +2028,9 @@ var tests = []testpair{
 			LogLevel: pganalyze_collector.LogLineInformation_FATAL,
 		}},
 		[]state.LogLine{{
-			Classification: pganalyze_collector.LogLineInformation_STANDBY_STOPPED_STREAMING,
-			LogLevel:       pganalyze_collector.LogLineInformation_FATAL,
+			Classification:     pganalyze_collector.LogLineInformation_STANDBY_STOPPED_STREAMING,
+			LogLevel:           pganalyze_collector.LogLineInformation_FATAL,
+			ReviewedForSecrets: true,
 		}},
 		nil,
 	}, {
@@ -1746,8 +2039,9 @@ var tests = []testpair{
 			LogLevel: pganalyze_collector.LogLineInformation_LOG,
 		}},
 		[]state.LogLine{{
-			Classification: pganalyze_collector.LogLineInformation_STANDBY_CONSISTENT_RECOVERY_STATE,
-			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
+			Classification:     pganalyze_collector.LogLineInformation_STANDBY_CONSISTENT_RECOVERY_STATE,
+			LogLevel:           pganalyze_collector.LogLineInformation_LOG,
+			ReviewedForSecrets: true,
 		}},
 		nil,
 	}, {
@@ -1763,13 +2057,15 @@ var tests = []testpair{
 			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
 		}},
 		[]state.LogLine{{
-			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
-			Classification: pganalyze_collector.LogLineInformation_STANDBY_STATEMENT_CANCELED,
-			Query:          "SELECT 1",
-			UUID:           uuid.UUID{1},
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_STANDBY_STATEMENT_CANCELED,
+			Query:              "SELECT 1",
+			UUID:               uuid.UUID{1},
+			ReviewedForSecrets: true,
 		}, {
-			LogLevel:   pganalyze_collector.LogLineInformation_DETAIL,
-			ParentUUID: uuid.UUID{1},
+			LogLevel:           pganalyze_collector.LogLineInformation_DETAIL,
+			ParentUUID:         uuid.UUID{1},
+			ReviewedForSecrets: true,
 		}, {
 			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
 			ParentUUID: uuid.UUID{1},
@@ -1782,8 +2078,9 @@ var tests = []testpair{
 			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
 		}},
 		[]state.LogLine{{
-			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
-			Classification: pganalyze_collector.LogLineInformation_STANDBY_INVALID_TIMELINE,
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_STANDBY_INVALID_TIMELINE,
+			ReviewedForSecrets: true,
 		}},
 		nil,
 	},
@@ -1801,16 +2098,74 @@ var tests = []testpair{
 			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
 		}},
 		[]state.LogLine{{
-			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
-			Classification: pganalyze_collector.LogLineInformation_UNIQUE_CONSTRAINT_VIOLATION,
-			UUID:           uuid.UUID{1},
-			Query:          "INSERT INTO a (b, c) VALUES ($1,$2) RETURNING id",
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_UNIQUE_CONSTRAINT_VIOLATION,
+			UUID:               uuid.UUID{1},
+			Query:              "INSERT INTO a (b, c) VALUES ($1,$2) RETURNING id",
+			ReviewedForSecrets: true,
 		}, {
-			LogLevel:   pganalyze_collector.LogLineInformation_DETAIL,
-			ParentUUID: uuid.UUID{1},
+			LogLevel:           pganalyze_collector.LogLineInformation_DETAIL,
+			ParentUUID:         uuid.UUID{1},
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 12,
+				ByteEnd:   31,
+				Kind:      state.TableDataLogSecret,
+			}},
 		}, {
-			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
-			ParentUUID: uuid.UUID{1},
+			LogLevel:           pganalyze_collector.LogLineInformation_STATEMENT,
+			ParentUUID:         uuid.UUID{1},
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 0,
+				ByteEnd:   48,
+				Kind:      state.StatementTextLogSecret,
+			}},
+		}},
+		nil,
+	}, {
+		[]state.LogLine{{
+			Content:  "duplicate key value violates unique constraint \"query_stats_pkey\"",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+			UUID:     uuid.UUID{1},
+		}, {
+			Content:  "COPY query_stats(\"database_id\",\"fingerprint\",\"collected_at\",\"collected_interval_secs\") FROM STDIN BINARY",
+			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
+		}, {
+			Content:  "COPY query_stats, line 1",
+			LogLevel: pganalyze_collector.LogLineInformation_CONTEXT,
+		}, {
+			Content:  "Key (database_id, fingerprint, postgres_role_id, collected_at)=(123, \\x025352e69ba951615a192c04aa3b217cad54b390f9, 2019-01-13 19:36:00) already exists.",
+			LogLevel: pganalyze_collector.LogLineInformation_DETAIL,
+		}},
+		[]state.LogLine{{
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_UNIQUE_CONSTRAINT_VIOLATION,
+			UUID:               uuid.UUID{1},
+			Query:              "COPY query_stats(\"database_id\",\"fingerprint\",\"collected_at\",\"collected_interval_secs\") FROM STDIN BINARY",
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_STATEMENT,
+			ParentUUID:         uuid.UUID{1},
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 0,
+				ByteEnd:   104,
+				Kind:      state.StatementTextLogSecret,
+			}},
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_CONTEXT,
+			ParentUUID:         uuid.UUID{1},
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_DETAIL,
+			ParentUUID:         uuid.UUID{1},
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 64,
+				ByteEnd:   134,
+				Kind:      state.TableDataLogSecret,
+			}},
 		}},
 		nil,
 	}, {
@@ -1826,16 +2181,29 @@ var tests = []testpair{
 			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
 		}},
 		[]state.LogLine{{
-			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
-			Classification: pganalyze_collector.LogLineInformation_FOREIGN_KEY_CONSTRAINT_VIOLATION,
-			UUID:           uuid.UUID{1},
-			Query:          "INSERT INTO weather VALUES ('Berkeley', 45, 53, 0.0, '1994-11-28');",
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_FOREIGN_KEY_CONSTRAINT_VIOLATION,
+			UUID:               uuid.UUID{1},
+			Query:              "INSERT INTO weather VALUES ('Berkeley', 45, 53, 0.0, '1994-11-28');",
+			ReviewedForSecrets: true,
 		}, {
-			LogLevel:   pganalyze_collector.LogLineInformation_DETAIL,
-			ParentUUID: uuid.UUID{1},
+			LogLevel:           pganalyze_collector.LogLineInformation_DETAIL,
+			ParentUUID:         uuid.UUID{1},
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 12,
+				ByteEnd:   20,
+				Kind:      state.TableDataLogSecret,
+			}},
 		}, {
-			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
-			ParentUUID: uuid.UUID{1},
+			LogLevel:           pganalyze_collector.LogLineInformation_STATEMENT,
+			ParentUUID:         uuid.UUID{1},
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 0,
+				ByteEnd:   67,
+				Kind:      state.StatementTextLogSecret,
+			}},
 		}},
 		nil,
 	},
@@ -1852,16 +2220,29 @@ var tests = []testpair{
 			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
 		}},
 		[]state.LogLine{{
-			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
-			Classification: pganalyze_collector.LogLineInformation_FOREIGN_KEY_CONSTRAINT_VIOLATION,
-			UUID:           uuid.UUID{1},
-			Query:          "DELETE FROM test WHERE id = 123",
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_FOREIGN_KEY_CONSTRAINT_VIOLATION,
+			UUID:               uuid.UUID{1},
+			Query:              "DELETE FROM test WHERE id = 123",
+			ReviewedForSecrets: true,
 		}, {
-			LogLevel:   pganalyze_collector.LogLineInformation_DETAIL,
-			ParentUUID: uuid.UUID{1},
+			LogLevel:           pganalyze_collector.LogLineInformation_DETAIL,
+			ParentUUID:         uuid.UUID{1},
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 10,
+				ByteEnd:   13,
+				Kind:      state.TableDataLogSecret,
+			}},
 		}, {
-			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
-			ParentUUID: uuid.UUID{1},
+			LogLevel:           pganalyze_collector.LogLineInformation_STATEMENT,
+			ParentUUID:         uuid.UUID{1},
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 0,
+				ByteEnd:   31,
+				Kind:      state.StatementTextLogSecret,
+			}},
 		}},
 		nil,
 	},
@@ -1871,23 +2252,36 @@ var tests = []testpair{
 			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
 			UUID:     uuid.UUID{1},
 		}, {
-			Content:  "Failing row contains (null).",
+			Content:  "Failing row contains (null, secret).",
 			LogLevel: pganalyze_collector.LogLineInformation_DETAIL,
 		}, {
-			Content:  "INSERT INTO \"test\" (\"mycolumn\") VALUES ($1) RETURNING \"id\"",
+			Content:  "INSERT INTO \"test\" (\"mycolumn\", \"mysecret\") VALUES ($1) RETURNING \"id\"",
 			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
 		}},
 		[]state.LogLine{{
-			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
-			Classification: pganalyze_collector.LogLineInformation_NOT_NULL_CONSTRAINT_VIOLATION,
-			UUID:           uuid.UUID{1},
-			Query:          "INSERT INTO \"test\" (\"mycolumn\") VALUES ($1) RETURNING \"id\"",
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_NOT_NULL_CONSTRAINT_VIOLATION,
+			UUID:               uuid.UUID{1},
+			Query:              "INSERT INTO \"test\" (\"mycolumn\", \"mysecret\") VALUES ($1) RETURNING \"id\"",
+			ReviewedForSecrets: true,
 		}, {
-			LogLevel:   pganalyze_collector.LogLineInformation_DETAIL,
-			ParentUUID: uuid.UUID{1},
+			LogLevel:           pganalyze_collector.LogLineInformation_DETAIL,
+			ParentUUID:         uuid.UUID{1},
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 22,
+				ByteEnd:   34,
+				Kind:      state.TableDataLogSecret,
+			}},
 		}, {
-			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
-			ParentUUID: uuid.UUID{1},
+			LogLevel:           pganalyze_collector.LogLineInformation_STATEMENT,
+			ParentUUID:         uuid.UUID{1},
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 0,
+				ByteEnd:   70,
+				Kind:      state.StatementTextLogSecret,
+			}},
 		}},
 		nil,
 	},
@@ -1910,21 +2304,31 @@ var tests = []testpair{
 			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
 		}},
 		[]state.LogLine{{
-			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
-			Classification: pganalyze_collector.LogLineInformation_CHECK_CONSTRAINT_VIOLATION,
-			UUID:           uuid.UUID{1},
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_CHECK_CONSTRAINT_VIOLATION,
+			UUID:               uuid.UUID{1},
+			ReviewedForSecrets: true,
 		}, {
-			LogLevel:   pganalyze_collector.LogLineInformation_DETAIL,
-			ParentUUID: uuid.UUID{1},
+			LogLevel:           pganalyze_collector.LogLineInformation_DETAIL,
+			ParentUUID:         uuid.UUID{1},
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 22,
+				ByteEnd:   26,
+				Kind:      state.TableDataLogSecret,
+			}},
 		}, {
-			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
-			Classification: pganalyze_collector.LogLineInformation_CHECK_CONSTRAINT_VIOLATION,
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_CHECK_CONSTRAINT_VIOLATION,
+			ReviewedForSecrets: true,
 		}, {
-			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
-			Classification: pganalyze_collector.LogLineInformation_CHECK_CONSTRAINT_VIOLATION,
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_CHECK_CONSTRAINT_VIOLATION,
+			ReviewedForSecrets: true,
 		}, {
-			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
-			Classification: pganalyze_collector.LogLineInformation_CHECK_CONSTRAINT_VIOLATION,
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_CHECK_CONSTRAINT_VIOLATION,
+			ReviewedForSecrets: true,
 		}},
 		nil,
 	},
@@ -1941,13 +2345,24 @@ var tests = []testpair{
 			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
 		}},
 		[]state.LogLine{{
-			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
-			Classification: pganalyze_collector.LogLineInformation_EXCLUSION_CONSTRAINT_VIOLATION,
-			UUID:           uuid.UUID{1},
-			Query:          "INSERT INTO reservation VALUES ('[2010-01-01 14:45, 2010-01-01 15:45)');",
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_EXCLUSION_CONSTRAINT_VIOLATION,
+			UUID:               uuid.UUID{1},
+			Query:              "INSERT INTO reservation VALUES ('[2010-01-01 14:45, 2010-01-01 15:45)');",
+			ReviewedForSecrets: true,
 		}, {
-			LogLevel:   pganalyze_collector.LogLineInformation_DETAIL,
-			ParentUUID: uuid.UUID{1},
+			LogLevel:           pganalyze_collector.LogLineInformation_DETAIL,
+			ParentUUID:         uuid.UUID{1},
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 14,
+				ByteEnd:   59,
+				Kind:      state.TableDataLogSecret,
+			}, {
+				ByteStart: 99,
+				ByteEnd:   144,
+				Kind:      state.TableDataLogSecret,
+			}},
 		}, {
 			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
 			ParentUUID: uuid.UUID{1},
@@ -1964,10 +2379,16 @@ var tests = []testpair{
 			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
 		}},
 		[]state.LogLine{{
-			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
-			Classification: pganalyze_collector.LogLineInformation_SYNTAX_ERROR,
-			UUID:           uuid.UUID{1},
-			Query:          "SELECT * FROM abc LIMIT 2 WHERE id=1",
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_SYNTAX_ERROR,
+			UUID:               uuid.UUID{1},
+			Query:              "SELECT * FROM abc LIMIT 2 WHERE id=1",
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 25,
+				ByteEnd:   30,
+				Kind:      state.ParsingErrorLogSecret,
+			}},
 		}, {
 			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
 			ParentUUID: uuid.UUID{1},
@@ -1984,10 +2405,11 @@ var tests = []testpair{
 			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
 		}},
 		[]state.LogLine{{
-			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
-			Classification: pganalyze_collector.LogLineInformation_SYNTAX_ERROR,
-			UUID:           uuid.UUID{1},
-			Query:          "SELECT * FROM (SELECT 1",
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_SYNTAX_ERROR,
+			UUID:               uuid.UUID{1},
+			Query:              "SELECT * FROM (SELECT 1",
+			ReviewedForSecrets: true,
 		}, {
 			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
 			ParentUUID: uuid.UUID{1},
@@ -1996,18 +2418,24 @@ var tests = []testpair{
 	},
 	{
 		[]state.LogLine{{
-			Content:  "invalid input syntax for integer: \"\" at character 40",
+			Content:  "invalid input syntax for integer: \"A\" at character 40",
 			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
 			UUID:     uuid.UUID{1},
 		}, {
-			Content:  "SELECT * FROM table WHERE int_column = ''",
+			Content:  "SELECT * FROM table WHERE int_column = 'A'",
 			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
 		}},
 		[]state.LogLine{{
-			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
-			Classification: pganalyze_collector.LogLineInformation_INVALID_INPUT_SYNTAX,
-			UUID:           uuid.UUID{1},
-			Query:          "SELECT * FROM table WHERE int_column = ''",
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_INVALID_INPUT_SYNTAX,
+			UUID:               uuid.UUID{1},
+			Query:              "SELECT * FROM table WHERE int_column = 'A'",
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 35,
+				ByteEnd:   36,
+				Kind:      state.TableDataLogSecret,
+			}},
 		}, {
 			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
 			ParentUUID: uuid.UUID{1},
@@ -2024,10 +2452,11 @@ var tests = []testpair{
 			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
 		}},
 		[]state.LogLine{{
-			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
-			Classification: pganalyze_collector.LogLineInformation_VALUE_TOO_LONG_FOR_TYPE,
-			UUID:           uuid.UUID{1},
-			Query:          "INSERT INTO x(y) VALUES ('zzzzz')",
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_VALUE_TOO_LONG_FOR_TYPE,
+			UUID:               uuid.UUID{1},
+			Query:              "INSERT INTO x(y) VALUES ('zzzzz')",
+			ReviewedForSecrets: true,
 		}, {
 			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
 			ParentUUID: uuid.UUID{1},
@@ -2047,13 +2476,24 @@ var tests = []testpair{
 			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
 		}},
 		[]state.LogLine{{
-			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
-			Classification: pganalyze_collector.LogLineInformation_INVALID_VALUE,
-			UUID:           uuid.UUID{1},
-			Query:          "SELECT to_timestamp($1, 'YYYY-mm-DD')",
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_INVALID_VALUE,
+			UUID:               uuid.UUID{1},
+			Query:              "SELECT to_timestamp($1, 'YYYY-mm-DD')",
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 15,
+				ByteEnd:   21,
+				Kind:      state.TableDataLogSecret,
+			}, {
+				ByteStart: 28,
+				ByteEnd:   32,
+				Kind:      state.TableDataLogSecret,
+			}},
 		}, {
-			LogLevel:   pganalyze_collector.LogLineInformation_DETAIL,
-			ParentUUID: uuid.UUID{1},
+			LogLevel:           pganalyze_collector.LogLineInformation_DETAIL,
+			ParentUUID:         uuid.UUID{1},
+			ReviewedForSecrets: true,
 		}, {
 			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
 			ParentUUID: uuid.UUID{1},
@@ -2073,13 +2513,20 @@ var tests = []testpair{
 			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
 		}},
 		[]state.LogLine{{
-			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
-			Classification: pganalyze_collector.LogLineInformation_MALFORMED_ARRAY_LITERAL,
-			UUID:           uuid.UUID{1},
-			Query:          "SELECT * FROM x WHERE id = ANY ('a, b')",
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_MALFORMED_ARRAY_LITERAL,
+			UUID:               uuid.UUID{1},
+			Query:              "SELECT * FROM x WHERE id = ANY ('a, b')",
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 26,
+				ByteEnd:   30,
+				Kind:      state.TableDataLogSecret,
+			}},
 		}, {
-			LogLevel:   pganalyze_collector.LogLineInformation_DETAIL,
-			ParentUUID: uuid.UUID{1},
+			LogLevel:           pganalyze_collector.LogLineInformation_DETAIL,
+			ParentUUID:         uuid.UUID{1},
+			ReviewedForSecrets: true,
 		}, {
 			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
 			ParentUUID: uuid.UUID{1},
@@ -2099,13 +2546,15 @@ var tests = []testpair{
 			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
 		}},
 		[]state.LogLine{{
-			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
-			Classification: pganalyze_collector.LogLineInformation_SUBQUERY_MISSING_ALIAS,
-			UUID:           uuid.UUID{1},
-			Query:          "SELECT * FROM (SELECT 1)",
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_SUBQUERY_MISSING_ALIAS,
+			UUID:               uuid.UUID{1},
+			Query:              "SELECT * FROM (SELECT 1)",
+			ReviewedForSecrets: true,
 		}, {
-			LogLevel:   pganalyze_collector.LogLineInformation_HINT,
-			ParentUUID: uuid.UUID{1},
+			LogLevel:           pganalyze_collector.LogLineInformation_HINT,
+			ParentUUID:         uuid.UUID{1},
+			ReviewedForSecrets: true,
 		}, {
 			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
 			ParentUUID: uuid.UUID{1},
@@ -2122,10 +2571,11 @@ var tests = []testpair{
 			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
 		}},
 		[]state.LogLine{{
-			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
-			Classification: pganalyze_collector.LogLineInformation_INSERT_TARGET_COLUMN_MISMATCH,
-			UUID:           uuid.UUID{1},
-			Query:          "INSERT INTO x(y) VALUES (1, 2)",
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_INSERT_TARGET_COLUMN_MISMATCH,
+			UUID:               uuid.UUID{1},
+			Query:              "INSERT INTO x(y) VALUES (1, 2)",
+			ReviewedForSecrets: true,
 		}, {
 			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
 			ParentUUID: uuid.UUID{1},
@@ -2142,10 +2592,11 @@ var tests = []testpair{
 			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
 		}},
 		[]state.LogLine{{
-			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
-			Classification: pganalyze_collector.LogLineInformation_ANY_ALL_REQUIRES_ARRAY,
-			UUID:           uuid.UUID{1},
-			Query:          "SELECT * FROM x WHERE id = ANY ($1)",
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_ANY_ALL_REQUIRES_ARRAY,
+			UUID:               uuid.UUID{1},
+			Query:              "SELECT * FROM x WHERE id = ANY ($1)",
+			ReviewedForSecrets: true,
 		}, {
 			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
 			ParentUUID: uuid.UUID{1},
@@ -2162,10 +2613,11 @@ var tests = []testpair{
 			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
 		}},
 		[]state.LogLine{{
-			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
-			Classification: pganalyze_collector.LogLineInformation_COLUMN_MISSING_FROM_GROUP_BY,
-			UUID:           uuid.UUID{1},
-			Query:          "SELECT def, MAX(def) FROM abc",
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_COLUMN_MISSING_FROM_GROUP_BY,
+			UUID:               uuid.UUID{1},
+			Query:              "SELECT def, MAX(def) FROM abc",
+			ReviewedForSecrets: true,
 		}, {
 			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
 			ParentUUID: uuid.UUID{1},
@@ -2182,10 +2634,11 @@ var tests = []testpair{
 			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
 		}},
 		[]state.LogLine{{
-			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
-			Classification: pganalyze_collector.LogLineInformation_RELATION_DOES_NOT_EXIST,
-			UUID:           uuid.UUID{1},
-			Query:          "SELECT * FROM x",
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_RELATION_DOES_NOT_EXIST,
+			UUID:               uuid.UUID{1},
+			Query:              "SELECT * FROM x",
+			ReviewedForSecrets: true,
 		}, {
 			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
 			ParentUUID: uuid.UUID{1},
@@ -2202,10 +2655,11 @@ var tests = []testpair{
 			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
 		}},
 		[]state.LogLine{{
-			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
-			Classification: pganalyze_collector.LogLineInformation_COLUMN_DOES_NOT_EXIST,
-			UUID:           uuid.UUID{1},
-			Query:          "SELECT y FROM x",
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_COLUMN_DOES_NOT_EXIST,
+			UUID:               uuid.UUID{1},
+			Query:              "SELECT y FROM x",
+			ReviewedForSecrets: true,
 		}, {
 			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
 			ParentUUID: uuid.UUID{1},
@@ -2222,10 +2676,11 @@ var tests = []testpair{
 			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
 		}},
 		[]state.LogLine{{
-			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
-			Classification: pganalyze_collector.LogLineInformation_COLUMN_DOES_NOT_EXIST,
-			UUID:           uuid.UUID{1},
-			Query:          "ALTER TABLE x DROP COLUMN y;",
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_COLUMN_DOES_NOT_EXIST,
+			UUID:               uuid.UUID{1},
+			Query:              "ALTER TABLE x DROP COLUMN y;",
+			ReviewedForSecrets: true,
 		}, {
 			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
 			ParentUUID: uuid.UUID{1},
@@ -2242,10 +2697,11 @@ var tests = []testpair{
 			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
 		}},
 		[]state.LogLine{{
-			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
-			Classification: pganalyze_collector.LogLineInformation_COLUMN_REFERENCE_AMBIGUOUS,
-			UUID:           uuid.UUID{1},
-			Query:          "SELECT z FROM x, y",
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_COLUMN_REFERENCE_AMBIGUOUS,
+			UUID:               uuid.UUID{1},
+			Query:              "SELECT z FROM x, y",
+			ReviewedForSecrets: true,
 		}, {
 			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
 			ParentUUID: uuid.UUID{1},
@@ -2265,13 +2721,15 @@ var tests = []testpair{
 			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
 		}},
 		[]state.LogLine{{
-			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
-			Classification: pganalyze_collector.LogLineInformation_OPERATOR_DOES_NOT_EXIST,
-			UUID:           uuid.UUID{1},
-			Query:          "SELECT true || true",
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_OPERATOR_DOES_NOT_EXIST,
+			UUID:               uuid.UUID{1},
+			Query:              "SELECT true || true",
+			ReviewedForSecrets: true,
 		}, {
-			LogLevel:   pganalyze_collector.LogLineInformation_HINT,
-			ParentUUID: uuid.UUID{1},
+			LogLevel:           pganalyze_collector.LogLineInformation_HINT,
+			ParentUUID:         uuid.UUID{1},
+			ReviewedForSecrets: true,
 		}, {
 			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
 			ParentUUID: uuid.UUID{1},
@@ -2291,13 +2749,15 @@ var tests = []testpair{
 			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
 		}},
 		[]state.LogLine{{
-			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
-			Classification: pganalyze_collector.LogLineInformation_FUNCTION_DOES_NOT_EXIST,
-			UUID:           uuid.UUID{1},
-			Query:          "SELECT x(1);",
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_FUNCTION_DOES_NOT_EXIST,
+			UUID:               uuid.UUID{1},
+			Query:              "SELECT x(1);",
+			ReviewedForSecrets: true,
 		}, {
-			LogLevel:   pganalyze_collector.LogLineInformation_HINT,
-			ParentUUID: uuid.UUID{1},
+			LogLevel:           pganalyze_collector.LogLineInformation_HINT,
+			ParentUUID:         uuid.UUID{1},
+			ReviewedForSecrets: true,
 		}, {
 			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
 			ParentUUID: uuid.UUID{1},
@@ -2314,10 +2774,11 @@ var tests = []testpair{
 			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
 		}},
 		[]state.LogLine{{
-			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
-			Classification: pganalyze_collector.LogLineInformation_PERMISSION_DENIED,
-			UUID:           uuid.UUID{1},
-			Query:          "SELECT * FROM my_schema.table",
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_PERMISSION_DENIED,
+			UUID:               uuid.UUID{1},
+			Query:              "SELECT * FROM my_schema.table",
+			ReviewedForSecrets: true,
 		}, {
 			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
 			ParentUUID: uuid.UUID{1},
@@ -2334,10 +2795,11 @@ var tests = []testpair{
 			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
 		}},
 		[]state.LogLine{{
-			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
-			Classification: pganalyze_collector.LogLineInformation_TRANSACTION_IS_ABORTED,
-			UUID:           uuid.UUID{1},
-			Query:          "SELECT 1",
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_TRANSACTION_IS_ABORTED,
+			UUID:               uuid.UUID{1},
+			Query:              "SELECT 1",
+			ReviewedForSecrets: true,
 		}, {
 			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
 			ParentUUID: uuid.UUID{1},
@@ -2354,10 +2816,11 @@ var tests = []testpair{
 			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
 		}},
 		[]state.LogLine{{
-			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
-			Classification: pganalyze_collector.LogLineInformation_ON_CONFLICT_NO_CONSTRAINT_MATCH,
-			UUID:           uuid.UUID{1},
-			Query:          "INSERT INTO x (y, z) VALUES ('a', 1) ON CONFLICT (y) DO UPDATE SET z = EXCLUDED.z",
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_ON_CONFLICT_NO_CONSTRAINT_MATCH,
+			UUID:               uuid.UUID{1},
+			Query:              "INSERT INTO x (y, z) VALUES ('a', 1) ON CONFLICT (y) DO UPDATE SET z = EXCLUDED.z",
+			ReviewedForSecrets: true,
 		}, {
 			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
 			ParentUUID: uuid.UUID{1},
@@ -2377,16 +2840,18 @@ var tests = []testpair{
 			LogLevel: pganalyze_collector.LogLineInformation_HINT,
 		}},
 		[]state.LogLine{{
-			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
-			Classification: pganalyze_collector.LogLineInformation_ON_CONFLICT_ROW_AFFECTED_TWICE,
-			UUID:           uuid.UUID{1},
-			Query:          "INSERT INTO x (y, z) VALUES ('a', 1), ('a', 2) ON CONFLICT (y) DO UPDATE SET z = EXCLUDED.z",
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_ON_CONFLICT_ROW_AFFECTED_TWICE,
+			UUID:               uuid.UUID{1},
+			Query:              "INSERT INTO x (y, z) VALUES ('a', 1), ('a', 2) ON CONFLICT (y) DO UPDATE SET z = EXCLUDED.z",
+			ReviewedForSecrets: true,
 		}, {
 			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
 			ParentUUID: uuid.UUID{1},
 		}, {
-			LogLevel:   pganalyze_collector.LogLineInformation_HINT,
-			ParentUUID: uuid.UUID{1},
+			LogLevel:           pganalyze_collector.LogLineInformation_HINT,
+			ParentUUID:         uuid.UUID{1},
+			ReviewedForSecrets: true,
 		}},
 		nil,
 	},
@@ -2400,10 +2865,11 @@ var tests = []testpair{
 			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
 		}},
 		[]state.LogLine{{
-			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
-			Classification: pganalyze_collector.LogLineInformation_COLUMN_CANNOT_BE_CAST,
-			UUID:           uuid.UUID{1},
-			Query:          "SELECT abc::date FROM x",
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_COLUMN_CANNOT_BE_CAST,
+			UUID:               uuid.UUID{1},
+			Query:              "SELECT abc::date FROM x",
+			ReviewedForSecrets: true,
 		}, {
 			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
 			ParentUUID: uuid.UUID{1},
@@ -2420,10 +2886,11 @@ var tests = []testpair{
 			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
 		}},
 		[]state.LogLine{{
-			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
-			Classification: pganalyze_collector.LogLineInformation_DIVISION_BY_ZERO,
-			UUID:           uuid.UUID{1},
-			Query:          "SELECT 1/0",
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_DIVISION_BY_ZERO,
+			UUID:               uuid.UUID{1},
+			Query:              "SELECT 1/0",
+			ReviewedForSecrets: true,
 		}, {
 			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
 			ParentUUID: uuid.UUID{1},
@@ -2446,16 +2913,19 @@ var tests = []testpair{
 			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
 		}},
 		[]state.LogLine{{
-			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
-			Classification: pganalyze_collector.LogLineInformation_CANNOT_DROP,
-			UUID:           uuid.UUID{1},
-			Query:          "DROP TABLE x",
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_CANNOT_DROP,
+			UUID:               uuid.UUID{1},
+			Query:              "DROP TABLE x",
+			ReviewedForSecrets: true,
 		}, {
-			LogLevel:   pganalyze_collector.LogLineInformation_DETAIL,
-			ParentUUID: uuid.UUID{1},
+			LogLevel:           pganalyze_collector.LogLineInformation_DETAIL,
+			ParentUUID:         uuid.UUID{1},
+			ReviewedForSecrets: true,
 		}, {
-			LogLevel:   pganalyze_collector.LogLineInformation_HINT,
-			ParentUUID: uuid.UUID{1},
+			LogLevel:           pganalyze_collector.LogLineInformation_HINT,
+			ParentUUID:         uuid.UUID{1},
+			ReviewedForSecrets: true,
 		}, {
 			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
 			ParentUUID: uuid.UUID{1},
@@ -2472,10 +2942,11 @@ var tests = []testpair{
 			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
 		}},
 		[]state.LogLine{{
-			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
-			Classification: pganalyze_collector.LogLineInformation_INTEGER_OUT_OF_RANGE,
-			UUID:           uuid.UUID{1},
-			Query:          "INSERT INTO x(y) VALUES (10000000000000)",
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_INTEGER_OUT_OF_RANGE,
+			UUID:               uuid.UUID{1},
+			Query:              "INSERT INTO x(y) VALUES (10000000000000)",
+			ReviewedForSecrets: true,
 		}, {
 			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
 			ParentUUID: uuid.UUID{1},
@@ -2492,10 +2963,11 @@ var tests = []testpair{
 			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
 		}},
 		[]state.LogLine{{
-			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
-			Classification: pganalyze_collector.LogLineInformation_INVALID_REGEXP,
-			UUID:           uuid.UUID{1},
-			Query:          "SELECT regexp_replace('test', '<(?i:test)', '');",
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_INVALID_REGEXP,
+			UUID:               uuid.UUID{1},
+			Query:              "SELECT regexp_replace('test', '<(?i:test)', '');",
+			ReviewedForSecrets: true,
 		}, {
 			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
 			ParentUUID: uuid.UUID{1},
@@ -2512,10 +2984,11 @@ var tests = []testpair{
 			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
 		}},
 		[]state.LogLine{{
-			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
-			Classification: pganalyze_collector.LogLineInformation_PARAM_MISSING,
-			UUID:           uuid.UUID{1},
-			Query:          "SELECT $1;",
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_PARAM_MISSING,
+			UUID:               uuid.UUID{1},
+			Query:              "SELECT $1;",
+			ReviewedForSecrets: true,
 		}, {
 			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
 			ParentUUID: uuid.UUID{1},
@@ -2532,10 +3005,11 @@ var tests = []testpair{
 			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
 		}},
 		[]state.LogLine{{
-			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
-			Classification: pganalyze_collector.LogLineInformation_NO_SUCH_SAVEPOINT,
-			UUID:           uuid.UUID{1},
-			Query:          "ROLLBACK TO x",
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_NO_SUCH_SAVEPOINT,
+			UUID:               uuid.UUID{1},
+			Query:              "ROLLBACK TO x",
+			ReviewedForSecrets: true,
 		}, {
 			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
 			ParentUUID: uuid.UUID{1},
@@ -2544,20 +3018,25 @@ var tests = []testpair{
 	},
 	{
 		[]state.LogLine{{
-			Content:  "unterminated quoted string at or near \"some string",
+			Content:  "unterminated quoted string at or near \"'1\" at character 8",
 			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
 			UUID:     uuid.UUID{1},
 		}, {
-			Content:  "SELECT 1",
-			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
+			Content:  "SELECT '1",
+			LogLevel: pganalyze_collector.LogLineInformation_QUERY,
 		}},
 		[]state.LogLine{{
-			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
-			Classification: pganalyze_collector.LogLineInformation_UNTERMINATED_QUOTED_STRING,
-			UUID:           uuid.UUID{1},
-			Query:          "SELECT 1",
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_UNTERMINATED_QUOTED_STRING,
+			UUID:               uuid.UUID{1},
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 39,
+				ByteEnd:   41,
+				Kind:      state.ParsingErrorLogSecret,
+			}},
 		}, {
-			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
+			LogLevel:   pganalyze_collector.LogLineInformation_QUERY,
 			ParentUUID: uuid.UUID{1},
 		}},
 		nil,
@@ -2572,10 +3051,16 @@ var tests = []testpair{
 			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
 		}},
 		[]state.LogLine{{
-			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
-			Classification: pganalyze_collector.LogLineInformation_UNTERMINATED_QUOTED_IDENTIFIER,
-			UUID:           uuid.UUID{1},
-			Query:          "SELECT \"1",
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_UNTERMINATED_QUOTED_IDENTIFIER,
+			UUID:               uuid.UUID{1},
+			Query:              "SELECT \"1",
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 43,
+				ByteEnd:   45,
+				Kind:      state.ParsingErrorLogSecret,
+			}},
 		}, {
 			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
 			ParentUUID: uuid.UUID{1},
@@ -2588,8 +3073,14 @@ var tests = []testpair{
 			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
 		}},
 		[]state.LogLine{{
-			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
-			Classification: pganalyze_collector.LogLineInformation_INVALID_BYTE_SEQUENCE,
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_INVALID_BYTE_SEQUENCE,
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 43,
+				ByteEnd:   52,
+				Kind:      state.TableDataLogSecret,
+			}},
 		}},
 		nil,
 	},
@@ -2603,10 +3094,11 @@ var tests = []testpair{
 			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
 		}},
 		[]state.LogLine{{
-			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
-			Classification: pganalyze_collector.LogLineInformation_COULD_NOT_SERIALIZE_REPEATABLE_READ,
-			UUID:           uuid.UUID{1},
-			Query:          "SELECT \"1",
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_COULD_NOT_SERIALIZE_REPEATABLE_READ,
+			UUID:               uuid.UUID{1},
+			Query:              "SELECT \"1",
+			ReviewedForSecrets: true,
 		}, {
 			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
 			ParentUUID: uuid.UUID{1},
@@ -2629,16 +3121,19 @@ var tests = []testpair{
 			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
 		}},
 		[]state.LogLine{{
-			LogLevel:       pganalyze_collector.LogLineInformation_ERROR,
-			Classification: pganalyze_collector.LogLineInformation_COULD_NOT_SERIALIZE_SERIALIZABLE,
-			UUID:           uuid.UUID{1},
-			Query:          "SELECT \"1",
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_COULD_NOT_SERIALIZE_SERIALIZABLE,
+			UUID:               uuid.UUID{1},
+			Query:              "SELECT \"1",
+			ReviewedForSecrets: true,
 		}, {
-			LogLevel:   pganalyze_collector.LogLineInformation_DETAIL,
-			ParentUUID: uuid.UUID{1},
+			LogLevel:           pganalyze_collector.LogLineInformation_DETAIL,
+			ParentUUID:         uuid.UUID{1},
+			ReviewedForSecrets: true,
 		}, {
-			LogLevel:   pganalyze_collector.LogLineInformation_HINT,
-			ParentUUID: uuid.UUID{1},
+			LogLevel:           pganalyze_collector.LogLineInformation_HINT,
+			ParentUUID:         uuid.UUID{1},
+			ReviewedForSecrets: true,
 		}, {
 			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
 			ParentUUID: uuid.UUID{1},
@@ -2686,9 +3181,15 @@ var tests = []testpair{
 				"	}\n",
 		}},
 		[]state.LogLine{{
-			Query:          "SELECT abalance FROM pgbench_accounts WHERE aid = 2262632;",
-			Classification: pganalyze_collector.LogLineInformation_STATEMENT_AUTO_EXPLAIN,
-			Details:        map[string]interface{}{"duration_ms": 2334.085},
+			Query:              "SELECT abalance FROM pgbench_accounts WHERE aid = 2262632;",
+			Classification:     pganalyze_collector.LogLineInformation_STATEMENT_AUTO_EXPLAIN,
+			Details:            map[string]interface{}{"duration_ms": 2334.085},
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 30,
+				ByteEnd:   1026,
+				Kind:      state.UnidentifiedLogSecret,
+			}},
 		}},
 		[]state.PostgresQuerySample{{
 			Query:         "SELECT abalance FROM pgbench_accounts WHERE aid = 2262632;",
@@ -2706,8 +3207,14 @@ var tests = []testpair{
 				"	  \"Query Text\": \"SELECT abalance FROM pgbench_accounts WHERE aid = [Your log message was truncated]",
 		}},
 		[]state.LogLine{{
-			Classification: pganalyze_collector.LogLineInformation_STATEMENT_AUTO_EXPLAIN,
-			Details:        map[string]interface{}{"duration_ms": 2334.085, "truncated": true},
+			Classification:     pganalyze_collector.LogLineInformation_STATEMENT_AUTO_EXPLAIN,
+			Details:            map[string]interface{}{"duration_ms": 2334.085, "truncated": true},
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 30,
+				ByteEnd:   132,
+				Kind:      state.UnidentifiedLogSecret,
+			}},
 		}},
 		nil,
 	},
@@ -2722,9 +3229,15 @@ var tests = []testpair{
 				"          Index Cond: (pgbench_branches.bid = 59)",
 		}},
 		[]state.LogLine{{
-			Query:          "UPDATE pgbench_branches SET bbalance = bbalance + 2656 WHERE bid = 59;",
-			Classification: pganalyze_collector.LogLineInformation_STATEMENT_AUTO_EXPLAIN,
-			Details:        map[string]interface{}{"duration_ms": 1681.452},
+			Query:              "UPDATE pgbench_branches SET bbalance = bbalance + 2656 WHERE bid = 59;",
+			Classification:     pganalyze_collector.LogLineInformation_STATEMENT_AUTO_EXPLAIN,
+			Details:            map[string]interface{}{"duration_ms": 1681.452},
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 31,
+				ByteEnd:   474,
+				Kind:      state.UnidentifiedLogSecret,
+			}},
 		}},
 		[]state.PostgresQuerySample{{
 			Query:         "UPDATE pgbench_branches SET bbalance = bbalance + 2656 WHERE bid = 59;",
@@ -2753,14 +3266,21 @@ var tests = []testpair{
 			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
 		}},
 		[]state.LogLine{{
-			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
-			Classification: pganalyze_collector.LogLineInformation_PGA_COLLECTOR_IDENTIFY,
-			UUID:           uuid.UUID{1},
-			Query:          "/* pganalyze-collector */ DO $$BEGIN\nRAISE LOG 'pganalyze-collector-identify: server1';\nEND$$;",
-			Details:        map[string]interface{}{"config_section": "server1"},
+			LogLevel:           pganalyze_collector.LogLineInformation_LOG,
+			Classification:     pganalyze_collector.LogLineInformation_PGA_COLLECTOR_IDENTIFY,
+			UUID:               uuid.UUID{1},
+			Query:              "/* pganalyze-collector */ DO $$BEGIN\nRAISE LOG 'pganalyze-collector-identify: server1';\nEND$$;",
+			Details:            map[string]interface{}{"config_section": "server1"},
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 30,
+				ByteEnd:   37,
+				Kind:      state.UnidentifiedLogSecret,
+			}},
 		}, {
-			LogLevel:   pganalyze_collector.LogLineInformation_CONTEXT,
-			ParentUUID: uuid.UUID{1},
+			LogLevel:           pganalyze_collector.LogLineInformation_CONTEXT,
+			ParentUUID:         uuid.UUID{1},
+			ReviewedForSecrets: true,
 		}, {
 			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
 			ParentUUID: uuid.UUID{1},
@@ -2777,10 +3297,16 @@ func TestAnalyzeLogLines(t *testing.T) {
 		cfg.SkipZeroFields = true
 
 		if diff := cfg.Compare(pair.logLinesOut, l); diff != "" {
-			t.Errorf("For %v: log lines diff: (-got +want)\n%s", pair.logLinesIn, diff)
+			t.Errorf("For %v: log lines diff: (-want +got)\n%s", pair.logLinesIn, diff)
 		}
 		if diff := cfg.Compare(pair.samplesOut, s); diff != "" {
-			t.Errorf("For %v: query samples diff: (-got +want)\n%s", pair.samplesOut, diff)
+			t.Errorf("For %v: query samples diff: (-want +got)\n%s", pair.samplesOut, diff)
+		}
+
+		for idx, line := range pair.logLinesOut {
+			if !line.ReviewedForSecrets && line.LogLevel != pganalyze_collector.LogLineInformation_STATEMENT && line.LogLevel != pganalyze_collector.LogLineInformation_QUERY {
+				t.Errorf("Missing secret review for:\n%s %s\n", pair.logLinesIn[idx].LogLevel, pair.logLinesIn[idx].Content)
+			}
 		}
 	}
 }

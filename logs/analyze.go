@@ -11,69 +11,1108 @@ import (
 	"github.com/pganalyze/collector/state"
 )
 
-var ContentAutoExplainRegexp = regexp.MustCompile(`^duration: ([\d\.]+) ms\s+ plan:([\s\S]+)`)
-var ContentDurationRegexp = regexp.MustCompile(`(?ms)^duration: ([\d\.]+) ms([^:]+):(.+)`)
-var ContentDurationDetailsRegexp = regexp.MustCompile(`\$\d+ = '([^']*)',?\s*`)
-var ContentCancelAutovacuumRegexp = regexp.MustCompile(`automatic analyze of table "(.+?)"`)
-var ContentSkippingAnalyzeRegexp = regexp.MustCompile(`skipping analyze of "(.+?)"`)
-var ContentSkippingVacuumRegexp = regexp.MustCompile(`skipping vacuum of "(.+?)"`)
-var ContentAutoVacuumRegexp = regexp.MustCompile(`^automatic (aggressive )?vacuum of table "(.+?)": index scans: (\d+)\s*` +
-	`pages: (\d+) removed, (\d+) remain(?:, (\d+) skipped due to pins)?(?:, (\d+) skipped frozen)?\s*` +
-	`tuples: (\d+) removed, (\d+) remain, (\d+) are dead but not yet removable(?:, oldest xmin: (\d+))?\s*` +
-	`buffer usage: (\d+) hits, (\d+) misses, (\d+) dirtied\s*` +
-	`avg read rate: ([\d.]+) MB/s, avg write rate: ([\d.]+) MB/s\s*` +
-	`system usage: CPU(?:(?: ([\d.]+)s/([\d.]+)u sec elapsed ([\d.]+) sec)|(?:: user: ([\d.]+) s, system: ([\d.]+) s, elapsed: ([\d.]+) s))`)
-var ContentAutoAnalyzeRegexp = regexp.MustCompile(`^automatic analyze of table "(.+?)" system usage: CPU(?:(?: ([\d.]+)s/([\d.]+)u sec elapsed ([\d.]+) sec)|(?:: user: ([\d.]+) s, system: ([\d.]+) s, elapsed: ([\d.]+) s))`)
-var ContentCheckpointStartingRegexp = regexp.MustCompile(`^(checkpoint|restartpoint) starting: (.+)`)
-var ContentCheckpointCompleteRegexp = regexp.MustCompile(`^(checkpoint|restartpoint) complete: wrote (\d+) buffers \(([\d\.]+)%\); ` +
-	`(\d+) (?:transaction log|WAL) file\(s\) added, (\d+) removed, (\d+) recycled; ` +
-	`write=([\d\.]+) s, sync=([\d\.]+) s, total=([\d\.]+) s; ` +
-	`sync files=(\d+), longest=([\d\.]+) s, average=([\d\.]+) s` +
-	`(; distance=(\d+) kB, estimate=(\d+) kB)?`)
-var ContentDisconnectionRegexp = regexp.MustCompile(`^disconnection: session time: (\d+):(\d+):([\d\.]+)`)
-var ContentRoleNotAllowedLoginRegexp = regexp.MustCompile(`^role ".+?" is not permitted to log in`)
-var ContentDatabaseNotAcceptingConnectionsRegexp = regexp.MustCompile(`^database ".+?" is not currently accepting connections`)
-var ContentCheckpointsTooFrequentRegexp = regexp.MustCompile(`^checkpoints are occurring too frequently \((\d+) seconds? apart\)`)
-var ContentRedoLastTxRegexp = regexp.MustCompile(`^last completed transaction was at log time (.+)`)
-var ContentArchiveCommandFailedRegexp = regexp.MustCompile(`^archive command (?:failed with exit code (\d+)|was terminated by signal (\d+))`)
-var ContentArchiveCommandFailedDetailsRegexp = regexp.MustCompile(`^The failed archive command was: (.+)`)
-var ContentLockAcquiredRegexp = regexp.MustCompile(`^process \d+ acquired (\w+Lock) on (\w+)(?: [\(\)\d,]+)?( of \w+ \d+)* after ([\d\.]+) ms`)
-var ContentLockWaitRegexp = regexp.MustCompile(`^process \d+ (still waiting|avoided deadlock|detected deadlock while waiting) for (\w+) on (\w+) (?:.+?) after ([\d\.]+) ms`)
-var ContentLockWaitDetailsRegexp = regexp.MustCompile(`^Process(?:es)? holding the lock: ([\d, ]+). Wait queue: ([\d, ]+)`)
-var ContentDeadlockDetailsRegexp = regexp.MustCompile(`(?m)^Process (\d+)`)
-var ContentWraparoundWarningRegexp = regexp.MustCompile(`^database (with OID (\d+)|"(.+?)") must be vacuumed within (\d+) transactions`)
-var ContentWraparoundErrorRegexp = regexp.MustCompile(`^database is not accepting commands to avoid wraparound data loss in database (with OID (\d+)|"(.+?)")`)
-var ContentServerCrashedRegexp = regexp.MustCompile(`^server process \(PID (\d+)\) was terminated by signal (6|11)`)
-var ContentServerOutOfMemoryRegexp = regexp.MustCompile(`^server process \(PID (\d+)\) was terminated by signal (9)`)
-var ContentTemporaryFileRegexp = regexp.MustCompile(`^temporary file: path "(.+?)", size (\d+)`)
-var ContentReceivedShutdownRequestRegexp = regexp.MustCompile(`^received \w+ shutdown request`)
-var ContentInvalidChecksumRegexp = regexp.MustCompile(`^invalid page in block (\d+) of relation (.+)`)
-var ContentParameterCannotBeChangedRegexp = regexp.MustCompile(`^parameter ".+?" (changed|cannot be changed)`)
-var ContentConfigFileContainsErrorsRegexp = regexp.MustCompile(`^configuration file ".+?" contains errors`)
-var ContentWorkerProcessExitedRegexp = regexp.MustCompile(`^worker process: (.+?) \(PID (\d+)\) (?:exited with exit code (\d+)|was terminated by signal (\d+))`)
-var ContentRegexpInvalidTimelineRegexp = regexp.MustCompile(`^according to history file, WAL location .+? belongs to timeline \d+, but previous recovered WAL file came from timeline \d+`)
-var ContentUniqueConstraintViolationRegexp = regexp.MustCompile(`^duplicate key value violates unique constraint "(.+?)"`)
-var ContentForeignKeyConstraintViolation1Regexp = regexp.MustCompile(`^insert or update on table "(.+?)" violates foreign key constraint "(.+?)"`)
-var ContentForeignKeyConstraintViolation2Regexp = regexp.MustCompile(`^update or delete on table "(.+?)" violates foreign key constraint "(.+?)" on table "(.+?)"`)
-var ContentNullConstraintViolationRegexp = regexp.MustCompile(`^null value in column "(.+?)" violates not-null constraint`)
-var ContentCheckConstraintViolation1Regexp = regexp.MustCompile(`^new row for relation "(.+?)" violates check constraint "(.+?)"`)
-var ContentCheckConstraintViolation2Regexp = regexp.MustCompile(`^check constraint "(.+?)" is violated by some row`)
-var ContentCheckConstraintViolation3Regexp = regexp.MustCompile(`^column "(.+?)" of table "(.+?)" contains values that violate the new constraint`)
-var ContentCheckConstraintViolation4Regexp = regexp.MustCompile(`^value for domain (.+?) violates check constraint "(.+?)"`)
-var ContentExclusionConstraintViolationRegexp = regexp.MustCompile(`^conflicting key value violates exclusion constraint "(.+?)"`)
-var ContentColumnMissingFromGroupByRegexp = regexp.MustCompile(`^column "(.+?)" must appear in the GROUP BY clause or be used in an aggregate function`)
-var ContentColumnDoesNotExistRegexp = regexp.MustCompile(`^column "(.+?)" does not exist`)
-var ContentColumnDoesNotExistOnTableRegexp = regexp.MustCompile(`^column "(.+?)" on "(.+?)" does not exist`)
-var ContentColumnReferenceAmbiguous = regexp.MustCompile(`^column reference "(.+?)" is ambiguous`)
-var ContentRelationDoesNotExist = regexp.MustCompile(`^relation "(.+?)" does not exist`)
-var ContentFunctionDoesNotExist = regexp.MustCompile(`^function (.+?) does not exist`)
-var ContentColumnCannotBeCastRegexp = regexp.MustCompile(`^column "(.+?)" cannot be cast to type "(.+?)"`)
-var ContentCannotDropRegexp = regexp.MustCompile(`^cannot drop (.+?) because other objects depend on it`)
-var ContentStatementLogRegexp = regexp.MustCompile(`^statement: (.*)`)
-var ContentStatementLogExecuteRegexp = regexp.MustCompile(`^execute (.+?): (.*)`)
-var ContentPgaCollectorIdentifyRegexp = regexp.MustCompile(`^pganalyze-collector-identify: (.*)`)
+type match struct {
+	prefixes      []string
+	regexp        *regexp.Regexp
+	secrets       []state.LogSecretKind
+	remainderKind state.LogSecretKind
+}
 
-type autoExplainJsonPlanDetails struct {
+type analyzeGroup struct {
+	classification pganalyze_collector.LogLineInformation_LogClassification
+	primary        match
+	detail         match
+	hint           match
+}
+
+var utcTimestampRegexp = `(\d+-\d+-\d+ \d+:\d+:\d+(?:\.\d+)?(?:[\d:+-]+| \w+))`
+
+var autoExplain = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_STATEMENT_AUTO_EXPLAIN,
+	primary: match{
+		prefixes: []string{"duration: "},
+		regexp:   regexp.MustCompile(`^duration: ([\d\.]+) ms\s+ plan:\s+`),
+		secrets:  []state.LogSecretKind{0},
+	},
+}
+var duration = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_STATEMENT_DURATION,
+	primary: match{
+		prefixes:      []string{"duration: "},
+		regexp:        regexp.MustCompile(`^duration: ([\d\.]+) ms(?:  (?:statement|(parse|bind|execute|execute fetch from) ([^:]+)(?:/([^:]+))?):\s+)?`),
+		secrets:       []state.LogSecretKind{0, 0, 0, 0},
+		remainderKind: state.StatementTextLogSecret,
+	},
+	detail: match{
+		regexp:  regexp.MustCompile(`(?:parameters: |, )\$\d+ = '([^']*)'`),
+		secrets: []state.LogSecretKind{state.StatementParameterLogSecret},
+	},
+}
+var autovacuumCancel = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_AUTOVACUUM_CANCEL,
+	primary: match{
+		prefixes: []string{"canceling autovacuum task"},
+	},
+}
+var skippingAnalyze = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_SKIPPING_ANALYZE_LOCK_NOT_AVAILABLE,
+	primary: match{
+		prefixes: []string{"skipping analyze of"},
+		regexp:   regexp.MustCompile(`^skipping analyze of "([^"]+)" --- lock not available`),
+		secrets:  []state.LogSecretKind{0},
+	},
+}
+var skippingVacuum = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_SKIPPING_VACUUM_LOCK_NOT_AVAILABLE,
+	primary: match{
+		prefixes: []string{"skipping vacuum of"},
+		regexp:   regexp.MustCompile(`^skipping vacuum of "([^"]+)" --- lock not available`),
+		secrets:  []state.LogSecretKind{0},
+	},
+}
+var autoVacuum = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_AUTOVACUUM_COMPLETED,
+	primary: match{
+		prefixes: []string{"automatic vacuum of table", "automatic aggressive vacuum of table"},
+		regexp: regexp.MustCompile(`^automatic (aggressive )?vacuum of table "(.+?)": index scans: (\d+)\s*` +
+			`pages: (\d+) removed, (\d+) remain(?:, (\d+) skipped due to pins)?(?:, (\d+) skipped frozen)?\s*` +
+			`tuples: (\d+) removed, (\d+) remain, (\d+) are dead but not yet removable(?:, oldest xmin: (\d+))?\s*` +
+			`buffer usage: (\d+) hits, (\d+) misses, (\d+) dirtied\s*` +
+			`avg read rate: ([\d.]+) MB/s, avg write rate: ([\d.]+) MB/s\s*` +
+			`system usage: CPU(?:(?: ([\d.]+)s/([\d.]+)u sec elapsed ([\d.]+) sec)|(?:: user: ([\d.]+) s, system: ([\d.]+) s, elapsed: ([\d.]+) s))`),
+		secrets: []state.LogSecretKind{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+	},
+}
+var autoAnalyze = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_AUTOANALYZE_COMPLETED,
+	primary: match{
+		prefixes: []string{"automatic analyze of table"},
+		regexp:   regexp.MustCompile(`^automatic analyze of table "(.+?)" system usage: CPU(?:(?: ([\d.]+)s/([\d.]+)u sec elapsed ([\d.]+) sec)|(?:: user: ([\d.]+) s, system: ([\d.]+) s, elapsed: ([\d.]+) s))`),
+		secrets:  []state.LogSecretKind{0, 0, 0, 0, 0, 0, 0},
+	},
+}
+var checkpointStarting = analyzeGroup{
+	primary: match{
+		prefixes: []string{"checkpoint", "restartpoint"},
+		regexp:   regexp.MustCompile(`^(checkpoint|restartpoint) starting: ([a-z- ]+)`),
+		secrets:  []state.LogSecretKind{0, 0},
+	},
+}
+var checkpointComplete = analyzeGroup{
+	primary: match{
+		regexp: regexp.MustCompile(`^(checkpoint|restartpoint) complete: wrote (\d+) buffers \(([\d\.]+)%\); ` +
+			`(\d+) (?:transaction log|WAL) file\(s\) added, (\d+) removed, (\d+) recycled; ` +
+			`write=([\d\.]+) s, sync=([\d\.]+) s, total=([\d\.]+) s; ` +
+			`sync files=(\d+), longest=([\d\.]+) s, average=([\d\.]+) s` +
+			`(; distance=(\d+) kB, estimate=(\d+) kB)?`),
+		secrets: []state.LogSecretKind{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+	},
+}
+var checkpointsTooFrequent = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_CHECKPOINT_TOO_FREQUENT,
+	primary: match{
+		prefixes: []string{"checkpoints"},
+		regexp:   regexp.MustCompile(`^checkpoints are occurring too frequently \((\d+) seconds? apart\)`),
+		secrets:  []state.LogSecretKind{0},
+	},
+	hint: match{
+		prefixes: []string{"Consider increasing the configuration parameter \"max_wal_size\"."},
+	},
+}
+var restartpointAt = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_RESTARTPOINT_AT,
+	primary: match{
+		prefixes: []string{"recovery restart point at"},
+		regexp:   regexp.MustCompile(`^recovery restart point at (\w+)/(\w+)`),
+		secrets:  []state.LogSecretKind{0, 0},
+	},
+	detail: match{
+		prefixes: []string{"last completed transaction was at log time "},
+		regexp:   regexp.MustCompile(`^last completed transaction was at log time (\d+-\d+-\d+ \d+:\d+:\d+\.\d+[\d:+-]+)`),
+		secrets:  []state.LogSecretKind{0},
+	},
+}
+var connectionReceived = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_CONNECTION_RECEIVED,
+	primary: match{
+		prefixes: []string{"connection received: "},
+		regexp:   regexp.MustCompile(`^connection received: host=[^ ]+( port=\w+)?`),
+		secrets:  []state.LogSecretKind{0},
+	},
+}
+var connectionAuthorized = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_CONNECTION_AUTHORIZED,
+	primary: match{
+		prefixes: []string{"connection authorized: "},
+		regexp:   regexp.MustCompile(`^connection authorized: user=\w+( database=\w+)?( application_name=\w+)?( SSL enabled \(protocol=[\w.]+, cipher=[\w-]+, compression=\w+\))?`),
+		secrets:  []state.LogSecretKind{0, 0, 0},
+	},
+}
+var connectionRejected = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_CONNECTION_REJECTED,
+	primary: match{
+		prefixes: []string{"pg_hba.conf rejects connection ", "no pg_hba.conf entry for"},
+		regexp:   regexp.MustCompile(`^(?:(?:pg_hba.conf rejects connection|no pg_hba.conf entry) for host "[^"]+", user "[^"]+", database "[^"]+"(, SSL on|, SSL off)?|password authentication failed for user "[^"]+")`),
+		secrets:  []state.LogSecretKind{0},
+	},
+}
+var authenticationFailed = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_CONNECTION_REJECTED,
+	primary: match{
+		prefixes: []string{"password authentication failed for user", "Ident authentication failed for user", "could not connect to Ident server"},
+		regexp:   regexp.MustCompile(`^(?:(?:Ident|password) authentication failed for user "([^"]+)"|could not connect to Ident server at address "([^"]+)", port \d+: ([\w ]+))`),
+		secrets:  []state.LogSecretKind{0, 0, 0},
+	},
+	detail: match{
+		regexp:  regexp.MustCompile(`^Connection matched pg_hba.conf line \d+: "([^"]+)"`),
+		secrets: []state.LogSecretKind{state.UnidentifiedLogSecret},
+	},
+}
+var roleNotAllowedLogin = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_CONNECTION_REJECTED,
+	primary: match{
+		prefixes: []string{"role"},
+		regexp:   regexp.MustCompile(`^role "([^"]+)" is not permitted to log in`),
+		secrets:  []state.LogSecretKind{0},
+	},
+}
+var databaseNotAcceptingConnections = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_CONNECTION_REJECTED,
+	primary: match{
+		prefixes: []string{"database"},
+		regexp:   regexp.MustCompile(`^database "([^"]+)" is not currently accepting connections`),
+		secrets:  []state.LogSecretKind{0},
+	},
+}
+var disconnection = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_CONNECTION_DISCONNECTED,
+	primary: match{
+		prefixes: []string{"disconnection: "},
+		regexp:   regexp.MustCompile(`^disconnection: session time: (\d+):(\d+):([\d\.]+) user=\w+ database=\w+ host=[^ ]+( port=\w+)?`),
+		secrets:  []state.LogSecretKind{0, 0, 0, 0},
+	},
+}
+var connectionClientFailedToConnect = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_CONNECTION_CLIENT_FAILED_TO_CONNECT,
+	primary: match{
+		prefixes: []string{"incomplete startup packet"},
+	},
+}
+var connectionLostOpenTx = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_CONNECTION_LOST_OPEN_TX,
+	primary: match{
+		prefixes: []string{"unexpected EOF on client connection with an open transaction"},
+	},
+}
+var connectionLost = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_CONNECTION_LOST,
+	primary: match{
+		prefixes: []string{
+			"unexpected EOF on client connection",
+			"connection to client lost",
+			"terminating connection because protocol synchronization was lost",
+		},
+	},
+}
+var connectionLostSocketError = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_CONNECTION_LOST,
+	primary: match{
+		prefixes: []string{"could not receive data from client", "could not send data to client"},
+		regexp:   regexp.MustCompile(`^could not (?:receive data from|send data to) client: [\w ]+`),
+		secrets:  []state.LogSecretKind{0},
+	},
+}
+var connectionTerminated = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_CONNECTION_TERMINATED,
+	primary: match{
+		prefixes: []string{"terminating connection due to administrator command"},
+	},
+}
+var outOfConnections = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_OUT_OF_CONNECTIONS,
+	primary: match{
+		prefixes: []string{
+			"remaining connection slots are reserved for non-replication superuser connections",
+			"sorry, too many clients already",
+		},
+	},
+}
+var tooManyConnectionsRole = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_TOO_MANY_CONNECTIONS_ROLE,
+	primary: match{
+		prefixes: []string{"too many connections for role"},
+		regexp:   regexp.MustCompile(`^too many connections for role "([^"]+)"`),
+		secrets:  []state.LogSecretKind{0},
+	},
+}
+var tooManyConnectionsDatabase = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_TOO_MANY_CONNECTIONS_DATABASE,
+	primary: match{
+		prefixes: []string{"too many connections for database"},
+		regexp:   regexp.MustCompile(`^too many connections for database "([^"]+)"`),
+		secrets:  []state.LogSecretKind{0},
+	},
+}
+var couldNotAcceptSSLConnection = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_COULD_NOT_ACCEPT_SSL_CONNECTION,
+	primary: match{
+		prefixes: []string{"could not accept SSL connection: "},
+		regexp:   regexp.MustCompile(`^could not accept SSL connection: [\w ]+`),
+		secrets:  []state.LogSecretKind{0},
+	},
+}
+var protocolErrorUnsupportedVersion = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_PROTOCOL_ERROR_UNSUPPORTED_VERSION,
+	primary: match{
+		prefixes: []string{"unsupported frontend protocol"},
+		regexp:   regexp.MustCompile(`^unsupported frontend protocol \d+\.\d+: server supports \d+\.\d+ to \d+\.\d+`),
+		secrets:  []state.LogSecretKind{},
+	},
+}
+var protocolErrorIncompleteMessage = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_PROTOCOL_ERROR_INCOMPLETE_MESSAGE,
+	primary: match{
+		prefixes: []string{"incomplete message from client"},
+	},
+}
+var walInvalidRecordLength = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_WAL_INVALID_RECORD_LENGTH,
+	primary: match{
+		prefixes: []string{"invalid record length at "},
+		regexp:   regexp.MustCompile(`^invalid record length at (\w+)/(\w+)(?:: wanted \d+, got \d+)?`),
+		secrets:  []state.LogSecretKind{0, 0},
+	},
+}
+var walRedo = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_WAL_REDO,
+	primary: match{
+		prefixes: []string{"redo starts at", "redo done at", "redo is not required"},
+		regexp:   regexp.MustCompile(`^redo (?:(?:starts|done) at (\w+)/(\w+)|is not required)`),
+		secrets:  []state.LogSecretKind{0, 0},
+	},
+}
+var walRedoLastTx = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_WAL_REDO,
+	primary: match{
+		prefixes: []string{"last completed transaction was at log time "},
+		regexp:   regexp.MustCompile(`^last completed transaction was at log time (\d+-\d+-\d+ \d+:\d+:\d+\.\d+[\d:+-]+)`),
+		secrets:  []state.LogSecretKind{0},
+	},
+}
+var archiveCommandFailed = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_WAL_ARCHIVE_COMMAND_FAILED,
+	primary: match{
+		prefixes: []string{"archive command"},
+		regexp:   regexp.MustCompile(`^archive command (?:failed with exit code (\d+)|was terminated by signal (\d+)(: [\w ]+)?)`),
+		secrets:  []state.LogSecretKind{0, 0, 0},
+	},
+	detail: match{
+		regexp:  regexp.MustCompile(`^The failed archive command was: (.+)`),
+		secrets: []state.LogSecretKind{state.OpsLogSecret},
+	},
+}
+var archiverProcessExited = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_WAL_ARCHIVE_COMMAND_FAILED,
+	primary: match{
+		prefixes: []string{"archiver process"},
+		regexp:   regexp.MustCompile(`^archiver process \(PID \d+\) exited with exit code \d+`),
+		secrets:  []state.LogSecretKind{},
+	},
+}
+var walBaseBackupComplete = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_WAL_BASE_BACKUP_COMPLETE,
+	primary: match{
+		prefixes: []string{"pg_stop_backup complete, all required WAL segments have been archived"},
+	},
+}
+var lockAcquired = analyzeGroup{
+	primary: match{
+		prefixes: []string{"process"},
+		regexp:   regexp.MustCompile(`^process \d+ acquired (\w+Lock) on (\w+)(?: [\(\)\d,]+)?( of \w+ \d+)* after ([\d\.]+) ms`),
+		secrets:  []state.LogSecretKind{0, 0, 0, 0},
+	},
+}
+var lockWait = analyzeGroup{
+	primary: match{
+		prefixes: []string{"process"},
+		regexp:   regexp.MustCompile(`^process \d+ (still waiting|avoided deadlock|detected deadlock while waiting) for (\w+) on (\w+) (?:.+?) after ([\d\.]+) ms`),
+		secrets:  []state.LogSecretKind{0, 0, 0, 0},
+	},
+	detail: match{
+		regexp:  regexp.MustCompile(`^Process(?:es)? holding the lock: ([\d, ]+). Wait queue: ([\d, ]+)\.?`),
+		secrets: []state.LogSecretKind{0, 0},
+	},
+}
+var deadlock = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_LOCK_DEADLOCK_DETECTED,
+	primary: match{
+		prefixes: []string{"deadlock detected"},
+		regexp:   regexp.MustCompile(`^deadlock detected`),
+		secrets:  []state.LogSecretKind{},
+	},
+	detail: match{
+		regexp:  regexp.MustCompile(`(?m)^Process (\d+)(?: waits for \w+ on transaction \d+; blocked by process \d+.\s+|: (.+))`),
+		secrets: []state.LogSecretKind{0, state.StatementTextLogSecret},
+	},
+	hint: match{
+		prefixes: []string{"See server log for query details."},
+	},
+}
+var lockTimeout = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_LOCK_TIMEOUT,
+	primary: match{
+		prefixes: []string{"canceling statement due to lock timeout"},
+	},
+}
+var wraparoundWarning = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_TXID_WRAPAROUND_WARNING,
+	primary: match{
+		prefixes: []string{"database"},
+		regexp:   regexp.MustCompile(`^database (with OID (\d+)|"(.+?)") must be vacuumed within (\d+) transactions`),
+		secrets:  []state.LogSecretKind{0, 0, 0, 0},
+	},
+	hint: match{
+		prefixes: []string{"To avoid a database shutdown, execute a full-database VACUUM in"},
+		regexp:   regexp.MustCompile(`^To avoid a database shutdown, execute a full-database VACUUM in "(.+)".\s+You might also need to commit or roll back old prepared transactions.`),
+		secrets:  []state.LogSecretKind{0},
+	},
+}
+var wraparoundError = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_TXID_WRAPAROUND_ERROR,
+	primary: match{
+		prefixes: []string{"database is not accepting commands to avoid wraparound data loss in database"},
+		regexp:   regexp.MustCompile(`^database is not accepting commands to avoid wraparound data loss in database (with OID (\d+)|"(.+?)")`),
+		secrets:  []state.LogSecretKind{0, 0, 0},
+	},
+	hint: match{
+		prefixes: []string{"Stop the postmaster and use a standalone backend to vacuum that database. You might also need to commit or roll back old prepared transactions."},
+	},
+}
+var autovacuumLauncherStarted = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_AUTOVACUUM_LAUNCHER_STARTED,
+	primary: match{
+		prefixes: []string{"autovacuum launcher started"},
+	},
+}
+var autovacuumLauncherShuttingDown = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_AUTOVACUUM_LAUNCHER_SHUTTING_DOWN,
+	primary: match{
+		prefixes: []string{"autovacuum launcher shutting down", "terminating autovacuum process due to administrator command"},
+	},
+}
+var serverCrashed = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_SERVER_CRASHED,
+	primary: match{
+		prefixes: []string{"server process"},
+		regexp:   regexp.MustCompile(`^server process \(PID (\d+)\) was terminated by signal (6|11)(: [\w ]+)?`),
+		secrets:  []state.LogSecretKind{0, 0, 0},
+	},
+	detail: match{
+		regexp:  regexp.MustCompile(`^Failed process was running: (.*)`),
+		secrets: []state.LogSecretKind{state.StatementTextLogSecret},
+	},
+}
+var serverCrashedOtherProcesses = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_SERVER_CRASHED,
+	primary: match{
+		prefixes: []string{
+			"terminating any other active server processes",
+			"terminating connection because of crash of another server process",
+			"all server processes terminated; reinitializing",
+		},
+	},
+	detail: match{
+		prefixes: []string{"The postmaster has commanded this server process to roll back the current transaction and exit, because another server process exited abnormally and possibly corrupted shared memory."},
+	},
+	hint: match{
+		prefixes: []string{"In a moment you should be able to reconnect to the database and repeat your command."},
+	},
+}
+var serverOutOfMemory = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_SERVER_OUT_OF_MEMORY,
+	primary: match{
+		prefixes: []string{"out of memory"},
+	},
+	detail: match{
+		regexp:  regexp.MustCompile(`^Failed on request of size (\d+)\.`),
+		secrets: []state.LogSecretKind{0},
+	},
+}
+var serverOutOfMemoryCrash = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_SERVER_OUT_OF_MEMORY,
+	primary: match{
+		prefixes: []string{"out of memory", "server process"},
+		regexp:   regexp.MustCompile(`^server process \(PID (\d+)\) was terminated by signal (9)(: [\w ]+)?`),
+		secrets:  []state.LogSecretKind{0, 0, 0},
+	},
+}
+var serverStart = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_SERVER_START,
+	primary: match{
+		prefixes: []string{
+			"database system is ready to accept connections",
+			"database system is ready to accept read only connections",
+			"MultiXact member wraparound protections are now enabled",
+			"entering standby mode",
+			"redirecting log output to logging collector process",
+			"ending log output to stderr",
+		},
+	},
+}
+var serverStartShutdownAt = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_SERVER_START,
+	primary: match{
+		prefixes: []string{
+			"database system was shut down at ",
+			"database system was shut down in recovery at ",
+		},
+		regexp:  regexp.MustCompile(`^database system was shut down(?: in recovery)? at ` + utcTimestampRegexp),
+		secrets: []state.LogSecretKind{0},
+	},
+}
+var serverStartRecovering = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_SERVER_START_RECOVERING,
+	primary: match{
+		prefixes: []string{
+			"database system was interrupted; last known up at ",
+			"database system shutdown was interrupted; last known up at ",
+			"database system was interrupted while in recovery at ",
+			"database system was not properly shut down; automatic recovery in progress",
+		},
+		regexp:  regexp.MustCompile(`^(?:database system was not properly shut down; automatic recovery in progress|(?:database system was interrupted; last known up at|database system shutdown was interrupted; last known up at|database system was interrupted while in recovery at(?: log time)?) ` + utcTimestampRegexp + `)`),
+		secrets: []state.LogSecretKind{0},
+	},
+	hint: match{
+		prefixes: []string{
+			"This probably means that some data is corrupted and you will have to use the last backup for recovery.",
+			"If this has occurred more than once some data might be corrupted and you might need to choose an earlier recovery target.",
+		},
+	},
+}
+var temporaryFile = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_SERVER_TEMP_FILE_CREATED,
+	primary: match{
+		prefixes: []string{"temporary file: path "},
+		regexp:   regexp.MustCompile(`^temporary file: path "(.+?)", size (\d+)`),
+		secrets:  []state.LogSecretKind{0, 0},
+	},
+}
+var serverMiscCouldNotOpenUsermap = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_SERVER_MISC,
+	primary: match{
+		prefixes: []string{"could not open usermap file"},
+		regexp:   regexp.MustCompile(`^could not open usermap file "(.+)": (.+)`),
+		secrets:  []state.LogSecretKind{state.OpsLogSecret, state.OpsLogSecret},
+	},
+}
+var serverMiscCouldNotLinkFile = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_SERVER_MISC,
+	primary: match{
+		prefixes: []string{"could not link file"},
+		regexp:   regexp.MustCompile(`^could not link file "(.+)" to "(.+)": (.+)`),
+		secrets:  []state.LogSecretKind{state.OpsLogSecret, state.OpsLogSecret, state.OpsLogSecret},
+	},
+}
+var serverMiscUnexpectedAddr = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_SERVER_MISC,
+	primary: match{
+		prefixes: []string{"unexpected pageaddr"},
+		regexp:   regexp.MustCompile(`^unexpected pageaddr \w+/\w+ in log segment \w+, offset \d+`),
+		secrets:  []state.LogSecretKind{},
+	},
+}
+var serverReload = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_SERVER_RELOAD,
+	primary: match{
+		prefixes: []string{"received SIGHUP, reloading configuration files"},
+	},
+}
+var serverShutdown = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_SERVER_SHUTDOWN,
+	primary: match{
+		prefixes: []string{
+			"received fast shutdown request",
+			"received smart shutdown request",
+			"aborting any active transactions",
+			"shutting down",
+			"the database system is shutting down",
+			"database system is shut down",
+		},
+	},
+}
+var pageVerificationFailed = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_SERVER_INVALID_CHECKSUM,
+	primary: match{
+		prefixes: []string{"page verification failed"},
+		regexp:   regexp.MustCompile(`^page verification failed, calculated checksum (\d+) but expected (\d+)`),
+		secrets:  []state.LogSecretKind{0, 0},
+	},
+}
+var invalidChecksum = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_SERVER_INVALID_CHECKSUM,
+	primary: match{
+		prefixes: []string{"invalid page in block"},
+		regexp:   regexp.MustCompile(`^invalid page in block (\d+) of relation (\w+/\d+/\d+)`),
+		secrets:  []state.LogSecretKind{0, 0},
+	},
+}
+var parameterCannotBeChanged = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_SERVER_RELOAD,
+	primary: match{
+		prefixes: []string{"parameter"},
+		regexp:   regexp.MustCompile(`^parameter "([^"]+)" (changed to "([^"]+)"|cannot be changed without restarting the server)`),
+		secrets:  []state.LogSecretKind{0, 0, 0},
+	},
+}
+var configFileContainsErrors = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_SERVER_RELOAD,
+	primary: match{
+		prefixes: []string{"configuration file"},
+		regexp:   regexp.MustCompile(`^configuration file "([^"]+)" contains errors; unaffected changes were applied`),
+		secrets:  []state.LogSecretKind{0},
+	},
+}
+var workerProcessExited = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_SERVER_PROCESS_EXITED,
+	primary: match{
+		prefixes: []string{"worker process: "},
+		regexp:   regexp.MustCompile(`^worker process: (.+?) \(PID (\d+)\) (?:exited with exit code (\d+)|was terminated by signal (\d+))`),
+		secrets:  []state.LogSecretKind{0, 0, 0, 0},
+	},
+	detail: match{
+		regexp:  regexp.MustCompile(`^Failed process was running: (.*)`),
+		secrets: []state.LogSecretKind{state.StatementTextLogSecret},
+	},
+}
+var statsCollectorTimeout = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_SERVER_STATS_COLLECTOR_TIMEOUT,
+	primary: match{
+		prefixes: []string{
+			"using stale statistics instead of current ones because stats collector is not responding",
+			"pgstat wait timeout",
+		},
+	},
+}
+var standbyRestoredLogFile = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_STANDBY_RESTORED_WAL_FROM_ARCHIVE,
+	primary: match{
+		prefixes: []string{"restored log file"},
+		regexp:   regexp.MustCompile(`^restored log file "([^"]+)" from archive`),
+		secrets:  []state.LogSecretKind{0},
+	},
+}
+var standbyStreamingStarted = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_STANDBY_STARTED_STREAMING,
+	primary: match{
+		prefixes: []string{"started streaming WAL", "restarted WAL streaming"},
+		regexp:   regexp.MustCompile(`^(?:started streaming WAL from primary|restarted WAL streaming) at (\w+)/(\w+) on timeline (\d+)`),
+		secrets:  []state.LogSecretKind{0, 0, 0},
+	},
+}
+var standbyStreamingInterrupted = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_STANDBY_STREAMING_INTERRUPTED,
+	primary: match{
+		prefixes: []string{"could not receive data from WAL stream"},
+		regexp:   regexp.MustCompile(`^could not receive data from WAL stream: ([\w: ]+)`),
+		secrets:  []state.LogSecretKind{state.OpsLogSecret},
+	},
+}
+var standbyStoppedStreaming = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_STANDBY_STOPPED_STREAMING,
+	primary: match{
+		prefixes: []string{"terminating walreceiver process due to administrator command"},
+	},
+}
+var standbyConsistentRecoveryState = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_STANDBY_CONSISTENT_RECOVERY_STATE,
+	primary: match{
+		prefixes: []string{"consistent recovery state reached at"},
+		regexp:   regexp.MustCompile(`^consistent recovery state reached at (\w+)/(\w+)`),
+		secrets:  []state.LogSecretKind{0, 0},
+	},
+}
+var standbyStatementCanceled = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_STANDBY_STATEMENT_CANCELED,
+	primary: match{
+		prefixes: []string{"canceling statement due to conflict with recovery"},
+	},
+	detail: match{
+		prefixes: []string{"User query might have needed to see row versions that must be removed."},
+	},
+}
+var regexpInvalidTimeline = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_STANDBY_INVALID_TIMELINE,
+	primary: match{
+		prefixes: []string{"according to history file, WAL location"},
+		regexp:   regexp.MustCompile(`^according to history file, WAL location .+? belongs to timeline \d+, but previous recovered WAL file came from timeline \d+`),
+		secrets:  []state.LogSecretKind{},
+	},
+}
+var uniqueConstraintViolation = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_UNIQUE_CONSTRAINT_VIOLATION,
+	primary: match{
+		prefixes: []string{"duplicate key value violates unique constraint"},
+		regexp:   regexp.MustCompile(`^duplicate key value violates unique constraint "(.+)"`),
+		secrets:  []state.LogSecretKind{0},
+	},
+	detail: match{
+		regexp:  regexp.MustCompile(`^Key \((.+)\)=\((.+)\) already exists.`),
+		secrets: []state.LogSecretKind{0, state.TableDataLogSecret},
+	},
+}
+var foreignKeyConstraintViolation1 = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_FOREIGN_KEY_CONSTRAINT_VIOLATION,
+	primary: match{
+		prefixes: []string{"insert or update on table"},
+		regexp:   regexp.MustCompile(`^insert or update on table "(.+?)" violates foreign key constraint "(.+?)"`),
+		secrets:  []state.LogSecretKind{0, 0},
+	},
+	detail: match{
+		regexp:  regexp.MustCompile(`^Key \((.+)\)=\((.+)\) is not present in table "(.+)".`),
+		secrets: []state.LogSecretKind{0, state.TableDataLogSecret, 0},
+	},
+}
+var foreignKeyConstraintViolation2 = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_FOREIGN_KEY_CONSTRAINT_VIOLATION,
+	primary: match{
+		prefixes: []string{"update or delete on table"},
+		regexp:   regexp.MustCompile(`^update or delete on table "(.+?)" violates foreign key constraint "(.+?)" on table "(.+?)"`),
+		secrets:  []state.LogSecretKind{0, 0, 0},
+	},
+	detail: match{
+		regexp:  regexp.MustCompile(`^Key \((.+)\)=\((.+)\) is still referenced from table "(.+)".`),
+		secrets: []state.LogSecretKind{0, state.TableDataLogSecret, 0},
+	},
+}
+var nullConstraintViolation = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_NOT_NULL_CONSTRAINT_VIOLATION,
+	primary: match{
+		prefixes: []string{"null value in column"},
+		regexp:   regexp.MustCompile(`^null value in column "(.+?)" violates not-null constraint`),
+		secrets:  []state.LogSecretKind{0},
+	},
+	detail: match{
+		regexp:  regexp.MustCompile(`^Failing row contains \((.+)\).`),
+		secrets: []state.LogSecretKind{state.TableDataLogSecret},
+	},
+}
+var checkConstraintViolation1 = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_CHECK_CONSTRAINT_VIOLATION,
+	primary: match{
+		prefixes: []string{"new row for relation"},
+		regexp:   regexp.MustCompile(`^new row for relation "(.+?)" violates check constraint "(.+?)"`),
+		secrets:  []state.LogSecretKind{0, 0},
+		// FIXME: Store constraint name and relation name
+	},
+	detail: match{
+		regexp:  regexp.MustCompile(`^Failing row contains \((.+)\).`),
+		secrets: []state.LogSecretKind{state.TableDataLogSecret},
+	},
+}
+var checkConstraintViolation2 = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_CHECK_CONSTRAINT_VIOLATION,
+	primary: match{
+		prefixes: []string{"check constraint"},
+		regexp:   regexp.MustCompile(`^check constraint "(.+?)" is violated by some row`),
+		secrets:  []state.LogSecretKind{0},
+		// FIXME: Store constraint name
+	},
+}
+var checkConstraintViolation3 = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_CHECK_CONSTRAINT_VIOLATION,
+	primary: match{
+		prefixes: []string{"column"},
+		regexp:   regexp.MustCompile(`^column "(.+?)" of table "(.+?)" contains values that violate the new constraint`),
+		secrets:  []state.LogSecretKind{0, 0},
+		// FIXME: Store relation name
+	},
+}
+var checkConstraintViolation4 = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_CHECK_CONSTRAINT_VIOLATION,
+	primary: match{
+		prefixes: []string{"value for domain"},
+		regexp:   regexp.MustCompile(`^value for domain (.+?) violates check constraint "(.+?)"`),
+		secrets:  []state.LogSecretKind{0, 0},
+		// FIXME: Store constraint name
+	},
+}
+var exclusionConstraintViolation = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_EXCLUSION_CONSTRAINT_VIOLATION,
+	primary: match{
+		prefixes: []string{"conflicting key value violates exclusion constraint"},
+		regexp:   regexp.MustCompile(`^conflicting key value violates exclusion constraint "(.+?)"`),
+		secrets:  []state.LogSecretKind{0},
+		// FIXME: Store constraint name
+	},
+	detail: match{
+		regexp:  regexp.MustCompile(`^Key \([^)]+\)=\((.+)\) conflicts with existing key \([^)]+\)=\((.+)\).`),
+		secrets: []state.LogSecretKind{state.TableDataLogSecret, state.TableDataLogSecret},
+	},
+}
+var syntaxError = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_SYNTAX_ERROR,
+	primary: match{
+		prefixes: []string{"syntax error at"},
+		regexp:   regexp.MustCompile(`^syntax error at (?:end of input|or near "(.+)")(?: at character \d+)?`),
+		secrets:  []state.LogSecretKind{state.ParsingErrorLogSecret},
+	},
+}
+var columnMissingFromGroupBy = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_COLUMN_MISSING_FROM_GROUP_BY,
+	primary: match{
+		prefixes: []string{"column"},
+		regexp:   regexp.MustCompile(`^column "([^"]+)" must appear in the GROUP BY clause or be used in an aggregate function(?: at character \d+)?`),
+		secrets:  []state.LogSecretKind{0},
+	},
+}
+var columnDoesNotExist = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_COLUMN_DOES_NOT_EXIST,
+	primary: match{
+		prefixes: []string{"column"},
+		regexp:   regexp.MustCompile(`^column "([^"]+)" does not exist(?: at character \d+)?`),
+		secrets:  []state.LogSecretKind{0},
+	},
+}
+var columnDoesNotExistOnTable = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_COLUMN_DOES_NOT_EXIST,
+	primary: match{
+		prefixes: []string{"column"},
+		regexp:   regexp.MustCompile(`^column "([^"]+)" of relation "([^"]+)" does not exist(?: at character \d+)?`),
+		secrets:  []state.LogSecretKind{0, 0},
+	},
+}
+var columnReferenceAmbiguous = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_COLUMN_REFERENCE_AMBIGUOUS,
+	primary: match{
+		prefixes: []string{"column"},
+		regexp:   regexp.MustCompile(`^column reference "([^"]+)" is ambiguous(?: at character \d+)?`),
+		secrets:  []state.LogSecretKind{0},
+	},
+}
+var relationDoesNotExist = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_RELATION_DOES_NOT_EXIST,
+	primary: match{
+		prefixes: []string{"relation"},
+		regexp:   regexp.MustCompile(`^relation "([^"]+)" does not exist(?: at character \d+)?`),
+		secrets:  []state.LogSecretKind{0},
+	},
+}
+var functionDoesNotExist = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_FUNCTION_DOES_NOT_EXIST,
+	primary: match{
+		prefixes: []string{"function"},
+		regexp:   regexp.MustCompile(`^function ([^"]+) does not exist(?: at character \d+)?`),
+		secrets:  []state.LogSecretKind{0},
+	},
+	hint: match{
+		prefixes: []string{"No function matches the given name and argument types. You might need to add explicit type casts."},
+	},
+}
+var invalidInputSyntax = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_INVALID_INPUT_SYNTAX,
+	primary: match{
+		prefixes: []string{"invalid input syntax for"},
+		regexp:   regexp.MustCompile(`^invalid input syntax for [\w ]+: "([^"]+)"(?: at character \d+)?`),
+		secrets:  []state.LogSecretKind{state.TableDataLogSecret},
+	},
+}
+var valueTooLongForType = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_VALUE_TOO_LONG_FOR_TYPE,
+	primary: match{
+		prefixes: []string{"value too long for type"},
+		regexp:   regexp.MustCompile(`^value too long for type ([\w ()]+)`),
+		secrets:  []state.LogSecretKind{0},
+	},
+}
+var invalidValue = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_INVALID_VALUE,
+	primary: match{
+		prefixes: []string{"invalid value"},
+		regexp:   regexp.MustCompile(`^invalid value "([^"]+)" for "([^"]+)"`),
+		secrets:  []state.LogSecretKind{state.TableDataLogSecret, state.TableDataLogSecret},
+	},
+	detail: match{
+		prefixes: []string{"Value must be an integer."},
+	},
+}
+var malformedArrayLiteral = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_MALFORMED_ARRAY_LITERAL,
+	primary: match{
+		prefixes: []string{"malformed array literal"},
+		regexp:   regexp.MustCompile(`^malformed array literal: "([^"]+)"(?: at character \d+)?`),
+		secrets:  []state.LogSecretKind{state.TableDataLogSecret},
+	},
+	detail: match{
+		prefixes: []string{"Array value must start with \"{\" or dimension information."},
+	},
+}
+var subqueryMissingAlias = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_SUBQUERY_MISSING_ALIAS,
+	primary: match{
+		prefixes: []string{"subquery in FROM must have an alias"},
+		regexp:   regexp.MustCompile(`^subquery in FROM must have an alias(?: at character \d+)?`),
+	},
+	hint: match{
+		prefixes: []string{"For example, FROM (SELECT ...) [AS] foo."},
+	},
+}
+var insertTargetColumnMismatch = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_INSERT_TARGET_COLUMN_MISMATCH,
+	primary: match{
+		prefixes: []string{"INSERT has more expressions than target columns"},
+		regexp:   regexp.MustCompile(`^INSERT has more expressions than target columns(?: at character \d+)?`),
+	},
+}
+var anyAllRequiresArray = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_ANY_ALL_REQUIRES_ARRAY,
+	primary: match{
+		prefixes: []string{"op ANY/ALL (array) requires array on right side"},
+		regexp:   regexp.MustCompile(`^op ANY/ALL \(array\) requires array on right side(?: at character \d+)?`),
+		secrets:  []state.LogSecretKind{},
+	},
+}
+var operatorDoesNotExist = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_OPERATOR_DOES_NOT_EXIST,
+	primary: match{
+		prefixes: []string{"operator does not exist: "},
+		regexp:   regexp.MustCompile(`^operator does not exist: (\w+) ([` + regexp.QuoteMeta("+*/<>=~!@#%^&|`?-") + `]+) (\w+)(?: at character \d+)?`),
+		secrets:  []state.LogSecretKind{0, 0, 0},
+	},
+	hint: match{
+		prefixes: []string{"No operator matches the given name and argument type(s). You might need to add explicit type casts."},
+	},
+}
+var permissionDenied = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_PERMISSION_DENIED,
+	primary: match{
+		prefixes: []string{"permission denied"},
+		regexp:   regexp.MustCompile(`^permission denied for (?:column|relation|sequence|database|function|operator|type|language|large object|schema|operator class|operator family|collation|conversion|tablespace|text search dictionary|text search configuration|foreign-data wrapper|foreign server|event trigger|extension) ([\w_-]+)(?: at character \d+)?`),
+		secrets:  []state.LogSecretKind{0},
+		// FIXME: Store relation name when this is "permission denied for relation [relation name]"
+	},
+}
+var transactionIsAborted = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_TRANSACTION_IS_ABORTED,
+	primary: match{
+		prefixes: []string{"current transaction is aborted, commands ignored until end of transaction block"},
+	},
+}
+var onConflictNoConstraintMatch = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_ON_CONFLICT_NO_CONSTRAINT_MATCH,
+	primary: match{
+		prefixes: []string{"there is no unique or exclusion constraint matching the ON CONFLICT specification"},
+	},
+}
+var onConflictRowAffectedTwice = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_ON_CONFLICT_ROW_AFFECTED_TWICE,
+	primary: match{
+		prefixes: []string{"ON CONFLICT DO UPDATE command cannot affect row a second time"},
+	},
+	hint: match{
+		prefixes: []string{"Ensure that no rows proposed for insertion within the same command have duplicate constrained values."},
+	},
+}
+var columnCannotBeCast = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_COLUMN_CANNOT_BE_CAST,
+	primary: match{
+		prefixes: []string{"column"},
+		regexp:   regexp.MustCompile(`^column "([^"]+)" cannot be cast to type "([^"]+)"`),
+		secrets:  []state.LogSecretKind{0, 0},
+	},
+}
+var divisionByZero = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_DIVISION_BY_ZERO,
+	primary: match{
+		prefixes: []string{"division by zero"},
+	},
+}
+var cannotDrop = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_CANNOT_DROP,
+	primary: match{
+		prefixes: []string{"cannot drop"},
+		regexp:   regexp.MustCompile(`^cannot drop ([^"]+) because other objects depend on it`),
+		secrets:  []state.LogSecretKind{0},
+	},
+	detail: match{
+		regexp:  regexp.MustCompile(`^\w+ (.+) depends on \w+ (.+)`),
+		secrets: []state.LogSecretKind{0, 0},
+	},
+	hint: match{
+		prefixes: []string{"Use DROP ... CASCADE to drop the dependent objects too."},
+	},
+}
+var integerOutOfRange = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_INTEGER_OUT_OF_RANGE,
+	primary: match{
+		prefixes: []string{"integer out of range"},
+	},
+}
+var invalidRegexp = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_INVALID_REGEXP,
+	primary: match{
+		prefixes: []string{"invalid regular expression: "},
+		// Error messages from Postgres' src/include/regex/regerrs.h
+		regexp: regexp.MustCompile(`^invalid regular expression: (?:` +
+			`no errors detected` +
+			`|failed to match` +
+			`|invalid regexp \(reg version 0.8\)` +
+			`|invalid collating element` +
+			`|invalid character class` +
+			`|invalid escape \\ sequence` +
+			`|invalid backreference number` +
+			`|brackets \[\] not balanced` +
+			`|parentheses \(\) not balanced` +
+			`|braces \{\} not balanced` +
+			`|invalid repetition count\(s\)` +
+			`|invalid character range` +
+			`|out of memory` +
+			`|quantifier operand invalid` +
+			`|"cannot happen" -- you found a bug` +
+			`|invalid argument to regex function` +
+			`|character widths of regex and string differ` +
+			`|invalid embedded option` +
+			`|regular expression is too complex` +
+			`|too many colors` +
+			`|operation cancelled` +
+			`)`),
+	},
+}
+var paramMissing = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_PARAM_MISSING,
+	primary: match{
+		prefixes: []string{"there is no parameter $"},
+		regexp:   regexp.MustCompile(`^there is no parameter \$\d+(?: at character \d+)?`),
+	},
+}
+var noSuchSavepoint = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_NO_SUCH_SAVEPOINT,
+	primary: match{
+		prefixes: []string{"no such savepoint"},
+	},
+}
+var unterminatedQuotedString = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_UNTERMINATED_QUOTED_STRING,
+	primary: match{
+		prefixes: []string{"unterminated quoted string"},
+		regexp:   regexp.MustCompile(`^unterminated quoted string(?: at or near "(.+?)")?(?: at character \d+)?`),
+		secrets:  []state.LogSecretKind{state.ParsingErrorLogSecret},
+	},
+}
+var unterminatedQuotedIdentifier = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_UNTERMINATED_QUOTED_IDENTIFIER,
+	primary: match{
+		prefixes: []string{"unterminated quoted identifier"},
+		regexp:   regexp.MustCompile(`^unterminated quoted identifier(?: at or near "(.+?)")?(?: at character \d+)?`),
+		secrets:  []state.LogSecretKind{state.ParsingErrorLogSecret},
+	},
+}
+var invalidByteSequence = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_INVALID_BYTE_SEQUENCE,
+	primary: match{
+		prefixes: []string{"invalid byte sequence for encoding"},
+		regexp:   regexp.MustCompile(`^invalid byte sequence for encoding "([^"]+)": (.*)`),
+		secrets:  []state.LogSecretKind{0, state.TableDataLogSecret},
+	},
+}
+var couldNotSerializeRepeatableRead = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_COULD_NOT_SERIALIZE_REPEATABLE_READ,
+	primary: match{
+		prefixes: []string{"could not serialize access due to concurrent update"},
+	},
+}
+var couldNotSerializeSerializable = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_COULD_NOT_SERIALIZE_SERIALIZABLE,
+	primary: match{
+		prefixes: []string{"could not serialize access due to read/write dependencies among transactions"},
+	},
+	detail: match{
+		prefixes: []string{
+			"Reason code: Canceled on identification as a pivot, during conflict out checking.",
+			"Reason code: Canceled on identification as a pivot, during conflict in checking.",
+			"Reason code: Canceled on identification as a pivot, during write.",
+			"Reason code: Canceled on identification as a pivot, during commit attempt.",
+			"Reason code: Canceled on identification as a pivot, with conflict out to old committed transaction %u.",
+			"Reason code: Canceled on commit attempt with conflict in from prepared pivot.",
+			"Reason code: Canceled on conflict out to pivot %u, during read.",
+			"Reason code: Canceled on conflict out to old pivot %u.",
+			"Reason code: Canceled on conflict out to old pivot.",
+		},
+		regexp: regexp.MustCompile(`^Reason code: Canceled on (?:` +
+			`identification as a pivot, during conflict out checking` +
+			`|identification as a pivot, during conflict in checking` +
+			`|identification as a pivot, during write` +
+			`|identification as a pivot, during commit attempt` +
+			`|identification as a pivot, with conflict out to old committed transaction \d+` +
+			`|commit attempt with conflict in from prepared pivot` +
+			`|conflict out to pivot \d+, during read` +
+			`|conflict out to old pivot \d+` +
+			`|conflict out to old pivot` +
+			`)\.`),
+	},
+	hint: match{
+		prefixes: []string{"The transaction might succeed if retried."},
+	},
+}
+var statementLog = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_STATEMENT_LOG,
+	primary: match{
+		prefixes: []string{"statement: ", "execute "},
+		regexp:   regexp.MustCompile(`^(?:statement|(?:execute|execute fetch from) (?:[^:]+)(?:/(?:[^:]+))?): (.*)`),
+		secrets:  []state.LogSecretKind{state.StatementTextLogSecret},
+	},
+	detail: match{
+		regexp:  regexp.MustCompile(`(?:parameters: |, )\$\d+ = '([^']*)'|^prepare: (.+)`),
+		secrets: []state.LogSecretKind{state.StatementParameterLogSecret, state.StatementTextLogSecret},
+	},
+}
+var statementCanceledTimeout = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_STATEMENT_CANCELED_TIMEOUT,
+	primary: match{
+		prefixes: []string{"canceling statement due to statement timeout"},
+	},
+}
+var statementCanceledUser = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_STATEMENT_CANCELED_USER,
+	primary: match{
+		prefixes: []string{"canceling statement due to user request"},
+	},
+}
+var pgaCollectorIdentify = analyzeGroup{
+	primary: match{
+		prefixes: []string{"pganalyze-collector-identify: "},
+		regexp:   regexp.MustCompile(`^pganalyze-collector-identify: (.*)`),
+		secrets:  []state.LogSecretKind{state.UnidentifiedLogSecret},
+	},
+}
+
+// CONTEXT patterns (errcontext calls in Postgres)
+var contextCancelAutovacuum = match{
+	regexp:  regexp.MustCompile(`automatic analyze of table "(.+?)"`),
+	secrets: []state.LogSecretKind{0},
+}
+var otherContextPatterns = []match{
+	{
+		prefixes: []string{"COPY"},
+		regexp:   regexp.MustCompile(`^COPY \w+, line \d+(?:, column \w+)?`),
+	},
+	{
+		prefixes: []string{"PL/pgSQL function"},
+		regexp:   regexp.MustCompile(`PL/pgSQL function (?:[^(]+\([^)]+\)|inline_code_block)(.*)`),
+		secrets:  []state.LogSecretKind{0},
+	},
+	{
+		prefixes: []string{"while updating tuple"},
+		regexp:   regexp.MustCompile(`while updating tuple \(\d+,\d+\) in relation "([^"]+)"`),
+		secrets:  []state.LogSecretKind{0},
+	},
+	{
+		prefixes: []string{"while inserting index tuple"},
+		regexp:   regexp.MustCompile(`while inserting index tuple \(\d+,\d+\) in relation "([^"]+)"`),
+		secrets:  []state.LogSecretKind{0},
+	},
+}
+
+type autoExplainJSONPlanDetails struct {
 	QueryText string                 `json:"Query Text"`
 	Plan      map[string]interface{} `json:"Plan"`
 }
@@ -103,113 +1142,124 @@ func AnalyzeLogLines(logLinesIn []state.LogLine) (logLinesOut []state.LogLine, s
 	return
 }
 
-func classifyAndSetDetails(logLine state.LogLine, detailLine state.LogLine, contextLine state.LogLine, samples []state.PostgresQuerySample) (state.LogLine, []state.PostgresQuerySample) {
+func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, detailLine state.LogLine, contextLine state.LogLine, hintLine state.LogLine, samples []state.PostgresQuerySample) (state.LogLine, state.LogLine, state.LogLine, state.LogLine, state.LogLine, []state.PostgresQuerySample) {
 	var parts []string
 
+	// Generic handlers
+	groupX := []analyzeGroup{
+		connectionReceived,
+		connectionAuthorized,
+		connectionRejected,
+		authenticationFailed,
+		databaseNotAcceptingConnections,
+		roleNotAllowedLogin,
+		connectionClientFailedToConnect,
+		connectionLostOpenTx,
+		connectionLost,
+		connectionLostSocketError,
+		connectionTerminated,
+		outOfConnections,
+		tooManyConnectionsRole,
+		tooManyConnectionsDatabase,
+		couldNotAcceptSSLConnection,
+		protocolErrorUnsupportedVersion,
+		protocolErrorIncompleteMessage,
+		restartpointAt,
+		walInvalidRecordLength,
+		walRedo,
+		archiverProcessExited,
+		walBaseBackupComplete,
+		lockTimeout,
+		statementCanceledUser,
+		statementCanceledTimeout,
+		serverCrashedOtherProcesses,
+		serverOutOfMemory,
+		serverMiscCouldNotOpenUsermap,
+		serverMiscCouldNotLinkFile,
+		serverMiscUnexpectedAddr,
+		serverReload,
+		serverShutdown,
+		serverStart,
+		serverStartShutdownAt,
+		serverStartRecovering,
+		pageVerificationFailed,
+		autovacuumLauncherStarted,
+		autovacuumLauncherShuttingDown,
+		statsCollectorTimeout,
+		standbyRestoredLogFile,
+		standbyStreamingStarted,
+		standbyStreamingInterrupted,
+		standbyStoppedStreaming,
+		standbyConsistentRecoveryState,
+		standbyStatementCanceled,
+		regexpInvalidTimeline,
+		checkConstraintViolation1,
+		checkConstraintViolation2,
+		checkConstraintViolation3,
+		checkConstraintViolation4,
+		exclusionConstraintViolation,
+		syntaxError,
+		columnMissingFromGroupBy,
+		columnDoesNotExist,
+		columnDoesNotExistOnTable,
+		columnReferenceAmbiguous,
+		relationDoesNotExist,
+		functionDoesNotExist,
+		invalidInputSyntax,
+		valueTooLongForType,
+		invalidValue,
+		malformedArrayLiteral,
+		subqueryMissingAlias,
+		insertTargetColumnMismatch,
+		anyAllRequiresArray,
+		operatorDoesNotExist,
+		permissionDenied,
+		transactionIsAborted,
+		onConflictNoConstraintMatch,
+		onConflictRowAffectedTwice,
+		columnCannotBeCast,
+		divisionByZero,
+		cannotDrop,
+		integerOutOfRange,
+		invalidRegexp,
+		paramMissing,
+		noSuchSavepoint,
+		unterminatedQuotedString,
+		unterminatedQuotedIdentifier,
+		invalidByteSequence,
+		couldNotSerializeRepeatableRead,
+		couldNotSerializeSerializable,
+	}
+	for _, m := range groupX {
+		if matchesPrefix(logLine, m.primary.prefixes) {
+			logLine, parts = matchLogLine(logLine, m.primary)
+			if parts != nil {
+				logLine.Classification = m.classification
+				detailLine, _ = matchLogLine(detailLine, m.detail)
+				hintLine, _ = matchLogLine(hintLine, m.hint)
+				contextLine = matchOtherContextLogLine(contextLine)
+				return logLine, statementLine, detailLine, contextLine, hintLine, samples
+			}
+		}
+	}
+
 	// Connects/Disconnects
-	if strings.HasPrefix(logLine.Content, "connection received: ") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_CONNECTION_RECEIVED
-		return logLine, samples
-	}
-	if strings.HasPrefix(logLine.Content, "connection authorized: ") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_CONNECTION_AUTHORIZED
-		return logLine, samples
-	}
-	if strings.HasPrefix(logLine.Content, "pg_hba.conf rejects connection ") || strings.HasPrefix(logLine.Content, "password authentication failed for user") || strings.HasPrefix(logLine.Content, "no pg_hba.conf entry for") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_CONNECTION_REJECTED
-		return logLine, samples
-	}
-	if strings.HasPrefix(logLine.Content, "Ident authentication failed for user") || strings.HasPrefix(logLine.Content, "could not connect to Ident server") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_CONNECTION_REJECTED
-		return logLine, samples
-	}
-	if strings.HasPrefix(logLine.Content, "database") {
-		if ContentDatabaseNotAcceptingConnectionsRegexp.MatchString(logLine.Content) {
-			logLine.Classification = pganalyze_collector.LogLineInformation_CONNECTION_REJECTED
-			return logLine, samples
-		}
-	}
-	if strings.HasPrefix(logLine.Content, "role") {
-		if ContentRoleNotAllowedLoginRegexp.MatchString(logLine.Content) {
-			logLine.Classification = pganalyze_collector.LogLineInformation_CONNECTION_REJECTED
-			return logLine, samples
-		}
-	}
-	if strings.HasPrefix(logLine.Content, "disconnection: ") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_CONNECTION_DISCONNECTED
-		parts = ContentDisconnectionRegexp.FindStringSubmatch(logLine.Content)
-		if len(parts) == 4 {
+	if matchesPrefix(logLine, disconnection.primary.prefixes) {
+		logLine.Classification = disconnection.classification
+		logLine, parts = matchLogLine(logLine, disconnection.primary)
+		if len(parts) == 5 {
 			timeSecs, _ := strconv.ParseFloat(parts[3], 64)
 			timeMinutes, _ := strconv.ParseFloat(parts[2], 64)
 			timeHours, _ := strconv.ParseFloat(parts[1], 64)
 			logLine.Details = map[string]interface{}{"session_time_secs": timeSecs + timeMinutes*60 + timeHours*3600}
 		}
-		return logLine, samples
-	}
-	if strings.HasPrefix(logLine.Content, "incomplete startup packet") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_CONNECTION_CLIENT_FAILED_TO_CONNECT
-		return logLine, samples
-	}
-	if strings.HasPrefix(logLine.Content, "could not receive data from client") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_CONNECTION_LOST
-		return logLine, samples
-	}
-	if strings.HasPrefix(logLine.Content, "could not send data to client") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_CONNECTION_LOST
-		return logLine, samples
-	}
-	if strings.HasPrefix(logLine.Content, "connection to client lost") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_CONNECTION_LOST
-		return logLine, samples
-	}
-	if strings.HasPrefix(logLine.Content, "terminating connection because protocol synchronization was lost") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_CONNECTION_LOST
-		return logLine, samples
-	}
-	if strings.HasPrefix(logLine.Content, "unexpected EOF on client connection with an open transaction") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_CONNECTION_LOST_OPEN_TX
-		return logLine, samples
-	}
-	if strings.HasPrefix(logLine.Content, "unexpected EOF on client connection") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_CONNECTION_LOST
-		return logLine, samples
-	}
-	if strings.HasPrefix(logLine.Content, "terminating connection due to administrator command") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_CONNECTION_TERMINATED
-		return logLine, samples
-	}
-	if strings.HasPrefix(logLine.Content, "remaining connection slots are reserved") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_OUT_OF_CONNECTIONS
-		return logLine, samples
-	}
-	if strings.HasPrefix(logLine.Content, "sorry, too many clients already") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_OUT_OF_CONNECTIONS
-		return logLine, samples
-	}
-	if strings.HasPrefix(logLine.Content, "too many connections for role") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_TOO_MANY_CONNECTIONS_ROLE
-		return logLine, samples
-	}
-	if strings.HasPrefix(logLine.Content, "too many connections for database") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_TOO_MANY_CONNECTIONS_DATABASE
-		return logLine, samples
-	}
-	if strings.HasPrefix(logLine.Content, "could not accept SSL connection: ") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_COULD_NOT_ACCEPT_SSL_CONNECTION
-		return logLine, samples
-	}
-	if strings.HasPrefix(logLine.Content, "unsupported frontend protocol") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_PROTOCOL_ERROR_UNSUPPORTED_VERSION
-		return logLine, samples
-	}
-	if strings.HasPrefix(logLine.Content, "incomplete message from client") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_PROTOCOL_ERROR_INCOMPLETE_MESSAGE
-		return logLine, samples
+		contextLine = matchOtherContextLogLine(contextLine)
+		return logLine, statementLine, detailLine, contextLine, hintLine, samples
 	}
 
 	// Checkpointer
-	if strings.HasPrefix(logLine.Content, "checkpoint") || strings.HasPrefix(logLine.Content, "restartpoint") {
-		parts = ContentCheckpointStartingRegexp.FindStringSubmatch(logLine.Content)
+	if matchesPrefix(logLine, checkpointStarting.primary.prefixes) {
+		logLine, parts = matchLogLine(logLine, checkpointStarting.primary)
 		if len(parts) == 3 {
 			if parts[1] == "checkpoint" {
 				logLine.Classification = pganalyze_collector.LogLineInformation_CHECKPOINT_STARTING
@@ -218,10 +1268,11 @@ func classifyAndSetDetails(logLine state.LogLine, detailLine state.LogLine, cont
 			}
 
 			logLine.Details = map[string]interface{}{"reason": parts[2]}
-			return logLine, samples
+			contextLine = matchOtherContextLogLine(contextLine)
+			return logLine, statementLine, detailLine, contextLine, hintLine, samples
 		}
 
-		parts = ContentCheckpointCompleteRegexp.FindStringSubmatch(logLine.Content)
+		logLine, parts = matchLogLine(logLine, checkpointComplete.primary)
 		if len(parts) == 16 {
 			if parts[1] == "checkpoint" {
 				logLine.Classification = pganalyze_collector.LogLineInformation_CHECKPOINT_COMPLETE
@@ -258,48 +1309,40 @@ func classifyAndSetDetails(logLine state.LogLine, detailLine state.LogLine, cont
 				estimateKb, _ := strconv.ParseInt(parts[15], 10, 64)
 				logLine.Details["estimate_kb"] = estimateKb
 			}
-			return logLine, samples
+			contextLine = matchOtherContextLogLine(contextLine)
+			return logLine, statementLine, detailLine, contextLine, hintLine, samples
 		}
 	}
-	if strings.HasPrefix(logLine.Content, "checkpoints") {
-		parts = ContentCheckpointsTooFrequentRegexp.FindStringSubmatch(logLine.Content)
+	if matchesPrefix(logLine, checkpointsTooFrequent.primary.prefixes) {
+		logLine, parts = matchLogLine(logLine, checkpointsTooFrequent.primary)
 		if len(parts) == 2 {
-			logLine.Classification = pganalyze_collector.LogLineInformation_CHECKPOINT_TOO_FREQUENT
+			logLine.Classification = checkpointsTooFrequent.classification
 			elapsedSecs, _ := strconv.ParseFloat(parts[1], 64)
 			logLine.Details = map[string]interface{}{
 				"elapsed_secs": elapsedSecs,
 			}
+			hintLine, _ = matchLogLine(hintLine, checkpointsTooFrequent.hint)
 		}
-		return logLine, samples
-	}
-	if strings.HasPrefix(logLine.Content, "recovery restart point at") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_RESTARTPOINT_AT
-		return logLine, samples
+		contextLine = matchOtherContextLogLine(contextLine)
+		return logLine, statementLine, detailLine, contextLine, hintLine, samples
 	}
 
 	// WAL/Archiving
-	if strings.HasPrefix(logLine.Content, "invalid record length") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_WAL_INVALID_RECORD_LENGTH
-		return logLine, samples
-	}
-	if strings.HasPrefix(logLine.Content, "redo ") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_WAL_REDO
-		return logLine, samples
-	}
-	if strings.HasPrefix(logLine.Content, "last completed transaction was at log time ") {
-		parts = ContentRedoLastTxRegexp.FindStringSubmatch(logLine.Content)
+	if matchesPrefix(logLine, walRedoLastTx.primary.prefixes) {
+		logLine, parts = matchLogLine(logLine, walRedoLastTx.primary)
 		if len(parts) == 2 {
-			logLine.Classification = pganalyze_collector.LogLineInformation_WAL_REDO
+			logLine.Classification = walRedoLastTx.classification
 			logLine.Details = map[string]interface{}{
 				"last_transaction": parts[1],
 			}
-			return logLine, samples
+			contextLine = matchOtherContextLogLine(contextLine)
+			return logLine, statementLine, detailLine, contextLine, hintLine, samples
 		}
 	}
-	if strings.HasPrefix(logLine.Content, "archive command") {
-		parts = ContentArchiveCommandFailedRegexp.FindStringSubmatch(logLine.Content)
-		if len(parts) == 3 {
-			logLine.Classification = pganalyze_collector.LogLineInformation_WAL_ARCHIVE_COMMAND_FAILED
+	if matchesPrefix(logLine, archiveCommandFailed.primary.prefixes) {
+		logLine, parts = matchLogLine(logLine, archiveCommandFailed.primary)
+		if len(parts) == 4 {
+			logLine.Classification = archiveCommandFailed.classification
 			logLine.Details = map[string]interface{}{}
 			if parts[1] != "" {
 				exitCode, _ := strconv.ParseInt(parts[1], 10, 32)
@@ -309,27 +1352,15 @@ func classifyAndSetDetails(logLine state.LogLine, detailLine state.LogLine, cont
 				signal, _ := strconv.ParseInt(parts[2], 10, 32)
 				logLine.Details["signal"] = signal
 			}
-			if detailLine.Content != "" {
-				parts = ContentArchiveCommandFailedDetailsRegexp.FindStringSubmatch(detailLine.Content)
-				if len(parts) == 2 {
-					logLine.Details["archive_command"] = parts[1]
-				}
-			}
-			return logLine, samples
+			detailLine, _ = matchLogLine(detailLine, archiveCommandFailed.detail)
+			contextLine = matchOtherContextLogLine(contextLine)
+			return logLine, statementLine, detailLine, contextLine, hintLine, samples
 		}
-	}
-	if strings.HasPrefix(logLine.Content, "archiver process") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_WAL_ARCHIVE_COMMAND_FAILED
-		return logLine, samples
-	}
-	if strings.HasPrefix(logLine.Content, "pg_stop_backup complete, all required WAL segments have been archived") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_WAL_BASE_BACKUP_COMPLETE
-		return logLine, samples
 	}
 
 	// Lock waits
-	if strings.HasPrefix(logLine.Content, "process") {
-		parts = ContentLockAcquiredRegexp.FindStringSubmatch(logLine.Content)
+	if matchesPrefix(logLine, lockAcquired.primary.prefixes) {
+		logLine, parts = matchLogLine(logLine, lockAcquired.primary)
 		if len(parts) == 5 {
 			logLine.Classification = pganalyze_collector.LogLineInformation_LOCK_ACQUIRED
 			afterMs, _ := strconv.ParseFloat(parts[4], 64)
@@ -338,10 +1369,12 @@ func classifyAndSetDetails(logLine state.LogLine, detailLine state.LogLine, cont
 				"lock_type": parts[2],
 				"after_ms":  afterMs,
 			}
-			return logLine, samples
+			contextLine = matchOtherContextLogLine(contextLine)
+			return logLine, statementLine, detailLine, contextLine, hintLine, samples
 		}
-
-		parts = ContentLockWaitRegexp.FindStringSubmatch(logLine.Content)
+	}
+	if matchesPrefix(logLine, lockWait.primary.prefixes) {
+		logLine, parts = matchLogLine(logLine, lockWait.primary)
 		if len(parts) == 5 {
 			if parts[1] == "still waiting" {
 				logLine.Classification = pganalyze_collector.LogLineInformation_LOCK_WAITING
@@ -362,7 +1395,7 @@ func classifyAndSetDetails(logLine state.LogLine, detailLine state.LogLine, cont
 			afterMs, _ := strconv.ParseFloat(parts[4], 64)
 			logLine.Details = map[string]interface{}{"lock_mode": parts[2], "lock_type": lockType, "after_ms": afterMs}
 			if detailLine.Content != "" {
-				parts = ContentLockWaitDetailsRegexp.FindStringSubmatch(detailLine.Content)
+				detailLine, parts = matchLogLine(detailLine, lockWait.detail)
 				if len(parts) == 3 {
 					logLine.RelatedPids = []int32{}
 					lockHolders := []int64{}
@@ -381,42 +1414,43 @@ func classifyAndSetDetails(logLine state.LogLine, detailLine state.LogLine, cont
 					logLine.Details["lock_waiters"] = lockWaiters
 				}
 			}
-			return logLine, samples
+			contextLine = matchOtherContextLogLine(contextLine)
+			return logLine, statementLine, detailLine, contextLine, hintLine, samples
 		}
 	}
-	if strings.HasPrefix(logLine.Content, "deadlock detected") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_LOCK_DEADLOCK_DETECTED
+	if matchesPrefix(logLine, deadlock.primary.prefixes) {
+		logLine, _ = matchLogLine(logLine, deadlock.primary)
+		logLine.Classification = deadlock.classification
 		logLine.RelatedPids = []int32{}
-		allParts := ContentDeadlockDetailsRegexp.FindAllStringSubmatch(detailLine.Content, -1)
+		var allParts [][]string
+		detailLine, allParts = matchLogLineAll(detailLine, deadlock.detail)
 		for _, parts = range allParts {
 			pid, _ := strconv.ParseInt(parts[1], 10, 32)
 			logLine.RelatedPids = append(logLine.RelatedPids, int32(pid))
 		}
-		return logLine, samples
-	}
-	if strings.HasPrefix(logLine.Content, "canceling statement due to lock timeout") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_LOCK_TIMEOUT
-		return logLine, samples
+		hintLine, _ = matchLogLineAll(hintLine, deadlock.hint)
+		contextLine = matchOtherContextLogLine(contextLine)
+		return logLine, statementLine, detailLine, contextLine, hintLine, samples
 	}
 	// Statement duration (log_min_duration_statement output) and auto_explain
-	if strings.HasPrefix(logLine.Content, "duration: ") {
+	if matchesPrefix(logLine, autoExplain.primary.prefixes) {
 		// auto_explain needs to come before statement duration since its a subset of that regexp
-		parts = ContentAutoExplainRegexp.FindStringSubmatch(logLine.Content)
-		if len(parts) == 3 {
-			logLine.Classification = pganalyze_collector.LogLineInformation_STATEMENT_AUTO_EXPLAIN
+		logLine, parts = matchLogLine(logLine, autoExplain.primary)
+		if len(parts) == 2 {
+			logLine.Classification = autoExplain.classification
 			runtime, _ := strconv.ParseFloat(parts[1], 64)
 			logLine.Details = map[string]interface{}{"duration_ms": runtime}
 
-			explainText := strings.TrimSpace(parts[2])
+			explainText := strings.TrimSpace(logLine.Content[len(parts[0]):len(logLine.Content)])
 			if strings.HasPrefix(explainText, "{") { // json format
-				var planDetails autoExplainJsonPlanDetails
+				var planDetails autoExplainJSONPlanDetails
 				if strings.HasSuffix(explainText, "[Your log message was truncated]") {
 					logLine.Details["truncated"] = true
 				} else if err := json.Unmarshal([]byte(explainText), &planDetails); err != nil {
 					logLine.Details["unparsed_explain_text"] = explainText
 				} else {
 					logLine.Query = strings.TrimSpace(planDetails.QueryText)
-					explainJson, err := json.Marshal(planDetails.Plan)
+					explainJSON, err := json.Marshal(planDetails.Plan)
 					if err != nil {
 						logLine.Details["unparsed_explain_text"] = explainText
 					} else {
@@ -431,7 +1465,7 @@ func classifyAndSetDetails(logLine state.LogLine, detailLine state.LogLine, cont
 							ExplainSource: pganalyze_collector.QuerySample_AUTO_EXPLAIN_EXPLAIN_SOURCE,
 							ExplainFormat: pganalyze_collector.QuerySample_JSON_EXPLAIN_FORMAT,
 							// Reformat JSON so its the same as when using EXPLAIN (FORMAT JSON)
-							ExplainOutput: "[{\"Plan\":" + string(explainJson) + "}]",
+							ExplainOutput: "[{\"Plan\":" + string(explainJSON) + "}]",
 						}
 						samples = append(samples, sample)
 					}
@@ -459,103 +1493,97 @@ func classifyAndSetDetails(logLine state.LogLine, detailLine state.LogLine, cont
 				}
 			}
 
-			return logLine, samples
+			contextLine = matchOtherContextLogLine(contextLine)
+			return logLine, statementLine, detailLine, contextLine, hintLine, samples
 		}
-
-		logLine.Classification = pganalyze_collector.LogLineInformation_STATEMENT_DURATION
+	}
+	if matchesPrefix(logLine, duration.primary.prefixes) {
+		logLine.Classification = duration.classification
+		logLine, parts = matchLogLine(logLine, duration.primary)
 		if strings.HasSuffix(strings.TrimSpace(logLine.Content), "[Your log message was truncated]") {
 			logLine.Details = map[string]interface{}{"truncated": true}
-		} else {
-			parts = ContentDurationRegexp.FindStringSubmatch(logLine.Content)
+		} else if len(parts) == 5 {
+			logLine.Query = strings.TrimSpace(logLine.Content[len(parts[0]):len(logLine.Content)])
 
-			if len(parts) == 4 {
-				logLine.Query = strings.TrimSpace(parts[3])
-
-				if !strings.Contains(parts[2], "bind") && !strings.Contains(parts[2], "parse") {
-					runtime, _ := strconv.ParseFloat(parts[1], 64)
-					logLine.Details = map[string]interface{}{"duration_ms": runtime}
-					sample := state.PostgresQuerySample{
-						OccurredAt:  logLine.OccurredAt,
-						Username:    logLine.Username,
-						Database:    logLine.Database,
-						Query:       logLine.Query,
-						LogLineUUID: logLine.UUID,
-						RuntimeMs:   runtime,
-					}
-					if strings.HasPrefix(detailLine.Content, "parameters: ") {
-						parameterParts := ContentDurationDetailsRegexp.FindAllStringSubmatch(detailLine.Content, -1)
-						for _, part := range parameterParts {
-							if len(part) == 2 {
-								sample.Parameters = append(sample.Parameters, string(part[1]))
-							}
+			if logLine.Query != "" && parts[2] != "bind" && parts[2] != "parse" {
+				runtime, _ := strconv.ParseFloat(parts[1], 64)
+				logLine.Details = map[string]interface{}{"duration_ms": runtime}
+				sample := state.PostgresQuerySample{
+					OccurredAt:  logLine.OccurredAt,
+					Username:    logLine.Username,
+					Database:    logLine.Database,
+					Query:       logLine.Query,
+					LogLineUUID: logLine.UUID,
+					RuntimeMs:   runtime,
+				}
+				if strings.HasPrefix(detailLine.Content, "parameters: ") {
+					var parameterParts [][]string
+					detailLine, parameterParts = matchLogLineAll(detailLine, duration.detail)
+					for _, part := range parameterParts {
+						if len(part) == 2 {
+							sample.Parameters = append(sample.Parameters, string(part[1]))
 						}
 					}
-					samples = append(samples, sample)
 				}
+				samples = append(samples, sample)
 			}
 		}
 
-		return logLine, samples
+		contextLine = matchOtherContextLogLine(contextLine)
+		return logLine, statementLine, detailLine, contextLine, hintLine, samples
 	}
 
 	// Statement log (log_statement output)
-	if strings.HasPrefix(logLine.Content, "statement: ") {
-		parts = ContentStatementLogRegexp.FindStringSubmatch(logLine.Content)
+	if matchesPrefix(logLine, statementLog.primary.prefixes) {
+		logLine, parts = matchLogLine(logLine, statementLog.primary)
 		if len(parts) == 2 {
-			logLine.Classification = pganalyze_collector.LogLineInformation_STATEMENT_LOG
+			logLine.Classification = statementLog.classification
 			logLine.Query = strings.TrimSpace(parts[1])
+			detailLine, _ = matchLogLineAll(detailLine, statementLog.detail)
 		}
-	}
-	if strings.HasPrefix(logLine.Content, "execute") {
-		parts = ContentStatementLogExecuteRegexp.FindStringSubmatch(logLine.Content)
-		if len(parts) == 3 {
-			logLine.Classification = pganalyze_collector.LogLineInformation_STATEMENT_LOG
-			logLine.Query = strings.TrimSpace(parts[2])
-		}
-	}
-
-	// Statement cancellation (except lock timeout)
-	if strings.HasPrefix(logLine.Content, "canceling statement due to statement timeout") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_STATEMENT_CANCELED_TIMEOUT
-		return logLine, samples
-	}
-	if strings.HasPrefix(logLine.Content, "canceling statement due to user request") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_STATEMENT_CANCELED_USER
-		return logLine, samples
 	}
 
 	// Autovacuum
-	if strings.HasPrefix(logLine.Content, "canceling autovacuum task") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_AUTOVACUUM_CANCEL
-		parts = ContentCancelAutovacuumRegexp.FindStringSubmatch(contextLine.Content)
-		if len(parts) == 2 {
-			subParts := strings.SplitN(parts[1], ".", 3)
-			logLine.Database = subParts[0]
-			logLine.SchemaName = subParts[1]
-			logLine.RelationName = subParts[2]
+	if matchesPrefix(logLine, autovacuumCancel.primary.prefixes) {
+		logLine, parts = matchLogLine(logLine, autovacuumCancel.primary)
+		if parts != nil {
+			logLine.Classification = autovacuumCancel.classification
+			contextLine, parts = matchLogLine(contextLine, contextCancelAutovacuum)
+			if len(parts) == 2 {
+				subParts := strings.SplitN(parts[1], ".", 3)
+				logLine.Database = subParts[0]
+				if len(subParts) >= 2 {
+					logLine.SchemaName = subParts[1]
+				}
+				if len(subParts) >= 3 {
+					logLine.RelationName = subParts[2]
+				}
+			}
+			return logLine, statementLine, detailLine, contextLine, hintLine, samples
 		}
-		return logLine, samples
 	}
-	if strings.HasPrefix(logLine.Content, "skipping vacuum of") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_SKIPPING_VACUUM_LOCK_NOT_AVAILABLE
-		parts = ContentSkippingVacuumRegexp.FindStringSubmatch(logLine.Content)
+	if matchesPrefix(logLine, skippingVacuum.primary.prefixes) {
+		logLine.Classification = skippingVacuum.classification
+		logLine, parts = matchLogLine(logLine, skippingVacuum.primary)
 		if len(parts) == 2 {
 			logLine.RelationName = parts[1]
 		}
-		return logLine, samples
+		contextLine = matchOtherContextLogLine(contextLine)
+		return logLine, statementLine, detailLine, contextLine, hintLine, samples
 	}
-	if strings.HasPrefix(logLine.Content, "skipping analyze of") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_SKIPPING_ANALYZE_LOCK_NOT_AVAILABLE
-		parts = ContentSkippingAnalyzeRegexp.FindStringSubmatch(logLine.Content)
+	if matchesPrefix(logLine, skippingAnalyze.primary.prefixes) {
+		logLine.Classification = skippingAnalyze.classification
+		logLine, parts = matchLogLine(logLine, skippingAnalyze.primary)
 		if len(parts) == 2 {
 			logLine.RelationName = parts[1]
 		}
-		return logLine, samples
+		contextLine = matchOtherContextLogLine(contextLine)
+		return logLine, statementLine, detailLine, contextLine, hintLine, samples
 	}
-	if strings.HasPrefix(logLine.Content, "database") {
-		parts = ContentWraparoundWarningRegexp.FindStringSubmatch(logLine.Content)
+	if matchesPrefix(logLine, wraparoundWarning.primary.prefixes) {
+		logLine, parts = matchLogLine(logLine, wraparoundWarning.primary)
 		if len(parts) == 5 {
-			logLine.Classification = pganalyze_collector.LogLineInformation_TXID_WRAPAROUND_WARNING
+			logLine.Classification = wraparoundWarning.classification
 			remainingXids, _ := strconv.ParseInt(parts[4], 10, 64)
 			logLine.Details = map[string]interface{}{"remaining_xids": remainingXids}
 			if parts[2] != "" {
@@ -565,13 +1593,15 @@ func classifyAndSetDetails(logLine state.LogLine, detailLine state.LogLine, cont
 			if parts[3] != "" {
 				logLine.Details["database_name"] = parts[3]
 			}
-			return logLine, samples
+			hintLine, _ = matchLogLine(hintLine, wraparoundWarning.hint)
+			contextLine = matchOtherContextLogLine(contextLine)
+			return logLine, statementLine, detailLine, contextLine, hintLine, samples
 		}
 	}
-	if strings.HasPrefix(logLine.Content, "database is not accepting commands to avoid wraparound") {
-		parts = ContentWraparoundErrorRegexp.FindStringSubmatch(logLine.Content)
+	if matchesPrefix(logLine, wraparoundError.primary.prefixes) {
+		logLine, parts = matchLogLine(logLine, wraparoundError.primary)
 		if len(parts) == 4 {
-			logLine.Classification = pganalyze_collector.LogLineInformation_TXID_WRAPAROUND_ERROR
+			logLine.Classification = wraparoundError.classification
 			if parts[2] != "" {
 				databaseOid, _ := strconv.ParseInt(parts[2], 10, 64)
 				logLine.Details = map[string]interface{}{"database_oid": databaseOid}
@@ -579,27 +1609,25 @@ func classifyAndSetDetails(logLine state.LogLine, detailLine state.LogLine, cont
 			if parts[3] != "" {
 				logLine.Details = map[string]interface{}{"database_name": parts[3]}
 			}
-			return logLine, samples
+			hintLine, _ = matchLogLine(hintLine, wraparoundError.hint)
+			contextLine = matchOtherContextLogLine(contextLine)
+			return logLine, statementLine, detailLine, contextLine, hintLine, samples
 		}
 	}
-	if strings.HasPrefix(logLine.Content, "autovacuum launcher started") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_AUTOVACUUM_LAUNCHER_STARTED
-		return logLine, samples
-	}
-	if strings.HasPrefix(logLine.Content, "autovacuum launcher shutting down") || strings.HasPrefix(logLine.Content, "terminating autovacuum process due to administrator command") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_AUTOVACUUM_LAUNCHER_SHUTTING_DOWN
-		return logLine, samples
-	}
-	if strings.HasPrefix(logLine.Content, "automatic vacuum of table") || strings.HasPrefix(logLine.Content, "automatic aggressive vacuum of table") {
-		parts = ContentAutoVacuumRegexp.FindStringSubmatch(logLine.Content)
+	if matchesPrefix(logLine, autoVacuum.primary.prefixes) {
+		logLine, parts = matchLogLine(logLine, autoVacuum.primary)
 		if len(parts) == 23 {
 			var kernelPart, userPart, elapsedPart string
 
-			logLine.Classification = pganalyze_collector.LogLineInformation_AUTOVACUUM_COMPLETED
+			logLine.Classification = autoVacuum.classification
 			subParts := strings.SplitN(parts[2], ".", 3)
 			logLine.Database = subParts[0]
-			logLine.SchemaName = subParts[1]
-			logLine.RelationName = subParts[2]
+			if len(subParts) >= 2 {
+				logLine.SchemaName = subParts[1]
+			}
+			if len(subParts) >= 3 {
+				logLine.RelationName = subParts[2]
+			}
 
 			aggressiveVacuum := parts[1] == "aggressive "
 			numIndexScans, _ := strconv.ParseInt(parts[3], 10, 64)
@@ -649,18 +1677,23 @@ func classifyAndSetDetails(logLine state.LogLine, detailLine state.LogLine, cont
 				oldestXmin, _ := strconv.ParseInt(parts[11], 10, 64)
 				logLine.Details["oldest_xmin"] = oldestXmin
 			}
-			return logLine, samples
+			contextLine = matchOtherContextLogLine(contextLine)
+			return logLine, statementLine, detailLine, contextLine, hintLine, samples
 		}
 	}
-	if strings.HasPrefix(logLine.Content, "automatic analyze of table") {
-		parts = ContentAutoAnalyzeRegexp.FindStringSubmatch(logLine.Content)
+	if matchesPrefix(logLine, autoAnalyze.primary.prefixes) {
+		logLine, parts = matchLogLine(logLine, autoAnalyze.primary)
 		if len(parts) == 8 {
 			var kernelPart, userPart, elapsedPart string
-			logLine.Classification = pganalyze_collector.LogLineInformation_AUTOANALYZE_COMPLETED
+			logLine.Classification = autoAnalyze.classification
 			subParts := strings.SplitN(parts[1], ".", 3)
 			logLine.Database = subParts[0]
-			logLine.SchemaName = subParts[1]
-			logLine.RelationName = subParts[2]
+			if len(subParts) >= 2 {
+				logLine.SchemaName = subParts[1]
+			}
+			if len(subParts) >= 3 {
+				logLine.RelationName = subParts[2]
+			}
 			if parts[2] != "" {
 				kernelPart = parts[2]
 				userPart = parts[3]
@@ -677,15 +1710,17 @@ func classifyAndSetDetails(logLine state.LogLine, detailLine state.LogLine, cont
 				"rusage_kernel": rusageKernelMode, "rusage_user": rusageUserMode,
 				"elapsed_secs": rusageElapsed,
 			}
-			return logLine, samples
+			contextLine = matchOtherContextLogLine(contextLine)
+			return logLine, statementLine, detailLine, contextLine, hintLine, samples
 		}
 	}
 
 	// Server events
-	if strings.HasPrefix(logLine.Content, "server process") {
-		parts = ContentServerCrashedRegexp.FindStringSubmatch(logLine.Content)
-		if len(parts) == 3 {
-			logLine.Classification = pganalyze_collector.LogLineInformation_SERVER_CRASHED
+	if matchesPrefix(logLine, serverCrashed.primary.prefixes) {
+		logLine, parts = matchLogLine(logLine, serverCrashed.primary)
+		if len(parts) == 4 {
+			logLine.Classification = serverCrashed.classification
+			detailLine, _ = matchLogLine(detailLine, serverCrashed.detail)
 			processPid, _ := strconv.ParseInt(parts[1], 10, 32)
 			signal, _ := strconv.ParseInt(parts[2], 10, 32)
 			logLine.Details = map[string]interface{}{
@@ -694,11 +1729,14 @@ func classifyAndSetDetails(logLine state.LogLine, detailLine state.LogLine, cont
 				"signal":       signal,
 			}
 			logLine.RelatedPids = []int32{int32(processPid)}
-			return logLine, samples
+			contextLine = matchOtherContextLogLine(contextLine)
+			return logLine, statementLine, detailLine, contextLine, hintLine, samples
 		}
-		parts = ContentServerOutOfMemoryRegexp.FindStringSubmatch(logLine.Content)
-		if len(parts) == 3 {
-			logLine.Classification = pganalyze_collector.LogLineInformation_SERVER_OUT_OF_MEMORY
+	}
+	if matchesPrefix(logLine, serverOutOfMemoryCrash.primary.prefixes) {
+		logLine, parts = matchLogLine(logLine, serverOutOfMemoryCrash.primary)
+		if len(parts) == 4 {
+			logLine.Classification = serverOutOfMemoryCrash.classification
 			processPid, _ := strconv.ParseInt(parts[1], 10, 32)
 			signal, _ := strconv.ParseInt(parts[2], 10, 32)
 			logLine.Details = map[string]interface{}{
@@ -707,99 +1745,50 @@ func classifyAndSetDetails(logLine state.LogLine, detailLine state.LogLine, cont
 				"signal":       signal,
 			}
 			logLine.RelatedPids = []int32{int32(processPid)}
-			return logLine, samples
+			contextLine = matchOtherContextLogLine(contextLine)
+			return logLine, statementLine, detailLine, contextLine, hintLine, samples
 		}
 	}
-	if strings.HasPrefix(logLine.Content, "terminating any other active server processes") || strings.HasPrefix(logLine.Content, "terminating connection because of crash of another server process") || strings.HasPrefix(logLine.Content, "all server processes terminated; reinitializing") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_SERVER_CRASHED
-		return logLine, samples
-	}
-	if strings.HasPrefix(logLine.Content, "database system was shut down") || strings.HasPrefix(logLine.Content, "database system is ready") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_SERVER_START
-		return logLine, samples
-	}
-	if strings.HasPrefix(logLine.Content, "MultiXact member wraparound protections are now enabled") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_SERVER_START
-		return logLine, samples
-	}
-	if strings.HasPrefix(logLine.Content, "entering standby mode") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_SERVER_START
-		return logLine, samples
-	}
-	if strings.HasPrefix(logLine.Content, "redirecting log output to logging collector process") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_SERVER_START
-		return logLine, samples
-	}
-	if strings.HasPrefix(logLine.Content, "ending log output to stderr") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_SERVER_START
-		return logLine, samples
-	}
-	if strings.HasPrefix(logLine.Content, "database system was interrupted") || strings.HasPrefix(logLine.Content, "database system was not properly shut down") || strings.HasPrefix(logLine.Content, "database system shutdown was interrupted") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_SERVER_START_RECOVERING
-		return logLine, samples
-	}
-	if strings.HasPrefix(logLine.Content, "received") {
-		if ContentReceivedShutdownRequestRegexp.MatchString(logLine.Content) {
-			logLine.Classification = pganalyze_collector.LogLineInformation_SERVER_SHUTDOWN
-			return logLine, samples
-		}
-	}
-	if strings.HasPrefix(logLine.Content, "aborting any active transactions") || strings.HasPrefix(logLine.Content, "shutting down") || strings.HasPrefix(logLine.Content, "the database system is shutting down") || strings.HasPrefix(logLine.Content, "database system is shut down") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_SERVER_SHUTDOWN
-		return logLine, samples
-	}
-	if strings.HasPrefix(logLine.Content, "out of memory") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_SERVER_OUT_OF_MEMORY
-		return logLine, samples
-	}
-	if strings.HasPrefix(logLine.Content, "page verification failed") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_SERVER_INVALID_CHECKSUM
-		return logLine, samples
-	}
-	if strings.HasPrefix(logLine.Content, "invalid page in block") {
-		parts = ContentInvalidChecksumRegexp.FindStringSubmatch(logLine.Content)
+	if matchesPrefix(logLine, invalidChecksum.primary.prefixes) {
+		logLine, parts = matchLogLine(logLine, invalidChecksum.primary)
 		if len(parts) == 3 {
-			logLine.Classification = pganalyze_collector.LogLineInformation_SERVER_INVALID_CHECKSUM
+			logLine.Classification = invalidChecksum.classification
 			blockNo, _ := strconv.ParseInt(parts[1], 10, 64)
 			logLine.Details = map[string]interface{}{"block": blockNo, "file": parts[2]}
-			return logLine, samples
+			contextLine = matchOtherContextLogLine(contextLine)
+			return logLine, statementLine, detailLine, contextLine, hintLine, samples
 		}
 	}
-	if strings.HasPrefix(logLine.Content, "temporary file") {
-		parts = ContentTemporaryFileRegexp.FindStringSubmatch(logLine.Content)
+	if matchesPrefix(logLine, temporaryFile.primary.prefixes) {
+		logLine, parts = matchLogLine(logLine, temporaryFile.primary)
 		if len(parts) == 3 {
-			logLine.Classification = pganalyze_collector.LogLineInformation_SERVER_TEMP_FILE_CREATED
+			logLine.Classification = temporaryFile.classification
 			size, _ := strconv.ParseInt(parts[2], 10, 64)
 			logLine.Details = map[string]interface{}{"size": size, "file": parts[1]}
-			return logLine, samples
+			contextLine = matchOtherContextLogLine(contextLine)
+			return logLine, statementLine, detailLine, contextLine, hintLine, samples
 		}
 	}
-	if strings.HasPrefix(logLine.Content, "could not open usermap file") ||
-		strings.HasPrefix(logLine.Content, "could not link file") ||
-		strings.HasPrefix(logLine.Content, "unexpected pageaddr") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_SERVER_MISC
-		return logLine, samples
-	}
-	if strings.HasPrefix(logLine.Content, "received SIGHUP, reloading configuration files") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_SERVER_RELOAD
-		return logLine, samples
-	}
-	if strings.HasPrefix(logLine.Content, "parameter") {
-		if ContentParameterCannotBeChangedRegexp.MatchString(logLine.Content) {
-			logLine.Classification = pganalyze_collector.LogLineInformation_SERVER_RELOAD
-			return logLine, samples
+	if matchesPrefix(logLine, parameterCannotBeChanged.primary.prefixes) {
+		logLine, parts = matchLogLine(logLine, parameterCannotBeChanged.primary)
+		if len(parts) == 4 {
+			logLine.Classification = parameterCannotBeChanged.classification
+			contextLine = matchOtherContextLogLine(contextLine)
+			return logLine, statementLine, detailLine, contextLine, hintLine, samples
 		}
 	}
-	if strings.HasPrefix(logLine.Content, "configuration file") {
-		if ContentConfigFileContainsErrorsRegexp.MatchString(logLine.Content) {
-			logLine.Classification = pganalyze_collector.LogLineInformation_SERVER_RELOAD
-			return logLine, samples
+	if matchesPrefix(logLine, configFileContainsErrors.primary.prefixes) {
+		logLine, parts = matchLogLine(logLine, configFileContainsErrors.primary)
+		if len(parts) == 2 {
+			logLine.Classification = configFileContainsErrors.classification
+			contextLine = matchOtherContextLogLine(contextLine)
+			return logLine, statementLine, detailLine, contextLine, hintLine, samples
 		}
 	}
-	if strings.HasPrefix(logLine.Content, "worker process: ") {
-		parts = ContentWorkerProcessExitedRegexp.FindStringSubmatch(logLine.Content)
+	if matchesPrefix(logLine, workerProcessExited.primary.prefixes) {
+		logLine, parts = matchLogLine(logLine, workerProcessExited.primary)
 		if len(parts) == 5 {
-			logLine.Classification = pganalyze_collector.LogLineInformation_SERVER_PROCESS_EXITED
+			logLine.Classification = workerProcessExited.classification
 			processPid, _ := strconv.ParseInt(parts[2], 10, 32)
 			logLine.RelatedPids = []int32{int32(processPid)}
 			logLine.Details = map[string]interface{}{
@@ -825,268 +1814,212 @@ func classifyAndSetDetails(logLine state.LogLine, detailLine state.LogLine, cont
 					logLine.RelatedPids = append(logLine.RelatedPids, int32(parentPid))
 				}
 			}
-			return logLine, samples
-		}
-	}
-	if strings.HasPrefix(logLine.Content, "using stale statistics instead of current ones because stats collector is not responding") || strings.HasPrefix(logLine.Content, "pgstat wait timeout") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_SERVER_STATS_COLLECTOR_TIMEOUT
-		return logLine, samples
-	}
-
-	// Standby
-	if strings.HasPrefix(logLine.Content, "restored log file") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_STANDBY_RESTORED_WAL_FROM_ARCHIVE
-		return logLine, samples
-	}
-	if strings.HasPrefix(logLine.Content, "started streaming WAL") || strings.HasPrefix(logLine.Content, "restarted WAL streaming") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_STANDBY_STARTED_STREAMING
-		return logLine, samples
-	}
-	if strings.HasPrefix(logLine.Content, "could not receive data from WAL stream") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_STANDBY_STREAMING_INTERRUPTED
-		return logLine, samples
-	}
-	if strings.HasPrefix(logLine.Content, "terminating walreceiver process") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_STANDBY_STOPPED_STREAMING
-		return logLine, samples
-	}
-	if strings.HasPrefix(logLine.Content, "consistent recovery state reached at") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_STANDBY_CONSISTENT_RECOVERY_STATE
-		return logLine, samples
-	}
-	if strings.HasPrefix(logLine.Content, "canceling statement due to conflict with recovery") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_STANDBY_STATEMENT_CANCELED
-		return logLine, samples
-	}
-	if strings.HasPrefix(logLine.Content, "according to history file, WAL location") {
-		if ContentRegexpInvalidTimelineRegexp.MatchString(logLine.Content) {
-			logLine.Classification = pganalyze_collector.LogLineInformation_STANDBY_INVALID_TIMELINE
-			return logLine, samples
+			detailLine, _ = matchLogLine(detailLine, workerProcessExited.detail)
+			contextLine = matchOtherContextLogLine(contextLine)
+			return logLine, statementLine, detailLine, contextLine, hintLine, samples
 		}
 	}
 
 	// Constraint violations
-	if strings.HasPrefix(logLine.Content, "duplicate key value violates unique constraint") {
-		parts = ContentUniqueConstraintViolationRegexp.FindStringSubmatch(logLine.Content)
+	if matchesPrefix(logLine, uniqueConstraintViolation.primary.prefixes) {
+		logLine, parts = matchLogLine(logLine, uniqueConstraintViolation.primary)
 		if len(parts) == 2 {
-			logLine.Classification = pganalyze_collector.LogLineInformation_UNIQUE_CONSTRAINT_VIOLATION
+			logLine.Classification = uniqueConstraintViolation.classification
+			detailLine, _ = matchLogLine(detailLine, uniqueConstraintViolation.detail)
+			statementLine = markLineAsSecret(statementLine, state.StatementTextLogSecret)
+			contextLine = matchOtherContextLogLine(contextLine)
 			// FIXME: Store constraint name
-			return logLine, samples
+			return logLine, statementLine, detailLine, contextLine, hintLine, samples
 		}
 	}
-	if strings.HasPrefix(logLine.Content, "insert or update on table") {
-		parts = ContentForeignKeyConstraintViolation1Regexp.FindStringSubmatch(logLine.Content)
+	if matchesPrefix(logLine, foreignKeyConstraintViolation1.primary.prefixes) {
+		logLine, parts = matchLogLine(logLine, foreignKeyConstraintViolation1.primary)
 		if len(parts) == 3 {
-			logLine.Classification = pganalyze_collector.LogLineInformation_FOREIGN_KEY_CONSTRAINT_VIOLATION
+			logLine.Classification = foreignKeyConstraintViolation1.classification
+			detailLine, _ = matchLogLine(detailLine, foreignKeyConstraintViolation1.detail)
+			statementLine = markLineAsSecret(statementLine, state.StatementTextLogSecret)
+			contextLine = matchOtherContextLogLine(contextLine)
 			// FIXME: Store constraint name and relation name
-			return logLine, samples
+			return logLine, statementLine, detailLine, contextLine, hintLine, samples
 		}
 	}
-	if strings.HasPrefix(logLine.Content, "update or delete on table") {
-		parts = ContentForeignKeyConstraintViolation2Regexp.FindStringSubmatch(logLine.Content)
+	if matchesPrefix(logLine, foreignKeyConstraintViolation2.primary.prefixes) {
+		logLine, parts = matchLogLine(logLine, foreignKeyConstraintViolation2.primary)
 		if len(parts) == 4 {
-			logLine.Classification = pganalyze_collector.LogLineInformation_FOREIGN_KEY_CONSTRAINT_VIOLATION
+			logLine.Classification = foreignKeyConstraintViolation2.classification
+			detailLine, _ = matchLogLine(detailLine, foreignKeyConstraintViolation2.detail)
+			statementLine = markLineAsSecret(statementLine, state.StatementTextLogSecret)
+			contextLine = matchOtherContextLogLine(contextLine)
 			// FIXME: Store constraint name and both relation names
-			return logLine, samples
+			return logLine, statementLine, detailLine, contextLine, hintLine, samples
 		}
 	}
-	if strings.HasPrefix(logLine.Content, "null value in column") {
-		parts = ContentNullConstraintViolationRegexp.FindStringSubmatch(logLine.Content)
+	if matchesPrefix(logLine, nullConstraintViolation.primary.prefixes) {
+		logLine, parts = matchLogLine(logLine, nullConstraintViolation.primary)
 		if len(parts) == 2 {
-			logLine.Classification = pganalyze_collector.LogLineInformation_NOT_NULL_CONSTRAINT_VIOLATION
-			return logLine, samples
-		}
-	}
-	if strings.HasPrefix(logLine.Content, "new row for relation") {
-		parts = ContentCheckConstraintViolation1Regexp.FindStringSubmatch(logLine.Content)
-		if len(parts) == 3 {
-			logLine.Classification = pganalyze_collector.LogLineInformation_CHECK_CONSTRAINT_VIOLATION
-			// FIXME: Store constraint name and relation name
-			return logLine, samples
-		}
-	}
-	if strings.HasPrefix(logLine.Content, "check constraint") {
-		parts = ContentCheckConstraintViolation2Regexp.FindStringSubmatch(logLine.Content)
-		if len(parts) == 2 {
-			logLine.Classification = pganalyze_collector.LogLineInformation_CHECK_CONSTRAINT_VIOLATION
-			// FIXME: Store constraint name
-			return logLine, samples
-		}
-	}
-	if strings.HasPrefix(logLine.Content, "column") {
-		parts = ContentCheckConstraintViolation3Regexp.FindStringSubmatch(logLine.Content)
-		if len(parts) == 3 {
-			logLine.Classification = pganalyze_collector.LogLineInformation_CHECK_CONSTRAINT_VIOLATION
-			// FIXME: Store relation name
-			return logLine, samples
-		}
-	}
-	if strings.HasPrefix(logLine.Content, "value for domain") {
-		parts = ContentCheckConstraintViolation4Regexp.FindStringSubmatch(logLine.Content)
-		if len(parts) == 3 {
-			logLine.Classification = pganalyze_collector.LogLineInformation_CHECK_CONSTRAINT_VIOLATION
-			// FIXME: Store constraint name
-			return logLine, samples
-		}
-	}
-	if strings.HasPrefix(logLine.Content, "conflicting key value violates exclusion constraint") {
-		parts = ContentExclusionConstraintViolationRegexp.FindStringSubmatch(logLine.Content)
-		if len(parts) == 2 {
-			logLine.Classification = pganalyze_collector.LogLineInformation_EXCLUSION_CONSTRAINT_VIOLATION
-			// FIXME: Store constraint name
-			return logLine, samples
+			logLine.Classification = nullConstraintViolation.classification
+			detailLine, _ = matchLogLine(detailLine, nullConstraintViolation.detail)
+			statementLine = markLineAsSecret(statementLine, state.StatementTextLogSecret)
+			contextLine = matchOtherContextLogLine(contextLine)
+			return logLine, statementLine, detailLine, contextLine, hintLine, samples
 		}
 	}
 
-	// Application errors
-	if strings.HasPrefix(logLine.Content, "syntax error") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_SYNTAX_ERROR
-		return logLine, samples
-	}
-	if strings.HasPrefix(logLine.Content, "invalid input syntax for") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_INVALID_INPUT_SYNTAX
-		return logLine, samples
-	}
-	if strings.HasPrefix(logLine.Content, "value too long for type") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_VALUE_TOO_LONG_FOR_TYPE
-		return logLine, samples
-	}
-	if strings.HasPrefix(logLine.Content, "invalid value") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_INVALID_VALUE
-		return logLine, samples
-	}
-	if strings.HasPrefix(logLine.Content, "malformed array literal") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_MALFORMED_ARRAY_LITERAL
-		return logLine, samples
-	}
-	if strings.HasPrefix(logLine.Content, "subquery in FROM must have an alias") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_SUBQUERY_MISSING_ALIAS
-		return logLine, samples
-	}
-	if strings.HasPrefix(logLine.Content, "INSERT has more expressions than target columns") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_INSERT_TARGET_COLUMN_MISMATCH
-		return logLine, samples
-	}
-	if strings.HasPrefix(logLine.Content, "op ANY/ALL (array) requires array on right side") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_ANY_ALL_REQUIRES_ARRAY
-		return logLine, samples
-	}
-	if strings.HasPrefix(logLine.Content, "column") {
-		if ContentColumnMissingFromGroupByRegexp.MatchString(logLine.Content) {
-			logLine.Classification = pganalyze_collector.LogLineInformation_COLUMN_MISSING_FROM_GROUP_BY
-			return logLine, samples
-		}
-		if ContentColumnDoesNotExistRegexp.MatchString(logLine.Content) {
-			logLine.Classification = pganalyze_collector.LogLineInformation_COLUMN_DOES_NOT_EXIST
-			return logLine, samples
-		}
-		if ContentColumnDoesNotExistOnTableRegexp.MatchString(logLine.Content) {
-			logLine.Classification = pganalyze_collector.LogLineInformation_COLUMN_DOES_NOT_EXIST
-			return logLine, samples
-		}
-		if ContentColumnReferenceAmbiguous.MatchString(logLine.Content) {
-			logLine.Classification = pganalyze_collector.LogLineInformation_COLUMN_REFERENCE_AMBIGUOUS
-			return logLine, samples
-		}
-	}
-	if strings.HasPrefix(logLine.Content, "relation") {
-		if ContentRelationDoesNotExist.MatchString(logLine.Content) {
-			logLine.Classification = pganalyze_collector.LogLineInformation_RELATION_DOES_NOT_EXIST
-			return logLine, samples
-		}
-	}
-	if strings.HasPrefix(logLine.Content, "function") {
-		if ContentFunctionDoesNotExist.MatchString(logLine.Content) {
-			logLine.Classification = pganalyze_collector.LogLineInformation_FUNCTION_DOES_NOT_EXIST
-			return logLine, samples
-		}
-	}
-	if strings.HasPrefix(logLine.Content, "operator does not exist") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_OPERATOR_DOES_NOT_EXIST
-		return logLine, samples
-	}
-	if strings.HasPrefix(logLine.Content, "permission denied") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_PERMISSION_DENIED
-		// FIXME: Store relation name when this is "permission denied for relation [relation name]"
-		return logLine, samples
-	}
-	if strings.HasPrefix(logLine.Content, "current transaction is aborted, commands ignored until end of transaction block") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_TRANSACTION_IS_ABORTED
-		return logLine, samples
-	}
-	if strings.HasPrefix(logLine.Content, "there is no unique or exclusion constraint matching the ON CONFLICT specification") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_ON_CONFLICT_NO_CONSTRAINT_MATCH
-		return logLine, samples
-	}
-	if strings.HasPrefix(logLine.Content, "ON CONFLICT DO UPDATE command cannot affect row a second time") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_ON_CONFLICT_ROW_AFFECTED_TWICE
-		return logLine, samples
-	}
-	if strings.HasPrefix(logLine.Content, "column") {
-		if ContentColumnCannotBeCastRegexp.MatchString(logLine.Content) {
-			logLine.Classification = pganalyze_collector.LogLineInformation_COLUMN_CANNOT_BE_CAST
-			return logLine, samples
-		}
-	}
-	if strings.HasPrefix(logLine.Content, "division by zero") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_DIVISION_BY_ZERO
-		return logLine, samples
-	}
-	if strings.HasPrefix(logLine.Content, "cannot drop") {
-		if ContentCannotDropRegexp.MatchString(logLine.Content) {
-			logLine.Classification = pganalyze_collector.LogLineInformation_CANNOT_DROP
-			return logLine, samples
-		}
-	}
-	if strings.HasPrefix(logLine.Content, "integer out of range") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_INTEGER_OUT_OF_RANGE
-		return logLine, samples
-	}
-	if strings.HasPrefix(logLine.Content, "invalid regular expression: ") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_INVALID_REGEXP
-		return logLine, samples
-	}
-	if strings.HasPrefix(logLine.Content, "there is no parameter $") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_PARAM_MISSING
-		return logLine, samples
-	}
-	if strings.HasPrefix(logLine.Content, "no such savepoint") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_NO_SUCH_SAVEPOINT
-		return logLine, samples
-	}
-	if strings.HasPrefix(logLine.Content, "unterminated quoted string at or near") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_UNTERMINATED_QUOTED_STRING
-		return logLine, samples
-	}
-	if strings.HasPrefix(logLine.Content, "unterminated quoted identifier at or near") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_UNTERMINATED_QUOTED_IDENTIFIER
-		return logLine, samples
-	}
-	if strings.HasPrefix(logLine.Content, "invalid byte sequence for encoding") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_INVALID_BYTE_SEQUENCE
-		return logLine, samples
-	}
-	if strings.HasPrefix(logLine.Content, "could not serialize access due to concurrent update") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_COULD_NOT_SERIALIZE_REPEATABLE_READ
-		return logLine, samples
-	}
-	if strings.HasPrefix(logLine.Content, "could not serialize access due to read/write dependencies among transactions") {
-		logLine.Classification = pganalyze_collector.LogLineInformation_COULD_NOT_SERIALIZE_SERIALIZABLE
-		return logLine, samples
-	}
 	// pganalyze-collector-identify
-	if strings.HasPrefix(logLine.Content, "pganalyze-collector-identify: ") {
-		parts = ContentPgaCollectorIdentifyRegexp.FindStringSubmatch(logLine.Content)
+	if matchesPrefix(logLine, pgaCollectorIdentify.primary.prefixes) {
+		logLine, parts = matchLogLine(logLine, pgaCollectorIdentify.primary)
 		if len(parts) == 2 {
 			logLine.Classification = pganalyze_collector.LogLineInformation_PGA_COLLECTOR_IDENTIFY
 			logLine.Details = map[string]interface{}{
 				"config_section": strings.TrimSpace(parts[1]),
 			}
+			contextLine = matchOtherContextLogLine(contextLine)
 		}
-		return logLine, samples
+		return logLine, statementLine, detailLine, contextLine, hintLine, samples
 	}
 
-	return logLine, samples
+	return logLine, statementLine, detailLine, contextLine, hintLine, samples
+}
+
+func matchLogLineCommon(logLine state.LogLine, m match, matchAll bool) (state.LogLine, [][]string) {
+	if logLine.Content == "" {
+		return logLine, nil
+	}
+
+	if m.regexp == nil {
+		for _, prefix := range m.prefixes {
+			if strings.HasPrefix(logLine.Content, prefix) {
+				logLine.ReviewedForSecrets = true
+				if len(prefix) < len(logLine.Content) {
+					logLine.SecretMarkers = append(logLine.SecretMarkers, state.LogSecretMarker{
+						ByteStart: len(prefix),
+						ByteEnd:   len(logLine.Content),
+						Kind:      state.UnidentifiedLogSecret,
+					})
+				}
+				return logLine, [][]string{[]string{prefix}}
+			}
+		}
+		return logLine, nil
+	}
+
+	var p [][]int
+	if matchAll {
+		p = m.regexp.FindAllStringSubmatchIndex(logLine.Content, -1)
+	} else {
+		pp := m.regexp.FindStringSubmatchIndex(logLine.Content)
+		if pp != nil {
+			p = [][]int{pp}
+		}
+	}
+	if p == nil {
+		return logLine, nil
+	}
+
+	logLine.ReviewedForSecrets = true
+	parts := make([][]string, len(p))
+	for x := 0; x < len(p); x++ {
+		parts[x] = make([]string, 1+m.regexp.NumSubexp())
+		for i := range parts[x] {
+			if 2*i < len(p[x]) && p[x][2*i] >= 0 {
+				parts[x][i] = logLine.Content[p[x][2*i]:p[x][2*i+1]]
+			}
+		}
+
+		if x == 0 && p[x][0] > 0 {
+			logLine.SecretMarkers = append(logLine.SecretMarkers, state.LogSecretMarker{
+				ByteStart: 0,
+				ByteEnd:   p[x][0],
+				Kind:      state.UnidentifiedLogSecret,
+			})
+		}
+		for idx := 0; idx < m.regexp.NumSubexp(); idx++ {
+			start := p[x][2*(idx+1)]
+			end := p[x][2*(idx+1)+1]
+			if start < 0 {
+				continue
+			}
+			if idx >= len(m.secrets) {
+				logLine.SecretMarkers = append(logLine.SecretMarkers, state.LogSecretMarker{
+					ByteStart: start,
+					ByteEnd:   end,
+					Kind:      state.UnidentifiedLogSecret})
+				continue
+			}
+
+			kind := m.secrets[idx]
+			if kind != 0 {
+				logLine.SecretMarkers = append(logLine.SecretMarkers, state.LogSecretMarker{
+					ByteStart: start,
+					ByteEnd:   end,
+					Kind:      kind})
+			}
+		}
+		if x > 0 && p[x-1][1] < p[x][0]-1 {
+			logLine.SecretMarkers = append(logLine.SecretMarkers, state.LogSecretMarker{
+				ByteStart: p[x-1][1],
+				ByteEnd:   p[x][0],
+				Kind:      state.UnidentifiedLogSecret,
+			})
+		}
+	}
+	if p[len(p)-1][1] < len(logLine.Content)-1 {
+		var kind state.LogSecretKind
+		if m.remainderKind != 0 {
+			kind = m.remainderKind
+		} else {
+			kind = state.UnidentifiedLogSecret
+		}
+		logLine.SecretMarkers = append(logLine.SecretMarkers, state.LogSecretMarker{
+			ByteStart: p[len(p)-1][1],
+			ByteEnd:   len(logLine.Content),
+			Kind:      kind,
+		})
+	}
+	return logLine, parts
+}
+
+func matchesPrefix(logLine state.LogLine, prefixes []string) bool {
+	for _, prefix := range prefixes {
+		if strings.HasPrefix(logLine.Content, prefix) {
+			return true
+		}
+	}
+	return false
+}
+
+func matchLogLine(logLine state.LogLine, m match) (state.LogLine, []string) {
+	logLine, parts := matchLogLineCommon(logLine, m, false)
+	if parts != nil {
+		return logLine, parts[0]
+	}
+	return logLine, nil
+}
+
+func matchLogLineAll(logLine state.LogLine, m match) (state.LogLine, [][]string) {
+	return matchLogLineCommon(logLine, m, true)
+}
+
+func matchOtherContextLogLine(logLine state.LogLine) state.LogLine {
+	if logLine.Content == "" {
+		return logLine
+	}
+	for _, match := range otherContextPatterns {
+		logLine, parts := matchLogLine(logLine, match)
+		if parts != nil {
+			return logLine
+		}
+	}
+	return logLine
+}
+
+func markLineAsSecret(logLine state.LogLine, markerKind state.LogSecretKind) state.LogLine {
+	logLine.ReviewedForSecrets = true
+	logLine.SecretMarkers = append(logLine.SecretMarkers, state.LogSecretMarker{
+		ByteStart: 0,
+		ByteEnd:   len(logLine.Content),
+		Kind:      markerKind})
+	return logLine
 }
 
 func AnalyzeBackendLogLines(logLines []state.LogLine) (logLinesOut []state.LogLine, samples []state.PostgresQuerySample) {
@@ -1100,8 +2033,14 @@ func AnalyzeBackendLogLines(logLines []state.LogLine) (logLinesOut []state.LogLi
 		}
 
 		// Look up to 3 lines in the future to find context for this line
+		var statementLine state.LogLine
+		var statementLineIdx int
 		var detailLine state.LogLine
+		var detailLineIdx int
 		var contextLine state.LogLine
+		var contextLineIdx int
+		var hintLine state.LogLine
+		var hintLineIdx int
 
 		lowerBound := int(math.Min(float64(len(logLines)), float64(idx+1)))
 		upperBound := int(math.Min(float64(len(logLines)), float64(idx+5)))
@@ -1111,19 +2050,44 @@ func AnalyzeBackendLogLines(logLines []state.LogLine) (logLinesOut []state.LogLi
 				futureLine.LogLevel == pganalyze_collector.LogLineInformation_QUERY {
 				if futureLine.LogLevel == pganalyze_collector.LogLineInformation_STATEMENT && !strings.HasSuffix(futureLine.Content, "[Your log message was truncated]") {
 					logLine.Query = futureLine.Content
+					statementLine = futureLine
+					statementLine.ParentUUID = logLine.UUID
+					statementLineIdx = lowerBound + idx
 				} else if futureLine.LogLevel == pganalyze_collector.LogLineInformation_DETAIL {
 					detailLine = futureLine
+					detailLine.ParentUUID = logLine.UUID
+					detailLineIdx = lowerBound + idx
 				} else if futureLine.LogLevel == pganalyze_collector.LogLineInformation_CONTEXT {
 					contextLine = futureLine
+					contextLine.ParentUUID = logLine.UUID
+					contextLineIdx = lowerBound + idx
+				} else if futureLine.LogLevel == pganalyze_collector.LogLineInformation_HINT {
+					hintLine = futureLine
+					hintLine.ParentUUID = logLine.UUID
+					hintLineIdx = lowerBound + idx
+				} else {
+					logLines[lowerBound+idx].ParentUUID = logLine.UUID
 				}
-				logLines[lowerBound+idx].ParentUUID = logLine.UUID
 				additionalLines++
 			} else {
 				break
 			}
 		}
 
-		logLine, samples = classifyAndSetDetails(logLine, detailLine, contextLine, samples)
+		logLine, statementLine, detailLine, contextLine, hintLine, samples = classifyAndSetDetails(logLine, statementLine, detailLine, contextLine, hintLine, samples)
+
+		if statementLineIdx != 0 {
+			logLines[statementLineIdx] = statementLine
+		}
+		if detailLineIdx != 0 {
+			logLines[detailLineIdx] = detailLine
+		}
+		if contextLineIdx != 0 {
+			logLines[contextLineIdx] = contextLine
+		}
+		if hintLineIdx != 0 {
+			logLines[hintLineIdx] = hintLine
+		}
 
 		logLinesOut = append(logLinesOut, logLine)
 	}

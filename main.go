@@ -209,6 +209,8 @@ func main() {
 	var dryRun bool
 	var dryRunLogs bool
 	var analyzeLogfile string
+	var filterLogFile string
+	var filterLogSecret string
 	var debugLogs bool
 	var discoverLogLocation bool
 	var testRun bool
@@ -240,6 +242,8 @@ func main() {
 	flag.BoolVar(&dryRun, "dry-run", false, "Print JSON data that would get sent to web service (without actually sending) and exit afterwards")
 	flag.BoolVar(&dryRunLogs, "dry-run-logs", false, "Print JSON data for log snapshot (without actually sending) and exit afterwards")
 	flag.StringVar(&analyzeLogfile, "analyze-logfile", "", "Analyzes the content of the given log file and returns debug output about it")
+	flag.StringVar(&filterLogFile, "filter-logfile", "", "Test command that filters all known secrets in the logfile according to the filter-log-secret option")
+	flag.StringVar(&filterLogSecret, "filter-log-secret", "all", "Sets the type of secrets filtered by the filter-logfile test command (default: all)")
 	flag.BoolVar(&debugLogs, "debug-logs", false, "Outputs all log analysis that would be sent, doesn't send any other data (use for debugging only)")
 	flag.BoolVar(&discoverLogLocation, "discover-log-location", false, "Tries to automatically discover the location of the Postgres log directory, to support configuring the 'db_log_location' setting")
 	flag.BoolVar(&forceStateUpdate, "force-state-update", false, "Updates the state file even if other options would have prevented it (intended to be used together with --dry-run for debugging)")
@@ -342,6 +346,18 @@ func main() {
 		}
 		logLines, samples, _ := logs.ParseAndAnalyzeBuffer(string(content), 0, time.Time{})
 		logs.PrintDebugInfo(string(content), logLines, samples)
+		return
+	}
+
+	if filterLogFile != "" {
+		content, err := ioutil.ReadFile(filterLogFile)
+		if err != nil {
+			fmt.Printf("ERROR: %s\n", err)
+			return
+		}
+		logLines, _, _ := logs.ParseAndAnalyzeBuffer(string(content), 0, time.Time{})
+		output := logs.ReplaceSecrets(string(content), logLines, state.ParseFilterLogSecret(filterLogSecret))
+		fmt.Printf("%s", output)
 		return
 	}
 

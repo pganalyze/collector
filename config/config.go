@@ -103,6 +103,10 @@ type ServerConfig struct {
 	// This defaults to 10 connections, but you may want to raise this when running
 	// the collector multiple times against the same database server
 	MaxCollectorConnections int `ini:"max_collector_connections"`
+
+	// Configuration for PII filtering
+	FilterLogSecret   string `ini:"filter_log_secret"`   // none/all/credential/parsing_error/statement_text/statement_parameter/table_data/ops/unidentified (comma separated)
+	FilterQuerySample string `ini:"filter_query_sample"` // none/all
 }
 
 // GetPqOpenString - Gets the database configuration as a string that can be passed to lib/pq for connecting

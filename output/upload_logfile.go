@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 
 	"github.com/aws/aws-sdk-go/service/s3/s3crypto"
+	"github.com/pganalyze/collector/logs"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
 )
@@ -72,6 +73,10 @@ func EncryptAndUploadLogfiles(s3 state.GrantS3, encryptionKey state.GrantLogsEnc
 
 	for idx, logFile := range logFiles {
 		content, _ := ioutil.ReadFile(logFile.TmpFile.Name())
+
+		if len(logFile.FilterLogSecret) > 0 {
+			content = []byte(logs.ReplaceSecrets(string(content), logFile.LogLines, logFile.FilterLogSecret))
+		}
 
 		dst := &bytesReadWriteSeeker{}
 		md5 := newMD5Reader(bytes.NewReader(content))
