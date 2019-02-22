@@ -58,35 +58,6 @@ func (m *Report) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_Report proto.InternalMessageInfo
 
-type isReport_Data interface {
-	isReport_Data()
-}
-
-type Report_BloatReportData struct {
-	BloatReportData *BloatReportData `protobuf:"bytes,10,opt,name=bloat_report_data,json=bloatReportData,proto3,oneof"`
-}
-type Report_BuffercacheReportData struct {
-	BuffercacheReportData *BuffercacheReportData `protobuf:"bytes,11,opt,name=buffercache_report_data,json=buffercacheReportData,proto3,oneof"`
-}
-type Report_VacuumReportData struct {
-	VacuumReportData *VacuumReportData `protobuf:"bytes,12,opt,name=vacuum_report_data,json=vacuumReportData,proto3,oneof"`
-}
-type Report_SequenceReportData struct {
-	SequenceReportData *SequenceReportData `protobuf:"bytes,13,opt,name=sequence_report_data,json=sequenceReportData,proto3,oneof"`
-}
-
-func (*Report_BloatReportData) isReport_Data()       {}
-func (*Report_BuffercacheReportData) isReport_Data() {}
-func (*Report_VacuumReportData) isReport_Data()      {}
-func (*Report_SequenceReportData) isReport_Data()    {}
-
-func (m *Report) GetData() isReport_Data {
-	if m != nil {
-		return m.Data
-	}
-	return nil
-}
-
 func (m *Report) GetReportRunId() string {
 	if m != nil {
 		return m.ReportRunId
@@ -104,6 +75,41 @@ func (m *Report) GetReportType() string {
 func (m *Report) GetCollectedAt() *timestamp.Timestamp {
 	if m != nil {
 		return m.CollectedAt
+	}
+	return nil
+}
+
+type isReport_Data interface {
+	isReport_Data()
+}
+
+type Report_BloatReportData struct {
+	BloatReportData *BloatReportData `protobuf:"bytes,10,opt,name=bloat_report_data,json=bloatReportData,proto3,oneof"`
+}
+
+type Report_BuffercacheReportData struct {
+	BuffercacheReportData *BuffercacheReportData `protobuf:"bytes,11,opt,name=buffercache_report_data,json=buffercacheReportData,proto3,oneof"`
+}
+
+type Report_VacuumReportData struct {
+	VacuumReportData *VacuumReportData `protobuf:"bytes,12,opt,name=vacuum_report_data,json=vacuumReportData,proto3,oneof"`
+}
+
+type Report_SequenceReportData struct {
+	SequenceReportData *SequenceReportData `protobuf:"bytes,13,opt,name=sequence_report_data,json=sequenceReportData,proto3,oneof"`
+}
+
+func (*Report_BloatReportData) isReport_Data() {}
+
+func (*Report_BuffercacheReportData) isReport_Data() {}
+
+func (*Report_VacuumReportData) isReport_Data() {}
+
+func (*Report_SequenceReportData) isReport_Data() {}
+
+func (m *Report) GetData() isReport_Data {
+	if m != nil {
+		return m.Data
 	}
 	return nil
 }

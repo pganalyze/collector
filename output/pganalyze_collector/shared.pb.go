@@ -885,6 +885,13 @@ func (m *SystemInformation) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_SystemInformation proto.InternalMessageInfo
 
+func (m *SystemInformation) GetType() SystemInformation_SystemType {
+	if m != nil {
+		return m.Type
+	}
+	return SystemInformation_SELF_HOSTED_SYSTEM
+}
+
 type isSystemInformation_Info interface {
 	isSystemInformation_Info()
 }
@@ -892,25 +899,20 @@ type isSystemInformation_Info interface {
 type SystemInformation_SelfHosted struct {
 	SelfHosted *SystemInformationSelfHosted `protobuf:"bytes,2,opt,name=self_hosted,json=selfHosted,proto3,oneof"`
 }
+
 type SystemInformation_AmazonRds struct {
 	AmazonRds *SystemInformationAmazonRDS `protobuf:"bytes,3,opt,name=amazon_rds,json=amazonRds,proto3,oneof"`
 }
 
 func (*SystemInformation_SelfHosted) isSystemInformation_Info() {}
-func (*SystemInformation_AmazonRds) isSystemInformation_Info()  {}
+
+func (*SystemInformation_AmazonRds) isSystemInformation_Info() {}
 
 func (m *SystemInformation) GetInfo() isSystemInformation_Info {
 	if m != nil {
 		return m.Info
 	}
 	return nil
-}
-
-func (m *SystemInformation) GetType() SystemInformation_SystemType {
-	if m != nil {
-		return m.Type
-	}
-	return SystemInformation_SELF_HOSTED_SYSTEM
 }
 
 func (m *SystemInformation) GetSelfHosted() *SystemInformationSelfHosted {

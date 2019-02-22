@@ -61,31 +61,6 @@ func (m *CompactSnapshot) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_CompactSnapshot proto.InternalMessageInfo
 
-type isCompactSnapshot_Data interface {
-	isCompactSnapshot_Data()
-}
-
-type CompactSnapshot_LogSnapshot struct {
-	LogSnapshot *CompactLogSnapshot `protobuf:"bytes,10,opt,name=log_snapshot,json=logSnapshot,proto3,oneof"`
-}
-type CompactSnapshot_SystemSnapshot struct {
-	SystemSnapshot *CompactSystemSnapshot `protobuf:"bytes,11,opt,name=system_snapshot,json=systemSnapshot,proto3,oneof"`
-}
-type CompactSnapshot_ActivitySnapshot struct {
-	ActivitySnapshot *CompactActivitySnapshot `protobuf:"bytes,12,opt,name=activity_snapshot,json=activitySnapshot,proto3,oneof"`
-}
-
-func (*CompactSnapshot_LogSnapshot) isCompactSnapshot_Data()      {}
-func (*CompactSnapshot_SystemSnapshot) isCompactSnapshot_Data()   {}
-func (*CompactSnapshot_ActivitySnapshot) isCompactSnapshot_Data() {}
-
-func (m *CompactSnapshot) GetData() isCompactSnapshot_Data {
-	if m != nil {
-		return m.Data
-	}
-	return nil
-}
-
 func (m *CompactSnapshot) GetSnapshotVersionMajor() int32 {
 	if m != nil {
 		return m.SnapshotVersionMajor
@@ -124,6 +99,35 @@ func (m *CompactSnapshot) GetCollectedAt() *timestamp.Timestamp {
 func (m *CompactSnapshot) GetBaseRefs() *CompactSnapshot_BaseRefs {
 	if m != nil {
 		return m.BaseRefs
+	}
+	return nil
+}
+
+type isCompactSnapshot_Data interface {
+	isCompactSnapshot_Data()
+}
+
+type CompactSnapshot_LogSnapshot struct {
+	LogSnapshot *CompactLogSnapshot `protobuf:"bytes,10,opt,name=log_snapshot,json=logSnapshot,proto3,oneof"`
+}
+
+type CompactSnapshot_SystemSnapshot struct {
+	SystemSnapshot *CompactSystemSnapshot `protobuf:"bytes,11,opt,name=system_snapshot,json=systemSnapshot,proto3,oneof"`
+}
+
+type CompactSnapshot_ActivitySnapshot struct {
+	ActivitySnapshot *CompactActivitySnapshot `protobuf:"bytes,12,opt,name=activity_snapshot,json=activitySnapshot,proto3,oneof"`
+}
+
+func (*CompactSnapshot_LogSnapshot) isCompactSnapshot_Data() {}
+
+func (*CompactSnapshot_SystemSnapshot) isCompactSnapshot_Data() {}
+
+func (*CompactSnapshot_ActivitySnapshot) isCompactSnapshot_Data() {}
+
+func (m *CompactSnapshot) GetData() isCompactSnapshot_Data {
+	if m != nil {
+		return m.Data
 	}
 	return nil
 }

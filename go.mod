@@ -12,7 +12,7 @@ require (
 	github.com/getsentry/raven-go v0.0.0-20161115135411-3f7439d3e74d
 	github.com/go-ini/ini v1.18.0
 	github.com/go-ole/go-ole v0.0.0-20160708033836-be49f7c07711 // indirect
-	github.com/golang/protobuf v1.1.0
+	github.com/golang/protobuf v1.2.0
 	github.com/gonuts/commander v0.0.0-20140205141049-f8ba4e959ca9 // indirect
 	github.com/gonuts/flag v0.0.0-20130524081338-741a6cbd37a3 // indirect
 	github.com/gopherjs/gopherjs v0.0.0-20160716153200-72e303cb5f23 // indirect

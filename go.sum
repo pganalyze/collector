@@ -20,6 +20,8 @@ github.com/go-ole/go-ole v0.0.0-20160708033836-be49f7c07711 h1:Ycyq6J4z6jUBhJfTa
 github.com/go-ole/go-ole v0.0.0-20160708033836-be49f7c07711/go.mod h1:7FAglXiTm7HKlQRDeOQ6ZNUHidzCWXuZWq/1dTyBNF8=
 github.com/golang/protobuf v1.1.0 h1:0iH4Ffd/meGoXqF2lSAhZHt8X+cPgkfn/cb6Cce5Vpc=
 github.com/golang/protobuf v1.1.0/go.mod h1:6lQm79b+lXiMfvg/cZm0SGofjICqVBUtrP5yJMmIC1U=
+github.com/golang/protobuf v1.2.0 h1:P3YflyNX/ehuJFLhxviNdFxQPkGK5cDcApsge1SqnvM=
+github.com/golang/protobuf v1.2.0/go.mod h1:6lQm79b+lXiMfvg/cZm0SGofjICqVBUtrP5yJMmIC1U=
 github.com/gonuts/commander v0.0.0-20140205141049-f8ba4e959ca9/go.mod h1:/xjRjlTtn0guGLgdI2JqUEo1Nu6M+zb/3M9b3TQkMp4=
 github.com/gonuts/flag v0.0.0-20130524081338-741a6cbd37a3/go.mod h1:ZTmTGtrSPejTo/SRNhCqwLTmiAgyBdCkLYhHrAoBdz4=
 github.com/gopherjs/gopherjs v0.0.0-20160716153200-72e303cb5f23/go.mod h1:wJfORRmW1u3UXTncJ5qlYoELFm8eSnnEO6hX4iZ3EWY=
