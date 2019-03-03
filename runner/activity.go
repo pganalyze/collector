@@ -3,6 +3,7 @@ package runner
 import (
 	"database/sql"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/pganalyze/collector/grant"
@@ -61,25 +62,33 @@ func processActivityForServer(server state.Server, globalCollectionOpts state.Co
 
 // CollectActivityFromAllServers - Collects activity from all servers and sends them to the pganalyze service
 func CollectActivityFromAllServers(servers []state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
-	for _, server := range servers {
-		if !server.Config.EnableActivity {
+	var wg sync.WaitGroup
+
+	for idx := range servers {
+		if !servers[idx].Config.EnableActivity {
 			continue
 		}
 
-		prefixedLogger := logger.WithPrefixAndRememberErrors(server.Config.SectionName)
+		wg.Add(1)
+		go func(server *state.Server) {
+			prefixedLogger := logger.WithPrefixAndRememberErrors(server.Config.SectionName)
 
-		success, err := processActivityForServer(server, globalCollectionOpts, prefixedLogger)
-		if err != nil {
-			prefixedLogger.PrintError("Could not collect activity for server: %s", err)
-			if server.Config.ErrorCallback != "" {
-				go runCompletionCallback("error", server.Config.ErrorCallback, server.Config.SectionName, "activity", err, prefixedLogger)
+			success, err := processActivityForServer(*server, globalCollectionOpts, prefixedLogger)
+			if err != nil {
+				prefixedLogger.PrintError("Could not collect activity for server: %s", err)
+				if server.Config.ErrorCallback != "" {
+					go runCompletionCallback("error", server.Config.ErrorCallback, server.Config.SectionName, "activity", err, prefixedLogger)
+				}
+			} else if success {
+				if server.Config.SuccessCallback != "" {
+					go runCompletionCallback("success", server.Config.SuccessCallback, server.Config.SectionName, "activity", nil, prefixedLogger)
+				}
 			}
-		} else if success {
-			if server.Config.SuccessCallback != "" {
-				go runCompletionCallback("success", server.Config.SuccessCallback, server.Config.SectionName, "activity", nil, prefixedLogger)
-			}
-		}
+			wg.Done()
+		}(&servers[idx])
 	}
+
+	wg.Wait()
 
 	return
 }

@@ -1,6 +1,8 @@
 package runner
 
 import (
+	"sync"
+
 	"github.com/pganalyze/collector/grant"
 	"github.com/pganalyze/collector/input"
 	"github.com/pganalyze/collector/input/system/selfhosted"
@@ -72,29 +74,37 @@ func TestLogsForAllServers(servers []state.Server, globalCollectionOpts state.Co
 
 // DownloadLogsFromAllServers - Downloads logs from all servers that are remote systems and sends them to the pganalyze service
 func DownloadLogsFromAllServers(servers []state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
+	var wg sync.WaitGroup
+
 	if !globalCollectionOpts.CollectLogs {
 		return
 	}
 
-	for _, server := range servers {
-		if !server.Config.EnableLogs {
+	for idx := range servers {
+		if !servers[idx].Config.EnableLogs {
 			continue
 		}
 
-		prefixedLogger := logger.WithPrefixAndRememberErrors(server.Config.SectionName)
+		wg.Add(1)
+		go func(server *state.Server) {
+			prefixedLogger := logger.WithPrefixAndRememberErrors(server.Config.SectionName)
 
-		success, err := downloadLogsForServer(server, globalCollectionOpts, prefixedLogger)
-		if err != nil {
-			prefixedLogger.PrintError("Could not collect logs for server: %s", err)
-			if server.Config.ErrorCallback != "" {
-				go runCompletionCallback("error", server.Config.ErrorCallback, server.Config.SectionName, "logs", err, prefixedLogger)
+			success, err := downloadLogsForServer(*server, globalCollectionOpts, prefixedLogger)
+			if err != nil {
+				prefixedLogger.PrintError("Could not collect logs for server: %s", err)
+				if server.Config.ErrorCallback != "" {
+					go runCompletionCallback("error", server.Config.ErrorCallback, server.Config.SectionName, "logs", err, prefixedLogger)
+				}
+			} else if success {
+				if server.Config.SuccessCallback != "" {
+					go runCompletionCallback("success", server.Config.SuccessCallback, server.Config.SectionName, "logs", nil, prefixedLogger)
+				}
 			}
-		} else if success {
-			if server.Config.SuccessCallback != "" {
-				go runCompletionCallback("success", server.Config.SuccessCallback, server.Config.SectionName, "logs", nil, prefixedLogger)
-			}
-		}
+			wg.Done()
+		}(&servers[idx])
 	}
+
+	wg.Wait()
 
 	return
 }

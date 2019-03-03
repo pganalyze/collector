@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime/debug"
+	"sync"
 	"time"
 
 	raven "github.com/getsentry/raven-go"
@@ -189,39 +190,49 @@ func runCompletionCallback(callbackType string, callbackCmd string, sectionName 
 
 // CollectAllServers - Collects statistics from all servers and sends them as full snapshots to the pganalyze service
 func CollectAllServers(servers []state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
-	for idx, server := range servers {
-		var err error
+	var wg sync.WaitGroup
 
-		prefixedLogger := logger.WithPrefixAndRememberErrors(server.Config.SectionName)
+	for idx := range servers {
+		wg.Add(1)
+		go func(server *state.Server) {
+			var err error
 
-		if globalCollectionOpts.TestRun {
-			prefixedLogger.PrintInfo("Testing statistics collection...")
-		}
+			fmt.Printf("%s\n", server.Config.SectionName)
 
-		servers[idx].StateMutex.Lock()
-		newState, grant, err := processDatabase(server, globalCollectionOpts, prefixedLogger)
-		if err != nil {
-			servers[idx].StateMutex.Unlock()
-			prefixedLogger.PrintError("Could not process database: %s", err)
-			if grant.Valid && !globalCollectionOpts.TestRun && globalCollectionOpts.SubmitCollectedData {
+			prefixedLogger := logger.WithPrefixAndRememberErrors(server.Config.SectionName)
+
+			if globalCollectionOpts.TestRun {
+				prefixedLogger.PrintInfo("Testing statistics collection...")
+			}
+
+			server.StateMutex.Lock()
+			newState, grant, err := processDatabase(*server, globalCollectionOpts, prefixedLogger)
+			if err != nil {
+				server.StateMutex.Unlock()
+				prefixedLogger.PrintError("Could not process database: %s", err)
+				if grant.Valid && !globalCollectionOpts.TestRun && globalCollectionOpts.SubmitCollectedData {
+					server.Grant = grant
+					err = output.SendFailedFull(*server, globalCollectionOpts, prefixedLogger)
+					if err != nil {
+						prefixedLogger.PrintWarning("Could not send error information to remote server: %s", err)
+					}
+				}
+				if server.Config.ErrorCallback != "" {
+					go runCompletionCallback("error", server.Config.ErrorCallback, server.Config.SectionName, "full", err, prefixedLogger)
+				}
+			} else {
 				server.Grant = grant
-				err = output.SendFailedFull(server, globalCollectionOpts, prefixedLogger)
-				if err != nil {
-					prefixedLogger.PrintWarning("Could not send error information to remote server: %s", err)
+				server.PrevState = newState
+				server.StateMutex.Unlock()
+				if server.Config.SuccessCallback != "" {
+					go runCompletionCallback("success", server.Config.SuccessCallback, server.Config.SectionName, "full", nil, prefixedLogger)
 				}
 			}
-			if server.Config.ErrorCallback != "" {
-				go runCompletionCallback("error", server.Config.ErrorCallback, server.Config.SectionName, "full", err, prefixedLogger)
-			}
-		} else {
-			servers[idx].Grant = grant
-			servers[idx].PrevState = newState
-			servers[idx].StateMutex.Unlock()
-			if server.Config.SuccessCallback != "" {
-				go runCompletionCallback("success", server.Config.SuccessCallback, server.Config.SectionName, "full", nil, prefixedLogger)
-			}
-		}
+			wg.Done()
+		}(&servers[idx])
 	}
+
+	wg.Wait()
 
 	if globalCollectionOpts.WriteStateUpdate {
 		writeStateFile(servers, globalCollectionOpts, logger)
