@@ -12,6 +12,8 @@ import (
 
 const relationsSQLDefaultOptionalFields = "0"
 const relationsSQLpg93OptionalFields = "c.relminmxid"
+const relationsSQLOidField = "c.relhasoids AS relation_has_oids"
+const relationsSQLpg12OidField = "false AS relation_has_oids"
 
 const relationsSQL string = `
 	 WITH locked_relids AS (SELECT DISTINCT relation relid FROM pg_catalog.pg_locks WHERE mode = 'AccessExclusiveLock')
@@ -20,7 +22,7 @@ const relationsSQL string = `
 				c.relname AS table_name,
 				c.relkind AS relation_type,
 				c.reloptions AS relation_options,
-				c.relhasoids AS relation_has_oids,
+				%s,
 				c.relpersistence AS relation_persistence,
 				c.relhassubclass AS relation_has_inheritance_children,
 				c.reltoastrelid IS NOT NULL AS relation_has_toast,
@@ -120,6 +122,7 @@ func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 
 	// Relations
 	var optionalFields string
+	var oidField string
 
 	if postgresVersion.Numeric >= state.PostgresVersion93 {
 		optionalFields = relationsSQLpg93OptionalFields
@@ -127,7 +130,13 @@ func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 		optionalFields = relationsSQLDefaultOptionalFields
 	}
 
-	rows, err := db.Query(QueryMarkerSQL + fmt.Sprintf(relationsSQL, optionalFields))
+	if postgresVersion.Numeric >= state.PostgresVersion12 {
+		oidField = relationsSQLpg12OidField
+	} else {
+		oidField = relationsSQLOidField
+	}
+
+	rows, err := db.Query(QueryMarkerSQL + fmt.Sprintf(relationsSQL, oidField, optionalFields))
 	if err != nil {
 		err = fmt.Errorf("Relations/Query: %s", err)
 		return nil, err
