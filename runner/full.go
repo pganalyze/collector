@@ -197,8 +197,6 @@ func CollectAllServers(servers []state.Server, globalCollectionOpts state.Collec
 		go func(server *state.Server) {
 			var err error
 
-			fmt.Printf("%s\n", server.Config.SectionName)
-
 			prefixedLogger := logger.WithPrefixAndRememberErrors(server.Config.SectionName)
 
 			if globalCollectionOpts.TestRun {
