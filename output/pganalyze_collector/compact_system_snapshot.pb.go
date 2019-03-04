@@ -30,7 +30,7 @@ func (m *CompactSystemSnapshot) Reset()         { *m = CompactSystemSnapshot{} }
 func (m *CompactSystemSnapshot) String() string { return proto.CompactTextString(m) }
 func (*CompactSystemSnapshot) ProtoMessage()    {}
 func (*CompactSystemSnapshot) Descriptor() ([]byte, []int) {
-	return fileDescriptor_compact_system_snapshot_36ba7f61cacf6bd9, []int{0}
+	return fileDescriptor_compact_system_snapshot_1f7a17cbaf0f3db9, []int{0}
 }
 func (m *CompactSystemSnapshot) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CompactSystemSnapshot.Unmarshal(m, b)
@@ -62,10 +62,10 @@ func init() {
 }
 
 func init() {
-	proto.RegisterFile("compact_system_snapshot.proto", fileDescriptor_compact_system_snapshot_36ba7f61cacf6bd9)
+	proto.RegisterFile("compact_system_snapshot.proto", fileDescriptor_compact_system_snapshot_1f7a17cbaf0f3db9)
 }
 
-var fileDescriptor_compact_system_snapshot_36ba7f61cacf6bd9 = []byte{
+var fileDescriptor_compact_system_snapshot_1f7a17cbaf0f3db9 = []byte{
 	// 154 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0x92, 0x4d, 0xce, 0xcf, 0x2d,
 	0x48, 0x4c, 0x2e, 0x89, 0x2f, 0xae, 0x2c, 0x2e, 0x49, 0xcd, 0x8d, 0x2f, 0xce, 0x4b, 0x2c, 0x28,

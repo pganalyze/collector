@@ -41,7 +41,7 @@ func (m *CompactSnapshot) Reset()         { *m = CompactSnapshot{} }
 func (m *CompactSnapshot) String() string { return proto.CompactTextString(m) }
 func (*CompactSnapshot) ProtoMessage()    {}
 func (*CompactSnapshot) Descriptor() ([]byte, []int) {
-	return fileDescriptor_compact_snapshot_fc01413db2a69e2a, []int{0}
+	return fileDescriptor_compact_snapshot_6a11ece48cae881d, []int{0}
 }
 func (m *CompactSnapshot) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CompactSnapshot.Unmarshal(m, b)
@@ -60,6 +60,31 @@ func (m *CompactSnapshot) XXX_DiscardUnknown() {
 }
 
 var xxx_messageInfo_CompactSnapshot proto.InternalMessageInfo
+
+type isCompactSnapshot_Data interface {
+	isCompactSnapshot_Data()
+}
+
+type CompactSnapshot_LogSnapshot struct {
+	LogSnapshot *CompactLogSnapshot `protobuf:"bytes,10,opt,name=log_snapshot,json=logSnapshot,proto3,oneof"`
+}
+type CompactSnapshot_SystemSnapshot struct {
+	SystemSnapshot *CompactSystemSnapshot `protobuf:"bytes,11,opt,name=system_snapshot,json=systemSnapshot,proto3,oneof"`
+}
+type CompactSnapshot_ActivitySnapshot struct {
+	ActivitySnapshot *CompactActivitySnapshot `protobuf:"bytes,12,opt,name=activity_snapshot,json=activitySnapshot,proto3,oneof"`
+}
+
+func (*CompactSnapshot_LogSnapshot) isCompactSnapshot_Data()      {}
+func (*CompactSnapshot_SystemSnapshot) isCompactSnapshot_Data()   {}
+func (*CompactSnapshot_ActivitySnapshot) isCompactSnapshot_Data() {}
+
+func (m *CompactSnapshot) GetData() isCompactSnapshot_Data {
+	if m != nil {
+		return m.Data
+	}
+	return nil
+}
 
 func (m *CompactSnapshot) GetSnapshotVersionMajor() int32 {
 	if m != nil {
@@ -99,35 +124,6 @@ func (m *CompactSnapshot) GetCollectedAt() *timestamp.Timestamp {
 func (m *CompactSnapshot) GetBaseRefs() *CompactSnapshot_BaseRefs {
 	if m != nil {
 		return m.BaseRefs
-	}
-	return nil
-}
-
-type isCompactSnapshot_Data interface {
-	isCompactSnapshot_Data()
-}
-
-type CompactSnapshot_LogSnapshot struct {
-	LogSnapshot *CompactLogSnapshot `protobuf:"bytes,10,opt,name=log_snapshot,json=logSnapshot,proto3,oneof"`
-}
-
-type CompactSnapshot_SystemSnapshot struct {
-	SystemSnapshot *CompactSystemSnapshot `protobuf:"bytes,11,opt,name=system_snapshot,json=systemSnapshot,proto3,oneof"`
-}
-
-type CompactSnapshot_ActivitySnapshot struct {
-	ActivitySnapshot *CompactActivitySnapshot `protobuf:"bytes,12,opt,name=activity_snapshot,json=activitySnapshot,proto3,oneof"`
-}
-
-func (*CompactSnapshot_LogSnapshot) isCompactSnapshot_Data() {}
-
-func (*CompactSnapshot_SystemSnapshot) isCompactSnapshot_Data() {}
-
-func (*CompactSnapshot_ActivitySnapshot) isCompactSnapshot_Data() {}
-
-func (m *CompactSnapshot) GetData() isCompactSnapshot_Data {
-	if m != nil {
-		return m.Data
 	}
 	return nil
 }
@@ -261,7 +257,7 @@ func (m *CompactSnapshot_BaseRefs) Reset()         { *m = CompactSnapshot_BaseRe
 func (m *CompactSnapshot_BaseRefs) String() string { return proto.CompactTextString(m) }
 func (*CompactSnapshot_BaseRefs) ProtoMessage()    {}
 func (*CompactSnapshot_BaseRefs) Descriptor() ([]byte, []int) {
-	return fileDescriptor_compact_snapshot_fc01413db2a69e2a, []int{0, 0}
+	return fileDescriptor_compact_snapshot_6a11ece48cae881d, []int{0, 0}
 }
 func (m *CompactSnapshot_BaseRefs) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CompactSnapshot_BaseRefs.Unmarshal(m, b)
@@ -322,10 +318,10 @@ func init() {
 }
 
 func init() {
-	proto.RegisterFile("compact_snapshot.proto", fileDescriptor_compact_snapshot_fc01413db2a69e2a)
+	proto.RegisterFile("compact_snapshot.proto", fileDescriptor_compact_snapshot_6a11ece48cae881d)
 }
 
-var fileDescriptor_compact_snapshot_fc01413db2a69e2a = []byte{
+var fileDescriptor_compact_snapshot_6a11ece48cae881d = []byte{
 	// 513 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x7c, 0x93, 0xdf, 0x6e, 0xd3, 0x30,
 	0x14, 0xc6, 0xc9, 0xba, 0x56, 0x9d, 0x13, 0xd6, 0xd6, 0x43, 0x93, 0x15, 0x09, 0xad, 0xda, 0x04,

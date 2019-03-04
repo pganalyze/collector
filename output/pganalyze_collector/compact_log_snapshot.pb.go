@@ -54,7 +54,7 @@ func (x LogFileReference_LogSecretKind) String() string {
 	return proto.EnumName(LogFileReference_LogSecretKind_name, int32(x))
 }
 func (LogFileReference_LogSecretKind) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_compact_log_snapshot_16c3eb7582eeceea, []int{1, 0}
+	return fileDescriptor_compact_log_snapshot_1fb2580569ad9045, []int{1, 0}
 }
 
 type LogLineInformation_LogLevel int32
@@ -115,7 +115,7 @@ func (x LogLineInformation_LogLevel) String() string {
 	return proto.EnumName(LogLineInformation_LogLevel_name, int32(x))
 }
 func (LogLineInformation_LogLevel) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_compact_log_snapshot_16c3eb7582eeceea, []int{2, 0}
+	return fileDescriptor_compact_log_snapshot_1fb2580569ad9045, []int{2, 0}
 }
 
 type LogLineInformation_LogClassification int32
@@ -437,7 +437,7 @@ func (x LogLineInformation_LogClassification) String() string {
 	return proto.EnumName(LogLineInformation_LogClassification_name, int32(x))
 }
 func (LogLineInformation_LogClassification) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_compact_log_snapshot_16c3eb7582eeceea, []int{2, 1}
+	return fileDescriptor_compact_log_snapshot_1fb2580569ad9045, []int{2, 1}
 }
 
 type QuerySample_ExplainFormat int32
@@ -460,7 +460,7 @@ func (x QuerySample_ExplainFormat) String() string {
 	return proto.EnumName(QuerySample_ExplainFormat_name, int32(x))
 }
 func (QuerySample_ExplainFormat) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_compact_log_snapshot_16c3eb7582eeceea, []int{3, 0}
+	return fileDescriptor_compact_log_snapshot_1fb2580569ad9045, []int{3, 0}
 }
 
 type QuerySample_ExplainSource int32
@@ -489,7 +489,7 @@ func (x QuerySample_ExplainSource) String() string {
 	return proto.EnumName(QuerySample_ExplainSource_name, int32(x))
 }
 func (QuerySample_ExplainSource) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_compact_log_snapshot_16c3eb7582eeceea, []int{3, 1}
+	return fileDescriptor_compact_log_snapshot_1fb2580569ad9045, []int{3, 1}
 }
 
 type CompactLogSnapshot struct {
@@ -505,7 +505,7 @@ func (m *CompactLogSnapshot) Reset()         { *m = CompactLogSnapshot{} }
 func (m *CompactLogSnapshot) String() string { return proto.CompactTextString(m) }
 func (*CompactLogSnapshot) ProtoMessage()    {}
 func (*CompactLogSnapshot) Descriptor() ([]byte, []int) {
-	return fileDescriptor_compact_log_snapshot_16c3eb7582eeceea, []int{0}
+	return fileDescriptor_compact_log_snapshot_1fb2580569ad9045, []int{0}
 }
 func (m *CompactLogSnapshot) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CompactLogSnapshot.Unmarshal(m, b)
@@ -563,7 +563,7 @@ func (m *LogFileReference) Reset()         { *m = LogFileReference{} }
 func (m *LogFileReference) String() string { return proto.CompactTextString(m) }
 func (*LogFileReference) ProtoMessage()    {}
 func (*LogFileReference) Descriptor() ([]byte, []int) {
-	return fileDescriptor_compact_log_snapshot_16c3eb7582eeceea, []int{1}
+	return fileDescriptor_compact_log_snapshot_1fb2580569ad9045, []int{1}
 }
 func (m *LogFileReference) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_LogFileReference.Unmarshal(m, b)
@@ -662,7 +662,7 @@ func (m *LogLineInformation) Reset()         { *m = LogLineInformation{} }
 func (m *LogLineInformation) String() string { return proto.CompactTextString(m) }
 func (*LogLineInformation) ProtoMessage()    {}
 func (*LogLineInformation) Descriptor() ([]byte, []int) {
-	return fileDescriptor_compact_log_snapshot_16c3eb7582eeceea, []int{2}
+	return fileDescriptor_compact_log_snapshot_1fb2580569ad9045, []int{2}
 }
 func (m *LogLineInformation) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_LogLineInformation.Unmarshal(m, b)
@@ -844,7 +844,7 @@ func (m *QuerySample) Reset()         { *m = QuerySample{} }
 func (m *QuerySample) String() string { return proto.CompactTextString(m) }
 func (*QuerySample) ProtoMessage()    {}
 func (*QuerySample) Descriptor() ([]byte, []int) {
-	return fileDescriptor_compact_log_snapshot_16c3eb7582eeceea, []int{3}
+	return fileDescriptor_compact_log_snapshot_1fb2580569ad9045, []int{3}
 }
 func (m *QuerySample) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_QuerySample.Unmarshal(m, b)
@@ -954,10 +954,10 @@ func init() {
 }
 
 func init() {
-	proto.RegisterFile("compact_log_snapshot.proto", fileDescriptor_compact_log_snapshot_16c3eb7582eeceea)
+	proto.RegisterFile("compact_log_snapshot.proto", fileDescriptor_compact_log_snapshot_1fb2580569ad9045)
 }
 
-var fileDescriptor_compact_log_snapshot_16c3eb7582eeceea = []byte{
+var fileDescriptor_compact_log_snapshot_1fb2580569ad9045 = []byte{
 	// 2595 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x58, 0xdb, 0x76, 0x1b, 0xb9,
 	0xb1, 0x35, 0x45, 0xcb, 0x92, 0xa0, 0x8b, 0x61, 0xd8, 0x92, 0x68, 0xc9, 0x96, 0x69, 0xf9, 0xf8,

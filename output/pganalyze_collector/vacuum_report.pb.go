@@ -34,7 +34,7 @@ func (m *VacuumReportData) Reset()         { *m = VacuumReportData{} }
 func (m *VacuumReportData) String() string { return proto.CompactTextString(m) }
 func (*VacuumReportData) ProtoMessage()    {}
 func (*VacuumReportData) Descriptor() ([]byte, []int) {
-	return fileDescriptor_vacuum_report_817b4cce259a42a5, []int{0}
+	return fileDescriptor_vacuum_report_476c7d75cf9da597, []int{0}
 }
 func (m *VacuumReportData) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_VacuumReportData.Unmarshal(m, b)
@@ -118,7 +118,7 @@ func (m *VacuumStatistic) Reset()         { *m = VacuumStatistic{} }
 func (m *VacuumStatistic) String() string { return proto.CompactTextString(m) }
 func (*VacuumStatistic) ProtoMessage()    {}
 func (*VacuumStatistic) Descriptor() ([]byte, []int) {
-	return fileDescriptor_vacuum_report_817b4cce259a42a5, []int{1}
+	return fileDescriptor_vacuum_report_476c7d75cf9da597, []int{1}
 }
 func (m *VacuumStatistic) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_VacuumStatistic.Unmarshal(m, b)
@@ -276,9 +276,9 @@ func init() {
 	proto.RegisterType((*VacuumStatistic)(nil), "pganalyze.collector.VacuumStatistic")
 }
 
-func init() { proto.RegisterFile("vacuum_report.proto", fileDescriptor_vacuum_report_817b4cce259a42a5) }
+func init() { proto.RegisterFile("vacuum_report.proto", fileDescriptor_vacuum_report_476c7d75cf9da597) }
 
-var fileDescriptor_vacuum_report_817b4cce259a42a5 = []byte{
+var fileDescriptor_vacuum_report_476c7d75cf9da597 = []byte{
 	// 674 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x8c, 0x95, 0xdd, 0x4e, 0xdb, 0x4a,
 	0x10, 0x80, 0x15, 0xa1, 0x73, 0x74, 0xce, 0x26, 0x05, 0xb2, 0x09, 0xb0, 0x04, 0x14, 0xd2, 0x14,

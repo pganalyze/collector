@@ -38,7 +38,7 @@ func (m *Report) Reset()         { *m = Report{} }
 func (m *Report) String() string { return proto.CompactTextString(m) }
 func (*Report) ProtoMessage()    {}
 func (*Report) Descriptor() ([]byte, []int) {
-	return fileDescriptor_report_7d38588de4f58cda, []int{0}
+	return fileDescriptor_report_6f005bc968a2c30e, []int{0}
 }
 func (m *Report) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Report.Unmarshal(m, b)
@@ -58,6 +58,35 @@ func (m *Report) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_Report proto.InternalMessageInfo
 
+type isReport_Data interface {
+	isReport_Data()
+}
+
+type Report_BloatReportData struct {
+	BloatReportData *BloatReportData `protobuf:"bytes,10,opt,name=bloat_report_data,json=bloatReportData,proto3,oneof"`
+}
+type Report_BuffercacheReportData struct {
+	BuffercacheReportData *BuffercacheReportData `protobuf:"bytes,11,opt,name=buffercache_report_data,json=buffercacheReportData,proto3,oneof"`
+}
+type Report_VacuumReportData struct {
+	VacuumReportData *VacuumReportData `protobuf:"bytes,12,opt,name=vacuum_report_data,json=vacuumReportData,proto3,oneof"`
+}
+type Report_SequenceReportData struct {
+	SequenceReportData *SequenceReportData `protobuf:"bytes,13,opt,name=sequence_report_data,json=sequenceReportData,proto3,oneof"`
+}
+
+func (*Report_BloatReportData) isReport_Data()       {}
+func (*Report_BuffercacheReportData) isReport_Data() {}
+func (*Report_VacuumReportData) isReport_Data()      {}
+func (*Report_SequenceReportData) isReport_Data()    {}
+
+func (m *Report) GetData() isReport_Data {
+	if m != nil {
+		return m.Data
+	}
+	return nil
+}
+
 func (m *Report) GetReportRunId() string {
 	if m != nil {
 		return m.ReportRunId
@@ -75,41 +104,6 @@ func (m *Report) GetReportType() string {
 func (m *Report) GetCollectedAt() *timestamp.Timestamp {
 	if m != nil {
 		return m.CollectedAt
-	}
-	return nil
-}
-
-type isReport_Data interface {
-	isReport_Data()
-}
-
-type Report_BloatReportData struct {
-	BloatReportData *BloatReportData `protobuf:"bytes,10,opt,name=bloat_report_data,json=bloatReportData,proto3,oneof"`
-}
-
-type Report_BuffercacheReportData struct {
-	BuffercacheReportData *BuffercacheReportData `protobuf:"bytes,11,opt,name=buffercache_report_data,json=buffercacheReportData,proto3,oneof"`
-}
-
-type Report_VacuumReportData struct {
-	VacuumReportData *VacuumReportData `protobuf:"bytes,12,opt,name=vacuum_report_data,json=vacuumReportData,proto3,oneof"`
-}
-
-type Report_SequenceReportData struct {
-	SequenceReportData *SequenceReportData `protobuf:"bytes,13,opt,name=sequence_report_data,json=sequenceReportData,proto3,oneof"`
-}
-
-func (*Report_BloatReportData) isReport_Data() {}
-
-func (*Report_BuffercacheReportData) isReport_Data() {}
-
-func (*Report_VacuumReportData) isReport_Data() {}
-
-func (*Report_SequenceReportData) isReport_Data() {}
-
-func (m *Report) GetData() isReport_Data {
-	if m != nil {
-		return m.Data
 	}
 	return nil
 }
@@ -258,9 +252,9 @@ func init() {
 	proto.RegisterType((*Report)(nil), "pganalyze.collector.Report")
 }
 
-func init() { proto.RegisterFile("report.proto", fileDescriptor_report_7d38588de4f58cda) }
+func init() { proto.RegisterFile("report.proto", fileDescriptor_report_6f005bc968a2c30e) }
 
-var fileDescriptor_report_7d38588de4f58cda = []byte{
+var fileDescriptor_report_6f005bc968a2c30e = []byte{
 	// 325 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x6c, 0x91, 0xc1, 0x4f, 0x32, 0x31,
 	0x10, 0xc5, 0x3f, 0x3e, 0x09, 0x89, 0xb3, 0x10, 0xb5, 0x48, 0xdc, 0xec, 0x05, 0x42, 0x34, 0x12,

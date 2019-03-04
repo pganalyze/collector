@@ -32,7 +32,7 @@ func (m *BuffercacheReportData) Reset()         { *m = BuffercacheReportData{} }
 func (m *BuffercacheReportData) String() string { return proto.CompactTextString(m) }
 func (*BuffercacheReportData) ProtoMessage()    {}
 func (*BuffercacheReportData) Descriptor() ([]byte, []int) {
-	return fileDescriptor_buffercache_report_f497adf64b57f909, []int{0}
+	return fileDescriptor_buffercache_report_5bfb566009e1f878, []int{0}
 }
 func (m *BuffercacheReportData) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_BuffercacheReportData.Unmarshal(m, b)
@@ -96,7 +96,7 @@ func (m *BuffercacheEntry) Reset()         { *m = BuffercacheEntry{} }
 func (m *BuffercacheEntry) String() string { return proto.CompactTextString(m) }
 func (*BuffercacheEntry) ProtoMessage()    {}
 func (*BuffercacheEntry) Descriptor() ([]byte, []int) {
-	return fileDescriptor_buffercache_report_f497adf64b57f909, []int{1}
+	return fileDescriptor_buffercache_report_5bfb566009e1f878, []int{1}
 }
 func (m *BuffercacheEntry) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_BuffercacheEntry.Unmarshal(m, b)
@@ -164,10 +164,10 @@ func init() {
 }
 
 func init() {
-	proto.RegisterFile("buffercache_report.proto", fileDescriptor_buffercache_report_f497adf64b57f909)
+	proto.RegisterFile("buffercache_report.proto", fileDescriptor_buffercache_report_5bfb566009e1f878)
 }
 
-var fileDescriptor_buffercache_report_f497adf64b57f909 = []byte{
+var fileDescriptor_buffercache_report_5bfb566009e1f878 = []byte{
 	// 318 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x6c, 0x91, 0xc1, 0x4e, 0x2a, 0x31,
 	0x14, 0x86, 0x33, 0x70, 0x21, 0x97, 0x0e, 0x8b, 0x9b, 0x02, 0x49, 0x73, 0x13, 0xe3, 0x48, 0xa2,

@@ -1,8 +1,7 @@
 FROM postgres:9.6
 
-ENV GOPATH /go
-ENV GOVERSION 1.11
-ENV CODE_DIR $GOPATH/src/github.com/pganalyze/collector
+ENV GOVERSION 1.12
+ENV CODE_DIR /collector
 ENV PATH $PATH:/usr/local/go/bin
 
 # Packages required for both building and packaging

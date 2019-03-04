@@ -70,7 +70,7 @@ func (x Backend_WaitEventType) String() string {
 	return proto.EnumName(Backend_WaitEventType_name, int32(x))
 }
 func (Backend_WaitEventType) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_compact_activity_snapshot_46fcd87fa71fc4d4, []int{1, 0}
+	return fileDescriptor_compact_activity_snapshot_b4713571dfdb131d, []int{1, 0}
 }
 
 // ! When changing this, also update mappings/wait_event.json
@@ -734,7 +734,7 @@ func (x Backend_WaitEvent) String() string {
 	return proto.EnumName(Backend_WaitEvent_name, int32(x))
 }
 func (Backend_WaitEvent) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_compact_activity_snapshot_46fcd87fa71fc4d4, []int{1, 1}
+	return fileDescriptor_compact_activity_snapshot_b4713571dfdb131d, []int{1, 1}
 }
 
 type VacuumProgressStatistic_VacuumPhase int32
@@ -772,7 +772,7 @@ func (x VacuumProgressStatistic_VacuumPhase) String() string {
 	return proto.EnumName(VacuumProgressStatistic_VacuumPhase_name, int32(x))
 }
 func (VacuumProgressStatistic_VacuumPhase) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_compact_activity_snapshot_46fcd87fa71fc4d4, []int{3, 0}
+	return fileDescriptor_compact_activity_snapshot_b4713571dfdb131d, []int{3, 0}
 }
 
 type CompactActivitySnapshot struct {
@@ -789,7 +789,7 @@ func (m *CompactActivitySnapshot) Reset()         { *m = CompactActivitySnapshot
 func (m *CompactActivitySnapshot) String() string { return proto.CompactTextString(m) }
 func (*CompactActivitySnapshot) ProtoMessage()    {}
 func (*CompactActivitySnapshot) Descriptor() ([]byte, []int) {
-	return fileDescriptor_compact_activity_snapshot_46fcd87fa71fc4d4, []int{0}
+	return fileDescriptor_compact_activity_snapshot_b4713571dfdb131d, []int{0}
 }
 func (m *CompactActivitySnapshot) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CompactActivitySnapshot.Unmarshal(m, b)
@@ -868,7 +868,7 @@ func (m *Backend) Reset()         { *m = Backend{} }
 func (m *Backend) String() string { return proto.CompactTextString(m) }
 func (*Backend) ProtoMessage()    {}
 func (*Backend) Descriptor() ([]byte, []int) {
-	return fileDescriptor_compact_activity_snapshot_46fcd87fa71fc4d4, []int{1}
+	return fileDescriptor_compact_activity_snapshot_b4713571dfdb131d, []int{1}
 }
 func (m *Backend) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Backend.Unmarshal(m, b)
@@ -1053,7 +1053,7 @@ func (m *VacuumProgressInformation) Reset()         { *m = VacuumProgressInforma
 func (m *VacuumProgressInformation) String() string { return proto.CompactTextString(m) }
 func (*VacuumProgressInformation) ProtoMessage()    {}
 func (*VacuumProgressInformation) Descriptor() ([]byte, []int) {
-	return fileDescriptor_compact_activity_snapshot_46fcd87fa71fc4d4, []int{2}
+	return fileDescriptor_compact_activity_snapshot_b4713571dfdb131d, []int{2}
 }
 func (m *VacuumProgressInformation) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_VacuumProgressInformation.Unmarshal(m, b)
@@ -1147,7 +1147,7 @@ func (m *VacuumProgressStatistic) Reset()         { *m = VacuumProgressStatistic
 func (m *VacuumProgressStatistic) String() string { return proto.CompactTextString(m) }
 func (*VacuumProgressStatistic) ProtoMessage()    {}
 func (*VacuumProgressStatistic) Descriptor() ([]byte, []int) {
-	return fileDescriptor_compact_activity_snapshot_46fcd87fa71fc4d4, []int{3}
+	return fileDescriptor_compact_activity_snapshot_b4713571dfdb131d, []int{3}
 }
 func (m *VacuumProgressStatistic) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_VacuumProgressStatistic.Unmarshal(m, b)
@@ -1234,10 +1234,10 @@ func init() {
 }
 
 func init() {
-	proto.RegisterFile("compact_activity_snapshot.proto", fileDescriptor_compact_activity_snapshot_46fcd87fa71fc4d4)
+	proto.RegisterFile("compact_activity_snapshot.proto", fileDescriptor_compact_activity_snapshot_b4713571dfdb131d)
 }
 
-var fileDescriptor_compact_activity_snapshot_46fcd87fa71fc4d4 = []byte{
+var fileDescriptor_compact_activity_snapshot_b4713571dfdb131d = []byte{
 	// 3632 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x9a, 0xe9, 0x77, 0xe3, 0xc6,
 	0x91, 0xc0, 0x8d, 0xa1, 0x38, 0xd4, 0xb4, 0xa4, 0x51, 0xbb, 0x3d, 0xb6, 0xe9, 0xf1, 0x31, 0x63,

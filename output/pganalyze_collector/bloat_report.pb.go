@@ -41,7 +41,7 @@ func (x BloatLookupMethod) String() string {
 	return proto.EnumName(BloatLookupMethod_name, int32(x))
 }
 func (BloatLookupMethod) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_bloat_report_ac2c23756d883868, []int{0}
+	return fileDescriptor_bloat_report_ef21d368b8177df6, []int{0}
 }
 
 type BloatReportData struct {
@@ -59,7 +59,7 @@ func (m *BloatReportData) Reset()         { *m = BloatReportData{} }
 func (m *BloatReportData) String() string { return proto.CompactTextString(m) }
 func (*BloatReportData) ProtoMessage()    {}
 func (*BloatReportData) Descriptor() ([]byte, []int) {
-	return fileDescriptor_bloat_report_ac2c23756d883868, []int{0}
+	return fileDescriptor_bloat_report_ef21d368b8177df6, []int{0}
 }
 func (m *BloatReportData) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_BloatReportData.Unmarshal(m, b)
@@ -132,7 +132,7 @@ func (m *RelationBloatStatistic) Reset()         { *m = RelationBloatStatistic{}
 func (m *RelationBloatStatistic) String() string { return proto.CompactTextString(m) }
 func (*RelationBloatStatistic) ProtoMessage()    {}
 func (*RelationBloatStatistic) Descriptor() ([]byte, []int) {
-	return fileDescriptor_bloat_report_ac2c23756d883868, []int{1}
+	return fileDescriptor_bloat_report_ef21d368b8177df6, []int{1}
 }
 func (m *RelationBloatStatistic) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_RelationBloatStatistic.Unmarshal(m, b)
@@ -227,7 +227,7 @@ func (m *IndexBloatStatistic) Reset()         { *m = IndexBloatStatistic{} }
 func (m *IndexBloatStatistic) String() string { return proto.CompactTextString(m) }
 func (*IndexBloatStatistic) ProtoMessage()    {}
 func (*IndexBloatStatistic) Descriptor() ([]byte, []int) {
-	return fileDescriptor_bloat_report_ac2c23756d883868, []int{2}
+	return fileDescriptor_bloat_report_ef21d368b8177df6, []int{2}
 }
 func (m *IndexBloatStatistic) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_IndexBloatStatistic.Unmarshal(m, b)
@@ -317,9 +317,9 @@ func init() {
 	proto.RegisterEnum("pganalyze.collector.BloatLookupMethod", BloatLookupMethod_name, BloatLookupMethod_value)
 }
 
-func init() { proto.RegisterFile("bloat_report.proto", fileDescriptor_bloat_report_ac2c23756d883868) }
+func init() { proto.RegisterFile("bloat_report.proto", fileDescriptor_bloat_report_ef21d368b8177df6) }
 
-var fileDescriptor_bloat_report_ac2c23756d883868 = []byte{
+var fileDescriptor_bloat_report_ef21d368b8177df6 = []byte{
 	// 554 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xcc, 0x94, 0x5f, 0x6f, 0xd3, 0x3c,
 	0x14, 0xc6, 0xdf, 0xac, 0xef, 0xc6, 0x7a, 0xfa, 0x67, 0x99, 0x3b, 0x46, 0x00, 0xa1, 0x95, 0x4d,

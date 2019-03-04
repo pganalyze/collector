@@ -55,7 +55,7 @@ func (x BackendCountStatistic_BackendState) String() string {
 	return proto.EnumName(BackendCountStatistic_BackendState_name, int32(x))
 }
 func (BackendCountStatistic_BackendState) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_full_snapshot_e91f7d2e71678f51, []int{9, 0}
+	return fileDescriptor_full_snapshot_edef0a39b5b958d0, []int{9, 0}
 }
 
 // ! When changing this, also update mappings/backend_type.json
@@ -106,7 +106,7 @@ func (x BackendCountStatistic_BackendType) String() string {
 	return proto.EnumName(BackendCountStatistic_BackendType_name, int32(x))
 }
 func (BackendCountStatistic_BackendType) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_full_snapshot_e91f7d2e71678f51, []int{9, 1}
+	return fileDescriptor_full_snapshot_edef0a39b5b958d0, []int{9, 1}
 }
 
 type RelationEvent_EventType int32
@@ -135,7 +135,7 @@ func (x RelationEvent_EventType) String() string {
 	return proto.EnumName(RelationEvent_EventType_name, int32(x))
 }
 func (RelationEvent_EventType) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_full_snapshot_e91f7d2e71678f51, []int{16, 0}
+	return fileDescriptor_full_snapshot_edef0a39b5b958d0, []int{16, 0}
 }
 
 type FullSnapshot struct {
@@ -186,7 +186,7 @@ func (m *FullSnapshot) Reset()         { *m = FullSnapshot{} }
 func (m *FullSnapshot) String() string { return proto.CompactTextString(m) }
 func (*FullSnapshot) ProtoMessage()    {}
 func (*FullSnapshot) Descriptor() ([]byte, []int) {
-	return fileDescriptor_full_snapshot_e91f7d2e71678f51, []int{0}
+	return fileDescriptor_full_snapshot_edef0a39b5b958d0, []int{0}
 }
 func (m *FullSnapshot) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_FullSnapshot.Unmarshal(m, b)
@@ -470,7 +470,7 @@ func (m *CollectorStatistic) Reset()         { *m = CollectorStatistic{} }
 func (m *CollectorStatistic) String() string { return proto.CompactTextString(m) }
 func (*CollectorStatistic) ProtoMessage()    {}
 func (*CollectorStatistic) Descriptor() ([]byte, []int) {
-	return fileDescriptor_full_snapshot_e91f7d2e71678f51, []int{1}
+	return fileDescriptor_full_snapshot_edef0a39b5b958d0, []int{1}
 }
 func (m *CollectorStatistic) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CollectorStatistic.Unmarshal(m, b)
@@ -561,7 +561,7 @@ func (m *RoleInformation) Reset()         { *m = RoleInformation{} }
 func (m *RoleInformation) String() string { return proto.CompactTextString(m) }
 func (*RoleInformation) ProtoMessage()    {}
 func (*RoleInformation) Descriptor() ([]byte, []int) {
-	return fileDescriptor_full_snapshot_e91f7d2e71678f51, []int{2}
+	return fileDescriptor_full_snapshot_edef0a39b5b958d0, []int{2}
 }
 func (m *RoleInformation) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_RoleInformation.Unmarshal(m, b)
@@ -693,7 +693,7 @@ func (m *DatabaseInformation) Reset()         { *m = DatabaseInformation{} }
 func (m *DatabaseInformation) String() string { return proto.CompactTextString(m) }
 func (*DatabaseInformation) ProtoMessage()    {}
 func (*DatabaseInformation) Descriptor() ([]byte, []int) {
-	return fileDescriptor_full_snapshot_e91f7d2e71678f51, []int{3}
+	return fileDescriptor_full_snapshot_edef0a39b5b958d0, []int{3}
 }
 func (m *DatabaseInformation) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_DatabaseInformation.Unmarshal(m, b)
@@ -808,7 +808,7 @@ func (m *Setting) Reset()         { *m = Setting{} }
 func (m *Setting) String() string { return proto.CompactTextString(m) }
 func (*Setting) ProtoMessage()    {}
 func (*Setting) Descriptor() ([]byte, []int) {
-	return fileDescriptor_full_snapshot_e91f7d2e71678f51, []int{4}
+	return fileDescriptor_full_snapshot_edef0a39b5b958d0, []int{4}
 }
 func (m *Setting) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Setting.Unmarshal(m, b)
@@ -908,7 +908,7 @@ func (m *Replication) Reset()         { *m = Replication{} }
 func (m *Replication) String() string { return proto.CompactTextString(m) }
 func (*Replication) ProtoMessage()    {}
 func (*Replication) Descriptor() ([]byte, []int) {
-	return fileDescriptor_full_snapshot_e91f7d2e71678f51, []int{5}
+	return fileDescriptor_full_snapshot_edef0a39b5b958d0, []int{5}
 }
 func (m *Replication) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Replication.Unmarshal(m, b)
@@ -1016,7 +1016,7 @@ func (m *StandbyReference) Reset()         { *m = StandbyReference{} }
 func (m *StandbyReference) String() string { return proto.CompactTextString(m) }
 func (*StandbyReference) ProtoMessage()    {}
 func (*StandbyReference) Descriptor() ([]byte, []int) {
-	return fileDescriptor_full_snapshot_e91f7d2e71678f51, []int{6}
+	return fileDescriptor_full_snapshot_edef0a39b5b958d0, []int{6}
 }
 func (m *StandbyReference) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_StandbyReference.Unmarshal(m, b)
@@ -1062,7 +1062,7 @@ func (m *StandbyInformation) Reset()         { *m = StandbyInformation{} }
 func (m *StandbyInformation) String() string { return proto.CompactTextString(m) }
 func (*StandbyInformation) ProtoMessage()    {}
 func (*StandbyInformation) Descriptor() ([]byte, []int) {
-	return fileDescriptor_full_snapshot_e91f7d2e71678f51, []int{7}
+	return fileDescriptor_full_snapshot_edef0a39b5b958d0, []int{7}
 }
 func (m *StandbyInformation) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_StandbyInformation.Unmarshal(m, b)
@@ -1162,7 +1162,7 @@ func (m *StandbyStatistic) Reset()         { *m = StandbyStatistic{} }
 func (m *StandbyStatistic) String() string { return proto.CompactTextString(m) }
 func (*StandbyStatistic) ProtoMessage()    {}
 func (*StandbyStatistic) Descriptor() ([]byte, []int) {
-	return fileDescriptor_full_snapshot_e91f7d2e71678f51, []int{8}
+	return fileDescriptor_full_snapshot_edef0a39b5b958d0, []int{8}
 }
 func (m *StandbyStatistic) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_StandbyStatistic.Unmarshal(m, b)
@@ -1249,7 +1249,7 @@ func (m *BackendCountStatistic) Reset()         { *m = BackendCountStatistic{} }
 func (m *BackendCountStatistic) String() string { return proto.CompactTextString(m) }
 func (*BackendCountStatistic) ProtoMessage()    {}
 func (*BackendCountStatistic) Descriptor() ([]byte, []int) {
-	return fileDescriptor_full_snapshot_e91f7d2e71678f51, []int{9}
+	return fileDescriptor_full_snapshot_edef0a39b5b958d0, []int{9}
 }
 func (m *BackendCountStatistic) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_BackendCountStatistic.Unmarshal(m, b)
@@ -1336,7 +1336,7 @@ func (m *TablespaceReference) Reset()         { *m = TablespaceReference{} }
 func (m *TablespaceReference) String() string { return proto.CompactTextString(m) }
 func (*TablespaceReference) ProtoMessage()    {}
 func (*TablespaceReference) Descriptor() ([]byte, []int) {
-	return fileDescriptor_full_snapshot_e91f7d2e71678f51, []int{10}
+	return fileDescriptor_full_snapshot_edef0a39b5b958d0, []int{10}
 }
 func (m *TablespaceReference) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_TablespaceReference.Unmarshal(m, b)
@@ -1377,7 +1377,7 @@ func (m *TablespaceInformation) Reset()         { *m = TablespaceInformation{} }
 func (m *TablespaceInformation) String() string { return proto.CompactTextString(m) }
 func (*TablespaceInformation) ProtoMessage()    {}
 func (*TablespaceInformation) Descriptor() ([]byte, []int) {
-	return fileDescriptor_full_snapshot_e91f7d2e71678f51, []int{11}
+	return fileDescriptor_full_snapshot_edef0a39b5b958d0, []int{11}
 }
 func (m *TablespaceInformation) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_TablespaceInformation.Unmarshal(m, b)
@@ -1451,7 +1451,7 @@ func (m *QueryStatistic) Reset()         { *m = QueryStatistic{} }
 func (m *QueryStatistic) String() string { return proto.CompactTextString(m) }
 func (*QueryStatistic) ProtoMessage()    {}
 func (*QueryStatistic) Descriptor() ([]byte, []int) {
-	return fileDescriptor_full_snapshot_e91f7d2e71678f51, []int{12}
+	return fileDescriptor_full_snapshot_edef0a39b5b958d0, []int{12}
 }
 func (m *QueryStatistic) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_QueryStatistic.Unmarshal(m, b)
@@ -1596,7 +1596,7 @@ func (m *HistoricQueryStatistics) Reset()         { *m = HistoricQueryStatistics
 func (m *HistoricQueryStatistics) String() string { return proto.CompactTextString(m) }
 func (*HistoricQueryStatistics) ProtoMessage()    {}
 func (*HistoricQueryStatistics) Descriptor() ([]byte, []int) {
-	return fileDescriptor_full_snapshot_e91f7d2e71678f51, []int{13}
+	return fileDescriptor_full_snapshot_edef0a39b5b958d0, []int{13}
 }
 func (m *HistoricQueryStatistics) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_HistoricQueryStatistics.Unmarshal(m, b)
@@ -1663,7 +1663,7 @@ func (m *RelationInformation) Reset()         { *m = RelationInformation{} }
 func (m *RelationInformation) String() string { return proto.CompactTextString(m) }
 func (*RelationInformation) ProtoMessage()    {}
 func (*RelationInformation) Descriptor() ([]byte, []int) {
-	return fileDescriptor_full_snapshot_e91f7d2e71678f51, []int{14}
+	return fileDescriptor_full_snapshot_edef0a39b5b958d0, []int{14}
 }
 func (m *RelationInformation) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_RelationInformation.Unmarshal(m, b)
@@ -1796,7 +1796,7 @@ func (m *RelationInformation_Column) Reset()         { *m = RelationInformation_
 func (m *RelationInformation_Column) String() string { return proto.CompactTextString(m) }
 func (*RelationInformation_Column) ProtoMessage()    {}
 func (*RelationInformation_Column) Descriptor() ([]byte, []int) {
-	return fileDescriptor_full_snapshot_e91f7d2e71678f51, []int{14, 1}
+	return fileDescriptor_full_snapshot_edef0a39b5b958d0, []int{14, 1}
 }
 func (m *RelationInformation_Column) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_RelationInformation_Column.Unmarshal(m, b)
@@ -1870,7 +1870,7 @@ func (m *RelationInformation_Constraint) Reset()         { *m = RelationInformat
 func (m *RelationInformation_Constraint) String() string { return proto.CompactTextString(m) }
 func (*RelationInformation_Constraint) ProtoMessage()    {}
 func (*RelationInformation_Constraint) Descriptor() ([]byte, []int) {
-	return fileDescriptor_full_snapshot_e91f7d2e71678f51, []int{14, 2}
+	return fileDescriptor_full_snapshot_edef0a39b5b958d0, []int{14, 2}
 }
 func (m *RelationInformation_Constraint) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_RelationInformation_Constraint.Unmarshal(m, b)
@@ -1985,7 +1985,7 @@ func (m *RelationStatistic) Reset()         { *m = RelationStatistic{} }
 func (m *RelationStatistic) String() string { return proto.CompactTextString(m) }
 func (*RelationStatistic) ProtoMessage()    {}
 func (*RelationStatistic) Descriptor() ([]byte, []int) {
-	return fileDescriptor_full_snapshot_e91f7d2e71678f51, []int{15}
+	return fileDescriptor_full_snapshot_edef0a39b5b958d0, []int{15}
 }
 func (m *RelationStatistic) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_RelationStatistic.Unmarshal(m, b)
@@ -2173,7 +2173,7 @@ func (m *RelationEvent) Reset()         { *m = RelationEvent{} }
 func (m *RelationEvent) String() string { return proto.CompactTextString(m) }
 func (*RelationEvent) ProtoMessage()    {}
 func (*RelationEvent) Descriptor() ([]byte, []int) {
-	return fileDescriptor_full_snapshot_e91f7d2e71678f51, []int{16}
+	return fileDescriptor_full_snapshot_edef0a39b5b958d0, []int{16}
 }
 func (m *RelationEvent) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_RelationEvent.Unmarshal(m, b)
@@ -2241,7 +2241,7 @@ func (m *IndexInformation) Reset()         { *m = IndexInformation{} }
 func (m *IndexInformation) String() string { return proto.CompactTextString(m) }
 func (*IndexInformation) ProtoMessage()    {}
 func (*IndexInformation) Descriptor() ([]byte, []int) {
-	return fileDescriptor_full_snapshot_e91f7d2e71678f51, []int{17}
+	return fileDescriptor_full_snapshot_edef0a39b5b958d0, []int{17}
 }
 func (m *IndexInformation) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_IndexInformation.Unmarshal(m, b)
@@ -2348,7 +2348,7 @@ func (m *IndexStatistic) Reset()         { *m = IndexStatistic{} }
 func (m *IndexStatistic) String() string { return proto.CompactTextString(m) }
 func (*IndexStatistic) ProtoMessage()    {}
 func (*IndexStatistic) Descriptor() ([]byte, []int) {
-	return fileDescriptor_full_snapshot_e91f7d2e71678f51, []int{18}
+	return fileDescriptor_full_snapshot_edef0a39b5b958d0, []int{18}
 }
 func (m *IndexStatistic) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_IndexStatistic.Unmarshal(m, b)
@@ -2440,7 +2440,7 @@ func (m *FunctionInformation) Reset()         { *m = FunctionInformation{} }
 func (m *FunctionInformation) String() string { return proto.CompactTextString(m) }
 func (*FunctionInformation) ProtoMessage()    {}
 func (*FunctionInformation) Descriptor() ([]byte, []int) {
-	return fileDescriptor_full_snapshot_e91f7d2e71678f51, []int{19}
+	return fileDescriptor_full_snapshot_edef0a39b5b958d0, []int{19}
 }
 func (m *FunctionInformation) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_FunctionInformation.Unmarshal(m, b)
@@ -2565,7 +2565,7 @@ func (m *FunctionStatistic) Reset()         { *m = FunctionStatistic{} }
 func (m *FunctionStatistic) String() string { return proto.CompactTextString(m) }
 func (*FunctionStatistic) ProtoMessage()    {}
 func (*FunctionStatistic) Descriptor() ([]byte, []int) {
-	return fileDescriptor_full_snapshot_e91f7d2e71678f51, []int{20}
+	return fileDescriptor_full_snapshot_edef0a39b5b958d0, []int{20}
 }
 func (m *FunctionStatistic) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_FunctionStatistic.Unmarshal(m, b)
@@ -2643,9 +2643,9 @@ func init() {
 	proto.RegisterEnum("pganalyze.collector.RelationEvent_EventType", RelationEvent_EventType_name, RelationEvent_EventType_value)
 }
 
-func init() { proto.RegisterFile("full_snapshot.proto", fileDescriptor_full_snapshot_e91f7d2e71678f51) }
+func init() { proto.RegisterFile("full_snapshot.proto", fileDescriptor_full_snapshot_edef0a39b5b958d0) }
 
-var fileDescriptor_full_snapshot_e91f7d2e71678f51 = []byte{
+var fileDescriptor_full_snapshot_edef0a39b5b958d0 = []byte{
 	// 4066 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xac, 0x7a, 0x4b, 0x73, 0x1c, 0xc9,
 	0x71, 0xbf, 0x06, 0x83, 0xc7, 0x4c, 0xce, 0x13, 0x05, 0x80, 0x1c, 0x82, 0xbb, 0x5a, 0xec, 0x88,

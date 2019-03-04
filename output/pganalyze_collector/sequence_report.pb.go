@@ -33,7 +33,7 @@ func (m *SequenceReportData) Reset()         { *m = SequenceReportData{} }
 func (m *SequenceReportData) String() string { return proto.CompactTextString(m) }
 func (*SequenceReportData) ProtoMessage()    {}
 func (*SequenceReportData) Descriptor() ([]byte, []int) {
-	return fileDescriptor_sequence_report_ecd720b5e55e240b, []int{0}
+	return fileDescriptor_sequence_report_b88ca15715cbe69a, []int{0}
 }
 func (m *SequenceReportData) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_SequenceReportData.Unmarshal(m, b)
@@ -101,7 +101,7 @@ func (m *SequenceReference) Reset()         { *m = SequenceReference{} }
 func (m *SequenceReference) String() string { return proto.CompactTextString(m) }
 func (*SequenceReference) ProtoMessage()    {}
 func (*SequenceReference) Descriptor() ([]byte, []int) {
-	return fileDescriptor_sequence_report_ecd720b5e55e240b, []int{1}
+	return fileDescriptor_sequence_report_b88ca15715cbe69a, []int{1}
 }
 func (m *SequenceReference) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_SequenceReference.Unmarshal(m, b)
@@ -160,7 +160,7 @@ func (m *SequenceInformation) Reset()         { *m = SequenceInformation{} }
 func (m *SequenceInformation) String() string { return proto.CompactTextString(m) }
 func (*SequenceInformation) ProtoMessage()    {}
 func (*SequenceInformation) Descriptor() ([]byte, []int) {
-	return fileDescriptor_sequence_report_ecd720b5e55e240b, []int{2}
+	return fileDescriptor_sequence_report_b88ca15715cbe69a, []int{2}
 }
 func (m *SequenceInformation) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_SequenceInformation.Unmarshal(m, b)
@@ -252,7 +252,7 @@ func (m *SerialColumnInformation) Reset()         { *m = SerialColumnInformation
 func (m *SerialColumnInformation) String() string { return proto.CompactTextString(m) }
 func (*SerialColumnInformation) ProtoMessage()    {}
 func (*SerialColumnInformation) Descriptor() ([]byte, []int) {
-	return fileDescriptor_sequence_report_ecd720b5e55e240b, []int{3}
+	return fileDescriptor_sequence_report_b88ca15715cbe69a, []int{3}
 }
 func (m *SerialColumnInformation) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_SerialColumnInformation.Unmarshal(m, b)
@@ -330,7 +330,7 @@ func (m *SerialColumnInformation_ForeignColumn) Reset()         { *m = SerialCol
 func (m *SerialColumnInformation_ForeignColumn) String() string { return proto.CompactTextString(m) }
 func (*SerialColumnInformation_ForeignColumn) ProtoMessage()    {}
 func (*SerialColumnInformation_ForeignColumn) Descriptor() ([]byte, []int) {
-	return fileDescriptor_sequence_report_ecd720b5e55e240b, []int{3, 0}
+	return fileDescriptor_sequence_report_b88ca15715cbe69a, []int{3, 0}
 }
 func (m *SerialColumnInformation_ForeignColumn) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_SerialColumnInformation_ForeignColumn.Unmarshal(m, b)
@@ -394,10 +394,10 @@ func init() {
 }
 
 func init() {
-	proto.RegisterFile("sequence_report.proto", fileDescriptor_sequence_report_ecd720b5e55e240b)
+	proto.RegisterFile("sequence_report.proto", fileDescriptor_sequence_report_b88ca15715cbe69a)
 }
 
-var fileDescriptor_sequence_report_ecd720b5e55e240b = []byte{
+var fileDescriptor_sequence_report_b88ca15715cbe69a = []byte{
 	// 562 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xb4, 0x54, 0xcd, 0x6e, 0xd3, 0x4c,
 	0x14, 0x95, 0xe3, 0xb6, 0x9f, 0x73, 0xed, 0x7e, 0x08, 0xb7, 0x15, 0x56, 0x2a, 0x44, 0x1a, 0x24,

@@ -39,7 +39,7 @@ func (x QueryExplainInformation_ExplainFormat) String() string {
 	return proto.EnumName(QueryExplainInformation_ExplainFormat_name, int32(x))
 }
 func (QueryExplainInformation_ExplainFormat) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_shared_3c5ff1423a6309ee, []int{10, 0}
+	return fileDescriptor_shared_912ded0afbd75b56, []int{10, 0}
 }
 
 type QueryExplainInformation_ExplainSource int32
@@ -68,7 +68,7 @@ func (x QueryExplainInformation_ExplainSource) String() string {
 	return proto.EnumName(QueryExplainInformation_ExplainSource_name, int32(x))
 }
 func (QueryExplainInformation_ExplainSource) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_shared_3c5ff1423a6309ee, []int{10, 1}
+	return fileDescriptor_shared_912ded0afbd75b56, []int{10, 1}
 }
 
 type SystemInformation_SystemType int32
@@ -94,7 +94,7 @@ func (x SystemInformation_SystemType) String() string {
 	return proto.EnumName(SystemInformation_SystemType_name, int32(x))
 }
 func (SystemInformation_SystemType) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_shared_3c5ff1423a6309ee, []int{12, 0}
+	return fileDescriptor_shared_912ded0afbd75b56, []int{12, 0}
 }
 
 type NullString struct {
@@ -109,7 +109,7 @@ func (m *NullString) Reset()         { *m = NullString{} }
 func (m *NullString) String() string { return proto.CompactTextString(m) }
 func (*NullString) ProtoMessage()    {}
 func (*NullString) Descriptor() ([]byte, []int) {
-	return fileDescriptor_shared_3c5ff1423a6309ee, []int{0}
+	return fileDescriptor_shared_912ded0afbd75b56, []int{0}
 }
 func (m *NullString) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_NullString.Unmarshal(m, b)
@@ -155,7 +155,7 @@ func (m *NullTimestamp) Reset()         { *m = NullTimestamp{} }
 func (m *NullTimestamp) String() string { return proto.CompactTextString(m) }
 func (*NullTimestamp) ProtoMessage()    {}
 func (*NullTimestamp) Descriptor() ([]byte, []int) {
-	return fileDescriptor_shared_3c5ff1423a6309ee, []int{1}
+	return fileDescriptor_shared_912ded0afbd75b56, []int{1}
 }
 func (m *NullTimestamp) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_NullTimestamp.Unmarshal(m, b)
@@ -202,7 +202,7 @@ func (m *PostgresVersion) Reset()         { *m = PostgresVersion{} }
 func (m *PostgresVersion) String() string { return proto.CompactTextString(m) }
 func (*PostgresVersion) ProtoMessage()    {}
 func (*PostgresVersion) Descriptor() ([]byte, []int) {
-	return fileDescriptor_shared_3c5ff1423a6309ee, []int{2}
+	return fileDescriptor_shared_912ded0afbd75b56, []int{2}
 }
 func (m *PostgresVersion) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_PostgresVersion.Unmarshal(m, b)
@@ -254,7 +254,7 @@ func (m *RoleReference) Reset()         { *m = RoleReference{} }
 func (m *RoleReference) String() string { return proto.CompactTextString(m) }
 func (*RoleReference) ProtoMessage()    {}
 func (*RoleReference) Descriptor() ([]byte, []int) {
-	return fileDescriptor_shared_3c5ff1423a6309ee, []int{3}
+	return fileDescriptor_shared_912ded0afbd75b56, []int{3}
 }
 func (m *RoleReference) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_RoleReference.Unmarshal(m, b)
@@ -292,7 +292,7 @@ func (m *DatabaseReference) Reset()         { *m = DatabaseReference{} }
 func (m *DatabaseReference) String() string { return proto.CompactTextString(m) }
 func (*DatabaseReference) ProtoMessage()    {}
 func (*DatabaseReference) Descriptor() ([]byte, []int) {
-	return fileDescriptor_shared_3c5ff1423a6309ee, []int{4}
+	return fileDescriptor_shared_912ded0afbd75b56, []int{4}
 }
 func (m *DatabaseReference) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_DatabaseReference.Unmarshal(m, b)
@@ -332,7 +332,7 @@ func (m *RelationReference) Reset()         { *m = RelationReference{} }
 func (m *RelationReference) String() string { return proto.CompactTextString(m) }
 func (*RelationReference) ProtoMessage()    {}
 func (*RelationReference) Descriptor() ([]byte, []int) {
-	return fileDescriptor_shared_3c5ff1423a6309ee, []int{5}
+	return fileDescriptor_shared_912ded0afbd75b56, []int{5}
 }
 func (m *RelationReference) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_RelationReference.Unmarshal(m, b)
@@ -386,7 +386,7 @@ func (m *IndexReference) Reset()         { *m = IndexReference{} }
 func (m *IndexReference) String() string { return proto.CompactTextString(m) }
 func (*IndexReference) ProtoMessage()    {}
 func (*IndexReference) Descriptor() ([]byte, []int) {
-	return fileDescriptor_shared_3c5ff1423a6309ee, []int{6}
+	return fileDescriptor_shared_912ded0afbd75b56, []int{6}
 }
 func (m *IndexReference) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_IndexReference.Unmarshal(m, b)
@@ -441,7 +441,7 @@ func (m *FunctionReference) Reset()         { *m = FunctionReference{} }
 func (m *FunctionReference) String() string { return proto.CompactTextString(m) }
 func (*FunctionReference) ProtoMessage()    {}
 func (*FunctionReference) Descriptor() ([]byte, []int) {
-	return fileDescriptor_shared_3c5ff1423a6309ee, []int{7}
+	return fileDescriptor_shared_912ded0afbd75b56, []int{7}
 }
 func (m *FunctionReference) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_FunctionReference.Unmarshal(m, b)
@@ -502,7 +502,7 @@ func (m *QueryReference) Reset()         { *m = QueryReference{} }
 func (m *QueryReference) String() string { return proto.CompactTextString(m) }
 func (*QueryReference) ProtoMessage()    {}
 func (*QueryReference) Descriptor() ([]byte, []int) {
-	return fileDescriptor_shared_3c5ff1423a6309ee, []int{8}
+	return fileDescriptor_shared_912ded0afbd75b56, []int{8}
 }
 func (m *QueryReference) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_QueryReference.Unmarshal(m, b)
@@ -556,7 +556,7 @@ func (m *QueryInformation) Reset()         { *m = QueryInformation{} }
 func (m *QueryInformation) String() string { return proto.CompactTextString(m) }
 func (*QueryInformation) ProtoMessage()    {}
 func (*QueryInformation) Descriptor() ([]byte, []int) {
-	return fileDescriptor_shared_3c5ff1423a6309ee, []int{9}
+	return fileDescriptor_shared_912ded0afbd75b56, []int{9}
 }
 func (m *QueryInformation) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_QueryInformation.Unmarshal(m, b)
@@ -612,7 +612,7 @@ func (m *QueryExplainInformation) Reset()         { *m = QueryExplainInformation
 func (m *QueryExplainInformation) String() string { return proto.CompactTextString(m) }
 func (*QueryExplainInformation) ProtoMessage()    {}
 func (*QueryExplainInformation) Descriptor() ([]byte, []int) {
-	return fileDescriptor_shared_3c5ff1423a6309ee, []int{10}
+	return fileDescriptor_shared_912ded0afbd75b56, []int{10}
 }
 func (m *QueryExplainInformation) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_QueryExplainInformation.Unmarshal(m, b)
@@ -696,7 +696,7 @@ func (m *System) Reset()         { *m = System{} }
 func (m *System) String() string { return proto.CompactTextString(m) }
 func (*System) ProtoMessage()    {}
 func (*System) Descriptor() ([]byte, []int) {
-	return fileDescriptor_shared_3c5ff1423a6309ee, []int{11}
+	return fileDescriptor_shared_912ded0afbd75b56, []int{11}
 }
 func (m *System) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_System.Unmarshal(m, b)
@@ -865,7 +865,7 @@ func (m *SystemInformation) Reset()         { *m = SystemInformation{} }
 func (m *SystemInformation) String() string { return proto.CompactTextString(m) }
 func (*SystemInformation) ProtoMessage()    {}
 func (*SystemInformation) Descriptor() ([]byte, []int) {
-	return fileDescriptor_shared_3c5ff1423a6309ee, []int{12}
+	return fileDescriptor_shared_912ded0afbd75b56, []int{12}
 }
 func (m *SystemInformation) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_SystemInformation.Unmarshal(m, b)
@@ -885,13 +885,6 @@ func (m *SystemInformation) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_SystemInformation proto.InternalMessageInfo
 
-func (m *SystemInformation) GetType() SystemInformation_SystemType {
-	if m != nil {
-		return m.Type
-	}
-	return SystemInformation_SELF_HOSTED_SYSTEM
-}
-
 type isSystemInformation_Info interface {
 	isSystemInformation_Info()
 }
@@ -899,20 +892,25 @@ type isSystemInformation_Info interface {
 type SystemInformation_SelfHosted struct {
 	SelfHosted *SystemInformationSelfHosted `protobuf:"bytes,2,opt,name=self_hosted,json=selfHosted,proto3,oneof"`
 }
-
 type SystemInformation_AmazonRds struct {
 	AmazonRds *SystemInformationAmazonRDS `protobuf:"bytes,3,opt,name=amazon_rds,json=amazonRds,proto3,oneof"`
 }
 
 func (*SystemInformation_SelfHosted) isSystemInformation_Info() {}
-
-func (*SystemInformation_AmazonRds) isSystemInformation_Info() {}
+func (*SystemInformation_AmazonRds) isSystemInformation_Info()  {}
 
 func (m *SystemInformation) GetInfo() isSystemInformation_Info {
 	if m != nil {
 		return m.Info
 	}
 	return nil
+}
+
+func (m *SystemInformation) GetType() SystemInformation_SystemType {
+	if m != nil {
+		return m.Type
+	}
+	return SystemInformation_SELF_HOSTED_SYSTEM
 }
 
 func (m *SystemInformation) GetSelfHosted() *SystemInformationSelfHosted {
@@ -1029,7 +1027,7 @@ func (m *SystemInformationSelfHosted) Reset()         { *m = SystemInformationSe
 func (m *SystemInformationSelfHosted) String() string { return proto.CompactTextString(m) }
 func (*SystemInformationSelfHosted) ProtoMessage()    {}
 func (*SystemInformationSelfHosted) Descriptor() ([]byte, []int) {
-	return fileDescriptor_shared_3c5ff1423a6309ee, []int{13}
+	return fileDescriptor_shared_912ded0afbd75b56, []int{13}
 }
 func (m *SystemInformationSelfHosted) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_SystemInformationSelfHosted.Unmarshal(m, b)
@@ -1144,7 +1142,7 @@ func (m *SystemInformationAmazonRDS) Reset()         { *m = SystemInformationAma
 func (m *SystemInformationAmazonRDS) String() string { return proto.CompactTextString(m) }
 func (*SystemInformationAmazonRDS) ProtoMessage()    {}
 func (*SystemInformationAmazonRDS) Descriptor() ([]byte, []int) {
-	return fileDescriptor_shared_3c5ff1423a6309ee, []int{14}
+	return fileDescriptor_shared_912ded0afbd75b56, []int{14}
 }
 func (m *SystemInformationAmazonRDS) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_SystemInformationAmazonRDS.Unmarshal(m, b)
@@ -1331,7 +1329,7 @@ func (m *SchedulerStatistic) Reset()         { *m = SchedulerStatistic{} }
 func (m *SchedulerStatistic) String() string { return proto.CompactTextString(m) }
 func (*SchedulerStatistic) ProtoMessage()    {}
 func (*SchedulerStatistic) Descriptor() ([]byte, []int) {
-	return fileDescriptor_shared_3c5ff1423a6309ee, []int{15}
+	return fileDescriptor_shared_912ded0afbd75b56, []int{15}
 }
 func (m *SchedulerStatistic) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_SchedulerStatistic.Unmarshal(m, b)
@@ -1402,7 +1400,7 @@ func (m *MemoryStatistic) Reset()         { *m = MemoryStatistic{} }
 func (m *MemoryStatistic) String() string { return proto.CompactTextString(m) }
 func (*MemoryStatistic) ProtoMessage()    {}
 func (*MemoryStatistic) Descriptor() ([]byte, []int) {
-	return fileDescriptor_shared_3c5ff1423a6309ee, []int{16}
+	return fileDescriptor_shared_912ded0afbd75b56, []int{16}
 }
 func (m *MemoryStatistic) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_MemoryStatistic.Unmarshal(m, b)
@@ -1578,7 +1576,7 @@ func (m *CPUInformation) Reset()         { *m = CPUInformation{} }
 func (m *CPUInformation) String() string { return proto.CompactTextString(m) }
 func (*CPUInformation) ProtoMessage()    {}
 func (*CPUInformation) Descriptor() ([]byte, []int) {
-	return fileDescriptor_shared_3c5ff1423a6309ee, []int{17}
+	return fileDescriptor_shared_912ded0afbd75b56, []int{17}
 }
 func (m *CPUInformation) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CPUInformation.Unmarshal(m, b)
@@ -1651,7 +1649,7 @@ func (m *CPUReference) Reset()         { *m = CPUReference{} }
 func (m *CPUReference) String() string { return proto.CompactTextString(m) }
 func (*CPUReference) ProtoMessage()    {}
 func (*CPUReference) Descriptor() ([]byte, []int) {
-	return fileDescriptor_shared_3c5ff1423a6309ee, []int{18}
+	return fileDescriptor_shared_912ded0afbd75b56, []int{18}
 }
 func (m *CPUReference) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CPUReference.Unmarshal(m, b)
@@ -1699,7 +1697,7 @@ func (m *CPUStatistic) Reset()         { *m = CPUStatistic{} }
 func (m *CPUStatistic) String() string { return proto.CompactTextString(m) }
 func (*CPUStatistic) ProtoMessage()    {}
 func (*CPUStatistic) Descriptor() ([]byte, []int) {
-	return fileDescriptor_shared_3c5ff1423a6309ee, []int{19}
+	return fileDescriptor_shared_912ded0afbd75b56, []int{19}
 }
 func (m *CPUStatistic) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CPUStatistic.Unmarshal(m, b)
@@ -1807,7 +1805,7 @@ func (m *NetworkReference) Reset()         { *m = NetworkReference{} }
 func (m *NetworkReference) String() string { return proto.CompactTextString(m) }
 func (*NetworkReference) ProtoMessage()    {}
 func (*NetworkReference) Descriptor() ([]byte, []int) {
-	return fileDescriptor_shared_3c5ff1423a6309ee, []int{20}
+	return fileDescriptor_shared_912ded0afbd75b56, []int{20}
 }
 func (m *NetworkReference) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_NetworkReference.Unmarshal(m, b)
@@ -1847,7 +1845,7 @@ func (m *NetworkStatistic) Reset()         { *m = NetworkStatistic{} }
 func (m *NetworkStatistic) String() string { return proto.CompactTextString(m) }
 func (*NetworkStatistic) ProtoMessage()    {}
 func (*NetworkStatistic) Descriptor() ([]byte, []int) {
-	return fileDescriptor_shared_3c5ff1423a6309ee, []int{21}
+	return fileDescriptor_shared_912ded0afbd75b56, []int{21}
 }
 func (m *NetworkStatistic) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_NetworkStatistic.Unmarshal(m, b)
@@ -1899,7 +1897,7 @@ func (m *DiskReference) Reset()         { *m = DiskReference{} }
 func (m *DiskReference) String() string { return proto.CompactTextString(m) }
 func (*DiskReference) ProtoMessage()    {}
 func (*DiskReference) Descriptor() ([]byte, []int) {
-	return fileDescriptor_shared_3c5ff1423a6309ee, []int{22}
+	return fileDescriptor_shared_912ded0afbd75b56, []int{22}
 }
 func (m *DiskReference) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_DiskReference.Unmarshal(m, b)
@@ -1941,7 +1939,7 @@ func (m *DiskInformation) Reset()         { *m = DiskInformation{} }
 func (m *DiskInformation) String() string { return proto.CompactTextString(m) }
 func (*DiskInformation) ProtoMessage()    {}
 func (*DiskInformation) Descriptor() ([]byte, []int) {
-	return fileDescriptor_shared_3c5ff1423a6309ee, []int{23}
+	return fileDescriptor_shared_912ded0afbd75b56, []int{23}
 }
 func (m *DiskInformation) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_DiskInformation.Unmarshal(m, b)
@@ -2017,7 +2015,7 @@ func (m *DiskStatistic) Reset()         { *m = DiskStatistic{} }
 func (m *DiskStatistic) String() string { return proto.CompactTextString(m) }
 func (*DiskStatistic) ProtoMessage()    {}
 func (*DiskStatistic) Descriptor() ([]byte, []int) {
-	return fileDescriptor_shared_3c5ff1423a6309ee, []int{24}
+	return fileDescriptor_shared_912ded0afbd75b56, []int{24}
 }
 func (m *DiskStatistic) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_DiskStatistic.Unmarshal(m, b)
@@ -2125,7 +2123,7 @@ func (m *DiskPartitionReference) Reset()         { *m = DiskPartitionReference{}
 func (m *DiskPartitionReference) String() string { return proto.CompactTextString(m) }
 func (*DiskPartitionReference) ProtoMessage()    {}
 func (*DiskPartitionReference) Descriptor() ([]byte, []int) {
-	return fileDescriptor_shared_3c5ff1423a6309ee, []int{25}
+	return fileDescriptor_shared_912ded0afbd75b56, []int{25}
 }
 func (m *DiskPartitionReference) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_DiskPartitionReference.Unmarshal(m, b)
@@ -2167,7 +2165,7 @@ func (m *DiskPartitionInformation) Reset()         { *m = DiskPartitionInformati
 func (m *DiskPartitionInformation) String() string { return proto.CompactTextString(m) }
 func (*DiskPartitionInformation) ProtoMessage()    {}
 func (*DiskPartitionInformation) Descriptor() ([]byte, []int) {
-	return fileDescriptor_shared_3c5ff1423a6309ee, []int{26}
+	return fileDescriptor_shared_912ded0afbd75b56, []int{26}
 }
 func (m *DiskPartitionInformation) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_DiskPartitionInformation.Unmarshal(m, b)
@@ -2235,7 +2233,7 @@ func (m *DiskPartitionStatistic) Reset()         { *m = DiskPartitionStatistic{}
 func (m *DiskPartitionStatistic) String() string { return proto.CompactTextString(m) }
 func (*DiskPartitionStatistic) ProtoMessage()    {}
 func (*DiskPartitionStatistic) Descriptor() ([]byte, []int) {
-	return fileDescriptor_shared_3c5ff1423a6309ee, []int{27}
+	return fileDescriptor_shared_912ded0afbd75b56, []int{27}
 }
 func (m *DiskPartitionStatistic) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_DiskPartitionStatistic.Unmarshal(m, b)
@@ -2310,9 +2308,9 @@ func init() {
 	proto.RegisterEnum("pganalyze.collector.SystemInformation_SystemType", SystemInformation_SystemType_name, SystemInformation_SystemType_value)
 }
 
-func init() { proto.RegisterFile("shared.proto", fileDescriptor_shared_3c5ff1423a6309ee) }
+func init() { proto.RegisterFile("shared.proto", fileDescriptor_shared_912ded0afbd75b56) }
 
-var fileDescriptor_shared_3c5ff1423a6309ee = []byte{
+var fileDescriptor_shared_912ded0afbd75b56 = []byte{
 	// 3010 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xb4, 0x59, 0x4b, 0x77, 0x1b, 0x37,
 	0x96, 0x36, 0xad, 0x27, 0x2f, 0xc5, 0x17, 0xac, 0x07, 0x2d, 0xd9, 0xb1, 0x4c, 0xdb, 0xb1, 0xf2,

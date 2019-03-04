@@ -1,14 +1,14 @@
 language: go
 sudo: required
 go:
-- "1.11"
+- "1.12"
+env:
+  - GO111MODULE=on
 before_install:
-  - wget https://github.com/google/protobuf/releases/download/v3.2.0/protoc-3.2.0-linux-x86_64.zip
-  - unzip protoc-3.2.0-linux-x86_64.zip -d $HOME
-  - export PATH=$HOME/protoc-3.2.0-linux-x86_64/bin:$PATH
-  - go get -u github.com/golang/protobuf/proto
+  - wget https://github.com/google/protobuf/releases/download/v3.7.0/protoc-3.7.0-linux-x86_64.zip
+  - unzip protoc-3.7.0-linux-x86_64.zip -d $HOME
+  - export PATH=$HOME/protoc-3.7.0-linux-x86_64/bin:$PATH
   - go get -d -u github.com/golang/protobuf/protoc-gen-go
-  - git -C "$(go env GOPATH)"/src/github.com/golang/protobuf checkout v1.2.0
   - go install github.com/golang/protobuf/protoc-gen-go
 script:
   - make build OUTFILE=pganalyze-collector-linux-amd64
@@ -23,4 +23,4 @@ deploy:
   on:
     repo: pganalyze/collector
     tags: true
-    go: "1.11"
+    go: "1.12"
