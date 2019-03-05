@@ -29,6 +29,11 @@ func GetPostgresVersion(logger *util.Logger, db *sql.DB) (version state.Postgres
 		return
 	}
 
+	err = db.QueryRow(QueryMarkerSQL + "SELECT pg_catalog.count(1) = 1 FROM pg_extension WHERE extname = 'citus'").Scan(&version.IsCitus)
+	if err != nil {
+		return
+	}
+
 	logger.PrintVerbose("Detected PostgreSQL Version %d (%s)", version.Numeric, version.Full)
 
 	return

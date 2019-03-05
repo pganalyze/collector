@@ -105,6 +105,8 @@ func GetRelationStats(db *sql.DB, postgresVersion state.PostgresVersion) (relSta
 		relStats[oid] = stats
 	}
 
+	relStats, err = handleRelationStatsExt(db, relStats, postgresVersion)
+
 	return
 }
 

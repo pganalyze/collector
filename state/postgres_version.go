@@ -21,6 +21,7 @@ type PostgresVersion struct {
 	Short   string `json:"short"`   // e.g. "9.5.1"
 	Numeric int    `json:"numeric"` // e.g. 90501
 
-	// For collector use only, to avoid calling functions that don't work in AWS Aurora
+	// For collector use only, to avoid calling functions that don't work
 	IsAwsAurora bool
+	IsCitus     bool
 }
