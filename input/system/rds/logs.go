@@ -16,13 +16,17 @@ import (
 
 // DownloadLogFiles - Gets log files for an Amazon RDS instance
 func DownloadLogFiles(config config.ServerConfig, logger *util.Logger) (result []state.LogFile, samples []state.PostgresQuerySample) {
-	sess := awsutil.GetAwsSession(config)
+	sess, err := awsutil.GetAwsSession(config)
+	if err != nil {
+		logger.PrintError("Rds/Logs: Encountered error getting session: %v\n", err)
+		return
+	}
 
 	rdsSvc := rds.New(sess)
 
 	instance, err := awsutil.FindRdsInstance(config, sess)
 	if err != nil {
-		logger.PrintError("Could not find RDS instance: %s", err)
+		logger.PrintError("Rds/Logs: Could not find RDS instance: %s", err)
 		return
 	}
 
@@ -38,7 +42,7 @@ func DownloadLogFiles(config config.ServerConfig, logger *util.Logger) (result [
 
 	resp, err := rdsSvc.DescribeDBLogFiles(params)
 	if err != nil {
-		logger.PrintError("Could not find RDS log files: %s", err)
+		logger.PrintError("Rds/Logs: Could not find RDS log files: %s", err)
 		return
 	}
 
@@ -49,7 +53,7 @@ func DownloadLogFiles(config config.ServerConfig, logger *util.Logger) (result [
 		logFile.UUID = uuid.NewV4()
 		logFile.TmpFile, err = ioutil.TempFile("", "")
 		if err != nil {
-			logger.PrintError("Could not allocate tempfile for logs: %s", err)
+			logger.PrintError("Rds/Logs: Could not allocate tempfile for logs: %s", err)
 			break
 		}
 		logFile.OriginalName = *rdsLogFile.LogFileName
@@ -77,13 +81,13 @@ func DownloadLogFiles(config config.ServerConfig, logger *util.Logger) (result [
 			}
 
 			if resp.LogFileData == nil {
-				logger.PrintVerbose("No log data in response, skipping")
+				logger.PrintVerbose("Rds/Logs: No log data in response, skipping")
 				break
 			}
 
 			_, err = logFile.TmpFile.WriteString(*resp.LogFileData)
 			if err != nil {
-				logger.PrintError("%s", err)
+				logger.PrintError("Rds/Logs: %s", err)
 				break
 			}
 

@@ -22,11 +22,15 @@ const AuroraMaxStorage = 64 * 1024 * 1024 * 1024 * 1024
 func GetSystemState(config config.ServerConfig, logger *util.Logger) (system state.SystemState) {
 	system.Info.Type = state.AmazonRdsSystem
 
-	sess := awsutil.GetAwsSession(config)
+	sess, err := awsutil.GetAwsSession(config)
+	if err != nil {
+		logger.PrintError("Rds/System: Encountered error getting session: %v\n", err)
+		return
+	}
+
 	rdsSvc := rds.New(sess)
 
 	instance, err := awsutil.FindRdsInstance(config, sess)
-
 	if err != nil {
 		logger.PrintError("Rds/System: Encountered error when looking for instance: %v\n", err)
 		return
@@ -57,7 +61,7 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger) (system sta
 		MasterUsername:             util.StringPtrToString(instance.MasterUsername),
 		InitialDbName:              util.StringPtrToString(instance.DBName),
 		CreatedAt:                  util.TimePtrToTime(instance.InstanceCreateTime),
-		IsAuroraPostgres:						 isAurora,
+		IsAuroraPostgres:           isAurora,
 	}
 
 	group := instance.DBParameterGroups[0]

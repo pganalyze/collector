@@ -7,14 +7,14 @@ import (
 	"github.com/pganalyze/collector/config"
 )
 
-func GetAwsSession(config config.ServerConfig) *session.Session {
+func GetAwsSession(config config.ServerConfig) (*session.Session, error) {
 	var creds *credentials.Credentials
 
 	if config.AwsAccessKeyID != "" {
 		creds = credentials.NewStaticCredentials(config.AwsAccessKeyID, config.AwsSecretAccessKey, "")
 	}
 
-	return session.New(&aws.Config{Credentials: creds, Region: aws.String(config.AwsRegion), HTTPClient: config.HTTPClient})
+	return session.NewSession(&aws.Config{Credentials: creds, Region: aws.String(config.AwsRegion), HTTPClient: config.HTTPClient})
 }
 
 //sess.Handlers.Send.PushFront(func(r *request.Request) {
