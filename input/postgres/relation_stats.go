@@ -11,8 +11,11 @@ const relationStatsSQLDefaultOptionalFields = "NULL"
 const relationStatsSQLpg94OptionalFields = "s.n_mod_since_analyze"
 
 const relationStatsSQL = `
-SELECT s.relid,
-			 COALESCE(pg_catalog.pg_table_size(s.relid), 0) AS size_bytes,
+SELECT c.oid,
+			 COALESCE(pg_catalog.pg_table_size(c.oid), 0) +
+			 COALESCE((SELECT pg_catalog.sum(pg_catalog.pg_table_size(inhrelid))
+			    FROM pg_catalog.pg_inherits
+				 WHERE inhparent = c.oid), 0) AS size_bytes,
 			 CASE c.reltoastrelid WHEN NULL THEN 0 ELSE COALESCE(pg_catalog.pg_total_relation_size(c.reltoastrelid), 0) END AS toast_bytes,
 			 COALESCE(s.seq_scan, 0),
 			 COALESCE(s.seq_tup_read, 0),
@@ -41,9 +44,14 @@ SELECT s.relid,
 			 COALESCE(sio.toast_blks_hit, 0),
 			 COALESCE(sio.tidx_blks_read, 0),
 			 COALESCE(sio.tidx_blks_hit, 0)
-	FROM pg_catalog.pg_stat_user_tables s
-			 JOIN pg_catalog.pg_class c ON (s.relid = c.oid)
-			 LEFT JOIN pg_catalog.pg_statio_user_tables sio USING (relid)
+	FROM pg_catalog.pg_class c
+	LEFT JOIN pg_catalog.pg_namespace n ON (n.oid = c.relnamespace)
+	LEFT JOIN pg_catalog.pg_stat_user_tables s ON (s.relid = c.oid)
+	LEFT JOIN pg_catalog.pg_statio_user_tables sio USING (relid)
+ WHERE c.relkind IN ('r','v','m','p')
+			 AND c.relpersistence <> 't'
+			 AND c.relname NOT IN ('pg_stat_statements')
+			 AND n.nspname NOT IN ('pg_catalog','pg_toast','information_schema')
 `
 
 const indexStatsSQL = `
