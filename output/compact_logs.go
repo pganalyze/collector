@@ -9,8 +9,8 @@ import (
 
 // UploadAndSendLogs - Filters the log file, then uploads it to the storage and sends the metadata to the API
 func UploadAndSendLogs(server state.Server, grant state.GrantLogs, collectionOpts state.CollectionOpts, logger *util.Logger, logState state.LogState) error {
-	for _, logFile := range logState.LogFiles {
-		logFile.FilterLogSecret = state.ParseFilterLogSecret(server.Config.FilterLogSecret)
+	for idx := range logState.LogFiles {
+		logState.LogFiles[idx].FilterLogSecret = state.ParseFilterLogSecret(server.Config.FilterLogSecret)
 	}
 
 	if server.Config.FilterQuerySample == "all" {
