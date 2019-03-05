@@ -3,9 +3,11 @@
 
 package pganalyze_collector
 
-import proto "github.com/golang/protobuf/proto"
-import fmt "fmt"
-import math "math"
+import (
+	fmt "fmt"
+	proto "github.com/golang/protobuf/proto"
+	math "math"
+)
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
@@ -16,7 +18,7 @@ var _ = math.Inf
 // is compatible with the proto package it is being compiled against.
 // A compilation error at this line likely means your copy of the
 // proto package needs to be updated.
-const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
+const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
 type BloatLookupMethod int32
 
@@ -31,6 +33,7 @@ var BloatLookupMethod_name = map[int32]string{
 	1: "ESTIMATE_SLOW",
 	2: "FULL_SCAN",
 }
+
 var BloatLookupMethod_value = map[string]int32{
 	"ESTIMATE_FAST": 0,
 	"ESTIMATE_SLOW": 1,
@@ -40,8 +43,9 @@ var BloatLookupMethod_value = map[string]int32{
 func (x BloatLookupMethod) String() string {
 	return proto.EnumName(BloatLookupMethod_name, int32(x))
 }
+
 func (BloatLookupMethod) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_bloat_report_ef21d368b8177df6, []int{0}
+	return fileDescriptor_54391df78cf060fc, []int{0}
 }
 
 type BloatReportData struct {
@@ -59,16 +63,17 @@ func (m *BloatReportData) Reset()         { *m = BloatReportData{} }
 func (m *BloatReportData) String() string { return proto.CompactTextString(m) }
 func (*BloatReportData) ProtoMessage()    {}
 func (*BloatReportData) Descriptor() ([]byte, []int) {
-	return fileDescriptor_bloat_report_ef21d368b8177df6, []int{0}
+	return fileDescriptor_54391df78cf060fc, []int{0}
 }
+
 func (m *BloatReportData) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_BloatReportData.Unmarshal(m, b)
 }
 func (m *BloatReportData) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_BloatReportData.Marshal(b, m, deterministic)
 }
-func (dst *BloatReportData) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_BloatReportData.Merge(dst, src)
+func (m *BloatReportData) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_BloatReportData.Merge(m, src)
 }
 func (m *BloatReportData) XXX_Size() int {
 	return xxx_messageInfo_BloatReportData.Size(m)
@@ -132,16 +137,17 @@ func (m *RelationBloatStatistic) Reset()         { *m = RelationBloatStatistic{}
 func (m *RelationBloatStatistic) String() string { return proto.CompactTextString(m) }
 func (*RelationBloatStatistic) ProtoMessage()    {}
 func (*RelationBloatStatistic) Descriptor() ([]byte, []int) {
-	return fileDescriptor_bloat_report_ef21d368b8177df6, []int{1}
+	return fileDescriptor_54391df78cf060fc, []int{1}
 }
+
 func (m *RelationBloatStatistic) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_RelationBloatStatistic.Unmarshal(m, b)
 }
 func (m *RelationBloatStatistic) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_RelationBloatStatistic.Marshal(b, m, deterministic)
 }
-func (dst *RelationBloatStatistic) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_RelationBloatStatistic.Merge(dst, src)
+func (m *RelationBloatStatistic) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RelationBloatStatistic.Merge(m, src)
 }
 func (m *RelationBloatStatistic) XXX_Size() int {
 	return xxx_messageInfo_RelationBloatStatistic.Size(m)
@@ -227,16 +233,17 @@ func (m *IndexBloatStatistic) Reset()         { *m = IndexBloatStatistic{} }
 func (m *IndexBloatStatistic) String() string { return proto.CompactTextString(m) }
 func (*IndexBloatStatistic) ProtoMessage()    {}
 func (*IndexBloatStatistic) Descriptor() ([]byte, []int) {
-	return fileDescriptor_bloat_report_ef21d368b8177df6, []int{2}
+	return fileDescriptor_54391df78cf060fc, []int{2}
 }
+
 func (m *IndexBloatStatistic) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_IndexBloatStatistic.Unmarshal(m, b)
 }
 func (m *IndexBloatStatistic) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_IndexBloatStatistic.Marshal(b, m, deterministic)
 }
-func (dst *IndexBloatStatistic) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_IndexBloatStatistic.Merge(dst, src)
+func (m *IndexBloatStatistic) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_IndexBloatStatistic.Merge(m, src)
 }
 func (m *IndexBloatStatistic) XXX_Size() int {
 	return xxx_messageInfo_IndexBloatStatistic.Size(m)
@@ -311,15 +318,15 @@ func (m *IndexBloatStatistic) GetAvgLeafDensity() float64 {
 }
 
 func init() {
+	proto.RegisterEnum("pganalyze.collector.BloatLookupMethod", BloatLookupMethod_name, BloatLookupMethod_value)
 	proto.RegisterType((*BloatReportData)(nil), "pganalyze.collector.BloatReportData")
 	proto.RegisterType((*RelationBloatStatistic)(nil), "pganalyze.collector.RelationBloatStatistic")
 	proto.RegisterType((*IndexBloatStatistic)(nil), "pganalyze.collector.IndexBloatStatistic")
-	proto.RegisterEnum("pganalyze.collector.BloatLookupMethod", BloatLookupMethod_name, BloatLookupMethod_value)
 }
 
-func init() { proto.RegisterFile("bloat_report.proto", fileDescriptor_bloat_report_ef21d368b8177df6) }
+func init() { proto.RegisterFile("bloat_report.proto", fileDescriptor_54391df78cf060fc) }
 
-var fileDescriptor_bloat_report_ef21d368b8177df6 = []byte{
+var fileDescriptor_54391df78cf060fc = []byte{
 	// 554 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xcc, 0x94, 0x5f, 0x6f, 0xd3, 0x3c,
 	0x14, 0xc6, 0xdf, 0xac, 0xef, 0xc6, 0x7a, 0xfa, 0x67, 0x99, 0x3b, 0x46, 0x00, 0xa1, 0x95, 0x4d,

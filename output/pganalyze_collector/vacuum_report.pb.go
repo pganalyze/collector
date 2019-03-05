@@ -3,10 +3,12 @@
 
 package pganalyze_collector
 
-import proto "github.com/golang/protobuf/proto"
-import fmt "fmt"
-import math "math"
-import _ "github.com/golang/protobuf/ptypes/timestamp"
+import (
+	fmt "fmt"
+	proto "github.com/golang/protobuf/proto"
+	_ "github.com/golang/protobuf/ptypes/timestamp"
+	math "math"
+)
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
@@ -17,7 +19,7 @@ var _ = math.Inf
 // is compatible with the proto package it is being compiled against.
 // A compilation error at this line likely means your copy of the
 // proto package needs to be updated.
-const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
+const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
 type VacuumReportData struct {
 	DatabaseReferences       []*DatabaseReference `protobuf:"bytes,10,rep,name=database_references,json=databaseReferences,proto3" json:"database_references,omitempty"`
@@ -34,16 +36,17 @@ func (m *VacuumReportData) Reset()         { *m = VacuumReportData{} }
 func (m *VacuumReportData) String() string { return proto.CompactTextString(m) }
 func (*VacuumReportData) ProtoMessage()    {}
 func (*VacuumReportData) Descriptor() ([]byte, []int) {
-	return fileDescriptor_vacuum_report_476c7d75cf9da597, []int{0}
+	return fileDescriptor_e73b4409da7e3a48, []int{0}
 }
+
 func (m *VacuumReportData) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_VacuumReportData.Unmarshal(m, b)
 }
 func (m *VacuumReportData) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_VacuumReportData.Marshal(b, m, deterministic)
 }
-func (dst *VacuumReportData) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_VacuumReportData.Merge(dst, src)
+func (m *VacuumReportData) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_VacuumReportData.Merge(m, src)
 }
 func (m *VacuumReportData) XXX_Size() int {
 	return xxx_messageInfo_VacuumReportData.Size(m)
@@ -118,16 +121,17 @@ func (m *VacuumStatistic) Reset()         { *m = VacuumStatistic{} }
 func (m *VacuumStatistic) String() string { return proto.CompactTextString(m) }
 func (*VacuumStatistic) ProtoMessage()    {}
 func (*VacuumStatistic) Descriptor() ([]byte, []int) {
-	return fileDescriptor_vacuum_report_476c7d75cf9da597, []int{1}
+	return fileDescriptor_e73b4409da7e3a48, []int{1}
 }
+
 func (m *VacuumStatistic) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_VacuumStatistic.Unmarshal(m, b)
 }
 func (m *VacuumStatistic) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_VacuumStatistic.Marshal(b, m, deterministic)
 }
-func (dst *VacuumStatistic) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_VacuumStatistic.Merge(dst, src)
+func (m *VacuumStatistic) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_VacuumStatistic.Merge(m, src)
 }
 func (m *VacuumStatistic) XXX_Size() int {
 	return xxx_messageInfo_VacuumStatistic.Size(m)
@@ -276,9 +280,9 @@ func init() {
 	proto.RegisterType((*VacuumStatistic)(nil), "pganalyze.collector.VacuumStatistic")
 }
 
-func init() { proto.RegisterFile("vacuum_report.proto", fileDescriptor_vacuum_report_476c7d75cf9da597) }
+func init() { proto.RegisterFile("vacuum_report.proto", fileDescriptor_e73b4409da7e3a48) }
 
-var fileDescriptor_vacuum_report_476c7d75cf9da597 = []byte{
+var fileDescriptor_e73b4409da7e3a48 = []byte{
 	// 674 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x8c, 0x95, 0xdd, 0x4e, 0xdb, 0x4a,
 	0x10, 0x80, 0x15, 0xa1, 0x73, 0x74, 0xce, 0x26, 0x05, 0xb2, 0x09, 0xb0, 0x04, 0x14, 0xd2, 0x14,

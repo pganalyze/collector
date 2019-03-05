@@ -59,19 +59,25 @@ github.com/go-ini/ini
 # github.com/go-ole/go-ole v0.0.0-20160708033836-be49f7c07711
 github.com/go-ole/go-ole
 github.com/go-ole/go-ole/oleutil
-# github.com/golang/protobuf v1.3.0
+# github.com/golang/protobuf v1.3.1-0.20190228151929-b5d812f8a370
+github.com/golang/protobuf/protoc-gen-go
 github.com/golang/protobuf/jsonpb
 github.com/golang/protobuf/proto
 github.com/golang/protobuf/ptypes
 github.com/golang/protobuf/ptypes/timestamp
+github.com/golang/protobuf/protoc-gen-go/generator
+github.com/golang/protobuf/protoc-gen-go/grpc
 github.com/golang/protobuf/ptypes/struct
 github.com/golang/protobuf/ptypes/any
 github.com/golang/protobuf/ptypes/duration
+github.com/golang/protobuf/protoc-gen-go/descriptor
+github.com/golang/protobuf/protoc-gen-go/generator/internal/remap
+github.com/golang/protobuf/protoc-gen-go/plugin
 # github.com/gorhill/cronexpr v0.0.0-20160318121724-f0984319b442
 github.com/gorhill/cronexpr
 # github.com/guregu/null v0.0.0-20160228005316-41961cea0328
 github.com/guregu/null
-# github.com/hpcloud/tail v0.0.0-20170814160653-37f427138745
+# github.com/hpcloud/tail v1.0.1-0.20180514194441-a1dbeea552b7
 github.com/hpcloud/tail
 github.com/hpcloud/tail/ratelimiter
 github.com/hpcloud/tail/util
@@ -98,7 +104,7 @@ github.com/lib/pq
 github.com/lib/pq/oid
 # github.com/ogier/pflag v0.0.0-20160129220114-45c278ab3607
 github.com/ogier/pflag
-# github.com/pkg/errors v0.0.0-20170505043639-c605e284fe17
+# github.com/pkg/errors v0.8.2-0.20190227000051-27936f6d90f9
 github.com/pkg/errors
 # github.com/satori/go.uuid v0.0.0-20160713180306-0aa62d5ddceb
 github.com/satori/go.uuid
@@ -113,9 +119,9 @@ github.com/shirou/gopsutil/net
 github.com/shirou/gopsutil/internal/common
 # github.com/shirou/w32 v0.0.0-20160204003529-3c9377fc6748
 github.com/shirou/w32
-# golang.org/x/sys v0.0.0-20180130064325-3dbebcf8efb6
+# golang.org/x/sys v0.0.0-20190304154630-e844e0132e93
 golang.org/x/sys/unix
-# gopkg.in/fsnotify.v1 v1.4.7
-gopkg.in/fsnotify.v1
+# gopkg.in/fsnotify/fsnotify.v1 v1.4.7
+gopkg.in/fsnotify/fsnotify.v1
 # gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7
 gopkg.in/tomb.v1

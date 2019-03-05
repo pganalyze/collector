@@ -3,9 +3,11 @@
 
 package pganalyze_collector
 
-import proto "github.com/golang/protobuf/proto"
-import fmt "fmt"
-import math "math"
+import (
+	fmt "fmt"
+	proto "github.com/golang/protobuf/proto"
+	math "math"
+)
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
@@ -16,7 +18,7 @@ var _ = math.Inf
 // is compatible with the proto package it is being compiled against.
 // A compilation error at this line likely means your copy of the
 // proto package needs to be updated.
-const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
+const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
 type BuffercacheReportData struct {
 	DatabaseReferences   []*DatabaseReference `protobuf:"bytes,10,rep,name=database_references,json=databaseReferences,proto3" json:"database_references,omitempty"`
@@ -32,16 +34,17 @@ func (m *BuffercacheReportData) Reset()         { *m = BuffercacheReportData{} }
 func (m *BuffercacheReportData) String() string { return proto.CompactTextString(m) }
 func (*BuffercacheReportData) ProtoMessage()    {}
 func (*BuffercacheReportData) Descriptor() ([]byte, []int) {
-	return fileDescriptor_buffercache_report_5bfb566009e1f878, []int{0}
+	return fileDescriptor_fe9aeddefb846269, []int{0}
 }
+
 func (m *BuffercacheReportData) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_BuffercacheReportData.Unmarshal(m, b)
 }
 func (m *BuffercacheReportData) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_BuffercacheReportData.Marshal(b, m, deterministic)
 }
-func (dst *BuffercacheReportData) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_BuffercacheReportData.Merge(dst, src)
+func (m *BuffercacheReportData) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_BuffercacheReportData.Merge(m, src)
 }
 func (m *BuffercacheReportData) XXX_Size() int {
 	return xxx_messageInfo_BuffercacheReportData.Size(m)
@@ -96,16 +99,17 @@ func (m *BuffercacheEntry) Reset()         { *m = BuffercacheEntry{} }
 func (m *BuffercacheEntry) String() string { return proto.CompactTextString(m) }
 func (*BuffercacheEntry) ProtoMessage()    {}
 func (*BuffercacheEntry) Descriptor() ([]byte, []int) {
-	return fileDescriptor_buffercache_report_5bfb566009e1f878, []int{1}
+	return fileDescriptor_fe9aeddefb846269, []int{1}
 }
+
 func (m *BuffercacheEntry) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_BuffercacheEntry.Unmarshal(m, b)
 }
 func (m *BuffercacheEntry) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_BuffercacheEntry.Marshal(b, m, deterministic)
 }
-func (dst *BuffercacheEntry) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_BuffercacheEntry.Merge(dst, src)
+func (m *BuffercacheEntry) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_BuffercacheEntry.Merge(m, src)
 }
 func (m *BuffercacheEntry) XXX_Size() int {
 	return xxx_messageInfo_BuffercacheEntry.Size(m)
@@ -163,11 +167,9 @@ func init() {
 	proto.RegisterType((*BuffercacheEntry)(nil), "pganalyze.collector.BuffercacheEntry")
 }
 
-func init() {
-	proto.RegisterFile("buffercache_report.proto", fileDescriptor_buffercache_report_5bfb566009e1f878)
-}
+func init() { proto.RegisterFile("buffercache_report.proto", fileDescriptor_fe9aeddefb846269) }
 
-var fileDescriptor_buffercache_report_5bfb566009e1f878 = []byte{
+var fileDescriptor_fe9aeddefb846269 = []byte{
 	// 318 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x6c, 0x91, 0xc1, 0x4e, 0x2a, 0x31,
 	0x14, 0x86, 0x33, 0x70, 0x21, 0x97, 0x0e, 0x8b, 0x9b, 0x02, 0x49, 0x73, 0x13, 0xe3, 0x48, 0xa2,

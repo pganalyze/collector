@@ -3,10 +3,12 @@
 
 package pganalyze_collector
 
-import proto "github.com/golang/protobuf/proto"
-import fmt "fmt"
-import math "math"
-import timestamp "github.com/golang/protobuf/ptypes/timestamp"
+import (
+	fmt "fmt"
+	proto "github.com/golang/protobuf/proto"
+	timestamp "github.com/golang/protobuf/ptypes/timestamp"
+	math "math"
+)
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
@@ -17,7 +19,7 @@ var _ = math.Inf
 // is compatible with the proto package it is being compiled against.
 // A compilation error at this line likely means your copy of the
 // proto package needs to be updated.
-const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
+const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
 type LogFileReference_LogSecretKind int32
 
@@ -40,6 +42,7 @@ var LogFileReference_LogSecretKind_name = map[int32]string{
 	5: "OPS_LOG_SECRET",
 	6: "UNIDENTIFIED_LOG_SECRET",
 }
+
 var LogFileReference_LogSecretKind_value = map[string]int32{
 	"CREDENTIAL_LOG_SECRET":          0,
 	"PARSING_ERROR_LOG_SECRET":       1,
@@ -53,8 +56,9 @@ var LogFileReference_LogSecretKind_value = map[string]int32{
 func (x LogFileReference_LogSecretKind) String() string {
 	return proto.EnumName(LogFileReference_LogSecretKind_name, int32(x))
 }
+
 func (LogFileReference_LogSecretKind) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_compact_log_snapshot_1fb2580569ad9045, []int{1, 0}
+	return fileDescriptor_1b302a0d569b4233, []int{1, 0}
 }
 
 type LogLineInformation_LogLevel int32
@@ -94,6 +98,7 @@ var LogLineInformation_LogLevel_name = map[int32]string{
 	12: "STATEMENT",
 	13: "QUERY",
 }
+
 var LogLineInformation_LogLevel_value = map[string]int32{
 	"UNKNOWN":   0,
 	"DEBUG":     1,
@@ -114,8 +119,9 @@ var LogLineInformation_LogLevel_value = map[string]int32{
 func (x LogLineInformation_LogLevel) String() string {
 	return proto.EnumName(LogLineInformation_LogLevel_name, int32(x))
 }
+
 func (LogLineInformation_LogLevel) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_compact_log_snapshot_1fb2580569ad9045, []int{2, 0}
+	return fileDescriptor_1b302a0d569b4233, []int{2, 0}
 }
 
 type LogLineInformation_LogClassification int32
@@ -332,6 +338,7 @@ var LogLineInformation_LogClassification_name = map[int32]string{
 	139:  "COULD_NOT_SERIALIZE_SERIALIZABLE",
 	1000: "PGA_COLLECTOR_IDENTIFY",
 }
+
 var LogLineInformation_LogClassification_value = map[string]int32{
 	"UNKNOWN_LOG_CLASSIFICATION":          0,
 	"SERVER_CRASHED":                      1,
@@ -436,8 +443,9 @@ var LogLineInformation_LogClassification_value = map[string]int32{
 func (x LogLineInformation_LogClassification) String() string {
 	return proto.EnumName(LogLineInformation_LogClassification_name, int32(x))
 }
+
 func (LogLineInformation_LogClassification) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_compact_log_snapshot_1fb2580569ad9045, []int{2, 1}
+	return fileDescriptor_1b302a0d569b4233, []int{2, 1}
 }
 
 type QuerySample_ExplainFormat int32
@@ -451,6 +459,7 @@ var QuerySample_ExplainFormat_name = map[int32]string{
 	0: "TEXT_EXPLAIN_FORMAT",
 	1: "JSON_EXPLAIN_FORMAT",
 }
+
 var QuerySample_ExplainFormat_value = map[string]int32{
 	"TEXT_EXPLAIN_FORMAT": 0,
 	"JSON_EXPLAIN_FORMAT": 1,
@@ -459,8 +468,9 @@ var QuerySample_ExplainFormat_value = map[string]int32{
 func (x QuerySample_ExplainFormat) String() string {
 	return proto.EnumName(QuerySample_ExplainFormat_name, int32(x))
 }
+
 func (QuerySample_ExplainFormat) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_compact_log_snapshot_1fb2580569ad9045, []int{3, 0}
+	return fileDescriptor_1b302a0d569b4233, []int{3, 0}
 }
 
 type QuerySample_ExplainSource int32
@@ -478,6 +488,7 @@ var QuerySample_ExplainSource_name = map[int32]string{
 	2: "EXTERNAL_EXPLAIN_SOURCE",
 	3: "GENERIC_EXPLAIN_SOURCE",
 }
+
 var QuerySample_ExplainSource_value = map[string]int32{
 	"STATEMENT_LOG_EXPLAIN_SOURCE": 0,
 	"AUTO_EXPLAIN_EXPLAIN_SOURCE":  1,
@@ -488,8 +499,9 @@ var QuerySample_ExplainSource_value = map[string]int32{
 func (x QuerySample_ExplainSource) String() string {
 	return proto.EnumName(QuerySample_ExplainSource_name, int32(x))
 }
+
 func (QuerySample_ExplainSource) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_compact_log_snapshot_1fb2580569ad9045, []int{3, 1}
+	return fileDescriptor_1b302a0d569b4233, []int{3, 1}
 }
 
 type CompactLogSnapshot struct {
@@ -505,16 +517,17 @@ func (m *CompactLogSnapshot) Reset()         { *m = CompactLogSnapshot{} }
 func (m *CompactLogSnapshot) String() string { return proto.CompactTextString(m) }
 func (*CompactLogSnapshot) ProtoMessage()    {}
 func (*CompactLogSnapshot) Descriptor() ([]byte, []int) {
-	return fileDescriptor_compact_log_snapshot_1fb2580569ad9045, []int{0}
+	return fileDescriptor_1b302a0d569b4233, []int{0}
 }
+
 func (m *CompactLogSnapshot) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CompactLogSnapshot.Unmarshal(m, b)
 }
 func (m *CompactLogSnapshot) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_CompactLogSnapshot.Marshal(b, m, deterministic)
 }
-func (dst *CompactLogSnapshot) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_CompactLogSnapshot.Merge(dst, src)
+func (m *CompactLogSnapshot) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CompactLogSnapshot.Merge(m, src)
 }
 func (m *CompactLogSnapshot) XXX_Size() int {
 	return xxx_messageInfo_CompactLogSnapshot.Size(m)
@@ -563,16 +576,17 @@ func (m *LogFileReference) Reset()         { *m = LogFileReference{} }
 func (m *LogFileReference) String() string { return proto.CompactTextString(m) }
 func (*LogFileReference) ProtoMessage()    {}
 func (*LogFileReference) Descriptor() ([]byte, []int) {
-	return fileDescriptor_compact_log_snapshot_1fb2580569ad9045, []int{1}
+	return fileDescriptor_1b302a0d569b4233, []int{1}
 }
+
 func (m *LogFileReference) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_LogFileReference.Unmarshal(m, b)
 }
 func (m *LogFileReference) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_LogFileReference.Marshal(b, m, deterministic)
 }
-func (dst *LogFileReference) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_LogFileReference.Merge(dst, src)
+func (m *LogFileReference) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_LogFileReference.Merge(m, src)
 }
 func (m *LogFileReference) XXX_Size() int {
 	return xxx_messageInfo_LogFileReference.Size(m)
@@ -662,16 +676,17 @@ func (m *LogLineInformation) Reset()         { *m = LogLineInformation{} }
 func (m *LogLineInformation) String() string { return proto.CompactTextString(m) }
 func (*LogLineInformation) ProtoMessage()    {}
 func (*LogLineInformation) Descriptor() ([]byte, []int) {
-	return fileDescriptor_compact_log_snapshot_1fb2580569ad9045, []int{2}
+	return fileDescriptor_1b302a0d569b4233, []int{2}
 }
+
 func (m *LogLineInformation) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_LogLineInformation.Unmarshal(m, b)
 }
 func (m *LogLineInformation) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_LogLineInformation.Marshal(b, m, deterministic)
 }
-func (dst *LogLineInformation) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_LogLineInformation.Merge(dst, src)
+func (m *LogLineInformation) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_LogLineInformation.Merge(m, src)
 }
 func (m *LogLineInformation) XXX_Size() int {
 	return xxx_messageInfo_LogLineInformation.Size(m)
@@ -844,16 +859,17 @@ func (m *QuerySample) Reset()         { *m = QuerySample{} }
 func (m *QuerySample) String() string { return proto.CompactTextString(m) }
 func (*QuerySample) ProtoMessage()    {}
 func (*QuerySample) Descriptor() ([]byte, []int) {
-	return fileDescriptor_compact_log_snapshot_1fb2580569ad9045, []int{3}
+	return fileDescriptor_1b302a0d569b4233, []int{3}
 }
+
 func (m *QuerySample) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_QuerySample.Unmarshal(m, b)
 }
 func (m *QuerySample) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_QuerySample.Marshal(b, m, deterministic)
 }
-func (dst *QuerySample) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_QuerySample.Merge(dst, src)
+func (m *QuerySample) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_QuerySample.Merge(m, src)
 }
 func (m *QuerySample) XXX_Size() int {
 	return xxx_messageInfo_QuerySample.Size(m)
@@ -942,22 +958,20 @@ func (m *QuerySample) GetExplainSource() QuerySample_ExplainSource {
 }
 
 func init() {
-	proto.RegisterType((*CompactLogSnapshot)(nil), "pganalyze.collector.CompactLogSnapshot")
-	proto.RegisterType((*LogFileReference)(nil), "pganalyze.collector.LogFileReference")
-	proto.RegisterType((*LogLineInformation)(nil), "pganalyze.collector.LogLineInformation")
-	proto.RegisterType((*QuerySample)(nil), "pganalyze.collector.QuerySample")
 	proto.RegisterEnum("pganalyze.collector.LogFileReference_LogSecretKind", LogFileReference_LogSecretKind_name, LogFileReference_LogSecretKind_value)
 	proto.RegisterEnum("pganalyze.collector.LogLineInformation_LogLevel", LogLineInformation_LogLevel_name, LogLineInformation_LogLevel_value)
 	proto.RegisterEnum("pganalyze.collector.LogLineInformation_LogClassification", LogLineInformation_LogClassification_name, LogLineInformation_LogClassification_value)
 	proto.RegisterEnum("pganalyze.collector.QuerySample_ExplainFormat", QuerySample_ExplainFormat_name, QuerySample_ExplainFormat_value)
 	proto.RegisterEnum("pganalyze.collector.QuerySample_ExplainSource", QuerySample_ExplainSource_name, QuerySample_ExplainSource_value)
+	proto.RegisterType((*CompactLogSnapshot)(nil), "pganalyze.collector.CompactLogSnapshot")
+	proto.RegisterType((*LogFileReference)(nil), "pganalyze.collector.LogFileReference")
+	proto.RegisterType((*LogLineInformation)(nil), "pganalyze.collector.LogLineInformation")
+	proto.RegisterType((*QuerySample)(nil), "pganalyze.collector.QuerySample")
 }
 
-func init() {
-	proto.RegisterFile("compact_log_snapshot.proto", fileDescriptor_compact_log_snapshot_1fb2580569ad9045)
-}
+func init() { proto.RegisterFile("compact_log_snapshot.proto", fileDescriptor_1b302a0d569b4233) }
 
-var fileDescriptor_compact_log_snapshot_1fb2580569ad9045 = []byte{
+var fileDescriptor_1b302a0d569b4233 = []byte{
 	// 2595 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x58, 0xdb, 0x76, 0x1b, 0xb9,
 	0xb1, 0x35, 0x45, 0xcb, 0x92, 0xa0, 0x8b, 0x61, 0xd8, 0x92, 0x68, 0xc9, 0x96, 0x69, 0xf9, 0xf8,

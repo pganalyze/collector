@@ -8,8 +8,6 @@ before_install:
   - wget https://github.com/google/protobuf/releases/download/v3.7.0/protoc-3.7.0-linux-x86_64.zip
   - unzip protoc-3.7.0-linux-x86_64.zip -d $HOME
   - export PATH=$HOME/protoc-3.7.0-linux-x86_64/bin:$PATH
-  - go get -d -u github.com/golang/protobuf/protoc-gen-go
-  - go install github.com/golang/protobuf/protoc-gen-go
 script:
   - make build OUTFILE=pganalyze-collector-linux-amd64
   - make test

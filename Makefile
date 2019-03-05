@@ -13,8 +13,9 @@ build_dist:
 	make -C helper OUTFILE=../pganalyze-collector-helper
 
 vendor:
-	GO111MODULE=on go mod vendor
+	GO111MODULE=on go mod tidy
 	# You might need to run "go get -u github.com/goware/modvendor"
+	GO111MODULE=on go mod vendor
 	modvendor -copy="**/*.c **/*.h **/*.proto" -v
 
 test: build
@@ -33,7 +34,9 @@ docker_latest:
 
 output/pganalyze_collector/snapshot.pb.go: $(PROTOBUF_FILES)
 ifdef PROTOC_VERSION
-	protoc --go_out=Mgoogle/protobuf/timestamp.proto=github.com/golang/protobuf/ptypes/timestamp:output/pganalyze_collector -I protobuf $(PROTOBUF_FILES)
+	mkdir -p $(PWD)/bin
+	GOBIN=$(PWD)/bin go install github.com/golang/protobuf/protoc-gen-go
+	PATH=$(PWD)/bin:$(PATH) protoc --go_out=Mgoogle/protobuf/timestamp.proto=github.com/golang/protobuf/ptypes/timestamp:output/pganalyze_collector -I protobuf $(PROTOBUF_FILES)
 else
 	@echo 'Warning: protoc not found, skipping protocol buffer regeneration'
 endif

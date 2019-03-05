@@ -3,10 +3,12 @@
 
 package pganalyze_collector
 
-import proto "github.com/golang/protobuf/proto"
-import fmt "fmt"
-import math "math"
-import timestamp "github.com/golang/protobuf/ptypes/timestamp"
+import (
+	fmt "fmt"
+	proto "github.com/golang/protobuf/proto"
+	timestamp "github.com/golang/protobuf/ptypes/timestamp"
+	math "math"
+)
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
@@ -17,7 +19,7 @@ var _ = math.Inf
 // is compatible with the proto package it is being compiled against.
 // A compilation error at this line likely means your copy of the
 // proto package needs to be updated.
-const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
+const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
 type Report struct {
 	ReportRunId string               `protobuf:"bytes,1,opt,name=report_run_id,json=reportRunId,proto3" json:"report_run_id,omitempty"`
@@ -38,16 +40,17 @@ func (m *Report) Reset()         { *m = Report{} }
 func (m *Report) String() string { return proto.CompactTextString(m) }
 func (*Report) ProtoMessage()    {}
 func (*Report) Descriptor() ([]byte, []int) {
-	return fileDescriptor_report_6f005bc968a2c30e, []int{0}
+	return fileDescriptor_3eedb623aa6ca98c, []int{0}
 }
+
 func (m *Report) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Report.Unmarshal(m, b)
 }
 func (m *Report) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_Report.Marshal(b, m, deterministic)
 }
-func (dst *Report) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Report.Merge(dst, src)
+func (m *Report) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Report.Merge(m, src)
 }
 func (m *Report) XXX_Size() int {
 	return xxx_messageInfo_Report.Size(m)
@@ -57,35 +60,6 @@ func (m *Report) XXX_DiscardUnknown() {
 }
 
 var xxx_messageInfo_Report proto.InternalMessageInfo
-
-type isReport_Data interface {
-	isReport_Data()
-}
-
-type Report_BloatReportData struct {
-	BloatReportData *BloatReportData `protobuf:"bytes,10,opt,name=bloat_report_data,json=bloatReportData,proto3,oneof"`
-}
-type Report_BuffercacheReportData struct {
-	BuffercacheReportData *BuffercacheReportData `protobuf:"bytes,11,opt,name=buffercache_report_data,json=buffercacheReportData,proto3,oneof"`
-}
-type Report_VacuumReportData struct {
-	VacuumReportData *VacuumReportData `protobuf:"bytes,12,opt,name=vacuum_report_data,json=vacuumReportData,proto3,oneof"`
-}
-type Report_SequenceReportData struct {
-	SequenceReportData *SequenceReportData `protobuf:"bytes,13,opt,name=sequence_report_data,json=sequenceReportData,proto3,oneof"`
-}
-
-func (*Report_BloatReportData) isReport_Data()       {}
-func (*Report_BuffercacheReportData) isReport_Data() {}
-func (*Report_VacuumReportData) isReport_Data()      {}
-func (*Report_SequenceReportData) isReport_Data()    {}
-
-func (m *Report) GetData() isReport_Data {
-	if m != nil {
-		return m.Data
-	}
-	return nil
-}
 
 func (m *Report) GetReportRunId() string {
 	if m != nil {
@@ -104,6 +78,41 @@ func (m *Report) GetReportType() string {
 func (m *Report) GetCollectedAt() *timestamp.Timestamp {
 	if m != nil {
 		return m.CollectedAt
+	}
+	return nil
+}
+
+type isReport_Data interface {
+	isReport_Data()
+}
+
+type Report_BloatReportData struct {
+	BloatReportData *BloatReportData `protobuf:"bytes,10,opt,name=bloat_report_data,json=bloatReportData,proto3,oneof"`
+}
+
+type Report_BuffercacheReportData struct {
+	BuffercacheReportData *BuffercacheReportData `protobuf:"bytes,11,opt,name=buffercache_report_data,json=buffercacheReportData,proto3,oneof"`
+}
+
+type Report_VacuumReportData struct {
+	VacuumReportData *VacuumReportData `protobuf:"bytes,12,opt,name=vacuum_report_data,json=vacuumReportData,proto3,oneof"`
+}
+
+type Report_SequenceReportData struct {
+	SequenceReportData *SequenceReportData `protobuf:"bytes,13,opt,name=sequence_report_data,json=sequenceReportData,proto3,oneof"`
+}
+
+func (*Report_BloatReportData) isReport_Data() {}
+
+func (*Report_BuffercacheReportData) isReport_Data() {}
+
+func (*Report_VacuumReportData) isReport_Data() {}
+
+func (*Report_SequenceReportData) isReport_Data() {}
+
+func (m *Report) GetData() isReport_Data {
+	if m != nil {
+		return m.Data
 	}
 	return nil
 }
@@ -136,9 +145,9 @@ func (m *Report) GetSequenceReportData() *SequenceReportData {
 	return nil
 }
 
-// XXX_OneofFuncs is for the internal use of the proto package.
-func (*Report) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), func(msg proto.Message) (n int), []interface{}) {
-	return _Report_OneofMarshaler, _Report_OneofUnmarshaler, _Report_OneofSizer, []interface{}{
+// XXX_OneofWrappers is for the internal use of the proto package.
+func (*Report) XXX_OneofWrappers() []interface{} {
+	return []interface{}{
 		(*Report_BloatReportData)(nil),
 		(*Report_BuffercacheReportData)(nil),
 		(*Report_VacuumReportData)(nil),
@@ -146,115 +155,13 @@ func (*Report) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error,
 	}
 }
 
-func _Report_OneofMarshaler(msg proto.Message, b *proto.Buffer) error {
-	m := msg.(*Report)
-	// data
-	switch x := m.Data.(type) {
-	case *Report_BloatReportData:
-		b.EncodeVarint(10<<3 | proto.WireBytes)
-		if err := b.EncodeMessage(x.BloatReportData); err != nil {
-			return err
-		}
-	case *Report_BuffercacheReportData:
-		b.EncodeVarint(11<<3 | proto.WireBytes)
-		if err := b.EncodeMessage(x.BuffercacheReportData); err != nil {
-			return err
-		}
-	case *Report_VacuumReportData:
-		b.EncodeVarint(12<<3 | proto.WireBytes)
-		if err := b.EncodeMessage(x.VacuumReportData); err != nil {
-			return err
-		}
-	case *Report_SequenceReportData:
-		b.EncodeVarint(13<<3 | proto.WireBytes)
-		if err := b.EncodeMessage(x.SequenceReportData); err != nil {
-			return err
-		}
-	case nil:
-	default:
-		return fmt.Errorf("Report.Data has unexpected type %T", x)
-	}
-	return nil
-}
-
-func _Report_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error) {
-	m := msg.(*Report)
-	switch tag {
-	case 10: // data.bloat_report_data
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		msg := new(BloatReportData)
-		err := b.DecodeMessage(msg)
-		m.Data = &Report_BloatReportData{msg}
-		return true, err
-	case 11: // data.buffercache_report_data
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		msg := new(BuffercacheReportData)
-		err := b.DecodeMessage(msg)
-		m.Data = &Report_BuffercacheReportData{msg}
-		return true, err
-	case 12: // data.vacuum_report_data
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		msg := new(VacuumReportData)
-		err := b.DecodeMessage(msg)
-		m.Data = &Report_VacuumReportData{msg}
-		return true, err
-	case 13: // data.sequence_report_data
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		msg := new(SequenceReportData)
-		err := b.DecodeMessage(msg)
-		m.Data = &Report_SequenceReportData{msg}
-		return true, err
-	default:
-		return false, nil
-	}
-}
-
-func _Report_OneofSizer(msg proto.Message) (n int) {
-	m := msg.(*Report)
-	// data
-	switch x := m.Data.(type) {
-	case *Report_BloatReportData:
-		s := proto.Size(x.BloatReportData)
-		n += 1 // tag and wire
-		n += proto.SizeVarint(uint64(s))
-		n += s
-	case *Report_BuffercacheReportData:
-		s := proto.Size(x.BuffercacheReportData)
-		n += 1 // tag and wire
-		n += proto.SizeVarint(uint64(s))
-		n += s
-	case *Report_VacuumReportData:
-		s := proto.Size(x.VacuumReportData)
-		n += 1 // tag and wire
-		n += proto.SizeVarint(uint64(s))
-		n += s
-	case *Report_SequenceReportData:
-		s := proto.Size(x.SequenceReportData)
-		n += 1 // tag and wire
-		n += proto.SizeVarint(uint64(s))
-		n += s
-	case nil:
-	default:
-		panic(fmt.Sprintf("proto: unexpected type %T in oneof", x))
-	}
-	return n
-}
-
 func init() {
 	proto.RegisterType((*Report)(nil), "pganalyze.collector.Report")
 }
 
-func init() { proto.RegisterFile("report.proto", fileDescriptor_report_6f005bc968a2c30e) }
+func init() { proto.RegisterFile("report.proto", fileDescriptor_3eedb623aa6ca98c) }
 
-var fileDescriptor_report_6f005bc968a2c30e = []byte{
+var fileDescriptor_3eedb623aa6ca98c = []byte{
 	// 325 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x6c, 0x91, 0xc1, 0x4f, 0x32, 0x31,
 	0x10, 0xc5, 0x3f, 0x3e, 0x09, 0x89, 0xb3, 0x10, 0xb5, 0x48, 0xdc, 0xec, 0x05, 0x42, 0x34, 0x12,

@@ -3,9 +3,11 @@
 
 package pganalyze_collector
 
-import proto "github.com/golang/protobuf/proto"
-import fmt "fmt"
-import math "math"
+import (
+	fmt "fmt"
+	proto "github.com/golang/protobuf/proto"
+	math "math"
+)
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
@@ -16,7 +18,7 @@ var _ = math.Inf
 // is compatible with the proto package it is being compiled against.
 // A compilation error at this line likely means your copy of the
 // proto package needs to be updated.
-const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
+const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
 type SequenceReportData struct {
 	DatabaseReferences       []*DatabaseReference       `protobuf:"bytes,10,rep,name=database_references,json=databaseReferences,proto3" json:"database_references,omitempty"`
@@ -33,16 +35,17 @@ func (m *SequenceReportData) Reset()         { *m = SequenceReportData{} }
 func (m *SequenceReportData) String() string { return proto.CompactTextString(m) }
 func (*SequenceReportData) ProtoMessage()    {}
 func (*SequenceReportData) Descriptor() ([]byte, []int) {
-	return fileDescriptor_sequence_report_b88ca15715cbe69a, []int{0}
+	return fileDescriptor_c8e29a23aaf9cb82, []int{0}
 }
+
 func (m *SequenceReportData) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_SequenceReportData.Unmarshal(m, b)
 }
 func (m *SequenceReportData) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_SequenceReportData.Marshal(b, m, deterministic)
 }
-func (dst *SequenceReportData) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_SequenceReportData.Merge(dst, src)
+func (m *SequenceReportData) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_SequenceReportData.Merge(m, src)
 }
 func (m *SequenceReportData) XXX_Size() int {
 	return xxx_messageInfo_SequenceReportData.Size(m)
@@ -101,16 +104,17 @@ func (m *SequenceReference) Reset()         { *m = SequenceReference{} }
 func (m *SequenceReference) String() string { return proto.CompactTextString(m) }
 func (*SequenceReference) ProtoMessage()    {}
 func (*SequenceReference) Descriptor() ([]byte, []int) {
-	return fileDescriptor_sequence_report_b88ca15715cbe69a, []int{1}
+	return fileDescriptor_c8e29a23aaf9cb82, []int{1}
 }
+
 func (m *SequenceReference) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_SequenceReference.Unmarshal(m, b)
 }
 func (m *SequenceReference) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_SequenceReference.Marshal(b, m, deterministic)
 }
-func (dst *SequenceReference) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_SequenceReference.Merge(dst, src)
+func (m *SequenceReference) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_SequenceReference.Merge(m, src)
 }
 func (m *SequenceReference) XXX_Size() int {
 	return xxx_messageInfo_SequenceReference.Size(m)
@@ -160,16 +164,17 @@ func (m *SequenceInformation) Reset()         { *m = SequenceInformation{} }
 func (m *SequenceInformation) String() string { return proto.CompactTextString(m) }
 func (*SequenceInformation) ProtoMessage()    {}
 func (*SequenceInformation) Descriptor() ([]byte, []int) {
-	return fileDescriptor_sequence_report_b88ca15715cbe69a, []int{2}
+	return fileDescriptor_c8e29a23aaf9cb82, []int{2}
 }
+
 func (m *SequenceInformation) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_SequenceInformation.Unmarshal(m, b)
 }
 func (m *SequenceInformation) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_SequenceInformation.Marshal(b, m, deterministic)
 }
-func (dst *SequenceInformation) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_SequenceInformation.Merge(dst, src)
+func (m *SequenceInformation) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_SequenceInformation.Merge(m, src)
 }
 func (m *SequenceInformation) XXX_Size() int {
 	return xxx_messageInfo_SequenceInformation.Size(m)
@@ -252,16 +257,17 @@ func (m *SerialColumnInformation) Reset()         { *m = SerialColumnInformation
 func (m *SerialColumnInformation) String() string { return proto.CompactTextString(m) }
 func (*SerialColumnInformation) ProtoMessage()    {}
 func (*SerialColumnInformation) Descriptor() ([]byte, []int) {
-	return fileDescriptor_sequence_report_b88ca15715cbe69a, []int{3}
+	return fileDescriptor_c8e29a23aaf9cb82, []int{3}
 }
+
 func (m *SerialColumnInformation) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_SerialColumnInformation.Unmarshal(m, b)
 }
 func (m *SerialColumnInformation) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_SerialColumnInformation.Marshal(b, m, deterministic)
 }
-func (dst *SerialColumnInformation) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_SerialColumnInformation.Merge(dst, src)
+func (m *SerialColumnInformation) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_SerialColumnInformation.Merge(m, src)
 }
 func (m *SerialColumnInformation) XXX_Size() int {
 	return xxx_messageInfo_SerialColumnInformation.Size(m)
@@ -330,16 +336,17 @@ func (m *SerialColumnInformation_ForeignColumn) Reset()         { *m = SerialCol
 func (m *SerialColumnInformation_ForeignColumn) String() string { return proto.CompactTextString(m) }
 func (*SerialColumnInformation_ForeignColumn) ProtoMessage()    {}
 func (*SerialColumnInformation_ForeignColumn) Descriptor() ([]byte, []int) {
-	return fileDescriptor_sequence_report_b88ca15715cbe69a, []int{3, 0}
+	return fileDescriptor_c8e29a23aaf9cb82, []int{3, 0}
 }
+
 func (m *SerialColumnInformation_ForeignColumn) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_SerialColumnInformation_ForeignColumn.Unmarshal(m, b)
 }
 func (m *SerialColumnInformation_ForeignColumn) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_SerialColumnInformation_ForeignColumn.Marshal(b, m, deterministic)
 }
-func (dst *SerialColumnInformation_ForeignColumn) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_SerialColumnInformation_ForeignColumn.Merge(dst, src)
+func (m *SerialColumnInformation_ForeignColumn) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_SerialColumnInformation_ForeignColumn.Merge(m, src)
 }
 func (m *SerialColumnInformation_ForeignColumn) XXX_Size() int {
 	return xxx_messageInfo_SerialColumnInformation_ForeignColumn.Size(m)
@@ -393,11 +400,9 @@ func init() {
 	proto.RegisterType((*SerialColumnInformation_ForeignColumn)(nil), "pganalyze.collector.SerialColumnInformation.ForeignColumn")
 }
 
-func init() {
-	proto.RegisterFile("sequence_report.proto", fileDescriptor_sequence_report_b88ca15715cbe69a)
-}
+func init() { proto.RegisterFile("sequence_report.proto", fileDescriptor_c8e29a23aaf9cb82) }
 
-var fileDescriptor_sequence_report_b88ca15715cbe69a = []byte{
+var fileDescriptor_c8e29a23aaf9cb82 = []byte{
 	// 562 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xb4, 0x54, 0xcd, 0x6e, 0xd3, 0x4c,
 	0x14, 0x95, 0xe3, 0xb6, 0x9f, 0x73, 0xed, 0x7e, 0x08, 0xb7, 0x15, 0x56, 0x2a, 0x44, 0x1a, 0x24,

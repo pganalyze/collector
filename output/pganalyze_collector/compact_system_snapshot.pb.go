@@ -3,10 +3,12 @@
 
 package pganalyze_collector
 
-import proto "github.com/golang/protobuf/proto"
-import fmt "fmt"
-import math "math"
-import _ "github.com/golang/protobuf/ptypes/timestamp"
+import (
+	fmt "fmt"
+	proto "github.com/golang/protobuf/proto"
+	_ "github.com/golang/protobuf/ptypes/timestamp"
+	math "math"
+)
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
@@ -17,7 +19,7 @@ var _ = math.Inf
 // is compatible with the proto package it is being compiled against.
 // A compilation error at this line likely means your copy of the
 // proto package needs to be updated.
-const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
+const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
 type CompactSystemSnapshot struct {
 	System               *System  `protobuf:"bytes,1,opt,name=system,proto3" json:"system,omitempty"`
@@ -30,16 +32,17 @@ func (m *CompactSystemSnapshot) Reset()         { *m = CompactSystemSnapshot{} }
 func (m *CompactSystemSnapshot) String() string { return proto.CompactTextString(m) }
 func (*CompactSystemSnapshot) ProtoMessage()    {}
 func (*CompactSystemSnapshot) Descriptor() ([]byte, []int) {
-	return fileDescriptor_compact_system_snapshot_1f7a17cbaf0f3db9, []int{0}
+	return fileDescriptor_4a0246ae9643baac, []int{0}
 }
+
 func (m *CompactSystemSnapshot) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CompactSystemSnapshot.Unmarshal(m, b)
 }
 func (m *CompactSystemSnapshot) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_CompactSystemSnapshot.Marshal(b, m, deterministic)
 }
-func (dst *CompactSystemSnapshot) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_CompactSystemSnapshot.Merge(dst, src)
+func (m *CompactSystemSnapshot) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CompactSystemSnapshot.Merge(m, src)
 }
 func (m *CompactSystemSnapshot) XXX_Size() int {
 	return xxx_messageInfo_CompactSystemSnapshot.Size(m)
@@ -61,11 +64,9 @@ func init() {
 	proto.RegisterType((*CompactSystemSnapshot)(nil), "pganalyze.collector.CompactSystemSnapshot")
 }
 
-func init() {
-	proto.RegisterFile("compact_system_snapshot.proto", fileDescriptor_compact_system_snapshot_1f7a17cbaf0f3db9)
-}
+func init() { proto.RegisterFile("compact_system_snapshot.proto", fileDescriptor_4a0246ae9643baac) }
 
-var fileDescriptor_compact_system_snapshot_1f7a17cbaf0f3db9 = []byte{
+var fileDescriptor_4a0246ae9643baac = []byte{
 	// 154 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0x92, 0x4d, 0xce, 0xcf, 0x2d,
 	0x48, 0x4c, 0x2e, 0x89, 0x2f, 0xae, 0x2c, 0x2e, 0x49, 0xcd, 0x8d, 0x2f, 0xce, 0x4b, 0x2c, 0x28,

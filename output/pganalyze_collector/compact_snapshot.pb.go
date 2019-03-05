@@ -3,10 +3,12 @@
 
 package pganalyze_collector
 
-import proto "github.com/golang/protobuf/proto"
-import fmt "fmt"
-import math "math"
-import timestamp "github.com/golang/protobuf/ptypes/timestamp"
+import (
+	fmt "fmt"
+	proto "github.com/golang/protobuf/proto"
+	timestamp "github.com/golang/protobuf/ptypes/timestamp"
+	math "math"
+)
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
@@ -17,7 +19,7 @@ var _ = math.Inf
 // is compatible with the proto package it is being compiled against.
 // A compilation error at this line likely means your copy of the
 // proto package needs to be updated.
-const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
+const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
 type CompactSnapshot struct {
 	// Basic information about this snapshot
@@ -41,16 +43,17 @@ func (m *CompactSnapshot) Reset()         { *m = CompactSnapshot{} }
 func (m *CompactSnapshot) String() string { return proto.CompactTextString(m) }
 func (*CompactSnapshot) ProtoMessage()    {}
 func (*CompactSnapshot) Descriptor() ([]byte, []int) {
-	return fileDescriptor_compact_snapshot_6a11ece48cae881d, []int{0}
+	return fileDescriptor_c24238c379d2c666, []int{0}
 }
+
 func (m *CompactSnapshot) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CompactSnapshot.Unmarshal(m, b)
 }
 func (m *CompactSnapshot) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_CompactSnapshot.Marshal(b, m, deterministic)
 }
-func (dst *CompactSnapshot) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_CompactSnapshot.Merge(dst, src)
+func (m *CompactSnapshot) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CompactSnapshot.Merge(m, src)
 }
 func (m *CompactSnapshot) XXX_Size() int {
 	return xxx_messageInfo_CompactSnapshot.Size(m)
@@ -60,31 +63,6 @@ func (m *CompactSnapshot) XXX_DiscardUnknown() {
 }
 
 var xxx_messageInfo_CompactSnapshot proto.InternalMessageInfo
-
-type isCompactSnapshot_Data interface {
-	isCompactSnapshot_Data()
-}
-
-type CompactSnapshot_LogSnapshot struct {
-	LogSnapshot *CompactLogSnapshot `protobuf:"bytes,10,opt,name=log_snapshot,json=logSnapshot,proto3,oneof"`
-}
-type CompactSnapshot_SystemSnapshot struct {
-	SystemSnapshot *CompactSystemSnapshot `protobuf:"bytes,11,opt,name=system_snapshot,json=systemSnapshot,proto3,oneof"`
-}
-type CompactSnapshot_ActivitySnapshot struct {
-	ActivitySnapshot *CompactActivitySnapshot `protobuf:"bytes,12,opt,name=activity_snapshot,json=activitySnapshot,proto3,oneof"`
-}
-
-func (*CompactSnapshot_LogSnapshot) isCompactSnapshot_Data()      {}
-func (*CompactSnapshot_SystemSnapshot) isCompactSnapshot_Data()   {}
-func (*CompactSnapshot_ActivitySnapshot) isCompactSnapshot_Data() {}
-
-func (m *CompactSnapshot) GetData() isCompactSnapshot_Data {
-	if m != nil {
-		return m.Data
-	}
-	return nil
-}
 
 func (m *CompactSnapshot) GetSnapshotVersionMajor() int32 {
 	if m != nil {
@@ -128,6 +106,35 @@ func (m *CompactSnapshot) GetBaseRefs() *CompactSnapshot_BaseRefs {
 	return nil
 }
 
+type isCompactSnapshot_Data interface {
+	isCompactSnapshot_Data()
+}
+
+type CompactSnapshot_LogSnapshot struct {
+	LogSnapshot *CompactLogSnapshot `protobuf:"bytes,10,opt,name=log_snapshot,json=logSnapshot,proto3,oneof"`
+}
+
+type CompactSnapshot_SystemSnapshot struct {
+	SystemSnapshot *CompactSystemSnapshot `protobuf:"bytes,11,opt,name=system_snapshot,json=systemSnapshot,proto3,oneof"`
+}
+
+type CompactSnapshot_ActivitySnapshot struct {
+	ActivitySnapshot *CompactActivitySnapshot `protobuf:"bytes,12,opt,name=activity_snapshot,json=activitySnapshot,proto3,oneof"`
+}
+
+func (*CompactSnapshot_LogSnapshot) isCompactSnapshot_Data() {}
+
+func (*CompactSnapshot_SystemSnapshot) isCompactSnapshot_Data() {}
+
+func (*CompactSnapshot_ActivitySnapshot) isCompactSnapshot_Data() {}
+
+func (m *CompactSnapshot) GetData() isCompactSnapshot_Data {
+	if m != nil {
+		return m.Data
+	}
+	return nil
+}
+
 func (m *CompactSnapshot) GetLogSnapshot() *CompactLogSnapshot {
 	if x, ok := m.GetData().(*CompactSnapshot_LogSnapshot); ok {
 		return x.LogSnapshot
@@ -149,97 +156,13 @@ func (m *CompactSnapshot) GetActivitySnapshot() *CompactActivitySnapshot {
 	return nil
 }
 
-// XXX_OneofFuncs is for the internal use of the proto package.
-func (*CompactSnapshot) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), func(msg proto.Message) (n int), []interface{}) {
-	return _CompactSnapshot_OneofMarshaler, _CompactSnapshot_OneofUnmarshaler, _CompactSnapshot_OneofSizer, []interface{}{
+// XXX_OneofWrappers is for the internal use of the proto package.
+func (*CompactSnapshot) XXX_OneofWrappers() []interface{} {
+	return []interface{}{
 		(*CompactSnapshot_LogSnapshot)(nil),
 		(*CompactSnapshot_SystemSnapshot)(nil),
 		(*CompactSnapshot_ActivitySnapshot)(nil),
 	}
-}
-
-func _CompactSnapshot_OneofMarshaler(msg proto.Message, b *proto.Buffer) error {
-	m := msg.(*CompactSnapshot)
-	// data
-	switch x := m.Data.(type) {
-	case *CompactSnapshot_LogSnapshot:
-		b.EncodeVarint(10<<3 | proto.WireBytes)
-		if err := b.EncodeMessage(x.LogSnapshot); err != nil {
-			return err
-		}
-	case *CompactSnapshot_SystemSnapshot:
-		b.EncodeVarint(11<<3 | proto.WireBytes)
-		if err := b.EncodeMessage(x.SystemSnapshot); err != nil {
-			return err
-		}
-	case *CompactSnapshot_ActivitySnapshot:
-		b.EncodeVarint(12<<3 | proto.WireBytes)
-		if err := b.EncodeMessage(x.ActivitySnapshot); err != nil {
-			return err
-		}
-	case nil:
-	default:
-		return fmt.Errorf("CompactSnapshot.Data has unexpected type %T", x)
-	}
-	return nil
-}
-
-func _CompactSnapshot_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error) {
-	m := msg.(*CompactSnapshot)
-	switch tag {
-	case 10: // data.log_snapshot
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		msg := new(CompactLogSnapshot)
-		err := b.DecodeMessage(msg)
-		m.Data = &CompactSnapshot_LogSnapshot{msg}
-		return true, err
-	case 11: // data.system_snapshot
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		msg := new(CompactSystemSnapshot)
-		err := b.DecodeMessage(msg)
-		m.Data = &CompactSnapshot_SystemSnapshot{msg}
-		return true, err
-	case 12: // data.activity_snapshot
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		msg := new(CompactActivitySnapshot)
-		err := b.DecodeMessage(msg)
-		m.Data = &CompactSnapshot_ActivitySnapshot{msg}
-		return true, err
-	default:
-		return false, nil
-	}
-}
-
-func _CompactSnapshot_OneofSizer(msg proto.Message) (n int) {
-	m := msg.(*CompactSnapshot)
-	// data
-	switch x := m.Data.(type) {
-	case *CompactSnapshot_LogSnapshot:
-		s := proto.Size(x.LogSnapshot)
-		n += 1 // tag and wire
-		n += proto.SizeVarint(uint64(s))
-		n += s
-	case *CompactSnapshot_SystemSnapshot:
-		s := proto.Size(x.SystemSnapshot)
-		n += 1 // tag and wire
-		n += proto.SizeVarint(uint64(s))
-		n += s
-	case *CompactSnapshot_ActivitySnapshot:
-		s := proto.Size(x.ActivitySnapshot)
-		n += 1 // tag and wire
-		n += proto.SizeVarint(uint64(s))
-		n += s
-	case nil:
-	default:
-		panic(fmt.Sprintf("proto: unexpected type %T in oneof", x))
-	}
-	return n
 }
 
 type CompactSnapshot_BaseRefs struct {
@@ -257,16 +180,17 @@ func (m *CompactSnapshot_BaseRefs) Reset()         { *m = CompactSnapshot_BaseRe
 func (m *CompactSnapshot_BaseRefs) String() string { return proto.CompactTextString(m) }
 func (*CompactSnapshot_BaseRefs) ProtoMessage()    {}
 func (*CompactSnapshot_BaseRefs) Descriptor() ([]byte, []int) {
-	return fileDescriptor_compact_snapshot_6a11ece48cae881d, []int{0, 0}
+	return fileDescriptor_c24238c379d2c666, []int{0, 0}
 }
+
 func (m *CompactSnapshot_BaseRefs) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CompactSnapshot_BaseRefs.Unmarshal(m, b)
 }
 func (m *CompactSnapshot_BaseRefs) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_CompactSnapshot_BaseRefs.Marshal(b, m, deterministic)
 }
-func (dst *CompactSnapshot_BaseRefs) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_CompactSnapshot_BaseRefs.Merge(dst, src)
+func (m *CompactSnapshot_BaseRefs) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CompactSnapshot_BaseRefs.Merge(m, src)
 }
 func (m *CompactSnapshot_BaseRefs) XXX_Size() int {
 	return xxx_messageInfo_CompactSnapshot_BaseRefs.Size(m)
@@ -317,11 +241,9 @@ func init() {
 	proto.RegisterType((*CompactSnapshot_BaseRefs)(nil), "pganalyze.collector.CompactSnapshot.BaseRefs")
 }
 
-func init() {
-	proto.RegisterFile("compact_snapshot.proto", fileDescriptor_compact_snapshot_6a11ece48cae881d)
-}
+func init() { proto.RegisterFile("compact_snapshot.proto", fileDescriptor_c24238c379d2c666) }
 
-var fileDescriptor_compact_snapshot_6a11ece48cae881d = []byte{
+var fileDescriptor_c24238c379d2c666 = []byte{
 	// 513 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x7c, 0x93, 0xdf, 0x6e, 0xd3, 0x30,
 	0x14, 0xc6, 0xc9, 0xba, 0x56, 0x9d, 0x13, 0xd6, 0xd6, 0x43, 0x93, 0x15, 0x09, 0xad, 0xda, 0x04,
