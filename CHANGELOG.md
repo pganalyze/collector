@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.18.0      2019-03-05
+
+* Add Postgres 12 support
+* Process each configured server section in parallel
+  - This avoids problems when a high number of servers is configured, since
+    previously they would be processed serially, leading to skewed statistics
+    for servers processed later in the sequence
+* Introduce log filtering for PII and other kinds of secrets
+  - This is controlled by the new "filter_log_secret" configuration setting
+* Remove explicit connection to EC2 metadata service [#27](https://github.com/pganalyze/collector/issues/27)
+* Gather total partitioned/inheritance children table size
+* Correctly retrieve distributed table size for Citus extension tables
+* Ensure connections are encrypted and made using TLS 1.2
+* Build improvements
+  - Update builds and tests to use Go 1.12
+  - Switch to new Go module system instead of gvt
+
+
 ## 0.17.1      2018-12-31
 
 * Vacuum monitoring
