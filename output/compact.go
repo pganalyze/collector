@@ -49,7 +49,7 @@ func uploadAndSubmitCompactSnapshot(s pganalyze_collector.CompactSnapshot, s3 st
 		return nil
 	}
 
-	s3Location, err := uploadCompactSnapshot(s3, logger, compressedData, snapshotUUID.String())
+	s3Location, err := uploadCompactSnapshot(server.Config.HTTPClient, s3, logger, compressedData, snapshotUUID.String())
 	if err != nil {
 		logger.PrintError("Error uploading to S3: %s", err)
 		return err
@@ -110,7 +110,7 @@ func submitCompactSnapshot(server state.Server, collectionOpts state.CollectionO
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Add("Accept", "application/json,text/plain")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := server.Config.HTTPClient.Do(req)
 	// TODO: We could consider re-running on error (e.g. if it was a temporary server issue)
 	if err != nil {
 		return err

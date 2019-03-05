@@ -20,17 +20,17 @@ type s3UploadResponse struct {
 	Key      string
 }
 
-func uploadCompactSnapshot(s3 state.GrantS3, logger *util.Logger, data bytes.Buffer, filename string) (string, error) {
+func uploadCompactSnapshot(httpClient *http.Client, s3 state.GrantS3, logger *util.Logger, data bytes.Buffer, filename string) (string, error) {
 	if s3.S3URL == "" {
 		return "", fmt.Errorf("Error - can't upload without valid S3 URL")
 	}
 
 	logger.PrintVerbose("Successfully prepared S3 request - size of request body: %.4f MB", float64(data.Len())/1024.0/1024.0)
 
-	return uploadToS3(s3.S3URL, s3.S3Fields, logger, data.Bytes(), filename)
+	return uploadToS3(httpClient, s3.S3URL, s3.S3Fields, logger, data.Bytes(), filename)
 }
 
-func uploadSnapshot(grant state.Grant, logger *util.Logger, data bytes.Buffer, filename string) (string, error) {
+func uploadSnapshot(httpClient *http.Client, grant state.Grant, logger *util.Logger, data bytes.Buffer, filename string) (string, error) {
 	var err error
 
 	if !grant.Valid {
@@ -55,10 +55,10 @@ func uploadSnapshot(grant state.Grant, logger *util.Logger, data bytes.Buffer, f
 
 	logger.PrintVerbose("Successfully prepared S3 request - size of request body: %.4f MB", float64(data.Len())/1024.0/1024.0)
 
-	return uploadToS3(grant.S3URL, grant.S3Fields, logger, data.Bytes(), filename)
+	return uploadToS3(httpClient, grant.S3URL, grant.S3Fields, logger, data.Bytes(), filename)
 }
 
-func uploadToS3(S3URL string, S3Fields map[string]string, logger *util.Logger, data []byte, filename string) (string, error) {
+func uploadToS3(httpClient *http.Client, S3URL string, S3Fields map[string]string, logger *util.Logger, data []byte, filename string) (string, error) {
 	var err error
 	var formBytes bytes.Buffer
 
@@ -85,7 +85,7 @@ func uploadToS3(S3URL string, S3Fields map[string]string, logger *util.Logger, d
 	}
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return "", err
 	}

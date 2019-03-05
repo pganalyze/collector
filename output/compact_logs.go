@@ -18,7 +18,7 @@ func UploadAndSendLogs(server state.Server, grant state.GrantLogs, collectionOpt
 	}
 
 	if collectionOpts.SubmitCollectedData && grant.EncryptionKey.CiphertextBlob != "" {
-		logState.LogFiles = EncryptAndUploadLogfiles(grant.Logdata, grant.EncryptionKey, logger, logState.LogFiles)
+		logState.LogFiles = EncryptAndUploadLogfiles(server.Config.HTTPClient, grant.Logdata, grant.EncryptionKey, logger, logState.LogFiles)
 	}
 
 	ls, r := transform.LogStateToLogSnapshot(logState)

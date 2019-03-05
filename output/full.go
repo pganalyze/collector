@@ -64,7 +64,7 @@ func submitFull(s snapshot.FullSnapshot, server state.Server, collectionOpts sta
 		return nil
 	}
 
-	s3Location, err := uploadSnapshot(server.Grant, logger, compressedData, snapshotUUID.String())
+	s3Location, err := uploadSnapshot(server.Config.HTTPClient, server.Grant, logger, compressedData, snapshotUUID.String())
 	if err != nil {
 		logger.PrintError("Error uploading to S3: %s", err)
 		return err
@@ -129,7 +129,7 @@ func submitSnapshot(server state.Server, collectionOpts state.CollectionOpts, lo
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Add("Accept", "application/json,text/plain")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := server.Config.HTTPClient.Do(req)
 	// TODO: We could consider re-running on error (e.g. if it was a temporary server issue)
 	if err != nil {
 		return err

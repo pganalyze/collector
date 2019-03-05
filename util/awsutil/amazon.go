@@ -14,7 +14,7 @@ func GetAwsSession(config config.ServerConfig) *session.Session {
 		creds = credentials.NewStaticCredentials(config.AwsAccessKeyID, config.AwsSecretAccessKey, "")
 	}
 
-	return session.New(&aws.Config{Credentials: creds, Region: aws.String(config.AwsRegion)})
+	return session.New(&aws.Config{Credentials: creds, Region: aws.String(config.AwsRegion), HTTPClient: config.HTTPClient})
 }
 
 //sess.Handlers.Send.PushFront(func(r *request.Request) {

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net/http"
 
 	"github.com/aws/aws-sdk-go/service/s3/s3crypto"
 	"github.com/pganalyze/collector/logs"
@@ -46,7 +47,7 @@ func (kh *keyHandler) GenerateCipherData(keySize, ivSize int) (s3crypto.CipherDa
 	return cd, nil
 }
 
-func EncryptAndUploadLogfiles(s3 state.GrantS3, encryptionKey state.GrantLogsEncryptionKey, logger *util.Logger, logFiles []state.LogFile) []state.LogFile {
+func EncryptAndUploadLogfiles(httpClient *http.Client, s3 state.GrantS3, encryptionKey state.GrantLogsEncryptionKey, logger *util.Logger, logFiles []state.LogFile) []state.LogFile {
 	if len(logFiles) == 0 {
 		return logFiles
 	}
@@ -120,7 +121,7 @@ func EncryptAndUploadLogfiles(s3 state.GrantS3, encryptionKey state.GrantLogsEnc
 		formFields["x-amz-meta-x-amz-unencrypted-content-md5"] = env.UnencryptedMD5
 		formFields["x-amz-meta-x-amz-unencrypted-content-length"] = env.UnencryptedContentLen
 
-		s3Location, err := uploadToS3(s3.S3URL, formFields, logger, encryptedContent, logFile.UUID.String())
+		s3Location, err := uploadToS3(httpClient, s3.S3URL, formFields, logger, encryptedContent, logFile.UUID.String())
 		if err != nil {
 			logger.PrintError("Log S3 upload failed: %s", err)
 			return logFiles

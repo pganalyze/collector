@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
@@ -107,6 +108,9 @@ type ServerConfig struct {
 	// Configuration for PII filtering
 	FilterLogSecret   string `ini:"filter_log_secret"`   // none/all/credential/parsing_error/statement_text/statement_parameter/table_data/ops/unidentified (comma separated)
 	FilterQuerySample string `ini:"filter_query_sample"` // none/all
+
+	// HttpClient - Client to be used for API connections
+	HTTPClient *http.Client
 }
 
 // GetPqOpenString - Gets the database configuration as a string that can be passed to lib/pq for connecting

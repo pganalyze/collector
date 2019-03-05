@@ -1,20 +1,27 @@
 package config
 
 import (
+	"context"
+	"crypto/tls"
 	"fmt"
 	"io/ioutil"
+	"net"
+	"net/http"
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/go-ini/ini"
 
 	"github.com/pganalyze/collector/util"
 )
 
+const defaultAPIBaseURL = "https://api.pganalyze.com"
+
 func getDefaultConfig() *ServerConfig {
 	config := &ServerConfig{
-		APIBaseURL:              "https://api.pganalyze.com",
+		APIBaseURL:              defaultAPIBaseURL,
 		AwsRegion:               "us-east-1",
 		SectionName:             "default",
 		QueryStatsInterval:      60,
@@ -116,6 +123,35 @@ func getDefaultConfig() *ServerConfig {
 	return config
 }
 
+func createHttpClient(requireSSL bool) *http.Client {
+	transport := &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+		DialContext: (&net.Dialer{
+			Timeout:   30 * time.Second,
+			KeepAlive: 30 * time.Second,
+			DualStack: true,
+		}).DialContext,
+		MaxIdleConns:          100,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+	}
+	if requireSSL {
+		transport.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+			if !strings.HasSuffix(addr, ":443") {
+				return nil, fmt.Errorf("Unencrypted connection is not permitted by pganalyze configuration")
+			}
+			return (&net.Dialer{Timeout: 30 * time.Second, KeepAlive: 30 * time.Second, DualStack: true}).DialContext(ctx, network, addr)
+		}
+		transport.TLSClientConfig = &tls.Config{MinVersion: tls.VersionTLS12}
+	}
+
+	return &http.Client{
+		Timeout:   120 * time.Second,
+		Transport: transport,
+	}
+}
+
 // Read - Reads the configuration from the specified filename, or fall back to the default config
 func Read(logger *util.Logger, filename string) (Config, error) {
 	var conf Config
@@ -181,6 +217,8 @@ func Read(logger *util.Logger, filename string) (Config, error) {
 				SystemType:  config.SystemType,
 				SystemScope: config.SystemScope,
 			}
+
+			config.HTTPClient = createHttpClient(config.APIBaseURL == defaultAPIBaseURL)
 
 			if config.GetDbName() != "" {
 				// Ensure we have no duplicate identifiers within one collector

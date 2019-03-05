@@ -23,7 +23,7 @@ func GetLogsGrant(server state.Server, globalCollectionOpts state.CollectionOpts
 	req.Header.Set("User-Agent", util.CollectorNameAndVersion)
 	req.Header.Add("Accept", "application/json")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := server.Config.HTTPClient.Do(req)
 	if err != nil {
 		return state.GrantLogs{}, err
 	}
