@@ -132,7 +132,7 @@ func transformSystemLogs(s snapshot.CompactLogSnapshot, r snapshot.CompactSnapsh
 				logFileReference.FilterLogSecret = append(logFileReference.FilterLogSecret, snapshot.LogFileReference_UNIDENTIFIED_LOG_SECRET)
 			}
 		}
-		s.LogFileReferences = append(s.LogFileReferences)
+		s.LogFileReferences = append(s.LogFileReferences, logFileReference)
 		for _, logLineIn := range logFileIn.LogLines {
 			logLine := transformSystemLogLine(&r, fileIdx, logLineIn)
 			s.LogLineInformations = append(s.LogLineInformations, &logLine)
