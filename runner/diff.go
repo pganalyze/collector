@@ -49,6 +49,18 @@ func diffRelationStats(new state.PostgresRelationStatsMap, prev state.PostgresRe
 			diff[key] = stats.DiffSince(prevStats)
 		} else if followUpRun { // New since the last run
 			diff[key] = stats.DiffSince(state.PostgresRelationStats{})
+		} else {
+			diff[key] = state.DiffedPostgresRelationStats{
+				SizeBytes:        stats.SizeBytes,
+				ToastSizeBytes:   stats.ToastSizeBytes,
+				NLiveTup:         stats.NLiveTup,
+				NDeadTup:         stats.NDeadTup,
+				NModSinceAnalyze: stats.NModSinceAnalyze,
+				LastVacuum:       stats.LastVacuum,
+				LastAutovacuum:   stats.LastAutovacuum,
+				LastAnalyze:      stats.LastAnalyze,
+				LastAutoanalyze:  stats.LastAutoanalyze,
+			}
 		}
 	}
 
@@ -65,6 +77,10 @@ func diffIndexStats(new state.PostgresIndexStatsMap, prev state.PostgresIndexSta
 			diff[key] = stats.DiffSince(prevStats)
 		} else if followUpRun { // New since the last run
 			diff[key] = stats.DiffSince(state.PostgresIndexStats{})
+		} else {
+			diff[key] = state.DiffedPostgresIndexStats{
+				SizeBytes: stats.SizeBytes,
+			}
 		}
 	}
 
