@@ -219,8 +219,6 @@ func Read(logger *util.Logger, filename string) (Config, error) {
 				SystemScope: config.SystemScope,
 			}
 
-			config.HTTPClient = createHttpClient(config.APIBaseURL == defaultAPIBaseURL)
-
 			if config.GetDbName() != "" {
 				// Ensure we have no duplicate identifiers within one collector
 				skip := false
@@ -250,6 +248,10 @@ func Read(logger *util.Logger, filename string) (Config, error) {
 		} else {
 			return conf, fmt.Errorf("No configuration file found at %s, and no environment variables set", filename)
 		}
+	}
+
+	for idx, server := range conf.Servers {
+		conf.Servers[idx].HTTPClient = createHttpClient(server.APIBaseURL == defaultAPIBaseURL)
 	}
 
 	return conf, nil
