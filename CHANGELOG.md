@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.18.1      2019-03-13
+
+* Config: Fix crash when configuration is read from environment only
+
+
 ## 0.18.0      2019-03-05
 
 * Add Postgres 12 support
