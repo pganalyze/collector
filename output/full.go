@@ -145,8 +145,8 @@ func submitSnapshot(server state.Server, collectionOpts state.CollectionOpts, lo
 		return fmt.Errorf("Error when submitting: %s\n", body)
 	}
 
-	if len(body) > 0 {
-		logger.PrintInfo("%s", body)
+	if len(body) > 0 && collectionOpts.TestRun {
+		logger.PrintInfo("  %s", body)
 	} else if !quiet {
 		logger.PrintInfo("Submitted snapshot successfully")
 	}

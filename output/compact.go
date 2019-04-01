@@ -92,6 +92,10 @@ func debugCompactOutputAsJSON(logger *util.Logger, compressedData bytes.Buffer) 
 func submitCompactSnapshot(server state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, s3Location string, collectedAt time.Time, quiet bool, kind string) error {
 	requestURL := server.Config.APIBaseURL + "/v2/snapshots/compact"
 
+	if collectionOpts.TestRun {
+		requestURL = server.Config.APIBaseURL + "/v2/snapshots/test"
+	}
+
 	data := url.Values{
 		"s3_location":  {s3Location},
 		"collected_at": {fmt.Sprintf("%d", collectedAt.Unix())},
@@ -126,8 +130,8 @@ func submitCompactSnapshot(server state.Server, collectionOpts state.CollectionO
 		return fmt.Errorf("Error when submitting: %s\n", body)
 	}
 
-	if len(body) > 0 {
-		logger.PrintInfo("%s", body)
+	if len(body) > 0 && collectionOpts.TestRun {
+		logger.PrintInfo("  %s", body)
 	} else if !quiet {
 		logger.PrintInfo("Submitted compact %s snapshot successfully", kind)
 	}

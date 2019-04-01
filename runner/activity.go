@@ -24,6 +24,15 @@ func processActivityForServer(server state.Server, globalCollectionOpts state.Co
 		return false, errors.Wrap(err, "could not get default grant for activity snapshot")
 	}
 
+	if !grant.Config.EnableActivity {
+		if globalCollectionOpts.TestRun {
+			logger.PrintError("  Failed - Activity snapshots disabled by pganalyze")
+		} else {
+			logger.PrintVerbose("Activity snapshots disabled by pganalyze, skipping")
+		}
+		return false, nil
+	}
+
 	connection, err = postgres.EstablishConnection(server, logger, globalCollectionOpts, "")
 	if err != nil {
 		return false, errors.Wrap(err, "failed to connect to database")
@@ -65,13 +74,17 @@ func CollectActivityFromAllServers(servers []state.Server, globalCollectionOpts 
 	var wg sync.WaitGroup
 
 	for idx := range servers {
-		if !servers[idx].Config.EnableActivity {
+		if servers[idx].Config.DisableActivity {
 			continue
 		}
 
 		wg.Add(1)
 		go func(server *state.Server) {
 			prefixedLogger := logger.WithPrefixAndRememberErrors(server.Config.SectionName)
+
+			if globalCollectionOpts.TestRun {
+				prefixedLogger.PrintInfo("Testing activity snapshots...")
+			}
 
 			success, err := processActivityForServer(*server, globalCollectionOpts, prefixedLogger)
 			if err != nil {

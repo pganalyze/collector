@@ -115,6 +115,9 @@ type GrantConfig struct {
 	SentryDsn string `json:"sentry_dsn"`
 
 	Features GrantFeatures `json:"features"`
+
+	EnableActivity bool `json:"enable_activity"`
+	EnableLogs     bool `json:"enable_logs"`
 }
 
 type GrantFeatures struct {

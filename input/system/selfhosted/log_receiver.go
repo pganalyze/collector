@@ -286,7 +286,7 @@ func setupLogLocationTail(logLocation string, out chan<- string, prefixedLogger 
 
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		return err
+		return fmt.Errorf("fsnotify new: %s", err)
 	}
 
 	go func() {
@@ -341,7 +341,7 @@ func setupLogLocationTail(logLocation string, out chan<- string, prefixedLogger 
 
 	err = watcher.Add(logLocation)
 	if err != nil {
-		return err
+		return fmt.Errorf("fsnotify add \"%s\": %s", logLocation, err)
 	}
 
 	return nil

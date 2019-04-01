@@ -19,7 +19,11 @@ func downloadLogsForServer(server state.Server, globalCollectionOpts state.Colle
 	}
 
 	if !grant.Valid {
-		logger.PrintVerbose("Log collection disabled from server, skipping")
+		if globalCollectionOpts.TestRun {
+			logger.PrintError("  Failed - Log collection disabled by pganalyze")
+		} else {
+			logger.PrintVerbose("Log collection disabled by pganalyze, skipping")
+		}
 		return false, nil
 	}
 
@@ -47,24 +51,26 @@ func TestLogsForAllServers(servers []state.Server, globalCollectionOpts state.Co
 	}
 
 	for _, server := range servers {
+		if server.Config.DisableLogs {
+			continue
+		}
+
 		prefixedLogger := logger.WithPrefixAndRememberErrors(server.Config.SectionName)
 
 		if server.Config.LogLocation != "" {
-			prefixedLogger.PrintInfo("Testing local log tailing...")
+			prefixedLogger.PrintInfo("Testing log collection (local)...")
 			err := selfhosted.TestLogTail(server, globalCollectionOpts, prefixedLogger)
 			if err != nil {
 				prefixedLogger.PrintError("ERROR - Could not tail logs for server: %s", err)
 			} else {
-				prefixedLogger.PrintInfo("Log test successful")
+				prefixedLogger.PrintInfo("  Local log test successful")
 				hasSuccessfulLocalServers = true
 			}
-		} else if server.Config.EnableLogs {
-			prefixedLogger.PrintInfo("Testing log download...")
+		} else if server.Config.AwsDbInstanceID != "" {
+			prefixedLogger.PrintInfo("Testing log collection (RDS)...")
 			_, err := downloadLogsForServer(server, globalCollectionOpts, prefixedLogger)
 			if err != nil {
 				prefixedLogger.PrintError("Could not download logs for server: %s", err)
-			} else {
-				prefixedLogger.PrintInfo("Log test successful")
 			}
 		}
 	}
@@ -81,7 +87,11 @@ func DownloadLogsFromAllServers(servers []state.Server, globalCollectionOpts sta
 	}
 
 	for idx := range servers {
-		if !servers[idx].Config.EnableLogs {
+		if servers[idx].Config.DisableLogs {
+			continue
+		}
+
+		if servers[idx].Config.AwsDbInstanceID == "" {
 			continue
 		}
 

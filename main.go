@@ -54,13 +54,13 @@ func run(wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *
 	serverConfigs := conf.Servers
 	for _, config := range serverConfigs {
 		servers = append(servers, state.Server{Config: config, StateMutex: &sync.Mutex{}})
-		if config.EnableLogs || config.LogLocation != "" || config.LogDockerTail != "" {
-			hasAnyLogsEnabled = true
-		}
 		if config.EnableReports {
 			hasAnyReportsEnabled = true
 		}
-		if config.EnableActivity {
+		if !config.DisableLogs {
+			hasAnyLogsEnabled = true
+		}
+		if !config.DisableActivity {
 			hasAnyActivityEnabled = true
 		}
 	}
@@ -76,6 +76,9 @@ func run(wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *
 			runner.TestLogsForAllServers(servers, globalCollectionOpts, logger)
 		} else {
 			runner.CollectAllServers(servers, globalCollectionOpts, logger)
+			if hasAnyActivityEnabled {
+				runner.CollectActivityFromAllServers(servers, globalCollectionOpts, logger)
+			}
 			if hasAnyLogsEnabled {
 				// Initial test
 				hasSuccessfulLocalServers := runner.TestLogsForAllServers(servers, globalCollectionOpts, logger)
@@ -158,9 +161,12 @@ func run(wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *
 		var hasAnyLogTails bool
 
 		for _, server := range servers {
+			if server.Config.DisableLogs {
+				continue
+			}
 			if server.Config.LogLocation != "" || server.Config.LogDockerTail != "" {
 				hasAnyLogTails = true
-			} else if server.Config.EnableLogs && conf.HerokuLogStream == nil {
+			} else if server.Config.AwsDbInstanceID != "" {
 				hasAnyLogDownloads = true
 			}
 		}

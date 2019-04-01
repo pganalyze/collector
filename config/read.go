@@ -44,14 +44,14 @@ func getDefaultConfig() *ServerConfig {
 	if systemScope := os.Getenv("PGA_API_SYSTEM_SCOPE"); systemScope != "" {
 		config.SystemScope = systemScope
 	}
-	if enableLogs := os.Getenv("PGA_ENABLE_LOGS"); enableLogs != "" && enableLogs != "0" {
-		config.EnableLogs = true
-	}
 	if enableReports := os.Getenv("PGA_ENABLE_REPORTS"); enableReports != "" && enableReports != "0" {
 		config.EnableReports = true
 	}
-	if enableActivity := os.Getenv("PGA_ENABLE_ACTIVITY"); enableActivity != "" && enableActivity != "0" {
-		config.EnableActivity = true
+	if disableLogs := os.Getenv("PGA_DISABLE_LOGS"); disableLogs != "" && disableLogs != "0" {
+		config.DisableLogs = true
+	}
+	if disableActivity := os.Getenv("PGA_DISABLE_ACTIVITY"); disableActivity != "" && disableActivity != "0" {
+		config.DisableActivity = true
 	}
 	if dbURL := os.Getenv("DB_URL"); dbURL != "" {
 		config.DbURL = dbURL
@@ -97,7 +97,6 @@ func getDefaultConfig() *ServerConfig {
 	}
 	if logLocation := os.Getenv("LOG_LOCATION"); logLocation != "" {
 		config.LogLocation = logLocation
-		config.EnableLogs = true
 	}
 	// Note: We don't support LogDockerTail here since it would require the "docker"
 	// binary inside the pganalyze container (as well as full Docker access), instead
