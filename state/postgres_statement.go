@@ -9,7 +9,10 @@ import (
 // PostgresStatement - Specific kind of statement that has run one or multiple times
 // on the PostgreSQL server.
 type PostgresStatement struct {
-	NormalizedQuery string // Text of a representative statement (normalized)
+	Fingerprint           [21]byte // Fingerprint for a specific statement
+	Unidentified          bool     // True if this represents an unidentified statement without query text
+	InsufficientPrivilege bool     // True if we're missing permissions to see the statement
+	Collector             bool     // True if this statement was produced by the pganalyze collector
 }
 
 // PostgresStatementStats - Statistics from pg_stat_statements extension for a given
@@ -53,6 +56,7 @@ type PostgresStatementStatsTimeKey struct {
 }
 
 type PostgresStatementMap map[PostgresStatementKey]PostgresStatement
+type PostgresStatementTextMap map[[21]byte]string
 type PostgresStatementStatsMap map[PostgresStatementKey]PostgresStatementStats
 
 type DiffedPostgresStatementStats PostgresStatementStats

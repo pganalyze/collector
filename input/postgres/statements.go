@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"hash/fnv"
+	"strings"
 
 	"github.com/guregu/null"
 	"github.com/lib/pq"
@@ -46,6 +47,14 @@ func statementStatsHelperExists(db *sql.DB, showtext bool) bool {
 	return enabled
 }
 
+func collectorStatement(query string) bool {
+	return strings.HasPrefix(query, QueryMarkerSQL)
+}
+
+func insufficientPrivilege(query string) bool {
+	return query == "<insufficient privilege>"
+}
+
 func ResetStatements(logger *util.Logger, db *sql.DB) error {
 	var method string
 	if statsHelperExists(db, "reset_stat_statements") {
@@ -65,7 +74,7 @@ func ResetStatements(logger *util.Logger, db *sql.DB) error {
 	return nil
 }
 
-func GetStatements(logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion, showtext bool, isHeroku bool) (state.PostgresStatementMap, state.PostgresStatementStatsMap, error) {
+func GetStatements(logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion, showtext bool, isHeroku bool) (state.PostgresStatementMap, state.PostgresStatementTextMap, state.PostgresStatementStatsMap, error) {
 	var err error
 	var optionalFields string
 	var sourceTable string
@@ -112,15 +121,15 @@ func GetStatements(logger *util.Logger, db *sql.DB, postgresVersion state.Postgr
 
 			_, err = db.Exec(QueryMarkerSQL + "CREATE EXTENSION IF NOT EXISTS pg_stat_statements SCHEMA public")
 			if err != nil {
-				return nil, nil, err
+				return nil, nil, nil, err
 			}
 
 			stmt, err = db.Prepare(sql)
 			if err != nil {
-				return nil, nil, err
+				return nil, nil, nil, err
 			}
 		} else {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 	}
 
@@ -128,34 +137,35 @@ func GetStatements(logger *util.Logger, db *sql.DB, postgresVersion state.Postgr
 
 	rows, err := stmt.Query()
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	defer rows.Close()
 
 	statements := make(state.PostgresStatementMap)
+	statementTexts := make(state.PostgresStatementTextMap)
 	statementStats := make(state.PostgresStatementStatsMap)
 
 	for rows.Next() {
 		var key state.PostgresStatementKey
 		var queryID null.Int
-		var normalizedQuery null.String
+		var receivedQuery null.String
 		var stats state.PostgresStatementStats
 
-		err = rows.Scan(&key.DatabaseOid, &key.UserOid, &normalizedQuery, &stats.Calls, &stats.TotalTime, &stats.Rows,
+		err = rows.Scan(&key.DatabaseOid, &key.UserOid, &receivedQuery, &stats.Calls, &stats.TotalTime, &stats.Rows,
 			&stats.SharedBlksHit, &stats.SharedBlksRead, &stats.SharedBlksDirtied, &stats.SharedBlksWritten,
 			&stats.LocalBlksHit, &stats.LocalBlksRead, &stats.LocalBlksDirtied, &stats.LocalBlksWritten,
 			&stats.TempBlksRead, &stats.TempBlksWritten, &stats.BlkReadTime, &stats.BlkWriteTime,
 			&queryID, &stats.MinTime, &stats.MaxTime, &stats.MeanTime, &stats.StddevTime)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 
 		if queryID.Valid {
 			key.QueryID = queryID.Int64
-		} else if normalizedQuery.Valid {
+		} else if receivedQuery.Valid {
 			// Note: This is a heuristic for old Postgres versions and will not work for duplicate queries (e.g. when tables are dropped and recreated)
 			h := fnv.New64a()
-			h.Write([]byte(normalizedQuery.String))
+			h.Write([]byte(receivedQuery.String))
 			key.QueryID = int64(h.Sum64())
 		} else {
 			// We can't process this entry, most likely a permission problem with reading the query ID
@@ -163,10 +173,32 @@ func GetStatements(logger *util.Logger, db *sql.DB, postgresVersion state.Postgr
 		}
 
 		if showtext {
-			statements[key] = state.PostgresStatement{NormalizedQuery: normalizedQuery.String}
+			fp := util.FingerprintQuery(receivedQuery.String)
+			stmt := state.PostgresStatement{Fingerprint: fp}
+			if insufficientPrivilege(receivedQuery.String) {
+				stmt.InsufficientPrivilege = true
+			} else if collectorStatement(receivedQuery.String) {
+				stmt.Collector = true
+				stmt.Fingerprint = util.FingerprintQuery("<pganalyze-collector>")
+			} else {
+				_, ok := statementTexts[fp]
+				if !ok {
+					statementTexts[fp] = receivedQuery.String
+				}
+			}
+
+			statements[key] = stmt
 		}
 		statementStats[key] = stats
 	}
+	err = rows.Err()
+	if err != nil {
+		return nil, nil, nil, err
+	}
 
-	return statements, statementStats, nil
+	for fp, text := range statementTexts {
+		statementTexts[fp] = util.NormalizeQuery(text)
+	}
+
+	return statements, statementTexts, statementStats, nil
 }

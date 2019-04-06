@@ -9,3 +9,4 @@
 "UPDATE pgbench_tellers SET tbalance = tbalance + ? WHERE tid = ?;"
 "vacuum pgbench_branches"
 "vacuum pgbench_tellers"
+"<pganalyze-collector>"

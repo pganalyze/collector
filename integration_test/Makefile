@@ -11,16 +11,16 @@ pg92:
 	sleep 10
 	docker exec pganalyze-collector-test pgbench -U postgres -i
 	docker exec pganalyze-collector-test pgbench -U postgres
-	docker exec pganalyze-collector-test sh -c "DB_USERNAME=postgres PGA_API_KEY=dummy pganalyze-collector --dry-run --force-state-update -v" > pg92_1.json
+	docker exec pganalyze-collector-test sh -c "DB_USERNAME=postgres PGA_API_KEY=dummy PGA_DISABLE_ACTIVITY=1 pganalyze-collector --dry-run --force-state-update -v" > pg92_1.json
 	docker exec pganalyze-collector-test pgbench -U postgres
-	docker exec pganalyze-collector-test sh -c "DB_USERNAME=postgres PGA_API_KEY=dummy pganalyze-collector --dry-run --force-state-update -v" > pg92_2.json
+	docker exec pganalyze-collector-test sh -c "DB_USERNAME=postgres PGA_API_KEY=dummy PGA_DISABLE_ACTIVITY=1 pganalyze-collector --dry-run --force-state-update -v" > pg92_2.json
 	docker rm -f pganalyze-collector-test
 	docker rmi pganalyze-collector-test
 	if [ "`jq '.collectorErrors' pg92_2.json | tr -d ' \n\r\t '`" != "null" ]; then \
 		jq '.collectorErrors' pg92_2.json; \
 		exit 1; \
 	fi
-	jq '.queryInformations[].normalizedQuery' pg92_2.json | sort -f > pg92.out
+	jq '.queryInformations[].normalizedQuery' pg92_2.json | sort --version-sort -f > pg92.out
 	diff -Naur pg92.expected pg92.out && echo 'success'
 
 pg93:
@@ -29,16 +29,16 @@ pg93:
 	sleep 10
 	docker exec pganalyze-collector-test pgbench -U postgres -i
 	docker exec pganalyze-collector-test pgbench -U postgres
-	docker exec pganalyze-collector-test sh -c "DB_USERNAME=postgres PGA_API_KEY=dummy pganalyze-collector --dry-run --force-state-update -v" > pg93_1.json
+	docker exec pganalyze-collector-test sh -c "DB_USERNAME=postgres PGA_API_KEY=dummy PGA_DISABLE_ACTIVITY=1 pganalyze-collector --dry-run --force-state-update -v" > pg93_1.json
 	docker exec pganalyze-collector-test pgbench -U postgres
-	docker exec pganalyze-collector-test sh -c "DB_USERNAME=postgres PGA_API_KEY=dummy pganalyze-collector --dry-run --force-state-update -v" > pg93_2.json
+	docker exec pganalyze-collector-test sh -c "DB_USERNAME=postgres PGA_API_KEY=dummy PGA_DISABLE_ACTIVITY=1 pganalyze-collector --dry-run --force-state-update -v" > pg93_2.json
 	docker rm -f pganalyze-collector-test
 	docker rmi pganalyze-collector-test
 	if [ "`jq '.collectorErrors' pg93_2.json | tr -d ' \n\r\t '`" != "null" ]; then \
 		jq '.collectorErrors' pg93_2.json; \
 		exit 1; \
 	fi
-	jq '.queryInformations[].normalizedQuery' pg93_2.json | sort -f > pg93.out
+	jq '.queryInformations[].normalizedQuery' pg93_2.json | sort --version-sort -f > pg93.out
 	diff -Naur pg93.expected pg93.out && echo 'success'
 
 pg94:
@@ -47,16 +47,16 @@ pg94:
 	sleep 10
 	docker exec pganalyze-collector-test pgbench -U postgres -i
 	docker exec pganalyze-collector-test pgbench -U postgres
-	docker exec pganalyze-collector-test sh -c "DB_USERNAME=postgres PGA_API_KEY=dummy pganalyze-collector --dry-run --force-state-update -v" > pg94_1.json
+	docker exec pganalyze-collector-test sh -c "DB_USERNAME=postgres PGA_API_KEY=dummy PGA_DISABLE_ACTIVITY=1 pganalyze-collector --dry-run --force-state-update -v" > pg94_1.json
 	docker exec pganalyze-collector-test pgbench -U postgres
-	docker exec pganalyze-collector-test sh -c "DB_USERNAME=postgres PGA_API_KEY=dummy pganalyze-collector --dry-run --force-state-update -v" > pg94_2.json
+	docker exec pganalyze-collector-test sh -c "DB_USERNAME=postgres PGA_API_KEY=dummy PGA_DISABLE_ACTIVITY=1 pganalyze-collector --dry-run --force-state-update -v" > pg94_2.json
 	docker rm -f pganalyze-collector-test
 	docker rmi pganalyze-collector-test
 	if [ "`jq '.collectorErrors' pg94_2.json | tr -d ' \n\r\t '`" != "null" ]; then \
 		jq '.collectorErrors' pg94_2.json; \
 		exit 1; \
 	fi
-	jq '.queryInformations[].normalizedQuery' pg94_2.json | sort -f > pg94.out
+	jq '.queryInformations[].normalizedQuery' pg94_2.json | sort --version-sort -f > pg94.out
 	diff -Naur pg94.expected pg94.out && echo 'success'
 
 pg95:
@@ -65,16 +65,16 @@ pg95:
 	sleep 10
 	docker exec pganalyze-collector-test pgbench -U postgres -i
 	docker exec pganalyze-collector-test pgbench -U postgres
-	docker exec pganalyze-collector-test sh -c "DB_USERNAME=postgres PGA_API_KEY=dummy pganalyze-collector --dry-run --force-state-update -v" > pg95_1.json
+	docker exec pganalyze-collector-test sh -c "DB_USERNAME=postgres PGA_API_KEY=dummy PGA_DISABLE_ACTIVITY=1 pganalyze-collector --dry-run --force-state-update -v" > pg95_1.json
 	docker exec pganalyze-collector-test pgbench -U postgres
-	docker exec pganalyze-collector-test sh -c "DB_USERNAME=postgres PGA_API_KEY=dummy pganalyze-collector --dry-run --force-state-update -v" > pg95_2.json
+	docker exec pganalyze-collector-test sh -c "DB_USERNAME=postgres PGA_API_KEY=dummy PGA_DISABLE_ACTIVITY=1 pganalyze-collector --dry-run --force-state-update -v" > pg95_2.json
 	docker rm -f pganalyze-collector-test
 	docker rmi pganalyze-collector-test
 	if [ "`jq '.collectorErrors' pg95_2.json | tr -d ' \n\r\t '`" != "null" ]; then \
 		jq '.collectorErrors' pg95_2.json; \
 		exit 1; \
 	fi
-	jq '.queryInformations[].normalizedQuery' pg95_2.json | sort -f > pg95.out
+	jq '.queryInformations[].normalizedQuery' pg95_2.json | sort --version-sort -f > pg95.out
 	diff -Naur pg95.expected pg95.out && echo 'success'
 
 pg96:
@@ -83,16 +83,16 @@ pg96:
 	sleep 10
 	docker exec pganalyze-collector-test pgbench -U postgres -i
 	docker exec pganalyze-collector-test pgbench -U postgres
-	docker exec pganalyze-collector-test sh -c "DB_USERNAME=postgres PGA_API_KEY=dummy pganalyze-collector --dry-run --force-state-update -v" > pg96_1.json
+	docker exec pganalyze-collector-test sh -c "DB_USERNAME=postgres PGA_API_KEY=dummy PGA_DISABLE_ACTIVITY=1 pganalyze-collector --dry-run --force-state-update -v" > pg96_1.json
 	docker exec pganalyze-collector-test pgbench -U postgres
-	docker exec pganalyze-collector-test sh -c "DB_USERNAME=postgres PGA_API_KEY=dummy pganalyze-collector --dry-run --force-state-update -v" > pg96_2.json
+	docker exec pganalyze-collector-test sh -c "DB_USERNAME=postgres PGA_API_KEY=dummy PGA_DISABLE_ACTIVITY=1 pganalyze-collector --dry-run --force-state-update -v" > pg96_2.json
 	docker rm -f pganalyze-collector-test
 	docker rmi pganalyze-collector-test
 	if [ "`jq '.collectorErrors' pg96_2.json | tr -d ' \n\r\t '`" != "null" ]; then \
 		jq '.collectorErrors' pg96_2.json; \
 		exit 1; \
 	fi
-	jq '.queryInformations[].normalizedQuery' pg96_2.json | sort -f > pg96.out
+	jq '.queryInformations[].normalizedQuery' pg96_2.json | sort --version-sort -f > pg96.out
 	diff -Naur pg96.expected pg96.out && echo 'success'
 
 pg10:
@@ -101,16 +101,16 @@ pg10:
 	sleep 10
 	docker exec pganalyze-collector-test pgbench -U postgres -i
 	docker exec pganalyze-collector-test pgbench -U postgres
-	docker exec pganalyze-collector-test sh -c "DB_USERNAME=postgres PGA_API_KEY=dummy pganalyze-collector --dry-run --force-state-update -v" > pg10_1.json
+	docker exec pganalyze-collector-test sh -c "DB_USERNAME=postgres PGA_API_KEY=dummy PGA_DISABLE_ACTIVITY=1 pganalyze-collector --dry-run --force-state-update -v" > pg10_1.json
 	docker exec pganalyze-collector-test pgbench -U postgres
-	docker exec pganalyze-collector-test sh -c "DB_USERNAME=postgres PGA_API_KEY=dummy pganalyze-collector --dry-run --force-state-update -v" > pg10_2.json
+	docker exec pganalyze-collector-test sh -c "DB_USERNAME=postgres PGA_API_KEY=dummy PGA_DISABLE_ACTIVITY=1 pganalyze-collector --dry-run --force-state-update -v" > pg10_2.json
 	docker rm -f pganalyze-collector-test
 	docker rmi pganalyze-collector-test
 	if [ "`jq '.collectorErrors' pg10_2.json | tr -d ' \n\r\t '`" != "null" ]; then \
 		jq '.collectorErrors' pg10_2.json; \
 		exit 1; \
 	fi
-	jq '.queryInformations[].normalizedQuery' pg10_2.json | sort -f > pg10.out
+	jq '.queryInformations[].normalizedQuery' pg10_2.json | sort --version-sort -f > pg10.out
 	diff -Naur pg10.expected pg10.out && echo 'success'
 
 pg11:
@@ -119,14 +119,14 @@ pg11:
 	sleep 10
 	docker exec pganalyze-collector-test pgbench -U postgres -i
 	docker exec pganalyze-collector-test pgbench -U postgres
-	docker exec pganalyze-collector-test sh -c "DB_USERNAME=postgres PGA_API_KEY=dummy pganalyze-collector --dry-run --force-state-update -v" > pg11_1.json
+	docker exec pganalyze-collector-test sh -c "DB_USERNAME=postgres PGA_API_KEY=dummy PGA_DISABLE_ACTIVITY=1 pganalyze-collector --dry-run --force-state-update -v" > pg11_1.json
 	docker exec pganalyze-collector-test pgbench -U postgres
-	docker exec pganalyze-collector-test sh -c "DB_USERNAME=postgres PGA_API_KEY=dummy pganalyze-collector --dry-run --force-state-update -v" > pg11_2.json
+	docker exec pganalyze-collector-test sh -c "DB_USERNAME=postgres PGA_API_KEY=dummy PGA_DISABLE_ACTIVITY=1 pganalyze-collector --dry-run --force-state-update -v" > pg11_2.json
 	docker rm -f pganalyze-collector-test
 	docker rmi pganalyze-collector-test
 	if [ "`jq '.collectorErrors' pg11_2.json | tr -d ' \n\r\t '`" != "null" ]; then \
 		jq '.collectorErrors' pg11_2.json; \
 		exit 1; \
 	fi
-	jq '.queryInformations[].normalizedQuery' pg11_2.json | sort -f > pg11.out
+	jq '.queryInformations[].normalizedQuery' pg11_2.json | sort --version-sort -f > pg11.out
 	diff -Naur pg11.expected pg11.out && echo 'success'

@@ -29,7 +29,7 @@ func EstablishConnection(server state.Server, logger *util.Logger, globalCollect
 		return
 	}
 
-	setStatementTimeout(connection, logger, server.Grant.Config.Features.StatementTimeoutMs)
+	SetDefaultStatementTimeout(connection, logger, server)
 
 	return
 }
@@ -69,7 +69,14 @@ func validateConnectionCount(connection *sql.DB, logger *util.Logger, maxCollect
 	return nil
 }
 
-func setStatementTimeout(connection *sql.DB, logger *util.Logger, statementTimeoutMs int32) {
+func SetStatementTimeout(connection *sql.DB, statementTimeoutMs int32) {
+	connection.Exec(fmt.Sprintf("%sSET statement_timeout = %d", QueryMarkerSQL, statementTimeoutMs))
+
+	return
+}
+
+func SetDefaultStatementTimeout(connection *sql.DB, logger *util.Logger, server state.Server) {
+	statementTimeoutMs := server.Grant.Config.Features.StatementTimeoutMs
 	if statementTimeoutMs == 0 { // Default value
 		statementTimeoutMs = 30000
 	}

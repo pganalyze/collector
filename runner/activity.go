@@ -15,22 +15,25 @@ import (
 )
 
 func processActivityForServer(server state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (bool, error) {
+	var newGrant state.Grant
 	var err error
 	var connection *sql.DB
 	var activity state.ActivityState
 
-	grant, err := grant.GetDefaultGrant(server, globalCollectionOpts, logger)
-	if err != nil {
-		return false, errors.Wrap(err, "could not get default grant for activity snapshot")
-	}
-
-	if !grant.Config.EnableActivity {
-		if globalCollectionOpts.TestRun {
-			logger.PrintError("  Failed - Activity snapshots disabled by pganalyze")
-		} else {
-			logger.PrintVerbose("Activity snapshots disabled by pganalyze, skipping")
+	if !globalCollectionOpts.ForceEmptyGrant {
+		newGrant, err = grant.GetDefaultGrant(server, globalCollectionOpts, logger)
+		if err != nil {
+			return false, errors.Wrap(err, "could not get default grant for activity snapshot")
 		}
-		return false, nil
+
+		if !newGrant.Config.EnableActivity {
+			if globalCollectionOpts.TestRun {
+				logger.PrintError("  Failed - Activity snapshots disabled by pganalyze")
+			} else {
+				logger.PrintVerbose("Activity snapshots disabled by pganalyze, skipping")
+			}
+			return false, nil
+		}
 	}
 
 	connection, err = postgres.EstablishConnection(server, logger, globalCollectionOpts, "")
@@ -61,7 +64,7 @@ func processActivityForServer(server state.Server, globalCollectionOpts state.Co
 
 	activity.CollectedAt = time.Now()
 
-	err = output.SubmitCompactActivitySnapshot(server, grant, globalCollectionOpts, logger, activity)
+	err = output.SubmitCompactActivitySnapshot(server, newGrant, globalCollectionOpts, logger, activity)
 	if err != nil {
 		return false, errors.Wrap(err, "failed to upload/send activity snapshot")
 	}

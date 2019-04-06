@@ -15,19 +15,22 @@ func TestStatements(t *testing.T) {
 	key2 := state.PostgresStatementKey{QueryID: 2}
 
 	newState := state.PersistedState{}
-	transientState := state.TransientState{Statements: make(state.PostgresStatementMap)}
+	transientState := state.TransientState{Statements: make(state.PostgresStatementMap), StatementTexts: make(state.PostgresStatementTextMap)}
 	diffState := state.DiffState{StatementStats: make(state.DiffedPostgresStatementStatsMap)}
 
-	transientState.Statements[key1] = state.PostgresStatement{NormalizedQuery: "SELECT 1"}
-	transientState.Statements[key2] = state.PostgresStatement{NormalizedQuery: "SELECT * FROM test"}
+	q1 := "SELECT 1"
+	q2 := "SELECT * FROM test"
+	fp1 := util.FingerprintQuery(q1)
+	fp2 := util.FingerprintQuery(q2)
+	transientState.Statements[key1] = state.PostgresStatement{Fingerprint: fp1}
+	transientState.Statements[key2] = state.PostgresStatement{Fingerprint: fp2}
+	transientState.StatementTexts[fp1] = q1
+	transientState.StatementTexts[fp2] = q2
 	diffState.StatementStats[key1] = state.DiffedPostgresStatementStats{Calls: 1}
 	diffState.StatementStats[key2] = state.DiffedPostgresStatementStats{Calls: 13}
 
 	actual := transform.StateToSnapshot(newState, diffState, transientState)
 	actualJSON, _ := json.Marshal(actual)
-
-	fp1 := util.FingerprintQuery("SELECT 1")
-	fp2 := util.FingerprintQuery("SELECT * FROM test")
 
 	expected := pganalyze_collector.FullSnapshot{
 		CollectorStatistic: &pganalyze_collector.CollectorStatistic{},

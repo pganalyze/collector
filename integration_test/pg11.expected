@@ -1,5 +1,5 @@
 "BEGIN"
-"END"
+"commit"
 "INSERT INTO pgbench_history (tid, bid, aid, delta, mtime) VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)"
 "SELECT abalance FROM pgbench_accounts WHERE aid = $1"
 "select count(*) from pgbench_branches"
@@ -9,3 +9,4 @@
 "UPDATE pgbench_tellers SET tbalance = tbalance + $1 WHERE tid = $2"
 "vacuum pgbench_branches"
 "vacuum pgbench_tellers"
+"<pganalyze-collector>"

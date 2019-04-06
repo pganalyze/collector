@@ -3,7 +3,6 @@ package transform
 import (
 	"bytes"
 
-	pg_query "github.com/lfittl/pg_query_go"
 	snapshot "github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
@@ -21,7 +20,7 @@ type statementValue struct {
 	queryIDs       []int64
 }
 
-func upsertQueryReferenceAndInformation(s *snapshot.FullSnapshot, roleOidToIdx OidToIdx, databaseOidToIdx OidToIdx, key statementKey, value statementValue) int32 {
+func upsertQueryReferenceAndInformation(s *snapshot.FullSnapshot, statementTexts state.PostgresStatementTextMap, roleOidToIdx OidToIdx, databaseOidToIdx OidToIdx, key statementKey, value statementValue) int32 {
 	newRef := snapshot.QueryReference{
 		DatabaseIdx: databaseOidToIdx[key.databaseOid],
 		RoleIdx:     roleOidToIdx[key.userOid],
@@ -39,9 +38,19 @@ func upsertQueryReferenceAndInformation(s *snapshot.FullSnapshot, roleOidToIdx O
 	s.QueryReferences = append(s.QueryReferences, &newRef)
 
 	// Information
+	normalizedQuery := ""
+	if value.statement.Unidentified {
+		normalizedQuery = "<unidentified queryid>"
+	} else if value.statement.InsufficientPrivilege {
+		normalizedQuery = "<insufficient privilege>"
+	} else if value.statement.Collector {
+		normalizedQuery = "<pganalyze-collector>"
+	} else {
+		normalizedQuery, _ = statementTexts[key.fingerprint]
+	}
 	queryInformation := snapshot.QueryInformation{
 		QueryIdx:        idx,
-		NormalizedQuery: value.statement.NormalizedQuery,
+		NormalizedQuery: normalizedQuery,
 		QueryIds:        value.queryIDs,
 	}
 	s.QueryInformations = append(s.QueryInformations, &queryInformation)
@@ -69,13 +78,9 @@ func upsertQueryReferenceAndInformationSimple(refs []*snapshot.QueryReference, i
 	refs = append(refs, &newRef)
 
 	// Information
-	normalizedQuery, err := pg_query.Normalize(originalQuery)
-	if err != nil {
-		normalizedQuery = "<truncated query>"
-	}
 	queryInformation := snapshot.QueryInformation{
 		QueryIdx:        idx,
-		NormalizedQuery: normalizedQuery,
+		NormalizedQuery: util.NormalizeQuery(originalQuery),
 	}
 	infos = append(infos, &queryInformation)
 

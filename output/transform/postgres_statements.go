@@ -1,35 +1,27 @@
 package transform
 
 import (
-	"strings"
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
-	"github.com/pganalyze/collector/input/postgres"
 	snapshot "github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
 )
 
-func ignoredStatement(query string) bool {
-	return strings.HasPrefix(query, postgres.QueryMarkerSQL) || strings.HasPrefix(query, "DEALLOCATE") || query == "<insufficient privilege>"
-}
-
-func groupStatements(statements state.PostgresStatementMap, statsMap state.DiffedPostgresStatementStatsMap) map[statementKey]statementValue {
+func groupStatements(statements state.PostgresStatementMap, statementTexts state.PostgresStatementTextMap, statsMap state.DiffedPostgresStatementStatsMap) map[statementKey]statementValue {
 	groupedStatements := make(map[statementKey]statementValue)
 
 	for sKey, stats := range statsMap {
 		statement, exist := statements[sKey]
 		if !exist {
-			statement = state.PostgresStatement{NormalizedQuery: "<unidentified queryid>"}
-		} else if ignoredStatement(statement.NormalizedQuery) {
-			continue
+			statement = state.PostgresStatement{Unidentified: true, Fingerprint: util.FingerprintQuery("<unidentified queryid>")}
 		}
 
 		key := statementKey{
 			databaseOid: sKey.DatabaseOid,
 			userOid:     sKey.UserOid,
-			fingerprint: util.FingerprintQuery(statement.NormalizedQuery),
+			fingerprint: statement.Fingerprint,
 		}
 
 		value, exist := groupedStatements[key]
@@ -75,9 +67,9 @@ func transformQueryStatistic(stats state.DiffedPostgresStatementStats, idx int32
 
 func transformPostgresStatements(s snapshot.FullSnapshot, newState state.PersistedState, diffState state.DiffState, transientState state.TransientState, roleOidToIdx OidToIdx, databaseOidToIdx OidToIdx) snapshot.FullSnapshot {
 	// Statement stats from this snapshot
-	groupedStatements := groupStatements(transientState.Statements, diffState.StatementStats)
+	groupedStatements := groupStatements(transientState.Statements, transientState.StatementTexts, diffState.StatementStats)
 	for key, value := range groupedStatements {
-		idx := upsertQueryReferenceAndInformation(&s, roleOidToIdx, databaseOidToIdx, key, value)
+		idx := upsertQueryReferenceAndInformation(&s, transientState.StatementTexts, roleOidToIdx, databaseOidToIdx, key, value)
 
 		statistic := transformQueryStatistic(value.statementStats, idx)
 		s.QueryStatistics = append(s.QueryStatistics, &statistic)
@@ -95,9 +87,9 @@ func transformPostgresStatements(s snapshot.FullSnapshot, newState state.Persist
 		h.CollectedAt, _ = ptypes.TimestampProto(timeKey.CollectedAt)
 		h.CollectedIntervalSecs = timeKey.CollectedIntervalSecs
 
-		groupedStatements = groupStatements(transientState.Statements, diffedStats)
+		groupedStatements = groupStatements(transientState.Statements, transientState.StatementTexts, diffedStats)
 		for key, value := range groupedStatements {
-			idx := upsertQueryReferenceAndInformation(&s, roleOidToIdx, databaseOidToIdx, key, value)
+			idx := upsertQueryReferenceAndInformation(&s, transientState.StatementTexts, roleOidToIdx, databaseOidToIdx, key, value)
 			statistic := transformQueryStatistic(value.statementStats, idx)
 			h.Statistics = append(h.Statistics, &statistic)
 		}
