@@ -21,7 +21,7 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
-func uploadAndSubmitCompactSnapshot(s pganalyze_collector.CompactSnapshot, s3 state.GrantS3, server state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, collectedAt time.Time, quiet bool, kind string) error {
+func uploadAndSubmitCompactSnapshot(s pganalyze_collector.CompactSnapshot, grant state.Grant, server state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, collectedAt time.Time, quiet bool, kind string) error {
 	var err error
 	var data []byte
 
@@ -49,7 +49,7 @@ func uploadAndSubmitCompactSnapshot(s pganalyze_collector.CompactSnapshot, s3 st
 		return nil
 	}
 
-	s3Location, err := uploadCompactSnapshot(server.Config.HTTPClient, s3, logger, compressedData, snapshotUUID.String())
+	s3Location, err := uploadSnapshot(server.Config.HTTPClient, grant, logger, compressedData, snapshotUUID.String())
 	if err != nil {
 		logger.PrintError("Error uploading to S3: %s", err)
 		return err

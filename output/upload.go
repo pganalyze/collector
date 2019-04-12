@@ -20,16 +20,6 @@ type s3UploadResponse struct {
 	Key      string
 }
 
-func uploadCompactSnapshot(httpClient *http.Client, s3 state.GrantS3, logger *util.Logger, data bytes.Buffer, filename string) (string, error) {
-	if s3.S3URL == "" {
-		return "", fmt.Errorf("Error - can't upload without valid S3 URL")
-	}
-
-	logger.PrintVerbose("Successfully prepared S3 request - size of request body: %.4f MB", float64(data.Len())/1024.0/1024.0)
-
-	return uploadToS3(httpClient, s3.S3URL, s3.S3Fields, logger, data.Bytes(), filename)
-}
-
 func uploadSnapshot(httpClient *http.Client, grant state.Grant, logger *util.Logger, data bytes.Buffer, filename string) (string, error) {
 	var err error
 

@@ -23,5 +23,5 @@ func SubmitCompactActivitySnapshot(server state.Server, grant state.Grant, colle
 		BaseRefs: &r,
 		Data:     &pganalyze_collector.CompactSnapshot_ActivitySnapshot{ActivitySnapshot: &as},
 	}
-	return uploadAndSubmitCompactSnapshot(s, grant.S3(), server, collectionOpts, logger, activityState.CollectedAt, false, "activity")
+	return uploadAndSubmitCompactSnapshot(s, grant, server, collectionOpts, logger, activityState.CollectedAt, false, "activity")
 }
