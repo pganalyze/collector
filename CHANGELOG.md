@@ -7,8 +7,8 @@
     the server with compact snapshot grants
 * Reduce memory consumption by only storing the required query texts
   * This also introduces two additional special query texts that get sent:
-    - "<pganalyze-collector>" which identifies internal collector queries
-    - "<insufficient privilege>" which identifies permission errors
+    - "\<pganalyze-collector\>" which identifies internal collector queries
+    - "\<insufficient privilege\>" which identifies permission errors
 * The collector now always normalizes query texts directly after retrieval
 * Only display "You are not connecting as superuser" message during tests
 
