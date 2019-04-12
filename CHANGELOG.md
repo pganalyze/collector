@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.19.1      2019-04-12
+
+* Add support for compact snapshots saving to local files
+
+
 ## 0.19.0      2019-04-11
 
 * Enable logs and activity snapshots by default
