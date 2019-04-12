@@ -36,7 +36,7 @@ func gatherQueryStatsForServer(server state.Server, globalCollectionOpts state.C
 	}
 
 	newState.LastStatementStatsAt = time.Now()
-	_, _, newState.StatementStats, err = postgres.GetStatements(logger, connection, postgresVersion, false, isHeroku)
+	_, _, newState.StatementStats, err = postgres.GetStatements(logger, connection, globalCollectionOpts, postgresVersion, false, isHeroku)
 	if err != nil {
 		return newState, errors.Wrap(err, "error collecting pg_stat_statements")
 	}

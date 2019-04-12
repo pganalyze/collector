@@ -74,7 +74,7 @@ func ResetStatements(logger *util.Logger, db *sql.DB) error {
 	return nil
 }
 
-func GetStatements(logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion, showtext bool, isHeroku bool) (state.PostgresStatementMap, state.PostgresStatementTextMap, state.PostgresStatementStatsMap, error) {
+func GetStatements(logger *util.Logger, db *sql.DB, globalCollectionOpts state.CollectionOpts, postgresVersion state.PostgresVersion, showtext bool, isHeroku bool) (state.PostgresStatementMap, state.PostgresStatementTextMap, state.PostgresStatementStatsMap, error) {
 	var err error
 	var optionalFields string
 	var sourceTable string
@@ -99,7 +99,7 @@ func GetStatements(logger *util.Logger, db *sql.DB, postgresVersion state.Postgr
 			sourceTable = "pganalyze.get_stat_statements()"
 		}
 	} else {
-		if !isHeroku && !connectedAsSuperUser(db) && !connectedAsMonitoringRole(db) {
+		if !isHeroku && !connectedAsSuperUser(db) && !connectedAsMonitoringRole(db) && globalCollectionOpts.TestRun {
 			logger.PrintInfo("Warning: You are not connecting as superuser. Please setup" +
 				" the monitoring helper functions (https://github.com/pganalyze/collector#setting-up-a-restricted-monitoring-user)" +
 				" or connect as superuser, to get query statistics for all roles.")

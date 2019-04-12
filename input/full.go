@@ -14,7 +14,7 @@ import (
 )
 
 // CollectFull - Collects a "full" snapshot of all data we need on a regular interval
-func CollectFull(server state.Server, connection *sql.DB, collectionOpts state.CollectionOpts, logger *util.Logger) (ps state.PersistedState, ts state.TransientState, err error) {
+func CollectFull(server state.Server, connection *sql.DB, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (ps state.PersistedState, ts state.TransientState, err error) {
 	isHeroku := server.Config.SystemType == "heroku"
 
 	ps.CollectedAt = time.Now()
@@ -44,7 +44,7 @@ func CollectFull(server state.Server, connection *sql.DB, collectionOpts state.C
 
 	ps.LastStatementStatsAt = time.Now()
 	postgres.SetStatementTimeout(connection, 120000)
-	ts.Statements, ts.StatementTexts, ps.StatementStats, err = postgres.GetStatements(logger, connection, ts.Version, true, isHeroku)
+	ts.Statements, ts.StatementTexts, ps.StatementStats, err = postgres.GetStatements(logger, connection, globalCollectionOpts, ts.Version, true, isHeroku)
 	postgres.SetDefaultStatementTimeout(connection, logger, server)
 	if err != nil {
 		logger.PrintError("Error collecting pg_stat_statements")
@@ -59,14 +59,14 @@ func CollectFull(server state.Server, connection *sql.DB, collectionOpts state.C
 			logger.PrintError("Error calling pg_stat_statements_reset() as requested: %s", err)
 			return
 		}
-		_, _, ts.ResetStatementStats, err = postgres.GetStatements(logger, connection, ts.Version, false, isHeroku)
+		_, _, ts.ResetStatementStats, err = postgres.GetStatements(logger, connection, globalCollectionOpts, ts.Version, false, isHeroku)
 		if err != nil {
 			logger.PrintError("Error collecting pg_stat_statements")
 			return
 		}
 	}
 
-	if collectionOpts.CollectPostgresSettings {
+	if globalCollectionOpts.CollectPostgresSettings {
 		ts.Settings, err = postgres.GetSettings(connection, ts.Version)
 		if err != nil {
 			logger.PrintError("Error collecting config settings")
@@ -87,7 +87,7 @@ func CollectFull(server state.Server, connection *sql.DB, collectionOpts state.C
 		return
 	}
 
-	ps, ts = postgres.CollectAllSchemas(server, collectionOpts, logger, ps, ts)
+	ps, ts = postgres.CollectAllSchemas(server, globalCollectionOpts, logger, ps, ts)
 
 	if server.Config.IgnoreTablePattern != "" {
 		var filteredRelations []state.PostgresRelation
@@ -107,7 +107,7 @@ func CollectFull(server state.Server, connection *sql.DB, collectionOpts state.C
 		ps.Relations = filteredRelations
 	}
 
-	if collectionOpts.CollectSystemInformation {
+	if globalCollectionOpts.CollectSystemInformation {
 		ps.System = system.GetSystemState(server.Config, logger)
 	}
 
