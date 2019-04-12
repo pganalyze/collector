@@ -87,7 +87,7 @@ func DownloadLogsFromAllServers(servers []state.Server, globalCollectionOpts sta
 	}
 
 	for idx := range servers {
-		if servers[idx].Config.DisableLogs {
+		if servers[idx].Config.DisableLogs || (servers[idx].Grant.Valid && !servers[idx].Grant.Config.EnableLogs) {
 			continue
 		}
 

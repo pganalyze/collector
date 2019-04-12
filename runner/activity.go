@@ -77,7 +77,7 @@ func CollectActivityFromAllServers(servers []state.Server, globalCollectionOpts 
 	var wg sync.WaitGroup
 
 	for idx := range servers {
-		if servers[idx].Config.DisableActivity {
+		if servers[idx].Config.DisableActivity || (servers[idx].Grant.Valid && !servers[idx].Grant.Config.EnableActivity) {
 			continue
 		}
 
