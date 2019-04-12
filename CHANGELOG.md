@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.19.0      2019-04-11
+
+* Enable logs and activity snapshots by default
+  * Note that they are disabled when requested by server, to avoid overwhelming
+    the server with compact snapshot grants
+* Reduce memory consumption by only storing the required query texts
+  * This also introduces two additional special query texts that get sent:
+    - "<pganalyze-collector>" which identifies internal collector queries
+    - "<insufficient privilege>" which identifies permission errors
+* The collector now always normalizes query texts directly after retrieval
+* Only display "You are not connecting as superuser" message during tests
+
+
 ## 0.18.1      2019-03-13
 
 * Config: Fix crash when configuration is read from environment only
