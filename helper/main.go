@@ -27,7 +27,7 @@ func getStatus() {
 	var status helperStatus
 	var err error
 
-	postmasterPidStr, err = exec.Command("pgrep", "-U", "postgres", "-o").Output()
+	postmasterPidStr, err = exec.Command("pgrep", "-U", "postgres", "-o", "postgres").Output()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to find Postgres Postmaster Pid: %s\n", err)
 	} else {
