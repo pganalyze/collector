@@ -207,6 +207,18 @@ func Read(logger *util.Logger, filename string) (Config, error) {
 				config.DbSslRootCert = sslRootTmpFile.Name()
 			}
 
+			if strings.HasSuffix(config.DbHost, ".rds.amazonaws.com") {
+				parts := strings.SplitN(config.DbHost, ".", 4)
+				if len(parts) == 4 && parts[3] == "rds.amazonaws.com" { // Safety check for any escaping issues
+					if config.AwsDbInstanceID == "" {
+						config.AwsDbInstanceID = parts[0]
+					}
+					if config.AwsRegion == "" {
+						config.AwsRegion = parts[2]
+					}
+				}
+			}
+
 			config.SectionName = section.Name()
 			config.SystemType, config.SystemScope, config.SystemID = identifySystem(*config)
 

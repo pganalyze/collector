@@ -175,14 +175,12 @@ docker pull quay.io/pganalyze/collector:stable
 docker run \
   --rm \
   --name pganalyze-mydb \
-  -e DB_URL=postgres://username:password@hostname.us-east-1.rds.amazonaws.com/mydb \
+  -e DB_URL=postgres://username:password@my-instance-id.account.us-east-1.rds.amazonaws.com/mydb \
   -e PGA_API_KEY=YOUR_PGANALYZE_API_KEY \
-  -e AWS_INSTANCE_ID=my-instance-id \
-  -e AWS_REGION=us-east-1 \
   quay.io/pganalyze/collector:stable
 ```
 
-You'll need to set PGA_API_KEY, AWS_INSTANCE_ID and AWS_REGION with the correct values.
+You'll need to set PGA_API_KEY and DB_URL with the correct values.
 
 Please also note that the EC2 instance running your Docker setup needs to have an IAM role that allows Cloudwatch access: https://pganalyze.com/docs/install/amazon_rds/03_setup_iam_policy
 
