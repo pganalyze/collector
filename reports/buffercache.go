@@ -31,7 +31,9 @@ func (report BuffercacheReport) ReportType() string {
 
 // Run the report
 func (report *BuffercacheReport) Run(server state.Server, logger *util.Logger, connection *sql.DB) (err error) {
-	report.Data, err = postgres.GetBuffercache(logger, connection)
+	isAmazonRds := server.Config.SystemType == "amazon_rds"
+
+	report.Data, err = postgres.GetBuffercache(logger, connection, isAmazonRds)
 	if err != nil {
 		return
 	}

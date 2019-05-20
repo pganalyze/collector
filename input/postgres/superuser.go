@@ -7,8 +7,22 @@ import (
 
 const connectedAsSuperUserSQL string = `SELECT current_setting('is_superuser') = 'on'`
 
-func connectedAsSuperUser(db *sql.DB) bool {
+const connectedAsRdsSuperUserSQL string = `
+SELECT true
+	FROM pg_catalog.pg_auth_members
+ WHERE roleid = (SELECT oid FROM pg_catalog.pg_roles WHERE rolname = 'rds_superuser')
+			 AND member = (SELECT oid FROM pg_catalog.pg_roles WHERE rolname = current_user)`
+
+func connectedAsSuperUser(db *sql.DB, isAmazonRds bool) bool {
 	var enabled bool
+
+	if isAmazonRds {
+		err := db.QueryRow(QueryMarkerSQL + connectedAsRdsSuperUserSQL).Scan(&enabled)
+		if err != nil {
+			return false
+		}
+		return enabled
+	}
 
 	err := db.QueryRow(QueryMarkerSQL + connectedAsSuperUserSQL).Scan(&enabled)
 	if err != nil {
@@ -22,7 +36,7 @@ const connectedAsMonitoringRoleSQL string = `
 SELECT true
 	FROM pg_catalog.pg_auth_members
  WHERE roleid = (SELECT oid FROM pg_catalog.pg_roles WHERE rolname = 'pg_monitor')
-			 AND member = (SELECT oid FROM pg_catalog.pg_roles WHERE rolname = current_user);`
+			 AND member = (SELECT oid FROM pg_catalog.pg_roles WHERE rolname = current_user)`
 
 func connectedAsMonitoringRole(db *sql.DB) bool {
 	var enabled bool
