@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.20.0      2019-05-19
+
+* Allow full snapshots to run when pg_stat_statements is not fully enabled
+  - This provides for a smoother onboarding experience, as you can use the
+    collector even if pg_stat_statements is not (yet) enabled through
+    shared_preload_libraries
+* RDS integration improvements
+  - Don't attempt to connect to rdsadmin database
+  - Accept rds_superuser as superuser for monitoring purposes
+  - Correctly handle enhanced monitoring disk partitions
+* Self-hosted system helper: Explicitly look for process called "postgres"
+  - This avoids issues where there is another process that starts postgres
+    and runs earlier than the actual postgres process
+
+
 ## 0.19.1      2019-04-12
 
 * Add support for compact snapshots saving to local files
