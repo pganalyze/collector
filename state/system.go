@@ -56,32 +56,36 @@ type SystemInfoSelfHosted struct {
 
 // SystemInfoAmazonRds - System information for Amazon RDS systems
 type SystemInfoAmazonRds struct {
-	Region                     string
-	InstanceClass              string
-	InstanceID                 string
-	Status                     string
-	AvailabilityZone           string
-	PubliclyAccessible         bool
-	MultiAz                    bool
-	SecondaryAvailabilityZone  string
-	CaCertificate              string
-	AutoMinorVersionUpgrade    bool
-	AutoMajorVersionUpgrade    bool
-	PreferredMaintenanceWindow string
-	PreferredBackupWindow      string
-	LatestRestorableTime       time.Time
-	BackupRetentionPeriodDays  int32
-	MasterUsername             string
-	InitialDbName              string
-	CreatedAt                  time.Time
-	StorageProvisionedIOPS     int32
-	StorageAllocatedGigabytes  int32
-	StorageEncrypted           bool
-	StorageType                string
-	EnhancedMonitoring         bool
-	ParameterApplyStatus       string
-	ParameterPgssEnabled       bool
-	IsAuroraPostgres           bool
+	Region                      string
+	InstanceClass               string
+	InstanceID                  string
+	Status                      string
+	AvailabilityZone            string
+	PubliclyAccessible          bool
+	MultiAz                     bool
+	SecondaryAvailabilityZone   string
+	CaCertificate               string
+	AutoMinorVersionUpgrade     bool
+	PreferredMaintenanceWindow  string
+	PreferredBackupWindow       string
+	LatestRestorableTime        time.Time
+	BackupRetentionPeriodDays   int32
+	MasterUsername              string
+	InitialDbName               string
+	CreatedAt                   time.Time
+	StorageProvisionedIOPS      int32
+	StorageAllocatedGigabytes   int32
+	StorageEncrypted            bool
+	StorageType                 string
+	EnhancedMonitoring          bool
+	PerformanceInsights         bool
+	PostgresLogExport           bool
+	IAMAuthentication           bool
+	DeletionProtection          bool
+	ParameterApplyStatus        string
+	ParameterPgssEnabled        bool
+	ParameterAutoExplainEnabled bool
+	IsAuroraPostgres            bool
 }
 
 // Scheduler - Information about the OS scheduler

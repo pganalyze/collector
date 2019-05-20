@@ -61,7 +61,16 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger) (system sta
 		MasterUsername:             util.StringPtrToString(instance.MasterUsername),
 		InitialDbName:              util.StringPtrToString(instance.DBName),
 		CreatedAt:                  util.TimePtrToTime(instance.InstanceCreateTime),
+		PerformanceInsights:        util.BoolPtrToBool(instance.PerformanceInsightsEnabled),
+		IAMAuthentication:          util.BoolPtrToBool(instance.IAMDatabaseAuthenticationEnabled),
+		DeletionProtection:         util.BoolPtrToBool(instance.DeletionProtection),
 		IsAuroraPostgres:           isAurora,
+	}
+
+	for _, exportName := range instance.EnabledCloudwatchLogsExports {
+		if util.StringPtrToString(exportName) == "postgresql" {
+			system.Info.AmazonRds.PostgresLogExport = true
+		}
 	}
 
 	group := instance.DBParameterGroups[0]
@@ -69,8 +78,10 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger) (system sta
 	pgssParam, _ := awsutil.GetRdsParameter(group, "shared_preload_libraries", rdsSvc)
 	if pgssParam != nil && pgssParam.ParameterValue != nil {
 		system.Info.AmazonRds.ParameterPgssEnabled = strings.Contains(*pgssParam.ParameterValue, "pg_stat_statements")
+		system.Info.AmazonRds.ParameterAutoExplainEnabled = strings.Contains(*pgssParam.ParameterValue, "auto_explain")
 	} else {
 		system.Info.AmazonRds.ParameterPgssEnabled = false
+		system.Info.AmazonRds.ParameterAutoExplainEnabled = false
 	}
 	system.Info.AmazonRds.ParameterApplyStatus = *group.ParameterApplyStatus
 
