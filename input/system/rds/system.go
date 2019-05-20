@@ -184,9 +184,14 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger) (system sta
 				}
 
 				for _, disk := range osSnapshot.DiskIO {
-					system.DiskStats["default"].DiffedValues.UtilizationPercent = float64(disk.Util)
+					// "The rdsdev device relates to the /rdsdbdata file system, where all database files and logs are stored"
+					// Source: https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_Monitoring.OS.html
+					if disk.Device == "rdsdev" {
+						system.DiskStats["default"].DiffedValues.UtilizationPercent = float64(disk.Util)
+					}
 				}
 
+				system.DataDirectoryPartition = "/rdsdbdata"
 				system.DiskPartitions = make(state.DiskPartitionMap)
 				for _, diskPartition := range osSnapshot.FileSystems {
 					totalBytes := uint64(diskPartition.Total * 1024)
