@@ -7,12 +7,12 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
-func CollectAllSchemas(server state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, ps state.PersistedState, ts state.TransientState) (state.PersistedState, state.TransientState) {
+func CollectAllSchemas(server state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, ps state.PersistedState, ts state.TransientState, isAmazonRds bool) (state.PersistedState, state.TransientState) {
 	schemaDbNames := []string{}
 
 	if server.Config.DbAllNames {
 		for _, database := range ts.Databases {
-			if !database.IsTemplate && database.AllowConnections {
+			if !database.IsTemplate && database.AllowConnections && !(isAmazonRds && database.Name == "rdsadmin") {
 				schemaDbNames = append(schemaDbNames, database.Name)
 			}
 		}
