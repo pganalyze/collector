@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.21.0      2019-05-21
+
+* Self-hosted: Ignore additional file system types that are not important
+* Fix helper process when using systemd service
+  - This unfortunately requires us to remove the "NoNewPrivileges" mode, since
+    we intentionally use a setuid binary (pganalyze-collector-helper) to be
+    able to discover the data directory as well as determine the size
+    of the WAL directory
+* Increase systemd service memory limit to 1GB
+  - We've previously limited this to 256MB for all use cases, which is too
+    small when monitoring multiple systems
+* Security: Lock down permissions for /etc/pganalyze-collector.conf
+  - Previously this was world-readable, which may make credentials accessible
+    to more system users than intended
+  - Upgrading the packages will also apply this fix retroactively
+
+
 ## 0.20.0      2019-05-19
 
 * Allow full snapshots to run when pg_stat_statements is not fully enabled
