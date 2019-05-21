@@ -204,9 +204,11 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger) (system sta
 		for _, partition := range diskPartitions {
 			// Linux partition types we can ignore
 			if partition.Fstype == "devtmpfs" || partition.Fstype == "tmpfs" || partition.Fstype == "devpts" ||
-				partition.Fstype == "fusectl" || partition.Fstype == "proc" || partition.Fstype == "cgroup" ||
+				partition.Fstype == "fusectl" || partition.Fstype == "proc" || partition.Fstype == "squashfs" ||
 				partition.Fstype == "securityfs" || partition.Fstype == "debugfs" || partition.Fstype == "sysfs" ||
-				partition.Fstype == "pstore" || partition.Fstype == "mqueue" {
+				partition.Fstype == "pstore" || partition.Fstype == "mqueue" || partition.Fstype == "hugetlbfs" ||
+				partition.Fstype == "cgroup" || partition.Fstype == "cgroup2" || partition.Fstype == "configfs" ||
+				partition.Fstype == "fuse.lxcfs" {
 				continue
 			}
 
@@ -217,7 +219,7 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger) (system sta
 
 			diskUsage, err := disk.Usage(partition.Mountpoint)
 			if err != nil {
-				logger.PrintVerbose("Selfhosted/System: Failed to get disk partition usage stats: %s", err)
+				logger.PrintVerbose("Selfhosted/System: Failed to get disk partition usage stats for %s: %s", partition.Mountpoint, err)
 			} else {
 				var diskName string
 
