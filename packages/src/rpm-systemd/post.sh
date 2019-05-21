@@ -18,6 +18,9 @@ su -s /bin/sh pganalyze -c "test -O /var/lib/pganalyze-collector" || chown pgana
 chown root:pganalyze /usr/bin/pganalyze-collector-helper
 chmod 4750 /usr/bin/pganalyze-collector-helper
 
+chown root:pganalyze /etc/pganalyze-collector.conf
+chmod 640 /etc/pganalyze-collector.conf
+
 if [ "$1" -eq "1" ]; then
   # First version of the package being installed
   systemctl daemon-reload
