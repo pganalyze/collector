@@ -15,6 +15,7 @@ RUN yum install -y -q devtoolset-7-gcc
 
 # Ruby 1.9.3+ needed for FPM
 RUN yum install -y -q rh-ruby24 rh-ruby24-ruby-devel
+RUN scl enable rh-ruby24 devtoolset-7 "gem install ffi -v 1.10.0" # Last release supporting Ruby 1.9
 RUN scl enable rh-ruby24 devtoolset-7 "gem install fpm"
 
 # Golang

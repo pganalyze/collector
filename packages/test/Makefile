@@ -91,6 +91,8 @@ ubuntu-xenial: $(DEB_SYSTEMD_PACKAGE)
 ubuntu-bionic: $(DEB_SYSTEMD_PACKAGE)
 	echo "FROM ubuntu:bionic" > Dockerfile.tmp
 	echo "COPY . /root" >> Dockerfile.tmp
+	echo "RUN apt-get update" >> Dockerfile.tmp
+	echo "RUN apt-get install systemd-sysv -y" >> Dockerfile.tmp
 	$(call docker_build)
 	$(call docker_run)
 	$(call docker_exec,dpkg -i /root/$(DEB_SYSTEMD_PACKAGE))

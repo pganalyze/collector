@@ -12,6 +12,7 @@ RUN apt-get update -qq \
   && apt-get install -y -q build-essential curl git ruby ruby-dev
 
 # FPM
+RUN gem install ffi -v 1.10.0 # Last release supporting Ruby 1.9
 RUN gem install fpm
 
 # Golang

@@ -11,6 +11,7 @@ ENV SOURCE_DIR /source
 RUN yum install -y -q tar make git rpmdevtools ruby ruby-devel gcc
 
 # Install FPM
+RUN gem install ffi -v 1.10.0 # Last release supporting Ruby 1.9
 RUN gem install fpm
 
 # Golang
