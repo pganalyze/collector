@@ -8,9 +8,8 @@ ExecReload=/bin/kill -HUP $MAINPID
 User=pganalyze
 ProtectSystem=full
 ProtectHome=true
-CapabilityBoundingSet=
-NoNewPrivileges=true
 MemoryLimit=256M
+CapabilityBoundingSet=CAP_SYS_PTRACE CAP_DAC_READ_SEARCH CAP_DAC_OVERRIDE
 Restart=always
 
 [Install]
