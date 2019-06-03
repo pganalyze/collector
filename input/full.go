@@ -48,7 +48,7 @@ func CollectFull(server state.Server, connection *sql.DB, globalCollectionOpts s
 	ts.Statements, ts.StatementTexts, ps.StatementStats, err = postgres.GetStatements(logger, connection, globalCollectionOpts, ts.Version, true, isHeroku, isAmazonRds)
 	postgres.SetDefaultStatementTimeout(connection, logger, server)
 	if err != nil {
-		logger.PrintError("Error collecting pg_stat_statements")
+		err = fmt.Errorf("Error collecting pg_stat_statements: %s", err)
 		return
 	}
 
@@ -62,7 +62,7 @@ func CollectFull(server state.Server, connection *sql.DB, globalCollectionOpts s
 		}
 		_, _, ts.ResetStatementStats, err = postgres.GetStatements(logger, connection, globalCollectionOpts, ts.Version, false, isHeroku, isAmazonRds)
 		if err != nil {
-			logger.PrintError("Error collecting pg_stat_statements")
+			err = fmt.Errorf("Error collecting pg_stat_statements: %s", err)
 			return
 		}
 	}

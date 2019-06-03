@@ -207,7 +207,7 @@ func CollectAllServers(servers []state.Server, globalCollectionOpts state.Collec
 			newState, grant, err := processDatabase(*server, globalCollectionOpts, prefixedLogger)
 			if err != nil {
 				server.StateMutex.Unlock()
-				prefixedLogger.PrintError("Could not process database: %s", err)
+				prefixedLogger.PrintError("Could not process server: %s", err)
 				if grant.Valid && !globalCollectionOpts.TestRun && globalCollectionOpts.SubmitCollectedData {
 					server.Grant = grant
 					err = output.SendFailedFull(*server, globalCollectionOpts, prefixedLogger)
