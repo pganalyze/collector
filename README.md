@@ -6,7 +6,7 @@ as well as queries run on it.
 
 All data is converted to a protocol buffers structure which can then be used as data source for monitoring & graphing systems. Or just as reference on how to pull information out of PostgreSQL.
 
-It currently collections information about
+It currently collects information about
 
  * Schema
    * Tables (including column, constraint and trigger definitions)
