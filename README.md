@@ -160,9 +160,14 @@ $$ LANGUAGE sql VOLATILE SECURITY DEFINER;
 Example output
 --------------
 
-To get a feel for the data that is collected you can have a look at the following example:
+To get a feel for the data that is collected you can run the following command. This will show the data that would be sent (in JSON format), without sending it:
 
- * [JSON w/ prettyprinting](https://gist.github.com/terrorobe/7103234)
+
+```
+pganalyze-collector --dry-run
+```
+
+Don't hesitate to reach out to support@pganalyze.com if you have any questions about what gets sent, or how to adjust the collector data collection.
 
 
 Docker Container (RDS)
