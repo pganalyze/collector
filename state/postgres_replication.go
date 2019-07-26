@@ -36,9 +36,9 @@ type PostgresReplicationStandby struct {
 	SyncState       string
 
 	State          string
-	SentLocation   string
-	WriteLocation  string
-	FlushLocation  string
+	SentLocation   null.String
+	WriteLocation  null.String
+	FlushLocation  null.String
 	ReplayLocation null.String
 	ByteLag        null.Int
 }
