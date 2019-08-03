@@ -227,7 +227,7 @@ func main() {
 	var stateFilename string
 	var pidFilename string
 	var noPostgresSettings, noPostgresLocks, noPostgresFunctions, noPostgresBloat, noPostgresViews bool
-	var noPostgresRelations, noLogs, noExplain, noSystemInformation, diffStatements bool
+	var noPostgresRelations, noLogs, noExplain, noSystemInformation bool
 	var writeHeapProfile bool
 	var testRunAndTrace bool
 	var logToSyslog bool
@@ -262,7 +262,6 @@ func main() {
 	flag.BoolVar(&noLogs, "no-logs", false, "Don't collect log data")
 	flag.BoolVar(&noExplain, "no-explain", false, "Don't automatically EXPLAIN slow queries logged in the logfile")
 	flag.BoolVar(&noSystemInformation, "no-system-information", false, "Don't collect OS level performance data")
-	flag.BoolVar(&diffStatements, "diff-statements", false, "Send a diff of the pg_stat_statements statistics, instead of counter values")
 	flag.BoolVar(&writeHeapProfile, "write-heap-profile", false, "Write a Go memory heap profile to ~/pganalyze_collector.mprof when SIGHUP is received (disabled by default, only useful for debugging)")
 	flag.BoolVar(&testRunAndTrace, "trace", false, "Write a Go trace file to ~/pganalyze_collector.trace for a single test run (only useful for debugging)")
 	flag.StringVar(&configFilename, "config", defaultConfigFile, "Specify alternative path for config file")
@@ -320,7 +319,6 @@ func main() {
 		CollectLogs:              !noLogs,
 		CollectExplain:           !noExplain,
 		CollectSystemInformation: !noSystemInformation,
-		DiffStatements:           diffStatements,
 		StateFilename:            stateFilename,
 		WriteStateUpdate:         (!dryRun && !dryRunLogs && !testRun) || forceStateUpdate,
 		ForceEmptyGrant:          dryRun || dryRunLogs,
