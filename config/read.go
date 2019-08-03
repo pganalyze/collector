@@ -152,6 +152,21 @@ func createHttpClient(requireSSL bool) *http.Client {
 	}
 }
 
+func autoDetectAmazonRDS(config *ServerConfig) *ServerConfig {
+	if strings.HasSuffix(config.DbHost, ".rds.amazonaws.com") {
+		parts := strings.SplitN(config.DbHost, ".", 4)
+		if len(parts) == 4 && parts[3] == "rds.amazonaws.com" { // Safety check for any escaping issues
+			if config.AwsDbInstanceID == "" {
+				config.AwsDbInstanceID = parts[0]
+			}
+			if config.AwsRegion == "" {
+				config.AwsRegion = parts[2]
+			}
+		}
+	}
+	return config
+}
+
 // Read - Reads the configuration from the specified filename, or fall back to the default config
 func Read(logger *util.Logger, filename string) (Config, error) {
 	var conf Config
@@ -207,18 +222,7 @@ func Read(logger *util.Logger, filename string) (Config, error) {
 				config.DbSslRootCert = sslRootTmpFile.Name()
 			}
 
-			if strings.HasSuffix(config.DbHost, ".rds.amazonaws.com") {
-				parts := strings.SplitN(config.DbHost, ".", 4)
-				if len(parts) == 4 && parts[3] == "rds.amazonaws.com" { // Safety check for any escaping issues
-					if config.AwsDbInstanceID == "" {
-						config.AwsDbInstanceID = parts[0]
-					}
-					if config.AwsRegion == "" {
-						config.AwsRegion = parts[2]
-					}
-				}
-			}
-
+			config = autoDetectAmazonRDS(config)
 			config.SectionName = section.Name()
 			config.SystemType, config.SystemScope, config.SystemID = identifySystem(*config)
 
@@ -254,6 +258,7 @@ func Read(logger *util.Logger, filename string) (Config, error) {
 			conf = handleHeroku()
 		} else if os.Getenv("PGA_API_KEY") != "" {
 			config := getDefaultConfig()
+			config = autoDetectAmazonRDS(config)
 			config.SystemType, config.SystemScope, config.SystemID = identifySystem(*config)
 			conf.Servers = append(conf.Servers, *config)
 		} else {
