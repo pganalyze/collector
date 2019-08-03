@@ -9,6 +9,9 @@ ENV CODE_DIR $GOPATH/src/github.com/pganalyze/collector
 COPY . $CODE_DIR
 WORKDIR $CODE_DIR
 
+RUN mkdir -p /usr/share/pganalyze-collector/sslrootcert/
+RUN cp $CODE_DIR/contrib/sslrootcert/rds-ca-2015-root.pem /usr/share/pganalyze-collector/sslrootcert/
+
 # We run this all in one layer to reduce the resulting image size
 RUN apk add --no-cache --virtual .build-deps make curl libc-dev gcc go git tar \
   && apk add --no-cache ca-certificates \
