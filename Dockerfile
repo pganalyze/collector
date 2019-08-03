@@ -9,9 +9,6 @@ ENV CODE_DIR $GOPATH/src/github.com/pganalyze/collector
 COPY . $CODE_DIR
 WORKDIR $CODE_DIR
 
-RUN mkdir -p /usr/share/pganalyze-collector/sslrootcert/
-RUN cp $CODE_DIR/contrib/sslrootcert/rds-ca-2015-root.pem /usr/share/pganalyze-collector/sslrootcert/
-
 # We run this all in one layer to reduce the resulting image size
 RUN apk add --no-cache --virtual .build-deps make curl libc-dev gcc go git tar \
   && apk add --no-cache ca-certificates \
@@ -27,4 +24,11 @@ RUN mkdir /state
 RUN chown pganalyze:pganalyze /state
 VOLUME ["/state"]
 
-CMD ["/usr/local/bin/gosu", "pganalyze", "/home/pganalyze/collector", "--statefile=/state/pganalyze-collector.state"]
+RUN mkdir -p /usr/share/pganalyze-collector/sslrootcert/
+COPY contrib/sslrootcert/rds-ca-2015-root.pem /usr/share/pganalyze-collector/sslrootcert/
+COPY contrib/docker-entrypoint.sh $HOME_DIR
+RUN chmod +x $HOME_DIR/docker-entrypoint.sh
+
+ENTRYPOINT ["/home/pganalyze/docker-entrypoint.sh"]
+
+CMD ["collector"]
