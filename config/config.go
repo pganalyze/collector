@@ -69,6 +69,14 @@ type ServerConfig struct {
 	AwsAccessKeyID     string `ini:"aws_access_key_id"`
 	AwsSecretAccessKey string `ini:"aws_secret_access_key"`
 
+	// Support for custom AWS endpoints
+	// See https://docs.aws.amazon.com/sdk-for-go/api/aws/endpoints/
+	AwsEndpointSigningRegion     string `ini:"aws_endpoint_rds_signing_region"`
+	AwsEndpointRdsURL            string `ini:"aws_endpoint_rds_url"`
+	AwsEndpointEc2URL            string `ini:"aws_endpoint_ec2_url"`
+	AwsEndpointCloudwatchURL     string `ini:"aws_endpoint_cloudwatch_url"`
+	AwsEndpointCloudwatchLogsURL string `ini:"aws_endpoint_cloudwatch_logs_url"`
+
 	SectionName string
 	Identifier  ServerIdentifier
 
