@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -137,8 +138,18 @@ func createHttpClient(requireSSL bool) *http.Client {
 	}
 	if requireSSL {
 		transport.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
-			// Require secure conection for everything except the EC2 and ECS metadata services
-			if !strings.HasSuffix(addr, ":443") && addr != "169.254.169.254:80" && addr != "169.254.170.2:80" {
+			matchesProxyURL := false
+			for _, n := range []string{"HTTP_PROXY", "http_proxy", "HTTPS_PROXY", "https_proxy"} {
+				proxy := os.Getenv(n)
+				if proxy != "" {
+					proxyURL, err := url.Parse(proxy)
+					if err == nil && proxyURL.Host == addr {
+						matchesProxyURL = true
+					}
+				}
+			}
+			// Require secure conection for everything except proxies, the EC2 and ECS metadata services
+			if !matchesProxyURL && !strings.HasSuffix(addr, ":443") && addr != "169.254.169.254:80" && addr != "169.254.170.2:80" {
 				return nil, fmt.Errorf("Unencrypted connection is not permitted by pganalyze configuration")
 			}
 			return (&net.Dialer{Timeout: 30 * time.Second, KeepAlive: 30 * time.Second, DualStack: true}).DialContext(ctx, network, addr)
