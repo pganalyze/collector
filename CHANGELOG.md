@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.22.0      2019-08-04
+
+* Allow HTTP-only proxy connections when specified by the user
+* Allow all replication LSN fields to be null
+* Add full context for pg_stat_statements error messages
+* Docker: Use entrypoint, provide easy "test" command, hide timestamps
+* Amazon RDS
+  * Add support for custom AWS endpoints
+  * Include RDS root certificate for Docker builds
+  * Automatically detect RDS instance ID from Docker env variables as well
+  * Allow the ECS task metadata service
+  * Show verbose AWS credentials chain errors
+
+
 ## 0.21.0      2019-05-21
 
 * Self-hosted: Ignore additional file system types that are not important
