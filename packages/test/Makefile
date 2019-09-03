@@ -6,7 +6,7 @@ docker_exec  = docker exec pga-collector-test $(1)
 docker_test  = docker exec pga-collector-test /root/$(1)_test.sh
 docker_clean = docker kill pga-collector-test && docker rm pga-collector-test && docker rmi -f pga-collector-test
 
-DISTROS=centos6 centos7 fedora24 ubuntu-precise ubuntu-trusty ubuntu-xenial ubuntu-bionic debian-jessie debian-stretch
+DISTROS=centos6 centos7 rhel8 fedora29 fedora30 ubuntu-trusty ubuntu-xenial ubuntu-bionic debian-jessie debian-stretch debian-buster
 
 .PHONY: all $(DISTROS)
 
@@ -50,8 +50,18 @@ centos7: $(RPM_SYSTEMD_PACKAGE)
 	$(call docker_test,systemd)
 	$(call docker_clean)
 
-fedora24: $(RPM_SYSTEMD_PACKAGE)
-	echo "FROM fedora:24" > Dockerfile.tmp
+rhel8: $(RPM_SYSTEMD_PACKAGE)
+	echo "FROM registry.access.redhat.com/ubi8/ubi:8.0-154" > Dockerfile.tmp
+	echo "RUN dnf install -y procps" >> Dockerfile.tmp
+	echo "COPY . /root" >> Dockerfile.tmp
+	$(call docker_build)
+	$(call docker_run)
+	$(call docker_exec,yum install -y --nogpgcheck /root/$(RPM_SYSTEMD_PACKAGE))
+	$(call docker_test,systemd)
+	$(call docker_clean)
+
+fedora29: $(RPM_SYSTEMD_PACKAGE)
+	echo "FROM fedora:29" > Dockerfile.tmp
 	echo "RUN dnf install -y procps" >> Dockerfile.tmp
 	echo "COPY . /root" >> Dockerfile.tmp
 	$(call docker_build)
@@ -60,14 +70,14 @@ fedora24: $(RPM_SYSTEMD_PACKAGE)
 	$(call docker_test,systemd)
 	$(call docker_clean)
 
-ubuntu-precise: $(DEB_UPSTART_PACKAGE)
-	echo "FROM ubuntu-upstart:precise" > Dockerfile.tmp
+fedora30: $(RPM_SYSTEMD_PACKAGE)
+	echo "FROM fedora:30" > Dockerfile.tmp
+	echo "RUN dnf install -y procps" >> Dockerfile.tmp
 	echo "COPY . /root" >> Dockerfile.tmp
 	$(call docker_build)
 	$(call docker_run)
-	$(call docker_exec,apt-get install -y rsyslog)
-	$(call docker_exec,dpkg -i /root/$(DEB_UPSTART_PACKAGE))
-	$(call docker_test,upstart)
+	$(call docker_exec,dnf install -y --nogpgcheck /root/$(RPM_SYSTEMD_PACKAGE))
+	$(call docker_test,systemd)
 	$(call docker_clean)
 
 ubuntu-trusty: $(DEB_UPSTART_PACKAGE)
@@ -110,6 +120,16 @@ debian-jessie: $(DEB_SYSTEMD_PACKAGE)
 
 debian-stretch: $(DEB_SYSTEMD_PACKAGE)
 	echo "FROM debian:stretch" > Dockerfile.tmp
+	echo "RUN apt-get update -qq && apt-get install -y -q systemd-sysv procps" >> Dockerfile.tmp
+	echo "COPY . /root" >> Dockerfile.tmp
+	$(call docker_build)
+	$(call docker_run)
+	$(call docker_exec,dpkg -i /root/$(DEB_SYSTEMD_PACKAGE))
+	$(call docker_test,systemd)
+	$(call docker_clean)
+
+debian-buster: $(DEB_SYSTEMD_PACKAGE)
+	echo "FROM debian:buster" > Dockerfile.tmp
 	echo "RUN apt-get update -qq && apt-get install -y -q systemd-sysv procps" >> Dockerfile.tmp
 	echo "COPY . /root" >> Dockerfile.tmp
 	$(call docker_build)

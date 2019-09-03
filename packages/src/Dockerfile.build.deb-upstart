@@ -1,4 +1,4 @@
-FROM ubuntu:precise
+FROM ubuntu:trusty
 
 ENV GOPATH /go
 ENV GOVERSION 1.12
