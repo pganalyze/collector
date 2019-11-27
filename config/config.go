@@ -206,6 +206,9 @@ func (config ServerConfig) GetPqOpenString(dbNameOverride string) string {
 	if dbSslRootCert == "rds-ca-2015-root" {
 		dbSslRootCert = "/usr/share/pganalyze-collector/sslrootcert/rds-ca-2015-root.pem"
 	}
+	if dbSslRootCert == "rds-ca-2019-root" {
+		dbSslRootCert = "/usr/share/pganalyze-collector/sslrootcert/rds-ca-2019-root.pem"
+	}
 
 	// Generate the actual string
 	if dbUsername != "" {
