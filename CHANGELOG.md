@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.23.0      2019-11-27
+
+* Vacuum progress: Ignore "(to prevent wraparound)" in query text
+* Update distributions for packaging to reflect current versions
+  * Remove Ubuntu Precise (its been EOL for 2 years)
+  * Remove Fedora 24 (its been EOL for a while)
+  * Add Fedora 29
+  * Add Fedora 30
+  * Add RHEL8
+  * Add Debian 10 ("Buster")
+* Import RDS 2019 CA root certificate
+  * This is now available by specifying "db_ssl_root_cert = rds-ca-2019-root"
+* Update builds and tests to use Go 1.13
+
+
 ## 0.22.0      2019-08-04
 
 * Allow HTTP-only proxy connections when specified by the user
