@@ -96,6 +96,15 @@ func getDefaultConfig() *ServerConfig {
 	if awsSecretAccessKey := os.Getenv("AWS_SECRET_ACCESS_KEY"); awsSecretAccessKey != "" {
 		config.AwsSecretAccessKey = awsSecretAccessKey
 	}
+	if azureDbServerName := os.Getenv("AZURE_DB_SERVER_NAME"); azureDbServerName != "" {
+		config.AzureDbServerName = azureDbServerName
+	}
+	if gcpProjectID := os.Getenv("GCP_PROJECT_ID"); gcpProjectID != "" {
+		config.GcpProjectID = gcpProjectID
+	}
+	if gcpCloudSQLInstanceID := os.Getenv("GCP_CLOUDSQL_INSTANCE_ID"); gcpCloudSQLInstanceID != "" {
+		config.GcpCloudSQLInstanceID = gcpCloudSQLInstanceID
+	}
 	if logLocation := os.Getenv("LOG_LOCATION"); logLocation != "" {
 		config.LogLocation = logLocation
 	}
