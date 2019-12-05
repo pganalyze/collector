@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.24.0      2019-12-05
+
+* Add support for Azure Database for PostgreSQL
+* Add support for Google Cloud SQL
+* Use pg_has_role to determine pg_monitor membership
+  * This improves handling of nested memberships, which previously were not
+    detected correctly
+* Generalize almost-superuser detection to support Azure and Cloud SQL better
+* Add support for running "--test --reload" to test and reload if successful
+  * This makes it easier to not forget reloading the collector after making
+    a change
+
+
 ## 0.23.0      2019-11-27
 
 * Vacuum progress: Ignore "(to prevent wraparound)" in query text
