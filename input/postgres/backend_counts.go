@@ -3,6 +3,7 @@ package postgres
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
@@ -21,7 +22,7 @@ const backendCountsSQL string = `
 	 FROM %s
 	GROUP BY 1, 2, 3, 4, 5`
 
-func GetBackendCounts(logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion) ([]state.PostgresBackendCount, error) {
+func GetBackendCounts(logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion, systemType string) ([]state.PostgresBackendCount, error) {
 	var optionalFields string
 	var sourceTable string
 
@@ -62,6 +63,11 @@ func GetBackendCounts(logger *util.Logger, db *sql.DB, postgresVersion state.Pos
 			&row.WaitingForLock, &row.Count)
 		if err != nil {
 			return nil, err
+		}
+
+		// Special case to avoid errors for certain backends with weird names
+		if systemType == "azure_database" {
+			row.BackendType = strings.ToValidUTF8(row.BackendType, "")
 		}
 
 		backendCounts = append(backendCounts, row)

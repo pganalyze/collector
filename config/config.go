@@ -77,6 +77,8 @@ type ServerConfig struct {
 	AwsEndpointCloudwatchURL     string `ini:"aws_endpoint_cloudwatch_url"`
 	AwsEndpointCloudwatchLogsURL string `ini:"aws_endpoint_cloudwatch_logs_url"`
 
+	AzureDbServerName string `ini:"azure_db_server_name"`
+
 	SectionName string
 	Identifier  ServerIdentifier
 

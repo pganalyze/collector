@@ -3,6 +3,7 @@ package postgres
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
@@ -19,7 +20,7 @@ const activitySQL string = `SELECT (extract(epoch from COALESCE(backend_start, p
 	 FROM %s
 	WHERE pid IS NOT NULL`
 
-func GetBackends(logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion) ([]state.PostgresBackend, error) {
+func GetBackends(logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion, systemType string) ([]state.PostgresBackend, error) {
 	var optionalFields string
 	var sourceTable string
 
@@ -65,6 +66,11 @@ func GetBackends(logger *util.Logger, db *sql.DB, postgresVersion state.Postgres
 			&row.WaitEventType, &row.WaitEvent, &row.BackendType, &row.State, &row.Query)
 		if err != nil {
 			return nil, err
+		}
+
+		// Special case to avoid errors for certain backends with weird names
+		if systemType == "azure_database" && row.BackendType.Valid {
+			row.BackendType.String = strings.ToValidUTF8(row.BackendType.String, "")
 		}
 
 		activities = append(activities, row)

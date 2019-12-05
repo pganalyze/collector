@@ -20,6 +20,17 @@ func identifySystem(config ServerConfig) (systemType string, systemScope string,
 		if systemID == "" {
 			systemID = config.AwsDbInstanceID
 		}
+	} else if config.AzureDbServerName != "" || systemType == "azure_database" {
+		systemType = "azure_database"
+		if systemScope == "" {
+			systemScope = config.GetDbName()
+			if config.DbAllNames {
+				systemScope += "*"
+			}
+		}
+		if systemID == "" {
+			systemID = config.AzureDbServerName
+		}
 	} else {
 		systemType = "self_hosted"
 		if systemID == "" {

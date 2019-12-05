@@ -52,7 +52,7 @@ func processActivityForServer(server state.Server, globalCollectionOpts state.Co
 		return false, fmt.Errorf("Error: Your PostgreSQL server version (%s) is too old, 9.2 or newer is required", activity.Version.Short)
 	}
 
-	activity.Backends, err = postgres.GetBackends(logger, connection, activity.Version)
+	activity.Backends, err = postgres.GetBackends(logger, connection, activity.Version, server.Config.SystemType)
 	if err != nil {
 		return false, errors.Wrap(err, "error collecting pg_stat_activity")
 	}
