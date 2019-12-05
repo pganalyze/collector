@@ -31,19 +31,23 @@ import (
 	_ "github.com/lib/pq" // Enable database package to use Postgres
 )
 
-func run(wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *util.Logger, configFilename string) (bool, chan<- bool, chan<- bool, chan<- bool, chan<- bool, chan<- bool, chan<- bool) {
+func run(wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *util.Logger, configFilename string) (keepRunning bool, reloadOkay bool, statsStop chan<- bool, reportsStop chan<- bool, logsTailStop chan<- bool, logsDownloadStop chan<- bool, activityStop chan<- bool, queriesStop chan<- bool) {
 	var servers []state.Server
+
+	keepRunning = false
+	reloadOkay = false
 
 	schedulerGroups, err := scheduler.GetSchedulerGroups()
 	if err != nil {
 		logger.PrintError("Error: Could not get scheduler groups")
-		return false, nil, nil, nil, nil, nil, nil
+		return
 	}
 
 	conf, err := config.Read(logger, configFilename)
 	if err != nil {
 		logger.PrintError("Config Error: %s", err)
-		return !globalCollectionOpts.TestRun, nil, nil, nil, nil, nil, nil
+		keepRunning = !globalCollectionOpts.TestRun
+		return
 	}
 
 	// Avoid even running the scheduler when we already know its not needed
@@ -72,80 +76,96 @@ func run(wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *
 	if globalCollectionOpts.TestRun {
 		if globalCollectionOpts.TestReport != "" {
 			runner.RunTestReport(servers, globalCollectionOpts, logger)
+			return
 		} else if globalCollectionOpts.TestRunLogs {
 			runner.TestLogsForAllServers(servers, globalCollectionOpts, logger)
+			return
 		} else {
-			runner.CollectAllServers(servers, globalCollectionOpts, logger)
+			var allFullSuccessful bool
+			var allActivitySuccessful bool
+			allFullSuccessful = runner.CollectAllServers(servers, globalCollectionOpts, logger)
 			if hasAnyActivityEnabled {
-				runner.CollectActivityFromAllServers(servers, globalCollectionOpts, logger)
+				allActivitySuccessful = runner.CollectActivityFromAllServers(servers, globalCollectionOpts, logger)
+			} else {
+				allActivitySuccessful = true
 			}
 			if hasAnyLogsEnabled {
 				// Initial test
-				hasSuccessfulLocalServers := runner.TestLogsForAllServers(servers, globalCollectionOpts, logger)
+				hasFailedServers, hasSuccessfulLocalServers := runner.TestLogsForAllServers(servers, globalCollectionOpts, logger)
 
 				// Re-test using lower privileges
+				if hasFailedServers {
+					return
+				}
 				if hasSuccessfulLocalServers {
 					curUser, err := user.Current()
 					if err != nil {
 						logger.PrintError("Could not determine current user for privilege drop test")
-					} else {
-						pgaUser, err := user.Lookup("pganalyze")
-						if err != nil {
-							logger.PrintVerbose("Could not locate pganalyze user, skipping privilege drop test: %s", err)
-						} else if curUser.Name != "root" {
-							logger.PrintVerbose("Current user is not root, skipping privilege drop test")
-						} else if curUser.Uid == pgaUser.Uid {
-							logger.PrintVerbose("Current user is already pganalyze user, skipping privilege drop test")
-						} else {
-							uid, _ := strconv.ParseUint(pgaUser.Uid, 10, 32)
-							gid, _ := strconv.ParseUint(pgaUser.Gid, 10, 32)
-							groupIDStrs, _ := pgaUser.GroupIds()
-							var groupIDs []uint32
-							for _, groupIDStr := range groupIDStrs {
-								groupID, _ := strconv.ParseUint(groupIDStr, 10, 32)
-								groupIDs = append(groupIDs, uint32(groupID))
-							}
-							logger.PrintInfo("Re-running log test with reduced privileges of \"pganalyze\" user (uid = %d, gid = %d)", uid, gid)
-							collectorBinaryPath, err := os.Executable()
-							if err != nil {
-								logger.PrintError("Could not run collector log test as \"pganalyze\" user due to missing executable: %s", err)
-							}
-							cmd := exec.Command(collectorBinaryPath, "--test-logs")
-							cmd.Stdout = os.Stdout
-							cmd.Stderr = os.Stderr
-							cmd.SysProcAttr = &syscall.SysProcAttr{}
-							cmd.SysProcAttr.Credential = &syscall.Credential{Uid: uint32(uid), Gid: uint32(gid), Groups: groupIDs}
-							err = cmd.Run()
-							if err != nil {
-								logger.PrintError("Could not run collector log test as \"pganalyze\" user: %s", err)
-							}
-						}
+						return
+					}
+
+					pgaUser, err := user.Lookup("pganalyze")
+					if err != nil {
+						logger.PrintVerbose("Could not locate pganalyze user, skipping privilege drop test: %s", err)
+						return
+					} else if curUser.Name != "root" {
+						logger.PrintVerbose("Current user is not root, skipping privilege drop test")
+						return
+					} else if curUser.Uid == pgaUser.Uid {
+						logger.PrintVerbose("Current user is already pganalyze user, skipping privilege drop test")
+						return
+					}
+
+					uid, _ := strconv.ParseUint(pgaUser.Uid, 10, 32)
+					gid, _ := strconv.ParseUint(pgaUser.Gid, 10, 32)
+					groupIDStrs, _ := pgaUser.GroupIds()
+					var groupIDs []uint32
+					for _, groupIDStr := range groupIDStrs {
+						groupID, _ := strconv.ParseUint(groupIDStr, 10, 32)
+						groupIDs = append(groupIDs, uint32(groupID))
+					}
+					logger.PrintInfo("Re-running log test with reduced privileges of \"pganalyze\" user (uid = %d, gid = %d)", uid, gid)
+					collectorBinaryPath, err := os.Executable()
+					if err != nil {
+						logger.PrintError("Could not run collector log test as \"pganalyze\" user due to missing executable: %s", err)
+						return
+					}
+					cmd := exec.Command(collectorBinaryPath, "--test-logs")
+					cmd.Stdout = os.Stdout
+					cmd.Stderr = os.Stderr
+					cmd.SysProcAttr = &syscall.SysProcAttr{}
+					cmd.SysProcAttr.Credential = &syscall.Credential{Uid: uint32(uid), Gid: uint32(gid), Groups: groupIDs}
+					err = cmd.Run()
+					if err != nil {
+						logger.PrintError("Could not run collector log test as \"pganalyze\" user: %s", err)
+						return
 					}
 				}
 			}
+			reloadOkay = allFullSuccessful && allActivitySuccessful
+			return
 		}
-		return false, nil, nil, nil, nil, nil, nil
 	}
 
 	if globalCollectionOpts.DebugLogs {
 		selfhosted.SetupLogTails(servers, globalCollectionOpts, logger)
 
 		// Keep running but only running log processing
-		return true, nil, nil, nil, nil, nil, nil
+		keepRunning = true
+		return
 	}
 
 	if globalCollectionOpts.DiscoverLogLocation {
 		selfhosted.DiscoverLogLocation(servers, globalCollectionOpts, logger)
-		return false, nil, nil, nil, nil, nil, nil
+		return
 	}
 
-	statsStop := schedulerGroups["stats"].Schedule(func() {
+	statsStop = schedulerGroups["stats"].Schedule(func() {
 		wg.Add(1)
 		runner.CollectAllServers(servers, globalCollectionOpts, logger)
 		wg.Done()
 	}, logger, "full snapshot of all servers")
 
-	var reportsStop chan<- bool
 	if hasAnyReportsEnabled {
 		reportsStop = schedulerGroups["reports"].Schedule(func() {
 			wg.Add(1)
@@ -154,8 +174,6 @@ func run(wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *
 		}, logger, "requested reports for all servers")
 	}
 
-	var logsTailStop chan<- bool
-	var logsDownloadStop chan<- bool
 	if hasAnyLogsEnabled {
 		var hasAnyLogDownloads bool
 		var hasAnyLogTails bool
@@ -188,7 +206,6 @@ func run(wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *
 		}
 	}
 
-	var activityStop chan<- bool
 	if hasAnyActivityEnabled {
 		activityStop = schedulerGroups["activity"].Schedule(func() {
 			wg.Add(1)
@@ -197,14 +214,14 @@ func run(wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *
 		}, logger, "activity snapshot of all servers")
 	}
 
-	var queriesStop chan<- bool
 	queriesStop = schedulerGroups["query_stats"].ScheduleSecondary(func() {
 		wg.Add(1)
 		runner.GatherQueryStatsFromAllServers(servers, globalCollectionOpts, logger)
 		wg.Done()
 	}, logger, "high frequency query statistics of all servers", schedulerGroups["stats"])
 
-	return true, statsStop, reportsStop, logsTailStop, logsDownloadStop, activityStop, queriesStop
+	keepRunning = true
+	return
 }
 
 const defaultConfigFile = "/etc/pganalyze-collector.conf"
@@ -324,8 +341,8 @@ func main() {
 		ForceEmptyGrant:          dryRun || dryRunLogs,
 	}
 
-	if reloadRun {
-		util.Reload()
+	if reloadRun && !testRun {
+		util.Reload(logger)
 		return
 	}
 
@@ -397,8 +414,16 @@ func main() {
 	wg := sync.WaitGroup{}
 
 ReadConfigAndRun:
-	keepRunning, statsStop, reportsStop, logsTailStop, logsDownloadStop, activityStop, queriesStop := run(&wg, globalCollectionOpts, logger, configFilename)
+	keepRunning, reloadOkay, statsStop, reportsStop, logsTailStop, logsDownloadStop, activityStop, queriesStop := run(&wg, globalCollectionOpts, logger, configFilename)
 	if !keepRunning {
+		if reloadRun {
+			if reloadOkay {
+				util.Reload(logger)
+			} else {
+				logger.PrintError("Error: Reload requested, but ignoring since configuration errors are present")
+			}
+			return
+		}
 		return
 	}
 

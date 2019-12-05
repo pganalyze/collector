@@ -45,7 +45,7 @@ func downloadLogsForServer(server state.Server, globalCollectionOpts state.Colle
 }
 
 // TestLogsForAllServers - Test log download/tailing
-func TestLogsForAllServers(servers []state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (hasSuccessfulLocalServers bool) {
+func TestLogsForAllServers(servers []state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (hasFailedServers bool, hasSuccessfulLocalServers bool) {
 	if !globalCollectionOpts.TestRun {
 		return
 	}
@@ -61,6 +61,7 @@ func TestLogsForAllServers(servers []state.Server, globalCollectionOpts state.Co
 			prefixedLogger.PrintInfo("Testing log collection (local)...")
 			err := selfhosted.TestLogTail(server, globalCollectionOpts, prefixedLogger)
 			if err != nil {
+				hasFailedServers = true
 				prefixedLogger.PrintError("ERROR - Could not tail logs for server: %s", err)
 			} else {
 				prefixedLogger.PrintInfo("  Local log test successful")
@@ -70,6 +71,7 @@ func TestLogsForAllServers(servers []state.Server, globalCollectionOpts state.Co
 			prefixedLogger.PrintInfo("Testing log collection (RDS)...")
 			_, err := downloadLogsForServer(server, globalCollectionOpts, prefixedLogger)
 			if err != nil {
+				hasFailedServers = true
 				prefixedLogger.PrintError("Could not download logs for server: %s", err)
 			}
 		}

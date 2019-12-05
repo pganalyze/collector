@@ -3,7 +3,6 @@
 package util
 
 import (
-	"fmt"
 	"os"
 	"os/exec"
 	"strconv"
@@ -26,23 +25,23 @@ func reloadPid(pid int) error {
 	return nil
 }
 
-func Reload() {
+func Reload(logger *Logger) {
 	processes, err := ps.Processes()
 	if err != nil {
-		fmt.Printf("Error: Could not read process list\n")
+		logger.PrintError("Error: Failed to reload collector: Could not read process list\n")
 		os.Exit(1)
 	}
 	for _, p := range processes {
-		if (p.Executable() == "pganalyze-collector" && p.Pid() != os.Getpid()) {
+		if p.Executable() == "pganalyze-collector" && p.Pid() != os.Getpid() {
 			err := reloadPid(p.Pid())
 			if err != nil {
-				fmt.Printf("Error: Could not send SIGHUP to process: %s\n", err)
+				logger.PrintError("Error: Failed to reload collector: Could not send SIGHUP to process: %s\n", err)
 				os.Exit(1)
 			}
-			fmt.Printf("Successfully reloaded pganalyze collector (PID %d)\n", p.Pid())
+			logger.PrintInfo("Successfully reloaded pganalyze collector (PID %d)\n", p.Pid())
 			os.Exit(0)
 		}
 	}
-	fmt.Printf("Error: Could not find pganalyze collector in process list\n")
+	logger.PrintError("Error: Failed to reload collector: Could not find pganalyze collector in process list\n")
 	os.Exit(1)
 }

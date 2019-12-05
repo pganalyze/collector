@@ -73,8 +73,10 @@ func processActivityForServer(server state.Server, globalCollectionOpts state.Co
 }
 
 // CollectActivityFromAllServers - Collects activity from all servers and sends them to the pganalyze service
-func CollectActivityFromAllServers(servers []state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
+func CollectActivityFromAllServers(servers []state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (allSuccessful bool) {
 	var wg sync.WaitGroup
+
+	allSuccessful = true
 
 	for idx := range servers {
 		if servers[idx].Config.DisableActivity || (servers[idx].Grant.Valid && !servers[idx].Grant.Config.EnableActivity) {
@@ -91,6 +93,7 @@ func CollectActivityFromAllServers(servers []state.Server, globalCollectionOpts 
 
 			success, err := processActivityForServer(*server, globalCollectionOpts, prefixedLogger)
 			if err != nil {
+				allSuccessful = false
 				prefixedLogger.PrintError("Could not collect activity for server: %s", err)
 				if server.Config.ErrorCallback != "" {
 					go runCompletionCallback("error", server.Config.ErrorCallback, server.Config.SectionName, "activity", err, prefixedLogger)

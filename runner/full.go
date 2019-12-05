@@ -189,8 +189,10 @@ func runCompletionCallback(callbackType string, callbackCmd string, sectionName 
 }
 
 // CollectAllServers - Collects statistics from all servers and sends them as full snapshots to the pganalyze service
-func CollectAllServers(servers []state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
+func CollectAllServers(servers []state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (allSuccessful bool) {
 	var wg sync.WaitGroup
+
+	allSuccessful = true
 
 	for idx := range servers {
 		wg.Add(1)
@@ -207,6 +209,7 @@ func CollectAllServers(servers []state.Server, globalCollectionOpts state.Collec
 			newState, grant, err := processDatabase(*server, globalCollectionOpts, prefixedLogger)
 			if err != nil {
 				server.StateMutex.Unlock()
+				allSuccessful = false
 				prefixedLogger.PrintError("Could not process server: %s", err)
 				if grant.Valid && !globalCollectionOpts.TestRun && globalCollectionOpts.SubmitCollectedData {
 					server.Grant = grant
@@ -235,4 +238,6 @@ func CollectAllServers(servers []state.Server, globalCollectionOpts state.Collec
 	if globalCollectionOpts.WriteStateUpdate {
 		writeStateFile(servers, globalCollectionOpts, logger)
 	}
+
+	return
 }
