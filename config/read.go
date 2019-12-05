@@ -123,7 +123,7 @@ func getDefaultConfig() *ServerConfig {
 	return config
 }
 
-func createHttpClient(requireSSL bool) *http.Client {
+func createHTTPClient(requireSSL bool) *http.Client {
 	transport := &http.Transport{
 		Proxy: http.ProxyFromEnvironment,
 		DialContext: (&net.Dialer{
@@ -285,7 +285,7 @@ func Read(logger *util.Logger, filename string) (Config, error) {
 	}
 
 	for idx, server := range conf.Servers {
-		conf.Servers[idx].HTTPClient = createHttpClient(server.APIBaseURL == defaultAPIBaseURL)
+		conf.Servers[idx].HTTPClient = createHTTPClient(server.APIBaseURL == defaultAPIBaseURL)
 	}
 
 	return conf, nil

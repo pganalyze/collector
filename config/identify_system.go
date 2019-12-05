@@ -22,14 +22,16 @@ func identifySystem(config ServerConfig) (systemType string, systemScope string,
 		}
 	} else if config.AzureDbServerName != "" || systemType == "azure_database" {
 		systemType = "azure_database"
-		if systemScope == "" {
-			systemScope = config.GetDbName()
-			if config.DbAllNames {
-				systemScope += "*"
-			}
-		}
 		if systemID == "" {
 			systemID = config.AzureDbServerName
+		}
+	} else if (config.GcpProjectID != "" && config.GcpCloudSQLInstanceID != "") || systemType == "google_cloudsql" {
+		systemType = "google_cloudsql"
+		if systemScope == "" {
+			systemScope = config.GcpProjectID
+		}
+		if systemID == "" {
+			systemID = config.GcpCloudSQLInstanceID
 		}
 	} else {
 		systemType = "self_hosted"

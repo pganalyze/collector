@@ -24,6 +24,10 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger) (system sta
 	dbHost := config.GetDbHost()
 	if config.SystemType == "amazon_rds" {
 		system = rds.GetSystemState(config, logger)
+	} else if config.SystemType == "google_cloudsql" {
+		system.Info.Type = state.GoogleCloudSQLSystem
+	} else if config.SystemType == "azure_database" {
+		system.Info.Type = state.AzureDatabaseSystem
 	} else if dbHost == "" || dbHost == "localhost" || dbHost == "127.0.0.1" || os.Getenv("PGA_ALWAYS_COLLECT_SYSTEM_DATA") != "" {
 		system = selfhosted.GetSystemState(config, logger)
 	}

@@ -28,6 +28,8 @@ const (
 	SelfHostedSystem SystemType = iota
 	AmazonRdsSystem
 	HerokuSystem
+	GoogleCloudSQLSystem
+	AzureDatabaseSystem
 )
 
 type SystemInfo struct {

@@ -90,6 +90,10 @@ func transformSystem(systemState state.SystemState, diffState state.DiffState) *
 		}
 	} else if systemState.Info.Type == state.HerokuSystem {
 		system.SystemInformation.Type = snapshot.SystemInformation_HEROKU_SYSTEM
+	} else if systemState.Info.Type == state.GoogleCloudSQLSystem {
+		system.SystemInformation.Type = snapshot.SystemInformation_GOOGLE_CLOUD_SQL_SYSTEM
+	} else if systemState.Info.Type == state.AzureDatabaseSystem {
+		system.SystemInformation.Type = snapshot.SystemInformation_AZURE_DATABASE_SYSTEM
 	}
 
 	system.SystemId = systemState.Info.SystemID
