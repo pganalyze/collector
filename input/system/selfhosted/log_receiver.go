@@ -2,6 +2,7 @@ package selfhosted
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -119,9 +120,7 @@ func DiscoverLogLocation(servers []state.Server, globalCollectionOpts state.Coll
 
 // SetupLogTails - Sets up continuously running log tails for all servers with a
 // local log directory or file specified
-func SetupLogTails(servers []state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) chan bool {
-	stop := make(chan bool)
-
+func SetupLogTails(ctx context.Context, servers []state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
 	for _, server := range servers {
 		prefixedLogger := logger.WithPrefix(server.Config.SectionName)
 
@@ -130,8 +129,8 @@ func SetupLogTails(servers []state.Server, globalCollectionOpts state.Collection
 				prefixedLogger.PrintInfo("Setting up log tail for %s", server.Config.LogLocation)
 			}
 
-			logStream := logReceiver(server, globalCollectionOpts, prefixedLogger, nil, stop)
-			err := setupLogLocationTail(server.Config.LogLocation, logStream, prefixedLogger, stop)
+			logStream := logReceiver(ctx, server, globalCollectionOpts, prefixedLogger, nil)
+			err := setupLogLocationTail(ctx, server.Config.LogLocation, logStream, prefixedLogger)
 			if err != nil {
 				prefixedLogger.PrintError("ERROR - %s", err)
 			}
@@ -140,20 +139,19 @@ func SetupLogTails(servers []state.Server, globalCollectionOpts state.Collection
 				prefixedLogger.PrintInfo("Setting up docker logs tail for %s", server.Config.LogDockerTail)
 			}
 
-			logStream := logReceiver(server, globalCollectionOpts, prefixedLogger, nil, stop)
-			err := setupDockerTail(server.Config.LogDockerTail, logStream, prefixedLogger, stop)
+			logStream := logReceiver(ctx, server, globalCollectionOpts, prefixedLogger, nil)
+			err := setupDockerTail(ctx, server.Config.LogDockerTail, logStream, prefixedLogger)
 			if err != nil {
 				prefixedLogger.PrintError("ERROR - %s", err)
 			}
 		}
 	}
-	return stop
 }
 
 // TestLogTail - Tests the tailing of a log file (without watching it continuously)
 // as well as parsing and analyzing the log data
 func TestLogTail(server state.Server, globalCollectionOpts state.CollectionOpts, prefixedLogger *util.Logger) error {
-	stop := make(chan bool)
+	cctx, cancel := context.WithCancel(context.Background())
 
 	logLinePrefix, err := getPostgresSetting("log_line_prefix", server, globalCollectionOpts, prefixedLogger)
 	if err != nil {
@@ -164,8 +162,8 @@ func TestLogTail(server state.Server, globalCollectionOpts state.CollectionOpts,
 
 	logTestSucceeded := make(chan bool, 1)
 
-	logStream := logReceiver(server, globalCollectionOpts, prefixedLogger, logTestSucceeded, stop)
-	err = setupLogLocationTail(server.Config.LogLocation, logStream, prefixedLogger, stop)
+	logStream := logReceiver(cctx, server, globalCollectionOpts, prefixedLogger, logTestSucceeded)
+	err = setupLogLocationTail(cctx, server.Config.LogLocation, logStream, prefixedLogger)
 	if err != nil {
 		return err
 	}
@@ -178,21 +176,21 @@ func TestLogTail(server state.Server, globalCollectionOpts state.CollectionOpts,
 
 	select {
 	case <-logTestSucceeded:
+		cancel()
 		return nil
 	case <-time.After(10 * time.Second):
+		cancel()
 		return fmt.Errorf("Timeout")
 	}
 }
 
-func tailFile(path string, out chan<- string, prefixedLogger *util.Logger) (chan bool, error) {
+func tailFile(ctx context.Context, path string, out chan<- string, prefixedLogger *util.Logger) error {
 	prefixedLogger.PrintVerbose("Tailing log file %s", path)
 
 	t, err := tail.TailFile(path, tail.Config{Follow: true, MustExist: true, ReOpen: true, Logger: tail.DiscardingLogger})
 	if err != nil {
-		return nil, fmt.Errorf("Failed to setup log tail: %s", err)
+		return fmt.Errorf("Failed to setup log tail: %s", err)
 	}
-
-	stop := make(chan bool)
 
 	go func() {
 		defer t.Cleanup()
@@ -200,7 +198,7 @@ func tailFile(path string, out chan<- string, prefixedLogger *util.Logger) (chan
 			select {
 			case line := <-t.Lines:
 				out <- line.Text
-			case <-stop:
+			case <-ctx.Done():
 				prefixedLogger.PrintVerbose("Stopping log tail for %s (stop requested)", path)
 				t.Stop()
 				return
@@ -208,7 +206,7 @@ func tailFile(path string, out chan<- string, prefixedLogger *util.Logger) (chan
 		}
 	}()
 
-	return stop, nil
+	return nil
 }
 
 func isAcceptableLogFile(fileName string, fileNameFilter string) bool {
@@ -235,10 +233,10 @@ func filterOutString(strings []string, stringToBeRemoved string) []string {
 
 const maxOpenTails = 10
 
-func setupLogLocationTail(logLocation string, out chan<- string, prefixedLogger *util.Logger, stop <-chan bool) error {
+func setupLogLocationTail(ctx context.Context, logLocation string, out chan<- string, prefixedLogger *util.Logger) error {
 	prefixedLogger.PrintVerbose("Searching for log file(s) in %s", logLocation)
 
-	openFiles := make(map[string]chan bool)
+	openFiles := make(map[string]context.CancelFunc)
 	openFilesByAge := []string{}
 	fileNameFilter := ""
 
@@ -273,12 +271,12 @@ func setupLogLocationTail(logLocation string, out chan<- string, prefixedLogger 
 		fileName := path.Join(logLocation, f.Name())
 
 		if isAcceptableLogFile(fileName, fileNameFilter) {
-			var logTailStop chan bool
-			logTailStop, err = tailFile(fileName, out, prefixedLogger)
+			tailCtx, tailCancel := context.WithCancel(ctx)
+			err = tailFile(tailCtx, fileName, out, prefixedLogger)
 			if err != nil {
 				prefixedLogger.PrintError("ERROR - %s", err)
 			} else {
-				openFiles[fileName] = logTailStop
+				openFiles[fileName] = tailCancel
 				openFilesByAge = append(openFilesByAge, fileName)
 			}
 		}
@@ -301,36 +299,39 @@ func setupLogLocationTail(logLocation string, out chan<- string, prefixedLogger 
 						if len(openFiles) >= maxOpenTails {
 							var oldestFile string
 							oldestFile, openFilesByAge = openFilesByAge[0], openFilesByAge[1:]
-							logTailStop, ok := openFiles[oldestFile]
+							tailCancel, ok := openFiles[oldestFile]
 							if ok {
-								logTailStop <- true
+								tailCancel()
 								delete(openFiles, oldestFile)
 							}
 						}
-						var logTailStop chan bool
-						logTailStop, err = tailFile(event.Name, out, prefixedLogger)
+						tailCtx, tailCancel := context.WithCancel(ctx)
+						err = tailFile(tailCtx, event.Name, out, prefixedLogger)
 						if err != nil {
+							tailCancel()
 							prefixedLogger.PrintError("ERROR - %s", err)
 						} else {
-							openFiles[event.Name] = logTailStop
+							openFiles[event.Name] = tailCancel
 							openFilesByAge = append(openFilesByAge, event.Name)
 						}
 					}
 				}
 				if event.Op&fsnotify.Remove == fsnotify.Remove || event.Op&fsnotify.Rename == fsnotify.Rename || event.Op&fsnotify.Chmod == fsnotify.Chmod {
-					logTailStop, ok := openFiles[event.Name]
+					tailCancel, ok := openFiles[event.Name]
 					if ok {
-						logTailStop <- true
+						tailCancel()
 						delete(openFiles, event.Name)
 					}
 					openFilesByAge = filterOutString(openFilesByAge, event.Name)
 				}
 			case err = <-watcher.Errors:
 				prefixedLogger.PrintError("ERROR - fsnotify watcher failure: %s", err)
-			case <-stop:
+			case <-ctx.Done():
 				prefixedLogger.PrintVerbose("Log file fsnotify watcher received stop signal")
-				for fileName, logTailStop := range openFiles {
-					logTailStop <- true
+				for fileName, tailCancel := range openFiles {
+					// TODO: This cancel might actually not be necessary since we are
+					// already canceling the parent context?
+					tailCancel()
 					delete(openFiles, fileName)
 				}
 				openFilesByAge = []string{}
@@ -347,7 +348,7 @@ func setupLogLocationTail(logLocation string, out chan<- string, prefixedLogger 
 	return nil
 }
 
-func setupDockerTail(containerName string, out chan<- string, prefixedLogger *util.Logger, stop <-chan bool) error {
+func setupDockerTail(ctx context.Context, containerName string, out chan<- string, prefixedLogger *util.Logger) error {
 	var err error
 
 	cmd := exec.Command("docker", "logs", containerName, "-f", "--tail", "0")
@@ -369,7 +370,7 @@ func setupDockerTail(containerName string, out chan<- string, prefixedLogger *ut
 		defer cmd.Wait()
 		for {
 			select {
-			case <-stop:
+			case <-ctx.Done():
 				prefixedLogger.PrintVerbose("Docker log tail received stop signal")
 				if err := cmd.Process.Kill(); err != nil {
 					prefixedLogger.PrintError("Failed to kill docker log tail process when stop received: %s", err)
@@ -382,7 +383,7 @@ func setupDockerTail(containerName string, out chan<- string, prefixedLogger *ut
 	return nil
 }
 
-func logReceiver(server state.Server, globalCollectionOpts state.CollectionOpts, prefixedLogger *util.Logger, logTestSucceeded chan<- bool, stop <-chan bool) chan<- string {
+func logReceiver(ctx context.Context, server state.Server, globalCollectionOpts state.CollectionOpts, prefixedLogger *util.Logger, logTestSucceeded chan<- bool) chan<- string {
 	logStream := make(chan string)
 
 	go func() {
@@ -430,7 +431,7 @@ func logReceiver(server state.Server, globalCollectionOpts state.CollectionOpts,
 					time.Sleep(3 * time.Second)
 					timeout <- true
 				}()
-			case <-stop:
+			case <-ctx.Done():
 				return
 			}
 		}

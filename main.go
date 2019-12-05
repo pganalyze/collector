@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -30,7 +31,7 @@ import (
 	_ "github.com/lib/pq" // Enable database package to use Postgres
 )
 
-func run(wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *util.Logger, configFilename string) (keepRunning bool, reloadOkay bool, statsStop chan<- bool, reportsStop chan<- bool, logsTailStop chan<- bool, logsDownloadStop chan<- bool, activityStop chan<- bool, queriesStop chan<- bool) {
+func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *util.Logger, configFilename string) (keepRunning bool, reloadOkay bool) {
 	var servers []state.Server
 
 	keepRunning = false
@@ -147,7 +148,7 @@ func run(wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *
 	}
 
 	if globalCollectionOpts.DebugLogs {
-		selfhosted.SetupLogTails(servers, globalCollectionOpts, logger)
+		selfhosted.SetupLogTails(ctx, servers, globalCollectionOpts, logger)
 
 		// Keep running but only running log processing
 		keepRunning = true
@@ -159,14 +160,14 @@ func run(wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *
 		return
 	}
 
-	statsStop = schedulerGroups["stats"].Schedule(func() {
+	schedulerGroups["stats"].Schedule(ctx, func() {
 		wg.Add(1)
 		runner.CollectAllServers(servers, globalCollectionOpts, logger)
 		wg.Done()
 	}, logger, "full snapshot of all servers")
 
 	if hasAnyReportsEnabled {
-		reportsStop = schedulerGroups["reports"].Schedule(func() {
+		schedulerGroups["reports"].Schedule(ctx, func() {
 			wg.Add(1)
 			runner.RunRequestedReports(servers, globalCollectionOpts, logger)
 			wg.Done()
@@ -193,11 +194,11 @@ func run(wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *
 		}
 
 		if hasAnyLogTails {
-			logsTailStop = selfhosted.SetupLogTails(servers, globalCollectionOpts, logger)
+			selfhosted.SetupLogTails(ctx, servers, globalCollectionOpts, logger)
 		}
 
 		if hasAnyLogDownloads {
-			logsDownloadStop = schedulerGroups["logs"].Schedule(func() {
+			schedulerGroups["logs"].Schedule(ctx, func() {
 				wg.Add(1)
 				runner.DownloadLogsFromAllServers(servers, globalCollectionOpts, logger)
 				wg.Done()
@@ -206,14 +207,14 @@ func run(wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *
 	}
 
 	if hasAnyActivityEnabled {
-		activityStop = schedulerGroups["activity"].Schedule(func() {
+		schedulerGroups["activity"].Schedule(ctx, func() {
 			wg.Add(1)
 			runner.CollectActivityFromAllServers(servers, globalCollectionOpts, logger)
 			wg.Done()
 		}, logger, "activity snapshot of all servers")
 	}
 
-	queriesStop = schedulerGroups["query_stats"].ScheduleSecondary(func() {
+	schedulerGroups["query_stats"].ScheduleSecondary(ctx, func() {
 		wg.Add(1)
 		runner.GatherQueryStatsFromAllServers(servers, globalCollectionOpts, logger)
 		wg.Done()
@@ -381,6 +382,15 @@ func main() {
 		return
 	}
 
+	if pidFilename != "" {
+		pid := os.Getpid()
+		err := ioutil.WriteFile(pidFilename, []byte(strconv.Itoa(pid)), 0644)
+		if err != nil {
+			logger.PrintError("Could not write pidfile to \"%s\" as requested, exiting.", pidFilename)
+			return
+		}
+	}
+
 	if testRunAndTrace {
 		usr, err := user.Current()
 		if err != nil {
@@ -392,83 +402,57 @@ func main() {
 			panic(err)
 		}
 		trace.Start(f)
-		run(&sync.WaitGroup{}, globalCollectionOpts, logger, configFilename)
-		trace.Stop()
-		f.Close()
-		return
-	}
-
-	if pidFilename != "" {
-		pid := os.Getpid()
-		err := ioutil.WriteFile(pidFilename, []byte(strconv.Itoa(pid)), 0644)
-		if err != nil {
-			logger.PrintError("Could not write pidfile to \"%s\" as requested, exiting.", pidFilename)
-			return
-		}
+		defer f.Close()
 	}
 
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
 
-	wg := sync.WaitGroup{}
-
 ReadConfigAndRun:
-	keepRunning, reloadOkay, statsStop, reportsStop, logsTailStop, logsDownloadStop, activityStop, queriesStop := run(&wg, globalCollectionOpts, logger, configFilename)
-	if !keepRunning {
-		if reloadRun {
-			if reloadOkay {
-				util.Reload(logger)
-			} else {
-				logger.PrintError("Error: Reload requested, but ignoring since configuration errors are present")
-			}
-			return
-		}
-		return
-	}
+	ctx, cancel := context.WithCancel(context.Background())
+	wg := sync.WaitGroup{}
+	keepRunning, reloadOkay := run(ctx, &wg, globalCollectionOpts, logger, configFilename)
 
-	// Block here until we get any of the registered signals
-	s := <-sigs
+	if keepRunning {
+		// Block here until we get any of the registered signals
+		s := <-sigs
 
-	// Stop the scheduled runs
-	if statsStop != nil {
-		statsStop <- true
-	}
-	if reportsStop != nil {
-		reportsStop <- true
-	}
-	if logsTailStop != nil {
-		logsTailStop <- true
-	}
-	if logsDownloadStop != nil {
-		logsDownloadStop <- true
-	}
-	if activityStop != nil {
-		activityStop <- true
-	}
-	if queriesStop != nil {
-		queriesStop <- true
-	}
-
-	if s == syscall.SIGHUP {
-		if writeHeapProfile {
-			usr, err := user.Current()
-			if err == nil {
-				mprofPath := usr.HomeDir + "/pganalyze_collector.mprof"
-				f, err := os.Create(mprofPath)
+		if s == syscall.SIGHUP {
+			if writeHeapProfile {
+				usr, err := user.Current()
 				if err == nil {
-					pprof.WriteHeapProfile(f)
-					f.Close()
-					logger.PrintInfo("Wrote memory heap profile to %s", mprofPath)
+					mprofPath := usr.HomeDir + "/pganalyze_collector.mprof"
+					f, err := os.Create(mprofPath)
+					if err == nil {
+						pprof.WriteHeapProfile(f)
+						f.Close()
+						logger.PrintInfo("Wrote memory heap profile to %s", mprofPath)
+					}
 				}
 			}
+			logger.PrintInfo("Reloading configuration...")
+			cancel()
+			wg.Wait()
+			goto ReadConfigAndRun
 		}
-		logger.PrintInfo("Reloading configuration...")
-		wg.Wait()
-		goto ReadConfigAndRun
+
+		signal.Stop(sigs)
+
+		logger.PrintInfo("Exiting...")
 	}
 
-	signal.Stop(sigs)
-
-	logger.PrintInfo("Exiting...")
+	cancel()
 	wg.Wait()
+
+	if reloadRun {
+		if reloadOkay {
+			util.Reload(logger)
+		} else {
+			logger.PrintError("Error: Reload requested, but ignoring since configuration errors are present")
+		}
+	}
+
+	if testRunAndTrace {
+		trace.Stop()
+	}
 }
