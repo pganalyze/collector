@@ -15,8 +15,7 @@ func gatherQueryStatsForServer(server state.Server, globalCollectionOpts state.C
 	var connection *sql.DB
 
 	newState := server.PrevState
-	isHeroku := server.Config.SystemType == "heroku"
-	isAmazonRds := server.Config.SystemType == "amazon_rds"
+	systemType := server.Config.SystemType
 	collectedAt := time.Now()
 
 	connection, err = postgres.EstablishConnection(server, logger, globalCollectionOpts, "")
@@ -37,7 +36,7 @@ func gatherQueryStatsForServer(server state.Server, globalCollectionOpts state.C
 	}
 
 	newState.LastStatementStatsAt = time.Now()
-	_, _, newState.StatementStats, err = postgres.GetStatements(logger, connection, globalCollectionOpts, postgresVersion, false, isHeroku, isAmazonRds)
+	_, _, newState.StatementStats, err = postgres.GetStatements(logger, connection, globalCollectionOpts, postgresVersion, false, systemType)
 	if err != nil {
 		return newState, errors.Wrap(err, "error collecting pg_stat_statements")
 	}

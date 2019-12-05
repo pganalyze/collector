@@ -15,8 +15,7 @@ import (
 
 // CollectFull - Collects a "full" snapshot of all data we need on a regular interval
 func CollectFull(server state.Server, connection *sql.DB, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (ps state.PersistedState, ts state.TransientState, err error) {
-	isHeroku := server.Config.SystemType == "heroku"
-	isAmazonRds := server.Config.SystemType == "amazon_rds"
+	systemType := server.Config.SystemType
 
 	ps.CollectedAt = time.Now()
 
@@ -45,7 +44,7 @@ func CollectFull(server state.Server, connection *sql.DB, globalCollectionOpts s
 
 	ps.LastStatementStatsAt = time.Now()
 	postgres.SetStatementTimeout(connection, 120000)
-	ts.Statements, ts.StatementTexts, ps.StatementStats, err = postgres.GetStatements(logger, connection, globalCollectionOpts, ts.Version, true, isHeroku, isAmazonRds)
+	ts.Statements, ts.StatementTexts, ps.StatementStats, err = postgres.GetStatements(logger, connection, globalCollectionOpts, ts.Version, true, systemType)
 	postgres.SetDefaultStatementTimeout(connection, logger, server)
 	if err != nil {
 		err = fmt.Errorf("Error collecting pg_stat_statements: %s", err)
@@ -55,12 +54,12 @@ func CollectFull(server state.Server, connection *sql.DB, globalCollectionOpts s
 	ps.StatementResetCounter = server.PrevState.StatementResetCounter + 1
 	if server.Grant.Config.Features.StatementResetFrequency != 0 && ps.StatementResetCounter >= server.Grant.Config.Features.StatementResetFrequency {
 		ps.StatementResetCounter = 0
-		err = postgres.ResetStatements(logger, connection, isAmazonRds)
+		err = postgres.ResetStatements(logger, connection, systemType)
 		if err != nil {
 			logger.PrintError("Error calling pg_stat_statements_reset() as requested: %s", err)
 			return
 		}
-		_, _, ts.ResetStatementStats, err = postgres.GetStatements(logger, connection, globalCollectionOpts, ts.Version, false, isHeroku, isAmazonRds)
+		_, _, ts.ResetStatementStats, err = postgres.GetStatements(logger, connection, globalCollectionOpts, ts.Version, false, systemType)
 		if err != nil {
 			err = fmt.Errorf("Error collecting pg_stat_statements: %s", err)
 			return
@@ -75,7 +74,7 @@ func CollectFull(server state.Server, connection *sql.DB, globalCollectionOpts s
 		}
 	}
 
-	ts.Replication, err = postgres.GetReplication(logger, connection, ts.Version, isHeroku, isAmazonRds)
+	ts.Replication, err = postgres.GetReplication(logger, connection, ts.Version, systemType)
 	if err != nil {
 		logger.PrintWarning("Error collecting replication statistics: %s", err)
 		// We intentionally accept this as a non-fatal issue (at least for now)
@@ -88,7 +87,7 @@ func CollectFull(server state.Server, connection *sql.DB, globalCollectionOpts s
 		return
 	}
 
-	ps, ts = postgres.CollectAllSchemas(server, globalCollectionOpts, logger, ps, ts, isAmazonRds)
+	ps, ts = postgres.CollectAllSchemas(server, globalCollectionOpts, logger, ps, ts, systemType)
 
 	if server.Config.IgnoreTablePattern != "" {
 		var filteredRelations []state.PostgresRelation

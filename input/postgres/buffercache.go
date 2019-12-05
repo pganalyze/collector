@@ -67,14 +67,14 @@ func getSharedBufferBytes(db *sql.DB) int64 {
 	return bytes * multiplier
 }
 
-func GetBuffercache(logger *util.Logger, db *sql.DB, isAmazonRds bool) (report state.PostgresBuffercache, err error) {
+func GetBuffercache(logger *util.Logger, db *sql.DB, systemType string) (report state.PostgresBuffercache, err error) {
 	var sourceTable string
 
 	if statsHelperExists(db, "get_buffercache") {
 		logger.PrintVerbose("Found pganalyze.get_buffercache() stats helper")
 		sourceTable = "pganalyze.get_buffercache()"
 	} else {
-		if !connectedAsSuperUser(db, isAmazonRds) && !connectedAsMonitoringRole(db) {
+		if !connectedAsSuperUser(db, systemType) && !connectedAsMonitoringRole(db) {
 			logger.PrintInfo("Warning: You are not connecting as superuser. Please setup" +
 				" the monitoring helper functions (https://github.com/pganalyze/collector#setting-up-a-restricted-monitoring-user)" +
 				" or connect as superuser to run the buffercache report.")

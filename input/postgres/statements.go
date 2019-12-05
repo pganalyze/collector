@@ -55,13 +55,13 @@ func insufficientPrivilege(query string) bool {
 	return query == "<insufficient privilege>"
 }
 
-func ResetStatements(logger *util.Logger, db *sql.DB, isAmazonRds bool) error {
+func ResetStatements(logger *util.Logger, db *sql.DB, systemType string) error {
 	var method string
 	if statsHelperExists(db, "reset_stat_statements") {
 		logger.PrintVerbose("Found pganalyze.reset_stat_statements() stats helper")
 		method = "pganalyze.reset_stat_statements()"
 	} else {
-		if !connectedAsSuperUser(db, isAmazonRds) && !connectedAsMonitoringRole(db) {
+		if !connectedAsSuperUser(db, systemType) && !connectedAsMonitoringRole(db) {
 			logger.PrintInfo("Warning: You are not connecting as superuser. Please setup" +
 				" contact support to get advice on setting up stat statements reset")
 		}
@@ -74,7 +74,7 @@ func ResetStatements(logger *util.Logger, db *sql.DB, isAmazonRds bool) error {
 	return nil
 }
 
-func GetStatements(logger *util.Logger, db *sql.DB, globalCollectionOpts state.CollectionOpts, postgresVersion state.PostgresVersion, showtext bool, isHeroku bool, isAmazonRds bool) (state.PostgresStatementMap, state.PostgresStatementTextMap, state.PostgresStatementStatsMap, error) {
+func GetStatements(logger *util.Logger, db *sql.DB, globalCollectionOpts state.CollectionOpts, postgresVersion state.PostgresVersion, showtext bool, systemType string) (state.PostgresStatementMap, state.PostgresStatementTextMap, state.PostgresStatementStatsMap, error) {
 	var err error
 	var optionalFields string
 	var sourceTable string
@@ -99,7 +99,7 @@ func GetStatements(logger *util.Logger, db *sql.DB, globalCollectionOpts state.C
 			sourceTable = "pganalyze.get_stat_statements()"
 		}
 	} else {
-		if !isHeroku && !connectedAsSuperUser(db, isAmazonRds) && !connectedAsMonitoringRole(db) && globalCollectionOpts.TestRun {
+		if systemType != "heroku" && !connectedAsSuperUser(db, systemType) && !connectedAsMonitoringRole(db) && globalCollectionOpts.TestRun {
 			logger.PrintInfo("Warning: You are not connecting as superuser. Please setup" +
 				" the monitoring helper functions (https://github.com/pganalyze/collector#setting-up-a-restricted-monitoring-user)" +
 				" or connect as superuser, to get query statistics for all roles.")

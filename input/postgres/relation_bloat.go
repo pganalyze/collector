@@ -241,14 +241,14 @@ func GetIndexBloat(logger *util.Logger, db *sql.DB, columnStatsSourceTable strin
 	return
 }
 
-func GetBloatStats(logger *util.Logger, db *sql.DB, isAmazonRds bool) (report state.PostgresBloatStats, err error) {
+func GetBloatStats(logger *util.Logger, db *sql.DB, systemType string) (report state.PostgresBloatStats, err error) {
 	var columnStatsSourceTable string
 
 	if statsHelperExists(db, "get_column_stats") {
 		logger.PrintVerbose("Found pganalyze.get_column_stats() stats helper")
 		columnStatsSourceTable = "(SELECT * FROM pganalyze.get_column_stats()) pg_stats"
 	} else {
-		if !connectedAsSuperUser(db, isAmazonRds) && !connectedAsMonitoringRole(db) {
+		if !connectedAsSuperUser(db, systemType) && !connectedAsMonitoringRole(db) {
 			logger.PrintInfo("Warning: You are not connecting as superuser. Please setup" +
 				" the monitoring helper functions (https://github.com/pganalyze/collector#setting-up-a-restricted-monitoring-user)" +
 				" or connect as superuser to run the bloat report.")

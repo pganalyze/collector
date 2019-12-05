@@ -30,9 +30,9 @@ func (report BloatReport) ReportType() string {
 
 // Run the report
 func (report *BloatReport) Run(server state.Server, logger *util.Logger, connection *sql.DB) (err error) {
-	isAmazonRds := server.Config.SystemType == "amazon_rds"
+	systemType := server.Config.SystemType
 
-	report.Data, err = postgres.GetBloatStats(logger, connection, isAmazonRds)
+	report.Data, err = postgres.GetBloatStats(logger, connection, systemType)
 	if err != nil {
 		return
 	}

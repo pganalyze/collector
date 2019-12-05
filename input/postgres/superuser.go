@@ -11,11 +11,35 @@ const connectedAsRdsSuperUserSQL string = `
 SELECT pg_has_role(oid, 'MEMBER') FROM pg_roles WHERE rolname = 'rds_superuser'
 `
 
-func connectedAsSuperUser(db *sql.DB, isAmazonRds bool) bool {
+const connectedAsAzurePostgresAdmin string = `
+SELECT pg_has_role(oid, 'MEMBER') FROM pg_roles WHERE rolname = 'azure_pg_admin'
+`
+
+const connectedAsCloudSQLSuperuser string = `
+SELECT pg_has_role(oid, 'MEMBER') FROM pg_roles WHERE rolname = 'cloudsqlsuperuser'
+`
+
+func connectedAsSuperUser(db *sql.DB, systemType string) bool {
 	var enabled bool
 
-	if isAmazonRds {
+	if systemType == "amazon_rds" {
 		err := db.QueryRow(QueryMarkerSQL + connectedAsRdsSuperUserSQL).Scan(&enabled)
+		if err != nil {
+			return false
+		}
+		return enabled
+	}
+
+	if systemType == "azure_database" {
+		err := db.QueryRow(QueryMarkerSQL + connectedAsAzurePostgresAdmin).Scan(&enabled)
+		if err != nil {
+			return false
+		}
+		return enabled
+	}
+
+	if systemType == "google_cloudsql" {
+		err := db.QueryRow(QueryMarkerSQL + connectedAsCloudSQLSuperuser).Scan(&enabled)
 		if err != nil {
 			return false
 		}
