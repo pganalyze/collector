@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.25.0      2019-12-18
+
+* Add new "log_explain" mode, as an alternative to auto_explain (experimental)
+  * Enable by setting "enable_log_explain: 1" or "PGA_ENABLE_LOG_EXPLAIN=1"
+  * This is intended for providers such as Heroku Postgres where you can't use
+    the auto_explain extension to send EXPLAIN plans into pganalyze
+
+
 ## 0.24.0      2019-12-05
 
 * Add support for Azure Database for PostgreSQL
