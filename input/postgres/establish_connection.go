@@ -87,7 +87,18 @@ func SetDefaultStatementTimeout(connection *sql.DB, logger *util.Logger, server 
 		return
 	}
 
-	connection.Exec(fmt.Sprintf("%sSET statement_timeout = %d", QueryMarkerSQL, statementTimeoutMs))
+	SetStatementTimeout(connection, statementTimeoutMs)
+
+	return
+}
+
+func SetQueryTextStatementTimeout(connection *sql.DB, logger *util.Logger, server state.Server) {
+	queryTextStatementTimeoutMs := server.Grant.Config.Features.StatementTimeoutMsQueryText
+	if queryTextStatementTimeoutMs == 0 { // Default value
+		queryTextStatementTimeoutMs = 120000
+	}
+
+	SetStatementTimeout(connection, queryTextStatementTimeoutMs)
 
 	return
 }

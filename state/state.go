@@ -122,11 +122,11 @@ type GrantConfig struct {
 }
 
 type GrantFeatures struct {
-	Logs    bool `json:"logs"`
-	Explain bool `json:"explain"`
+	Logs bool `json:"logs"`
 
-	StatementResetFrequency int   `json:"statement_reset_frequency"`
-	StatementTimeoutMs      int32 `json:"statement_timeout_ms"` // Statement timeout for all SQL statements sent to the database (defaults to 30s)
+	StatementResetFrequency     int   `json:"statement_reset_frequency"`
+	StatementTimeoutMs          int32 `json:"statement_timeout_ms"`            // Statement timeout for all SQL statements sent to the database (defaults to 30s)
+	StatementTimeoutMsQueryText int32 `json:"statement_timeout_ms_query_text"` // Statement timeout for pg_stat_statements query text requests (defaults to 120s)
 }
 
 type Grant struct {

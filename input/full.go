@@ -43,7 +43,7 @@ func CollectFull(server state.Server, connection *sql.DB, globalCollectionOpts s
 	}
 
 	ps.LastStatementStatsAt = time.Now()
-	postgres.SetStatementTimeout(connection, 120000)
+	postgres.SetQueryTextStatementTimeout(connection, logger, server)
 	ts.Statements, ts.StatementTexts, ps.StatementStats, err = postgres.GetStatements(logger, connection, globalCollectionOpts, ts.Version, true, systemType)
 	postgres.SetDefaultStatementTimeout(connection, logger, server)
 	if err != nil {
