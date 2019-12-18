@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.25.1      2019-12-18
+
+* Update rds-ca-2019-root.pem file to be correct certificate
+  * This was identical to the 2015 certificate by accident, causing
+    connection errors
+
+
 ## 0.25.0      2019-12-18
 
 * Add new "log_explain" mode, as an alternative to auto_explain (experimental)
