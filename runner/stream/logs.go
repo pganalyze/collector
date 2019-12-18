@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 
 	"github.com/pganalyze/collector/grant"
+	"github.com/pganalyze/collector/input/postgres"
 	"github.com/pganalyze/collector/logs"
 	"github.com/pganalyze/collector/output"
 	"github.com/pganalyze/collector/output/pganalyze_collector"
@@ -22,6 +23,14 @@ func ProcessLogs(server state.Server, logLines []state.LogLine, globalCollection
 	if len(logFile.LogLines) == 0 && len(logState.QuerySamples) == 0 {
 		logState.Cleanup()
 		return tooFreshLogLines
+	}
+
+	if server.Config.EnableLogExplain {
+		db, err := postgres.EstablishConnection(server, prefixedLogger, globalCollectionOpts, "")
+		if err == nil {
+			logState.QuerySamples = postgres.RunExplain(db, server.Config.GetDbName(), logState.QuerySamples)
+			db.Close()
+		}
 	}
 
 	logState.LogFiles = []state.LogFile{logFile}

@@ -54,6 +54,9 @@ func getDefaultConfig() *ServerConfig {
 	if disableActivity := os.Getenv("PGA_DISABLE_ACTIVITY"); disableActivity != "" && disableActivity != "0" {
 		config.DisableActivity = true
 	}
+	if enableLogExplain := os.Getenv("PGA_ENABLE_LOG_EXPLAIN"); enableLogExplain != "" && enableLogExplain != "0" {
+		config.EnableLogExplain = true
+	}
 	if dbURL := os.Getenv("DB_URL"); dbURL != "" {
 		config.DbURL = dbURL
 	}
