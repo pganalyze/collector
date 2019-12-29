@@ -129,12 +129,13 @@ func processSystemMetrics(timestamp time.Time, content []byte, nameToServer map[
 	return
 }
 
-func processLogLine(timestamp time.Time, backendPid int64, logLevel string, content string, nameToServer map[string]state.Server) *state.LogLine {
+func processLogLine(timestamp time.Time, backendPid int64, logLineNumber int64, logLevel string, content string, nameToServer map[string]state.Server) *state.LogLine {
 	var logLine state.LogLine
 
 	logLine.CollectedAt = time.Now()
 	logLine.OccurredAt = timestamp
 	logLine.BackendPid = int32(backendPid)
+	logLine.LogLineNumber = int32(logLineNumber)
 	logLine.Content = content
 	logLine.UUID = uuid.NewV4()
 
@@ -164,8 +165,10 @@ func processItem(item config.HerokuLogStreamItem, servers []state.Server, nameTo
 	if len(parts) != 2 {
 		return nameToServer, nil, ""
 	}
-	contentParts := regexp.MustCompile(`^\[(\w+)\] \[\d+-\d+\] ( sql_error_code = \w+ (\w+):  )?(.+)`).FindStringSubmatch(string(item.Content))
-	if len(contentParts) != 5 {
+	backendPid, _ := strconv.ParseInt(parts[1], 10, 32)
+
+	contentParts := regexp.MustCompile(`^\[(\w+)\] \[\d+-(\d+)\] ( sql_error_code = \w+ (\w+):  )?(.+)`).FindStringSubmatch(string(item.Content))
+	if len(contentParts) != 6 {
 		fmt.Printf("ERR: %s\n", string(item.Content))
 		return nameToServer, nil, ""
 	}
@@ -174,13 +177,16 @@ func processItem(item config.HerokuLogStreamItem, servers []state.Server, nameTo
 	if !strings.HasPrefix(sourceName, "HEROKU_POSTGRESQL_") {
 		sourceName = "HEROKU_POSTGRESQL_" + sourceName
 	}
+	sourceName = item.Namespace + " / " + sourceName
+	logLineNumber, _ := strconv.ParseInt(contentParts[2], 10, 32)
+	logLevel := contentParts[4]
+	content := contentParts[5]
 
-	nameToServer = catchIdentifyServerLine(item.Namespace+" / "+sourceName, contentParts[4], nameToServer, servers)
+	nameToServer = catchIdentifyServerLine(sourceName, content, nameToServer, servers)
 
-	backendPid, _ := strconv.ParseInt(parts[1], 10, 32)
-	newLogLine := processLogLine(timestamp, backendPid, contentParts[3], contentParts[4], nameToServer)
+	newLogLine := processLogLine(timestamp, backendPid, logLineNumber, logLevel, content, nameToServer)
 
-	return nameToServer, newLogLine, item.Namespace + " / " + sourceName
+	return nameToServer, newLogLine, sourceName
 }
 
 func logReceiver(servers []state.Server, in <-chan config.HerokuLogStreamItem, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
