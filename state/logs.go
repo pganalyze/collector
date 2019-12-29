@@ -141,6 +141,9 @@ type LogLine struct {
 	LogLevel   pganalyze_collector.LogLineInformation_LogLevel
 	BackendPid int32
 
+	// %l in log_line_prefix (or similar syslog equivalents)
+	LogLineNumber int32
+
 	Content string
 
 	Classification pganalyze_collector.LogLineInformation_LogClassification
