@@ -3,6 +3,7 @@ package logs
 import (
 	"fmt"
 	"io/ioutil"
+	"sort"
 	"time"
 
 	"github.com/pganalyze/collector/output/pganalyze_collector"
@@ -79,6 +80,12 @@ func AnalyzeStreamInGroups(logLines []state.LogLine) (state.LogState, state.LogF
 	}
 
 	for _, logLines := range backendLogLines {
+		sort.Slice(logLines, func(i, j int) bool {
+			if logLines[i].LogLineNumber != logLines[j].LogLineNumber {
+				return logLines[i].LogLineNumber < logLines[j].LogLineNumber
+			}
+			return logLines[i].OccurredAt.Unix() < logLines[j].OccurredAt.Unix()
+		})
 		var analyzableLogLines []state.LogLine
 		for _, logLine := range logLines {
 			if logLine.LogLevel != pganalyze_collector.LogLineInformation_UNKNOWN {
