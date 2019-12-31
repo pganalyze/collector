@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.26.0      2019-12-31
+
+* Add new wait events from Postgres 12
+* Avoid unnecessary allocations in ReplaceSecrets function
+* Rename "aws_endpoint_rds_signing_region" to "aws_endpoint_signing_region"
+  * This more accurately reflects how the setting is used. Backwards
+    compatibility is provided, but its recommended to migrate to the new
+    config setting (when in use for custom AWS API endpoints)
+
+
 ## 0.25.1      2019-12-18
 
 * Update rds-ca-2019-root.pem file to be correct certificate
