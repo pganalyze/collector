@@ -72,11 +72,12 @@ type ServerConfig struct {
 
 	// Support for custom AWS endpoints
 	// See https://docs.aws.amazon.com/sdk-for-go/api/aws/endpoints/
-	AwsEndpointSigningRegion     string `ini:"aws_endpoint_rds_signing_region"`
-	AwsEndpointRdsURL            string `ini:"aws_endpoint_rds_url"`
-	AwsEndpointEc2URL            string `ini:"aws_endpoint_ec2_url"`
-	AwsEndpointCloudwatchURL     string `ini:"aws_endpoint_cloudwatch_url"`
-	AwsEndpointCloudwatchLogsURL string `ini:"aws_endpoint_cloudwatch_logs_url"`
+	AwsEndpointSigningRegion       string `ini:"aws_endpoint_signing_region"`
+	AwsEndpointSigningRegionLegacy string `ini:"aws_endpoint_rds_signing_region"`
+	AwsEndpointRdsURL              string `ini:"aws_endpoint_rds_url"`
+	AwsEndpointEc2URL              string `ini:"aws_endpoint_ec2_url"`
+	AwsEndpointCloudwatchURL       string `ini:"aws_endpoint_cloudwatch_url"`
+	AwsEndpointCloudwatchLogsURL   string `ini:"aws_endpoint_cloudwatch_logs_url"`
 
 	AzureDbServerName string `ini:"azure_db_server_name"`
 

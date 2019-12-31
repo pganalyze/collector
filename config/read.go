@@ -252,6 +252,10 @@ func Read(logger *util.Logger, filename string) (Config, error) {
 				config.DbSslRootCert = sslRootTmpFile.Name()
 			}
 
+			if config.AwsEndpointSigningRegionLegacy != "" && config.AwsEndpointSigningRegion == "" {
+				config.AwsEndpointSigningRegion = config.AwsEndpointSigningRegionLegacy
+			}
+
 			config = autoDetectFromHostname(config)
 			config.SectionName = section.Name()
 			config.SystemType, config.SystemScope, config.SystemID = identifySystem(*config)
