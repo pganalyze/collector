@@ -24,6 +24,11 @@ func RunExplain(db *sql.DB, connectedDbName string, inputs []state.PostgresQuery
 			continue
 		}
 
+		// Ignore backup start queries (they usually take long but not because of something that can be EXPLAINed)
+		if strings.Contains(sample.Query, "pg_start_backup") {
+			continue
+		}
+
 		// TODO: We should run EXPLAIN for other databases here, which means we actually
 		// need to split the query samples per database, and then make one connection for each DB
 		if sample.Database != "" && sample.Database != connectedDbName {
