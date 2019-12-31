@@ -14,7 +14,7 @@ type logRange struct {
 const replacementChar = 'X'
 
 // ReplaceSecrets - Replaces the secrets of the specified kind with the replacement character in the text
-func ReplaceSecrets(input string, logLines []state.LogLine, filterLogSecret []state.LogSecretKind) string {
+func ReplaceSecrets(input []byte, logLines []state.LogLine, filterLogSecret []state.LogSecretKind) []byte {
 	var goodRanges []logRange
 
 	filterUnidentified := false
@@ -56,17 +56,16 @@ func ReplaceSecrets(input string, logLines []state.LogLine, filterLogSecret []st
 	})
 
 	var lastGood int64
-	output := []rune(input)
 	for _, r := range goodRanges {
 		for i := lastGood; i < r.start; i++ {
-			output[i] = replacementChar
+			input[i] = replacementChar
 		}
 		lastGood = r.end
 	}
 	if filterUnidentified {
 		for i := lastGood; i < int64(len(input)); i++ {
-			output[i] = replacementChar
+			input[i] = replacementChar
 		}
 	}
-	return string(output)
+	return input
 }

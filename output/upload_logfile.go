@@ -76,7 +76,7 @@ func EncryptAndUploadLogfiles(httpClient *http.Client, s3 state.GrantS3, encrypt
 		content, _ := ioutil.ReadFile(logFile.TmpFile.Name())
 
 		if len(logFile.FilterLogSecret) > 0 {
-			content = []byte(logs.ReplaceSecrets(string(content), logFile.LogLines, logFile.FilterLogSecret))
+			content = logs.ReplaceSecrets(content, logFile.LogLines, logFile.FilterLogSecret)
 		}
 
 		dst := &bytesReadWriteSeeker{}

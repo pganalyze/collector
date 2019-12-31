@@ -17,7 +17,8 @@ func DownloadLogs(server state.Server, connection *sql.DB, collectionOpts state.
 	ls.CollectedAt = time.Now()
 	ls.LogFiles, querySamples = system.DownloadLogFiles(server.Config, logger)
 
-	if server.Config.EnableLogExplain {
+	// TODO: Correctly pass connection for the logs runner case (on an interval)
+	if server.Config.EnableLogExplain && connection != nil {
 		ls.QuerySamples = postgres.RunExplain(connection, server.Config.GetDbName(), querySamples)
 	} else {
 		ls.QuerySamples = querySamples

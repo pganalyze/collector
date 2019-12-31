@@ -61,12 +61,12 @@ var replaceTests = []replaceTestpair{
 func TestReplaceSecrets(t *testing.T) {
 	for _, pair := range replaceTests {
 		logLines, _, _ := logs.ParseAndAnalyzeBuffer(string(pair.input), 0, time.Time{})
-		output := logs.ReplaceSecrets(string(pair.input), logLines, state.ParseFilterLogSecret(pair.filterLogSecret))
+		output := logs.ReplaceSecrets([]byte(pair.input), logLines, state.ParseFilterLogSecret(pair.filterLogSecret))
 
 		cfg := pretty.CompareConfig
 		cfg.SkipZeroFields = true
 
-		if diff := cfg.Compare(pair.output, output); diff != "" {
+		if diff := cfg.Compare(pair.output, string(output)); diff != "" {
 			t.Errorf("For filter \"%s\", text:\n%vdiff: (-want +got)\n%s", pair.filterLogSecret, pair.input, diff)
 		}
 	}

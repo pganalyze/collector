@@ -377,7 +377,7 @@ func main() {
 			return
 		}
 		logLines, _, _ := logs.ParseAndAnalyzeBuffer(string(content), 0, time.Time{})
-		output := logs.ReplaceSecrets(string(content), logLines, state.ParseFilterLogSecret(filterLogSecret))
+		output := logs.ReplaceSecrets(content, logLines, state.ParseFilterLogSecret(filterLogSecret))
 		fmt.Printf("%s", output)
 		return
 	}
