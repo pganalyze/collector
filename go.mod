@@ -4,7 +4,7 @@ module github.com/pganalyze/collector
 
 require (
 	github.com/StackExchange/wmi v0.0.0-20150520194626-f3e2bae1e0cb // indirect
-	github.com/aws/aws-sdk-go v1.16.17
+	github.com/aws/aws-sdk-go v1.26.8
 	github.com/bmizerany/lpx v0.0.0-20130503172629-af85cf24c156
 	github.com/certifi/gocertifi v0.0.0-20160926115448-a61bf5eafa3a // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
