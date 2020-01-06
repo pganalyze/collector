@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.27.0      2020-01-06
+
+* Activity snapshot: Track timestamp of previous activity snapshot
+* Support setting custom AWS endpoints using environment variables
+* Increase allowed characters for pid field to 7 (for 64-bit systems)
+  * This supports environments where pid_max is set to 4194304 instead of 32768
+  * Note that this means continuity with old backend/vacuum identities is lost
+    i.e. data might show up incorrectly for existing processes after the upgrade
+
+
 ## 0.26.0      2019-12-31
 
 * Add new wait events from Postgres 12
