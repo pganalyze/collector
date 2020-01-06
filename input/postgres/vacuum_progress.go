@@ -9,8 +9,8 @@ import (
 )
 
 const vacuumProgressSQLpg95 string = `
-SELECT (EXTRACT(epoch FROM a.query_start)::int::text || pg_catalog.to_char(pid, 'FM000000'))::bigint AS vacuum_identity,
-			 (EXTRACT(epoch FROM COALESCE(backend_start, pg_catalog.pg_postmaster_start_time()))::int::text || pg_catalog.to_char(pid, 'FM000000'))::bigint AS backend_identity,
+SELECT (EXTRACT(epoch FROM a.query_start)::int::text || pg_catalog.to_char(pid, 'FM0000000'))::bigint AS vacuum_identity,
+			 (EXTRACT(epoch FROM COALESCE(backend_start, pg_catalog.pg_postmaster_start_time()))::int::text || pg_catalog.to_char(pid, 'FM0000000'))::bigint AS backend_identity,
 			 a.datname,
 			 (SELECT pg_catalog.regexp_matches(query, 'autovacuum: VACUUM (ANALYZE )?([^\.]+).([^\(]+)( \(to prevent wraparound\))?'))[2] AS nspname,
 			 (SELECT pg_catalog.regexp_matches(query, 'autovacuum: VACUUM (ANALYZE )?([^\.]+).([^\(]+)( \(to prevent wraparound\))?'))[3] AS relname,
@@ -29,8 +29,8 @@ SELECT (EXTRACT(epoch FROM a.query_start)::int::text || pg_catalog.to_char(pid, 
 `
 
 const vacuumProgressSQLDefault string = `
-SELECT (EXTRACT(epoch FROM a.query_start)::int::text || pg_catalog.to_char(pid, 'FM000000'))::bigint AS vacuum_identity,
-			 (EXTRACT(epoch FROM COALESCE(backend_start, pg_catalog.pg_postmaster_start_time()))::int::text || pg_catalog.to_char(pid, 'FM000000'))::bigint AS backend_identity,
+SELECT (EXTRACT(epoch FROM a.query_start)::int::text || pg_catalog.to_char(pid, 'FM0000000'))::bigint AS vacuum_identity,
+			 (EXTRACT(epoch FROM COALESCE(backend_start, pg_catalog.pg_postmaster_start_time()))::int::text || pg_catalog.to_char(pid, 'FM0000000'))::bigint AS backend_identity,
 			 a.datname,
 			 COALESCE(n.nspname, (SELECT pg_catalog.regexp_matches(query, 'autovacuum: VACUUM (ANALYZE )?([^\.]+).([^\(]+)( \(to prevent wraparound\))?'))[2]) AS nspname,
 			 COALESCE(c.relname, (SELECT pg_catalog.regexp_matches(query, 'autovacuum: VACUUM (ANALYZE )?([^\.]+).([^\(]+)( \(to prevent wraparound\))?'))[3]) AS relname,
