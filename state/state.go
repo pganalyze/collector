@@ -12,6 +12,8 @@ import (
 type PersistedState struct {
 	CollectedAt time.Time
 
+	ActivitySnapshotAt time.Time
+
 	StatementStats PostgresStatementStatsMap
 	RelationStats  PostgresRelationStatsMap
 	IndexStats     PostgresIndexStatsMap

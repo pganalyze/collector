@@ -9,7 +9,7 @@ import (
 )
 
 func SubmitCompactActivitySnapshot(server state.Server, grant state.Grant, collectionOpts state.CollectionOpts, logger *util.Logger, activityState state.ActivityState) error {
-	as, r := transform.ActivityStateToCompactActivitySnapshot(activityState)
+	as, r := transform.ActivityStateToCompactActivitySnapshot(server, activityState)
 
 	if server.Config.FilterQuerySample == "all" {
 		for idx, backend := range as.Backends {

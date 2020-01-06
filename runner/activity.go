@@ -14,16 +14,18 @@ import (
 	"github.com/pkg/errors"
 )
 
-func processActivityForServer(server state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (bool, error) {
+func processActivityForServer(server state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.PersistedState, bool, error) {
 	var newGrant state.Grant
 	var err error
 	var connection *sql.DB
 	var activity state.ActivityState
 
+	newState := server.PrevState
+
 	if !globalCollectionOpts.ForceEmptyGrant {
 		newGrant, err = grant.GetDefaultGrant(server, globalCollectionOpts, logger)
 		if err != nil {
-			return false, errors.Wrap(err, "could not get default grant for activity snapshot")
+			return newState, false, errors.Wrap(err, "could not get default grant for activity snapshot")
 		}
 
 		if !newGrant.Config.EnableActivity {
@@ -32,44 +34,45 @@ func processActivityForServer(server state.Server, globalCollectionOpts state.Co
 			} else {
 				logger.PrintVerbose("Activity snapshots disabled by pganalyze, skipping")
 			}
-			return false, nil
+			return newState, false, nil
 		}
 	}
 
 	connection, err = postgres.EstablishConnection(server, logger, globalCollectionOpts, "")
 	if err != nil {
-		return false, errors.Wrap(err, "failed to connect to database")
+		return newState, false, errors.Wrap(err, "failed to connect to database")
 	}
 
 	defer connection.Close()
 
 	activity.Version, err = postgres.GetPostgresVersion(logger, connection)
 	if err != nil {
-		return false, errors.Wrap(err, "error collecting postgres version")
+		return newState, false, errors.Wrap(err, "error collecting postgres version")
 	}
 
 	if activity.Version.Numeric < state.MinRequiredPostgresVersion {
-		return false, fmt.Errorf("Error: Your PostgreSQL server version (%s) is too old, 9.2 or newer is required", activity.Version.Short)
+		return newState, false, fmt.Errorf("Error: Your PostgreSQL server version (%s) is too old, 9.2 or newer is required", activity.Version.Short)
 	}
 
 	activity.Backends, err = postgres.GetBackends(logger, connection, activity.Version, server.Config.SystemType)
 	if err != nil {
-		return false, errors.Wrap(err, "error collecting pg_stat_activity")
+		return newState, false, errors.Wrap(err, "error collecting pg_stat_activity")
 	}
 
 	activity.Vacuums, err = postgres.GetVacuumProgress(logger, connection, activity.Version)
 	if err != nil {
-		return false, errors.Wrap(err, "error collecting pg_stat_vacuum_progress")
+		return newState, false, errors.Wrap(err, "error collecting pg_stat_vacuum_progress")
 	}
 
 	activity.CollectedAt = time.Now()
 
 	err = output.SubmitCompactActivitySnapshot(server, newGrant, globalCollectionOpts, logger, activity)
 	if err != nil {
-		return false, errors.Wrap(err, "failed to upload/send activity snapshot")
+		return newState, false, errors.Wrap(err, "failed to upload/send activity snapshot")
 	}
+	newState.ActivitySnapshotAt = activity.CollectedAt
 
-	return true, nil
+	return newState, true, nil
 }
 
 // CollectActivityFromAllServers - Collects activity from all servers and sends them to the pganalyze service
@@ -91,15 +94,19 @@ func CollectActivityFromAllServers(servers []state.Server, globalCollectionOpts 
 				prefixedLogger.PrintInfo("Testing activity snapshots...")
 			}
 
-			success, err := processActivityForServer(*server, globalCollectionOpts, prefixedLogger)
+			servers[idx].StateMutex.Lock()
+			newState, success, err := processActivityForServer(*server, globalCollectionOpts, prefixedLogger)
 			if err != nil {
+				servers[idx].StateMutex.Unlock()
 				allSuccessful = false
 				prefixedLogger.PrintError("Could not collect activity for server: %s", err)
 				if server.Config.ErrorCallback != "" {
 					go runCompletionCallback("error", server.Config.ErrorCallback, server.Config.SectionName, "activity", err, prefixedLogger)
 				}
-			} else if success {
-				if server.Config.SuccessCallback != "" {
+			} else {
+				servers[idx].PrevState = newState
+				servers[idx].StateMutex.Unlock()
+				if success && server.Config.SuccessCallback != "" {
 					go runCompletionCallback("success", server.Config.SuccessCallback, server.Config.SectionName, "activity", nil, prefixedLogger)
 				}
 			}

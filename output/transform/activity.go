@@ -6,9 +6,13 @@ import (
 	"github.com/pganalyze/collector/state"
 )
 
-func ActivityStateToCompactActivitySnapshot(activityState state.ActivityState) (snapshot.CompactActivitySnapshot, snapshot.CompactSnapshot_BaseRefs) {
+func ActivityStateToCompactActivitySnapshot(server state.Server, activityState state.ActivityState) (snapshot.CompactActivitySnapshot, snapshot.CompactSnapshot_BaseRefs) {
 	var s snapshot.CompactActivitySnapshot
 	var r snapshot.CompactSnapshot_BaseRefs
+
+	if !server.PrevState.ActivitySnapshotAt.IsZero() {
+		s.PrevActivitySnapshotAt, _ = ptypes.TimestampProto(server.PrevState.ActivitySnapshotAt)
+	}
 
 	for _, backend := range activityState.Backends {
 		b := transformBackendWithoutRefs(backend)
