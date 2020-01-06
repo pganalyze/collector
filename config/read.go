@@ -99,6 +99,21 @@ func getDefaultConfig() *ServerConfig {
 	if awsSecretAccessKey := os.Getenv("AWS_SECRET_ACCESS_KEY"); awsSecretAccessKey != "" {
 		config.AwsSecretAccessKey = awsSecretAccessKey
 	}
+	if awsEndpointSigningRegion := os.Getenv("AWS_ENDPOINT_SIGNING_REGION"); awsEndpointSigningRegion != "" {
+		config.AwsEndpointSigningRegion = awsEndpointSigningRegion
+	}
+	if awsEndpointRdsURL := os.Getenv("AWS_ENDPOINT_RDS_URL"); awsEndpointRdsURL != "" {
+		config.AwsEndpointRdsURL = awsEndpointRdsURL
+	}
+	if awsEndpointEc2URL := os.Getenv("AWS_ENDPOINT_EC2_URL"); awsEndpointEc2URL != "" {
+		config.AwsEndpointEc2URL = awsEndpointEc2URL
+	}
+	if awsEndpointCloudwatchURL := os.Getenv("AWS_ENDPOINT_CLOUDWATCH_URL"); awsEndpointCloudwatchURL != "" {
+		config.AwsEndpointCloudwatchURL = awsEndpointCloudwatchURL
+	}
+	if awsEndpointCloudwatchLogsURL := os.Getenv("AWS_ENDPOINT_CLOUDWATCH_LOGS_URL"); awsEndpointCloudwatchLogsURL != "" {
+		config.AwsEndpointCloudwatchLogsURL = awsEndpointCloudwatchLogsURL
+	}
 	if azureDbServerName := os.Getenv("AZURE_DB_SERVER_NAME"); azureDbServerName != "" {
 		config.AzureDbServerName = azureDbServerName
 	}
