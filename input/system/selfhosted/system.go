@@ -111,7 +111,7 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger) (system sta
 	cpuInfos, err := cpu.Info()
 	if err != nil {
 		logger.PrintVerbose("Selfhosted/System: Failed to get CPU info: %s", err)
-	} else {
+	} else if len(cpuInfos) > 0 {
 		system.CPUInfo.Model = cpuInfos[0].ModelName
 		system.CPUInfo.CacheSizeBytes = cpuInfos[0].CacheSize * 1024
 		system.CPUInfo.SpeedMhz = cpuInfos[0].Mhz
