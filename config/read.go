@@ -191,8 +191,9 @@ func createHTTPClient(requireSSL bool) *http.Client {
 }
 
 func autoDetectFromHostname(config *ServerConfig) *ServerConfig {
-	if strings.HasSuffix(config.DbHost, ".rds.amazonaws.com") {
-		parts := strings.SplitN(config.DbHost, ".", 4)
+	host := config.GetDbHost()
+	if strings.HasSuffix(host, ".rds.amazonaws.com") {
+		parts := strings.SplitN(host, ".", 4)
 		if len(parts) == 4 && parts[3] == "rds.amazonaws.com" { // Safety check for any escaping issues
 			if config.AwsDbInstanceID == "" {
 				config.AwsDbInstanceID = parts[0]
@@ -201,8 +202,8 @@ func autoDetectFromHostname(config *ServerConfig) *ServerConfig {
 				config.AwsRegion = parts[2]
 			}
 		}
-	} else if strings.HasSuffix(config.DbHost, ".postgres.database.azure.com") {
-		parts := strings.SplitN(config.DbHost, ".", 2)
+	} else if strings.HasSuffix(host, ".postgres.database.azure.com") {
+		parts := strings.SplitN(host, ".", 2)
 		if len(parts) == 2 && parts[1] == "postgres.database.azure.com" { // Safety check for any escaping issues
 			if config.AzureDbServerName == "" {
 				config.AzureDbServerName = parts[0]
