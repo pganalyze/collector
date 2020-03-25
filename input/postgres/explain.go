@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/lib/pq"
 	pg_query "github.com/lfittl/pg_query_go"
 	pg_query_nodes "github.com/lfittl/pg_query_go/nodes"
 	"github.com/pganalyze/collector/output/pganalyze_collector"
@@ -29,11 +30,6 @@ func RunExplain(db *sql.DB, connectedDbName string, inputs []state.PostgresQuery
 			continue
 		}
 
-		// TODO: We should utilize PREPARE/EXECUTE to EXPLAIN statements with parameters
-		if len(sample.Parameters) > 0 {
-			continue
-		}
-
 		// To be on the safe side never EXPLAIN a statement that can't be parsed,
 		// or multiple statements in one (leading to accidental execution)
 		parsetree, err := pg_query.Parse(sample.Query)
@@ -44,9 +40,29 @@ func RunExplain(db *sql.DB, connectedDbName string, inputs []state.PostgresQuery
 				sample.HasExplain = true
 				sample.ExplainSource = pganalyze_collector.QuerySample_STATEMENT_LOG_EXPLAIN_SOURCE
 				sample.ExplainFormat = pganalyze_collector.QuerySample_JSON_EXPLAIN_FORMAT
-				err = db.QueryRow(QueryMarkerSQL + "EXPLAIN (VERBOSE, FORMAT JSON) " + sample.Query).Scan(&sample.ExplainOutput)
-				if err != nil {
-					sample.ExplainError = fmt.Sprintf("%s", err)
+
+				if len(sample.Parameters) > 0 {
+					_, err = db.Exec(QueryMarkerSQL + "PREPARE pganalyze_explain AS " + sample.Query)
+					if err != nil {
+						sample.ExplainError = fmt.Sprintf("%s", err)
+						continue
+					}
+
+					params := []string{}
+					for i := 0; i < len(sample.Parameters); i++ {
+						params = append(params, pq.QuoteLiteral(sample.Parameters[i]))
+					}
+					err = db.QueryRow(QueryMarkerSQL + "EXPLAIN (VERBOSE, FORMAT JSON) EXECUTE pganalyze_explain(" + strings.Join(params, ", ") + ")").Scan(&sample.ExplainOutput)
+					if err != nil {
+						sample.ExplainError = fmt.Sprintf("%s", err)
+					}
+
+					db.Exec(QueryMarkerSQL + "DEALLOCATE pganalyze_explain")
+				} else {
+					err = db.QueryRow(QueryMarkerSQL + "EXPLAIN (VERBOSE, FORMAT JSON) " + sample.Query).Scan(&sample.ExplainOutput)
+					if err != nil {
+						sample.ExplainError = fmt.Sprintf("%s", err)
+					}
 				}
 			}
 		}
