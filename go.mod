@@ -24,7 +24,7 @@ require (
 	github.com/kr/logfmt v0.0.0-20140226030751-b84e30acd515
 	github.com/kylelemons/godebug v0.0.0-20170224010052-a616ab194758
 	github.com/lfittl/pg_query_go v1.0.0
-	github.com/lib/pq v0.0.0-20160623220637-4dd446efc176
+	github.com/lib/pq v1.3.0
 	github.com/ogier/pflag v0.0.0-20160129220114-45c278ab3607
 	github.com/pkg/errors v0.8.2-0.20190227000051-27936f6d90f9
 	github.com/satori/go.uuid v0.0.0-20160713180306-0aa62d5ddceb
