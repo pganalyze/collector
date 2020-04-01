@@ -1,5 +1,5 @@
 DOCKER_BUILD_OPTS = -t pganalyze-collector-test ..
-DOCKER_RUN_CMD = docker run --name pganalyze-collector-test -v `pwd`/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d/ -d pganalyze-collector-test
+DOCKER_RUN_CMD = docker run --name pganalyze-collector-test -v `pwd`/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d/ -e POSTGRES_PASSWORD=password -d pganalyze-collector-test
 
 .PHONY: pg92 pg93 pg94 pg95 pg96 pg10 pg11
 
