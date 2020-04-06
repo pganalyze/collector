@@ -65,6 +65,8 @@ var RsyslogHostnameRegxp = `(\S+)`
 var RsyslogProcessNameRegexp = `(\w+)`
 var RsyslogRegexp = regexp.MustCompile(`^` + RsyslogTimeRegexp + ` ` + RsyslogHostnameRegxp + ` ` + RsyslogProcessNameRegexp + `\[` + PidRegexp + `\]: ` + SyslogSequenceAndSplitRegexp + ` ` + RsyslogLevelAndContentRegexp)
 
+var HerokuPostgresDebugRegexp = regexp.MustCompile(`^(\w+ \d+ \d+:\d+:\d+ \w+ app\[postgres\] \w+ )?\[(\w+)\] \[\d+-\d+\] ( sql_error_code = ` + SqlstateRegexp + ` (\w+):  )?(.+)`)
+
 func IsSupportedPrefix(prefix string) bool {
 	for _, supportedPrefix := range SupportedPrefixes {
 		if supportedPrefix == prefix {
@@ -333,4 +335,61 @@ func ParseAndAnalyzeBuffer(buffer string, initialByteStart int64, linesNewerThan
 
 	newLogLines, newSamples := AnalyzeLogLines(logLines)
 	return newLogLines, newSamples, currentByteStart
+}
+
+func DebugParseAndAnalyzeBuffer(buffer string) ([]state.LogLine, []state.PostgresQuerySample) {
+	var logLines []state.LogLine
+	currentByteStart := int64(0)
+	reader := bufio.NewReader(strings.NewReader(buffer))
+
+	for {
+		line, err := reader.ReadString('\n')
+		byteStart := currentByteStart
+		currentByteStart += int64(len(line))
+
+		// This is intentionally after updating currentByteStart, since we consume the
+		// data in the file even if an error is returned
+		if err != nil {
+			if err != io.EOF {
+				fmt.Printf("Log Read ERROR: %s", err)
+			}
+			break
+		}
+
+		contentParts := HerokuPostgresDebugRegexp.FindStringSubmatch(line)
+		var logLine state.LogLine
+		if len(contentParts) == 7 {
+			logLine.Content = contentParts[6]
+			if contentParts[4] != "" && contentParts[5] != "" { // We have a SQLSTATE and a log level, so its a new Postgres log line
+				logLine.LogLevel = pganalyze_collector.LogLineInformation_LogLevel(pganalyze_collector.LogLineInformation_LogLevel_value[contentParts[5]])
+			} else {
+				logLines[len(logLines)-1].Content += logLine.Content
+				logLines[len(logLines)-1].ByteEnd += int64(len(logLine.Content))
+				continue
+			}
+		} else {
+			logLine, ok := ParseLogLineWithPrefix("", line)
+			if !ok {
+				// Assume that a parsing error in a follow-on line means that we actually
+				// got additional data for the previous line
+				if len(logLines) > 0 && logLine.Content != "" {
+					logLines[len(logLines)-1].Content += logLine.Content
+					logLines[len(logLines)-1].ByteEnd += int64(len(logLine.Content))
+				}
+				continue
+			}
+		}
+
+		logLine.ByteStart = byteStart
+		logLine.ByteContentStart = byteStart + int64(len(line)-len(logLine.Content))
+		logLine.ByteEnd = byteStart + int64(len(line)) - 1
+
+		// Generate unique ID that can be used to reference this line
+		logLine.UUID = uuid.NewV4()
+
+		logLines = append(logLines, logLine)
+	}
+
+	newLogLines, newSamples := AnalyzeLogLines(logLines)
+	return newLogLines, newSamples
 }

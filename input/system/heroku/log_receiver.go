@@ -11,9 +11,9 @@ import (
 	"github.com/pganalyze/collector/config"
 	"github.com/pganalyze/collector/grant"
 	"github.com/pganalyze/collector/input/postgres"
+	"github.com/pganalyze/collector/logs/stream"
 	"github.com/pganalyze/collector/output"
 	"github.com/pganalyze/collector/output/pganalyze_collector"
-	"github.com/pganalyze/collector/runner/stream"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
 	uuid "github.com/satori/go.uuid"
@@ -129,7 +129,7 @@ func processSystemMetrics(timestamp time.Time, content []byte, nameToServer map[
 	return
 }
 
-func processLogLine(timestamp time.Time, backendPid int64, logLineNumber int64, logLevel string, content string, nameToServer map[string]state.Server) *state.LogLine {
+func makeLogLine(timestamp time.Time, backendPid int64, logLineNumber int64, logLevel string, content string, nameToServer map[string]state.Server) *state.LogLine {
 	var logLine state.LogLine
 
 	logLine.CollectedAt = time.Now()
@@ -146,7 +146,7 @@ func processLogLine(timestamp time.Time, backendPid int64, logLineNumber int64, 
 	return &logLine
 }
 
-func processItem(item config.HerokuLogStreamItem, servers []state.Server, nameToServer map[string]state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (map[string]state.Server, *state.LogLine, string) {
+func logStreamItemToLogLine(item config.HerokuLogStreamItem, servers []state.Server, nameToServer map[string]state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (map[string]state.Server, *state.LogLine, string) {
 	timestamp, err := time.Parse(time.RFC3339, string(item.Header.Time))
 	if err != nil {
 		return nameToServer, nil, ""
@@ -184,7 +184,7 @@ func processItem(item config.HerokuLogStreamItem, servers []state.Server, nameTo
 
 	nameToServer = catchIdentifyServerLine(sourceName, content, nameToServer, servers)
 
-	newLogLine := processLogLine(timestamp, backendPid, logLineNumber, logLevel, content, nameToServer)
+	newLogLine := makeLogLine(timestamp, backendPid, logLineNumber, logLevel, content, nameToServer)
 
 	return nameToServer, newLogLine, sourceName
 }
@@ -204,7 +204,7 @@ func logReceiver(servers []state.Server, in <-chan config.HerokuLogStreamItem, g
 
 		var newLogLine *state.LogLine
 		var sourceName string
-		nameToServer, newLogLine, sourceName = processItem(item, servers, nameToServer, globalCollectionOpts, logger)
+		nameToServer, newLogLine, sourceName = logStreamItemToLogLine(item, servers, nameToServer, globalCollectionOpts, logger)
 		if newLogLine != nil && sourceName != "" {
 			logLinesByName[sourceName] = append(logLinesByName[sourceName], *newLogLine)
 		}
@@ -224,7 +224,7 @@ func logReceiver(servers []state.Server, in <-chan config.HerokuLogStreamItem, g
 			}
 
 			prefixedLogger := logger.WithPrefix(server.Config.SectionName)
-			logLinesByName[sourceName] = stream.ProcessLogs(server, logLines, globalCollectionOpts, prefixedLogger, nil)
+			logLinesByName[sourceName] = stream.ProcessLogStream(server, logLines, globalCollectionOpts, prefixedLogger, nil)
 		}
 	}
 }

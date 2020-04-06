@@ -13,7 +13,6 @@ import (
 	"strconv"
 	"sync"
 	"syscall"
-	"time"
 
 	"github.com/juju/syslog"
 
@@ -365,7 +364,7 @@ func main() {
 			fmt.Printf("ERROR: %s\n", err)
 			return
 		}
-		logLines, samples, _ := logs.ParseAndAnalyzeBuffer(string(content), 0, time.Time{})
+		logLines, samples := logs.DebugParseAndAnalyzeBuffer(string(content))
 		logs.PrintDebugInfo(string(content), logLines, samples)
 		return
 	}
@@ -376,7 +375,7 @@ func main() {
 			fmt.Printf("ERROR: %s\n", err)
 			return
 		}
-		logLines, _, _ := logs.ParseAndAnalyzeBuffer(string(content), 0, time.Time{})
+		logLines, _ := logs.DebugParseAndAnalyzeBuffer(string(content))
 		output := logs.ReplaceSecrets(content, logLines, state.ParseFilterLogSecret(filterLogSecret))
 		fmt.Printf("%s", output)
 		return
