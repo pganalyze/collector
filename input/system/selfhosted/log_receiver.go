@@ -18,7 +18,7 @@ import (
 	"github.com/hpcloud/tail"
 	"github.com/pganalyze/collector/input/postgres"
 	"github.com/pganalyze/collector/logs"
-	"github.com/pganalyze/collector/runner/stream"
+	"github.com/pganalyze/collector/logs/stream"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
 	uuid "github.com/satori/go.uuid"
@@ -394,7 +394,7 @@ func logReceiver(server state.Server, globalCollectionOpts state.CollectionOpts,
 		linesNewerThan := time.Now().Add(-1 * time.Minute)
 
 		// Use a timeout to clear out loglines that don't have any follow-on lines
-		// (the threshold used in stream.ProcessLogs is 3 seconds)
+		// (the threshold used in logs.ProcessLogStream is 3 seconds)
 		timeout := make(chan bool, 1)
 		go func() {
 			time.Sleep(3 * time.Second)
@@ -421,10 +421,10 @@ func logReceiver(server state.Server, globalCollectionOpts state.CollectionOpts,
 				}
 
 				logLines = append(logLines, logLine)
-				logLines = stream.ProcessLogs(server, logLines, globalCollectionOpts, prefixedLogger, logTestSucceeded)
+				logLines = stream.ProcessLogStream(server, logLines, globalCollectionOpts, prefixedLogger, logTestSucceeded)
 			case <-timeout:
 				if len(logLines) > 0 {
-					logLines = stream.ProcessLogs(server, logLines, globalCollectionOpts, prefixedLogger, logTestSucceeded)
+					logLines = stream.ProcessLogStream(server, logLines, globalCollectionOpts, prefixedLogger, logTestSucceeded)
 				}
 				go func() {
 					time.Sleep(3 * time.Second)
