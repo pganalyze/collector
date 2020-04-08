@@ -88,7 +88,7 @@ func writeTmpLogFile(readyLogLines []state.LogLine) (state.LogFile, error) {
 		}
 		logLine.ByteStart = currentByteStart
 		logLine.ByteContentStart = currentByteStart
-		logLine.ByteEnd = currentByteStart + int64(len(logLine.Content)) - 1
+		logLine.ByteEnd = currentByteStart + int64(len(logLine.Content))
 		readyLogLines[idx] = logLine
 		currentByteStart += int64(len(logLine.Content))
 	}
