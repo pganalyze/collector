@@ -36,7 +36,7 @@ var tests = []testpair{
 			LogLines: []state.LogLine{{
 				CollectedAt: now.Add(- 5 * time.Second),
 				LogLevel: pganalyze_collector.LogLineInformation_LOG,
-				ByteEnd: 5,
+				ByteEnd: 6,
 			}},
 		},
 		"dummy\n",
@@ -77,14 +77,14 @@ var tests = []testpair{
 			LogLines: []state.LogLine{{
 				CollectedAt: now.Add(- 5 * time.Second),
 				LogLevel: pganalyze_collector.LogLineInformation_LOG,
-				ByteEnd: 5,
+				ByteEnd: 6,
 			},
 			{
 				CollectedAt: now.Add(- 5 * time.Second),
 				LogLevel: pganalyze_collector.LogLineInformation_DETAIL,
 				ByteStart: 6,
 				ByteContentStart: 6,
-				ByteEnd: 12,
+				ByteEnd: 13,
 			}},
 		},
 		"first\nsecond\n",
@@ -107,7 +107,7 @@ var tests = []testpair{
 			LogLines: []state.LogLine{{
 				CollectedAt: now.Add(- 5 * time.Second),
 				LogLevel: pganalyze_collector.LogLineInformation_LOG,
-				ByteEnd: 12,
+				ByteEnd: 13,
 			}},
 		},
 		"first\nsecond\n",
@@ -135,7 +135,7 @@ var tests = []testpair{
 				CollectedAt: now.Add(- 5 * time.Second),
 				LogLevel: pganalyze_collector.LogLineInformation_LOG,
 				LogLineNumber: 1,
-				ByteEnd: 12,
+				ByteEnd: 13,
 				BackendPid: 42,
 			}},
 		},
