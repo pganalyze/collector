@@ -247,6 +247,7 @@ func main() {
 	var noPostgresRelations, noLogs, noExplain, noSystemInformation bool
 	var writeHeapProfile bool
 	var testRunAndTrace bool
+	var psqlExplain bool
 	var logToSyslog bool
 	var logNoTimestamps bool
 	var reloadRun bool
@@ -281,6 +282,7 @@ func main() {
 	flag.BoolVar(&noSystemInformation, "no-system-information", false, "Don't collect OS level performance data")
 	flag.BoolVar(&writeHeapProfile, "write-heap-profile", false, "Write a Go memory heap profile to ~/pganalyze_collector.mprof when SIGHUP is received (disabled by default, only useful for debugging)")
 	flag.BoolVar(&testRunAndTrace, "trace", false, "Write a Go trace file to ~/pganalyze_collector.trace for a single test run (only useful for debugging)")
+	flag.BoolVar(&psqlExplain, "psql-explain", false, "EXPLAIN mode for psql - continuously uploads new EXPLAIN plans that were run in psql")
 	flag.StringVar(&configFilename, "config", defaultConfigFile, "Specify alternative path for config file")
 	flag.StringVar(&stateFilename, "statefile", defaultStateFile, "Specify alternative path for state file")
 	flag.StringVar(&pidFilename, "pidfile", "", "Specifies a path that a pidfile should be written to (default is no pidfile being written)")
@@ -314,6 +316,11 @@ func main() {
 				configFilename = usr.HomeDir + "/.pganalyze_collector.conf"
 			}
 		}
+	}
+
+	if psqlExplain {
+		runner.HandlePsqlExplain(logger, configFilename)
+		return
 	}
 
 	if testReport != "" || testRunLogs || testRunAndTrace {
