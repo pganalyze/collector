@@ -87,6 +87,18 @@ func getDefaultConfig() *ServerConfig {
 	if dbSslRootCertContents := os.Getenv("DB_SSLROOTCERT_CONTENTS"); dbSslRootCertContents != "" {
 		config.DbSslRootCertContents = dbSslRootCertContents
 	}
+	if dbSslCert := os.Getenv("DB_SSLCERT"); dbSslCert != "" {
+		config.DbSslCert = dbSslCert
+	}
+	if dbSslCertContents := os.Getenv("DB_SSLCERT_CONTENTS"); dbSslCertContents != "" {
+		config.DbSslCertContents = dbSslCertContents
+	}
+	if dbSslKey := os.Getenv("DB_SSLKEY"); dbSslKey != "" {
+		config.DbSslKey = dbSslKey
+	}
+	if dbSslKeyContents := os.Getenv("DB_SSLKEY_CONTENTS"); dbSslKeyContents != "" {
+		config.DbSslKeyContents = dbSslKeyContents
+	}
 	if awsRegion := os.Getenv("AWS_REGION"); awsRegion != "" {
 		config.AwsRegion = awsRegion
 	}
@@ -266,6 +278,38 @@ func Read(logger *util.Logger, filename string) (Config, error) {
 					return conf, err
 				}
 				config.DbSslRootCert = sslRootTmpFile.Name()
+			}
+
+			if config.DbSslCertContents != "" {
+				sslCertTmpFile, err := ioutil.TempFile("", "")
+				if err != nil {
+					return conf, err
+				}
+				_, err = sslCertTmpFile.WriteString(config.DbSslCertContents)
+				if err != nil {
+					return conf, err
+				}
+				err = sslCertTmpFile.Close()
+				if err != nil {
+					return conf, err
+				}
+				config.DbSslCert = sslCertTmpFile.Name()
+			}
+
+			if config.DbSslKeyContents != "" {
+				sslKeyTmpFile, err := ioutil.TempFile("", "")
+				if err != nil {
+					return conf, err
+				}
+				_, err = sslKeyTmpFile.WriteString(config.DbSslKeyContents)
+				if err != nil {
+					return conf, err
+				}
+				err = sslKeyTmpFile.Close()
+				if err != nil {
+					return conf, err
+				}
+				config.DbSslKey = sslKeyTmpFile.Name()
 			}
 
 			if config.AwsEndpointSigningRegionLegacy != "" && config.AwsEndpointSigningRegion == "" {

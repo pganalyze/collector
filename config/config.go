@@ -56,6 +56,10 @@ type ServerConfig struct {
 	DbSslMode             string `ini:"db_sslmode"`
 	DbSslRootCert         string `ini:"db_sslrootcert"`
 	DbSslRootCertContents string `ini:"db_sslrootcert_contents"`
+	DbSslCert             string `ini:"db_sslcert"`
+	DbSslCertContents     string `ini:"db_sslcert_contents"`
+	DbSslKey              string `ini:"db_sslkey"`
+	DbSslKeyContents      string `ini:"db_sslkey_contents"`
 
 	// We have to do some tricks to support sslmode=prefer, namely we have to
 	// first try an SSL connection (= require), and if that fails change the
@@ -130,7 +134,7 @@ type ServerConfig struct {
 
 // GetPqOpenString - Gets the database configuration as a string that can be passed to lib/pq for connecting
 func (config ServerConfig) GetPqOpenString(dbNameOverride string) string {
-	var dbUsername, dbPassword, dbName, dbHost, dbSslMode, dbSslRootCert string
+	var dbUsername, dbPassword, dbName, dbHost, dbSslMode, dbSslRootCert, dbSslCert, dbSslKey string
 	var dbPort int
 
 	if config.DbURL != "" {
@@ -159,6 +163,10 @@ func (config ServerConfig) GetPqOpenString(dbNameOverride string) string {
 				dbSslMode = keyValue[1]
 			case "sslrootcert":
 				dbSslRootCert = keyValue[1]
+			case "sslcert":
+				dbSslCert = keyValue[1]
+			case "sslkey":
+				dbSslKey = keyValue[1]
 			}
 		}
 	}
@@ -187,6 +195,12 @@ func (config ServerConfig) GetPqOpenString(dbNameOverride string) string {
 	}
 	if config.DbSslRootCert != "" {
 		dbSslRootCert = config.DbSslRootCert
+	}
+	if config.DbSslCert != "" {
+		dbSslCert = config.DbSslCert
+	}
+	if config.DbSslKey != "" {
+		dbSslKey = config.DbSslKey
 	}
 
 	// Defaults if nothing is set
@@ -238,6 +252,12 @@ func (config ServerConfig) GetPqOpenString(dbNameOverride string) string {
 	}
 	if dbSslRootCert != "" {
 		dbinfo = append(dbinfo, fmt.Sprintf("sslrootcert='%s'", strings.Replace(dbSslRootCert, "'", "\\'", -1)))
+	}
+	if dbSslCert != "" {
+		dbinfo = append(dbinfo, fmt.Sprintf("sslcert='%s'", strings.Replace(dbSslCert, "'", "\\'", -1)))
+	}
+	if dbSslKey != "" {
+		dbinfo = append(dbinfo, fmt.Sprintf("sslkey='%s'", strings.Replace(dbSslKey, "'", "\\'", -1)))
 	}
 	dbinfo = append(dbinfo, "connect_timeout=10")
 
