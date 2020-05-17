@@ -18,11 +18,11 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
-const defaultAPIBaseURL = "https://api.pganalyze.com"
+const DefaultAPIBaseURL = "https://api.pganalyze.com"
 
 func getDefaultConfig() *ServerConfig {
 	config := &ServerConfig{
-		APIBaseURL:              defaultAPIBaseURL,
+		APIBaseURL:              DefaultAPIBaseURL,
 		AwsRegion:               "us-east-1",
 		SectionName:             "default",
 		QueryStatsInterval:      60,
@@ -150,7 +150,7 @@ func getDefaultConfig() *ServerConfig {
 	return config
 }
 
-func createHTTPClient(requireSSL bool) *http.Client {
+func CreateHTTPClient(requireSSL bool) *http.Client {
 	transport := &http.Transport{
 		Proxy: http.ProxyFromEnvironment,
 		DialContext: (&net.Dialer{
@@ -314,10 +314,6 @@ func Read(logger *util.Logger, filename string) (Config, error) {
 		} else {
 			return conf, fmt.Errorf("No configuration file found at %s, and no environment variables set", filename)
 		}
-	}
-
-	for idx, server := range conf.Servers {
-		conf.Servers[idx].HTTPClient = createHTTPClient(server.APIBaseURL == defaultAPIBaseURL)
 	}
 
 	return conf, nil

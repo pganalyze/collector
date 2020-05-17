@@ -50,6 +50,10 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 		return
 	}
 
+	for idx, server := range conf.Servers {
+		conf.Servers[idx].HTTPClient = config.CreateHTTPClient(server.APIBaseURL == config.DefaultAPIBaseURL)
+	}
+
 	// Avoid even running the scheduler when we already know its not needed
 	hasAnyLogsEnabled := false
 	hasAnyReportsEnabled := false
