@@ -22,10 +22,11 @@ const LogPrefixCustom4 string = "%m [%p] %q[user=%u,db=%d,app=%a,host=%h] "
 const LogPrefixCustom5 string = "%t [%p]: [%l-1] user=%u,db=%d - PG-%e "
 const LogPrefixCustom6 string = "%t [%p]: [%l-1] user=%u,db=%d,app=%a,client=%h "
 const LogPrefixCustom7 string = "%t [%p]: [%l-1] [trx_id=%x] user=%u,db=%d "
+const LogPrefixCustom8 string = "[%p]: [%l-1] db=%d,user=%u "
 const LogPrefixSimple string = "%m [%p] "
 const LogPrefixEmpty string = ""
 
-var SupportedPrefixes = []string{LogPrefixAmazonRds, LogPrefixCustom1, LogPrefixCustom2, LogPrefixCustom3, LogPrefixCustom4, LogPrefixCustom5, LogPrefixCustom6, LogPrefixCustom7, LogPrefixSimple, LogPrefixEmpty}
+var SupportedPrefixes = []string{LogPrefixAmazonRds, LogPrefixCustom1, LogPrefixCustom2, LogPrefixCustom3, LogPrefixCustom4, LogPrefixCustom5, LogPrefixCustom6, LogPrefixCustom7, LogPrefixCustom8, LogPrefixSimple, LogPrefixEmpty}
 
 // Every one of these regexps should produce exactly one matching group
 var TimeRegexp = `(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(?:\.\d+)? [\-+]?\w+)` // %t or %m
@@ -54,6 +55,7 @@ var LogPrefixCustom4Regexp = regexp.MustCompile(`^` + TimeRegexp + ` \[` + PidRe
 var LogPrefixCustom5Regexp = regexp.MustCompile(`^` + TimeRegexp + ` \[` + PidRegexp + `\]: \[` + LogLineCounterRegexp + `-1\] user=` + UserRegexp + `,db=` + DbRegexp + ` - PG-` + SqlstateRegexp + ` ` + LevelAndContentRegexp)
 var LogPrefixCustom6Regexp = regexp.MustCompile(`^` + TimeRegexp + ` \[` + PidRegexp + `\]: \[` + LogLineCounterRegexp + `-1\] user=` + UserRegexp + `,db=` + DbRegexp + `,app=` + AppRegexp + `,client=` + HostRegexp + ` ` + LevelAndContentRegexp)
 var LogPrefixCustom7Regexp = regexp.MustCompile(`^` + TimeRegexp + ` \[` + PidRegexp + `\]: \[` + LogLineCounterRegexp + `-1\] \[trx_id=` + TransactionIdRegexp + `\] user=` + UserRegexp + `,db=` + DbRegexp + ` ` + LevelAndContentRegexp)
+var LogPrefixCustom8Regexp = regexp.MustCompile(`^\[` + PidRegexp + `\]: \[` + LogLineCounterRegexp + `-1\] db=` + DbRegexp + `,user=` + UserRegexp + ` ` + LevelAndContentRegexp)
 var LogPrefixSimpleRegexp = regexp.MustCompile(`^` + TimeRegexp + ` \[` + PidRegexp + `\] ` + LevelAndContentRegexp)
 var LogPrefixNoTimestampUserDatabaseAppRegexp = regexp.MustCompile(`^\[user=` + UserRegexp + `,db=` + DbRegexp + `,app=` + AppRegexp + `\] ` + LevelAndContentRegexp)
 
@@ -77,7 +79,7 @@ func IsSupportedPrefix(prefix string) bool {
 }
 
 func ParseLogLineWithPrefix(prefix string, line string) (logLine state.LogLine, ok bool) {
-	var timePart, userPart, dbPart, appPart, pidPart, levelPart, contentPart string
+	var timePart, userPart, dbPart, appPart, pidPart, logLineNumberPart, levelPart, contentPart string
 
 	// Assume Postgres time format unless overriden by the prefix (e.g. syslog)
 	timeFormat := "2006-01-02 15:04:05 -0700"
@@ -102,6 +104,8 @@ func ParseLogLineWithPrefix(prefix string, line string) (logLine state.LogLine, 
 			prefix = LogPrefixCustom6
 		} else if LogPrefixCustom7Regexp.MatchString(line) {
 			prefix = LogPrefixCustom7
+		} else if LogPrefixCustom8Regexp.MatchString(line) {
+			prefix = LogPrefixCustom8
 		} else if LogPrefixSimpleRegexp.MatchString(line) {
 			prefix = LogPrefixSimple
 		} else if RsyslogRegexp.MatchString(line) {
@@ -155,7 +159,7 @@ func ParseLogLineWithPrefix(prefix string, line string) (logLine state.LogLine, 
 			timePart = parts[1]
 			pidPart = parts[2]
 			// skip %v (virtual TX)
-			// skip %l (log line counter)
+			logLineNumberPart = parts[4]
 			appPart = parts[5]
 			levelPart = parts[6]
 			contentPart = parts[7]
@@ -166,7 +170,7 @@ func ParseLogLineWithPrefix(prefix string, line string) (logLine state.LogLine, 
 			}
 			timePart = parts[1]
 			pidPart = parts[2]
-			// skip %l (log line counter)
+			logLineNumberPart = parts[3]
 			userPart = parts[4]
 			dbPart = parts[5]
 			levelPart = parts[6]
@@ -203,7 +207,7 @@ func ParseLogLineWithPrefix(prefix string, line string) (logLine state.LogLine, 
 			}
 			timePart = parts[1]
 			pidPart = parts[2]
-			// skip %l (log line counter)
+			logLineNumberPart = parts[3]
 			userPart = parts[4]
 			dbPart = parts[5]
 			// skip %e (SQLSTATE)
@@ -216,7 +220,7 @@ func ParseLogLineWithPrefix(prefix string, line string) (logLine state.LogLine, 
 			}
 			timePart = parts[1]
 			pidPart = parts[2]
-			// skip %l (log line counter)
+			logLineNumberPart = parts[3]
 			userPart = parts[4]
 			dbPart = parts[5]
 			// skip %a (application name)
@@ -230,12 +234,23 @@ func ParseLogLineWithPrefix(prefix string, line string) (logLine state.LogLine, 
 			}
 			timePart = parts[1]
 			pidPart = parts[2]
-			// skip %l (log line counter)
+			logLineNumberPart = parts[3]
 			// skip %x (transaction id)
 			userPart = parts[5]
 			dbPart = parts[6]
 			levelPart = parts[7]
 			contentPart = parts[8]
+		case LogPrefixCustom8: // "[%p]: [%l-1] db=%d,user=%u "
+			parts := LogPrefixCustom8Regexp.FindStringSubmatch(line)
+			if len(parts) == 0 {
+				return
+			}
+			pidPart = parts[1]
+			logLineNumberPart = parts[2]
+			dbPart = parts[3]
+			userPart = parts[4]
+			levelPart = parts[5]
+			contentPart = parts[6]
 		case LogPrefixSimple: // "%t [%p] "
 			parts := LogPrefixSimpleRegexp.FindStringSubmatch(line)
 			if len(parts) == 0 {
@@ -248,18 +263,21 @@ func ParseLogLineWithPrefix(prefix string, line string) (logLine state.LogLine, 
 		default:
 			// Some callers use the content of unparsed lines to stitch multi-line logs together
 			logLine.Content = line
+			return
 		}
 	}
 
 	var err error
-	logLine.OccurredAt, err = time.Parse(timeFormat, timePart)
-	if err != nil {
-		if timeFormatAlt != "" {
-			logLine.OccurredAt, err = time.Parse(timeFormatAlt, timePart)
-		}
+	if timePart != "" {
+		logLine.OccurredAt, err = time.Parse(timeFormat, timePart)
 		if err != nil {
-			ok = false
-			return
+			if timeFormatAlt != "" {
+				logLine.OccurredAt, err = time.Parse(timeFormatAlt, timePart)
+			}
+			if err != nil {
+				ok = false
+				return
+			}
 		}
 	}
 
@@ -271,6 +289,10 @@ func ParseLogLineWithPrefix(prefix string, line string) (logLine state.LogLine, 
 	}
 	if appPart != "[unknown]" {
 		logLine.Application = appPart
+	}
+	if logLineNumberPart != "" {
+		logLineNumber, _ := strconv.Atoi(logLineNumberPart)
+		logLine.LogLineNumber = int32(logLineNumber)
 	}
 
 	backendPid, _ := strconv.Atoi(pidPart)
@@ -368,7 +390,8 @@ func DebugParseAndAnalyzeBuffer(buffer string) ([]state.LogLine, []state.Postgre
 				continue
 			}
 		} else {
-			logLine, ok := ParseLogLineWithPrefix("", line)
+			var ok bool
+			logLine, ok = ParseLogLineWithPrefix("", line)
 			if !ok {
 				// Assume that a parsing error in a follow-on line means that we actually
 				// got additional data for the previous line
