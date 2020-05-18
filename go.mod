@@ -21,7 +21,6 @@ require (
 	github.com/gopherjs/gopherjs v0.0.0-20181103185306-d547d1d9531e // indirect
 	github.com/gorhill/cronexpr v0.0.0-20160318121724-f0984319b442
 	github.com/guregu/null v0.0.0-20160228005316-41961cea0328
-	github.com/hashicorp/golang-lru v0.5.3 // indirect
 	github.com/hpcloud/tail v1.0.1-0.20180514194441-a1dbeea552b7
 	github.com/jstemmer/go-junit-report v0.9.1 // indirect
 	github.com/jtolds/gls v4.2.0+incompatible // indirect
