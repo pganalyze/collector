@@ -40,7 +40,7 @@ require (
 	go.opencensus.io v0.22.2 // indirect
 	golang.org/x/exp v0.0.0-20191129062945-2f5052295587 // indirect
 	golang.org/x/lint v0.0.0-20191125180803-fdd1cda4f05f // indirect
-	golang.org/x/net v0.0.0-20191126235420-ef20fe5d7933 // indirect
+	golang.org/x/net v0.0.0-20191126235420-ef20fe5d7933
 	golang.org/x/oauth2 v0.0.0-20191122200657-5d9234df094c // indirect
 	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e // indirect
 	golang.org/x/sys v0.0.0-20191128015809-6d18c012aee9 // indirect

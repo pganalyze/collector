@@ -14,15 +14,16 @@ import (
 	"time"
 
 	"github.com/go-ini/ini"
+	"golang.org/x/net/http/httpproxy"
 
 	"github.com/pganalyze/collector/util"
 )
 
-const DefaultAPIBaseURL = "https://api.pganalyze.com"
+const defaultAPIBaseURL = "https://api.pganalyze.com"
 
 func getDefaultConfig() *ServerConfig {
 	config := &ServerConfig{
-		APIBaseURL:              DefaultAPIBaseURL,
+		APIBaseURL:              defaultAPIBaseURL,
 		AwsRegion:               "us-east-1",
 		SectionName:             "default",
 		QueryStatsInterval:      60,
@@ -164,13 +165,39 @@ func getDefaultConfig() *ServerConfig {
 	if filterQuerySample := os.Getenv("FILTER_QUERY_SAMPLE"); filterQuerySample != "" {
 		config.FilterQuerySample = filterQuerySample
 	}
+	if httpProxy := os.Getenv("HTTP_PROXY"); httpProxy != "" {
+		config.HTTPProxy = httpProxy
+	}
+	if httpProxy := os.Getenv("http_proxy"); httpProxy != "" {
+		config.HTTPProxy = httpProxy
+	}
+	if httpsProxy := os.Getenv("HTTPS_PROXY"); httpsProxy != "" {
+		config.HTTPSProxy = httpsProxy
+	}
+	if httpsProxy := os.Getenv("https_proxy"); httpsProxy != "" {
+		config.HTTPSProxy = httpsProxy
+	}
+	if noProxy := os.Getenv("NO_PROXY"); noProxy != "" {
+		config.NoProxy = noProxy
+	}
+	if noProxy := os.Getenv("no_proxy"); noProxy != "" {
+		config.NoProxy = noProxy
+	}
 
 	return config
 }
 
-func CreateHTTPClient(requireSSL bool) *http.Client {
+func CreateHTTPClient(conf ServerConfig) *http.Client {
+	requireSSL := conf.APIBaseURL == defaultAPIBaseURL
+	proxyConfig := httpproxy.Config{
+		HTTPProxy:  conf.HTTPProxy,
+		HTTPSProxy: conf.HTTPSProxy,
+		NoProxy:    conf.NoProxy,
+	}
 	transport := &http.Transport{
-		Proxy: http.ProxyFromEnvironment,
+		Proxy: func(req *http.Request) (*url.URL, error) {
+			return proxyConfig.ProxyFunc()(req.URL)
+		},
 		DialContext: (&net.Dialer{
 			Timeout:   30 * time.Second,
 			KeepAlive: 30 * time.Second,
@@ -184,13 +211,16 @@ func CreateHTTPClient(requireSSL bool) *http.Client {
 	if requireSSL {
 		transport.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
 			matchesProxyURL := false
-			for _, n := range []string{"HTTP_PROXY", "http_proxy", "HTTPS_PROXY", "https_proxy"} {
-				proxy := os.Getenv(n)
-				if proxy != "" {
-					proxyURL, err := url.Parse(proxy)
-					if err == nil && proxyURL.Host == addr {
-						matchesProxyURL = true
-					}
+			if proxyConfig.HTTPProxy != "" {
+				proxyURL, err := url.Parse(proxyConfig.HTTPProxy)
+				if err == nil && proxyURL.Host == addr {
+					matchesProxyURL = true
+				}
+			}
+			if proxyConfig.HTTPSProxy != "" {
+				proxyURL, err := url.Parse(proxyConfig.HTTPSProxy)
+				if err == nil && proxyURL.Host == addr {
+					matchesProxyURL = true
 				}
 			}
 			// Require secure conection for everything except proxies, the EC2 and ECS metadata services

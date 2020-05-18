@@ -121,6 +121,11 @@ type ServerConfig struct {
 	FilterLogSecret   string `ini:"filter_log_secret"`   // none/all/credential/parsing_error/statement_text/statement_parameter/table_data/ops/unidentified (comma separated)
 	FilterQuerySample string `ini:"filter_query_sample"` // none/all
 
+	// HTTP proxy overrides
+	HTTPProxy  string `ini:"http_proxy"`
+	HTTPSProxy string `ini:"https_proxy"`
+	NoProxy    string `ini:"no_proxy"`
+
 	// HttpClient - Client to be used for API connections
 	HTTPClient *http.Client
 }
