@@ -24,11 +24,12 @@ import (
 // - Correctly ordered (we never have to sort the line for a specific PID earlier than another line)
 // - Subsequent lines will be missing PID data (since the log_line_prefix doesn't get output again)
 // - Data from different PIDs might be mixed, so we need to split data up by PID before analysis
+// - Only lines with log_line_prefix have a timestamp
 //
 // Heroku log data looks like this:
 // - Not correctly ordered (lines from logplex may arrive in any order)
-// - Always have PID data for each line
-// - Always have the log line number, allowing association of related log lines
+// - Always has PID data for each line
+// - Always has the log line number, allowing association of related log lines
 
 // findReadyLogLines - Splits log lines into those that are ready, and those that aren't
 func findReadyLogLines(logLines []state.LogLine, threshold time.Duration) ([]state.LogLine, []state.LogLine) {
@@ -51,7 +52,7 @@ func findReadyLogLines(logLines []state.LogLine, threshold time.Duration) ([]sta
 				if lastPrimaryLogLine != nil {
 					// Self-managed case - we always stitch unknown log levels to the prior line
 					readyLogLines = append(readyLogLines, logLine)
-				} else {
+				} else if now.Sub(logLine.CollectedAt) <= threshold {
 					tooFreshLogLines = append(tooFreshLogLines, logLine)
 				}
 			}
@@ -70,7 +71,7 @@ func findReadyLogLines(logLines []state.LogLine, threshold time.Duration) ([]sta
 }
 
 // writeTmpLogFile - Setup temporary file that will be used for encryption
-func writeTmpLogFile(readyLogLines []state.LogLine) (state.LogFile, error) { 
+func writeTmpLogFile(readyLogLines []state.LogLine) (state.LogFile, error) {
 	var logFile state.LogFile
 	var err error
 	logFile.UUID = uuid.NewV4()
@@ -97,29 +98,18 @@ func writeTmpLogFile(readyLogLines []state.LogLine) (state.LogFile, error) {
 }
 
 // handleLogAnalysis - Performs log analysis on submitted log lines on a per-backend basis
-func handleLogAnalysis(readyLogLines []state.LogLine) ([]state.LogLine, []state.PostgresQuerySample) {
-	// Ensure that log lines that span multiple lines are already concated together before passing them to analyze
+func handleLogAnalysis(analyzableLogLines []state.LogLine) ([]state.LogLine, []state.PostgresQuerySample) {
 	// Split log lines by backend to ensure we have the right context
 	backendLogLines := make(map[int32][]state.LogLine)
 
-	for _, logLine := range readyLogLines {
+	for _, logLine := range analyzableLogLines {
 		backendLogLines[logLine.BackendPid] = append(backendLogLines[logLine.BackendPid], logLine)
 	}
 
 	var logLinesOut []state.LogLine
 	var querySamples []state.PostgresQuerySample
 
-	for _, logLines := range backendLogLines {
-		var analyzableLogLines []state.LogLine
-		for _, logLine := range logLines {
-			if logLine.LogLevel != pganalyze_collector.LogLineInformation_UNKNOWN {
-				analyzableLogLines = append(analyzableLogLines, logLine)
-			} else if len(analyzableLogLines) > 0 {
-				analyzableLogLines[len(analyzableLogLines)-1].Content += logLine.Content
-				analyzableLogLines[len(analyzableLogLines)-1].ByteEnd += int64(len(logLine.Content))
-			}
-		}
-
+	for _, analyzableLogLines := range backendLogLines {
 		backendLogLinesOut, backendSamples := logs.AnalyzeBackendLogLines(analyzableLogLines)
 		for _, logLine := range backendLogLinesOut {
 			logLinesOut = append(logLinesOut, logLine)
@@ -132,6 +122,18 @@ func handleLogAnalysis(readyLogLines []state.LogLine) ([]state.LogLine, []state.
 	return logLinesOut, querySamples
 }
 
+func stitchLogLines(readyLogLines []state.LogLine) (analyzableLogLines []state.LogLine) {
+	for _, logLine := range readyLogLines {
+		if logLine.LogLevel != pganalyze_collector.LogLineInformation_UNKNOWN {
+			analyzableLogLines = append(analyzableLogLines, logLine)
+		} else if len(analyzableLogLines) > 0 {
+			analyzableLogLines[len(analyzableLogLines)-1].Content += logLine.Content
+			analyzableLogLines[len(analyzableLogLines)-1].ByteEnd += int64(len(logLine.Content))
+		}
+	}
+	return
+}
+
 // AnalyzeStreamInGroups - Takes in a set of parsed log lines and analyses the
 // lines that are ready, and returns the rest
 //
@@ -139,17 +141,20 @@ func handleLogAnalysis(readyLogLines []state.LogLine) ([]state.LogLine, []state.
 // can send back in again in the next call, combined with new lines received
 func AnalyzeStreamInGroups(logLines []state.LogLine) (state.LogState, state.LogFile, []state.LogLine, error) {
 	// Pre-Sort by PID, log line number and occurred at timestamp
-	// 
+	//
 	// Its important we do this early, to support out-of-order receipt of log lines,
 	// up to the freshness threshold used in the next function call (3 seconds)
-	sort.Slice(logLines, func(i, j int) bool {
-		if logLines[i].BackendPid != logLines[j].BackendPid {
+	sort.SliceStable(logLines, func(i, j int) bool {
+		if logLines[i].BackendPid != 0 && logLines[j].BackendPid != 0 && logLines[i].BackendPid != logLines[j].BackendPid {
 			return logLines[i].BackendPid < logLines[j].BackendPid
 		}
-		if logLines[i].LogLineNumber != logLines[j].LogLineNumber {
+		if logLines[i].LogLineNumber != 0 && logLines[j].LogLineNumber != 0 && logLines[i].LogLineNumber != logLines[j].LogLineNumber {
 			return logLines[i].LogLineNumber < logLines[j].LogLineNumber
 		}
-		return logLines[i].OccurredAt.Unix() < logLines[j].OccurredAt.Unix()
+		if !logLines[i].OccurredAt.IsZero() && !logLines[j].OccurredAt.IsZero() {
+			return logLines[i].OccurredAt.Sub(logLines[j].OccurredAt) < 0
+		}
+		return false // Keep initial order
 	})
 
 	readyLogLines, tooFreshLogLines := findReadyLogLines(logLines, 3*time.Second)
@@ -162,8 +167,14 @@ func AnalyzeStreamInGroups(logLines []state.LogLine) (state.LogState, state.LogF
 		return state.LogState{}, state.LogFile{}, logLines, err
 	}
 
+	// Ensure that log lines that span multiple lines are already concated together before passing them to analyze
+	//
+	// Since we already sorted by PID earlier, it is safe for us to concatenate lines before grouping. In fact,
+	// this is required for cases where unknown log lines don't have PIDs associated
+	analyzableLogLines := stitchLogLines(readyLogLines)
+
 	logState := state.LogState{CollectedAt: time.Now()}
-	logFile.LogLines, logState.QuerySamples = handleLogAnalysis(readyLogLines)
+	logFile.LogLines, logState.QuerySamples = handleLogAnalysis(analyzableLogLines)
 
 	return logState, logFile, tooFreshLogLines, nil
 }

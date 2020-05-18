@@ -13,12 +13,12 @@ import (
 )
 
 type testpair struct {
-	logLines  []state.LogLine
-	logState state.LogState
-	logFile state.LogFile
-	logFileContent string
+	logLines         []state.LogLine
+	logState         state.LogState
+	logFile          state.LogFile
+	logFileContent   string
 	tooFreshLogLines []state.LogLine
-	err error
+	err              error
 }
 
 var now = time.Now()
@@ -27,19 +27,35 @@ var tests = []testpair{
 	// Simple case
 	{
 		[]state.LogLine{{
-			CollectedAt: now.Add(- 5 * time.Second),
-			LogLevel: pganalyze_collector.LogLineInformation_LOG,
-			Content: "dummy\n",
+			CollectedAt: now.Add(-5 * time.Second),
+			LogLevel:    pganalyze_collector.LogLineInformation_LOG,
+			Content:     "duration: 10003.847 ms  statement: SELECT pg_sleep(10);\n",
 		}},
-		state.LogState{},
-		state.LogFile{
-			LogLines: []state.LogLine{{
-				CollectedAt: now.Add(- 5 * time.Second),
-				LogLevel: pganalyze_collector.LogLineInformation_LOG,
-				ByteEnd: 6,
+		state.LogState{
+			QuerySamples: []state.PostgresQuerySample{{
+				Query:     "SELECT pg_sleep(10);",
+				RuntimeMs: 10003.847,
 			}},
 		},
-		"dummy\n",
+		state.LogFile{
+			LogLines: []state.LogLine{{
+				CollectedAt:    now.Add(-5 * time.Second),
+				LogLevel:       pganalyze_collector.LogLineInformation_LOG,
+				ByteEnd:        56,
+				Query:          "SELECT pg_sleep(10);",
+				Classification: 80,
+				Details: map[string]interface{}{
+					"duration_ms": 10003.847,
+				},
+				ReviewedForSecrets: true,
+				SecretMarkers: []state.LogSecretMarker{{
+					ByteStart: 35,
+					ByteEnd:   56,
+					Kind:      3,
+				}},
+			}},
+		},
+		"duration: 10003.847 ms  statement: SELECT pg_sleep(10);\n",
 		[]state.LogLine{},
 		nil,
 	},
@@ -47,96 +63,129 @@ var tests = []testpair{
 	{
 		[]state.LogLine{{
 			CollectedAt: now,
-			LogLevel: pganalyze_collector.LogLineInformation_LOG,
-			Content: "dummy\n",
+			LogLevel:    pganalyze_collector.LogLineInformation_LOG,
+			Content:     "duration: 10003.847 ms  statement: SELECT pg_sleep(10);\n",
 		}},
 		state.LogState{},
 		state.LogFile{},
 		"",
 		[]state.LogLine{{
 			CollectedAt: now,
-			LogLevel: pganalyze_collector.LogLineInformation_LOG,
-			Content: "dummy\n",
+			LogLevel:    pganalyze_collector.LogLineInformation_LOG,
+			Content:     "duration: 10003.847 ms  statement: SELECT pg_sleep(10);\n",
 		}},
 		nil,
 	},
 	// Multiple lines (all of same timestamp)
 	{
 		[]state.LogLine{{
-			CollectedAt: now.Add(- 5 * time.Second),
-			LogLevel: pganalyze_collector.LogLineInformation_LOG,
-			Content: "first\n",
+			CollectedAt: now.Add(-5 * time.Second),
+			LogLevel:    pganalyze_collector.LogLineInformation_ERROR,
+			Content:     "permission denied for function pg_reload_conf\n",
 		},
-		{
-			CollectedAt: now.Add(- 5 * time.Second),
-			LogLevel: pganalyze_collector.LogLineInformation_DETAIL,
-			Content: "second\n",
-		}},
+			{
+				CollectedAt: now.Add(-5 * time.Second),
+				LogLevel:    pganalyze_collector.LogLineInformation_STATEMENT,
+				Content:     "SELECT pg_reload_conf();\n",
+			}},
 		state.LogState{},
 		state.LogFile{
 			LogLines: []state.LogLine{{
-				CollectedAt: now.Add(- 5 * time.Second),
-				LogLevel: pganalyze_collector.LogLineInformation_LOG,
-				ByteEnd: 6,
+				CollectedAt:        now.Add(-5 * time.Second),
+				LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+				ByteEnd:            46,
+				Query:              "SELECT pg_reload_conf();\n",
+				Classification:     123,
+				ReviewedForSecrets: true,
 			},
-			{
-				CollectedAt: now.Add(- 5 * time.Second),
-				LogLevel: pganalyze_collector.LogLineInformation_DETAIL,
-				ByteStart: 6,
-				ByteContentStart: 6,
-				ByteEnd: 13,
-			}},
+				{
+					CollectedAt:      now.Add(-5 * time.Second),
+					LogLevel:         pganalyze_collector.LogLineInformation_STATEMENT,
+					ByteStart:        46,
+					ByteContentStart: 46,
+					ByteEnd:          71,
+				}},
 		},
-		"first\nsecond\n",
+		"permission denied for function pg_reload_conf\nSELECT pg_reload_conf();\n",
 		[]state.LogLine{},
 		nil,
 	},
 	// Multiple lines (different timestamps, skips freshness check due to missing level *and PID*)
 	{
 		[]state.LogLine{{
-			CollectedAt: now.Add(- 5 * time.Second),
-			LogLevel: pganalyze_collector.LogLineInformation_LOG,
-			Content: "first\n",
+			CollectedAt: now.Add(-5 * time.Second),
+			LogLevel:    pganalyze_collector.LogLineInformation_LOG,
+			Content:     "LOG:  duration: 10010.397 ms  statement: SELECT pg_sleep(10\n",
 		},
-		{
-			CollectedAt: now,
-			Content: "second\n",
-		}},
+			{
+				CollectedAt: now,
+				Content:     " );\n",
+			}},
 		state.LogState{},
 		state.LogFile{
 			LogLines: []state.LogLine{{
-				CollectedAt: now.Add(- 5 * time.Second),
-				LogLevel: pganalyze_collector.LogLineInformation_LOG,
-				ByteEnd: 13,
+				CollectedAt: now.Add(-5 * time.Second),
+				LogLevel:    pganalyze_collector.LogLineInformation_LOG,
+				ByteEnd:     64,
 			}},
 		},
-		"first\nsecond\n",
+		"LOG:  duration: 10010.397 ms  statement: SELECT pg_sleep(10\n );\n",
+		[]state.LogLine{},
+		nil,
+	},
+	// Multiple lines (different timestamps, skips freshness check due to missing level *and PID* only for unknown lines)
+	{
+		[]state.LogLine{{
+			CollectedAt:   now.Add(-5 * time.Second),
+			LogLevel:      pganalyze_collector.LogLineInformation_LOG,
+			LogLineNumber: 2,
+			BackendPid:    42,
+			Content:       "LOG:  duration: 10010.397 ms  statement: SELECT pg_sleep(10\n",
+		},
+			{
+				CollectedAt: now,
+				Content:     " );\n",
+			}},
+		state.LogState{},
+		state.LogFile{
+			LogLines: []state.LogLine{{
+				CollectedAt:   now.Add(-5 * time.Second),
+				LogLevel:      pganalyze_collector.LogLineInformation_LOG,
+				ByteEnd:       64,
+				LogLineNumber: 2,
+				BackendPid:    42,
+			}},
+		},
+		"LOG:  duration: 10010.397 ms  statement: SELECT pg_sleep(10\n );\n",
 		[]state.LogLine{},
 		nil,
 	},
 	// Multiple lines (different timestamps, requiring skip of freshness check due to log line number)
+	//
+	// Note that this refers to the Heroku case, where we have log line numbers on unidentified lines
+	// (because logplex adds them, not Postgres itself, like in other cases)
 	{
 		[]state.LogLine{{
-			CollectedAt: now,
+			CollectedAt:   now,
 			LogLineNumber: 2,
-			BackendPid: 42,
-			Content: "second\n",
+			BackendPid:    42,
+			Content:       "second\n",
 		},
-		{
-			CollectedAt: now.Add(- 5 * time.Second),
-			LogLevel: pganalyze_collector.LogLineInformation_LOG,
-			LogLineNumber: 1,
-			BackendPid: 42,
-			Content: "first\n",
-		}},
+			{
+				CollectedAt:   now.Add(-5 * time.Second),
+				LogLevel:      pganalyze_collector.LogLineInformation_LOG,
+				LogLineNumber: 1,
+				BackendPid:    42,
+				Content:       "first\n",
+			}},
 		state.LogState{},
 		state.LogFile{
 			LogLines: []state.LogLine{{
-				CollectedAt: now.Add(- 5 * time.Second),
-				LogLevel: pganalyze_collector.LogLineInformation_LOG,
+				CollectedAt:   now.Add(-5 * time.Second),
+				LogLevel:      pganalyze_collector.LogLineInformation_LOG,
 				LogLineNumber: 1,
-				ByteEnd: 13,
-				BackendPid: 42,
+				ByteEnd:       13,
+				BackendPid:    42,
 			}},
 		},
 		"first\nsecond\n",
@@ -144,11 +193,11 @@ var tests = []testpair{
 		nil,
 	},
 	//{
-		// There should be a test for this method
-		// - Pass in two logLines, one at X, one at X + 2, and assume the time is x + 3
-		// - These lines should be concatenated based on the log line number, ignoring the fact the the second log line would be considered too fresh
+	// There should be a test for this method
+	// - Pass in two logLines, one at X, one at X + 2, and assume the time is x + 3
+	// - These lines should be concatenated based on the log line number, ignoring the fact the the second log line would be considered too fresh
 	//	[]state.LogLine{{
-  //
+	//
 	//	}},
 	//},
 }
@@ -166,8 +215,8 @@ func TestAnalyzeStreamInGroups(t *testing.T) {
 		}
 
 		logState.CollectedAt = time.Time{} // Avoid comparing against time.Now()
-		logFile.TmpFile = nil // Avoid comparing against tempfile
-		logFile.UUID = uuid.UUID{} // Avoid comparing against a generated UUID
+		logFile.TmpFile = nil              // Avoid comparing against tempfile
+		logFile.UUID = uuid.UUID{}         // Avoid comparing against a generated UUID
 
 		cfg := pretty.CompareConfig
 		cfg.SkipZeroFields = true
