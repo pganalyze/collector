@@ -17,6 +17,10 @@ mkdir -p /repo/ubuntu/bionic/conf
 cp /root/deb.distributions /repo/ubuntu/bionic/conf/distributions
 reprepro --basedir /repo/ubuntu/bionic includedeb stable /deb/systemd/$DEB_PACKAGE
 
+mkdir -p /repo/ubuntu/focal/conf
+cp /root/deb.distributions /repo/ubuntu/focal/conf/distributions
+reprepro --basedir /repo/ubuntu/focal includedeb stable /deb/systemd/$DEB_PACKAGE
+
 mkdir -p /repo/debian/jessie/conf
 cp /root/deb.distributions /repo/debian/jessie/conf/distributions
 reprepro --basedir /repo/debian/jessie includedeb stable /deb/systemd/$DEB_PACKAGE
