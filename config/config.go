@@ -85,8 +85,10 @@ type ServerConfig struct {
 
 	AzureDbServerName string `ini:"azure_db_server_name"`
 
-	GcpProjectID          string `ini:"gcp_project_id"`
 	GcpCloudSQLInstanceID string `ini:"gcp_cloudsql_instance_id"`
+
+	// Optional, we recommend passing the full "Connection name" as GCP CloudSQL instance ID
+	GcpProjectID string `ini:"gcp_project_id"`
 
 	SectionName string
 	Identifier  ServerIdentifier

@@ -129,11 +129,11 @@ func getDefaultConfig() *ServerConfig {
 	if azureDbServerName := os.Getenv("AZURE_DB_SERVER_NAME"); azureDbServerName != "" {
 		config.AzureDbServerName = azureDbServerName
 	}
-	if gcpProjectID := os.Getenv("GCP_PROJECT_ID"); gcpProjectID != "" {
-		config.GcpProjectID = gcpProjectID
-	}
 	if gcpCloudSQLInstanceID := os.Getenv("GCP_CLOUDSQL_INSTANCE_ID"); gcpCloudSQLInstanceID != "" {
 		config.GcpCloudSQLInstanceID = gcpCloudSQLInstanceID
+	}
+	if gcpProjectID := os.Getenv("GCP_PROJECT_ID"); gcpProjectID != "" {
+		config.GcpProjectID = gcpProjectID
 	}
 	if logLocation := os.Getenv("LOG_LOCATION"); logLocation != "" {
 		config.LogLocation = logLocation
@@ -202,7 +202,7 @@ func CreateHTTPClient(requireSSL bool) *http.Client {
 	}
 }
 
-func autoDetectFromHostname(config *ServerConfig) *ServerConfig {
+func preprocessProviderSettings(config *ServerConfig) *ServerConfig {
 	host := config.GetDbHost()
 	if strings.HasSuffix(host, ".rds.amazonaws.com") {
 		parts := strings.SplitN(host, ".", 4)
@@ -222,6 +222,13 @@ func autoDetectFromHostname(config *ServerConfig) *ServerConfig {
 			}
 		}
 	}
+
+	if config.GcpCloudSQLInstanceID != "" && strings.Count(config.GcpCloudSQLInstanceID, ":") == 2 {
+		instanceParts := strings.SplitN(config.GcpCloudSQLInstanceID, ":", 3)
+		config.GcpProjectID = instanceParts[0]
+		config.GcpCloudSQLInstanceID = instanceParts[2]
+	}
+
 	return config
 }
 
@@ -316,7 +323,7 @@ func Read(logger *util.Logger, filename string) (Config, error) {
 				config.AwsEndpointSigningRegion = config.AwsEndpointSigningRegionLegacy
 			}
 
-			config = autoDetectFromHostname(config)
+			config = preprocessProviderSettings(config)
 			config.SectionName = section.Name()
 			config.SystemType, config.SystemScope, config.SystemID = identifySystem(*config)
 
@@ -352,7 +359,7 @@ func Read(logger *util.Logger, filename string) (Config, error) {
 			conf = handleHeroku()
 		} else if os.Getenv("PGA_API_KEY") != "" {
 			config := getDefaultConfig()
-			config = autoDetectFromHostname(config)
+			config = preprocessProviderSettings(config)
 			config.SystemType, config.SystemScope, config.SystemID = identifySystem(*config)
 			conf.Servers = append(conf.Servers, *config)
 		} else {
