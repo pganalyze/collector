@@ -1,7 +1,7 @@
 FROM debian:jessie
 
 ENV GOPATH /go
-ENV GOVERSION 1.13
+ENV GOVERSION 1.14
 ENV CODE_DIR $GOPATH/src/github.com/pganalyze/collector
 ENV PATH $PATH:/usr/local/go/bin
 ENV ROOT_DIR /root

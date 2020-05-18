@@ -1,7 +1,7 @@
 language: go
 sudo: required
 go:
-- "1.13"
+- "1.14"
 env:
   - GO111MODULE=on
 before_install:
@@ -21,4 +21,4 @@ deploy:
   on:
     repo: pganalyze/collector
     tags: true
-    go: "1.13"
+    go: "1.14"
