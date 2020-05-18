@@ -9,7 +9,6 @@ import (
 
 	"github.com/bmizerany/lpx"
 	"github.com/kr/logfmt"
-	"github.com/pganalyze/collector/config"
 	"github.com/pganalyze/collector/grant"
 	"github.com/pganalyze/collector/input/postgres"
 	"github.com/pganalyze/collector/logs/stream"
@@ -40,7 +39,7 @@ type SystemSample struct {
 	WriteIops         float64 `logfmt:"sample#write-iops"`
 }
 
-func SetupLogReceiver(conf config.Config, servers []state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger, herokuLogStream <-chan HerokuLogStreamItem) {
+func SetupLogReceiver(servers []state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger, herokuLogStream <-chan HerokuLogStreamItem) {
 	go logReceiver(servers, herokuLogStream, globalCollectionOpts, logger)
 
 	for _, server := range servers {

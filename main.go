@@ -20,6 +20,7 @@ import (
 	flag "github.com/ogier/pflag"
 
 	"github.com/pganalyze/collector/config"
+	"github.com/pganalyze/collector/input/system/google_cloudsql"
 	"github.com/pganalyze/collector/input/system/heroku"
 	"github.com/pganalyze/collector/input/system/selfhosted"
 	"github.com/pganalyze/collector/logs"
@@ -63,6 +64,7 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 	hasAnyLogsEnabled := false
 	hasAnyReportsEnabled := false
 	hasAnyActivityEnabled := false
+	hasAnyGoogleCloudSQL := false
 	hasAnyHeroku := false
 
 	serverConfigs := conf.Servers
@@ -76,6 +78,9 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 		}
 		if !config.DisableActivity {
 			hasAnyActivityEnabled = true
+		}
+		if config.SystemType == "google_cloudsql" {
+			hasAnyGoogleCloudSQL = true
 		}
 		if config.SystemType == "heroku" {
 			hasAnyHeroku = true
@@ -162,6 +167,11 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 
 	if globalCollectionOpts.DebugLogs {
 		selfhosted.SetupLogTails(ctx, servers, globalCollectionOpts, logger)
+		if hasAnyGoogleCloudSQL {
+			gcpLogStream := make(chan google_cloudsql.LogStreamItem, streamBufferLen)
+			google_cloudsql.SetupLogSubscriber(ctx, wg, logger, servers, gcpLogStream)
+			google_cloudsql.SetupLogReceiver(ctx, servers, globalCollectionOpts, logger, gcpLogStream)
+		}
 
 		// Keep running but only running log processing
 		keepRunning = true
@@ -209,7 +219,13 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 		if hasAnyHeroku && os.Getenv("DYNO") != "" && os.Getenv("PORT") != "" {
 			herokuLogStream := make(chan heroku.HerokuLogStreamItem, streamBufferLen)
 			heroku.SetupHttpHandlerLogs(herokuLogStream)
-			heroku.SetupLogReceiver(conf, servers, globalCollectionOpts, logger, herokuLogStream)
+			heroku.SetupLogReceiver(servers, globalCollectionOpts, logger, herokuLogStream)
+		}
+
+		if hasAnyGoogleCloudSQL {
+			gcpLogStream := make(chan google_cloudsql.LogStreamItem, streamBufferLen)
+			google_cloudsql.SetupLogSubscriber(ctx, wg, logger, servers, gcpLogStream)
+			google_cloudsql.SetupLogReceiver(ctx, servers, globalCollectionOpts, logger, gcpLogStream)
 		}
 
 		if hasAnyLogDownloads {

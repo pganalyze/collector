@@ -16,9 +16,10 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
-// This file handles stream-based log collection. Currently this is used in two cases:
+// This file handles stream-based log collection. Currently this is used in three cases:
 // (1) Self-managed VMs (local log tail)
 // (2) Heroku Postgres (network log drain)
+// (3) Google Cloud SQL (GCP Pub/Sub)
 //
 // Self-managed VM log data looks like this:
 // - Correctly ordered (we never have to sort the line for a specific PID earlier than another line)
@@ -30,6 +31,12 @@ import (
 // - Not correctly ordered (lines from logplex may arrive in any order)
 // - Always has PID data for each line
 // - Always has the log line number, allowing association of related log lines
+//
+// Google Cloud SQL log data looks like this:
+// - Not correctly ordered (lines from Pub/Sub may arrive in any order)
+// - All lines have a timestamp
+// - First line of a message always has log line number (due to fixed log_line_prefix)
+// - Multi-line messages only have the PID and line number in the first message
 
 // findReadyLogLines - Splits log lines into those that are ready, and those that aren't
 func findReadyLogLines(logLines []state.LogLine, threshold time.Duration) ([]state.LogLine, []state.LogLine) {
@@ -50,7 +57,7 @@ func findReadyLogLines(logLines []state.LogLine, threshold time.Duration) ([]sta
 				}
 			} else {
 				if lastPrimaryLogLine != nil {
-					// Self-managed case - we always stitch unknown log levels to the prior line
+					// Self-managed and Google Cloud SQL case - we always stitch unknown log levels to the prior line
 					readyLogLines = append(readyLogLines, logLine)
 				} else if now.Sub(logLine.CollectedAt) <= threshold {
 					tooFreshLogLines = append(tooFreshLogLines, logLine)

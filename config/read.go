@@ -132,6 +132,12 @@ func getDefaultConfig() *ServerConfig {
 	if gcpCloudSQLInstanceID := os.Getenv("GCP_CLOUDSQL_INSTANCE_ID"); gcpCloudSQLInstanceID != "" {
 		config.GcpCloudSQLInstanceID = gcpCloudSQLInstanceID
 	}
+	if gcpPubsubSubscription := os.Getenv("GCP_PUBSUB_SUBSCRIPTION"); gcpPubsubSubscription != "" {
+		config.GcpPubsubSubscription = gcpPubsubSubscription
+	}
+	if gcpCredentialsFile := os.Getenv("GCP_CREDENTIALS_FILE"); gcpCredentialsFile != "" {
+		config.GcpCredentialsFile = gcpCredentialsFile
+	}
 	if gcpProjectID := os.Getenv("GCP_PROJECT_ID"); gcpProjectID != "" {
 		config.GcpProjectID = gcpProjectID
 	}

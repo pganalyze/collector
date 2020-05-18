@@ -75,6 +75,8 @@ type ServerConfig struct {
 	AzureDbServerName string `ini:"azure_db_server_name"`
 
 	GcpCloudSQLInstanceID string `ini:"gcp_cloudsql_instance_id"`
+	GcpPubsubSubscription string `ini:"gcp_pubsub_subscription"`
+	GcpCredentialsFile    string `ini:"gcp_credentials_file"`
 
 	// Optional, we recommend passing the full "Connection name" as GCP CloudSQL instance ID
 	GcpProjectID string `ini:"gcp_project_id"`

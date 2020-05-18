@@ -5,6 +5,7 @@ import (
 
 	"github.com/pganalyze/collector/grant"
 	"github.com/pganalyze/collector/input"
+	"github.com/pganalyze/collector/input/system/google_cloudsql"
 	"github.com/pganalyze/collector/input/system/selfhosted"
 	"github.com/pganalyze/collector/output"
 	"github.com/pganalyze/collector/state"
@@ -66,6 +67,15 @@ func TestLogsForAllServers(servers []state.Server, globalCollectionOpts state.Co
 			} else {
 				prefixedLogger.PrintInfo("  Local log test successful")
 				hasSuccessfulLocalServers = true
+			}
+		} else if server.Config.GcpCloudSQLInstanceID != "" && server.Config.GcpPubsubSubscription != "" {
+			prefixedLogger.PrintInfo("Testing log collection (Google Cloud SQL)...")
+			err := google_cloudsql.LogTestRun(server, globalCollectionOpts, prefixedLogger)
+			if err != nil {
+				hasFailedServers = true
+				prefixedLogger.PrintError("ERROR - Could not get Pub/Sub log output for server: %s", err)
+			} else {
+				prefixedLogger.PrintInfo("  Log test successful")
 			}
 		} else if server.Config.AwsDbInstanceID != "" {
 			prefixedLogger.PrintInfo("Testing log collection (RDS)...")
