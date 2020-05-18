@@ -39,7 +39,7 @@ var replaceTests = []replaceTestpair{
 	{
 		filterLogSecret: "unidentified",
 		input:           "2018-03-11 20:00:02 UTC:1.1.1.1(2):a@b:[3]:ERROR:  division by zero\n2018-03-11 20:00:02 UTC:1.1.1.1(2):a@b:[3]:ERROR:  Unknown Data\n",
-		output:          "2018-03-11 20:00:02 UTC:1.1.1.1(2):a@b:[3]:ERROR:  division by zero\n2018-03-11 20:00:02 UTC:1.1.1.1(2):a@b:[3]:ERROR:  XXXXXXXXXXXX\n",
+		output:          "2018-03-11 20:00:02 UTC:1.1.1.1(2):a@b:[3]:ERROR:  division by zero\n2018-03-11 20:00:02 UTC:1.1.1.1(2):a@b:[3]:ERROR:  XXXXXXXXXXXXX",
 	},
 	{
 		filterLogSecret: "none",

@@ -20,7 +20,7 @@ var tests = []testpair{
 	// Statement duration
 	{
 		[]state.LogLine{{
-			Content:  "duration: 3205.800 ms  execute a2: SELECT \"servers\".* FROM \"servers\" WHERE \"servers\".\"id\" = 1 LIMIT 2",
+			Content:  "duration: 3205.800 ms  execute a2: SELECT \"servers\".* FROM \"servers\" WHERE \"servers\".\"id\" = 1 LIMIT 2\n",
 			LogLevel: pganalyze_collector.LogLineInformation_LOG,
 		}},
 		[]state.LogLine{{
@@ -3187,7 +3187,7 @@ var tests = []testpair{
 			ReviewedForSecrets: true,
 			SecretMarkers: []state.LogSecretMarker{{
 				ByteStart: 30,
-				ByteEnd:   1026,
+				ByteEnd:   1025,
 				Kind:      state.UnidentifiedLogSecret,
 			}},
 		}},

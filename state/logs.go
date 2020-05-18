@@ -111,8 +111,9 @@ func ParseFilterLogSecret(input string) (result []LogSecretKind) {
 
 // LogSecretMarker - Marks log secrets in a log line
 type LogSecretMarker struct {
+	// ! Note that these byte indices are from the *content* start of a log line
 	ByteStart int // Start of the secret in the log line content
-	ByteEnd   int // End of the secret in the log line content
+	ByteEnd   int // End of the secret in the log line content (secret ends *before* this index)
 	Kind      LogSecretKind
 }
 

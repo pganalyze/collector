@@ -1891,11 +1891,20 @@ func matchLogLineCommon(logLine state.LogLine, m match, matchAll bool) (state.Lo
 			if strings.HasPrefix(logLine.Content, prefix) {
 				logLine.ReviewedForSecrets = true
 				if len(prefix) < len(logLine.Content) {
-					logLine.SecretMarkers = append(logLine.SecretMarkers, state.LogSecretMarker{
-						ByteStart: len(prefix),
-						ByteEnd:   len(logLine.Content),
-						Kind:      state.UnidentifiedLogSecret,
-					})
+					markerByteStart := len(prefix)
+					markerByteEnd := len(logLine.Content)
+
+					// Avoid including trailing new lines in the secret markers
+					if logLine.Content[len(logLine.Content)-1] == '\n' {
+						markerByteEnd--
+					}
+					if markerByteEnd-markerByteStart > 0 {
+						logLine.SecretMarkers = append(logLine.SecretMarkers, state.LogSecretMarker{
+							ByteStart: markerByteStart,
+							ByteEnd:   markerByteEnd,
+							Kind:      state.UnidentifiedLogSecret,
+						})
+					}
 				}
 				return logLine, [][]string{[]string{prefix}}
 			}
@@ -1970,11 +1979,21 @@ func matchLogLineCommon(logLine state.LogLine, m match, matchAll bool) (state.Lo
 		} else {
 			kind = state.UnidentifiedLogSecret
 		}
-		logLine.SecretMarkers = append(logLine.SecretMarkers, state.LogSecretMarker{
-			ByteStart: p[len(p)-1][1],
-			ByteEnd:   len(logLine.Content),
-			Kind:      kind,
-		})
+		markerByteStart := p[len(p)-1][1]
+		markerByteEnd := len(logLine.Content)
+
+		// Avoid including trailing new lines in the secret markers
+		if logLine.Content[len(logLine.Content)-1] == '\n' {
+			markerByteEnd--
+		}
+
+		if markerByteEnd-markerByteStart > 0 {
+			logLine.SecretMarkers = append(logLine.SecretMarkers, state.LogSecretMarker{
+				ByteStart: markerByteStart,
+				ByteEnd:   markerByteEnd,
+				Kind:      kind,
+			})
+		}
 	}
 	return logLine, parts
 }

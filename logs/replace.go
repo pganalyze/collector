@@ -8,7 +8,7 @@ import (
 
 type logRange struct {
 	start int64
-	end   int64
+	end   int64 // When working with this range, the character at the index of end is *excluded*
 }
 
 const replacementChar = 'X'
@@ -30,7 +30,9 @@ func ReplaceSecrets(input []byte, logLines []state.LogLine, filterLogSecret []st
 			sort.Slice(logLine.SecretMarkers, func(i, j int) bool {
 				return logLine.SecretMarkers[i].ByteStart < logLine.SecretMarkers[j].ByteEnd
 			})
-			var lastGood int64
+
+			// We're creating a good range when we find a filtered secret or the end (everything before is marked as good)
+			nextIdxToEvaluate := logLine.ByteContentStart
 			for _, m := range logLine.SecretMarkers {
 				filter := false
 				for _, k := range filterLogSecret {
@@ -39,30 +41,31 @@ func ReplaceSecrets(input []byte, logLines []state.LogLine, filterLogSecret []st
 					}
 				}
 				if filter {
-					goodRanges = append(goodRanges, logRange{start: logLine.ByteContentStart + lastGood, end: logLine.ByteContentStart + int64(m.ByteStart)})
-					lastGood = int64(m.ByteEnd)
+					firstFilteredIdx := logLine.ByteContentStart + int64(m.ByteStart)
+					goodRanges = append(goodRanges, logRange{start: nextIdxToEvaluate, end: firstFilteredIdx})
+					nextIdxToEvaluate = logLine.ByteContentStart + int64(m.ByteEnd)
 				}
 			}
-			if lastGood < (logLine.ByteEnd - logLine.ByteContentStart) {
-				goodRanges = append(goodRanges, logRange{start: logLine.ByteContentStart + lastGood, end: logLine.ByteEnd})
+			// No more markers means the rest of the line is safe
+			if nextIdxToEvaluate < logLine.ByteEnd {
+				goodRanges = append(goodRanges, logRange{start: nextIdxToEvaluate, end: logLine.ByteEnd})
 			}
 		} else if !filterUnidentified {
 			goodRanges = append(goodRanges, logRange{start: logLine.ByteContentStart, end: logLine.ByteEnd})
 		}
-		goodRanges = append(goodRanges, logRange{start: logLine.ByteEnd, end: logLine.ByteEnd + 1}) // newline character
 	}
 	sort.Slice(goodRanges, func(i, j int) bool {
 		return goodRanges[i].start < goodRanges[j].start
 	})
 
-	var lastGood int64
+	lastGood := int64(0)
 	for _, r := range goodRanges {
 		for i := lastGood; i < r.start; i++ {
 			input[i] = replacementChar
 		}
 		lastGood = r.end
 	}
-	if filterUnidentified {
+	if len(goodRanges) > 0 || filterUnidentified {
 		for i := lastGood; i < int64(len(input)); i++ {
 			input[i] = replacementChar
 		}

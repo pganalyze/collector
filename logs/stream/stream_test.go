@@ -50,7 +50,7 @@ var tests = []testpair{
 				ReviewedForSecrets: true,
 				SecretMarkers: []state.LogSecretMarker{{
 					ByteStart: 35,
-					ByteEnd:   56,
+					ByteEnd:   55,
 					Kind:      3,
 				}},
 			}},
