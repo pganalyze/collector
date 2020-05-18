@@ -124,7 +124,7 @@ type LogLine struct {
 
 	ByteStart        int64
 	ByteContentStart int64
-	ByteEnd          int64
+	ByteEnd          int64 // Written log line ends *before* this index
 
 	OccurredAt  time.Time
 	Username    string

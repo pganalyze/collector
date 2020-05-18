@@ -347,7 +347,7 @@ func ParseAndAnalyzeBuffer(buffer string, initialByteStart int64, linesNewerThan
 
 		logLine.ByteStart = byteStart
 		logLine.ByteContentStart = byteStart + int64(len(line)-len(logLine.Content))
-		logLine.ByteEnd = byteStart + int64(len(line)) - 1
+		logLine.ByteEnd = byteStart + int64(len(line))
 
 		// Generate unique ID that can be used to reference this line
 		logLine.UUID = uuid.NewV4()
@@ -405,7 +405,7 @@ func DebugParseAndAnalyzeBuffer(buffer string) ([]state.LogLine, []state.Postgre
 
 		logLine.ByteStart = byteStart
 		logLine.ByteContentStart = byteStart + int64(len(line)-len(logLine.Content))
-		logLine.ByteEnd = byteStart + int64(len(line)) - 1
+		logLine.ByteEnd = byteStart + int64(len(line))
 
 		// Generate unique ID that can be used to reference this line
 		logLine.UUID = uuid.NewV4()
