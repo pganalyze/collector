@@ -356,7 +356,17 @@ func Read(logger *util.Logger, filename string) (Config, error) {
 		}
 	} else {
 		if os.Getenv("DYNO") != "" && os.Getenv("PORT") != "" {
-			conf = handleHeroku()
+			for _, kv := range os.Environ() {
+				parts := strings.Split(kv, "=")
+				if strings.HasSuffix(parts[0], "_URL") {
+					config := getDefaultConfig()
+					config.SectionName = parts[0]
+					config.SystemID = strings.Replace(parts[0], "_URL", "", 1)
+					config.SystemType = "heroku"
+					config.DbURL = parts[1]
+					conf.Servers = append(conf.Servers, *config)
+				}
+			}
 		} else if os.Getenv("PGA_API_KEY") != "" {
 			config := getDefaultConfig()
 			config = preprocessProviderSettings(config)

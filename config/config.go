@@ -6,21 +6,10 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
-
-	"github.com/bmizerany/lpx"
 )
 
 type Config struct {
-	// Only used for Heroku servers to pass log messages to the input handler
-	HerokuLogStream chan HerokuLogStreamItem
-
 	Servers []ServerConfig
-}
-
-type HerokuLogStreamItem struct {
-	Header    lpx.Header
-	Content   []byte
-	Namespace string
 }
 
 type ServerIdentifier struct {

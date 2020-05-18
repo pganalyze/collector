@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bmizerany/lpx"
 	"github.com/kr/logfmt"
 	"github.com/pganalyze/collector/config"
 	"github.com/pganalyze/collector/grant"
@@ -18,6 +19,12 @@ import (
 	"github.com/pganalyze/collector/util"
 	uuid "github.com/satori/go.uuid"
 )
+
+type HerokuLogStreamItem struct {
+	Header    lpx.Header
+	Content   []byte
+	Namespace string
+}
 
 type SystemSample struct {
 	Source            string  `logfmt:"source"`
@@ -33,8 +40,8 @@ type SystemSample struct {
 	WriteIops         float64 `logfmt:"sample#write-iops"`
 }
 
-func SetupLogReceiver(conf config.Config, servers []state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
-	go logReceiver(servers, conf.HerokuLogStream, globalCollectionOpts, logger)
+func SetupLogReceiver(conf config.Config, servers []state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger, herokuLogStream <-chan HerokuLogStreamItem) {
+	go logReceiver(servers, herokuLogStream, globalCollectionOpts, logger)
 
 	for _, server := range servers {
 		db, err := postgres.EstablishConnection(server, logger, globalCollectionOpts, "")
@@ -146,7 +153,7 @@ func makeLogLine(timestamp time.Time, backendPid int64, logLineNumber int64, log
 	return &logLine
 }
 
-func logStreamItemToLogLine(item config.HerokuLogStreamItem, servers []state.Server, nameToServer map[string]state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (map[string]state.Server, *state.LogLine, string) {
+func logStreamItemToLogLine(item HerokuLogStreamItem, servers []state.Server, nameToServer map[string]state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (map[string]state.Server, *state.LogLine, string) {
 	timestamp, err := time.Parse(time.RFC3339, string(item.Header.Time))
 	if err != nil {
 		return nameToServer, nil, ""
@@ -189,7 +196,7 @@ func logStreamItemToLogLine(item config.HerokuLogStreamItem, servers []state.Ser
 	return nameToServer, newLogLine, sourceName
 }
 
-func logReceiver(servers []state.Server, in <-chan config.HerokuLogStreamItem, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
+func logReceiver(servers []state.Server, in <-chan HerokuLogStreamItem, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
 	var logLinesByName map[string][]state.LogLine
 	var nameToServer map[string]state.Server
 

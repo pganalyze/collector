@@ -31,6 +31,8 @@ import (
 	_ "github.com/lib/pq" // Enable database package to use Postgres
 )
 
+const streamBufferLen = 500
+
 func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *util.Logger, configFilename string) (keepRunning bool, reloadOkay bool) {
 	var servers []state.Server
 
@@ -61,6 +63,7 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 	hasAnyLogsEnabled := false
 	hasAnyReportsEnabled := false
 	hasAnyActivityEnabled := false
+	hasAnyHeroku := false
 
 	serverConfigs := conf.Servers
 	for _, config := range serverConfigs {
@@ -73,6 +76,9 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 		}
 		if !config.DisableActivity {
 			hasAnyActivityEnabled = true
+		}
+		if config.SystemType == "heroku" {
+			hasAnyHeroku = true
 		}
 	}
 
@@ -196,12 +202,14 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 			}
 		}
 
-		if conf.HerokuLogStream != nil {
-			heroku.SetupLogReceiver(conf, servers, globalCollectionOpts, logger)
-		}
-
 		if hasAnyLogTails {
 			selfhosted.SetupLogTails(ctx, servers, globalCollectionOpts, logger)
+		}
+
+		if hasAnyHeroku && os.Getenv("DYNO") != "" && os.Getenv("PORT") != "" {
+			herokuLogStream := make(chan heroku.HerokuLogStreamItem, streamBufferLen)
+			heroku.SetupHttpHandlerLogs(herokuLogStream)
+			heroku.SetupLogReceiver(conf, servers, globalCollectionOpts, logger, herokuLogStream)
 		}
 
 		if hasAnyLogDownloads {
@@ -211,6 +219,9 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 				wg.Done()
 			}, logger, "log snapshot of all servers")
 		}
+	} else if os.Getenv("DYNO") != "" && os.Getenv("PORT") != "" {
+		// Even if logs are deactivated, Heroku still requires us to have a functioning web server
+		heroku.SetupHttpHandlerDummy()
 	}
 
 	if hasAnyActivityEnabled {
