@@ -94,18 +94,18 @@ func CollectActivityFromAllServers(servers []state.Server, globalCollectionOpts 
 				prefixedLogger.PrintInfo("Testing activity snapshots...")
 			}
 
-			servers[idx].StateMutex.Lock()
+			server.StateMutex.Lock()
 			newState, success, err := processActivityForServer(*server, globalCollectionOpts, prefixedLogger)
 			if err != nil {
-				servers[idx].StateMutex.Unlock()
+				server.StateMutex.Unlock()
 				allSuccessful = false
 				prefixedLogger.PrintError("Could not collect activity for server: %s", err)
 				if server.Config.ErrorCallback != "" {
 					go runCompletionCallback("error", server.Config.ErrorCallback, server.Config.SectionName, "activity", err, prefixedLogger)
 				}
 			} else {
-				servers[idx].PrevState = newState
-				servers[idx].StateMutex.Unlock()
+				server.PrevState = newState
+				server.StateMutex.Unlock()
 				if success && server.Config.SuccessCallback != "" {
 					go runCompletionCallback("success", server.Config.SuccessCallback, server.Config.SectionName, "activity", nil, prefixedLogger)
 				}
