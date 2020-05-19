@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.28.0      2020-05-19
+
+* Add "db_sslkey" and "db_sslcert" options to use SSL client certificates
+* Add Ubuntu 20.04 packages
+* Update to Go 1.14, latest libpq
+* Ensure that we set system type correctly for Heroku full snapshots
+* Detect cloud providers based on hostnames from DB_URL / db_url as well
+  * Previously this was only detected for the DB_HOST / db_host setting, and that is unnecessarily restrictive
+  * Note that this means your instance may show up under a new ID in pganalyze after upgrading to this version
+* Log Explain
+  * Ignore pg_start_backup queries
+  * Support EXPLAIN for queries with parameters
+* Log Insights improvements
+  * Experimental: Google Cloud SQL log download
+  * Remove unnecessary increment of log line byte end position
+  * Make stream-based log processing more robust
+* Add direct "http_proxy" & similar collector settings for Proxy config
+  * This avoids problems in some environments where its not clear whether
+    the environment variables are set. The environment variables HTTP_PROXY,
+    http_proxy, HTTPS_PROXY, https_proxy, NO_PROXY and no_proxy continue to
+    function as expected.
+* Fix bug in handling of state mutex in activity snapshots
+  * This may have been the cause of "unlock of unlocked mutex" errors
+    when having multiple servers configured.
+
+
 ## 0.27.0      2020-01-06
 
 * Activity snapshot: Track timestamp of previous activity snapshot
