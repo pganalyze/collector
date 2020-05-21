@@ -266,6 +266,43 @@ var parseTests = []parseTestpair{
 		},
 		true,
 	},
+	// Custom 9 format
+	{
+		"",
+		"2020-05-21 17:53:05.307 UTC    [5ec6bfff.1] [1] LOG:  database system is ready to accept connections",
+		state.LogLine{
+			OccurredAt: time.Date(2020, time.May, 21, 17, 53, 05, 307*1000*1000, time.UTC),
+			LogLevel:   pganalyze_collector.LogLineInformation_LOG,
+			BackendPid: 1,
+			Content:    "database system is ready to accept connections",
+		},
+		true,
+	},
+	{
+		"",
+		"2020-05-21 17:54:35.256 UTC 172.18.0.1(56402) pgaweb [unknown] [5ec6c05b.22] [34] LOG:  connection authorized: user=pgaweb database=pgaweb application_name=psql",
+		state.LogLine{
+			OccurredAt: time.Date(2020, time.May, 21, 17, 54, 35, 256*1000*1000, time.UTC),
+			Username:   "pgaweb",
+			LogLevel:   pganalyze_collector.LogLineInformation_LOG,
+			BackendPid: 34,
+			Content:    "connection authorized: user=pgaweb database=pgaweb application_name=psql",
+		},
+		true,
+	},
+	{
+		"",
+		"2020-05-21 17:54:43.808 UTC 172.18.0.1(56402) pgaweb psql [5ec6c05b.22] [34] LOG:  disconnection: session time: 0:00:08.574 user=pgaweb database=pgaweb host=172.18.0.1 port=56402",
+		state.LogLine{
+			OccurredAt:  time.Date(2020, time.May, 21, 17, 54, 43, 808*1000*1000, time.UTC),
+			Username:    "pgaweb",
+			Application: "psql",
+			LogLevel:    pganalyze_collector.LogLineInformation_LOG,
+			BackendPid:  34,
+			Content:     "disconnection: session time: 0:00:08.574 user=pgaweb database=pgaweb host=172.18.0.1 port=56402",
+		},
+		true,
+	},
 	// Simple format
 	{
 		"",
@@ -302,7 +339,7 @@ func TestParseLogLineWithPrefix(t *testing.T) {
 			t.Errorf("For \"%v\": expected parsing ok? to be %v, but was %v\n", pair.lineIn, pair.lineOutOk, lOk)
 		}
 
-		if diff := cfg.Compare(pair.lineOut, l); diff != "" {
+		if diff := cfg.Compare(l, pair.lineOut); diff != "" {
 			t.Errorf("For \"%v\": log line diff: (-got +want)\n%s", pair.lineIn, diff)
 		}
 	}
