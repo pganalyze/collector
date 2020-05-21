@@ -68,7 +68,7 @@ func DownloadLogFiles(config config.ServerConfig, logger *util.Logger) (result [
 				DBInstanceIdentifier: instance.DBInstanceIdentifier,
 				LogFileName:          rdsLogFile.LogFileName,
 				Marker:               lastMarker,     // This is not set for the initial call, so we only get the most recent lines
-				NumberOfLines:        aws.Int64(500), // This is the effective maximum lines retrieved per run
+				NumberOfLines:        aws.Int64(2000), // This is the effective maximum lines retrieved per run
 			})
 
 			if err != nil {
