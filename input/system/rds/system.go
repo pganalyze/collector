@@ -75,7 +75,10 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger) (system sta
 
 	group := instance.DBParameterGroups[0]
 
-	pgssParam, _ := awsutil.GetRdsParameter(group, "shared_preload_libraries", rdsSvc)
+	pgssParam, err := awsutil.GetRdsParameter(group, "shared_preload_libraries", rdsSvc)
+	if err != nil {
+		logger.PrintVerbose("Could not get RDS parameter: %s", err)
+	}
 	if pgssParam != nil && pgssParam.ParameterValue != nil {
 		system.Info.AmazonRds.ParameterPgssEnabled = strings.Contains(*pgssParam.ParameterValue, "pg_stat_statements")
 		system.Info.AmazonRds.ParameterAutoExplainEnabled = strings.Contains(*pgssParam.ParameterValue, "auto_explain")
