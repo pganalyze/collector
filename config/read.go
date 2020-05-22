@@ -24,7 +24,6 @@ const defaultAPIBaseURL = "https://api.pganalyze.com"
 func getDefaultConfig() *ServerConfig {
 	config := &ServerConfig{
 		APIBaseURL:              defaultAPIBaseURL,
-		AwsRegion:               "us-east-1",
 		SectionName:             "default",
 		QueryStatsInterval:      60,
 		MaxCollectorConnections: 10,
@@ -257,6 +256,12 @@ func preprocessProviderSettings(config *ServerConfig) *ServerConfig {
 				config.AzureDbServerName = parts[0]
 			}
 		}
+	}
+
+	// This is primarily for backwards compatibility when using the IP address of an instance
+	// combined with only specifying its name, but not its region.
+	if config.AwsDbInstanceID != "" && config.AwsRegion == "" {
+		config.AwsRegion = "us-east-1"
 	}
 
 	if config.GcpCloudSQLInstanceID != "" && strings.Count(config.GcpCloudSQLInstanceID, ":") == 2 {
