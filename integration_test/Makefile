@@ -132,7 +132,7 @@ pg11:
 	diff -Naur pg11.expected pg11.out && echo 'success'
 
 pg12:
-	docker build -f Dockerfile.test-pg11 $(DOCKER_BUILD_OPTS)
+	docker build -f Dockerfile.test-pg12 $(DOCKER_BUILD_OPTS)
 	$(DOCKER_RUN_CMD)
 	sleep 10
 	docker exec pganalyze-collector-test pgbench -U postgres -i
