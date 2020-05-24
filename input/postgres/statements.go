@@ -15,9 +15,12 @@ import (
 const statementSQLDefaultOptionalFields = "NULL, NULL, NULL, NULL, NULL"
 const statementSQLpg94OptionalFields = "queryid, NULL, NULL, NULL, NULL"
 const statementSQLpg95OptionalFields = "queryid, min_time, max_time, mean_time, stddev_time"
+const statementSQLpg13OptionalFields = "queryid, min_exec_time, max_exec_time, mean_exec_time, stddev_exec_time"
+const statementSQLDefaultTotalTimeField = "total_time"
+const statementSQLpg13TotalTimeField = "total_exec_time"
 
 const statementSQL string = `
-SELECT dbid, userid, query, calls, total_time, rows, shared_blks_hit, shared_blks_read,
+SELECT dbid, userid, query, calls, %s, rows, shared_blks_hit, shared_blks_read,
 			 shared_blks_dirtied, shared_blks_written, local_blks_hit, local_blks_read,
 			 local_blks_dirtied, local_blks_written, temp_blks_read, temp_blks_written,
 			 blk_read_time, blk_write_time, %s
@@ -76,10 +79,19 @@ func ResetStatements(logger *util.Logger, db *sql.DB, systemType string) error {
 
 func GetStatements(logger *util.Logger, db *sql.DB, globalCollectionOpts state.CollectionOpts, postgresVersion state.PostgresVersion, showtext bool, systemType string) (state.PostgresStatementMap, state.PostgresStatementTextMap, state.PostgresStatementStatsMap, error) {
 	var err error
+	var totalTimeField string
 	var optionalFields string
 	var sourceTable string
 
-	if postgresVersion.Numeric >= state.PostgresVersion95 {
+	if postgresVersion.Numeric >= state.PostgresVersion13 {
+		totalTimeField = statementSQLpg13TotalTimeField
+	} else {
+		totalTimeField = statementSQLDefaultTotalTimeField
+	}
+
+	if postgresVersion.Numeric >= state.PostgresVersion13 {
+		optionalFields = statementSQLpg13OptionalFields
+	} else if postgresVersion.Numeric >= state.PostgresVersion95 {
 		optionalFields = statementSQLpg95OptionalFields
 	} else if postgresVersion.Numeric >= state.PostgresVersion94 {
 		optionalFields = statementSQLpg94OptionalFields
@@ -111,7 +123,7 @@ func GetStatements(logger *util.Logger, db *sql.DB, globalCollectionOpts state.C
 		}
 	}
 
-	sql := QueryMarkerSQL + fmt.Sprintf(statementSQL, optionalFields, sourceTable)
+	sql := QueryMarkerSQL + fmt.Sprintf(statementSQL, totalTimeField, optionalFields, sourceTable)
 
 	stmt, err := db.Prepare(sql)
 	if err != nil {

@@ -10,6 +10,7 @@ const (
 	PostgresVersion10 = 100000
 	PostgresVersion11 = 110000
 	PostgresVersion12 = 120000
+	PostgresVersion13 = 130000
 
 	// MinRequiredPostgresVersion - We require PostgreSQL 9.2 or newer, since pg_stat_statements only started being usable then
 	MinRequiredPostgresVersion = PostgresVersion92

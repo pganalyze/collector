@@ -1,9 +1,9 @@
 DOCKER_BUILD_OPTS = -t pganalyze-collector-test ..
 DOCKER_RUN_CMD = docker run --name pganalyze-collector-test -v `pwd`/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d/ -e POSTGRES_HOST_AUTH_METHOD=trust -d pganalyze-collector-test
 
-.PHONY: pg92 pg93 pg94 pg95 pg96 pg10 pg11 pg12
+.PHONY: pg92 pg93 pg94 pg95 pg96 pg10 pg11 pg12 pg13
 
-all: pg92 pg93 pg94 pg95 pg96 pg10 pg11 pg12
+all: pg92 pg93 pg94 pg95 pg96 pg10 pg11 pg12 pg13
 
 pg92:
 	docker build -f Dockerfile.test-pg92 $(DOCKER_BUILD_OPTS)
@@ -148,3 +148,21 @@ pg12:
 	fi
 	jq '.queryInformations[].normalizedQuery' pg12_2.json | sort --version-sort -f > pg12.out
 	diff -Naur pg12.expected pg12.out && echo 'success'
+
+pg13:
+	docker build -f Dockerfile.test-pg13 $(DOCKER_BUILD_OPTS)
+	$(DOCKER_RUN_CMD)
+	sleep 10
+	docker exec pganalyze-collector-test pgbench -U postgres -i
+	docker exec pganalyze-collector-test pgbench -U postgres
+	docker exec pganalyze-collector-test sh -c "DB_USERNAME=postgres PGA_API_KEY=dummy PGA_DISABLE_ACTIVITY=1 pganalyze-collector --dry-run --force-state-update -v" > pg13_1.json
+	docker exec pganalyze-collector-test pgbench -U postgres
+	docker exec pganalyze-collector-test sh -c "DB_USERNAME=postgres PGA_API_KEY=dummy PGA_DISABLE_ACTIVITY=1 pganalyze-collector --dry-run --force-state-update -v" > pg13_2.json
+	docker rm -f pganalyze-collector-test
+	docker rmi pganalyze-collector-test
+	if [ "`jq '.collectorErrors' pg13_2.json | tr -d ' \n\r\t '`" != "null" ]; then \
+		jq '.collectorErrors' pg13_2.json; \
+		exit 1; \
+	fi
+	jq '.queryInformations[].normalizedQuery' pg13_2.json | sort --version-sort -f > pg13.out
+	diff -Naur pg13.expected pg13.out && echo 'success'
