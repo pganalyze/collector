@@ -55,6 +55,7 @@ SELECT c.oid,
 `
 
 const indexStatsSQL = `
+WITH locked_relids AS (SELECT DISTINCT relation relid FROM pg_catalog.pg_locks WHERE mode = 'AccessExclusiveLock')
 SELECT s.indexrelid,
 			 COALESCE(pg_catalog.pg_relation_size(s.indexrelid), 0) AS size_bytes,
 			 COALESCE(s.idx_scan, 0),
@@ -64,6 +65,7 @@ SELECT s.indexrelid,
 			 COALESCE(sio.idx_blks_hit, 0)
 	FROM pg_catalog.pg_stat_user_indexes s
 			 LEFT JOIN pg_catalog.pg_statio_user_indexes sio USING (indexrelid)
+	WHERE s.indexrelid NOT IN (SELECT relid FROM locked_relids)
 `
 
 func GetRelationStats(db *sql.DB, postgresVersion state.PostgresVersion) (relStats state.PostgresRelationStatsMap, err error) {
