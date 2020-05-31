@@ -10,7 +10,7 @@ require (
 	github.com/bmizerany/lpx v0.0.0-20130503172629-af85cf24c156
 	github.com/certifi/gocertifi v0.0.0-20160926115448-a61bf5eafa3a // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/fsnotify/fsnotify v1.4.7
+	github.com/fsnotify/fsnotify v1.4.9
 	github.com/gedex/inflector v0.0.0-20161103042756-046f2c312046
 	github.com/getsentry/raven-go v0.0.0-20161115135411-3f7439d3e74d
 	github.com/go-ini/ini v1.18.0
@@ -21,7 +21,6 @@ require (
 	github.com/gopherjs/gopherjs v0.0.0-20181103185306-d547d1d9531e // indirect
 	github.com/gorhill/cronexpr v0.0.0-20160318121724-f0984319b442
 	github.com/guregu/null v0.0.0-20160228005316-41961cea0328
-	github.com/hpcloud/tail v1.0.1-0.20180514194441-a1dbeea552b7
 	github.com/jstemmer/go-junit-report v0.9.1 // indirect
 	github.com/jtolds/gls v4.2.0+incompatible // indirect
 	github.com/juju/syslog v0.0.0-20150205155936-6be94e8b7187
@@ -31,6 +30,7 @@ require (
 	github.com/lfittl/pg_query_go v1.0.0
 	github.com/lib/pq v1.3.0
 	github.com/ogier/pflag v0.0.0-20160129220114-45c278ab3607
+	github.com/papertrail/go-tail v0.0.0-20180509224916-973c153b0431
 	github.com/pkg/errors v0.8.2-0.20190227000051-27936f6d90f9
 	github.com/satori/go.uuid v0.0.0-20160713180306-0aa62d5ddceb
 	github.com/shirou/gopsutil v0.0.0-20170222144203-d371ba1293cb
@@ -43,14 +43,12 @@ require (
 	golang.org/x/net v0.0.0-20191126235420-ef20fe5d7933
 	golang.org/x/oauth2 v0.0.0-20191122200657-5d9234df094c // indirect
 	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e // indirect
-	golang.org/x/sys v0.0.0-20191128015809-6d18c012aee9 // indirect
+	golang.org/x/sys v0.0.0-20200523222454-059865788121 // indirect
 	golang.org/x/tools v0.0.0-20191130070609-6e064ea0cf2d // indirect
 	google.golang.org/api v0.14.0
 	google.golang.org/appengine v1.6.5 // indirect
 	google.golang.org/genproto v0.0.0-20191115221424-83cc0476cb11 // indirect
 	google.golang.org/grpc v1.25.1 // indirect
-	gopkg.in/fsnotify/fsnotify.v1 v1.4.7 // indirect
-	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 )
 
 go 1.14

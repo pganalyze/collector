@@ -72,7 +72,7 @@ github.com/bmizerany/lpx
 github.com/certifi/gocertifi
 # github.com/davecgh/go-spew v1.1.1
 ## explicit
-# github.com/fsnotify/fsnotify v1.4.7
+# github.com/fsnotify/fsnotify v1.4.9
 ## explicit
 github.com/fsnotify/fsnotify
 # github.com/gedex/inflector v0.0.0-20161103042756-046f2c312046
@@ -124,13 +124,6 @@ github.com/gorhill/cronexpr
 # github.com/guregu/null v0.0.0-20160228005316-41961cea0328
 ## explicit
 github.com/guregu/null
-# github.com/hpcloud/tail v1.0.1-0.20180514194441-a1dbeea552b7
-## explicit
-github.com/hpcloud/tail
-github.com/hpcloud/tail/ratelimiter
-github.com/hpcloud/tail/util
-github.com/hpcloud/tail/watch
-github.com/hpcloud/tail/winfile
 # github.com/jmespath/go-jmespath v0.0.0-20180206201540-c2b33e8439af
 github.com/jmespath/go-jmespath
 # github.com/jstemmer/go-junit-report v0.9.1
@@ -167,6 +160,9 @@ github.com/lib/pq/scram
 # github.com/ogier/pflag v0.0.0-20160129220114-45c278ab3607
 ## explicit
 github.com/ogier/pflag
+# github.com/papertrail/go-tail v0.0.0-20180509224916-973c153b0431
+## explicit
+github.com/papertrail/go-tail/follower
 # github.com/pkg/errors v0.8.2-0.20190227000051-27936f6d90f9
 ## explicit
 github.com/pkg/errors
@@ -239,8 +235,9 @@ golang.org/x/oauth2/jwt
 ## explicit
 golang.org/x/sync/errgroup
 golang.org/x/sync/semaphore
-# golang.org/x/sys v0.0.0-20191128015809-6d18c012aee9
+# golang.org/x/sys v0.0.0-20200523222454-059865788121
 ## explicit
+golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/unix
 # golang.org/x/text v0.3.2
 golang.org/x/text/secure/bidirule
@@ -348,12 +345,6 @@ google.golang.org/grpc/serviceconfig
 google.golang.org/grpc/stats
 google.golang.org/grpc/status
 google.golang.org/grpc/tap
-# gopkg.in/fsnotify/fsnotify.v1 v1.4.7
-## explicit
-gopkg.in/fsnotify/fsnotify.v1
-# gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7
-## explicit
-gopkg.in/tomb.v1
 # honnef.co/go/tools v0.0.1-2019.2.3
 honnef.co/go/tools/arg
 honnef.co/go/tools/cmd/staticcheck
