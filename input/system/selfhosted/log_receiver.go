@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -16,7 +17,7 @@ import (
 	"time"
 
 	"github.com/fsnotify/fsnotify"
-	"github.com/hpcloud/tail"
+	"github.com/papertrail/go-tail/follower"
 	"github.com/pganalyze/collector/input/postgres"
 	"github.com/pganalyze/collector/logs"
 	"github.com/pganalyze/collector/logs/stream"
@@ -187,22 +188,30 @@ func TestLogTail(server state.Server, globalCollectionOpts state.CollectionOpts,
 func tailFile(ctx context.Context, path string, out chan<- string, prefixedLogger *util.Logger) error {
 	prefixedLogger.PrintVerbose("Tailing log file %s", path)
 
-	t, err := tail.TailFile(path, tail.Config{Follow: true, MustExist: true, ReOpen: true, Logger: tail.DiscardingLogger})
+	t, err := follower.New(path, follower.Config{
+		Whence: io.SeekEnd,
+		Offset: 0,
+		Reopen: true,
+	})
 	if err != nil {
 		return fmt.Errorf("Failed to setup log tail: %s", err)
 	}
 
 	go func() {
-		defer t.Cleanup()
+		defer t.Close()
 		for {
 			select {
-			case line := <-t.Lines:
-				out <- line.Text
+			case line := <-t.Lines():
+				out <- line.String()
 			case <-ctx.Done():
 				prefixedLogger.PrintVerbose("Stopping log tail for %s (stop requested)", path)
-				t.Stop()
+				t.Close()
 				return
 			}
+		}
+		if t.Err() != nil {
+			t.Close()
+			prefixedLogger.PrintError("Failed log file tail: %s", t.Err())
 		}
 	}()
 
