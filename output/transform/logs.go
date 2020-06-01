@@ -9,7 +9,7 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
-func LogStateToLogSnapshot(logState state.LogState) (snapshot.CompactLogSnapshot, snapshot.CompactSnapshot_BaseRefs) {
+func LogStateToLogSnapshot(logState state.TransientLogState) (snapshot.CompactLogSnapshot, snapshot.CompactSnapshot_BaseRefs) {
 	var s snapshot.CompactLogSnapshot
 	var r snapshot.CompactSnapshot_BaseRefs
 	s, r = transformPostgresQuerySamples(s, r, logState)
@@ -62,7 +62,7 @@ func upsertRelationReference(refs []*snapshot.RelationReference, databaseIdx int
 	return idx, refs
 }
 
-func transformPostgresQuerySamples(s snapshot.CompactLogSnapshot, r snapshot.CompactSnapshot_BaseRefs, logState state.LogState) (snapshot.CompactLogSnapshot, snapshot.CompactSnapshot_BaseRefs) {
+func transformPostgresQuerySamples(s snapshot.CompactLogSnapshot, r snapshot.CompactSnapshot_BaseRefs, logState state.TransientLogState) (snapshot.CompactLogSnapshot, snapshot.CompactSnapshot_BaseRefs) {
 	for _, sampleIn := range logState.QuerySamples {
 		occurredAt, _ := ptypes.TimestampProto(sampleIn.OccurredAt)
 
@@ -103,7 +103,7 @@ func transformPostgresQuerySamples(s snapshot.CompactLogSnapshot, r snapshot.Com
 	return s, r
 }
 
-func transformSystemLogs(s snapshot.CompactLogSnapshot, r snapshot.CompactSnapshot_BaseRefs, logState state.LogState) (snapshot.CompactLogSnapshot, snapshot.CompactSnapshot_BaseRefs) {
+func transformSystemLogs(s snapshot.CompactLogSnapshot, r snapshot.CompactSnapshot_BaseRefs, logState state.TransientLogState) (snapshot.CompactLogSnapshot, snapshot.CompactSnapshot_BaseRefs) {
 	for _, logFileIn := range logState.LogFiles {
 		fileIdx := int32(len(s.LogFileReferences))
 		logFileReference := &snapshot.LogFileReference{

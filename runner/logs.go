@@ -1,10 +1,12 @@
 package runner
 
 import (
+	"database/sql"
 	"sync"
 
 	"github.com/pganalyze/collector/grant"
 	"github.com/pganalyze/collector/input"
+	"github.com/pganalyze/collector/input/postgres"
 	"github.com/pganalyze/collector/input/system/google_cloudsql"
 	"github.com/pganalyze/collector/input/system/selfhosted"
 	"github.com/pganalyze/collector/output"
@@ -13,10 +15,12 @@ import (
 	"github.com/pkg/errors"
 )
 
-func downloadLogsForServer(server state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (bool, error) {
+func downloadLogsForServer(server state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.PersistedState, bool, error) {
+	newState := server.PrevState
+
 	grant, err := grant.GetLogsGrant(server, globalCollectionOpts, logger)
 	if err != nil {
-		return false, errors.Wrap(err, "could not get log grant")
+		return newState, false, errors.Wrap(err, "could not get log grant")
 	}
 
 	if !grant.Valid {
@@ -25,24 +29,35 @@ func downloadLogsForServer(server state.Server, globalCollectionOpts state.Colle
 		} else {
 			logger.PrintVerbose("Log collection disabled by pganalyze, skipping")
 		}
-		return false, nil
+		return newState, false, nil
 	}
 
-	// TODO: We'll need to pass a connection here for EXPLAINs to run (or hand them over to the next full snapshot run)
-	logState, err := input.DownloadLogs(server, nil, globalCollectionOpts, logger)
+	var connection *sql.DB
+	if server.Config.EnableLogExplain {
+		connection, err = postgres.EstablishConnection(server, logger, globalCollectionOpts, "")
+		if err != nil {
+			return newState, false, errors.Wrap(err, "failed to connect to database")
+		}
+
+		defer connection.Close()
+	}
+
+	transientLogState, persistedLogState, err := input.DownloadLogs(server, connection, globalCollectionOpts, logger)
 	if err != nil {
-		logState.Cleanup()
-		return false, errors.Wrap(err, "could not collect logs")
+		transientLogState.Cleanup()
+		return newState, false, errors.Wrap(err, "could not collect logs")
 	}
 
-	err = output.UploadAndSendLogs(server, grant, globalCollectionOpts, logger, logState)
+	newState.Log = persistedLogState
+
+	err = output.UploadAndSendLogs(server, grant, globalCollectionOpts, logger, transientLogState)
 	if err != nil {
-		logState.Cleanup()
-		return false, errors.Wrap(err, "failed to upload/send logs")
+		transientLogState.Cleanup()
+		return newState, false, errors.Wrap(err, "failed to upload/send logs")
 	}
 
-	logState.Cleanup()
-	return true, nil
+	transientLogState.Cleanup()
+	return newState, true, nil
 }
 
 // TestLogsForAllServers - Test log download/tailing
@@ -79,7 +94,7 @@ func TestLogsForAllServers(servers []state.Server, globalCollectionOpts state.Co
 			}
 		} else if server.Config.AwsDbInstanceID != "" {
 			prefixedLogger.PrintInfo("Testing log collection (RDS)...")
-			_, err := downloadLogsForServer(server, globalCollectionOpts, prefixedLogger)
+			_, _, err := downloadLogsForServer(server, globalCollectionOpts, prefixedLogger)
 			if err != nil {
 				hasFailedServers = true
 				prefixedLogger.PrintError("Could not download logs for server: %s", err)
@@ -111,13 +126,17 @@ func DownloadLogsFromAllServers(servers []state.Server, globalCollectionOpts sta
 		go func(server *state.Server) {
 			prefixedLogger := logger.WithPrefixAndRememberErrors(server.Config.SectionName)
 
-			success, err := downloadLogsForServer(*server, globalCollectionOpts, prefixedLogger)
+			server.StateMutex.Lock()
+			newState, success, err := downloadLogsForServer(*server, globalCollectionOpts, prefixedLogger)
 			if err != nil {
+				server.StateMutex.Unlock()
 				prefixedLogger.PrintError("Could not collect logs for server: %s", err)
 				if server.Config.ErrorCallback != "" {
 					go runCompletionCallback("error", server.Config.ErrorCallback, server.Config.SectionName, "logs", err, prefixedLogger)
 				}
 			} else if success {
+				server.PrevState = newState
+				server.StateMutex.Unlock()
 				if server.Config.SuccessCallback != "" {
 					go runCompletionCallback("success", server.Config.SuccessCallback, server.Config.SectionName, "logs", nil, prefixedLogger)
 				}

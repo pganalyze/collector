@@ -11,9 +11,11 @@ import (
 )
 
 // DownloadLogFiles - Downloads all new log files for the remote system and returns them
-func DownloadLogFiles(config config.ServerConfig, logger *util.Logger) (files []state.LogFile, querySamples []state.PostgresQuerySample) {
+func DownloadLogFiles(prevState state.PersistedLogState, config config.ServerConfig, logger *util.Logger) (psl state.PersistedLogState, files []state.LogFile, querySamples []state.PostgresQuerySample) {
 	if config.SystemType == "amazon_rds" {
-		files, querySamples = rds.DownloadLogFiles(config, logger)
+		psl, files, querySamples = rds.DownloadLogFiles(prevState, config, logger)
+	} else {
+		psl = prevState
 	}
 
 	return

@@ -13,12 +13,12 @@ import (
 )
 
 type testpair struct {
-	logLines         []state.LogLine
-	logState         state.LogState
-	logFile          state.LogFile
-	logFileContent   string
-	tooFreshLogLines []state.LogLine
-	err              error
+	logLines          []state.LogLine
+	TransientLogState state.TransientLogState
+	logFile           state.LogFile
+	logFileContent    string
+	tooFreshLogLines  []state.LogLine
+	err               error
 }
 
 var now = time.Now()
@@ -31,7 +31,7 @@ var tests = []testpair{
 			LogLevel:    pganalyze_collector.LogLineInformation_LOG,
 			Content:     "duration: 10003.847 ms  statement: SELECT pg_sleep(10);\n",
 		}},
-		state.LogState{
+		state.TransientLogState{
 			QuerySamples: []state.PostgresQuerySample{{
 				Query:     "SELECT pg_sleep(10);",
 				RuntimeMs: 10003.847,
@@ -66,7 +66,7 @@ var tests = []testpair{
 			LogLevel:    pganalyze_collector.LogLineInformation_LOG,
 			Content:     "duration: 10003.847 ms  statement: SELECT pg_sleep(10);\n",
 		}},
-		state.LogState{},
+		state.TransientLogState{},
 		state.LogFile{},
 		"",
 		[]state.LogLine{{
@@ -88,7 +88,7 @@ var tests = []testpair{
 				LogLevel:    pganalyze_collector.LogLineInformation_STATEMENT,
 				Content:     "SELECT pg_reload_conf();\n",
 			}},
-		state.LogState{},
+		state.TransientLogState{},
 		state.LogFile{
 			LogLines: []state.LogLine{{
 				CollectedAt:        now.Add(-5 * time.Second),
@@ -121,7 +121,7 @@ var tests = []testpair{
 				CollectedAt: now,
 				Content:     " );\n",
 			}},
-		state.LogState{},
+		state.TransientLogState{},
 		state.LogFile{
 			LogLines: []state.LogLine{{
 				CollectedAt: now.Add(-5 * time.Second),
@@ -146,7 +146,7 @@ var tests = []testpair{
 				CollectedAt: now,
 				Content:     " );\n",
 			}},
-		state.LogState{},
+		state.TransientLogState{},
 		state.LogFile{
 			LogLines: []state.LogLine{{
 				CollectedAt:   now.Add(-5 * time.Second),
@@ -178,7 +178,7 @@ var tests = []testpair{
 				BackendPid:    42,
 				Content:       "first\n",
 			}},
-		state.LogState{},
+		state.TransientLogState{},
 		state.LogFile{
 			LogLines: []state.LogLine{{
 				CollectedAt:   now.Add(-5 * time.Second),
@@ -204,7 +204,7 @@ var tests = []testpair{
 
 func TestAnalyzeStreamInGroups(t *testing.T) {
 	for _, pair := range tests {
-		logState, logFile, tooFreshLogLines, err := stream.AnalyzeStreamInGroups(pair.logLines)
+		TransientLogState, logFile, tooFreshLogLines, err := stream.AnalyzeStreamInGroups(pair.logLines)
 		logFileContent := ""
 		if logFile.TmpFile != nil {
 			dat, err := ioutil.ReadFile(logFile.TmpFile.Name())
@@ -214,15 +214,15 @@ func TestAnalyzeStreamInGroups(t *testing.T) {
 			logFileContent = string(dat)
 		}
 
-		logState.CollectedAt = time.Time{} // Avoid comparing against time.Now()
-		logFile.TmpFile = nil              // Avoid comparing against tempfile
-		logFile.UUID = uuid.UUID{}         // Avoid comparing against a generated UUID
+		TransientLogState.CollectedAt = time.Time{} // Avoid comparing against time.Now()
+		logFile.TmpFile = nil                       // Avoid comparing against tempfile
+		logFile.UUID = uuid.UUID{}                  // Avoid comparing against a generated UUID
 
 		cfg := pretty.CompareConfig
 		cfg.SkipZeroFields = true
 
-		if diff := cfg.Compare(pair.logState, logState); diff != "" {
-			t.Errorf("For %v: log state diff: (-want +got)\n%s", pair.logState, diff)
+		if diff := cfg.Compare(pair.TransientLogState, TransientLogState); diff != "" {
+			t.Errorf("For %v: log state diff: (-want +got)\n%s", pair.TransientLogState, diff)
 		}
 		if diff := cfg.Compare(pair.logFile, logFile); diff != "" {
 			t.Errorf("For %v: log file diff: (-want +got)\n%s", pair.logFile, diff)

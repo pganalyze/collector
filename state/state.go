@@ -24,6 +24,7 @@ type PersistedState struct {
 
 	System         SystemState
 	CollectorStats CollectorStats
+	Log            PersistedLogState
 
 	// Incremented every run, indicates whether we should run a pg_stat_statements_reset()
 	// on behalf of the user. Only activates once it reaches GrantFeatures.StatementReset,

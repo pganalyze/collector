@@ -146,7 +146,7 @@ func stitchLogLines(readyLogLines []state.LogLine) (analyzableLogLines []state.L
 //
 // The caller is expected to keep a repository of "tooFreshLogLines" that they
 // can send back in again in the next call, combined with new lines received
-func AnalyzeStreamInGroups(logLines []state.LogLine) (state.LogState, state.LogFile, []state.LogLine, error) {
+func AnalyzeStreamInGroups(logLines []state.LogLine) (state.TransientLogState, state.LogFile, []state.LogLine, error) {
 	// Pre-Sort by PID, log line number and occurred at timestamp
 	//
 	// Its important we do this early, to support out-of-order receipt of log lines,
@@ -166,12 +166,12 @@ func AnalyzeStreamInGroups(logLines []state.LogLine) (state.LogState, state.LogF
 
 	readyLogLines, tooFreshLogLines := findReadyLogLines(logLines, 3*time.Second)
 	if len(readyLogLines) == 0 {
-		return state.LogState{}, state.LogFile{}, tooFreshLogLines, nil
+		return state.TransientLogState{}, state.LogFile{}, tooFreshLogLines, nil
 	}
 
 	logFile, err := writeTmpLogFile(readyLogLines)
 	if err != nil {
-		return state.LogState{}, state.LogFile{}, logLines, err
+		return state.TransientLogState{}, state.LogFile{}, logLines, err
 	}
 
 	// Ensure that log lines that span multiple lines are already concated together before passing them to analyze
@@ -180,7 +180,7 @@ func AnalyzeStreamInGroups(logLines []state.LogLine) (state.LogState, state.LogF
 	// this is required for cases where unknown log lines don't have PIDs associated
 	analyzableLogLines := stitchLogLines(readyLogLines)
 
-	logState := state.LogState{CollectedAt: time.Now()}
+	logState := state.TransientLogState{CollectedAt: time.Now()}
 	logFile.LogLines, logState.QuerySamples = handleLogAnalysis(analyzableLogLines)
 
 	return logState, logFile, tooFreshLogLines, nil

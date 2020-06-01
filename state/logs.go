@@ -22,11 +22,16 @@ type GrantLogsEncryptionKey struct {
 	Plaintext      string `json:"plaintext"`
 }
 
-type LogState struct {
+type TransientLogState struct {
 	CollectedAt time.Time
 
 	LogFiles     []LogFile
 	QuerySamples []PostgresQuerySample
+}
+
+type PersistedLogState struct {
+	AwsFilename string
+	AwsMarker   string
 }
 
 // LogFile - Log file that we are uploading for reference in log line metadata
@@ -161,7 +166,7 @@ func (logFile LogFile) Cleanup() {
 	os.Remove(logFile.TmpFile.Name())
 }
 
-func (ls LogState) Cleanup() {
+func (ls TransientLogState) Cleanup() {
 	for _, logFile := range ls.LogFiles {
 		logFile.Cleanup()
 	}

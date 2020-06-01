@@ -15,7 +15,9 @@ import (
 )
 
 // DownloadLogFiles - Gets log files for an Amazon RDS instance
-func DownloadLogFiles(config config.ServerConfig, logger *util.Logger) (result []state.LogFile, samples []state.PostgresQuerySample) {
+func DownloadLogFiles(prevState state.PersistedLogState, config config.ServerConfig, logger *util.Logger) (psl state.PersistedLogState, result []state.LogFile, samples []state.PostgresQuerySample) {
+	psl = prevState
+
 	sess, err := awsutil.GetAwsSession(config)
 	if err != nil {
 		logger.PrintError("Rds/Logs: Encountered error getting session: %v\n", err)
@@ -46,8 +48,14 @@ func DownloadLogFiles(config config.ServerConfig, logger *util.Logger) (result [
 		return
 	}
 
+	var newestLogFileTime int64
+
 	for _, rdsLogFile := range resp.DescribeDBLogFiles {
 		var lastMarker *string
+
+		if *rdsLogFile.LogFileName == prevState.AwsFilename {
+			lastMarker = &prevState.AwsMarker
+		}
 
 		var logFile state.LogFile
 		logFile.UUID = uuid.NewV4()
@@ -67,7 +75,7 @@ func DownloadLogFiles(config config.ServerConfig, logger *util.Logger) (result [
 			resp, err := rdsSvc.DownloadDBLogFilePortion(&rds.DownloadDBLogFilePortionInput{
 				DBInstanceIdentifier: instance.DBInstanceIdentifier,
 				LogFileName:          rdsLogFile.LogFileName,
-				Marker:               lastMarker,     // This is not set for the initial call, so we only get the most recent lines
+				Marker:               lastMarker,      // This is not set for the initial call, so we only get the most recent lines
 				NumberOfLines:        aws.Int64(2000), // This is the effective maximum lines retrieved per run
 			})
 
@@ -105,6 +113,12 @@ func DownloadLogFiles(config config.ServerConfig, logger *util.Logger) (result [
 			if !*resp.AdditionalDataPending {
 				break
 			}
+		}
+
+		if *rdsLogFile.LastWritten > newestLogFileTime {
+			newestLogFileTime = *rdsLogFile.LastWritten
+			psl.AwsFilename = *rdsLogFile.LogFileName
+			psl.AwsMarker = *lastMarker
 		}
 
 		result = append(result, logFile)
