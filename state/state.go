@@ -12,8 +12,6 @@ import (
 type PersistedState struct {
 	CollectedAt time.Time
 
-	ActivitySnapshotAt time.Time
-
 	StatementStats PostgresStatementStatsMap
 	RelationStats  PostgresRelationStatsMap
 	IndexStats     PostgresIndexStatsMap
@@ -24,7 +22,6 @@ type PersistedState struct {
 
 	System         SystemState
 	CollectorStats CollectorStats
-	Log            PersistedLogState
 
 	// Incremented every run, indicates whether we should run a pg_stat_statements_reset()
 	// on behalf of the user. Only activates once it reaches GrantFeatures.StatementReset,
@@ -78,7 +75,7 @@ type DiffState struct {
 }
 
 // StateOnDiskFormatVersion - Increment this when an old state preserved to disk should be ignored
-const StateOnDiskFormatVersion = 2
+const StateOnDiskFormatVersion = 3
 
 type StateOnDisk struct {
 	FormatVersion uint
@@ -151,8 +148,15 @@ type GrantS3 struct {
 
 type Server struct {
 	Config           config.ServerConfig
-	PrevState        PersistedState
-	StateMutex       *sync.Mutex
 	RequestedSslMode string
 	Grant            Grant
+
+	PrevState  PersistedState
+	StateMutex *sync.Mutex
+
+	LogPrevState  PersistedLogState
+	LogStateMutex *sync.Mutex
+
+	ActivityPrevState  PersistedActivityState
+	ActivityStateMutex *sync.Mutex
 }

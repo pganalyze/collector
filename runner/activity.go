@@ -14,13 +14,13 @@ import (
 	"github.com/pkg/errors"
 )
 
-func processActivityForServer(server state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.PersistedState, bool, error) {
+func processActivityForServer(server state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.PersistedActivityState, bool, error) {
 	var newGrant state.Grant
 	var err error
 	var connection *sql.DB
-	var activity state.ActivityState
+	var activity state.TransientActivityState
 
-	newState := server.PrevState
+	newState := server.ActivityPrevState
 
 	if !globalCollectionOpts.ForceEmptyGrant {
 		newGrant, err = grant.GetDefaultGrant(server, globalCollectionOpts, logger)
@@ -94,18 +94,18 @@ func CollectActivityFromAllServers(servers []state.Server, globalCollectionOpts 
 				prefixedLogger.PrintInfo("Testing activity snapshots...")
 			}
 
-			server.StateMutex.Lock()
+			server.ActivityStateMutex.Lock()
 			newState, success, err := processActivityForServer(*server, globalCollectionOpts, prefixedLogger)
 			if err != nil {
-				server.StateMutex.Unlock()
+				server.ActivityStateMutex.Unlock()
 				allSuccessful = false
 				prefixedLogger.PrintError("Could not collect activity for server: %s", err)
 				if server.Config.ErrorCallback != "" {
 					go runCompletionCallback("error", server.Config.ErrorCallback, server.Config.SectionName, "activity", err, prefixedLogger)
 				}
 			} else {
-				server.PrevState = newState
-				server.StateMutex.Unlock()
+				server.ActivityPrevState = newState
+				server.ActivityStateMutex.Unlock()
 				if success && server.Config.SuccessCallback != "" {
 					go runCompletionCallback("success", server.Config.SuccessCallback, server.Config.SectionName, "activity", nil, prefixedLogger)
 				}

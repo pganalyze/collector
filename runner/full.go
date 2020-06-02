@@ -2,16 +2,13 @@ package runner
 
 import (
 	"database/sql"
-	"encoding/gob"
 	"fmt"
-	"os"
 	"os/exec"
 	"runtime/debug"
 	"sync"
 	"time"
 
 	raven "github.com/getsentry/raven-go"
-	"github.com/pganalyze/collector/config"
 	"github.com/pganalyze/collector/grant"
 	"github.com/pganalyze/collector/input"
 	"github.com/pganalyze/collector/input/postgres"
@@ -124,56 +121,6 @@ func processDatabase(server state.Server, globalCollectionOpts state.CollectionO
 	return newState, newGrant, err
 }
 
-func writeStateFile(servers []state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
-	stateOnDisk := state.StateOnDisk{PrevStateByServer: make(map[config.ServerIdentifier]state.PersistedState), FormatVersion: state.StateOnDiskFormatVersion}
-
-	for _, server := range servers {
-		stateOnDisk.PrevStateByServer[server.Config.Identifier] = server.PrevState
-	}
-
-	file, err := os.Create(globalCollectionOpts.StateFilename)
-	if err != nil {
-		logger.PrintWarning("Could not write out state file to %s because of error: %s", globalCollectionOpts.StateFilename, err)
-		return
-	}
-	defer file.Close()
-
-	encoder := gob.NewEncoder(file)
-	encoder.Encode(stateOnDisk)
-}
-
-// ReadStateFile - This reads in the prevState structs from the state file - only run this on initial bootup and SIGHUP!
-func ReadStateFile(servers []state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
-	var stateOnDisk state.StateOnDisk
-
-	file, err := os.Open(globalCollectionOpts.StateFilename)
-	if err != nil {
-		logger.PrintVerbose("Did not open state file: %s", err)
-		return
-	}
-	decoder := gob.NewDecoder(file)
-	err = decoder.Decode(&stateOnDisk)
-	if err != nil {
-		logger.PrintVerbose("Could not decode state file: %s", err)
-		return
-	}
-	defer file.Close()
-
-	if stateOnDisk.FormatVersion < state.StateOnDiskFormatVersion {
-		logger.PrintVerbose("Ignoring state file since the on-disk format has changed")
-		return
-	}
-
-	for idx, server := range servers {
-		prevState, exist := stateOnDisk.PrevStateByServer[server.Config.Identifier]
-		if exist {
-			prefixedLogger := logger.WithPrefix(server.Config.SectionName)
-			prefixedLogger.PrintVerbose("Successfully recovered state from on-disk file")
-			servers[idx].PrevState = prevState
-		}
-	}
-}
-
 func runCompletionCallback(callbackType string, callbackCmd string, sectionName string, snapshotType string, errIn error, logger *util.Logger) {
 	cmd := exec.Command("bash", "-c", callbackCmd)
 	cmd.Env = append(cmd.Env, "PGA_CALLBACK_TYPE="+callbackType)
@@ -236,7 +183,7 @@ func CollectAllServers(servers []state.Server, globalCollectionOpts state.Collec
 	wg.Wait()
 
 	if globalCollectionOpts.WriteStateUpdate {
-		writeStateFile(servers, globalCollectionOpts, logger)
+		state.WriteStateFile(servers, globalCollectionOpts, logger)
 	}
 
 	return

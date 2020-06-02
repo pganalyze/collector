@@ -15,12 +15,12 @@ import (
 	"github.com/pkg/errors"
 )
 
-func downloadLogsForServer(server state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.PersistedState, bool, error) {
-	newState := server.PrevState
+func downloadLogsForServer(server state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.PersistedLogState, bool, error) {
+	newLogState := server.LogPrevState
 
 	grant, err := grant.GetLogsGrant(server, globalCollectionOpts, logger)
 	if err != nil {
-		return newState, false, errors.Wrap(err, "could not get log grant")
+		return newLogState, false, errors.Wrap(err, "could not get log grant")
 	}
 
 	if !grant.Valid {
@@ -29,35 +29,35 @@ func downloadLogsForServer(server state.Server, globalCollectionOpts state.Colle
 		} else {
 			logger.PrintVerbose("Log collection disabled by pganalyze, skipping")
 		}
-		return newState, false, nil
+		return newLogState, false, nil
 	}
 
 	var connection *sql.DB
 	if server.Config.EnableLogExplain {
 		connection, err = postgres.EstablishConnection(server, logger, globalCollectionOpts, "")
 		if err != nil {
-			return newState, false, errors.Wrap(err, "failed to connect to database")
+			return newLogState, false, errors.Wrap(err, "failed to connect to database")
 		}
 
 		defer connection.Close()
 	}
 
-	transientLogState, persistedLogState, err := input.DownloadLogs(server, connection, globalCollectionOpts, logger)
+	transientLogState, persistedLogState, err := input.DownloadLogs(server, server.LogPrevState, connection, globalCollectionOpts, logger)
 	if err != nil {
 		transientLogState.Cleanup()
-		return newState, false, errors.Wrap(err, "could not collect logs")
+		return newLogState, false, errors.Wrap(err, "could not collect logs")
 	}
 
-	newState.Log = persistedLogState
+	newLogState = persistedLogState
 
 	err = output.UploadAndSendLogs(server, grant, globalCollectionOpts, logger, transientLogState)
 	if err != nil {
 		transientLogState.Cleanup()
-		return newState, false, errors.Wrap(err, "failed to upload/send logs")
+		return newLogState, false, errors.Wrap(err, "failed to upload/send logs")
 	}
 
 	transientLogState.Cleanup()
-	return newState, true, nil
+	return newLogState, true, nil
 }
 
 // TestLogsForAllServers - Test log download/tailing
@@ -126,17 +126,17 @@ func DownloadLogsFromAllServers(servers []state.Server, globalCollectionOpts sta
 		go func(server *state.Server) {
 			prefixedLogger := logger.WithPrefixAndRememberErrors(server.Config.SectionName)
 
-			server.StateMutex.Lock()
-			newState, success, err := downloadLogsForServer(*server, globalCollectionOpts, prefixedLogger)
+			server.LogStateMutex.Lock()
+			newLogState, success, err := downloadLogsForServer(*server, globalCollectionOpts, prefixedLogger)
 			if err != nil {
-				server.StateMutex.Unlock()
+				server.LogStateMutex.Unlock()
 				prefixedLogger.PrintError("Could not collect logs for server: %s", err)
 				if server.Config.ErrorCallback != "" {
 					go runCompletionCallback("error", server.Config.ErrorCallback, server.Config.SectionName, "logs", err, prefixedLogger)
 				}
 			} else if success {
-				server.PrevState = newState
-				server.StateMutex.Unlock()
+				server.LogPrevState = newLogState
+				server.LogStateMutex.Unlock()
 				if server.Config.SuccessCallback != "" {
 					go runCompletionCallback("success", server.Config.SuccessCallback, server.Config.SectionName, "logs", nil, prefixedLogger)
 				}

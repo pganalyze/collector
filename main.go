@@ -69,7 +69,7 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 
 	serverConfigs := conf.Servers
 	for _, config := range serverConfigs {
-		servers = append(servers, state.Server{Config: config, StateMutex: &sync.Mutex{}})
+		servers = append(servers, state.Server{Config: config, StateMutex: &sync.Mutex{}, LogStateMutex: &sync.Mutex{}, ActivityStateMutex: &sync.Mutex{}})
 		if config.EnableReports {
 			hasAnyReportsEnabled = true
 		}
@@ -87,7 +87,7 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 		}
 	}
 
-	runner.ReadStateFile(servers, globalCollectionOpts, logger)
+	state.ReadStateFile(servers, globalCollectionOpts, logger)
 
 	// We intentionally don't do a test-run in the normal mode, since we're fine with
 	// a later SIGHUP that fixes the config (or a temporarily unreachable server at start)

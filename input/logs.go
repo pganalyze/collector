@@ -11,11 +11,11 @@ import (
 )
 
 // DownloadLogs - Downloads a "logs" snapshot of log data we need on a regular interval
-func DownloadLogs(server state.Server, connection *sql.DB, collectionOpts state.CollectionOpts, logger *util.Logger) (tls state.TransientLogState, pls state.PersistedLogState, err error) {
+func DownloadLogs(server state.Server, prevLogState state.PersistedLogState, connection *sql.DB, collectionOpts state.CollectionOpts, logger *util.Logger) (tls state.TransientLogState, pls state.PersistedLogState, err error) {
 	var querySamples []state.PostgresQuerySample
 
 	tls.CollectedAt = time.Now()
-	pls, tls.LogFiles, querySamples = system.DownloadLogFiles(server.PrevState.Log, server.Config, logger)
+	pls, tls.LogFiles, querySamples = system.DownloadLogFiles(prevLogState, server.Config, logger)
 
 	if server.Config.EnableLogExplain && connection != nil {
 		tls.QuerySamples = postgres.RunExplain(connection, server.Config.GetDbName(), querySamples)
