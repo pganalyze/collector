@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.29.0      2020-06-02
+
+* Package builds: Use Golang 1.14.3 patch release
+  * This fixes https://github.com/golang/go/issues/37436 which was causing
+    "mlock of signal stack failed: 12" on Ubuntu systems
+* Switch to simpler tail library to fix edge case bugs for self-managed systems
+  * The hpcloud library has been unmaintained for a while, and whilst
+    the new choice doesn't have much activity, in tests it has shown
+    to work better, as well as having significantly less lines of code
+  * This also should make "--test" work reliably for self-managed systems
+    (before this returned "Timeout" most of the time)
+* Index statistics: Don't run relation_size on exclusively locked indices
+  * Previously the collector was effectively hanging when it encountered an
+    index that has an ExclusiveLock held (e.g. due to a REINDEX)
+* Add another custom log line prefix: "%m %r %u %a [%c] [%p] "
+* RDS fixes
+  * Fix handling of auto-detection of AWS regions outside of us-east-1
+  * Remember log marker from previous runs, to avoid duplicate log lines
+* Add support for Postgres 13
+  * This adds support for running against Postgres 13, which otherwise breaks
+    due to backwards-incompatible changes in pg_stat_statements
+  * Note that there are many other new statistics views and metrics that
+    will be added separately
+
+
 ## 0.28.0      2020-05-19
 
 * Add "db_sslkey" and "db_sslcert" options to use SSL client certificates
