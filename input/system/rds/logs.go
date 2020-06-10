@@ -117,8 +117,13 @@ func DownloadLogFiles(prevState state.PersistedLogState, config config.ServerCon
 
 		if *rdsLogFile.LastWritten > newestLogFileTime {
 			newestLogFileTime = *rdsLogFile.LastWritten
-			psl.AwsFilename = *rdsLogFile.LogFileName
-			psl.AwsMarker = *lastMarker
+			if lastMarker != nil {
+				psl.AwsFilename = *rdsLogFile.LogFileName
+				psl.AwsMarker = *lastMarker
+			} else {
+				psl.AwsFilename = ""
+				psl.AwsMarker = ""
+			}
 		}
 
 		result = append(result, logFile)
