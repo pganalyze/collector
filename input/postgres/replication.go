@@ -51,7 +51,8 @@ SELECT client_addr,
 			 write_lsn,
 			 flush_lsn,
 			 replay_lsn,
-			 pg_catalog.pg_wal_lsn_diff(sent_lsn, replay_lsn) AS byte_lag
+			 pg_catalog.pg_wal_lsn_diff(sent_lsn, replay_lsn) AS remote_byte_lag,
+			 pg_catalog.pg_wal_lsn_diff(pg_catalog.pg_current_wal_lsn(), sent_lsn) AS local_byte_lag
 	FROM %s
  WHERE client_addr IS NOT NULL`
 
@@ -70,7 +71,8 @@ SELECT client_addr,
 			 write_location,
 			 flush_location,
 			 replay_location,
-			 pg_catalog.pg_xlog_location_diff(sent_location, replay_location) AS byte_lag
+			 pg_catalog.pg_xlog_location_diff(sent_location, replay_location) AS remote_byte_lag,
+			 pg_catalog.pg_xlog_location_diff(pg_catalog.pg_current_xlog_location(), sent_location) AS local_byte_lag
 	FROM %s
  WHERE client_addr IS NOT NULL`
 
@@ -127,7 +129,7 @@ func GetReplication(logger *util.Logger, db *sql.DB, postgresVersion state.Postg
 		err := rows.Scan(&s.ClientAddr, &s.RoleOid, &s.Pid, &s.ApplicationName, &s.ClientHostname,
 			&s.ClientPort, &s.BackendStart, &s.SyncPriority, &s.SyncState, &s.State,
 			&s.SentLocation, &s.WriteLocation, &s.FlushLocation, &s.ReplayLocation,
-			&s.ByteLag)
+			&s.RemoteByteLag, &s.LocalByteLag)
 		if err != nil {
 			return repl, err
 		}
