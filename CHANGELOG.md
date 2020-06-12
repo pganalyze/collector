@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.30.0      2020-06-12
+
+* Track local replication lag in bytes
+* RDS: Handle end of log files correctly
+* High-frequency query collection: Avoid race condition, run in parallel
+  * This also resolves a memory leak in the collector that was causing
+    increased memory usage over time for systems that have a lot of
+    pg_stat_statements query texts (causing the full snapshot to take
+    more than a minute, which triggered the race condition)
+
+
 ## 0.29.0      2020-06-02
 
 * Package builds: Use Golang 1.14.3 patch release
