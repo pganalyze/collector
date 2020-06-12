@@ -2,6 +2,7 @@ package runner
 
 import (
 	"database/sql"
+	"sync"
 	"time"
 
 	"github.com/pganalyze/collector/input/postgres"
@@ -60,31 +61,39 @@ func gatherQueryStatsForServer(server state.Server, globalCollectionOpts state.C
 }
 
 func GatherQueryStatsFromAllServers(servers []state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
-	for idx, server := range servers {
-		if server.Config.QueryStatsInterval != 60 {
+	var wg sync.WaitGroup
+
+	for idx := range servers {
+		if servers[idx].Config.QueryStatsInterval != 60 {
 			continue
 		}
 
-		prefixedLogger := logger.WithPrefixAndRememberErrors(server.Config.SectionName)
+		wg.Add(1)
+		go func(server *state.Server) {
+			prefixedLogger := logger.WithPrefixAndRememberErrors(server.Config.SectionName)
 
-		servers[idx].StateMutex.Lock()
-		newState, err := gatherQueryStatsForServer(server, globalCollectionOpts, prefixedLogger)
+			server.StateMutex.Lock()
+			newState, err := gatherQueryStatsForServer(*server, globalCollectionOpts, prefixedLogger)
 
-		if err != nil {
-			servers[idx].StateMutex.Unlock()
-			prefixedLogger.PrintError("Could not collect query stats for server: %s", err)
-			if server.Config.ErrorCallback != "" {
-				go runCompletionCallback("error", server.Config.ErrorCallback, server.Config.SectionName, "query_stats", err, prefixedLogger)
+			if err != nil {
+				server.StateMutex.Unlock()
+				prefixedLogger.PrintError("Could not collect query stats for server: %s", err)
+				if server.Config.ErrorCallback != "" {
+					go runCompletionCallback("error", server.Config.ErrorCallback, server.Config.SectionName, "query_stats", err, prefixedLogger)
+				}
+			} else {
+				server.PrevState = newState
+				server.StateMutex.Unlock()
+				prefixedLogger.PrintVerbose("Successfully collected high frequency query statistics")
+				if server.Config.SuccessCallback != "" {
+					go runCompletionCallback("success", server.Config.SuccessCallback, server.Config.SectionName, "query_stats", nil, prefixedLogger)
+				}
 			}
-		} else {
-			servers[idx].PrevState = newState
-			servers[idx].StateMutex.Unlock()
-			prefixedLogger.PrintVerbose("Successfully collected high frequency query statistics")
-			if server.Config.SuccessCallback != "" {
-				go runCompletionCallback("success", server.Config.SuccessCallback, server.Config.SectionName, "query_stats", nil, prefixedLogger)
-			}
-		}
+			wg.Done()
+		}(&servers[idx])
 	}
+
+	wg.Wait()
 
 	return
 }
