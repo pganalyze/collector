@@ -243,7 +243,7 @@ func ProcessLogStream(server state.Server, logLines []state.LogLine, globalColle
 	}
 
 	if !grant.Valid {
-		prefixedLogger.PrintVerbose("Log collection disabled from server, skipping")
+		prefixedLogger.PrintVerbose("Skipping log data: Feature not available on this pganalyze plan, or log data limit exceeded")
 		logState.Cleanup()
 		return tooFreshLogLines
 	}

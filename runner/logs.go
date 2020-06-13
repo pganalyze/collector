@@ -25,9 +25,9 @@ func downloadLogsForServer(server state.Server, globalCollectionOpts state.Colle
 
 	if !grant.Valid {
 		if globalCollectionOpts.TestRun {
-			logger.PrintError("  Failed - Log collection disabled by pganalyze")
+			logger.PrintError("  Failed - Log Insights feature not available on this pganalyze plan, or log data limit exceeded. You may need to upgrade, see https://pganalyze.com/pricing")
 		} else {
-			logger.PrintVerbose("Log collection disabled by pganalyze, skipping")
+			logger.PrintVerbose("Skipping log data: Feature not available on this pganalyze plan, or log data limit exceeded")
 		}
 		return newLogState, false, nil
 	}
