@@ -40,7 +40,7 @@ func CollectAllSchemas(server state.Server, collectionOpts state.CollectionOpts,
 			continue
 		}
 
-		ps = collectSchemaData(collectionOpts, logger, schemaConnection, ps, databaseOid, ts.Version)
+		ps = collectSchemaData(collectionOpts, logger, schemaConnection, ps, databaseOid, dbName, ts.Version)
 		ts.DatabaseOidsWithLocalCatalog = append(ts.DatabaseOidsWithLocalCatalog, databaseOid)
 
 		schemaConnection.Close()
@@ -49,18 +49,18 @@ func CollectAllSchemas(server state.Server, collectionOpts state.CollectionOpts,
 	return ps, ts
 }
 
-func collectSchemaData(collectionOpts state.CollectionOpts, logger *util.Logger, db *sql.DB, ps state.PersistedState, databaseOid state.Oid, postgresVersion state.PostgresVersion) state.PersistedState {
+func collectSchemaData(collectionOpts state.CollectionOpts, logger *util.Logger, db *sql.DB, ps state.PersistedState, databaseOid state.Oid, databaseName string, postgresVersion state.PostgresVersion) state.PersistedState {
 	if collectionOpts.CollectPostgresRelations {
 		newRelations, err := GetRelations(db, postgresVersion, databaseOid)
 		if err != nil {
-			logger.PrintError("Error collecting relation/index information: %s", err)
+			logger.PrintWarning("Skipping table/index data for database \"%s\", due to error: %s", databaseName, err)
 			return ps
 		}
 		ps.Relations = append(ps.Relations, newRelations...)
 
 		newRelationStats, err := GetRelationStats(db, postgresVersion)
 		if err != nil {
-			logger.PrintError("Error collecting relation stats: %s", err)
+			logger.PrintWarning("Skipping table statistics for database \"%s\", due to error: %s", databaseName, err)
 			return ps
 		}
 		for k, v := range newRelationStats {
@@ -69,7 +69,7 @@ func collectSchemaData(collectionOpts state.CollectionOpts, logger *util.Logger,
 
 		newIndexStats, err := GetIndexStats(db, postgresVersion)
 		if err != nil {
-			logger.PrintError("Error collecting index stats: %s", err)
+			logger.PrintWarning("Skipping index statistics for database \"%s\", due to error: %s", databaseName, err)
 			return ps
 		}
 		for k, v := range newIndexStats {
@@ -80,7 +80,7 @@ func collectSchemaData(collectionOpts state.CollectionOpts, logger *util.Logger,
 	if collectionOpts.CollectPostgresFunctions {
 		newFunctions, err := GetFunctions(db, postgresVersion, databaseOid)
 		if err != nil {
-			logger.PrintError("Error collecting stored procedures")
+			logger.PrintWarning("Skipping stored procedure data for database \"%s\", due to error: %s", databaseName, err)
 			return ps
 		}
 		ps.Functions = append(ps.Functions, newFunctions...)
