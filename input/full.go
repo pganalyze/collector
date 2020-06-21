@@ -76,8 +76,9 @@ func CollectFull(server state.Server, connection *sql.DB, globalCollectionOpts s
 
 	ts.Replication, err = postgres.GetReplication(logger, connection, ts.Version, systemType)
 	if err != nil {
-		logger.PrintWarning("Error collecting replication statistics: %s", err)
-		// We intentionally accept this as a non-fatal issue (at least for now)
+		// We intentionally accept this as a non-fatal issue (at least for now), because we've historically
+		// had issues make this work reliably
+		logger.PrintWarning("Skipping replication statistics, due to error: %s", err)
 		err = nil
 	}
 
