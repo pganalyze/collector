@@ -20,7 +20,11 @@ func LogTestRun(server state.Server, globalCollectionOpts state.CollectionOpts, 
 	logTestSucceeded := make(chan bool, 1)
 	gcpLogStream := make(chan LogStreamItem, 500)
 	wg := sync.WaitGroup{}
-	SetupLogSubscriber(cctx, &wg, globalCollectionOpts, logger, servers, gcpLogStream)
+	err := SetupLogSubscriber(cctx, &wg, globalCollectionOpts, logger, servers, gcpLogStream)
+	if err != nil {
+		cancel()
+		return err
+	}
 	logReceiver(cctx, servers, gcpLogStream, globalCollectionOpts, logger, logTestSucceeded)
 
 	db, err := postgres.EstablishConnection(server, logger, globalCollectionOpts, "")

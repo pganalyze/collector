@@ -21,6 +21,7 @@ func LogTestRun(server state.Server, globalCollectionOpts state.CollectionOpts, 
 	wg := sync.WaitGroup{}
 	err := SetupLogSubscriber(cctx, &wg, globalCollectionOpts, logger, servers, azureLogStream)
 	if err != nil {
+		cancel()
 		return err
 	}
 
