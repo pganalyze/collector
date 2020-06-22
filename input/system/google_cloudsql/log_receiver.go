@@ -47,7 +47,7 @@ func logReceiver(ctx context.Context, servers []state.Server, in <-chan LogStrea
 
 				// We ignore failures here since we want the per-backend stitching logic
 				// that runs later on (and any other parsing errors will just be ignored)
-				logLine, ok := logs.ParseLogLineWithPrefix("", in.Content)
+				logLine, _ := logs.ParseLogLineWithPrefix("", in.Content)
 				logLine.CollectedAt = time.Now()
 				logLine.OccurredAt = in.OccurredAt
 				logLine.UUID = uuid.NewV4()
@@ -63,7 +63,7 @@ func logReceiver(ctx context.Context, servers []state.Server, in <-chan LogStrea
 						identifier := server.Config.Identifier
 						prefixedLogger := logger.WithPrefix(server.Config.SectionName)
 						logLinesByServer[identifier] = append(logLinesByServer[identifier], logLine)
-						logLinesByServer[identifier] = stream.ProcessLogStream(server, logLinesByServer[identifier], globalCollectionOpts, prefixedLogger, logTestSucceeded)
+						logLinesByServer[identifier] = stream.ProcessLogStream(server, logLinesByServer[identifier], globalCollectionOpts, prefixedLogger, logTestSucceeded, stream.LogTestCollectorIdentify)
 					}
 				}
 
@@ -77,7 +77,7 @@ func logReceiver(ctx context.Context, servers []state.Server, in <-chan LogStrea
 							}
 						}
 						prefixedLogger := logger.WithPrefix(server.Config.SectionName)
-						logLinesByServer[identifier] = stream.ProcessLogStream(server, logLinesByServer[identifier], globalCollectionOpts, prefixedLogger, logTestSucceeded)
+						logLinesByServer[identifier] = stream.ProcessLogStream(server, logLinesByServer[identifier], globalCollectionOpts, prefixedLogger, logTestSucceeded, stream.LogTestCollectorIdentify)
 					}
 				}
 				go func() {

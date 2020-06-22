@@ -20,6 +20,7 @@ import (
 	flag "github.com/ogier/pflag"
 
 	"github.com/pganalyze/collector/config"
+	"github.com/pganalyze/collector/input/system/azure"
 	"github.com/pganalyze/collector/input/system/google_cloudsql"
 	"github.com/pganalyze/collector/input/system/heroku"
 	"github.com/pganalyze/collector/input/system/selfhosted"
@@ -65,6 +66,7 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 	hasAnyReportsEnabled := false
 	hasAnyActivityEnabled := false
 	hasAnyGoogleCloudSQL := false
+	hasAnyAzureDatabase := false
 	hasAnyHeroku := false
 
 	serverConfigs := conf.Servers
@@ -78,6 +80,9 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 		}
 		if !config.DisableActivity {
 			hasAnyActivityEnabled = true
+		}
+		if config.SystemType == "azure_database" {
+			hasAnyAzureDatabase = true
 		}
 		if config.SystemType == "google_cloudsql" {
 			hasAnyGoogleCloudSQL = true
@@ -169,8 +174,13 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 		selfhosted.SetupLogTails(ctx, servers, globalCollectionOpts, logger)
 		if hasAnyGoogleCloudSQL {
 			gcpLogStream := make(chan google_cloudsql.LogStreamItem, streamBufferLen)
-			google_cloudsql.SetupLogSubscriber(ctx, wg, logger, servers, gcpLogStream)
+			google_cloudsql.SetupLogSubscriber(ctx, wg, globalCollectionOpts, logger, servers, gcpLogStream)
 			google_cloudsql.SetupLogReceiver(ctx, servers, globalCollectionOpts, logger, gcpLogStream)
+		}
+		if hasAnyAzureDatabase {
+			azureLogStream := make(chan azure.AzurePostgresLogRecord, streamBufferLen)
+			azure.SetupLogSubscriber(ctx, wg, globalCollectionOpts, logger, servers, azureLogStream)
+			azure.SetupLogReceiver(ctx, servers, globalCollectionOpts, logger, azureLogStream)
 		}
 
 		// Keep running but only running log processing
@@ -224,8 +234,13 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 
 		if hasAnyGoogleCloudSQL {
 			gcpLogStream := make(chan google_cloudsql.LogStreamItem, streamBufferLen)
-			google_cloudsql.SetupLogSubscriber(ctx, wg, logger, servers, gcpLogStream)
+			google_cloudsql.SetupLogSubscriber(ctx, wg, globalCollectionOpts, logger, servers, gcpLogStream)
 			google_cloudsql.SetupLogReceiver(ctx, servers, globalCollectionOpts, logger, gcpLogStream)
+		}
+		if hasAnyAzureDatabase {
+			azureLogStream := make(chan azure.AzurePostgresLogRecord, streamBufferLen)
+			azure.SetupLogSubscriber(ctx, wg, globalCollectionOpts, logger, servers, azureLogStream)
+			azure.SetupLogReceiver(ctx, servers, globalCollectionOpts, logger, azureLogStream)
 		}
 
 		if hasAnyLogDownloads {

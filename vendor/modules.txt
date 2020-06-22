@@ -10,6 +10,37 @@ cloud.google.com/go/internal/version
 cloud.google.com/go/pubsub
 cloud.google.com/go/pubsub/apiv1
 cloud.google.com/go/pubsub/internal/distribution
+# github.com/Azure/azure-amqp-common-go v1.1.4
+## explicit
+github.com/Azure/azure-amqp-common-go
+github.com/Azure/azure-amqp-common-go/aad
+github.com/Azure/azure-amqp-common-go/auth
+github.com/Azure/azure-amqp-common-go/cbs
+github.com/Azure/azure-amqp-common-go/conn
+github.com/Azure/azure-amqp-common-go/internal
+github.com/Azure/azure-amqp-common-go/internal/tracing
+github.com/Azure/azure-amqp-common-go/log
+github.com/Azure/azure-amqp-common-go/persist
+github.com/Azure/azure-amqp-common-go/rpc
+github.com/Azure/azure-amqp-common-go/sas
+github.com/Azure/azure-amqp-common-go/uuid
+# github.com/Azure/azure-event-hubs-go v1.3.1
+## explicit
+github.com/Azure/azure-event-hubs-go
+github.com/Azure/azure-event-hubs-go/atom
+# github.com/Azure/azure-sdk-for-go v21.3.0+incompatible
+github.com/Azure/azure-sdk-for-go/services/eventhub/mgmt/2017-04-01/eventhub
+github.com/Azure/azure-sdk-for-go/version
+# github.com/Azure/go-autorest v11.1.1+incompatible
+## explicit
+github.com/Azure/go-autorest/autorest
+github.com/Azure/go-autorest/autorest/adal
+github.com/Azure/go-autorest/autorest/azure
+github.com/Azure/go-autorest/autorest/date
+github.com/Azure/go-autorest/autorest/to
+github.com/Azure/go-autorest/autorest/validation
+github.com/Azure/go-autorest/logger
+github.com/Azure/go-autorest/version
 # github.com/BurntSushi/toml v0.3.1
 github.com/BurntSushi/toml
 # github.com/StackExchange/wmi v0.0.0-20150520194626-f3e2bae1e0cb
@@ -70,8 +101,8 @@ github.com/bmizerany/lpx
 # github.com/certifi/gocertifi v0.0.0-20160926115448-a61bf5eafa3a
 ## explicit
 github.com/certifi/gocertifi
-# github.com/davecgh/go-spew v1.1.1
-## explicit
+# github.com/dgrijalva/jwt-go v3.2.0+incompatible
+github.com/dgrijalva/jwt-go
 # github.com/fsnotify/fsnotify v1.4.9
 ## explicit
 github.com/fsnotify/fsnotify
@@ -126,6 +157,8 @@ github.com/gorhill/cronexpr
 github.com/guregu/null
 # github.com/jmespath/go-jmespath v0.0.0-20180206201540-c2b33e8439af
 github.com/jmespath/go-jmespath
+# github.com/jpillora/backoff v0.0.0-20180909062703-3050d21c67d7
+github.com/jpillora/backoff
 # github.com/jstemmer/go-junit-report v0.9.1
 ## explicit
 github.com/jstemmer/go-junit-report
@@ -157,6 +190,8 @@ github.com/lfittl/pg_query_go/parser
 github.com/lib/pq
 github.com/lib/pq/oid
 github.com/lib/pq/scram
+# github.com/mitchellh/mapstructure v1.1.2
+github.com/mitchellh/mapstructure
 # github.com/ogier/pflag v0.0.0-20160129220114-45c278ab3607
 ## explicit
 github.com/ogier/pflag
@@ -205,6 +240,9 @@ go.opencensus.io/trace
 go.opencensus.io/trace/internal
 go.opencensus.io/trace/propagation
 go.opencensus.io/trace/tracestate
+# golang.org/x/crypto v0.0.0-20190605123033-f99c8df09eb5
+golang.org/x/crypto/pkcs12
+golang.org/x/crypto/pkcs12/internal/rc2
 # golang.org/x/exp v0.0.0-20191129062945-2f5052295587
 ## explicit
 golang.org/x/exp/apidiff
@@ -224,6 +262,7 @@ golang.org/x/net/http2/hpack
 golang.org/x/net/idna
 golang.org/x/net/internal/timeseries
 golang.org/x/net/trace
+golang.org/x/net/websocket
 # golang.org/x/oauth2 v0.0.0-20191122200657-5d9234df094c
 ## explicit
 golang.org/x/oauth2
@@ -371,3 +410,6 @@ honnef.co/go/tools/staticcheck/vrp
 honnef.co/go/tools/stylecheck
 honnef.co/go/tools/unused
 honnef.co/go/tools/version
+# pack.ag/amqp v0.11.0
+pack.ag/amqp
+pack.ag/amqp/internal/testconn
