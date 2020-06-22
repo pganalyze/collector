@@ -28,9 +28,10 @@ const LogPrefixSimple string = "%m [%p] "
 const LogPrefixEmpty string = ""
 
 var SupportedPrefixes = []string{
-	LogPrefixAmazonRds, LogPrefixCustom1, LogPrefixCustom2, LogPrefixCustom3,
-	LogPrefixCustom4, LogPrefixCustom5, LogPrefixCustom6, LogPrefixCustom7,
-	LogPrefixCustom8, LogPrefixCustom9, LogPrefixSimple, LogPrefixEmpty,
+	LogPrefixAmazonRds, LogPrefixAzure, LogPrefixCustom1, LogPrefixCustom2,
+	LogPrefixCustom3, LogPrefixCustom4, LogPrefixCustom5, LogPrefixCustom6,
+	LogPrefixCustom7, LogPrefixCustom8, LogPrefixCustom9, LogPrefixSimple,
+	LogPrefixEmpty,
 }
 
 // Every one of these regexps should produce exactly one matching group
@@ -40,6 +41,7 @@ var PidRegexp = `(\d+)`                                                      // 
 var UserRegexp = `(\S*)`                                                     // %u
 var DbRegexp = `(\S*)`                                                       // %d
 var AppRegexp = `(\S*)`                                                      // %a
+var AppInsideBracketsRegexp = `(\[unknown\]|[^,\]]*)`                        // %a
 var HostRegexp = `(\S*)`                                                     // %h
 var VirtualTxRegexp = `(\d+/\d+)?`                                           // %v
 var LogLineCounterRegexp = `(\d+)`                                           // %l
@@ -49,22 +51,21 @@ var SessionIdRegexp = `(\w+\.\w+)`                                           // 
 // Missing:
 // - %n (unix timestamp)
 // - %i (command tag)
-// - %c (session ID)
 // - %s (process start timestamp)
 
 var LevelAndContentRegexp = `(\w+):\s+(.*\n?)$`
-var LogPrefixAmazonRdsRegxp = regexp.MustCompile(`^` + TimeRegexp + `:` + HostAndPortRegexp + `:` + UserRegexp + `@` + DbRegexp + `:\[` + PidRegexp + `\]:` + LevelAndContentRegexp)
-var LogPrefixCustom1Regexp = regexp.MustCompile(`^` + TimeRegexp + ` \[` + PidRegexp + `\]\[` + VirtualTxRegexp + `\] : \[` + LogLineCounterRegexp + `-1\] (?:\[app=` + AppRegexp + `\] )?` + LevelAndContentRegexp)
-var LogPrefixCustom2Regexp = regexp.MustCompile(`^` + TimeRegexp + ` \[` + PidRegexp + `-` + LogLineCounterRegexp + `\] ` + `(?:` + UserRegexp + `@` + DbRegexp + ` )?` + LevelAndContentRegexp)
-var LogPrefixCustom3Regexp = regexp.MustCompile(`^` + TimeRegexp + ` \[` + PidRegexp + `\] (?:\[user=` + UserRegexp + `,db=` + DbRegexp + `,app=` + AppRegexp + `\] )?` + LevelAndContentRegexp)
-var LogPrefixCustom4Regexp = regexp.MustCompile(`^` + TimeRegexp + ` \[` + PidRegexp + `\] (?:\[user=` + UserRegexp + `,db=` + DbRegexp + `,app=` + AppRegexp + `,host=` + HostRegexp + `\] )?` + LevelAndContentRegexp)
-var LogPrefixCustom5Regexp = regexp.MustCompile(`^` + TimeRegexp + ` \[` + PidRegexp + `\]: \[` + LogLineCounterRegexp + `-1\] user=` + UserRegexp + `,db=` + DbRegexp + ` - PG-` + SqlstateRegexp + ` ` + LevelAndContentRegexp)
-var LogPrefixCustom6Regexp = regexp.MustCompile(`^` + TimeRegexp + ` \[` + PidRegexp + `\]: \[` + LogLineCounterRegexp + `-1\] user=` + UserRegexp + `,db=` + DbRegexp + `,app=` + AppRegexp + `,client=` + HostRegexp + ` ` + LevelAndContentRegexp)
-var LogPrefixCustom7Regexp = regexp.MustCompile(`^` + TimeRegexp + ` \[` + PidRegexp + `\]: \[` + LogLineCounterRegexp + `-1\] \[trx_id=` + TransactionIdRegexp + `\] user=` + UserRegexp + `,db=` + DbRegexp + ` ` + LevelAndContentRegexp)
-var LogPrefixCustom8Regexp = regexp.MustCompile(`^\[` + PidRegexp + `\]: \[` + LogLineCounterRegexp + `-1\] db=` + DbRegexp + `,user=` + UserRegexp + ` ` + LevelAndContentRegexp)
-var LogPrefixCustom9Regexp = regexp.MustCompile(`^` + TimeRegexp + ` ` + HostAndPortRegexp + ` ` + UserRegexp + ` ` + AppRegexp + ` \[` + SessionIdRegexp + `\] \[` + PidRegexp + `\] ` + LevelAndContentRegexp)
-var LogPrefixSimpleRegexp = regexp.MustCompile(`^` + TimeRegexp + ` \[` + PidRegexp + `\] ` + LevelAndContentRegexp)
-var LogPrefixNoTimestampUserDatabaseAppRegexp = regexp.MustCompile(`^\[user=` + UserRegexp + `,db=` + DbRegexp + `,app=` + AppRegexp + `\] ` + LevelAndContentRegexp)
+var LogPrefixAmazonRdsRegexp = regexp.MustCompile(`(?s)^` + TimeRegexp + `:` + HostAndPortRegexp + `:` + UserRegexp + `@` + DbRegexp + `:\[` + PidRegexp + `\]:` + LevelAndContentRegexp)
+var LogPrefixCustom1Regexp = regexp.MustCompile(`(?s)^` + TimeRegexp + ` \[` + PidRegexp + `\]\[` + VirtualTxRegexp + `\] : \[` + LogLineCounterRegexp + `-1\] (?:\[app=` + AppInsideBracketsRegexp + `\] )?` + LevelAndContentRegexp)
+var LogPrefixCustom2Regexp = regexp.MustCompile(`(?s)^` + TimeRegexp + ` \[` + PidRegexp + `-` + LogLineCounterRegexp + `\] ` + `(?:` + UserRegexp + `@` + DbRegexp + ` )?` + LevelAndContentRegexp)
+var LogPrefixCustom3Regexp = regexp.MustCompile(`(?s)^` + TimeRegexp + ` \[` + PidRegexp + `\] (?:\[user=` + UserRegexp + `,db=` + DbRegexp + `,app=` + AppInsideBracketsRegexp + `\] )?` + LevelAndContentRegexp)
+var LogPrefixCustom4Regexp = regexp.MustCompile(`(?s)^` + TimeRegexp + ` \[` + PidRegexp + `\] (?:\[user=` + UserRegexp + `,db=` + DbRegexp + `,app=` + AppInsideBracketsRegexp + `,host=` + HostRegexp + `\] )?` + LevelAndContentRegexp)
+var LogPrefixCustom5Regexp = regexp.MustCompile(`(?s)^` + TimeRegexp + ` \[` + PidRegexp + `\]: \[` + LogLineCounterRegexp + `-1\] user=` + UserRegexp + `,db=` + DbRegexp + ` - PG-` + SqlstateRegexp + ` ` + LevelAndContentRegexp)
+var LogPrefixCustom6Regexp = regexp.MustCompile(`(?s)^` + TimeRegexp + ` \[` + PidRegexp + `\]: \[` + LogLineCounterRegexp + `-1\] user=` + UserRegexp + `,db=` + DbRegexp + `,app=` + AppInsideBracketsRegexp + `,client=` + HostRegexp + ` ` + LevelAndContentRegexp)
+var LogPrefixCustom7Regexp = regexp.MustCompile(`(?s)^` + TimeRegexp + ` \[` + PidRegexp + `\]: \[` + LogLineCounterRegexp + `-1\] \[trx_id=` + TransactionIdRegexp + `\] user=` + UserRegexp + `,db=` + DbRegexp + ` ` + LevelAndContentRegexp)
+var LogPrefixCustom8Regexp = regexp.MustCompile(`(?s)^\[` + PidRegexp + `\]: \[` + LogLineCounterRegexp + `-1\] db=` + DbRegexp + `,user=` + UserRegexp + ` ` + LevelAndContentRegexp)
+var LogPrefixCustom9Regexp = regexp.MustCompile(`(?s)^` + TimeRegexp + ` ` + HostAndPortRegexp + ` ` + UserRegexp + ` ` + AppRegexp + ` \[` + SessionIdRegexp + `\] \[` + PidRegexp + `\] ` + LevelAndContentRegexp)
+var LogPrefixSimpleRegexp = regexp.MustCompile(`(?s)^` + TimeRegexp + ` \[` + PidRegexp + `\] ` + LevelAndContentRegexp)
+var LogPrefixNoTimestampUserDatabaseAppRegexp = regexp.MustCompile(`(?s)^\[user=` + UserRegexp + `,db=` + DbRegexp + `,app=` + AppInsideBracketsRegexp + `\] ` + LevelAndContentRegexp)
 
 var SyslogSequenceAndSplitRegexp = `(\[[\d-]+\])?`
 
@@ -95,7 +96,7 @@ func ParseLogLineWithPrefix(prefix string, line string) (logLine state.LogLine, 
 	rsyslog := false
 
 	if prefix == "" {
-		if LogPrefixAmazonRdsRegxp.MatchString(line) {
+		if LogPrefixAmazonRdsRegexp.MatchString(line) {
 			prefix = LogPrefixAmazonRds
 		} else if LogPrefixCustom1Regexp.MatchString(line) {
 			prefix = LogPrefixCustom1
@@ -148,7 +149,7 @@ func ParseLogLineWithPrefix(prefix string, line string) (logLine state.LogLine, 
 	} else {
 		switch prefix {
 		case LogPrefixAmazonRds: // "%t:%r:%u@%d:[%p]:"
-			parts := LogPrefixAmazonRdsRegxp.FindStringSubmatch(line)
+			parts := LogPrefixAmazonRdsRegexp.FindStringSubmatch(line)
 			if len(parts) == 0 {
 				return
 			}

@@ -54,7 +54,7 @@ var parseTests = []parseTestpair{
 		},
 		true,
 	},
-	// RDS format
+	// Amazon RDS format
 	{
 		"",
 		"2018-08-22 16:00:04 UTC:ec2-1-1-1-1.compute-1.amazonaws.com(48808):myuser@mydb:[18762]:LOG:  duration: 3668.685 ms  execute <unnamed>: SELECT 1",
@@ -117,6 +117,20 @@ var parseTests = []parseTestpair{
 			LogLevel:    pganalyze_collector.LogLineInformation_ERROR,
 			BackendPid:  20194,
 			Content:     "canceling statement due to user request",
+		},
+		true,
+	},
+	{
+		"",
+		"2018-09-27 06:57:02.779 UTC [20194] [user=postgres,db=postgres,app=psql] LOG:  duration: 3000.019 ms  statement: SELECT pg_sleep(3\n);",
+		state.LogLine{
+			OccurredAt:  time.Date(2018, time.September, 27, 6, 57, 2, 779*1000*1000, time.UTC),
+			Username:    "postgres",
+			Database:    "postgres",
+			Application: "psql",
+			LogLevel:    pganalyze_collector.LogLineInformation_LOG,
+			BackendPid:  20194,
+			Content:     "duration: 3000.019 ms  statement: SELECT pg_sleep(3\n);",
 		},
 		true,
 	},
