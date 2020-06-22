@@ -72,7 +72,14 @@ type ServerConfig struct {
 	AwsEndpointCloudwatchURL       string `ini:"aws_endpoint_cloudwatch_url"`
 	AwsEndpointCloudwatchLogsURL   string `ini:"aws_endpoint_cloudwatch_logs_url"`
 
-	AzureDbServerName string `ini:"azure_db_server_name"`
+	AzureDbServerName          string `ini:"azure_db_server_name"`
+	AzureEventhubNamespace     string `ini:"azure_eventhub_namespace"`
+	AzureEventhubName          string `ini:"azure_eventhub_name"`
+	AzureADTenantID            string `ini:"azure_ad_tenant_id"`
+	AzureADClientID            string `ini:"azure_ad_client_id"`
+	AzureADClientSecret        string `ini:"azure_ad_client_secret"`
+	AzureADCertificatePath     string `ini:"azure_ad_certificate_path"`
+	AzureADCertificatePassword string `ini:"azure_ad_certificate_password"`
 
 	GcpCloudSQLInstanceID string `ini:"gcp_cloudsql_instance_id"`
 	GcpPubsubSubscription string `ini:"gcp_pubsub_subscription"`

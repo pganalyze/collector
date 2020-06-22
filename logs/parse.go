@@ -15,6 +15,7 @@ import (
 )
 
 const LogPrefixAmazonRds string = "%t:%r:%u@%d:[%p]:"
+const LogPrefixAzure string = "%t-%c-"
 const LogPrefixCustom1 string = "%m [%p][%v] : [%l-1] %q[app=%a] "
 const LogPrefixCustom2 string = "%t [%p-%l] %q%u@%d "
 const LogPrefixCustom3 string = "%m [%p] %q[user=%u,db=%d,app=%a] "
@@ -55,6 +56,7 @@ var SessionIdRegexp = `(\w+\.\w+)`                                           // 
 
 var LevelAndContentRegexp = `(\w+):\s+(.*\n?)$`
 var LogPrefixAmazonRdsRegexp = regexp.MustCompile(`(?s)^` + TimeRegexp + `:` + HostAndPortRegexp + `:` + UserRegexp + `@` + DbRegexp + `:\[` + PidRegexp + `\]:` + LevelAndContentRegexp)
+var LogPrefixAzureRegexp = regexp.MustCompile(`(?s)^` + TimeRegexp + `-` + SessionIdRegexp + `-` + LevelAndContentRegexp)
 var LogPrefixCustom1Regexp = regexp.MustCompile(`(?s)^` + TimeRegexp + ` \[` + PidRegexp + `\]\[` + VirtualTxRegexp + `\] : \[` + LogLineCounterRegexp + `-1\] (?:\[app=` + AppInsideBracketsRegexp + `\] )?` + LevelAndContentRegexp)
 var LogPrefixCustom2Regexp = regexp.MustCompile(`(?s)^` + TimeRegexp + ` \[` + PidRegexp + `-` + LogLineCounterRegexp + `\] ` + `(?:` + UserRegexp + `@` + DbRegexp + ` )?` + LevelAndContentRegexp)
 var LogPrefixCustom3Regexp = regexp.MustCompile(`(?s)^` + TimeRegexp + ` \[` + PidRegexp + `\] (?:\[user=` + UserRegexp + `,db=` + DbRegexp + `,app=` + AppInsideBracketsRegexp + `\] )?` + LevelAndContentRegexp)
@@ -98,6 +100,8 @@ func ParseLogLineWithPrefix(prefix string, line string) (logLine state.LogLine, 
 	if prefix == "" {
 		if LogPrefixAmazonRdsRegexp.MatchString(line) {
 			prefix = LogPrefixAmazonRds
+		} else if LogPrefixAzureRegexp.MatchString(line) {
+			prefix = LogPrefixAzure
 		} else if LogPrefixCustom1Regexp.MatchString(line) {
 			prefix = LogPrefixCustom1
 		} else if LogPrefixCustom2Regexp.MatchString(line) {
@@ -161,6 +165,16 @@ func ParseLogLineWithPrefix(prefix string, line string) (logLine state.LogLine, 
 			pidPart = parts[5]
 			levelPart = parts[6]
 			contentPart = parts[7]
+		case LogPrefixAzure: // "%t-%c-"
+			parts := LogPrefixAzureRegexp.FindStringSubmatch(line)
+			if len(parts) == 0 {
+				return
+			}
+
+			timePart = parts[1]
+			// skip %c (session id)
+			levelPart = parts[3]
+			contentPart = parts[4]
 		case LogPrefixCustom1: // "%m [%p][%v] : [%l-1] %q[app=%a] "
 			parts := LogPrefixCustom1Regexp.FindStringSubmatch(line)
 			if len(parts) == 0 {

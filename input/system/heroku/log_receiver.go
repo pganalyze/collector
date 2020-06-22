@@ -230,7 +230,7 @@ func logReceiver(servers []state.Server, in <-chan HerokuLogStreamItem, globalCo
 			}
 
 			prefixedLogger := logger.WithPrefix(server.Config.SectionName)
-			logLinesByName[sourceName] = stream.ProcessLogStream(server, logLines, globalCollectionOpts, prefixedLogger, nil)
+			logLinesByName[sourceName] = stream.ProcessLogStream(server, logLines, globalCollectionOpts, prefixedLogger, nil, stream.LogTestNone)
 		}
 	}
 }

@@ -186,6 +186,29 @@ func AnalyzeStreamInGroups(logLines []state.LogLine) (state.TransientLogState, s
 	return logState, logFile, tooFreshLogLines, nil
 }
 
+// Log test functions used to verify whether a stream works
+
+// LogTestCollectorIdentify - Checks for the special "pganalyze-collector-identify:" event
+// (used on log pipelines that forward messages under than 10 seconds)
+func LogTestCollectorIdentify(server state.Server, logFile state.LogFile, logTestSucceeded chan<- bool) {
+	for _, logLine := range logFile.LogLines {
+		if logLine.Classification == pganalyze_collector.LogLineInformation_PGA_COLLECTOR_IDENTIFY &&
+			logLine.Details["config_section"] == server.Config.SectionName {
+			logTestSucceeded <- true
+		}
+	}
+}
+
+// LogTestAnyEvent - Checks for any log message
+// (used on log pipelines that take longer than 10 seconds, e.g. Azure Event Hub)
+func LogTestAnyEvent(server state.Server, logFile state.LogFile, logTestSucceeded chan<- bool) {
+	logTestSucceeded <- true
+}
+
+// LogTestNone - Don't confirm the log test
+func LogTestNone(server state.Server, logFile state.LogFile, logTestSucceeded chan<- bool) {
+}
+
 // ProcessLogStream - Accepts one or more log lines to be analyzed and processed
 //
 // Note that this returns the lines that were not processed, based on the
@@ -193,7 +216,7 @@ func AnalyzeStreamInGroups(logLines []state.LogLine) (state.TransientLogState, s
 // the next call.
 //
 // The caller is not expected to do any special time-based buffering themselves.
-func ProcessLogStream(server state.Server, logLines []state.LogLine, globalCollectionOpts state.CollectionOpts, prefixedLogger *util.Logger, logTestSucceeded chan<- bool) []state.LogLine {
+func ProcessLogStream(server state.Server, logLines []state.LogLine, globalCollectionOpts state.CollectionOpts, prefixedLogger *util.Logger, logTestSucceeded chan<- bool, logTestFunc func(s state.Server, lf state.LogFile, lt chan<- bool)) []state.LogLine {
 	logState, logFile, tooFreshLogLines, err := AnalyzeStreamInGroups(logLines)
 	if err != nil {
 		prefixedLogger.PrintError("%s", err)
@@ -225,12 +248,7 @@ func ProcessLogStream(server state.Server, logLines []state.LogLine, globalColle
 	}
 
 	if globalCollectionOpts.TestRun {
-		for _, logLine := range logFile.LogLines {
-			if logLine.Classification == pganalyze_collector.LogLineInformation_PGA_COLLECTOR_IDENTIFY &&
-				logLine.Details["config_section"] == server.Config.SectionName {
-				logTestSucceeded <- true
-			}
-		}
+		logTestFunc(server, logFile, logTestSucceeded)
 		logState.Cleanup()
 		return tooFreshLogLines
 	}

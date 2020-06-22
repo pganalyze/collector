@@ -7,6 +7,7 @@ import (
 	"github.com/pganalyze/collector/grant"
 	"github.com/pganalyze/collector/input"
 	"github.com/pganalyze/collector/input/postgres"
+	"github.com/pganalyze/collector/input/system/azure"
 	"github.com/pganalyze/collector/input/system/google_cloudsql"
 	"github.com/pganalyze/collector/input/system/selfhosted"
 	"github.com/pganalyze/collector/output"
@@ -83,21 +84,32 @@ func TestLogsForAllServers(servers []state.Server, globalCollectionOpts state.Co
 				prefixedLogger.PrintInfo("  Local log test successful")
 				hasSuccessfulLocalServers = true
 			}
+		} else if server.Config.AwsDbInstanceID != "" {
+			prefixedLogger.PrintInfo("Testing log collection (Amazon RDS)...")
+			_, _, err := downloadLogsForServer(server, globalCollectionOpts, prefixedLogger)
+			if err != nil {
+				hasFailedServers = true
+				prefixedLogger.PrintError("ERROR - Could not get Amazon RDS logs: %s", err)
+			} else {
+				prefixedLogger.PrintInfo("  Log test successful")
+			}
+		} else if server.Config.AzureDbServerName != "" && server.Config.AzureEventhubNamespace != "" && server.Config.AzureEventhubName != "" {
+			prefixedLogger.PrintInfo("Testing log collection (Azure Database)...")
+			err := azure.LogTestRun(server, globalCollectionOpts, prefixedLogger)
+			if err != nil {
+				hasFailedServers = true
+				prefixedLogger.PrintError("ERROR - Could not get logs through Azure Event Hub: %s", err)
+			} else {
+				prefixedLogger.PrintInfo("  Log test successful")
+			}
 		} else if server.Config.GcpCloudSQLInstanceID != "" && server.Config.GcpPubsubSubscription != "" {
 			prefixedLogger.PrintInfo("Testing log collection (Google Cloud SQL)...")
 			err := google_cloudsql.LogTestRun(server, globalCollectionOpts, prefixedLogger)
 			if err != nil {
 				hasFailedServers = true
-				prefixedLogger.PrintError("ERROR - Could not get Pub/Sub log output for server: %s", err)
+				prefixedLogger.PrintError("ERROR - Could not get logs through Google Cloud Pub/Sub: %s", err)
 			} else {
 				prefixedLogger.PrintInfo("  Log test successful")
-			}
-		} else if server.Config.AwsDbInstanceID != "" {
-			prefixedLogger.PrintInfo("Testing log collection (RDS)...")
-			_, _, err := downloadLogsForServer(server, globalCollectionOpts, prefixedLogger)
-			if err != nil {
-				hasFailedServers = true
-				prefixedLogger.PrintError("Could not download logs for server: %s", err)
 			}
 		}
 	}

@@ -129,6 +129,27 @@ func getDefaultConfig() *ServerConfig {
 	if azureDbServerName := os.Getenv("AZURE_DB_SERVER_NAME"); azureDbServerName != "" {
 		config.AzureDbServerName = azureDbServerName
 	}
+	if azureEventhubNamespace := os.Getenv("AZURE_EVENTHUB_NAMESPACE"); azureEventhubNamespace != "" {
+		config.AzureEventhubNamespace = azureEventhubNamespace
+	}
+	if azureEventhubName := os.Getenv("AZURE_EVENTHUB_NAME"); azureEventhubName != "" {
+		config.AzureEventhubName = azureEventhubName
+	}
+	if azureADTenantID := os.Getenv("AZURE_AD_TENANT_ID"); azureADTenantID != "" {
+		config.AzureADTenantID = azureADTenantID
+	}
+	if azureADClientID := os.Getenv("AZURE_AD_CLIENT_ID"); azureADClientID != "" {
+		config.AzureADClientID = azureADClientID
+	}
+	if azureADClientSecret := os.Getenv("AZURE_AD_CLIENT_SECRET"); azureADClientSecret != "" {
+		config.AzureADClientSecret = azureADClientSecret
+	}
+	if azureADCertificatePath := os.Getenv("AZURE_AD_CERTIFICATE_PATH"); azureADCertificatePath != "" {
+		config.AzureADCertificatePath = azureADCertificatePath
+	}
+	if azureADCertificatePassword := os.Getenv("AZURE_AD_CERTIFICATE_PASSWORD"); azureADCertificatePassword != "" {
+		config.AzureADCertificatePassword = azureADCertificatePassword
+	}
 	if gcpCloudSQLInstanceID := os.Getenv("GCP_CLOUDSQL_INSTANCE_ID"); gcpCloudSQLInstanceID != "" {
 		config.GcpCloudSQLInstanceID = gcpCloudSQLInstanceID
 	}

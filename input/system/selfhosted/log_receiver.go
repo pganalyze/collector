@@ -431,10 +431,10 @@ func logReceiver(ctx context.Context, server state.Server, globalCollectionOpts 
 				}
 
 				logLines = append(logLines, logLine)
-				logLines = stream.ProcessLogStream(server, logLines, globalCollectionOpts, prefixedLogger, logTestSucceeded)
+				logLines = stream.ProcessLogStream(server, logLines, globalCollectionOpts, prefixedLogger, logTestSucceeded, stream.LogTestCollectorIdentify)
 			case <-timeout:
 				if len(logLines) > 0 {
-					logLines = stream.ProcessLogStream(server, logLines, globalCollectionOpts, prefixedLogger, logTestSucceeded)
+					logLines = stream.ProcessLogStream(server, logLines, globalCollectionOpts, prefixedLogger, logTestSucceeded, stream.LogTestCollectorIdentify)
 				}
 				go func() {
 					time.Sleep(3 * time.Second)

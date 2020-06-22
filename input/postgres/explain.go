@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/lib/pq"
 	pg_query "github.com/lfittl/pg_query_go"
 	pg_query_nodes "github.com/lfittl/pg_query_go/nodes"
+	"github.com/lib/pq"
 	"github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
 )
@@ -24,8 +24,8 @@ func RunExplain(db *sql.DB, connectedDbName string, inputs []state.PostgresQuery
 			continue
 		}
 
-		// Ignore backup start queries (they usually take long but not because of something that can be EXPLAINed)
-		if strings.Contains(sample.Query, "pg_start_backup") {
+		// Ignore backup-related queries (they usually take long but not because of something that can be EXPLAINed)
+		if strings.Contains(sample.Query, "pg_start_backup") || strings.Contains(sample.Query, "pg_stop_backup") {
 			continue
 		}
 

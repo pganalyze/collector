@@ -94,6 +94,17 @@ var parseTests = []parseTestpair{
 		},
 		true,
 	},
+	// Azure format
+	{
+		"",
+		"2020-06-21 22:37:10 UTC-5eefe116.22f4-LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.",
+		state.LogLine{
+			OccurredAt: time.Date(2020, time.June, 21, 22, 37, 10, 0, time.UTC),
+			LogLevel:   pganalyze_collector.LogLineInformation_LOG,
+			Content:    "could not receive data from client: An existing connection was forcibly closed by the remote host.",
+		},
+		true,
+	},
 	// Custom 3 format
 	{
 		"",
