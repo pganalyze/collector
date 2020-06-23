@@ -18,6 +18,10 @@ import (
 	"github.com/Azure/go-autorest/autorest/azure"
 )
 
+var connectionReceivedRegexp = regexp.MustCompile(`^(connection received: host=[^ ]+( port=\w+)?) pid=\d+`)
+var connectionAuthorizedRegexp = regexp.MustCompile(`^(connection authorized: user=\w+)(database=\w+)`)
+var checkpointCompleteRegexp = regexp.MustCompile(`^(checkpoint complete) \(\d+\)(:)`)
+
 func setupEventHubReceiver(ctx context.Context, wg *sync.WaitGroup, logger *util.Logger, config config.ServerConfig, azureLogStream chan AzurePostgresLogRecord) error {
 	provider, err := aad.NewJWTProvider(func(c *aad.TokenProviderConfiguration) error {
 		c.TenantID = config.AzureADTenantID
@@ -52,16 +56,13 @@ func setupEventHubReceiver(ctx context.Context, wg *sync.WaitGroup, logger *util
 			if record.Category == "PostgreSQLLogs" && record.OperationName == "LogEvent" {
 				// Adjust Azure-modified log messages to be standard Postgres log messages
 				if strings.HasPrefix(record.Properties.Message, "connection received:") {
-					re := regexp.MustCompile(`^(connection received: host=[^ ]+( port=\w+)?) pid=\d+`)
-					record.Properties.Message = re.ReplaceAllString(record.Properties.Message, "$1")
+					record.Properties.Message = connectionReceivedRegexp.ReplaceAllString(record.Properties.Message, "$1")
 				}
 				if strings.HasPrefix(record.Properties.Message, "connection authorized:") {
-					re := regexp.MustCompile(`^(connection authorized: user=\w+)(database=\w+)`)
-					record.Properties.Message = re.ReplaceAllString(record.Properties.Message, "$1 $2")
+					record.Properties.Message = connectionAuthorizedRegexp.ReplaceAllString(record.Properties.Message, "$1 $2")
 				}
 				if strings.HasPrefix(record.Properties.Message, "checkpoint complete") {
-					re := regexp.MustCompile(`^(checkpoint complete) \(\d+\)(:)`)
-					record.Properties.Message = re.ReplaceAllString(record.Properties.Message, "$1$2")
+					record.Properties.Message = checkpointCompleteRegexp.ReplaceAllString(record.Properties.Message, "$1$2")
 				}
 
 				azureLogStream <- record
@@ -80,7 +81,7 @@ func setupEventHubReceiver(ctx context.Context, wg *sync.WaitGroup, logger *util
 						OperationName:     record.OperationName,
 						Properties: AzurePostgresLogMessage{
 							Prefix:       record.Properties.Prefix,
-							Message:      record.Properties.Detail, // This is the important different from the main message
+							Message:      record.Properties.Detail, // This is the important difference from the main message
 							Detail:       "",
 							ErrorLevel:   "DETAIL",
 							Domain:       record.Properties.Domain,
@@ -120,8 +121,7 @@ func SetupLogSubscriber(ctx context.Context, wg *sync.WaitGroup, globalCollectio
 	for _, server := range servers {
 		prefixedLogger := logger.WithPrefix(server.Config.SectionName)
 		if server.Config.AzureEventhubNamespace != "" && server.Config.AzureEventhubName != "" {
-			_, ok := eventHubReceivers[server.Config.AzureEventhubNamespace+"/"+server.Config.AzureEventhubName]
-			if ok {
+			if _, ok := eventHubReceivers[server.Config.AzureEventhubNamespace+"/"+server.Config.AzureEventhubName]; ok {
 				continue
 			}
 			err := setupEventHubReceiver(ctx, wg, prefixedLogger, server.Config, azureLogStream)
@@ -130,7 +130,7 @@ func SetupLogSubscriber(ctx context.Context, wg *sync.WaitGroup, globalCollectio
 					return err
 				}
 
-				prefixedLogger.PrintError("ERROR - Could not setup log subscriber: %s", err)
+				prefixedLogger.PrintWarning("Skipping logs, could not setup log subscriber: %s", err)
 				continue
 			}
 

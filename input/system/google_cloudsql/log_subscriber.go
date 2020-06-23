@@ -111,7 +111,7 @@ func SetupLogSubscriber(ctx context.Context, wg *sync.WaitGroup, globalCollectio
 					return err
 				}
 
-				prefixedLogger.PrintError("ERROR - Could not setup log subscriber: %s", err)
+				prefixedLogger.PrintWarning("Skipping logs, could not setup log subscriber: %s", err)
 				continue
 			}
 

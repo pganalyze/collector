@@ -49,6 +49,7 @@ func logReceiver(ctx context.Context, servers []state.Server, in <-chan AzurePos
 		logLinesByServer := make(map[config.ServerIdentifier][]state.LogLine)
 
 		// Only ingest log lines that were written in the last minute before startup
+		// (Azure Event Hub will return older log lines as well)
 		linesNewerThan := time.Now().Add(-1 * time.Minute)
 
 		// Use a timeout to clear out loglines that don't have any follow-on lines
