@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.31.0      2020-06-23
+
+* Add Log Insights support for Azure Database for PostgreSQL
+* Log Insights: Avoid unnecessary "Timeout" error when there are other failures
+* Log EXPLAIN: Don't run EXPLAIN logic when there are no query sample
+* Improve non-fatal error messages to clarify the collector still works
+* Log grant failure: Explain root cause better (plan doesn't support it / fair use limit reached)
+
+
 ## 0.30.0      2020-06-12
 
 * Track local replication lag in bytes
