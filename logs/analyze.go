@@ -136,8 +136,8 @@ var connectionReceived = analyzeGroup{
 	classification: pganalyze_collector.LogLineInformation_CONNECTION_RECEIVED,
 	primary: match{
 		prefixes: []string{"connection received: "},
-		regexp:   regexp.MustCompile(`^connection received: host=[^ ]+( port=\w+)?`),
-		secrets:  []state.LogSecretKind{0},
+		regexp:   regexp.MustCompile(`^connection received: host=([^ ]+)( port=\w+)?`),
+		secrets:  []state.LogSecretKind{0, 0},
 	},
 }
 var connectionAuthorized = analyzeGroup{
@@ -1147,7 +1147,6 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 
 	// Generic handlers
 	groupX := []analyzeGroup{
-		connectionReceived,
 		connectionAuthorized,
 		connectionRejected,
 		authenticationFailed,
@@ -1244,6 +1243,15 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 	}
 
 	// Connects/Disconnects
+	if matchesPrefix(logLine, connectionReceived.primary.prefixes) {
+		logLine.Classification = connectionReceived.classification
+		logLine, parts = matchLogLine(logLine, connectionReceived.primary)
+		if len(parts) == 3 {
+			logLine.Details = map[string]interface{}{"host": parts[1]}
+		}
+		contextLine = matchOtherContextLogLine(contextLine)
+		return logLine, statementLine, detailLine, contextLine, hintLine, samples
+	}
 	if matchesPrefix(logLine, disconnection.primary.prefixes) {
 		logLine.Classification = disconnection.classification
 		logLine, parts = matchLogLine(logLine, disconnection.primary)

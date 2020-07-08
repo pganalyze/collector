@@ -217,13 +217,22 @@ var tests = []testpair{
 			Content: "disconnection: session time: 0:00:00.199 user=user database=db host=ec2-102-13-140-150.compute-1.amazonaws.com port=12345",
 		}},
 		[]state.LogLine{{
-			Classification:     pganalyze_collector.LogLineInformation_CONNECTION_RECEIVED,
+			Classification: pganalyze_collector.LogLineInformation_CONNECTION_RECEIVED,
+			Details: map[string]interface{}{
+				"host": "172.30.0.165",
+			},
 			ReviewedForSecrets: true,
 		}, {
-			Classification:     pganalyze_collector.LogLineInformation_CONNECTION_RECEIVED,
+			Classification: pganalyze_collector.LogLineInformation_CONNECTION_RECEIVED,
+			Details: map[string]interface{}{
+				"host": "ec2-102-13-140-150.compute-1.amazonaws.com",
+			},
 			ReviewedForSecrets: true,
 		}, {
-			Classification:     pganalyze_collector.LogLineInformation_CONNECTION_RECEIVED,
+			Classification: pganalyze_collector.LogLineInformation_CONNECTION_RECEIVED,
+			Details: map[string]interface{}{
+				"host": "[local]",
+			},
 			ReviewedForSecrets: true,
 		}, {
 			Classification:     pganalyze_collector.LogLineInformation_CONNECTION_AUTHORIZED,
