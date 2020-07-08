@@ -188,6 +188,8 @@ var tests = []testpair{
 		}, {
 			Content: "connection authorized: user=myuser database=mydb SSL enabled (protocol=TLSv1.2, cipher=ECDHE-RSA-AES256-GCM-SHA384, compression=off)",
 		}, {
+			Content: "connection authorized: user=myuser database=myuser application_name=puma: cluster worker 2: 44125 [myapp]",
+		}, {
 			Content: "pg_hba.conf rejects connection for host \"172.1.0.1\", user \"myuser\", database \"mydb\", SSL on",
 		}, {
 			Content:  "no pg_hba.conf entry for host \"8.8.8.8\", user \"postgres\", database \"postgres\", SSL off",
@@ -232,6 +234,12 @@ var tests = []testpair{
 			Classification: pganalyze_collector.LogLineInformation_CONNECTION_RECEIVED,
 			Details: map[string]interface{}{
 				"host": "[local]",
+			},
+			ReviewedForSecrets: true,
+		}, {
+			Classification: pganalyze_collector.LogLineInformation_CONNECTION_AUTHORIZED,
+			Details: map[string]interface{}{
+				"ssl_protocol": "TLSv1.2",
 			},
 			ReviewedForSecrets: true,
 		}, {

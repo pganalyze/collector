@@ -144,8 +144,8 @@ var connectionAuthorized = analyzeGroup{
 	classification: pganalyze_collector.LogLineInformation_CONNECTION_AUTHORIZED,
 	primary: match{
 		prefixes: []string{"connection authorized: "},
-		regexp:   regexp.MustCompile(`^connection authorized: user=\w+( database=\w+)?( application_name=\w+)?( SSL enabled \(protocol=[\w.]+, cipher=[\w-]+, compression=\w+\))?`),
-		secrets:  []state.LogSecretKind{0, 0, 0},
+		regexp:   regexp.MustCompile(`^connection authorized: user=\w+( database=\w+)?( application_name=.+)?( SSL enabled \(protocol=([\w.]+), cipher=[\w-]+, compression=\w+\))?`),
+		secrets:  []state.LogSecretKind{0, 0, 0, 0},
 	},
 }
 var connectionRejected = analyzeGroup{
@@ -1147,7 +1147,6 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 
 	// Generic handlers
 	groupX := []analyzeGroup{
-		connectionAuthorized,
 		connectionRejected,
 		authenticationFailed,
 		databaseNotAcceptingConnections,
@@ -1248,6 +1247,15 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 		logLine, parts = matchLogLine(logLine, connectionReceived.primary)
 		if len(parts) == 3 {
 			logLine.Details = map[string]interface{}{"host": parts[1]}
+		}
+		contextLine = matchOtherContextLogLine(contextLine)
+		return logLine, statementLine, detailLine, contextLine, hintLine, samples
+	}
+	if matchesPrefix(logLine, connectionAuthorized.primary.prefixes) {
+		logLine.Classification = connectionAuthorized.classification
+		logLine, parts = matchLogLine(logLine, connectionAuthorized.primary)
+		if len(parts) == 5 && parts[4] != "" {
+			logLine.Details = map[string]interface{}{"ssl_protocol": parts[4]}
 		}
 		contextLine = matchOtherContextLogLine(contextLine)
 		return logLine, statementLine, detailLine, contextLine, hintLine, samples
