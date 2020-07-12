@@ -8,6 +8,7 @@ import (
 )
 
 func transformPostgresRelations(s snapshot.FullSnapshot, newState state.PersistedState, diffState state.DiffState, roleOidToIdx OidToIdx, databaseOidToIdx OidToIdx) snapshot.FullSnapshot {
+	relationOidToIdx := make(map[state.Oid]int32)
 	for _, relation := range newState.Relations {
 		ref := snapshot.RelationReference{
 			DatabaseIdx:  databaseOidToIdx[relation.DatabaseOid],
@@ -16,10 +17,22 @@ func transformPostgresRelations(s snapshot.FullSnapshot, newState state.Persiste
 		}
 		idx := int32(len(s.RelationReferences))
 		s.RelationReferences = append(s.RelationReferences, &ref)
+		relationOidToIdx[relation.Oid] = idx
+	}
+
+	for _, relation := range newState.Relations {
+		relationIdx := relationOidToIdx[relation.Oid]
+
+		parentRelationIdx := int32(0)
+		hasParentRelation := false
+		if relation.ParentTableOid != 0 {
+			parentRelationIdx = relationOidToIdx[relation.ParentTableOid]
+			hasParentRelation = true
+		}
 
 		// Information
 		info := snapshot.RelationInformation{
-			RelationIdx:            idx,
+			RelationIdx:            relationIdx,
 			RelationType:           relation.RelationType,
 			PersistenceType:        relation.PersistenceType,
 			Fillfactor:             relation.Fillfactor(),
@@ -28,6 +41,9 @@ func transformPostgresRelations(s snapshot.FullSnapshot, newState state.Persiste
 			HasToast:               relation.HasToast,
 			FrozenXid:              uint32(relation.FrozenXID),
 			MinimumMultixactXid:    uint32(relation.MinimumMultixactXID),
+			ParentRelationIdx:      parentRelationIdx,
+			HasParentRelation:      hasParentRelation,
+			PartitionBoundary:      relation.PartitionBoundary,
 			ExclusivelyLocked:      relation.ExclusivelyLocked,
 			Options:                relation.Options,
 		}
@@ -57,7 +73,7 @@ func transformPostgresRelations(s snapshot.FullSnapshot, newState state.Persiste
 				ForeignMatchType:  constraint.ForeignMatchType,
 			}
 			if constraint.ForeignOid != 0 {
-				sConstraint.ForeignRelationIdx = -1 // FIXME, need to look this up
+				sConstraint.ForeignRelationIdx = relationOidToIdx[constraint.ForeignOid]
 			}
 			for _, column := range constraint.Columns {
 				sConstraint.Columns = append(sConstraint.Columns, int32(column))
@@ -73,7 +89,7 @@ func transformPostgresRelations(s snapshot.FullSnapshot, newState state.Persiste
 		stats, exists := diffState.RelationStats[relation.Oid]
 		if exists {
 			statistic := snapshot.RelationStatistic{
-				RelationIdx:    idx,
+				RelationIdx:    relationIdx,
 				SizeBytes:      stats.SizeBytes,
 				ToastSizeBytes: stats.ToastSizeBytes,
 				SeqScan:        stats.SeqScan,
@@ -101,10 +117,10 @@ func transformPostgresRelations(s snapshot.FullSnapshot, newState state.Persiste
 			s.RelationStatistics = append(s.RelationStatistics, &statistic)
 
 			// Events
-			s.RelationEvents = addRelationEvents(idx, s.RelationEvents, stats.AnalyzeCount, stats.LastAnalyze, snapshot.RelationEvent_MANUAL_ANALYZE)
-			s.RelationEvents = addRelationEvents(idx, s.RelationEvents, stats.AutoanalyzeCount, stats.LastAutoanalyze, snapshot.RelationEvent_AUTO_ANALYZE)
-			s.RelationEvents = addRelationEvents(idx, s.RelationEvents, stats.VacuumCount, stats.LastVacuum, snapshot.RelationEvent_MANUAL_VACUUM)
-			s.RelationEvents = addRelationEvents(idx, s.RelationEvents, stats.AutovacuumCount, stats.LastAutovacuum, snapshot.RelationEvent_AUTO_VACUUM)
+			s.RelationEvents = addRelationEvents(relationIdx, s.RelationEvents, stats.AnalyzeCount, stats.LastAnalyze, snapshot.RelationEvent_MANUAL_ANALYZE)
+			s.RelationEvents = addRelationEvents(relationIdx, s.RelationEvents, stats.AutoanalyzeCount, stats.LastAutoanalyze, snapshot.RelationEvent_AUTO_ANALYZE)
+			s.RelationEvents = addRelationEvents(relationIdx, s.RelationEvents, stats.VacuumCount, stats.LastVacuum, snapshot.RelationEvent_MANUAL_VACUUM)
+			s.RelationEvents = addRelationEvents(relationIdx, s.RelationEvents, stats.AutovacuumCount, stats.LastAutovacuum, snapshot.RelationEvent_AUTO_VACUUM)
 		}
 
 		// Indices
@@ -120,7 +136,7 @@ func transformPostgresRelations(s snapshot.FullSnapshot, newState state.Persiste
 			// Information
 			indexInfo := snapshot.IndexInformation{
 				IndexIdx:    indexIdx,
-				RelationIdx: idx,
+				RelationIdx: relationIdx,
 				IndexType:   index.IndexType,
 				IndexDef:    index.IndexDef,
 				IsPrimary:   index.IsPrimary,
