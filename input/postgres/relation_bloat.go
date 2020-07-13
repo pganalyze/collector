@@ -30,6 +30,7 @@ columns AS (
 	       AND a.attnum > 0
 				 AND n.nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast')
 				 AND NOT a.attisdropped
+				 AND ($1 = '' OR (c.relname !~* $1 AND n.nspname !~* $1))
 ),
 no_stats AS (
 		-- screen out table who have attributes
@@ -129,6 +130,7 @@ WITH btree_index_atts AS (
 				 JOIN pg_catalog.pg_am a ON (ic.relam = a.oid)
 	 WHERE a.amname = 'btree' AND ic.relpages > 0
 				 AND n.nspname NOT IN ('pg_catalog','pg_toast','information_schema')
+				 AND ($1 = '' OR (tc.relname !~* $1 AND n.nspname !~* $1))
 ),
 index_item_sizes AS (
 	SELECT ia.nspname,
@@ -191,8 +193,8 @@ SELECT nspname,
 // SELECT index_size, index_size * (1.0 - avg_leaf_density / 100.0) FROM pgstatindex('some_index_pkey'::regclass);
 // http://blog.ioguix.net/postgresql/2014/03/28/Playing-with-indexes-and-better-bloat-estimate.html
 
-func GetRelationBloat(logger *util.Logger, db *sql.DB, columnStatsSourceTable string) (relBloat []state.PostgresRelationBloat, err error) {
-	rows, err := db.Query(QueryMarkerSQL + fmt.Sprintf(tableBloatSQL, columnStatsSourceTable, columnStatsSourceTable))
+func GetRelationBloat(logger *util.Logger, db *sql.DB, columnStatsSourceTable string, ignoreRegexp string) (relBloat []state.PostgresRelationBloat, err error) {
+	rows, err := db.Query(QueryMarkerSQL+fmt.Sprintf(tableBloatSQL, columnStatsSourceTable, columnStatsSourceTable), ignoreRegexp)
 	if err != nil {
 		err = fmt.Errorf("TableBloat/Query: %s", err)
 		return nil, err
@@ -216,8 +218,8 @@ func GetRelationBloat(logger *util.Logger, db *sql.DB, columnStatsSourceTable st
 	return
 }
 
-func GetIndexBloat(logger *util.Logger, db *sql.DB, columnStatsSourceTable string) (indexBloat []state.PostgresIndexBloat, err error) {
-	rows, err := db.Query(QueryMarkerSQL + fmt.Sprintf(indexBloatSQL, columnStatsSourceTable))
+func GetIndexBloat(logger *util.Logger, db *sql.DB, columnStatsSourceTable, ignoreRegexp string) (indexBloat []state.PostgresIndexBloat, err error) {
+	rows, err := db.Query(QueryMarkerSQL+fmt.Sprintf(indexBloatSQL, columnStatsSourceTable), ignoreRegexp)
 	if err != nil {
 		err = fmt.Errorf("IndexBloat/Query: %s", err)
 		return nil, err
@@ -241,7 +243,7 @@ func GetIndexBloat(logger *util.Logger, db *sql.DB, columnStatsSourceTable strin
 	return
 }
 
-func GetBloatStats(logger *util.Logger, db *sql.DB, systemType string) (report state.PostgresBloatStats, err error) {
+func GetBloatStats(logger *util.Logger, db *sql.DB, systemType, ignoreRegexp string) (report state.PostgresBloatStats, err error) {
 	var columnStatsSourceTable string
 
 	if statsHelperExists(db, "get_column_stats") {
@@ -256,12 +258,12 @@ func GetBloatStats(logger *util.Logger, db *sql.DB, systemType string) (report s
 		columnStatsSourceTable = "pg_catalog.pg_stats"
 	}
 
-	report.Relations, err = GetRelationBloat(logger, db, columnStatsSourceTable)
+	report.Relations, err = GetRelationBloat(logger, db, columnStatsSourceTable, ignoreRegexp)
 	if err != nil {
 		return
 	}
 
-	report.Indices, err = GetIndexBloat(logger, db, columnStatsSourceTable)
+	report.Indices, err = GetIndexBloat(logger, db, columnStatsSourceTable, ignoreRegexp)
 	if err != nil {
 		return
 	}

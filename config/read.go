@@ -173,6 +173,9 @@ func getDefaultConfig() *ServerConfig {
 	if ignoreTablePattern := os.Getenv("IGNORE_TABLE_PATTERN"); ignoreTablePattern != "" {
 		config.IgnoreTablePattern = ignoreTablePattern
 	}
+	if ignoreTableRegexp := os.Getenv("IGNORE_TABLE_REGEXP"); ignoreTableRegexp != "" {
+		config.IgnoreTableRegexp = ignoreTableRegexp
+	}
 	if queryStatsInterval := os.Getenv("QUERY_STATS_INTERVAL"); queryStatsInterval != "" {
 		config.QueryStatsInterval, _ = strconv.Atoi(queryStatsInterval)
 	}

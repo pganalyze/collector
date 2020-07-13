@@ -52,6 +52,7 @@ SELECT c.oid,
 			 AND c.relpersistence <> 't'
 			 AND c.relname NOT IN ('pg_stat_statements')
 			 AND n.nspname NOT IN ('pg_catalog','pg_toast','information_schema')
+			 AND ($1 = '' OR (c.relname !~* $1 AND n.nspname !~* $1))
 `
 
 const indexStatsSQL = `
@@ -65,10 +66,11 @@ SELECT s.indexrelid,
 			 COALESCE(sio.idx_blks_hit, 0)
 	FROM pg_catalog.pg_stat_user_indexes s
 			 LEFT JOIN pg_catalog.pg_statio_user_indexes sio USING (indexrelid)
-	WHERE s.indexrelid NOT IN (SELECT relid FROM locked_relids)
+ WHERE s.indexrelid NOT IN (SELECT relid FROM locked_relids)
+			 AND ($1 = '' OR (relname !~* $1 AND schemaname !~* $1))
 `
 
-func GetRelationStats(db *sql.DB, postgresVersion state.PostgresVersion) (relStats state.PostgresRelationStatsMap, err error) {
+func GetRelationStats(db *sql.DB, postgresVersion state.PostgresVersion, ignoreRegexp string) (relStats state.PostgresRelationStatsMap, err error) {
 	var optionalFields string
 
 	if postgresVersion.Numeric >= state.PostgresVersion94 {
@@ -84,7 +86,7 @@ func GetRelationStats(db *sql.DB, postgresVersion state.PostgresVersion) (relSta
 	}
 	defer stmt.Close()
 
-	rows, err := stmt.Query()
+	rows, err := stmt.Query(ignoreRegexp)
 	if err != nil {
 		err = fmt.Errorf("RelationStats/Query: %s", err)
 		return
@@ -120,7 +122,7 @@ func GetRelationStats(db *sql.DB, postgresVersion state.PostgresVersion) (relSta
 	return
 }
 
-func GetIndexStats(db *sql.DB, postgresVersion state.PostgresVersion) (indexStats state.PostgresIndexStatsMap, err error) {
+func GetIndexStats(db *sql.DB, postgresVersion state.PostgresVersion, ignoreRegexp string) (indexStats state.PostgresIndexStatsMap, err error) {
 	stmt, err := db.Prepare(QueryMarkerSQL + indexStatsSQL)
 	if err != nil {
 		err = fmt.Errorf("IndexStats/Prepare: %s", err)
@@ -128,7 +130,7 @@ func GetIndexStats(db *sql.DB, postgresVersion state.PostgresVersion) (indexStat
 	}
 	defer stmt.Close()
 
-	rows, err := stmt.Query()
+	rows, err := stmt.Query(ignoreRegexp)
 	if err != nil {
 		err = fmt.Errorf("IndexStats/Query: %s", err)
 		return

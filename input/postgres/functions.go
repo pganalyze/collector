@@ -32,13 +32,18 @@ SELECT pp.oid,
  INNER JOIN pg_catalog.pg_language pl ON (pp.prolang = pl.oid)
  WHERE pl.lanname NOT IN ('internal', 'c')
 			 AND pn.nspname NOT IN ('pg_catalog', 'information_schema')
-			 AND pp.proname NOT IN ('pg_stat_statements', 'pg_stat_statements_reset')`
+			 AND pp.proname NOT IN ('pg_stat_statements', 'pg_stat_statements_reset')
+			 AND ($1 = '' OR (pp.proname !~* $1 AND pn.nspname !~* $1))
+			 `
 
 const functionStatsSQL string = `
 SELECT funcid, calls, total_time, self_time
-	FROM pg_stat_user_functions`
+	FROM pg_stat_user_functions psuf
+ INNER JOIN pg_catalog.pg_proc pp ON (psuf.funcid = pp.oid)
+ INNER JOIN pg_catalog.pg_namespace pn ON (pp.pronamespace = pn.oid)
+ WHERE $1 = '' OR (pp.proname !~* $1 AND pn.nspname !~* $1)`
 
-func GetFunctions(db *sql.DB, postgresVersion state.PostgresVersion, currentDatabaseOid state.Oid) ([]state.PostgresFunction, error) {
+func GetFunctions(db *sql.DB, postgresVersion state.PostgresVersion, currentDatabaseOid state.Oid, ignoreRegexp string) ([]state.PostgresFunction, error) {
 	var kindFields string
 
 	if postgresVersion.Numeric >= state.PostgresVersion11 {
@@ -54,7 +59,7 @@ func GetFunctions(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 
 	defer stmt.Close()
 
-	rows, err := stmt.Query()
+	rows, err := stmt.Query(ignoreRegexp)
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +88,7 @@ func GetFunctions(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 	return functions, nil
 }
 
-func GetFunctionStats(db *sql.DB, postgresVersion state.PostgresVersion) (functionStats state.PostgresFunctionStatsMap, err error) {
+func GetFunctionStats(db *sql.DB, postgresVersion state.PostgresVersion, ignoreRegexp string) (functionStats state.PostgresFunctionStatsMap, err error) {
 	stmt, err := db.Prepare(QueryMarkerSQL + functionStatsSQL)
 	if err != nil {
 		err = fmt.Errorf("FunctionStats/Prepare: %s", err)
@@ -91,7 +96,7 @@ func GetFunctionStats(db *sql.DB, postgresVersion state.PostgresVersion) (functi
 	}
 	defer stmt.Close()
 
-	rows, err := stmt.Query()
+	rows, err := stmt.Query(ignoreRegexp)
 	if err != nil {
 		err = fmt.Errorf("FunctionStats/Query: %s", err)
 		return
