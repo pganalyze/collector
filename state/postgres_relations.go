@@ -23,6 +23,8 @@ type PostgresRelation struct {
 	HasToast               bool
 	FrozenXID              Xid
 	MinimumMultixactXID    Xid
+	ParentTableOid         Oid
+	PartitionBoundary      string
 
 	// True if another process is currently holding an AccessExclusiveLock on this
 	// relation, this also means we don't collect columns/index/constraints data

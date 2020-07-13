@@ -14,6 +14,8 @@ const relationsSQLDefaultOptionalFields = "0"
 const relationsSQLpg93OptionalFields = "c.relminmxid"
 const relationsSQLOidField = "c.relhasoids AS relation_has_oids"
 const relationsSQLpg12OidField = "false AS relation_has_oids"
+const relationsSQLpartBoundField = "''"
+const relationsSQLpg10PartBoundField = "COALESCE(pg_get_expr(c.relpartbound, c.oid, true), '') AS partition_boundary"
 
 const relationsSQL string = `
 	 WITH locked_relids AS (SELECT DISTINCT relation relid FROM pg_catalog.pg_locks WHERE mode = 'AccessExclusiveLock')
@@ -27,6 +29,8 @@ const relationsSQL string = `
 				c.relhassubclass AS relation_has_inheritance_children,
 				c.reltoastrelid IS NOT NULL AS relation_has_toast,
 				c.relfrozenxid AS relation_frozen_xid,
+				%s,
+				COALESCE((SELECT inhparent FROM pg_inherits WHERE inhrelid = c.oid ORDER BY inhseqno LIMIT 1), 0) AS parent_relid,
 				%s,
 				locked_relids.relid IS NOT NULL
 	 FROM pg_catalog.pg_class c
@@ -123,11 +127,18 @@ func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 	// Relations
 	var optionalFields string
 	var oidField string
+	var partBoundField string
 
 	if postgresVersion.Numeric >= state.PostgresVersion93 {
 		optionalFields = relationsSQLpg93OptionalFields
 	} else {
 		optionalFields = relationsSQLDefaultOptionalFields
+	}
+
+	if postgresVersion.Numeric >= state.PostgresVersion10 {
+		partBoundField = relationsSQLpg10PartBoundField
+	} else {
+		partBoundField = relationsSQLpartBoundField
 	}
 
 	if postgresVersion.Numeric >= state.PostgresVersion12 {
@@ -136,7 +147,7 @@ func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 		oidField = relationsSQLOidField
 	}
 
-	rows, err := db.Query(QueryMarkerSQL + fmt.Sprintf(relationsSQL, oidField, optionalFields))
+	rows, err := db.Query(QueryMarkerSQL + fmt.Sprintf(relationsSQL, oidField, optionalFields, partBoundField))
 	if err != nil {
 		err = fmt.Errorf("Relations/Query: %s", err)
 		return nil, err
@@ -149,7 +160,8 @@ func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 
 		err = rows.Scan(&row.Oid, &row.SchemaName, &row.RelationName, &row.RelationType,
 			&options, &row.HasOids, &row.PersistenceType, &row.HasInheritanceChildren,
-			&row.HasToast, &row.FrozenXID, &row.MinimumMultixactXID, &row.ExclusivelyLocked)
+			&row.HasToast, &row.FrozenXID, &row.MinimumMultixactXID, &row.ParentTableOid,
+			&row.PartitionBoundary, &row.ExclusivelyLocked)
 		if err != nil {
 			err = fmt.Errorf("Relations/Scan: %s", err)
 			return nil, err
