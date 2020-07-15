@@ -3,8 +3,6 @@ package postgres
 import (
 	"database/sql"
 	"fmt"
-	"regexp"
-	"strconv"
 	"strings"
 
 	"github.com/lib/pq"
@@ -28,43 +26,17 @@ SELECT pg_catalog.sum(block_count) * pg_catalog.current_setting('block_size')::i
   FROM buffers
 `
 
-const sharedBufferSettingSQL string = `SELECT pg_catalog.current_setting('shared_buffers')`
+const sharedBufferSettingSQL string = `SELECT pg_catalog.pg_size_bytes(pg_catalog.current_setting('shared_buffers'))`
 
 func getSharedBufferBytes(db *sql.DB) int64 {
-	var bytesStr string
+	var bytes int64
 
-	err := db.QueryRow(QueryMarkerSQL + sharedBufferSettingSQL).Scan(&bytesStr)
+	err := db.QueryRow(QueryMarkerSQL + sharedBufferSettingSQL).Scan(&bytes)
 	if err != nil {
 		return 0
 	}
 
-	re := regexp.MustCompile("(\\d+)\\s*(\\w+)")
-	parts := re.FindStringSubmatch(bytesStr)
-
-	if len(parts) != 3 {
-		return 0
-	}
-
-	var multiplier int64
-	switch strings.ToLower(parts[2]) {
-	case "bytes":
-		multiplier = 1
-	case "kb":
-		multiplier = 1024
-	case "mb":
-		multiplier = 1024 * 1024
-	case "gb":
-		multiplier = 1024 * 1024 * 1024
-	case "tb":
-		multiplier = 1024 * 1024 * 1024 * 1024
-	}
-
-	bytes, err := strconv.ParseInt(parts[1], 10, 64)
-	if err != nil {
-		return 0
-	}
-
-	return bytes * multiplier
+	return bytes
 }
 
 func GetBuffercache(logger *util.Logger, db *sql.DB, systemType string) (report state.PostgresBuffercache, err error) {
