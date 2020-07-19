@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -84,7 +85,8 @@ func GetBuffercache(logger *util.Logger, db *sql.DB, systemType string) (report 
 
 	rows, err := db.Query(QueryMarkerSQL + fmt.Sprintf(buffercacheSQL, sourceTable))
 	if err != nil {
-		if err.(*pq.Error).Code == "42P01" { // undefined_table
+		var e *pq.Error
+		if errors.As(err, &e) && e.Code == "42P01" { // undefined_table
 			logger.PrintInfo("pg_buffercache relation does not exist, trying to create extension...")
 
 			_, err = db.Exec(QueryMarkerSQL + "CREATE EXTENSION IF NOT EXISTS pg_buffercache SCHEMA public")
