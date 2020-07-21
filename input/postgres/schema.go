@@ -40,7 +40,7 @@ func CollectAllSchemas(server state.Server, collectionOpts state.CollectionOpts,
 			continue
 		}
 
-		ps = collectSchemaData(collectionOpts, logger, schemaConnection, ps, databaseOid, dbName, ts.Version, server.Config.IgnoreTableRegexp)
+		ps = collectSchemaData(collectionOpts, logger, schemaConnection, ps, databaseOid, dbName, ts.Version, server.Config.IgnoreSchemaRegexp)
 		ts.DatabaseOidsWithLocalCatalog = append(ts.DatabaseOidsWithLocalCatalog, databaseOid)
 
 		schemaConnection.Close()
