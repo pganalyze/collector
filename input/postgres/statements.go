@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"hash/fnv"
 	"strings"
@@ -127,8 +128,8 @@ func GetStatements(logger *util.Logger, db *sql.DB, globalCollectionOpts state.C
 
 	stmt, err := db.Prepare(sql)
 	if err != nil {
-		errCode := err.(*pq.Error).Code
-		if !usingStatsHelper && (errCode == "42P01" || errCode == "42883") { // undefined_table / undefined_function
+		var e *pq.Error
+		if !usingStatsHelper && errors.As(err, &e) && (e.Code == "42P01" || e.Code == "42883") { // undefined_table / undefined_function
 			logger.PrintInfo("pg_stat_statements does not exist, trying to create extension...")
 
 			_, err = db.Exec(QueryMarkerSQL + "CREATE EXTENSION IF NOT EXISTS pg_stat_statements SCHEMA public")
@@ -149,8 +150,8 @@ func GetStatements(logger *util.Logger, db *sql.DB, globalCollectionOpts state.C
 
 	rows, err := stmt.Query()
 	if err != nil {
-		errCode := err.(*pq.Error).Code
-		if errCode == "55000" { // object_not_in_prerequisite_state
+		var e *pq.Error
+		if errors.As(err, &e) && e.Code == "55000" { // object_not_in_prerequisite_state
 			if globalCollectionOpts.TestRun {
 				logger.PrintWarning("Could not collect query statistics: pg_stat_statements must be added to shared_preload_libraries")
 			}
