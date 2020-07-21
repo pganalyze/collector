@@ -30,7 +30,7 @@ columns AS (
 	       AND a.attnum > 0
 				 AND n.nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast')
 				 AND NOT a.attisdropped
-				 AND ($1 = '' OR (c.relname !~* $1 AND n.nspname !~* $1))
+				 AND ($1 = '' OR (c.relname || '.' || n.nspname) !~* $1)
 ),
 no_stats AS (
 		-- screen out table who have attributes
@@ -130,7 +130,7 @@ WITH btree_index_atts AS (
 				 JOIN pg_catalog.pg_am a ON (ic.relam = a.oid)
 	 WHERE a.amname = 'btree' AND ic.relpages > 0
 				 AND n.nspname NOT IN ('pg_catalog','pg_toast','information_schema')
-				 AND ($1 = '' OR (tc.relname !~* $1 AND n.nspname !~* $1))
+				 AND ($1 = '' OR (tc.relname || '.' || n.nspname) !~* $1)
 ),
 index_item_sizes AS (
 	SELECT ia.nspname,

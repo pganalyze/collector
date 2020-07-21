@@ -52,7 +52,7 @@ SELECT c.oid,
 			 AND c.relpersistence <> 't'
 			 AND c.relname NOT IN ('pg_stat_statements')
 			 AND n.nspname NOT IN ('pg_catalog','pg_toast','information_schema')
-			 AND ($1 = '' OR (c.relname !~* $1 AND n.nspname !~* $1))
+			 AND ($1 = '' OR (c.relname || '.' || n.nspname) !~* $1)
 `
 
 const indexStatsSQL = `
@@ -67,7 +67,7 @@ SELECT s.indexrelid,
 	FROM pg_catalog.pg_stat_user_indexes s
 			 LEFT JOIN pg_catalog.pg_statio_user_indexes sio USING (indexrelid)
  WHERE s.indexrelid NOT IN (SELECT relid FROM locked_relids)
-			 AND ($1 = '' OR (relname !~* $1 AND schemaname !~* $1))
+			 AND ($1 = '' OR (relname || '.' || schemaname) !~* $1)
 `
 
 func GetRelationStats(db *sql.DB, postgresVersion state.PostgresVersion, ignoreRegexp string) (relStats state.PostgresRelationStatsMap, err error) {
