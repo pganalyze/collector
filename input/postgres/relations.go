@@ -249,8 +249,7 @@ func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 	}
 
 	// Constraints
-	rows, err = db.Query(QueryMarkerSQL+constraintsSQL, ignoreRegeAND c.relname !~* $1
-		AND n.nspname !~* $1xp)
+	rows, err = db.Query(QueryMarkerSQL+constraintsSQL, ignoreRegexp)
 	if err != nil {
 		err = fmt.Errorf("Constraints/Query: %s", err)
 		return nil, err

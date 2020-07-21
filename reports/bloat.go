@@ -32,7 +32,7 @@ func (report BloatReport) ReportType() string {
 func (report *BloatReport) Run(server state.Server, logger *util.Logger, connection *sql.DB) (err error) {
 	systemType := server.Config.SystemType
 
-	report.Data, err = postgres.GetBloatStats(logger, connection, systemType)
+	report.Data, err = postgres.GetBloatStats(logger, connection, systemType, server.Config.IgnoreSchemaRegexp)
 	if err != nil {
 		return
 	}
