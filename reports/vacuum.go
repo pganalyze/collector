@@ -30,7 +30,7 @@ func (report VacuumReport) ReportType() string {
 
 // Run the report
 func (report *VacuumReport) Run(server state.Server, logger *util.Logger, connection *sql.DB) (err error) {
-	report.Data, err = postgres.GetVacuumStats(logger, connection)
+	report.Data, err = postgres.GetVacuumStats(logger, connection, server.Config.IgnoreSchemaRegexp)
 	if err != nil {
 		return
 	}

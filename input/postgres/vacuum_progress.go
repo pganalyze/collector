@@ -13,7 +13,18 @@ SELECT (EXTRACT(epoch FROM a.query_start)::int::text || pg_catalog.to_char(pid, 
 			 (EXTRACT(epoch FROM COALESCE(backend_start, pg_catalog.pg_postmaster_start_time()))::int::text || pg_catalog.to_char(pid, 'FM0000000'))::bigint AS backend_identity,
 			 a.datname,
 			 (SELECT pg_catalog.regexp_matches(query, 'autovacuum: VACUUM (ANALYZE )?([^\.]+).([^\(]+)( \(to prevent wraparound\))?'))[2] AS nspname,
-			 (SELECT pg_catalog.regexp_matches(query, 'autovacuum: VACUUM (ANALYZE )?([^\.]+).([^\(]+)( \(to prevent wraparound\))?'))[3] AS relname,
+			 CASE
+			   WHEN ($1 = '' OR
+				   (COALESCE(n.nspname,
+					  (SELECT pg_catalog.regexp_matches(query, 'autovacuum: VACUUM (ANALYZE )?([^\.]+).([^\(]+)( \(to prevent wraparound\))?'))[2])
+					  || '.' ||
+					  COALESCE(c.relname,
+					  (SELECT pg_catalog.regexp_matches(query, 'autovacuum: VACUUM (ANALYZE )?([^\.]+).([^\(]+)( \(to prevent wraparound\))?'))[3])) !~* $1)
+			   THEN COALESCE(c.relname,
+				   (SELECT pg_catalog.regexp_matches(query, 'autovacuum: VACUUM (ANALYZE )?([^\.]+).([^\(]+)( \(to prevent wraparound\))?'))[3])
+			   ELSE
+				   ''
+		   END AS relname,
 			 COALESCE(a.usename, '') AS usename,
 			 a.query_start AS started_at,
 			 a.query LIKE 'autovacuum: VACUUM%%' AS autovacuum,
@@ -33,7 +44,18 @@ SELECT (EXTRACT(epoch FROM a.query_start)::int::text || pg_catalog.to_char(pid, 
 			 (EXTRACT(epoch FROM COALESCE(backend_start, pg_catalog.pg_postmaster_start_time()))::int::text || pg_catalog.to_char(pid, 'FM0000000'))::bigint AS backend_identity,
 			 a.datname,
 			 COALESCE(n.nspname, (SELECT pg_catalog.regexp_matches(query, 'autovacuum: VACUUM (ANALYZE )?([^\.]+).([^\(]+)( \(to prevent wraparound\))?'))[2]) AS nspname,
-			 COALESCE(c.relname, (SELECT pg_catalog.regexp_matches(query, 'autovacuum: VACUUM (ANALYZE )?([^\.]+).([^\(]+)( \(to prevent wraparound\))?'))[3]) AS relname,
+			 CASE
+				 WHEN ($1 = '' OR
+					 (COALESCE(n.nspname,
+						(SELECT pg_catalog.regexp_matches(query, 'autovacuum: VACUUM (ANALYZE )?([^\.]+).([^\(]+)( \(to prevent wraparound\))?'))[2])
+						|| '.' ||
+						COALESCE(c.relname,
+						(SELECT pg_catalog.regexp_matches(query, 'autovacuum: VACUUM (ANALYZE )?([^\.]+).([^\(]+)( \(to prevent wraparound\))?'))[3])) !~* $1)
+				 THEN COALESCE(c.relname,
+				   (SELECT pg_catalog.regexp_matches(query, 'autovacuum: VACUUM (ANALYZE )?([^\.]+).([^\(]+)( \(to prevent wraparound\))?'))[3])
+				 ELSE
+				   ''
+			 END AS relname,
 			 COALESCE(a.usename, '') AS usename,
 			 a.query_start AS started_at,
 			 a.query LIKE 'autovacuum: VACUUM%%' AS autovacuum,
@@ -51,7 +73,7 @@ SELECT (EXTRACT(epoch FROM a.query_start)::int::text || pg_catalog.to_char(pid, 
  WHERE v.relid IS NOT NULL OR a.query <> '<insufficient privilege>'
 `
 
-func GetVacuumProgress(logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion) ([]state.PostgresVacuumProgress, error) {
+func GetVacuumProgress(logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion, ignoreRegexp string) ([]state.PostgresVacuumProgress, error) {
 	var activitySourceTable string
 	var sql string
 
@@ -80,7 +102,7 @@ func GetVacuumProgress(logger *util.Logger, db *sql.DB, postgresVersion state.Po
 
 	defer stmt.Close()
 
-	rows, err := stmt.Query()
+	rows, err := stmt.Query(ignoreRegexp)
 	if err != nil {
 		return nil, err
 	}
