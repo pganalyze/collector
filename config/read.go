@@ -442,5 +442,21 @@ func Read(logger *util.Logger, filename string) (Config, error) {
 		}
 	}
 
+	var hasIgnoreTablePattern = false
+	for _, server := range conf.Servers {
+		if server.IgnoreTablePattern != "" {
+			hasIgnoreTablePattern = true
+			break
+		}
+	}
+
+	if hasIgnoreTablePattern {
+		if os.Getenv("IGNORE_TABLE_PATTERN") != "" {
+			logger.PrintVerbose("Deprecated: Setting IGNORE_TABLE_PATTERN is deprecated; please use IGNORE_SCHEMA_REGEXP instead")
+		} else {
+			logger.PrintVerbose("Deprecated: Setting ignore_table_pattern is deprecated; please use ignore_schema_regexp instead")
+		}
+	}
+
 	return conf, nil
 }

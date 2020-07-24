@@ -104,12 +104,12 @@ type ServerConfig struct {
 	// development and debugging. The value needs to be the name of the container.
 	LogDockerTail string `ini:"db_log_docker_tail"`
 
-	// **DEPRECATED**: Please use ignore_schema_regexp instead, since that uses an
-	// optimized code path in the collector and can avoid long-running queries.
-	//
 	// Specifies a table pattern to ignore - no statistics will be collected for
 	// tables that match the name. This uses Golang's filepath.Match function for
 	// comparison, so you can e.g. use "*" for wildcard matching.
+	//
+	// Deprecated: Please use ignore_schema_regexp instead, since that uses an
+	// optimized code path in the collector and can avoid long-running queries.
 	IgnoreTablePattern string `ini:"ignore_table_pattern"`
 
 	// Specifies a regular expression to ignore - no statistics will be collected for
