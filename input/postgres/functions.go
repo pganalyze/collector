@@ -33,7 +33,7 @@ SELECT pp.oid,
  WHERE pl.lanname NOT IN ('internal', 'c')
 			 AND pn.nspname NOT IN ('pg_catalog', 'information_schema')
 			 AND pp.proname NOT IN ('pg_stat_statements', 'pg_stat_statements_reset')
-			 AND ($1 = '' OR (pp.proname || '.' || pn.nspname) !~* $1)
+			 AND ($1 = '' OR (pn.nspname || '.' || pp.proname) !~* $1)
 			 `
 
 const functionStatsSQL string = `
@@ -41,7 +41,7 @@ SELECT funcid, calls, total_time, self_time
 	FROM pg_stat_user_functions psuf
  INNER JOIN pg_catalog.pg_proc pp ON (psuf.funcid = pp.oid)
  INNER JOIN pg_catalog.pg_namespace pn ON (pp.pronamespace = pn.oid)
- WHERE ($1 = '' OR (pp.proname || '.' || pn.nspname) !~* $1)`
+ WHERE ($1 = '' OR (pn.nspname || '.' || pp.proname) !~* $1)`
 
 func GetFunctions(db *sql.DB, postgresVersion state.PostgresVersion, currentDatabaseOid state.Oid, ignoreRegexp string) ([]state.PostgresFunction, error) {
 	var kindFields string

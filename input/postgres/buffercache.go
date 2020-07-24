@@ -23,7 +23,7 @@ SELECT block_count * pg_catalog.current_setting('block_size')::int, d.datname, n
   JOIN pg_catalog.pg_database d ON (d.oid = reldatabase)
        LEFT JOIN pg_catalog.pg_class c ON (b.relfilenode = pg_catalog.pg_relation_filenode(c.oid) AND (b.reldatabase = 0 OR d.datname = pg_catalog.current_database()))
        LEFT JOIN pg_catalog.pg_namespace n ON (n.oid = c.relnamespace)
- WHERE ($1 = '' OR (coalesce(c.relname, '') || '.' || coalesce(n.nspname, '')) !~* $1)
+ WHERE ($1 = '' OR (coalesce(n.nspname, '') || '.' || coalesce(c.relname, '')) !~* $1)
 UNION
 SELECT pg_catalog.sum(block_count) * pg_catalog.current_setting('block_size')::int, '', NULL, NULL, 'used'
   FROM buffers
