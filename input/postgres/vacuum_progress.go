@@ -9,25 +9,30 @@ import (
 )
 
 const vacuumProgressSQLpg95 string = `
-SELECT (EXTRACT(epoch FROM a.query_start)::int::text || pg_catalog.to_char(pid, 'FM0000000'))::bigint AS vacuum_identity,
-			 (EXTRACT(epoch FROM COALESCE(backend_start, pg_catalog.pg_postmaster_start_time()))::int::text || pg_catalog.to_char(pid, 'FM0000000'))::bigint AS backend_identity,
+WITH activity AS (
+	SELECT pg_catalog.to_char(pid, 'FM0000000') AS padded_pid,
+	       EXTRACT(epoch FROM a.query_start)::int::text AS query_start_epoch,
+				 EXTRACT(epoch FROM COALESCE(backend_start, pg_catalog.pg_postmaster_start_time()))::int::text AS backend_start_epoch,
+				 a.datname,
+				 (SELECT pg_catalog.regexp_matches(query, 'autovacuum: VACUUM (ANALYZE )?([^\.]+).([^\(]+)( \(to prevent wraparound\))?'))[2] AS nspname,
+				 (SELECT pg_catalog.regexp_matches(query, 'autovacuum: VACUUM (ANALYZE )?([^\.]+).([^\(]+)( \(to prevent wraparound\))?'))[3] AS relname,
+				 COALESCE(a.usename, '') AS usename,
+				 a.query_start,
+				 a.query LIKE 'autovacuum: VACUUM%%' AS autovacuum
+    FROM %s a
+	 WHERE a.query LIKE 'autovacuum: VACUUM%%'
+)
+SELECT (a.query_start_epoch || a.padded_pid)::bigint AS vacuum_identity,
+			 (a.backend_start_epoch || a.padded_pid)::bigint AS backend_identity,
 			 a.datname,
-			 (SELECT pg_catalog.regexp_matches(query, 'autovacuum: VACUUM (ANALYZE )?([^\.]+).([^\(]+)( \(to prevent wraparound\))?'))[2] AS nspname,
+			 a.nspname,
 			 CASE
-			   WHEN ($1 = '' OR
-				   (COALESCE(n.nspname,
-					  (SELECT pg_catalog.regexp_matches(query, 'autovacuum: VACUUM (ANALYZE )?([^\.]+).([^\(]+)( \(to prevent wraparound\))?'))[2])
-					  || '.' ||
-					  COALESCE(c.relname,
-					  (SELECT pg_catalog.regexp_matches(query, 'autovacuum: VACUUM (ANALYZE )?([^\.]+).([^\(]+)( \(to prevent wraparound\))?'))[3])) !~* $1)
-			   THEN COALESCE(c.relname,
-				   (SELECT pg_catalog.regexp_matches(query, 'autovacuum: VACUUM (ANALYZE )?([^\.]+).([^\(]+)( \(to prevent wraparound\))?'))[3])
-			   ELSE
-				   ''
+			   WHEN ($1 = '' OR (a.nspname || '.' || a.relname) !~* $1) THEN a.relname
+			   ELSE ''
 		   END AS relname,
-			 COALESCE(a.usename, '') AS usename,
+       a.usename,
 			 a.query_start AS started_at,
-			 a.query LIKE 'autovacuum: VACUUM%%' AS autovacuum,
+			 a.autovacuum,
 			 '' AS phase,
 			 0 AS heap_blks_total,
 			 0 AS heap_blks_scanned,
@@ -35,30 +40,35 @@ SELECT (EXTRACT(epoch FROM a.query_start)::int::text || pg_catalog.to_char(pid, 
 			 0 AS index_vacuum_count,
 			 0 AS max_dead_tuples,
 			 0 AS num_dead_tuples
-	FROM %s a
- WHERE a.query LIKE 'autovacuum: VACUUM%%'
+	FROM activity a
 `
 
 const vacuumProgressSQLDefault string = `
-SELECT (EXTRACT(epoch FROM a.query_start)::int::text || pg_catalog.to_char(pid, 'FM0000000'))::bigint AS vacuum_identity,
-			 (EXTRACT(epoch FROM COALESCE(backend_start, pg_catalog.pg_postmaster_start_time()))::int::text || pg_catalog.to_char(pid, 'FM0000000'))::bigint AS backend_identity,
+WITH activity AS (
+	SELECT pg_catalog.to_char(pid, 'FM0000000') AS padded_pid,
+	       EXTRACT(epoch FROM a.query_start)::int::text AS query_start_epoch,
+				 EXTRACT(epoch FROM COALESCE(backend_start, pg_catalog.pg_postmaster_start_time()))::int::text AS backend_start_epoch,
+				 a.datname,
+				 (SELECT pg_catalog.regexp_matches(query, 'autovacuum: VACUUM (ANALYZE )?([^\.]+).([^\(]+)( \(to prevent wraparound\))?'))[2] AS nspname,
+				 (SELECT pg_catalog.regexp_matches(query, 'autovacuum: VACUUM (ANALYZE )?([^\.]+).([^\(]+)( \(to prevent wraparound\))?'))[3] AS relname,
+				 COALESCE(a.usename, '') AS usename,
+				 a.query_start,
+				 a.query LIKE 'autovacuum: VACUUM%%' AS autovacuum,
+				 a.query,
+				 a.pid
+  FROM %s a
+)
+SELECT (query_start_epoch || padded_pid)::bigint AS vacuum_identity,
+			 (backend_start_epoch || padded_pid)::bigint AS backend_identity,
 			 a.datname,
-			 COALESCE(n.nspname, (SELECT pg_catalog.regexp_matches(query, 'autovacuum: VACUUM (ANALYZE )?([^\.]+).([^\(]+)( \(to prevent wraparound\))?'))[2]) AS nspname,
+			 COALESCE(n.nspname, a.nspname) AS nspname,
 			 CASE
-				 WHEN ($1 = '' OR
-					 (COALESCE(n.nspname,
-						(SELECT pg_catalog.regexp_matches(query, 'autovacuum: VACUUM (ANALYZE )?([^\.]+).([^\(]+)( \(to prevent wraparound\))?'))[2])
-						|| '.' ||
-						COALESCE(c.relname,
-						(SELECT pg_catalog.regexp_matches(query, 'autovacuum: VACUUM (ANALYZE )?([^\.]+).([^\(]+)( \(to prevent wraparound\))?'))[3])) !~* $1)
-				 THEN COALESCE(c.relname,
-				   (SELECT pg_catalog.regexp_matches(query, 'autovacuum: VACUUM (ANALYZE )?([^\.]+).([^\(]+)( \(to prevent wraparound\))?'))[3])
-				 ELSE
-				   ''
+				 WHEN ($1 = '' OR (COALESCE(n.nspname, a.nspname) || '.' || COALESCE(c.relname, a.relname)) !~* $1) THEN COALESCE(c.relname, a.relname)
+				 ELSE ''
 			 END AS relname,
-			 COALESCE(a.usename, '') AS usename,
+			 a.usename,
 			 a.query_start AS started_at,
-			 a.query LIKE 'autovacuum: VACUUM%%' AS autovacuum,
+			 a.autovacuum,
 			 COALESCE(v.phase, '') AS phase,
 			 COALESCE(v.heap_blks_total, 0) AS heap_blks_total,
 			 COALESCE(v.heap_blks_scanned, 0) AS heap_blks_scanned,
@@ -67,7 +77,7 @@ SELECT (EXTRACT(epoch FROM a.query_start)::int::text || pg_catalog.to_char(pid, 
 			 COALESCE(v.max_dead_tuples, 0) AS max_dead_tuples,
 			 COALESCE(v.num_dead_tuples, 0) AS num_dead_tuples
 	FROM %s v
-			 JOIN %s a USING (pid)
+			 JOIN activity a USING (pid)
 			 LEFT JOIN pg_catalog.pg_class c ON (c.oid = v.relid)
 			 LEFT JOIN pg_catalog.pg_namespace n ON (n.oid = c.relnamespace)
  WHERE v.relid IS NOT NULL OR a.query <> '<insufficient privilege>'
@@ -92,7 +102,7 @@ func GetVacuumProgress(logger *util.Logger, db *sql.DB, postgresVersion state.Po
 		} else {
 			vacuumSourceTable = "pg_catalog.pg_stat_progress_vacuum"
 		}
-		sql = fmt.Sprintf(vacuumProgressSQLDefault, vacuumSourceTable, activitySourceTable)
+		sql = fmt.Sprintf(vacuumProgressSQLDefault, activitySourceTable, vacuumSourceTable)
 	}
 
 	stmt, err := db.Prepare(QueryMarkerSQL + sql)
