@@ -24,7 +24,7 @@ func handleRelationStatsExt(db *sql.DB, relStats state.PostgresRelationStatsMap,
 		}
 		defer stmt.Close()
 
-		rows, err := stmt.Query()
+		rows, err := stmt.Query(ignoreRegexp)
 		if err != nil {
 			return relStats, fmt.Errorf("RelationStatsExt/Query: %s", err)
 		}
