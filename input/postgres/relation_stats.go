@@ -67,7 +67,7 @@ SELECT s.indexrelid,
 	FROM pg_catalog.pg_stat_user_indexes s
 			 LEFT JOIN pg_catalog.pg_statio_user_indexes sio USING (indexrelid)
  WHERE s.indexrelid NOT IN (SELECT relid FROM locked_relids)
-			 AND ($1 = '' OR (schemaname || '.' || relname) !~* $1)
+			 AND ($1 = '' OR (s.schemaname || '.' || s.relname) !~* $1)
 `
 
 func GetRelationStats(db *sql.DB, postgresVersion state.PostgresVersion, ignoreRegexp string) (relStats state.PostgresRelationStatsMap, err error) {
