@@ -24,6 +24,7 @@ SELECT block_count * pg_catalog.current_setting('block_size')::int, d.datname, n
   JOIN pg_catalog.pg_database d ON (d.oid = reldatabase)
        LEFT JOIN pg_catalog.pg_class c ON (b.relfilenode = pg_catalog.pg_relation_filenode(c.oid) AND (b.reldatabase = 0 OR d.datname = pg_catalog.current_database()))
        LEFT JOIN pg_catalog.pg_namespace n ON (n.oid = c.relnamespace)
+ WHERE ($1 = '' OR (COALESCE(n.nspname, '') || '.' || COALESCE(c.relname, '')) !~* $1)
 UNION
 SELECT pg_catalog.sum(block_count) * pg_catalog.current_setting('block_size')::int, '', NULL, NULL, 'used'
   FROM buffers
@@ -68,7 +69,7 @@ func getSharedBufferBytes(db *sql.DB) int64 {
 	return bytes * multiplier
 }
 
-func GetBuffercache(logger *util.Logger, db *sql.DB, systemType string) (report state.PostgresBuffercache, err error) {
+func GetBuffercache(logger *util.Logger, db *sql.DB, systemType, ignoreRegexp string) (report state.PostgresBuffercache, err error) {
 	var sourceTable string
 
 	if statsHelperExists(db, "get_buffercache") {
@@ -83,7 +84,8 @@ func GetBuffercache(logger *util.Logger, db *sql.DB, systemType string) (report 
 		sourceTable = "public.pg_buffercache"
 	}
 
-	rows, err := db.Query(QueryMarkerSQL + fmt.Sprintf(buffercacheSQL, sourceTable))
+	query := QueryMarkerSQL + fmt.Sprintf(buffercacheSQL, sourceTable)
+	rows, err := db.Query(query, ignoreRegexp)
 	if err != nil {
 		var e *pq.Error
 		if errors.As(err, &e) && e.Code == "42P01" { // undefined_table
@@ -94,7 +96,7 @@ func GetBuffercache(logger *util.Logger, db *sql.DB, systemType string) (report 
 				return
 			}
 
-			rows, err = db.Query(QueryMarkerSQL + fmt.Sprintf(buffercacheSQL, sourceTable))
+			rows, err = db.Query(query, ignoreRegexp)
 			if err != nil {
 				return
 			}

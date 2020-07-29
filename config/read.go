@@ -173,6 +173,9 @@ func getDefaultConfig() *ServerConfig {
 	if ignoreTablePattern := os.Getenv("IGNORE_TABLE_PATTERN"); ignoreTablePattern != "" {
 		config.IgnoreTablePattern = ignoreTablePattern
 	}
+	if ignoreSchemaRegexp := os.Getenv("IGNORE_SCHEMA_REGEXP"); ignoreSchemaRegexp != "" {
+		config.IgnoreSchemaRegexp = ignoreSchemaRegexp
+	}
 	if queryStatsInterval := os.Getenv("QUERY_STATS_INTERVAL"); queryStatsInterval != "" {
 		config.QueryStatsInterval, _ = strconv.Atoi(queryStatsInterval)
 	}
@@ -436,6 +439,22 @@ func Read(logger *util.Logger, filename string) (Config, error) {
 			conf.Servers = append(conf.Servers, *config)
 		} else {
 			return conf, fmt.Errorf("No configuration file found at %s, and no environment variables set", filename)
+		}
+	}
+
+	var hasIgnoreTablePattern = false
+	for _, server := range conf.Servers {
+		if server.IgnoreTablePattern != "" {
+			hasIgnoreTablePattern = true
+			break
+		}
+	}
+
+	if hasIgnoreTablePattern {
+		if os.Getenv("IGNORE_TABLE_PATTERN") != "" {
+			logger.PrintVerbose("Deprecated: Setting IGNORE_TABLE_PATTERN is deprecated; please use IGNORE_SCHEMA_REGEXP instead")
+		} else {
+			logger.PrintVerbose("Deprecated: Setting ignore_table_pattern is deprecated; please use ignore_schema_regexp instead")
 		}
 	}
 

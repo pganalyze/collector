@@ -25,7 +25,8 @@ SELECT n.nspname,
 	JOIN pg_catalog.pg_namespace n ON (c.relnamespace = n.oid)
 	JOIN pg_catalog.pg_stat_user_tables s ON (s.relid = c.oid)
  WHERE c.relkind IN ('r', 'm')
- 			 AND c.relpersistence IN ('p', 'u')
+			 AND c.relpersistence IN ('p', 'u')
+			 AND ($1 = '' OR (n.nspname || '.' || c.relname) !~* $1)
 `
 
 const globalVacuumSettingsSQL string = `
@@ -33,8 +34,8 @@ SELECT name, setting
 	FROM pg_catalog.pg_settings
  WHERE name LIKE 'autovacuum%'`
 
-func GetVacuumStats(logger *util.Logger, db *sql.DB) (report state.PostgresVacuumStats, err error) {
-	configRows, err := db.Query(QueryMarkerSQL + globalVacuumSettingsSQL)
+func GetVacuumStats(logger *util.Logger, db *sql.DB, ignoreRegexp string) (report state.PostgresVacuumStats, err error) {
+	configRows, err := db.Query(QueryMarkerSQL+globalVacuumSettingsSQL, ignoreRegexp)
 	if err != nil {
 		return
 	}

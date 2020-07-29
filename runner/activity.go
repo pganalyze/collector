@@ -59,7 +59,7 @@ func processActivityForServer(server state.Server, globalCollectionOpts state.Co
 		return newState, false, errors.Wrap(err, "error collecting pg_stat_activity")
 	}
 
-	activity.Vacuums, err = postgres.GetVacuumProgress(logger, connection, activity.Version)
+	activity.Vacuums, err = postgres.GetVacuumProgress(logger, connection, activity.Version, server.Config.IgnoreSchemaRegexp)
 	if err != nil {
 		return newState, false, errors.Wrap(err, "error collecting pg_stat_vacuum_progress")
 	}

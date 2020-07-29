@@ -107,7 +107,18 @@ type ServerConfig struct {
 	// Specifies a table pattern to ignore - no statistics will be collected for
 	// tables that match the name. This uses Golang's filepath.Match function for
 	// comparison, so you can e.g. use "*" for wildcard matching.
+	//
+	// Deprecated: Please use ignore_schema_regexp instead, since that uses an
+	// optimized code path in the collector and can avoid long-running queries.
 	IgnoreTablePattern string `ini:"ignore_table_pattern"`
+
+	// Specifies a regular expression to ignore - no statistics will be collected for
+	// tables, views, functions, or schemas that match the name. Note that the match
+	// is applied to the '.'-joined concantenation of schema name and object name.
+	// E.g., to ignore tables that start with "ignored_", set this to "^ignored_". To
+	// ignore table "foo" only in the public schema, set to "^public\.foo$" (N.B.: you
+	// should escape the dot since that has special meaning in a regexp).
+	IgnoreSchemaRegexp string `ini:"ignore_schema_regexp"`
 
 	// Specifies the frequency of query statistics collection in seconds
 	//

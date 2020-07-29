@@ -39,7 +39,8 @@ const relationsSQL string = `
 	WHERE c.relkind IN ('r','v','m','p')
 				AND c.relpersistence <> 't'
 				AND c.relname NOT IN ('pg_stat_statements')
-				AND n.nspname NOT IN ('pg_catalog','pg_toast','information_schema')`
+				AND n.nspname NOT IN ('pg_catalog','pg_toast','information_schema')
+				AND ($1 = '' OR (n.nspname || '.' || c.relname) !~* $1)`
 
 const columnsSQL string = `
 	 WITH locked_relids AS (SELECT DISTINCT relation relid FROM pg_catalog.pg_locks WHERE mode = 'AccessExclusiveLock')
@@ -63,6 +64,7 @@ const columnsSQL string = `
 			 AND a.attnum > 0
 			 AND NOT a.attisdropped
 			 AND c.oid NOT IN (SELECT relid FROM locked_relids)
+			 AND ($1 = '' OR (n.nspname || '.' || c.relname) !~* $1)
  ORDER BY a.attnum`
 
 const indicesSQL string = `
@@ -89,7 +91,8 @@ SELECT c.oid,
 			 AND c.relpersistence <> 't'
 			 AND n.nspname NOT IN ('pg_catalog','pg_toast','information_schema')
 			 AND c.oid NOT IN (SELECT relid FROM locked_relids)
-			 AND c2.oid NOT IN (SELECT relid FROM locked_relids)`
+			 AND c2.oid NOT IN (SELECT relid FROM locked_relids)
+			 AND ($1 = '' OR (n.nspname || '.' || c.relname) !~* $1)`
 
 const constraintsSQL string = `
 	WITH locked_relids AS (SELECT DISTINCT relation relid FROM pg_catalog.pg_locks WHERE mode = 'AccessExclusiveLock')
@@ -107,7 +110,8 @@ SELECT c.oid,
 			 JOIN pg_catalog.pg_class c ON (r.conrelid = c.oid)
 			 JOIN pg_catalog.pg_namespace n ON (n.oid = c.relnamespace)
 WHERE n.nspname NOT IN ('pg_catalog','pg_toast','information_schema')
-			AND c.oid NOT IN (SELECT relid FROM locked_relids)`
+			AND c.oid NOT IN (SELECT relid FROM locked_relids)
+			AND ($1 = '' OR (n.nspname || '.' || c.relname) !~* $1)`
 
 const viewDefinitionSQL string = `
 	WITH locked_relids AS (SELECT DISTINCT relation relid FROM pg_catalog.pg_locks WHERE mode = 'AccessExclusiveLock')
@@ -119,9 +123,10 @@ SELECT c.oid,
 			 AND c.relpersistence <> 't'
 			 AND c.relname NOT IN ('pg_stat_statements')
 			 AND n.nspname NOT IN ('pg_catalog','pg_toast','information_schema')
-			 AND c.oid NOT IN (SELECT relid FROM locked_relids)`
+			 AND c.oid NOT IN (SELECT relid FROM locked_relids)
+			 AND ($1 = '' OR (n.nspname || '.' || c.relname) !~* $1)`
 
-func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, currentDatabaseOid state.Oid) ([]state.PostgresRelation, error) {
+func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, currentDatabaseOid state.Oid, ignoreRegexp string) ([]state.PostgresRelation, error) {
 	relations := make(map[state.Oid]state.PostgresRelation, 0)
 
 	// Relations
@@ -147,7 +152,7 @@ func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 		oidField = relationsSQLOidField
 	}
 
-	rows, err := db.Query(QueryMarkerSQL + fmt.Sprintf(relationsSQL, oidField, optionalFields, partBoundField))
+	rows, err := db.Query(QueryMarkerSQL+fmt.Sprintf(relationsSQL, oidField, optionalFields, partBoundField), ignoreRegexp)
 	if err != nil {
 		err = fmt.Errorf("Relations/Query: %s", err)
 		return nil, err
@@ -181,7 +186,7 @@ func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 	}
 
 	// Columns
-	rows, err = db.Query(QueryMarkerSQL + columnsSQL)
+	rows, err = db.Query(QueryMarkerSQL+columnsSQL, ignoreRegexp)
 	if err != nil {
 		err = fmt.Errorf("Columns/Query: %s", err)
 		return nil, err
@@ -205,7 +210,7 @@ func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 	}
 
 	// Indices
-	rows, err = db.Query(QueryMarkerSQL + indicesSQL)
+	rows, err = db.Query(QueryMarkerSQL+indicesSQL, ignoreRegexp)
 	if err != nil {
 		err = fmt.Errorf("Indices/Query: %s", err)
 		return nil, err
@@ -244,7 +249,7 @@ func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 	}
 
 	// Constraints
-	rows, err = db.Query(QueryMarkerSQL + constraintsSQL)
+	rows, err = db.Query(QueryMarkerSQL+constraintsSQL, ignoreRegexp)
 	if err != nil {
 		err = fmt.Errorf("Constraints/Query: %s", err)
 		return nil, err
@@ -293,7 +298,7 @@ func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 	}
 
 	// View definitions
-	rows, err = db.Query(QueryMarkerSQL + viewDefinitionSQL)
+	rows, err = db.Query(QueryMarkerSQL+viewDefinitionSQL, ignoreRegexp)
 	if err != nil {
 		err = fmt.Errorf("Views/Prepare: %s", err)
 		return nil, err
