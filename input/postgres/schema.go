@@ -56,6 +56,9 @@ func collectSchemaData(collectionOpts state.CollectionOpts, logger *util.Logger,
 			logger.PrintWarning("Skipping table/index data for database \"%s\", due to error: %s", databaseName, err)
 			return ps
 		}
+		if relCount := len(newRelations); relCount > 5000 {
+			logger.PrintWarning("Too many tables: got %d for database \"%s\", but only 5000 can be monitored; use ignore_schema_regexp config setting to filter", relCount, databaseName)
+		}
 		ps.Relations = append(ps.Relations, newRelations...)
 
 		newRelationStats, err := GetRelationStats(db, postgresVersion, ignoreRegexp)
