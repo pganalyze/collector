@@ -15,7 +15,13 @@ const relationsSQLpg93OptionalFields = "c.relminmxid"
 const relationsSQLOidField = "c.relhasoids AS relation_has_oids"
 const relationsSQLpg12OidField = "false AS relation_has_oids"
 const relationsSQLpartBoundField = "''"
+const relationsSQLpartStratField = "''"
+const relationsSQLpartColsField = "''"
+const relationsSQLpartExprField = "''"
 const relationsSQLpg10PartBoundField = "COALESCE(pg_get_expr(c.relpartbound, c.oid, true), '') AS partition_boundary"
+const relationsSQLpg10partStratField = "COALESCE((SELECT p.partstrat FROM pg_partitioned_table p WHERE p.partrelid = c.oid), '') AS partition_strategy"
+const relationsSQLpg10PartColsField = "(SELECT p.partattrs FROM pg_partitioned_table p WHERE p.partrelid = c.oid) AS partition_columns"
+const relationsSQLpg10partExprField = "COALESCE((SELECT pg_get_expr(p.partexprs, c.oid, true) FROM pg_partitioned_table p WHERE p.partrelid = c.oid), '') AS partition_expr"
 
 const relationsSQL string = `
 	 WITH locked_relids AS (SELECT DISTINCT relation relid FROM pg_catalog.pg_locks WHERE mode = 'AccessExclusiveLock')
@@ -31,6 +37,9 @@ const relationsSQL string = `
 				c.relfrozenxid AS relation_frozen_xid,
 				%s,
 				COALESCE((SELECT inhparent FROM pg_inherits WHERE inhrelid = c.oid ORDER BY inhseqno LIMIT 1), 0) AS parent_relid,
+				%s,
+				%s,
+				%s,
 				%s,
 				locked_relids.relid IS NOT NULL
 	 FROM pg_catalog.pg_class c
@@ -133,6 +142,9 @@ func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 	var optionalFields string
 	var oidField string
 	var partBoundField string
+	var partStratField string
+	var partColsField string
+	var partExprField string
 
 	if postgresVersion.Numeric >= state.PostgresVersion93 {
 		optionalFields = relationsSQLpg93OptionalFields
@@ -142,8 +154,14 @@ func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 
 	if postgresVersion.Numeric >= state.PostgresVersion10 {
 		partBoundField = relationsSQLpg10PartBoundField
+		partStratField = relationsSQLpg10partStratField
+		partColsField = relationsSQLpg10PartColsField
+		partExprField = relationsSQLpg10partExprField
 	} else {
 		partBoundField = relationsSQLpartBoundField
+		partStratField = relationsSQLpartStratField
+		partColsField = relationsSQLpartColsField
+		partExprField = relationsSQLpartExprField
 	}
 
 	if postgresVersion.Numeric >= state.PostgresVersion12 {
@@ -152,7 +170,8 @@ func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 		oidField = relationsSQLOidField
 	}
 
-	rows, err := db.Query(QueryMarkerSQL+fmt.Sprintf(relationsSQL, oidField, optionalFields, partBoundField), ignoreRegexp)
+	rows, err := db.Query(QueryMarkerSQL+fmt.Sprintf(relationsSQL, oidField,
+		optionalFields, partBoundField, partStratField, partColsField, partExprField), ignoreRegexp)
 	if err != nil {
 		err = fmt.Errorf("Relations/Query: %s", err)
 		return nil, err
@@ -162,11 +181,13 @@ func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 	for rows.Next() {
 		var row state.PostgresRelation
 		var options null.String
+		var partCols null.String
 
 		err = rows.Scan(&row.Oid, &row.SchemaName, &row.RelationName, &row.RelationType,
 			&options, &row.HasOids, &row.PersistenceType, &row.HasInheritanceChildren,
 			&row.HasToast, &row.FrozenXID, &row.MinimumMultixactXID, &row.ParentTableOid,
-			&row.PartitionBoundary, &row.ExclusivelyLocked)
+			&row.PartitionBoundary, &row.PartitionStrategy, &partCols, &row.PartitionedBy,
+			&row.ExclusivelyLocked)
 		if err != nil {
 			err = fmt.Errorf("Relations/Scan: %s", err)
 			return nil, err
@@ -177,6 +198,13 @@ func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 			for _, cstr := range strings.Split(strings.Trim(options.String, "{}"), ",") {
 				parts := strings.Split(cstr, "=")
 				row.Options[parts[0]] = parts[1]
+			}
+		}
+
+		if partCols.Valid {
+			for _, cstr := range strings.Split(partCols.String, " ") {
+				cint, _ := strconv.Atoi(cstr)
+				row.PartitionColumns = append(row.PartitionColumns, int32(cint))
 			}
 		}
 

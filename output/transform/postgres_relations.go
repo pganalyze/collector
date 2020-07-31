@@ -30,6 +30,18 @@ func transformPostgresRelations(s snapshot.FullSnapshot, newState state.Persiste
 			hasParentRelation = true
 		}
 
+		var partStrat snapshot.RelationInformation_PartitionStrategy
+		switch relation.PartitionedBy {
+		case "r":
+			partStrat = snapshot.RelationInformation_RANGE
+		case "l":
+			partStrat = snapshot.RelationInformation_LIST
+		case "h":
+			partStrat = snapshot.RelationInformation_HASH
+		default:
+			partStrat = snapshot.RelationInformation_UNKNOWN
+		}
+
 		// Information
 		info := snapshot.RelationInformation{
 			RelationIdx:            relationIdx,
@@ -44,6 +56,9 @@ func transformPostgresRelations(s snapshot.FullSnapshot, newState state.Persiste
 			ParentRelationIdx:      parentRelationIdx,
 			HasParentRelation:      hasParentRelation,
 			PartitionBoundary:      relation.PartitionBoundary,
+			PartitionStrategy:      partStrat,
+			PartitionColumns:       relation.PartitionColumns,
+			PartitionedBy:          relation.PartitionedBy,
 			ExclusivelyLocked:      relation.ExclusivelyLocked,
 			Options:                relation.Options,
 		}
