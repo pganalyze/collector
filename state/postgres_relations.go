@@ -25,6 +25,9 @@ type PostgresRelation struct {
 	MinimumMultixactXID    Xid
 	ParentTableOid         Oid
 	PartitionBoundary      string
+	PartitionStrategy      string
+	PartitionColumns       []int32
+	PartitionedBy          string
 
 	// True if another process is currently holding an AccessExclusiveLock on this
 	// relation, this also means we don't collect columns/index/constraints data
