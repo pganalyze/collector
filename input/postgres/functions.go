@@ -8,8 +8,8 @@ import (
 	"github.com/pganalyze/collector/state"
 )
 
-const functionsSQLDefaultKindFields = "pp.proisagg, pp.proiswindow"
-const functionsSQLpg11KindFields = "pp.prokind = 'a', pp.prokind = 'w'"
+const functionsSQLDefaultKindFields = "pp.proisagg, pp.proiswindow, false"
+const functionsSQLpg11KindFields = "pp.prokind = 'a', pp.prokind = 'w', pp.prokind = 'p'"
 
 const functionsSQL string = `
 SELECT pp.oid,
@@ -20,7 +20,7 @@ SELECT pp.oid,
 			 pp.probin,
 			 pp.proconfig,
 			 pg_catalog.pg_get_function_arguments(pp.oid),
-			 pg_catalog.pg_get_function_result(pp.oid),
+			 COALESCE(pg_catalog.pg_get_function_result(pp.oid), ''),
 			 %s,
 			 pp.prosecdef,
 			 pp.proleakproof,
@@ -73,8 +73,8 @@ func GetFunctions(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 		var config null.String
 
 		err := rows.Scan(&row.Oid, &row.SchemaName, &row.FunctionName, &row.Language, &row.Source,
-			&row.SourceBin, &config, &row.Arguments, &row.Result, &row.Aggregate,
-			&row.Window, &row.SecurityDefiner, &row.Leakproof, &row.Strict, &row.ReturnsSet, &row.Volatile)
+			&row.SourceBin, &config, &row.Arguments, &row.Result, &row.Aggregate, &row.Window, &row.Procedure,
+			&row.SecurityDefiner, &row.Leakproof, &row.Strict, &row.ReturnsSet, &row.Volatile)
 		if err != nil {
 			return nil, err
 		}

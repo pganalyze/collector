@@ -25,6 +25,7 @@ func transformPostgresFunctions(s snapshot.FullSnapshot, newState state.Persiste
 			Result:          function.Result,
 			Aggregate:       function.Aggregate,
 			Window:          function.Window,
+			Procedure:       function.Procedure,
 			SecurityDefiner: function.SecurityDefiner,
 			Leakproof:       function.Leakproof,
 			Strict:          function.Strict,
