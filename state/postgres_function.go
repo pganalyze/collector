@@ -14,9 +14,7 @@ type PostgresFunction struct {
 	Config          []string    `json:"config"`
 	Arguments       string      `json:"arguments"`
 	Result          string      `json:"result"`
-	Aggregate       bool        `json:"aggregate"`
-	Window          bool        `json:"window"`
-	Procedure       bool        `json:"procedure"`
+	Kind            string      `json:"kind"`
 	SecurityDefiner bool        `json:"security_definer"`
 	Leakproof       bool        `json:"leakproof"`
 	Strict          bool        `json:"strict"`

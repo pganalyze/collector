@@ -16,6 +16,20 @@ func transformPostgresFunctions(s snapshot.FullSnapshot, newState state.Persiste
 		idx := int32(len(s.FunctionReferences))
 		s.FunctionReferences = append(s.FunctionReferences, &ref)
 
+		var kind snapshot.FunctionInformation_FunctionKind
+		switch function.Kind {
+		case "a":
+			kind = snapshot.FunctionInformation_AGGREGATE
+		case "w":
+			kind = snapshot.FunctionInformation_WINDOW
+		case "p":
+			kind = snapshot.FunctionInformation_PROCEDURE
+		case "f":
+			kind = snapshot.FunctionInformation_FUNCTION
+		default:
+			kind = snapshot.FunctionInformation_UNKNOWN
+		}
+
 		// Information
 		info := snapshot.FunctionInformation{
 			FunctionIdx:     idx,
@@ -23,9 +37,7 @@ func transformPostgresFunctions(s snapshot.FullSnapshot, newState state.Persiste
 			Source:          function.Source,
 			Config:          function.Config,
 			Result:          function.Result,
-			Aggregate:       function.Aggregate,
-			Window:          function.Window,
-			Procedure:       function.Procedure,
+			Kind:            kind,
 			SecurityDefiner: function.SecurityDefiner,
 			Leakproof:       function.Leakproof,
 			Strict:          function.Strict,
