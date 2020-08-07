@@ -8,8 +8,8 @@ import (
 	"github.com/pganalyze/collector/state"
 )
 
-const functionsSQLDefaultKindFields = "pp.proisagg, pp.proiswindow, false"
-const functionsSQLpg11KindFields = "pp.prokind = 'a', pp.prokind = 'w', pp.prokind = 'p'"
+const functionsSQLDefaultKindFields = "CASE WHEN pp.proisagg THEN 'a' WHEN pp.proiswindow THEN 'w' ELSE 'f' END AS prokind"
+const functionsSQLpg11KindFields = "pp.prokind"
 
 const functionsSQL string = `
 SELECT pp.oid,
@@ -73,7 +73,7 @@ func GetFunctions(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 		var config null.String
 
 		err := rows.Scan(&row.Oid, &row.SchemaName, &row.FunctionName, &row.Language, &row.Source,
-			&row.SourceBin, &config, &row.Arguments, &row.Result, &row.Aggregate, &row.Window, &row.Procedure,
+			&row.SourceBin, &config, &row.Arguments, &row.Result, &row.Kind,
 			&row.SecurityDefiner, &row.Leakproof, &row.Strict, &row.ReturnsSet, &row.Volatile)
 		if err != nil {
 			return nil, err
