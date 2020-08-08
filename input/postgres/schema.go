@@ -45,6 +45,9 @@ func CollectAllSchemas(server state.Server, collectionOpts state.CollectionOpts,
 
 		schemaConnection.Close()
 	}
+	if relCount := len(ps.Relations); relCount > 5000 {
+		logger.PrintWarning("Too many tables: got %d, but only 5000 can be monitored per server; use ignore_schema_regexp config setting to filter", relCount)
+	}
 
 	return ps, ts
 }
