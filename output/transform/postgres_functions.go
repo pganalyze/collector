@@ -30,6 +30,11 @@ func transformPostgresFunctions(s snapshot.FullSnapshot, newState state.Persiste
 			kind = snapshot.FunctionInformation_UNKNOWN
 		}
 
+		// TODO: remove these two flags and require newer pganalyze
+		// release which understands Kind field at some point
+		isAggregate := kind == snapshot.FunctionInformation_AGGREGATE
+		isWindow := kind == snapshot.FunctionInformation_WINDOW
+
 		// Information
 		info := snapshot.FunctionInformation{
 			FunctionIdx:     idx,
@@ -37,6 +42,8 @@ func transformPostgresFunctions(s snapshot.FullSnapshot, newState state.Persiste
 			Source:          function.Source,
 			Config:          function.Config,
 			Result:          function.Result,
+			Aggregate:       isAggregate,
+			Window:          isWindow,
 			Kind:            kind,
 			SecurityDefiner: function.SecurityDefiner,
 			Leakproof:       function.Leakproof,
