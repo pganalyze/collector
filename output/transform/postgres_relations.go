@@ -31,7 +31,7 @@ func transformPostgresRelations(s snapshot.FullSnapshot, newState state.Persiste
 		}
 
 		var partStrat snapshot.RelationInformation_PartitionStrategy
-		switch relation.PartitionedBy {
+		switch relation.PartitionStrategy {
 		case "r":
 			partStrat = snapshot.RelationInformation_RANGE
 		case "l":
