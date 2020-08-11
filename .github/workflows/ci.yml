@@ -23,8 +23,7 @@ jobs:
     - name: Set up protoc
       uses: arduino/setup-protoc@v1.1.0
       with:
-        # Version to use. Example: 3.9.1
-        version: ^3.12
+        version: 3.x
 
     - name: Check out code
       uses: actions/checkout@v2
