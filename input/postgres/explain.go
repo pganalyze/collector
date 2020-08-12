@@ -10,9 +10,33 @@ import (
 	"github.com/lib/pq"
 	"github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
+	"github.com/pganalyze/collector/util"
 )
 
-func RunExplain(db *sql.DB, connectedDbName string, inputs []state.PostgresQuerySample) (outputs []state.PostgresQuerySample) {
+func RunExplain(server state.Server, inputs []state.PostgresQuerySample, collectionOpts state.CollectionOpts, logger *util.Logger) (outputs []state.PostgresQuerySample) {
+	var samplesByDb = make(map[string]([]state.PostgresQuerySample))
+
+	for _, sample := range inputs {
+		if sample.Database != server.Config.GetDbName() && !contains(server.Config.DbExtraNames, sample.Database) && !server.Config.DbAllNames {
+			continue
+		}
+		samplesByDb[sample.Database] = append(samplesByDb[sample.Database], sample)
+	}
+
+	for dbName, dbSamples := range samplesByDb {
+		db, err := EstablishConnection(server, logger, collectionOpts, dbName)
+
+		if err == nil {
+			dbOutputs := runDbExplain(db, dbSamples)
+			outputs = append(outputs, dbOutputs...)
+
+			db.Close()
+		}
+	}
+	return
+}
+
+func runDbExplain(db *sql.DB, inputs []state.PostgresQuerySample) (outputs []state.PostgresQuerySample) {
 	for _, sample := range inputs {
 		// EXPLAIN was already collected, e.g. from auto_explain
 		if sample.HasExplain {
@@ -26,12 +50,6 @@ func RunExplain(db *sql.DB, connectedDbName string, inputs []state.PostgresQuery
 
 		// Ignore backup-related queries (they usually take long but not because of something that can be EXPLAINed)
 		if strings.Contains(sample.Query, "pg_start_backup") || strings.Contains(sample.Query, "pg_stop_backup") {
-			continue
-		}
-
-		// TODO: We should run EXPLAIN for other databases here, which means we actually
-		// need to split the query samples per database, and then make one connection for each DB
-		if sample.Database != "" && sample.Database != connectedDbName {
 			continue
 		}
 
@@ -76,4 +94,13 @@ func RunExplain(db *sql.DB, connectedDbName string, inputs []state.PostgresQuery
 	}
 
 	return
+}
+
+func contains(strs []string, val string) bool {
+	for _, str := range strs {
+		if str == val {
+			return true
+		}
+	}
+	return false
 }
