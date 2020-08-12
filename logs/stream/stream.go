@@ -230,11 +230,7 @@ func ProcessLogStream(server state.Server, logLines []state.LogLine, globalColle
 	}
 
 	if server.Config.EnableLogExplain && len(logState.QuerySamples) != 0 {
-		db, err := postgres.EstablishConnection(server, prefixedLogger, globalCollectionOpts, "")
-		if err == nil {
-			logState.QuerySamples = postgres.RunExplain(db, server.Config.GetDbName(), logState.QuerySamples)
-			db.Close()
-		}
+		logState.QuerySamples = postgres.RunExplain(server, logState.QuerySamples, globalCollectionOpts, prefixedLogger)
 	}
 
 	logState.LogFiles = []state.LogFile{logFile}
