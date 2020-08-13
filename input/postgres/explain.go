@@ -26,12 +26,15 @@ func RunExplain(server state.Server, inputs []state.PostgresQuerySample, collect
 	for dbName, dbSamples := range samplesByDb {
 		db, err := EstablishConnection(server, logger, collectionOpts, dbName)
 
-		if err == nil {
-			dbOutputs := runDbExplain(db, dbSamples)
-			outputs = append(outputs, dbOutputs...)
-
-			db.Close()
+		if err != nil {
+			logger.PrintVerbose("Could not connect to %s to run explain: %s; skipping", dbName, err)
+			continue
 		}
+
+		dbOutputs := runDbExplain(db, dbSamples)
+		db.Close()
+
+		outputs = append(outputs, dbOutputs...)
 	}
 	return
 }
