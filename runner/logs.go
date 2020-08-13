@@ -1,12 +1,10 @@
 package runner
 
 import (
-	"database/sql"
 	"sync"
 
 	"github.com/pganalyze/collector/grant"
 	"github.com/pganalyze/collector/input"
-	"github.com/pganalyze/collector/input/postgres"
 	"github.com/pganalyze/collector/input/system/azure"
 	"github.com/pganalyze/collector/input/system/google_cloudsql"
 	"github.com/pganalyze/collector/input/system/selfhosted"
@@ -33,17 +31,7 @@ func downloadLogsForServer(server state.Server, globalCollectionOpts state.Colle
 		return newLogState, false, nil
 	}
 
-	var connection *sql.DB
-	if server.Config.EnableLogExplain {
-		connection, err = postgres.EstablishConnection(server, logger, globalCollectionOpts, "")
-		if err != nil {
-			return newLogState, false, errors.Wrap(err, "failed to connect to database")
-		}
-
-		defer connection.Close()
-	}
-
-	transientLogState, persistedLogState, err := input.DownloadLogs(server, server.LogPrevState, connection, globalCollectionOpts, logger)
+	transientLogState, persistedLogState, err := input.DownloadLogs(server, server.LogPrevState, globalCollectionOpts, logger)
 	if err != nil {
 		transientLogState.Cleanup()
 		return newLogState, false, errors.Wrap(err, "could not collect logs")
