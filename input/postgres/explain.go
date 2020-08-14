@@ -16,8 +16,21 @@ import (
 func RunExplain(server state.Server, inputs []state.PostgresQuerySample, collectionOpts state.CollectionOpts, logger *util.Logger) (outputs []state.PostgresQuerySample) {
 	var samplesByDb = make(map[string]([]state.PostgresQuerySample))
 
+	skip := func(sample state.PostgresQuerySample) bool {
+		monitoredDb := sample.Database == server.Config.GetDbName() || server.Config.DbAllNames || contains(server.Config.DbExtraNames, sample.Database)
+
+		return !monitoredDb ||
+			// EXPLAIN was already collected, e.g. from auto_explain
+			sample.HasExplain ||
+			// Ignore collector queries
+			strings.HasPrefix(sample.Query, QueryMarkerSQL) ||
+			// Ignore backup-related queries (they usually take long but not because of something that can be EXPLAINed)
+			strings.Contains(sample.Query, "pg_start_backup") ||
+			strings.Contains(sample.Query, "pg_stop_backup")
+	}
+
 	for _, sample := range inputs {
-		if sample.Database != server.Config.GetDbName() && !contains(server.Config.DbExtraNames, sample.Database) && !server.Config.DbAllNames {
+		if skip(sample) {
 			continue
 		}
 		samplesByDb[sample.Database] = append(samplesByDb[sample.Database], sample)
@@ -41,21 +54,6 @@ func RunExplain(server state.Server, inputs []state.PostgresQuerySample, collect
 
 func runDbExplain(db *sql.DB, inputs []state.PostgresQuerySample) (outputs []state.PostgresQuerySample) {
 	for _, sample := range inputs {
-		// EXPLAIN was already collected, e.g. from auto_explain
-		if sample.HasExplain {
-			continue
-		}
-
-		// Ignore collector queries
-		if strings.HasPrefix(sample.Query, QueryMarkerSQL) {
-			continue
-		}
-
-		// Ignore backup-related queries (they usually take long but not because of something that can be EXPLAINed)
-		if strings.Contains(sample.Query, "pg_start_backup") || strings.Contains(sample.Query, "pg_stop_backup") {
-			continue
-		}
-
 		// To be on the safe side never EXPLAIN a statement that can't be parsed,
 		// or multiple statements in one (leading to accidental execution)
 		parsetree, err := pg_query.Parse(sample.Query)
