@@ -9,10 +9,10 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
-func LogStateToLogSnapshot(logState state.TransientLogState) (snapshot.CompactLogSnapshot, snapshot.CompactSnapshot_BaseRefs) {
+func LogStateToLogSnapshot(server state.Server, logState state.TransientLogState) (snapshot.CompactLogSnapshot, snapshot.CompactSnapshot_BaseRefs) {
 	var s snapshot.CompactLogSnapshot
 	var r snapshot.CompactSnapshot_BaseRefs
-	s, r = transformPostgresQuerySamples(s, r, logState)
+	s, r = transformPostgresQuerySamples(server, s, r, logState)
 	s, r = transformSystemLogs(s, r, logState)
 	return s, r
 }
@@ -62,12 +62,20 @@ func upsertRelationReference(refs []*snapshot.RelationReference, databaseIdx int
 	return idx, refs
 }
 
-func transformPostgresQuerySamples(s snapshot.CompactLogSnapshot, r snapshot.CompactSnapshot_BaseRefs, logState state.TransientLogState) (snapshot.CompactLogSnapshot, snapshot.CompactSnapshot_BaseRefs) {
+func transformPostgresQuerySamples(server state.Server, s snapshot.CompactLogSnapshot, r snapshot.CompactSnapshot_BaseRefs, logState state.TransientLogState) (snapshot.CompactLogSnapshot, snapshot.CompactSnapshot_BaseRefs) {
 	for _, sampleIn := range logState.QuerySamples {
 		occurredAt, _ := ptypes.TimestampProto(sampleIn.OccurredAt)
 
-		if sampleIn.Username == "" || sampleIn.Database == "" || sampleIn.Query == "" {
+		if sampleIn.Query == "" {
 			continue
+		}
+
+		if sampleIn.Username == "" {
+			sampleIn.Username = server.Config.GetDbUsername()
+		}
+
+		if sampleIn.Database == "" {
+			sampleIn.Database = server.Config.GetDbName()
 		}
 
 		var roleIdx, databaseIdx, queryIdx int32

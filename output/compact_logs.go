@@ -21,7 +21,7 @@ func UploadAndSendLogs(server state.Server, grant state.GrantLogs, collectionOpt
 		logState.LogFiles = EncryptAndUploadLogfiles(server.Config.HTTPClient, grant.Logdata, grant.EncryptionKey, logger, logState.LogFiles)
 	}
 
-	ls, r := transform.LogStateToLogSnapshot(logState)
+	ls, r := transform.LogStateToLogSnapshot(server, logState)
 	s := pganalyze_collector.CompactSnapshot{
 		BaseRefs: &r,
 		Data:     &pganalyze_collector.CompactSnapshot_LogSnapshot{LogSnapshot: &ls},
