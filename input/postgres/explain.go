@@ -17,7 +17,8 @@ func RunExplain(server state.Server, inputs []state.PostgresQuerySample, collect
 	var samplesByDb = make(map[string]([]state.PostgresQuerySample))
 
 	skip := func(sample state.PostgresQuerySample) bool {
-		monitoredDb := sample.Database == server.Config.GetDbName() || server.Config.DbAllNames || contains(server.Config.DbExtraNames, sample.Database)
+		monitoredDb := sample.Database == "" || sample.Database == server.Config.GetDbName() ||
+			server.Config.DbAllNames || contains(server.Config.DbExtraNames, sample.Database)
 
 		return !monitoredDb ||
 			// EXPLAIN was already collected, e.g. from auto_explain
