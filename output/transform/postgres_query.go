@@ -58,7 +58,7 @@ func upsertQueryReferenceAndInformation(s *snapshot.FullSnapshot, statementTexts
 	return idx
 }
 
-func upsertQueryReferenceAndInformationSimple(refs []*snapshot.QueryReference, infos []*snapshot.QueryInformation, roleIdx int32, databaseIdx int32, originalQuery string) (int32, []*snapshot.QueryReference, []*snapshot.QueryInformation) {
+func upsertQueryReferenceAndInformationSimple(server state.Server, refs []*snapshot.QueryReference, infos []*snapshot.QueryInformation, roleIdx int32, databaseIdx int32, originalQuery string) (int32, []*snapshot.QueryReference, []*snapshot.QueryInformation) {
 	fingerprint := util.FingerprintQuery(originalQuery)
 
 	newRef := snapshot.QueryReference{
@@ -80,7 +80,7 @@ func upsertQueryReferenceAndInformationSimple(refs []*snapshot.QueryReference, i
 	// Information
 	queryInformation := snapshot.QueryInformation{
 		QueryIdx:        idx,
-		NormalizedQuery: util.NormalizeQuery(originalQuery),
+		NormalizedQuery: util.NormalizeQuery(originalQuery, server.Config.FilterQueryText),
 	}
 	infos = append(infos, &queryInformation)
 

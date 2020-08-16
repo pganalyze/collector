@@ -13,7 +13,7 @@ func LogStateToLogSnapshot(server state.Server, logState state.TransientLogState
 	var s snapshot.CompactLogSnapshot
 	var r snapshot.CompactSnapshot_BaseRefs
 	s, r = transformPostgresQuerySamples(server, s, r, logState)
-	s, r = transformSystemLogs(s, r, logState)
+	s, r = transformSystemLogs(server, s, r, logState)
 	return s, r
 }
 
@@ -84,6 +84,7 @@ func transformPostgresQuerySamples(server state.Server, s snapshot.CompactLogSna
 		databaseIdx, r.DatabaseReferences = upsertDatabaseReference(r.DatabaseReferences, sampleIn.Database)
 
 		queryIdx, r.QueryReferences, r.QueryInformations = upsertQueryReferenceAndInformationSimple(
+			server,
 			r.QueryReferences,
 			r.QueryInformations,
 			roleIdx,
@@ -111,7 +112,7 @@ func transformPostgresQuerySamples(server state.Server, s snapshot.CompactLogSna
 	return s, r
 }
 
-func transformSystemLogs(s snapshot.CompactLogSnapshot, r snapshot.CompactSnapshot_BaseRefs, logState state.TransientLogState) (snapshot.CompactLogSnapshot, snapshot.CompactSnapshot_BaseRefs) {
+func transformSystemLogs(server state.Server, s snapshot.CompactLogSnapshot, r snapshot.CompactSnapshot_BaseRefs, logState state.TransientLogState) (snapshot.CompactLogSnapshot, snapshot.CompactSnapshot_BaseRefs) {
 	for _, logFileIn := range logState.LogFiles {
 		fileIdx := int32(len(s.LogFileReferences))
 		logFileReference := &snapshot.LogFileReference{
@@ -142,7 +143,7 @@ func transformSystemLogs(s snapshot.CompactLogSnapshot, r snapshot.CompactSnapsh
 		}
 		s.LogFileReferences = append(s.LogFileReferences, logFileReference)
 		for _, logLineIn := range logFileIn.LogLines {
-			logLine := transformSystemLogLine(&r, fileIdx, logLineIn)
+			logLine := transformSystemLogLine(server, &r, fileIdx, logLineIn)
 			s.LogLineInformations = append(s.LogLineInformations, &logLine)
 		}
 	}
@@ -150,7 +151,7 @@ func transformSystemLogs(s snapshot.CompactLogSnapshot, r snapshot.CompactSnapsh
 	return s, r
 }
 
-func transformSystemLogLine(r *snapshot.CompactSnapshot_BaseRefs, logFileIdx int32, logLineIn state.LogLine) snapshot.LogLineInformation {
+func transformSystemLogLine(server state.Server, r *snapshot.CompactSnapshot_BaseRefs, logFileIdx int32, logLineIn state.LogLine) snapshot.LogLineInformation {
 	occurredAt, _ := ptypes.TimestampProto(logLineIn.OccurredAt)
 
 	logLine := snapshot.LogLineInformation{
@@ -193,6 +194,7 @@ func transformSystemLogLine(r *snapshot.CompactSnapshot_BaseRefs, logFileIdx int
 
 	if logLine.HasRoleIdx && logLine.HasDatabaseIdx && logLineIn.Query != "" {
 		logLine.QueryIdx, r.QueryReferences, r.QueryInformations = upsertQueryReferenceAndInformationSimple(
+			server,
 			r.QueryReferences,
 			r.QueryInformations,
 			logLine.RoleIdx,

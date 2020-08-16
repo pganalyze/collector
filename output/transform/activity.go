@@ -29,6 +29,7 @@ func ActivityStateToCompactActivitySnapshot(server state.Server, activityState s
 
 		if backend.Query.Valid {
 			b.QueryIdx, r.QueryReferences, r.QueryInformations = upsertQueryReferenceAndInformationSimple(
+				server,
 				r.QueryReferences,
 				r.QueryInformations,
 				b.RoleIdx,
