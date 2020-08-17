@@ -1,5 +1,55 @@
 # Changelog
 
+## 0.32.0      2020-08-16
+
+* Add `ignore_schema_regexp` / `IGNORE_SCHEMA_REGEXP` configuration option
+  - This is like ignore_table_pattern, but pushed down into the actual
+    stats-gathering queries to improve performance. This should work much
+    better on very large schemas
+  - We use a regular expression instead of the current glob-like matching
+    since the former is natively supported in Postgres
+  - We now warn on usage of the deprecated `ignore_table_pattern` field
+* Add warning for too many tables being collected (and recommend `ignore_schema_regexp`)
+* Allow keeping of unparsable query texts by setting `filter_query_text: none`
+  - By default we replace everything with `<unparsable query>` (renamed
+    from the previous `<truncated query>` for clarity), to avoid leaking
+    sensitive data that may be contained in query texts that couldn't be
+    parsed and that Postgres itself doesn't mask correctly (e.g. utility
+    statements)
+  - However in some situations it may be desirable to have the original
+    query texts instead, e.g. when the collector parser is outdated
+    (right now the parser is Postgres version 10, and some newer Postgres 12
+    query syntax fails to parse)
+  - To support this use case, a new "filter_query_text" / FILTER_QUERY_TEXT
+    option is introduced which can be set to "none" to keep all query texts.
+* EXPLAIN plans / Query samples: Support log line prefix without %d and %u
+  - Whilst not recommended, in some scenarios changing the log_line_prefix
+    is difficult, and we want to make it easy to get EXPLAIN data even in
+    those scenarios
+  - In case the log_line_prefix is missing the database (%d) and/or the user
+    (%u), we simply use the user and database of the collector connection
+* Log EXPLAIN: Run on all monitored databases, not just the primary database
+* Add support for stored procedures (new with Postgres 11)
+* Handle Postgres error checks using Go 1.13 error helpers
+  - This is more correct going forward, and adds a required type check for
+    the error type, since the database methods can also return net.OpError
+  - Fixes "panic: interface conversion: error is *net.OpError, not *pq.Error"
+* Collect information on table partitions
+  - Relation parents as well as partition boundary (if any)
+  - Partitionining strategy in use
+  - List of partitioning fields and/or expression
+* Log Insights: Track TLS protocol version as a log line detail
+  - This allows verification of which TLS versions were used to connect to the
+    database over time
+* Log Insights: Track host as detail for connection received event
+  - This allows more detailed analysis of which IPs/hostnames have connected
+    to the database over time
+* Example collector config: Use collect all databases option in the example
+  - This improves the chance that this is set up correctly from the
+    beginning, without requiring a backwards incompatible change in the
+    collector
+
+
 ## 0.31.0      2020-06-23
 
 * Add Log Insights support for Azure Database for PostgreSQL
