@@ -78,7 +78,7 @@ func ResetStatements(logger *util.Logger, db *sql.DB, systemType string) error {
 	return nil
 }
 
-func GetStatements(logger *util.Logger, db *sql.DB, globalCollectionOpts state.CollectionOpts, postgresVersion state.PostgresVersion, showtext bool, systemType string) (state.PostgresStatementMap, state.PostgresStatementTextMap, state.PostgresStatementStatsMap, error) {
+func GetStatements(server state.Server, logger *util.Logger, db *sql.DB, globalCollectionOpts state.CollectionOpts, postgresVersion state.PostgresVersion, showtext bool, systemType string) (state.PostgresStatementMap, state.PostgresStatementTextMap, state.PostgresStatementStatsMap, error) {
 	var err error
 	var totalTimeField string
 	var optionalFields string
@@ -219,7 +219,7 @@ func GetStatements(logger *util.Logger, db *sql.DB, globalCollectionOpts state.C
 	}
 
 	for fp, text := range statementTexts {
-		statementTexts[fp] = util.NormalizeQuery(text)
+		statementTexts[fp] = util.NormalizeQuery(text, server.Config.FilterQueryText)
 	}
 
 	return statements, statementTexts, statementStats, nil

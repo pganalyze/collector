@@ -188,6 +188,9 @@ func getDefaultConfig() *ServerConfig {
 	if filterQuerySample := os.Getenv("FILTER_QUERY_SAMPLE"); filterQuerySample != "" {
 		config.FilterQuerySample = filterQuerySample
 	}
+	if filterQueryText := os.Getenv("FILTER_QUERY_TEXT"); filterQueryText != "" {
+		config.FilterQueryText = filterQueryText
+	}
 	if httpProxy := os.Getenv("HTTP_PROXY"); httpProxy != "" {
 		config.HTTPProxy = httpProxy
 	}

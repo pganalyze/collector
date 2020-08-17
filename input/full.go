@@ -44,7 +44,7 @@ func CollectFull(server state.Server, connection *sql.DB, globalCollectionOpts s
 
 	ps.LastStatementStatsAt = time.Now()
 	postgres.SetQueryTextStatementTimeout(connection, logger, server)
-	ts.Statements, ts.StatementTexts, ps.StatementStats, err = postgres.GetStatements(logger, connection, globalCollectionOpts, ts.Version, true, systemType)
+	ts.Statements, ts.StatementTexts, ps.StatementStats, err = postgres.GetStatements(server, logger, connection, globalCollectionOpts, ts.Version, true, systemType)
 	postgres.SetDefaultStatementTimeout(connection, logger, server)
 	if err != nil {
 		err = fmt.Errorf("Error collecting pg_stat_statements: %s", err)
@@ -59,7 +59,7 @@ func CollectFull(server state.Server, connection *sql.DB, globalCollectionOpts s
 			logger.PrintError("Error calling pg_stat_statements_reset() as requested: %s", err)
 			return
 		}
-		_, _, ts.ResetStatementStats, err = postgres.GetStatements(logger, connection, globalCollectionOpts, ts.Version, false, systemType)
+		_, _, ts.ResetStatementStats, err = postgres.GetStatements(server, logger, connection, globalCollectionOpts, ts.Version, false, systemType)
 		if err != nil {
 			err = fmt.Errorf("Error collecting pg_stat_statements: %s", err)
 			return
