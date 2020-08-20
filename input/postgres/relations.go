@@ -21,7 +21,7 @@ const relationsSQLpartExprField = "''"
 const relationsSQLpg10PartBoundField = "COALESCE(pg_get_expr(c.relpartbound, c.oid, true), '') AS partition_boundary"
 const relationsSQLpg10partStratField = "COALESCE((SELECT p.partstrat FROM pg_partitioned_table p WHERE p.partrelid = c.oid), '') AS partition_strategy"
 const relationsSQLpg10PartColsField = "(SELECT p.partattrs FROM pg_partitioned_table p WHERE p.partrelid = c.oid) AS partition_columns"
-const relationsSQLpg10partExprField = "COALESCE((SELECT pg_get_expr(p.partexprs, c.oid, true) FROM pg_partitioned_table p WHERE p.partrelid = c.oid), '') AS partition_expr"
+const relationsSQLpg10partExprField = "COALESCE(pg_catalog.pg_get_partkeydef(c.oid), '') AS partition_expr"
 
 const relationsSQL string = `
 	 WITH locked_relids AS (SELECT DISTINCT relation relid FROM pg_catalog.pg_locks WHERE mode = 'AccessExclusiveLock')
