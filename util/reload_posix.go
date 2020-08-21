@@ -42,6 +42,6 @@ func Reload(logger *Logger) {
 			os.Exit(0)
 		}
 	}
-	logger.PrintError("Error: Failed to reload collector: Could not find pganalyze collector in process list\n")
+	logger.PrintError("Error: Failed to reload: Could not find collector in process list. Try restarting the pganalyze collector process.\n")
 	os.Exit(1)
 }
