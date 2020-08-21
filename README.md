@@ -96,20 +96,22 @@ If you use `enable_log_explain`:
 CREATE OR REPLACE FUNCTION pganalyze.explain(query text, params text) RETURNS text AS
 $$
 DECLARE
+  prepared_query text;
   result text;
 BEGIN
+  SELECT regexp_replace(query, ';+\s*\Z', '') INTO prepared_query;
   -- this is a check to minimize collector access to your data: it ensures that the
   -- collector cannot piggyback other queries that could exfiltrate data
-  IF query LIKE '%;%' OR params LIKE '%;%' THEN
+  IF prepared_query LIKE '%;%' OR params LIKE '%;%' THEN
     RAISE EXCEPTION 'cannot run EXPLAIN when query or parameters contain semicolon';
   END IF;
 
   IF length(params) > 0 THEN
-    EXECUTE '/* pganalyze-collector */ PREPARE pganalyze_explain AS ' || query;
-    EXECUTE '/* pganalyze-collector */ EXPLAIN (VERBOSE, FORMAT JSON) EXECUTE pganalyze_explain(' || params || ')' INTO STRICT result;
-    /* pganalyze-collector */ DEALLOCATE pganalyze_explain;
+    EXECUTE 'PREPARE pganalyze_explain AS ' || prepared_query;
+    EXECUTE 'EXPLAIN (VERBOSE, FORMAT JSON) EXECUTE pganalyze_explain(' || params || ')' INTO STRICT result;
+    DEALLOCATE pganalyze_explain;
   ELSE
-    EXECUTE '/* pganalyze-collector */ EXPLAIN (VERBOSE, FORMAT JSON) ' || query INTO STRICT result;
+    EXECUTE 'EXPLAIN (VERBOSE, FORMAT JSON) ' || prepared_query INTO STRICT result;
   END IF;
 
   RETURN result;
