@@ -11,6 +11,7 @@ const relationStatsSQLDefaultOptionalFields = "NULL"
 const relationStatsSQLpg94OptionalFields = "s.n_mod_since_analyze"
 
 const relationStatsSQL = `
+WITH locked_relids AS (SELECT DISTINCT relation relid FROM pg_catalog.pg_locks WHERE mode = 'AccessExclusiveLock' AND relation IS NOT NULL)
 SELECT c.oid,
 			 COALESCE(pg_catalog.pg_table_size(c.oid), 0) +
 			 COALESCE((SELECT pg_catalog.sum(pg_catalog.pg_table_size(inhrelid))
@@ -48,7 +49,8 @@ SELECT c.oid,
 	LEFT JOIN pg_catalog.pg_namespace n ON (n.oid = c.relnamespace)
 	LEFT JOIN pg_catalog.pg_stat_user_tables s ON (s.relid = c.oid)
 	LEFT JOIN pg_catalog.pg_statio_user_tables sio USING (relid)
- WHERE c.relkind IN ('r','v','m','p')
+ WHERE c.oid NOT IN (SELECT relid FROM locked_relids)
+       AND c.relkind IN ('r','v','m','p')
 			 AND c.relpersistence <> 't'
 			 AND c.relname NOT IN ('pg_stat_statements')
 			 AND n.nspname NOT IN ('pg_catalog','pg_toast','information_schema')
@@ -56,7 +58,7 @@ SELECT c.oid,
 `
 
 const indexStatsSQL = `
-WITH locked_relids AS (SELECT DISTINCT relation relid FROM pg_catalog.pg_locks WHERE mode = 'AccessExclusiveLock')
+WITH locked_relids AS (SELECT DISTINCT relation relid FROM pg_catalog.pg_locks WHERE mode = 'AccessExclusiveLock' AND relation IS NOT NULL)
 SELECT s.indexrelid,
 			 COALESCE(pg_catalog.pg_relation_size(s.indexrelid), 0) AS size_bytes,
 			 COALESCE(s.idx_scan, 0),
