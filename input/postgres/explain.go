@@ -46,11 +46,11 @@ func RunExplain(server state.Server, inputs []state.PostgresQuerySample, collect
 		}
 		useHelper := statsHelperExists(db, "explain")
 		if useHelper {
-			logger.PrintVerbose("Found pganalyze.explain() stats helper")
-		} else {
-			logger.PrintInfo("Warning: pganalyze.explain() helper function not found. Please set up" +
-				" the monitoring helper functions (https://github.com/pganalyze/collector#setting-up-a-restricted-monitoring-user)" +
-				" to avoid permissions issues when running log-based EXPLAIN.")
+			logger.PrintVerbose("Found pganalyze.explain() stats helper in database \"%s\"", dbName)
+		} else if !connectedAsSuperUser(db, server.Config.SystemType) {
+			logger.PrintInfo("Warning: pganalyze.explain() helper function not found in database \"%s\". Please set up"+
+				" the monitoring helper functions (https://github.com/pganalyze/collector#setting-up-a-restricted-monitoring-user)"+
+				" in every database you want to monitor to avoid permissions issues when running log-based EXPLAIN.", dbName)
 		}
 
 		dbOutputs := runDbExplain(db, dbSamples, useHelper)
@@ -77,8 +77,7 @@ func runDbExplain(db *sql.DB, inputs []state.PostgresQuerySample, useHelper bool
 			sample.ExplainFormat = pganalyze_collector.QuerySample_JSON_EXPLAIN_FORMAT
 
 			if useHelper {
-				paramStr := getQuotedParamsStr(sample.Parameters)
-				err = db.QueryRow(QueryMarkerSQL+"SELECT pganalyze.explain($1, $2)", sample.Query, paramStr).Scan(&sample.ExplainOutput)
+				err = db.QueryRow(QueryMarkerSQL+"SELECT pganalyze.explain($1, $2)", sample.Query, sample.Parameters).Scan(&sample.ExplainOutput)
 				if err != nil {
 					sample.ExplainError = fmt.Sprintf("%s", err)
 				}
