@@ -47,14 +47,23 @@ func RunExplain(server state.Server, inputs []state.PostgresQuerySample, collect
 		useHelper := statsHelperExists(db, "explain")
 		if useHelper {
 			logger.PrintVerbose("Found pganalyze.explain() stats helper in database \"%s\"", dbName)
-		} else if !connectedAsSuperUser(db, server.Config.SystemType) {
-			logger.PrintInfo("Warning: pganalyze.explain() helper function not found in database \"%s\". Please set up"+
-				" the monitoring helper functions (https://github.com/pganalyze/collector#setting-up-a-restricted-monitoring-user)"+
-				" in every database you want to monitor to avoid permissions issues when running log-based EXPLAIN.", dbName)
 		}
 
 		dbOutputs := runDbExplain(db, dbSamples, useHelper)
 		db.Close()
+
+		hasPermErr := false
+		for _, sample := range dbOutputs {
+			if strings.HasPrefix(sample.ExplainError, "pq: permission denied") {
+				hasPermErr = true
+				break
+			}
+		}
+		if hasPermErr && !connectedAsSuperUser(db, server.Config.SystemType) {
+			logger.PrintInfo("Warning: pganalyze.explain() helper function not found in database \"%s\". Please set up"+
+				" the monitoring helper functions (https://github.com/pganalyze/collector#setting-up-a-restricted-monitoring-user)"+
+				" in every database you want to monitor to avoid permissions issues when running log-based EXPLAIN.", dbName)
+		}
 
 		outputs = append(outputs, dbOutputs...)
 	}
