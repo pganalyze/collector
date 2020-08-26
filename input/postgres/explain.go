@@ -77,7 +77,7 @@ func runDbExplain(db *sql.DB, inputs []state.PostgresQuerySample, useHelper bool
 			sample.ExplainFormat = pganalyze_collector.QuerySample_JSON_EXPLAIN_FORMAT
 
 			if useHelper {
-				err = db.QueryRow(QueryMarkerSQL+"SELECT pganalyze.explain($1, $2)", sample.Query, sample.Parameters).Scan(&sample.ExplainOutput)
+				err = db.QueryRow(QueryMarkerSQL+"SELECT pganalyze.explain($1, $2)", sample.Query, pq.Array(sample.Parameters)).Scan(&sample.ExplainOutput)
 				if err != nil {
 					sample.ExplainError = fmt.Sprintf("%s", err)
 				}
