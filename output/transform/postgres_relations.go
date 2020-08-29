@@ -7,28 +7,8 @@ import (
 	"github.com/pganalyze/collector/state"
 )
 
-type OidMapByDB map[state.Oid](map[state.Oid]int32)
-
-func MakeOidMap() OidMapByDB {
-	return make(map[state.Oid](map[state.Oid]int32))
-}
-
-func (m OidMapByDB) Put(dbOid, objOid state.Oid, idx int32) {
-	if _, ok := m[dbOid]; !ok {
-		m[dbOid] = make(map[state.Oid]int32)
-	}
-	m[dbOid][objOid] = idx
-}
-
-func (m OidMapByDB) Get(dbOid, objOid state.Oid) int32 {
-	if _, ok := m[dbOid]; !ok {
-		return 0
-	}
-	return m[dbOid][objOid]
-}
-
 func transformPostgresRelations(s snapshot.FullSnapshot, newState state.PersistedState, diffState state.DiffState, roleOidToIdx OidToIdx, databaseOidToIdx OidToIdx) snapshot.FullSnapshot {
-	relationOidToIdx := MakeOidMap()
+	relationOidToIdx := state.MakeOidToIdxMap()
 	for _, relation := range newState.Relations {
 		ref := snapshot.RelationReference{
 			DatabaseIdx:  databaseOidToIdx[relation.DatabaseOid],
