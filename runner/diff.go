@@ -7,8 +7,16 @@ import (
 
 func diffState(logger *util.Logger, prevState state.PersistedState, newState state.PersistedState, collectedIntervalSecs uint32) (diffState state.DiffState) {
 	diffState.StatementStats = diffStatements(newState.StatementStats, prevState.StatementStats)
-	diffState.RelationStats = diffRelationStats(newState.RelationStats, prevState.RelationStats)
-	diffState.IndexStats = diffIndexStats(newState.IndexStats, prevState.IndexStats)
+	diffState.DBStats = make(map[state.Oid]state.DiffedDBStats)
+	for dbOid := range newState.DBStats {
+		newDbStats := newState.DBStats[dbOid]
+		// TODO: what if this is nil?
+		prevDbStats := prevState.DBStats[dbOid]
+		diffState.DBStats[dbOid] = state.DiffedDBStats{
+			RelationStats: diffRelationStats(newDbStats.RelationStats, prevDbStats.RelationStats),
+			IndexStats:    diffIndexStats(newDbStats.IndexStats, prevDbStats.IndexStats),
+		}
+	}
 	diffState.SystemCPUStats = diffSystemCPUStats(newState.System.CPUStats, prevState.System.CPUStats)
 	diffState.SystemNetworkStats = diffSystemNetworkStats(newState.System.NetworkStats, prevState.System.NetworkStats, collectedIntervalSecs)
 	diffState.SystemDiskStats = diffSystemDiskStats(newState.System.DiskStats, prevState.System.DiskStats, collectedIntervalSecs)

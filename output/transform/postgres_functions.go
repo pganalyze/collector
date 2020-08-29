@@ -58,7 +58,7 @@ func transformPostgresFunctions(s snapshot.FullSnapshot, newState state.Persiste
 		s.FunctionInformations = append(s.FunctionInformations, &info)
 
 		// Statistic
-		stats, exists := diffState.FunctionStats[function.Oid]
+		stats, exists := diffState.DBStats[function.DatabaseOid].FunctionStats[function.Oid]
 		if exists {
 			statistic := snapshot.FunctionStatistic{
 				FunctionIdx: idx,
