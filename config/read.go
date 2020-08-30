@@ -264,7 +264,25 @@ func CreateHTTPClient(conf ServerConfig) *http.Client {
 	}
 }
 
-func preprocessProviderSettings(config *ServerConfig) *ServerConfig {
+func writeValueToTempfile(value string) (string, error) {
+	file, err := ioutil.TempFile("", "")
+	if err != nil {
+		return "", err
+	}
+	_, err = file.WriteString(value)
+	if err != nil {
+		return "", err
+	}
+	err = file.Close()
+	if err != nil {
+		return "", err
+	}
+	return file.Name(), nil
+}
+
+func preprocessConfig(config *ServerConfig) (*ServerConfig, error) {
+	var err error
+
 	host := config.GetDbHost()
 	if strings.HasSuffix(host, ".rds.amazonaws.com") {
 		parts := strings.SplitN(host, ".", 4)
@@ -297,7 +315,37 @@ func preprocessProviderSettings(config *ServerConfig) *ServerConfig {
 		config.GcpCloudSQLInstanceID = instanceParts[2]
 	}
 
-	return config
+	dbNameParts := []string{}
+	for _, s := range strings.Split(config.DbName, ",") {
+		dbNameParts = append(dbNameParts, strings.TrimSpace(s))
+	}
+	config.DbName = dbNameParts[0]
+	if len(dbNameParts) == 2 && dbNameParts[1] == "*" {
+		config.DbAllNames = true
+	} else {
+		config.DbExtraNames = dbNameParts[1:]
+	}
+
+	if config.DbSslRootCertContents != "" {
+		config.DbSslRootCert, err = writeValueToTempfile(config.DbSslRootCertContents)
+		if err != nil {
+			return config, err
+		}
+	}
+
+	if config.DbSslCertContents != "" {
+		config.DbSslCert, err = writeValueToTempfile(config.DbSslCertContents)
+	}
+
+	if config.DbSslKeyContents != "" {
+		config.DbSslKey, err = writeValueToTempfile(config.DbSslKeyContents)
+	}
+
+	if config.AwsEndpointSigningRegionLegacy != "" && config.AwsEndpointSigningRegion == "" {
+		config.AwsEndpointSigningRegion = config.AwsEndpointSigningRegionLegacy
+	}
+
+	return config, nil
 }
 
 // Read - Reads the configuration from the specified filename, or fall back to the default config
@@ -328,70 +376,10 @@ func Read(logger *util.Logger, filename string) (Config, error) {
 				return conf, err
 			}
 
-			dbNameParts := []string{}
-			for _, s := range strings.Split(config.DbName, ",") {
-				dbNameParts = append(dbNameParts, strings.TrimSpace(s))
+			config, err = preprocessConfig(config)
+			if err != nil {
+				return conf, err
 			}
-			config.DbName = dbNameParts[0]
-			if len(dbNameParts) == 2 && dbNameParts[1] == "*" {
-				config.DbAllNames = true
-			} else {
-				config.DbExtraNames = dbNameParts[1:]
-			}
-
-			if config.DbSslRootCertContents != "" {
-				sslRootTmpFile, err := ioutil.TempFile("", "")
-				if err != nil {
-					return conf, err
-				}
-				_, err = sslRootTmpFile.WriteString(config.DbSslRootCertContents)
-				if err != nil {
-					return conf, err
-				}
-				err = sslRootTmpFile.Close()
-				if err != nil {
-					return conf, err
-				}
-				config.DbSslRootCert = sslRootTmpFile.Name()
-			}
-
-			if config.DbSslCertContents != "" {
-				sslCertTmpFile, err := ioutil.TempFile("", "")
-				if err != nil {
-					return conf, err
-				}
-				_, err = sslCertTmpFile.WriteString(config.DbSslCertContents)
-				if err != nil {
-					return conf, err
-				}
-				err = sslCertTmpFile.Close()
-				if err != nil {
-					return conf, err
-				}
-				config.DbSslCert = sslCertTmpFile.Name()
-			}
-
-			if config.DbSslKeyContents != "" {
-				sslKeyTmpFile, err := ioutil.TempFile("", "")
-				if err != nil {
-					return conf, err
-				}
-				_, err = sslKeyTmpFile.WriteString(config.DbSslKeyContents)
-				if err != nil {
-					return conf, err
-				}
-				err = sslKeyTmpFile.Close()
-				if err != nil {
-					return conf, err
-				}
-				config.DbSslKey = sslKeyTmpFile.Name()
-			}
-
-			if config.AwsEndpointSigningRegionLegacy != "" && config.AwsEndpointSigningRegion == "" {
-				config.AwsEndpointSigningRegion = config.AwsEndpointSigningRegionLegacy
-			}
-
-			config = preprocessProviderSettings(config)
 			config.SectionName = section.Name()
 			config.SystemType, config.SystemScope, config.SystemID = identifySystem(*config)
 
@@ -428,6 +416,10 @@ func Read(logger *util.Logger, filename string) (Config, error) {
 				parts := strings.Split(kv, "=")
 				if strings.HasSuffix(parts[0], "_URL") {
 					config := getDefaultConfig()
+					config, err = preprocessConfig(config)
+					if err != nil {
+						return conf, err
+					}
 					config.SectionName = parts[0]
 					config.SystemID = strings.Replace(parts[0], "_URL", "", 1)
 					config.SystemType = "heroku"
@@ -437,7 +429,10 @@ func Read(logger *util.Logger, filename string) (Config, error) {
 			}
 		} else if os.Getenv("PGA_API_KEY") != "" {
 			config := getDefaultConfig()
-			config = preprocessProviderSettings(config)
+			config, err = preprocessConfig(config)
+			if err != nil {
+				return conf, err
+			}
 			config.SystemType, config.SystemScope, config.SystemID = identifySystem(*config)
 			conf.Servers = append(conf.Servers, *config)
 		} else {
