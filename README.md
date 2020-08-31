@@ -90,47 +90,6 @@ but from here onwards you can use the `pganalyze` user instead.
 The collector will automatically use the helper methods
 if they exist in the `pganalyze` schema - otherwise data will be fetched directly.
 
-If you use `enable_log_explain`, create the pganalyze schema and this function on each
-database where EXPLAIN should run:
-
-```
-CREATE OR REPLACE FUNCTION pganalyze.explain(query text, params text[]) RETURNS text AS
-$$
-DECLARE
-  prepared_query text;
-  prepared_params text;
-  result text;
-BEGIN
-  SELECT regexp_replace(query, ';+\s*\Z', '') INTO prepared_query;
-  IF prepared_query LIKE '%;%' THEN
-    RAISE EXCEPTION 'cannot run EXPLAIN when query contains semicolon';
-  END IF;
-
-  IF array_length(params, 1) > 0 THEN
-    SELECT string_agg(quote_literal(param) || '::unknown', ',') FROM unnest(params) p(param) INTO prepared_params;
-
-    EXECUTE 'PREPARE pganalyze_explain AS ' || prepared_query;
-    BEGIN
-      EXECUTE 'EXPLAIN (VERBOSE, FORMAT JSON) EXECUTE pganalyze_explain(' || prepared_params || ')' INTO STRICT result;
-    EXCEPTION WHEN OTHERS THEN
-      DEALLOCATE pganalyze_explain;
-      RAISE;
-    END;
-    DEALLOCATE pganalyze_explain;
-  ELSE
-    EXECUTE 'EXPLAIN (VERBOSE, FORMAT JSON) ' || prepared_query INTO STRICT result;
-  END IF;
-
-  RETURN result;
-END
-$$ LANGUAGE plpgsql VOLATILE SECURITY DEFINER;
-```
-
-Note that this function contains a check for semicolons in the query
-text. This is to minimize collector access to your data: it ensures
-that the collector cannot piggyback other queries that could
-exfiltrate data.
-
 If you are on Postgres 9.6 and use activity snapshots:
 
 ```
@@ -196,6 +155,55 @@ $$
   /* pganalyze-collector */ SELECT * FROM public.pg_stat_statements_reset();
 $$ LANGUAGE sql VOLATILE SECURITY DEFINER;
 ```
+
+Setting up Log EXPLAIN helper
+-----------------------------
+
+This section is relevant only if you use the `enable_log_explain`
+setting; if you use the recommended autoexplain extension, or if you
+do not plan to use EXPLAIN plan collection, you can skip it.
+
+If you use `enable_log_explain`, use a superuser connection to create
+the pganalyze schema and this function on each database where EXPLAIN
+should run:
+
+```
+CREATE OR REPLACE FUNCTION pganalyze.explain(query text, params text[]) RETURNS text AS
+$$
+DECLARE
+  prepared_query text;
+  prepared_params text;
+  result text;
+BEGIN
+  SELECT regexp_replace(query, ';+\s*\Z', '') INTO prepared_query;
+  IF prepared_query LIKE '%;%' THEN
+    RAISE EXCEPTION 'cannot run EXPLAIN when query contains semicolon';
+  END IF;
+
+  IF array_length(params, 1) > 0 THEN
+    SELECT string_agg(quote_literal(param) || '::unknown', ',') FROM unnest(params) p(param) INTO prepared_params;
+
+    EXECUTE 'PREPARE pganalyze_explain AS ' || prepared_query;
+    BEGIN
+      EXECUTE 'EXPLAIN (VERBOSE, FORMAT JSON) EXECUTE pganalyze_explain(' || prepared_params || ')' INTO STRICT result;
+    EXCEPTION WHEN OTHERS THEN
+      DEALLOCATE pganalyze_explain;
+      RAISE;
+    END;
+    DEALLOCATE pganalyze_explain;
+  ELSE
+    EXECUTE 'EXPLAIN (VERBOSE, FORMAT JSON) ' || prepared_query INTO STRICT result;
+  END IF;
+
+  RETURN result;
+END
+$$ LANGUAGE plpgsql VOLATILE SECURITY DEFINER;
+```
+
+Note that this function contains a check for semicolons in the query
+text. This is to minimize collector access to your data: it ensures
+that the collector cannot piggyback other queries that could
+exfiltrate data.
 
 
 Example output
