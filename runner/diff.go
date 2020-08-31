@@ -7,14 +7,22 @@ import (
 
 func diffState(logger *util.Logger, prevState state.PersistedState, newState state.PersistedState, collectedIntervalSecs uint32) (diffState state.DiffState) {
 	diffState.StatementStats = diffStatements(newState.StatementStats, prevState.StatementStats)
-	diffState.DBStats = make(map[state.Oid]state.DiffedDBStats)
+	diffState.DBStats = make(map[state.Oid]*state.DiffedDBStats)
 	for dbOid := range newState.DBStats {
 		newDbStats := newState.DBStats[dbOid]
-		// TODO: what if this is nil?
 		prevDbStats := prevState.DBStats[dbOid]
-		diffState.DBStats[dbOid] = state.DiffedDBStats{
-			RelationStats: diffRelationStats(newDbStats.RelationStats, prevDbStats.RelationStats),
-			IndexStats:    diffIndexStats(newDbStats.IndexStats, prevDbStats.IndexStats),
+		var prevRelStats state.PostgresRelationStatsMap
+		var prevIdxStats state.PostgresIndexStatsMap
+		if prevDbStats != nil {
+			prevRelStats = prevDbStats.RelationStats
+			prevIdxStats = prevDbStats.IndexStats
+		} else {
+			prevRelStats = make(state.PostgresRelationStatsMap)
+			prevIdxStats = make(state.PostgresIndexStatsMap)
+		}
+		diffState.DBStats[dbOid] = &state.DiffedDBStats{
+			RelationStats: diffRelationStats(newDbStats.RelationStats, prevRelStats),
+			IndexStats:    diffIndexStats(newDbStats.IndexStats, prevIdxStats),
 		}
 	}
 	diffState.SystemCPUStats = diffSystemCPUStats(newState.System.CPUStats, prevState.System.CPUStats)

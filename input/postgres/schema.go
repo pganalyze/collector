@@ -23,7 +23,7 @@ func CollectAllSchemas(server state.Server, collectionOpts state.CollectionOpts,
 
 	ps.Relations = []state.PostgresRelation{}
 
-	ps.DBStats = make(map[state.Oid]state.DBStats)
+	ps.DBStats = make(map[state.Oid]*state.DBStats)
 	ps.Functions = []state.PostgresFunction{}
 
 	for _, dbName := range schemaDbNames {
@@ -40,7 +40,7 @@ func CollectAllSchemas(server state.Server, collectionOpts state.CollectionOpts,
 			continue
 		}
 
-		ps.DBStats[databaseOid] = state.DBStats{
+		ps.DBStats[databaseOid] = &state.DBStats{
 			RelationStats: make(state.PostgresRelationStatsMap),
 			IndexStats:    make(state.PostgresIndexStatsMap),
 		}

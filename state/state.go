@@ -19,7 +19,7 @@ type PersistedState struct {
 	CollectedAt time.Time
 
 	StatementStats PostgresStatementStatsMap
-	DBStats        map[Oid]DBStats
+	DBStats        map[Oid]*DBStats
 
 	Relations []PostgresRelation
 	Functions []PostgresFunction
@@ -73,7 +73,7 @@ type DiffedDBStats struct {
 // DiffState - Result of diff-ing two persistent state structs
 type DiffState struct {
 	StatementStats DiffedPostgresStatementStatsMap
-	DBStats        map[Oid]DiffedDBStats
+	DBStats        map[Oid]*DiffedDBStats
 
 	SystemCPUStats     DiffedSystemCPUStatsMap
 	SystemNetworkStats DiffedNetworkStatsMap
