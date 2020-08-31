@@ -110,7 +110,12 @@ BEGIN
     SELECT string_agg(quote_literal(param) || '::unknown', ',') FROM unnest(params) p(param) INTO prepared_params;
 
     EXECUTE 'PREPARE pganalyze_explain AS ' || prepared_query;
-    EXECUTE 'EXPLAIN (VERBOSE, FORMAT JSON) EXECUTE pganalyze_explain(' || prepared_params || ')' INTO STRICT result;
+    BEGIN
+      EXECUTE 'EXPLAIN (VERBOSE, FORMAT JSON) EXECUTE pganalyze_explain(' || prepared_params || ')' INTO STRICT result;
+    EXCEPTION WHEN OTHERS THEN
+      DEALLOCATE pganalyze_explain;
+      RAISE;
+    END;
     DEALLOCATE pganalyze_explain;
   ELSE
     EXECUTE 'EXPLAIN (VERBOSE, FORMAT JSON) ' || prepared_query INTO STRICT result;
