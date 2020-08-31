@@ -44,28 +44,53 @@ func RunExplain(server state.Server, inputs []state.PostgresQuerySample, collect
 			logger.PrintVerbose("Could not connect to %s to run explain: %s; skipping", dbName, err)
 			continue
 		}
+		useHelper := statsHelperExists(db, "explain")
+		if useHelper {
+			logger.PrintVerbose("Found pganalyze.explain() stats helper in database \"%s\"", dbName)
+		}
 
-		dbOutputs := runDbExplain(db, dbSamples)
+		dbOutputs := runDbExplain(db, dbSamples, useHelper)
 		db.Close()
+
+		hasPermErr := false
+		for _, sample := range dbOutputs {
+			if strings.HasPrefix(sample.ExplainError, "pq: permission denied") {
+				hasPermErr = true
+				break
+			}
+		}
+		if hasPermErr && !connectedAsSuperUser(db, server.Config.SystemType) {
+			logger.PrintInfo("Warning: pganalyze.explain() helper function not found in database \"%s\". Please set up"+
+				" the monitoring helper functions (https://github.com/pganalyze/collector#setting-up-a-restricted-monitoring-user)"+
+				" in every database you want to monitor to avoid permissions issues when running log-based EXPLAIN.", dbName)
+		}
 
 		outputs = append(outputs, dbOutputs...)
 	}
 	return
 }
 
-func runDbExplain(db *sql.DB, inputs []state.PostgresQuerySample) (outputs []state.PostgresQuerySample) {
+func runDbExplain(db *sql.DB, inputs []state.PostgresQuerySample, useHelper bool) (outputs []state.PostgresQuerySample) {
 	for _, sample := range inputs {
 		// To be on the safe side never EXPLAIN a statement that can't be parsed,
 		// or multiple statements in one (leading to accidental execution)
 		parsetree, err := pg_query.Parse(sample.Query)
-		if err == nil && len(parsetree.Statements) == 1 {
-			stmt := parsetree.Statements[0].(pg_query_nodes.RawStmt).Stmt
-			switch stmt.(type) {
-			case pg_query_nodes.SelectStmt, pg_query_nodes.InsertStmt, pg_query_nodes.UpdateStmt, pg_query_nodes.DeleteStmt:
-				sample.HasExplain = true
-				sample.ExplainSource = pganalyze_collector.QuerySample_STATEMENT_LOG_EXPLAIN_SOURCE
-				sample.ExplainFormat = pganalyze_collector.QuerySample_JSON_EXPLAIN_FORMAT
+		if err != nil || len(parsetree.Statements) != 1 {
+			continue
+		}
+		stmt := parsetree.Statements[0].(pg_query_nodes.RawStmt).Stmt
+		switch stmt.(type) {
+		case pg_query_nodes.SelectStmt, pg_query_nodes.InsertStmt, pg_query_nodes.UpdateStmt, pg_query_nodes.DeleteStmt:
+			sample.HasExplain = true
+			sample.ExplainSource = pganalyze_collector.QuerySample_STATEMENT_LOG_EXPLAIN_SOURCE
+			sample.ExplainFormat = pganalyze_collector.QuerySample_JSON_EXPLAIN_FORMAT
 
+			if useHelper {
+				err = db.QueryRow(QueryMarkerSQL+"SELECT pganalyze.explain($1, $2)", sample.Query, pq.Array(sample.Parameters)).Scan(&sample.ExplainOutput)
+				if err != nil {
+					sample.ExplainError = fmt.Sprintf("%s", err)
+				}
+			} else {
 				if len(sample.Parameters) > 0 {
 					_, err = db.Exec(QueryMarkerSQL + "PREPARE pganalyze_explain AS " + sample.Query)
 					if err != nil {
@@ -73,11 +98,8 @@ func runDbExplain(db *sql.DB, inputs []state.PostgresQuerySample) (outputs []sta
 						continue
 					}
 
-					params := []string{}
-					for i := 0; i < len(sample.Parameters); i++ {
-						params = append(params, pq.QuoteLiteral(sample.Parameters[i]))
-					}
-					err = db.QueryRow(QueryMarkerSQL + "EXPLAIN (VERBOSE, FORMAT JSON) EXECUTE pganalyze_explain(" + strings.Join(params, ", ") + ")").Scan(&sample.ExplainOutput)
+					paramStr := getQuotedParamsStr(sample.Parameters)
+					err = db.QueryRow(QueryMarkerSQL + "EXPLAIN (VERBOSE, FORMAT JSON) EXECUTE pganalyze_explain(" + paramStr + ")").Scan(&sample.ExplainOutput)
 					if err != nil {
 						sample.ExplainError = fmt.Sprintf("%s", err)
 					}
@@ -105,4 +127,12 @@ func contains(strs []string, val string) bool {
 		}
 	}
 	return false
+}
+
+func getQuotedParamsStr(parameters []string) string {
+	params := []string{}
+	for i := 0; i < len(parameters); i++ {
+		params = append(params, pq.QuoteLiteral(parameters[i]))
+	}
+	return strings.Join(params, ", ")
 }
