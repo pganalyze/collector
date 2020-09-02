@@ -83,7 +83,7 @@ type DiffState struct {
 }
 
 // StateOnDiskFormatVersion - Increment this when an old state preserved to disk should be ignored
-const StateOnDiskFormatVersion = 3
+const StateOnDiskFormatVersion = 4
 
 type StateOnDisk struct {
 	FormatVersion uint
