@@ -8,7 +8,7 @@ import (
 )
 
 func transformPostgresRelations(s snapshot.FullSnapshot, newState state.PersistedState, diffState state.DiffState, roleOidToIdx OidToIdx, databaseOidToIdx OidToIdx) snapshot.FullSnapshot {
-	relationOidToIdx := make(map[state.Oid]int32)
+	relationOidToIdx := state.MakeOidToIdxMap()
 	for _, relation := range newState.Relations {
 		ref := snapshot.RelationReference{
 			DatabaseIdx:  databaseOidToIdx[relation.DatabaseOid],
@@ -17,16 +17,16 @@ func transformPostgresRelations(s snapshot.FullSnapshot, newState state.Persiste
 		}
 		idx := int32(len(s.RelationReferences))
 		s.RelationReferences = append(s.RelationReferences, &ref)
-		relationOidToIdx[relation.Oid] = idx
+		relationOidToIdx.Put(relation.DatabaseOid, relation.Oid, idx)
 	}
 
 	for _, relation := range newState.Relations {
-		relationIdx := relationOidToIdx[relation.Oid]
+		relationIdx := relationOidToIdx.Get(relation.DatabaseOid, relation.Oid)
 
 		parentRelationIdx := int32(0)
 		hasParentRelation := false
 		if relation.ParentTableOid != 0 {
-			parentRelationIdx = relationOidToIdx[relation.ParentTableOid]
+			parentRelationIdx = relationOidToIdx.Get(relation.DatabaseOid, relation.ParentTableOid)
 			hasParentRelation = true
 		}
 
@@ -88,7 +88,7 @@ func transformPostgresRelations(s snapshot.FullSnapshot, newState state.Persiste
 				ForeignMatchType:  constraint.ForeignMatchType,
 			}
 			if constraint.ForeignOid != 0 {
-				sConstraint.ForeignRelationIdx = relationOidToIdx[constraint.ForeignOid]
+				sConstraint.ForeignRelationIdx = relationOidToIdx.Get(relation.DatabaseOid, constraint.ForeignOid)
 			}
 			for _, column := range constraint.Columns {
 				sConstraint.Columns = append(sConstraint.Columns, int32(column))
@@ -101,7 +101,7 @@ func transformPostgresRelations(s snapshot.FullSnapshot, newState state.Persiste
 		s.RelationInformations = append(s.RelationInformations, &info)
 
 		// Statistic
-		stats, exists := diffState.RelationStats[relation.Oid]
+		stats, exists := diffState.SchemaStats[relation.DatabaseOid].RelationStats[relation.Oid]
 		if exists {
 			statistic := snapshot.RelationStatistic{
 				RelationIdx:    relationIdx,
@@ -168,7 +168,7 @@ func transformPostgresRelations(s snapshot.FullSnapshot, newState state.Persiste
 			s.IndexInformations = append(s.IndexInformations, &indexInfo)
 
 			// Statistic
-			indexStats, exists := diffState.IndexStats[index.IndexOid]
+			indexStats, exists := diffState.SchemaStats[relation.DatabaseOid].IndexStats[index.IndexOid]
 			if exists {
 				statistic := snapshot.IndexStatistic{
 					IndexIdx:    indexIdx,

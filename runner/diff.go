@@ -7,8 +7,24 @@ import (
 
 func diffState(logger *util.Logger, prevState state.PersistedState, newState state.PersistedState, collectedIntervalSecs uint32) (diffState state.DiffState) {
 	diffState.StatementStats = diffStatements(newState.StatementStats, prevState.StatementStats)
-	diffState.RelationStats = diffRelationStats(newState.RelationStats, prevState.RelationStats)
-	diffState.IndexStats = diffIndexStats(newState.IndexStats, prevState.IndexStats)
+	diffState.SchemaStats = make(map[state.Oid]*state.DiffedSchemaStats)
+	for dbOid := range newState.SchemaStats {
+		newDbStats := newState.SchemaStats[dbOid]
+		prevDbStats := prevState.SchemaStats[dbOid]
+		var prevRelStats state.PostgresRelationStatsMap
+		var prevIdxStats state.PostgresIndexStatsMap
+		if prevDbStats != nil {
+			prevRelStats = prevDbStats.RelationStats
+			prevIdxStats = prevDbStats.IndexStats
+		} else {
+			prevRelStats = make(state.PostgresRelationStatsMap)
+			prevIdxStats = make(state.PostgresIndexStatsMap)
+		}
+		diffState.SchemaStats[dbOid] = &state.DiffedSchemaStats{
+			RelationStats: diffRelationStats(newDbStats.RelationStats, prevRelStats),
+			IndexStats:    diffIndexStats(newDbStats.IndexStats, prevIdxStats),
+		}
+	}
 	diffState.SystemCPUStats = diffSystemCPUStats(newState.System.CPUStats, prevState.System.CPUStats)
 	diffState.SystemNetworkStats = diffSystemNetworkStats(newState.System.NetworkStats, prevState.System.NetworkStats, collectedIntervalSecs)
 	diffState.SystemDiskStats = diffSystemDiskStats(newState.System.DiskStats, prevState.System.DiskStats, collectedIntervalSecs)

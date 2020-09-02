@@ -22,8 +22,8 @@ func CollectAllSchemas(server state.Server, collectionOpts state.CollectionOpts,
 	}
 
 	ps.Relations = []state.PostgresRelation{}
-	ps.RelationStats = make(state.PostgresRelationStatsMap)
-	ps.IndexStats = make(state.PostgresIndexStatsMap)
+
+	ps.SchemaStats = make(map[state.Oid]*state.SchemaStats)
 	ps.Functions = []state.PostgresFunction{}
 
 	for _, dbName := range schemaDbNames {
@@ -38,6 +38,11 @@ func CollectAllSchemas(server state.Server, collectionOpts state.CollectionOpts,
 			logger.PrintError("Error getting OID of database %s", dbName)
 			schemaConnection.Close()
 			continue
+		}
+
+		ps.SchemaStats[databaseOid] = &state.SchemaStats{
+			RelationStats: make(state.PostgresRelationStatsMap),
+			IndexStats:    make(state.PostgresIndexStatsMap),
 		}
 
 		ps = collectSchemaData(collectionOpts, logger, schemaConnection, ps, databaseOid, dbName, ts.Version, server.Config.IgnoreSchemaRegexp)
@@ -67,7 +72,7 @@ func collectSchemaData(collectionOpts state.CollectionOpts, logger *util.Logger,
 			return ps
 		}
 		for k, v := range newRelationStats {
-			ps.RelationStats[k] = v
+			ps.SchemaStats[databaseOid].RelationStats[k] = v
 		}
 
 		newIndexStats, err := GetIndexStats(db, postgresVersion, ignoreRegexp)
@@ -76,7 +81,7 @@ func collectSchemaData(collectionOpts state.CollectionOpts, logger *util.Logger,
 			return ps
 		}
 		for k, v := range newIndexStats {
-			ps.IndexStats[k] = v
+			ps.SchemaStats[databaseOid].IndexStats[k] = v
 		}
 	}
 

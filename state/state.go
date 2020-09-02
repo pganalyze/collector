@@ -8,14 +8,18 @@ import (
 	"github.com/pganalyze/collector/config"
 )
 
+type SchemaStats struct {
+	RelationStats PostgresRelationStatsMap
+	IndexStats    PostgresIndexStatsMap
+	FunctionStats PostgresFunctionStatsMap
+}
+
 // PersistedState - State thats kept across collector runs to be used for diffs
 type PersistedState struct {
 	CollectedAt time.Time
 
 	StatementStats PostgresStatementStatsMap
-	RelationStats  PostgresRelationStatsMap
-	IndexStats     PostgresIndexStatsMap
-	FunctionStats  PostgresFunctionStatsMap
+	SchemaStats    map[Oid]*SchemaStats
 
 	Relations []PostgresRelation
 	Functions []PostgresFunction
@@ -60,12 +64,16 @@ type TransientState struct {
 	SentryClient *raven.Client
 }
 
+type DiffedSchemaStats struct {
+	RelationStats DiffedPostgresRelationStatsMap
+	IndexStats    DiffedPostgresIndexStatsMap
+	FunctionStats DiffedPostgresFunctionStatsMap
+}
+
 // DiffState - Result of diff-ing two persistent state structs
 type DiffState struct {
 	StatementStats DiffedPostgresStatementStatsMap
-	RelationStats  DiffedPostgresRelationStatsMap
-	IndexStats     DiffedPostgresIndexStatsMap
-	FunctionStats  DiffedPostgresFunctionStatsMap
+	SchemaStats    map[Oid]*DiffedSchemaStats
 
 	SystemCPUStats     DiffedSystemCPUStatsMap
 	SystemNetworkStats DiffedNetworkStatsMap
@@ -75,7 +83,7 @@ type DiffState struct {
 }
 
 // StateOnDiskFormatVersion - Increment this when an old state preserved to disk should be ignored
-const StateOnDiskFormatVersion = 3
+const StateOnDiskFormatVersion = 4
 
 type StateOnDisk struct {
 	FormatVersion uint
