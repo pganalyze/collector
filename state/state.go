@@ -8,7 +8,7 @@ import (
 	"github.com/pganalyze/collector/config"
 )
 
-type DBStats struct {
+type SchemaStats struct {
 	RelationStats PostgresRelationStatsMap
 	IndexStats    PostgresIndexStatsMap
 	FunctionStats PostgresFunctionStatsMap
@@ -19,7 +19,7 @@ type PersistedState struct {
 	CollectedAt time.Time
 
 	StatementStats PostgresStatementStatsMap
-	DBStats        map[Oid]*DBStats
+	SchemaStats    map[Oid]*SchemaStats
 
 	Relations []PostgresRelation
 	Functions []PostgresFunction
@@ -64,7 +64,7 @@ type TransientState struct {
 	SentryClient *raven.Client
 }
 
-type DiffedDBStats struct {
+type DiffedSchemaStats struct {
 	RelationStats DiffedPostgresRelationStatsMap
 	IndexStats    DiffedPostgresIndexStatsMap
 	FunctionStats DiffedPostgresFunctionStatsMap
@@ -73,7 +73,7 @@ type DiffedDBStats struct {
 // DiffState - Result of diff-ing two persistent state structs
 type DiffState struct {
 	StatementStats DiffedPostgresStatementStatsMap
-	DBStats        map[Oid]*DiffedDBStats
+	SchemaStats    map[Oid]*DiffedSchemaStats
 
 	SystemCPUStats     DiffedSystemCPUStatsMap
 	SystemNetworkStats DiffedNetworkStatsMap

@@ -7,10 +7,10 @@ import (
 
 func diffState(logger *util.Logger, prevState state.PersistedState, newState state.PersistedState, collectedIntervalSecs uint32) (diffState state.DiffState) {
 	diffState.StatementStats = diffStatements(newState.StatementStats, prevState.StatementStats)
-	diffState.DBStats = make(map[state.Oid]*state.DiffedDBStats)
-	for dbOid := range newState.DBStats {
-		newDbStats := newState.DBStats[dbOid]
-		prevDbStats := prevState.DBStats[dbOid]
+	diffState.SchemaStats = make(map[state.Oid]*state.DiffedSchemaStats)
+	for dbOid := range newState.SchemaStats {
+		newDbStats := newState.SchemaStats[dbOid]
+		prevDbStats := prevState.SchemaStats[dbOid]
 		var prevRelStats state.PostgresRelationStatsMap
 		var prevIdxStats state.PostgresIndexStatsMap
 		if prevDbStats != nil {
@@ -20,7 +20,7 @@ func diffState(logger *util.Logger, prevState state.PersistedState, newState sta
 			prevRelStats = make(state.PostgresRelationStatsMap)
 			prevIdxStats = make(state.PostgresIndexStatsMap)
 		}
-		diffState.DBStats[dbOid] = &state.DiffedDBStats{
+		diffState.SchemaStats[dbOid] = &state.DiffedSchemaStats{
 			RelationStats: diffRelationStats(newDbStats.RelationStats, prevRelStats),
 			IndexStats:    diffIndexStats(newDbStats.IndexStats, prevIdxStats),
 		}
