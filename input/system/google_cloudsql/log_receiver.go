@@ -2,9 +2,11 @@ package google_cloudsql
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/pganalyze/collector/config"
+	"github.com/pganalyze/collector/input/postgres"
 	"github.com/pganalyze/collector/logs"
 	"github.com/pganalyze/collector/logs/stream"
 	"github.com/pganalyze/collector/state"
@@ -89,4 +91,26 @@ func logReceiver(ctx context.Context, servers []state.Server, in <-chan LogStrea
 			}
 		}
 	}()
+}
+
+const settingValueSQL string = `
+SELECT setting
+	FROM pg_settings
+ WHERE name = '%s'`
+
+func getPostgresSetting(settingName string, server state.Server, globalCollectionOpts state.CollectionOpts, prefixedLogger *util.Logger) (string, error) {
+	var value string
+
+	db, err := postgres.EstablishConnection(server, prefixedLogger, globalCollectionOpts, "")
+	if err != nil {
+		return "", fmt.Errorf("Could not connect to database to retrieve \"%s\": %s", settingName, err)
+	}
+
+	err = db.QueryRow(postgres.QueryMarkerSQL + fmt.Sprintf(settingValueSQL, settingName)).Scan(&value)
+	db.Close()
+	if err != nil {
+		return "", fmt.Errorf("Could not read \"%s\" setting: %s", settingName, err)
+	}
+
+	return value, nil
 }
