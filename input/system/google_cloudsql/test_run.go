@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/pganalyze/collector/input/postgres"
+	"github.com/pganalyze/collector/logs"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
 )
@@ -14,13 +15,22 @@ import (
 func LogTestRun(server state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) error {
 	cctx, cancel := context.WithCancel(context.Background())
 
+	logLinePrefix, err := getPostgresSetting("log_line_prefix", server, globalCollectionOpts, logger)
+	if err != nil {
+		cancel()
+		return err
+	} else if !logs.IsSupportedPrefix(logLinePrefix) {
+		cancel()
+		return fmt.Errorf("Unsupported log_line_prefix setting: '%s'", logLinePrefix)
+	}
+
 	// We're testing one server at a time during the test run for now
 	servers := []state.Server{server}
 
 	logTestSucceeded := make(chan bool, 1)
 	gcpLogStream := make(chan LogStreamItem, 500)
 	wg := sync.WaitGroup{}
-	err := SetupLogSubscriber(cctx, &wg, globalCollectionOpts, logger, servers, gcpLogStream)
+	err = SetupLogSubscriber(cctx, &wg, globalCollectionOpts, logger, servers, gcpLogStream)
 	if err != nil {
 		cancel()
 		return err
