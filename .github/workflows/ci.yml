@@ -36,3 +36,35 @@ jobs:
         make build OUTFILE=pganalyze-collector-linux-amd64
         make test
         make integration_test
+
+  release:
+    needs: build
+
+    if: ${{ startsWith( github.ref, 'refs/tags' ) }}
+
+    steps:
+    - name: Get version from tag
+      id: get_version
+      run: echo ::set-output name=version::${GITHUB_REF#refs/tags/}
+
+    - name: Create release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ get_version.outputs.version }}
+        release_name: Release ${{ get_version.outputs.version }}
+      draft: false
+      prerelease: false
+
+    - name: Upload release build
+      id: upload-release-build
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./pganalyze-collector-linux-amd64
+        asset_name: pganalyze-collector-linux-amd64
+        asset_content_type: application/octet-stream
