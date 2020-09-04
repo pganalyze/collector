@@ -55,8 +55,8 @@ jobs:
       with:
         tag_name: ${{ steps.get_version.outputs.version }}
         release_name: Release ${{ steps.get_version.outputs.version }}
-      draft: false
-      prerelease: false
+        draft: false
+        prerelease: false
 
     - name: Upload release build
       id: upload-release-build
