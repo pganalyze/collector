@@ -1,5 +1,35 @@
 # Changelog
 
+## 0.33.0      2020-09-03
+
+* Add helper for log-based EXPLAIN access and use if available
+  - This lets us avoid granting the pganalyze user any access to the data to follow
+    the principle of least privilege
+  - See https://github.com/pganalyze/collector#setting-up-log-explain-helper
+* Avoid corrupted snapshots when OIDs get reused across databases
+  - This would have shown as data not being visible in pganalyze,
+    particularly for servers with many databases where tables were
+    dropped and recreated often
+* Locked relations: Ignore table statistics, handle other exclusive locks
+   - Tables being rewritten would cause the relation statistics query to
+      fail due to statement timeout (caused by lock being held)
+   - Non-relation locks held in AccessExclusiveLock mode would cause all
+      relation information to disappear, but only for everything thats not
+      the top-level relation information. This is due to the behaviour of
+      NOT IN when the list contains NULLs (never being true, even if an
+      item doesn't match the list). The top-level relation information
+      was using a LEFT JOIN that doesn't suffer from this problem. This likely
+      caused problems reported as missing index information, or indices
+      showing as being recently created even though they've exited for a
+      while.
+* Improvements to table partitioning reporting
+* Enable additional settings to work correctly when used in Heroku/Docker
+  - DB_NAME
+  - DB_SSLROOTCERT_CONTENTS
+  - DB_SSLCERT_CONTENTS
+  - DB_SSLKEY_CONTENTS
+
+
 ## 0.32.0      2020-08-16
 
 * Add `ignore_schema_regexp` / `IGNORE_SCHEMA_REGEXP` configuration option
