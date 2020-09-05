@@ -328,6 +328,21 @@ var parseTests = []parseTestpair{
 		},
 		true,
 	},
+	// Custom 10 format
+	{
+		"",
+		"2020-09-04 16:03:11.375 UTC [417880]: [1-1] db=mydb,user=myuser LOG:  pganalyze-collector-identify: myserver",
+		state.LogLine{
+			OccurredAt:    time.Date(2020, time.September, 4, 16, 3, 11, 375*1000*1000, time.UTC),
+			Username:      "myuser",
+			Database:      "mydb",
+			BackendPid:    417880,
+			LogLineNumber: 1,
+			LogLevel:      pganalyze_collector.LogLineInformation_LOG,
+			Content:       "pganalyze-collector-identify: myserver",
+		},
+		true,
+	},
 	// Simple format
 	{
 		"",
