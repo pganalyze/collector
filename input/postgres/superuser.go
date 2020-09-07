@@ -54,6 +54,19 @@ func connectedAsSuperUser(db *sql.DB, systemType string) bool {
 	return enabled
 }
 
+func isCloudInternalDatabase(systemType string, databaseName string) bool {
+	if systemType == "amazon_rds" {
+		return databaseName == "rdsadmin"
+	}
+	if systemType == "azure_database" {
+		return databaseName == "azure_maintenance"
+	}
+	if systemType == "google_cloudsql" {
+		return databaseName == "cloudsqladmin"
+	}
+	return false
+}
+
 const connectedAsMonitoringRoleSQL string = `
 SELECT pg_has_role(oid, 'MEMBER') FROM pg_roles WHERE rolname = 'pg_monitor'
 `
