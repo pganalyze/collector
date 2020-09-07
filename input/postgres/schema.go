@@ -12,7 +12,7 @@ func CollectAllSchemas(server state.Server, collectionOpts state.CollectionOpts,
 
 	if server.Config.DbAllNames {
 		for _, database := range ts.Databases {
-			if !database.IsTemplate && database.AllowConnections && !(systemType == "amazon_rds" && database.Name == "rdsadmin") {
+			if !database.IsTemplate && database.AllowConnections && !isCloudInternalDatabase(systemType, database.Name) {
 				schemaDbNames = append(schemaDbNames, database.Name)
 			}
 		}
