@@ -3,7 +3,7 @@ name: CI
 # N.B.: release.yml should be updated to match as necessary
 on:
   push:
-    branches: [ master,use-github-actions-for-releases ]
+    branches: [ master ]
   pull_request:
     branches: [ master ]
 
