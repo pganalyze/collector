@@ -34,11 +34,22 @@ jobs:
         make test
         make integration_test
 
+    - name: Upload build
+        uses: actions/upload-artifact@v2
+        with:
+          name: pganalyze-collector-linux-amd64
+          path: pganalyze-collector-linux-amd64
+
   release:
     needs: build
     runs-on: ubuntu-latest
 
     steps:
+    - name: Download build
+      uses: actions/download-artifact@v2
+      with:
+        name: pganalyze-collector-linux-amd64
+
     - name: Get version from tag
       id: get_version
       run: echo ::set-output name=version::${GITHUB_REF#refs/tags/}
