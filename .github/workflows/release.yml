@@ -1,15 +1,14 @@
-name: CI
+name: Release
 
-# N.B.: release.yml should be updated to match as necessary
+# N.B.: build steps should match the tests we run in ci.yml
 on:
-  push:
-    branches: [ master,use-github-actions-for-releases ]
-  pull_request:
-    branches: [ master ]
+  create
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    # ensure we don't release on create events for branches (only tags)
+    if: ${{ startsWith( github.ref, 'refs/tags' ) }}
 
     steps:
 
@@ -38,8 +37,6 @@ jobs:
   release:
     needs: build
     runs-on: ubuntu-latest
-
-    if: ${{ startsWith( github.ref, 'refs/tags' ) }}
 
     steps:
     - name: Get version from tag
