@@ -35,10 +35,10 @@ jobs:
         make integration_test
 
     - name: Upload build
-        uses: actions/upload-artifact@v2
-        with:
-          name: pganalyze-collector-linux-amd64
-          path: pganalyze-collector-linux-amd64
+      uses: actions/upload-artifact@v2
+      with:
+        name: pganalyze-collector-linux-amd64
+        path: pganalyze-collector-linux-amd64
 
   release:
     needs: build
