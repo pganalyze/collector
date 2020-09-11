@@ -101,41 +101,44 @@ func transformPostgresRelations(s snapshot.FullSnapshot, newState state.Persiste
 		s.RelationInformations = append(s.RelationInformations, &info)
 
 		// Statistic
-		stats, exists := diffState.SchemaStats[relation.DatabaseOid].RelationStats[relation.Oid]
-		if exists {
-			statistic := snapshot.RelationStatistic{
-				RelationIdx:    relationIdx,
-				SizeBytes:      stats.SizeBytes,
-				ToastSizeBytes: stats.ToastSizeBytes,
-				SeqScan:        stats.SeqScan,
-				SeqTupRead:     stats.SeqTupRead,
-				IdxScan:        stats.IdxScan,
-				IdxTupFetch:    stats.IdxTupFetch,
-				NTupIns:        stats.NTupIns,
-				NTupUpd:        stats.NTupUpd,
-				NTupDel:        stats.NTupDel,
-				NTupHotUpd:     stats.NTupHotUpd,
-				NLiveTup:       stats.NLiveTup,
-				NDeadTup:       stats.NDeadTup,
-				HeapBlksRead:   stats.HeapBlksRead,
-				HeapBlksHit:    stats.HeapBlksHit,
-				IdxBlksRead:    stats.IdxBlksRead,
-				IdxBlksHit:     stats.IdxBlksHit,
-				ToastBlksRead:  stats.ToastBlksRead,
-				ToastBlksHit:   stats.ToastBlksHit,
-				TidxBlksRead:   stats.TidxBlksRead,
-				TidxBlksHit:    stats.TidxBlksHit,
-			}
-			if stats.NModSinceAnalyze.Valid {
-				statistic.NModSinceAnalyze = stats.NModSinceAnalyze.Int64
-			}
-			s.RelationStatistics = append(s.RelationStatistics, &statistic)
+		schemaStats, schemaStatsExist := diffState.SchemaStats[relation.DatabaseOid]
+		if schemaStatsExist {
+			stats, exists := schemaStats.RelationStats[relation.Oid]
+			if exists {
+				statistic := snapshot.RelationStatistic{
+					RelationIdx:    relationIdx,
+					SizeBytes:      stats.SizeBytes,
+					ToastSizeBytes: stats.ToastSizeBytes,
+					SeqScan:        stats.SeqScan,
+					SeqTupRead:     stats.SeqTupRead,
+					IdxScan:        stats.IdxScan,
+					IdxTupFetch:    stats.IdxTupFetch,
+					NTupIns:        stats.NTupIns,
+					NTupUpd:        stats.NTupUpd,
+					NTupDel:        stats.NTupDel,
+					NTupHotUpd:     stats.NTupHotUpd,
+					NLiveTup:       stats.NLiveTup,
+					NDeadTup:       stats.NDeadTup,
+					HeapBlksRead:   stats.HeapBlksRead,
+					HeapBlksHit:    stats.HeapBlksHit,
+					IdxBlksRead:    stats.IdxBlksRead,
+					IdxBlksHit:     stats.IdxBlksHit,
+					ToastBlksRead:  stats.ToastBlksRead,
+					ToastBlksHit:   stats.ToastBlksHit,
+					TidxBlksRead:   stats.TidxBlksRead,
+					TidxBlksHit:    stats.TidxBlksHit,
+				}
+				if stats.NModSinceAnalyze.Valid {
+					statistic.NModSinceAnalyze = stats.NModSinceAnalyze.Int64
+				}
+				s.RelationStatistics = append(s.RelationStatistics, &statistic)
 
-			// Events
-			s.RelationEvents = addRelationEvents(relationIdx, s.RelationEvents, stats.AnalyzeCount, stats.LastAnalyze, snapshot.RelationEvent_MANUAL_ANALYZE)
-			s.RelationEvents = addRelationEvents(relationIdx, s.RelationEvents, stats.AutoanalyzeCount, stats.LastAutoanalyze, snapshot.RelationEvent_AUTO_ANALYZE)
-			s.RelationEvents = addRelationEvents(relationIdx, s.RelationEvents, stats.VacuumCount, stats.LastVacuum, snapshot.RelationEvent_MANUAL_VACUUM)
-			s.RelationEvents = addRelationEvents(relationIdx, s.RelationEvents, stats.AutovacuumCount, stats.LastAutovacuum, snapshot.RelationEvent_AUTO_VACUUM)
+				// Events
+				s.RelationEvents = addRelationEvents(relationIdx, s.RelationEvents, stats.AnalyzeCount, stats.LastAnalyze, snapshot.RelationEvent_MANUAL_ANALYZE)
+				s.RelationEvents = addRelationEvents(relationIdx, s.RelationEvents, stats.AutoanalyzeCount, stats.LastAutoanalyze, snapshot.RelationEvent_AUTO_ANALYZE)
+				s.RelationEvents = addRelationEvents(relationIdx, s.RelationEvents, stats.VacuumCount, stats.LastVacuum, snapshot.RelationEvent_MANUAL_VACUUM)
+				s.RelationEvents = addRelationEvents(relationIdx, s.RelationEvents, stats.AutovacuumCount, stats.LastAutovacuum, snapshot.RelationEvent_AUTO_VACUUM)
+			}
 		}
 
 		// Indices
@@ -168,18 +171,20 @@ func transformPostgresRelations(s snapshot.FullSnapshot, newState state.Persiste
 			s.IndexInformations = append(s.IndexInformations, &indexInfo)
 
 			// Statistic
-			indexStats, exists := diffState.SchemaStats[relation.DatabaseOid].IndexStats[index.IndexOid]
-			if exists {
-				statistic := snapshot.IndexStatistic{
-					IndexIdx:    indexIdx,
-					SizeBytes:   indexStats.SizeBytes,
-					IdxScan:     indexStats.IdxScan,
-					IdxTupRead:  indexStats.IdxTupRead,
-					IdxTupFetch: indexStats.IdxTupFetch,
-					IdxBlksRead: indexStats.IdxBlksRead,
-					IdxBlksHit:  indexStats.IdxBlksHit,
+			if schemaStatsExist {
+				indexStats, exists := schemaStats.IndexStats[index.IndexOid]
+				if exists {
+					statistic := snapshot.IndexStatistic{
+						IndexIdx:    indexIdx,
+						SizeBytes:   indexStats.SizeBytes,
+						IdxScan:     indexStats.IdxScan,
+						IdxTupRead:  indexStats.IdxTupRead,
+						IdxTupFetch: indexStats.IdxTupFetch,
+						IdxBlksRead: indexStats.IdxBlksRead,
+						IdxBlksHit:  indexStats.IdxBlksHit,
+					}
+					s.IndexStatistics = append(s.IndexStatistics, &statistic)
 				}
-				s.IndexStatistics = append(s.IndexStatistics, &statistic)
 			}
 		}
 	}
