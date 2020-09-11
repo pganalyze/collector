@@ -1,7 +1,6 @@
 name: CI
 
-# Controls when the action will run. Triggers the workflow on push or pull request
-# events but only for the master branch
+# N.B.: release.yml should be updated to match as necessary
 on:
   push:
     branches: [ master ]
@@ -27,9 +26,8 @@ jobs:
 
     - name: Check out code
       uses: actions/checkout@v2
-
-    - name: Initialize submodules
-      run: git submodule update --init
+      with:
+        submodules: true
 
     - name: Runs tests
       run: |

@@ -1,0 +1,77 @@
+name: Release
+
+# N.B.: build steps should match the tests we run in ci.yml
+on:
+  create
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    # ensure we don't release on create events for branches (only tags)
+    if: ${{ startsWith( github.ref, 'refs/tags' ) }}
+
+    steps:
+
+    - name: Set up Go 1.x
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1.14.3
+      id: go
+
+    - name: Set up protoc
+      uses: arduino/setup-protoc@v1.1.0
+      with:
+        version: 3.x
+
+    - name: Check out code
+      uses: actions/checkout@v2
+      with:
+        submodules: true
+
+    - name: Runs tests
+      run: |
+        make build OUTFILE=pganalyze-collector-linux-amd64
+        make test
+        make integration_test
+
+    - name: Upload build
+      uses: actions/upload-artifact@v2
+      with:
+        name: pganalyze-collector-linux-amd64
+        path: pganalyze-collector-linux-amd64
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Download build
+      uses: actions/download-artifact@v2
+      with:
+        name: pganalyze-collector-linux-amd64
+
+    - name: Get version from tag
+      id: get_version
+      run: echo ::set-output name=version::${GITHUB_REF#refs/tags/}
+
+    - name: Create release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ steps.get_version.outputs.version }}
+        release_name: Release ${{ steps.get_version.outputs.version }}
+        draft: false
+        prerelease: false
+
+    - name: Upload release build
+      id: upload-release-build
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./pganalyze-collector-linux-amd64
+        asset_name: pganalyze-collector-linux-amd64
+        asset_content_type: application/octet-stream
