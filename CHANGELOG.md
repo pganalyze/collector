@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.33.1      2020-09-11
+
+* Ignore internal admin databases for GCP and Azure
+  - This avoids collecting data from these internal databases, which produces
+    unnecessary errors when using the all databases setting.
+* Add log_line_prefix check to GCP self-test
+* Schema stats handling: Avoid crash due to nil pointer dereference
+* Add support for "%m [%p]: [%l-1] db=%d,user=%u " log_line_prefix
+
+
 ## 0.33.0      2020-09-03
 
 * Add helper for log-based EXPLAIN access and use if available
