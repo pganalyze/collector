@@ -2,11 +2,13 @@ package postgres
 
 import (
 	"database/sql"
+	"fmt"
 	"strconv"
 	"strings"
 
 	"github.com/guregu/null"
 	"github.com/pganalyze/collector/state"
+	"github.com/pganalyze/collector/util"
 )
 
 func unpackPostgresInt32Array(input null.String) (result []int32) {
@@ -62,4 +64,26 @@ func resolveToastTable(db *sql.DB, toastName string) (string, string, error) {
 		return "", "", err
 	}
 	return schemaName, relationName, nil
+}
+
+const settingValueSQL string = `
+SELECT setting
+	FROM pg_settings
+ WHERE name = '%s'`
+
+func GetPostgresSetting(settingName string, server state.Server, globalCollectionOpts state.CollectionOpts, prefixedLogger *util.Logger) (string, error) {
+	var value string
+
+	db, err := EstablishConnection(server, prefixedLogger, globalCollectionOpts, "")
+	if err != nil {
+		return "", fmt.Errorf("Could not connect to database to retrieve \"%s\": %s", settingName, err)
+	}
+
+	err = db.QueryRow(QueryMarkerSQL + fmt.Sprintf(settingValueSQL, settingName)).Scan(&value)
+	db.Close()
+	if err != nil {
+		return "", fmt.Errorf("Could not read \"%s\" setting: %s", settingName, err)
+	}
+
+	return value, nil
 }
