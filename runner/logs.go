@@ -5,9 +5,11 @@ import (
 
 	"github.com/pganalyze/collector/grant"
 	"github.com/pganalyze/collector/input"
+	"github.com/pganalyze/collector/input/postgres"
 	"github.com/pganalyze/collector/input/system/azure"
 	"github.com/pganalyze/collector/input/system/google_cloudsql"
 	"github.com/pganalyze/collector/input/system/selfhosted"
+	"github.com/pganalyze/collector/logs"
 	"github.com/pganalyze/collector/output"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
@@ -61,6 +63,17 @@ func TestLogsForAllServers(servers []state.Server, globalCollectionOpts state.Co
 		}
 
 		prefixedLogger := logger.WithPrefixAndRememberErrors(server.Config.SectionName)
+
+		logLinePrefix, err := postgres.GetPostgresSetting("log_line_prefix", server, globalCollectionOpts, prefixedLogger)
+		if err != nil {
+			prefixedLogger.PrintError("ERROR - Could not check log_line_prefix for server: %s", err)
+			hasFailedServers = true
+			continue
+		} else if !logs.IsSupportedPrefix(logLinePrefix) {
+			prefixedLogger.PrintError("ERROR - Unsupported log_line_prefix setting: '%s'", logLinePrefix)
+			hasFailedServers = true
+			continue
+		}
 
 		if server.Config.LogLocation != "" {
 			prefixedLogger.PrintInfo("Testing log collection (local)...")
