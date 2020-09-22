@@ -3,6 +3,7 @@ package awsutil
 import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
 	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/pganalyze/collector/config"
@@ -43,6 +44,20 @@ func GetAwsSession(config config.ServerConfig) (*session.Session, error) {
 		}
 
 		return endpoints.DefaultResolver().EndpointFor(service, region, optFns...)
+	}
+
+	if config.AwsAssumeRole != "" {
+		sess, err := session.NewSession(&aws.Config{
+			Credentials:                   creds,
+			CredentialsChainVerboseErrors: aws.Bool(true),
+			Region:                        aws.String(config.AwsRegion),
+			HTTPClient:                    config.HTTPClient,
+			EndpointResolver:              endpoints.ResolverFunc(customResolver),
+		})
+		if err != nil {
+			return nil, err
+		}
+		creds = stscreds.NewCredentials(sess, config.AwsAssumeRole)
 	}
 
 	return session.NewSession(&aws.Config{
