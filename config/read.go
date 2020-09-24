@@ -111,6 +111,9 @@ func getDefaultConfig() *ServerConfig {
 	if awsSecretAccessKey := os.Getenv("AWS_SECRET_ACCESS_KEY"); awsSecretAccessKey != "" {
 		config.AwsSecretAccessKey = awsSecretAccessKey
 	}
+	if awsAssumeRole := os.Getenv("AWS_ASSUME_ROLE"); awsAssumeRole != "" {
+		config.AwsAssumeRole = awsAssumeRole
+	}
 	if awsEndpointSigningRegion := os.Getenv("AWS_ENDPOINT_SIGNING_REGION"); awsEndpointSigningRegion != "" {
 		config.AwsEndpointSigningRegion = awsEndpointSigningRegion
 	}

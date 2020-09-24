@@ -62,6 +62,7 @@ type ServerConfig struct {
 	AwsDbInstanceID    string `ini:"aws_db_instance_id"`
 	AwsAccessKeyID     string `ini:"aws_access_key_id"`
 	AwsSecretAccessKey string `ini:"aws_secret_access_key"`
+	AwsAssumeRole      string `ini:"aws_assume_role"`
 
 	// Support for custom AWS endpoints
 	// See https://docs.aws.amazon.com/sdk-for-go/api/aws/endpoints/
