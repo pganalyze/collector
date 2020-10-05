@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/pganalyze/collector/grant"
@@ -130,13 +131,36 @@ func handleLogAnalysis(analyzableLogLines []state.LogLine) ([]state.LogLine, []s
 }
 
 func stitchLogLines(readyLogLines []state.LogLine) (analyzableLogLines []state.LogLine) {
-	for _, logLine := range readyLogLines {
-		if logLine.LogLevel != pganalyze_collector.LogLineInformation_UNKNOWN {
+	var linesToAppend []int
+	var linesToAppendLenSum int
+	var b strings.Builder
+	for idx, logLine := range readyLogLines {
+		if logLine.LogLevel == pganalyze_collector.LogLineInformation_UNKNOWN {
+			if len(analyzableLogLines) > 0 {
+				linesToAppend = append(linesToAppend, idx)
+				linesToAppendLenSum = linesToAppendLenSum + len(logLine.Content)
+			}
+		} else {
+			if linesToAppendLenSum > 0 {
+				b.Grow(linesToAppendLenSum)
+				for _, logIdx := range linesToAppend {
+					b.WriteString(readyLogLines[logIdx].Content)
+				}
+				analyzableLogLines[len(analyzableLogLines)-1].Content += b.String()
+				b.Reset()
+				linesToAppend = nil
+				linesToAppendLenSum = 0
+			}
 			analyzableLogLines = append(analyzableLogLines, logLine)
-		} else if len(analyzableLogLines) > 0 {
-			analyzableLogLines[len(analyzableLogLines)-1].Content += logLine.Content
-			analyzableLogLines[len(analyzableLogLines)-1].ByteEnd += int64(len(logLine.Content))
 		}
+	}
+	if linesToAppendLenSum > 0 {
+		b.Grow(linesToAppendLenSum)
+		for _, logIdx := range linesToAppend {
+			b.WriteString(readyLogLines[logIdx].Content)
+		}
+		analyzableLogLines[len(analyzableLogLines)-1].Content += b.String()
+		b.Reset()
 	}
 	return
 }
@@ -169,16 +193,16 @@ func AnalyzeStreamInGroups(logLines []state.LogLine) (state.TransientLogState, s
 		return state.TransientLogState{}, state.LogFile{}, tooFreshLogLines, nil
 	}
 
-	logFile, err := writeTmpLogFile(readyLogLines)
-	if err != nil {
-		return state.TransientLogState{}, state.LogFile{}, logLines, err
-	}
-
 	// Ensure that log lines that span multiple lines are already concated together before passing them to analyze
 	//
 	// Since we already sorted by PID earlier, it is safe for us to concatenate lines before grouping. In fact,
 	// this is required for cases where unknown log lines don't have PIDs associated
 	analyzableLogLines := stitchLogLines(readyLogLines)
+
+	logFile, err := writeTmpLogFile(analyzableLogLines)
+	if err != nil {
+		return state.TransientLogState{}, state.LogFile{}, logLines, err
+	}
 
 	logState := state.TransientLogState{CollectedAt: time.Now()}
 	logFile.LogLines, logState.QuerySamples = handleLogAnalysis(analyzableLogLines)
