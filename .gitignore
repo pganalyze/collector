@@ -5,3 +5,4 @@ integration_test/*.json
 integration_test/*.out
 coverage.out
 bin/
+.idea/
