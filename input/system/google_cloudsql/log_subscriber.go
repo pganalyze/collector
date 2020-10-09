@@ -43,6 +43,8 @@ func setupPubSubSubscriber(ctx context.Context, wg *sync.WaitGroup, logger *util
 	if config.GcpCredentialsFile != "" {
 		logger.PrintVerbose("Using GCP credentials file located at: %s", config.GcpCredentialsFile)
 		opts = append(opts, option.WithCredentialsFile(config.GcpCredentialsFile))
+	} else {
+		logger.PrintVerbose("No GCP credentials file provided; assuming GKE workload identity or VM-associated service account")
 	}
 	client, err := pubsub.NewClient(ctx, projectID, opts...)
 	if err != nil {
