@@ -100,7 +100,6 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger) (system sta
 	system.Memory.DirtyBytes = 0
 	system.Memory.SlabBytes = 0
 	system.Memory.MappedBytes = 0
-		KernelVersion: hostInfo.KernelVersion,
 	system.Memory.PageTablesBytes = 0
 	system.Memory.HugePagesSizeBytes = 0
 	system.Memory.HugePagesFree = 0
