@@ -11,6 +11,8 @@ func StateToSnapshot(newState state.PersistedState, diffState state.DiffState, t
 	s = transformPostgres(s, newState, diffState, transientState)
 	s = systemStateToFullSnapshot(s, newState, diffState)
 	s = transformCollectorStats(s, newState, diffState)
+	s = transformCollectorPlatform(s, transientState)
+	s = transformCollectorConfig(s, transientState)
 
 	return s
 }

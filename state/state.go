@@ -62,6 +62,64 @@ type TransientState struct {
 	Version PostgresVersion
 
 	SentryClient *raven.Client
+
+	CollectorConfig   CollectorConfig
+	CollectorPlatform CollectorPlatform
+}
+
+type CollectorConfig struct {
+	SectionName             string
+	DisableLogs             bool
+	DisableActivity         bool
+	EnableLogExplain        bool
+	DbName                  string
+	DbUsername              string
+	DbHost                  string
+	DbPort                  int32
+	DbSslmode               string
+	DbHasSslrootcert        bool
+	DbHasSslcert            bool
+	DbHasSslkey             bool
+	DbExtraNames            []string
+	DbAllNames              bool
+	AwsRegion               string
+	AwsDbInstanceId         string
+	AwsHasAccessKeyId       bool
+	AzureDbServerName       string
+	AzureEventhubNamespace  string
+	AzureEventhubName       string
+	AzureAdTenantId         string
+	AzureAdClientId         string
+	AzureHasAdCertificate   bool
+	GcpCloudsqlInstanceId   string
+	GcpPubsubSubscription   string
+	GcpHasCredentialsFile   bool
+	GcpProjectId            string
+	ApiSystemId             string
+	ApiSystemType           string
+	ApiSystemScope          string
+	DbLogLocation           string
+	DbLogDockerTail         string
+	IgnoreTablePattern      string
+	IgnoreSchemaRegexp      string
+	QueryStatsInterval      int32
+	MaxCollectorConnections int32
+	FilterLogSecret         string
+	FilterQuerySample       string
+	HasProxy                bool
+	ConfigFromEnv           bool
+}
+
+type CollectorPlatform struct {
+	StartedAt            time.Time
+	Architecture         string
+	Hostname             string
+	OperatingSystem      string
+	Platform             string
+	PlatformFamily       string
+	PlatformVersion      string
+	VirtualizationSystem string
+	KernelVersion        string
 }
 
 type DiffedSchemaStats struct {
