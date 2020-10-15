@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/juju/syslog"
 
@@ -370,6 +371,7 @@ func main() {
 	}
 
 	globalCollectionOpts := state.CollectionOpts{
+		StartedAt:                time.Now(),
 		SubmitCollectedData:      true,
 		TestRun:                  testRun,
 		TestReport:               testReport,

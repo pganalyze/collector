@@ -2,16 +2,12 @@ package input
 
 import (
 	"runtime"
-	"time"
 
 	"github.com/pganalyze/collector/state"
 	"github.com/shirou/gopsutil/host"
 )
 
-// TODO: is there a better place to initialize this?
-var collectorStartTime = time.Now()
-
-func getCollectorPlatform() state.CollectorPlatform {
+func getCollectorPlatform(globalCollectionOpts state.CollectionOpts) state.CollectorPlatform {
 	hostInfo, err := host.Info()
 	if err != nil {
 		// TODO: log this? return error?
@@ -23,7 +19,7 @@ func getCollectorPlatform() state.CollectorPlatform {
 		virtSystem = hostInfo.VirtualizationSystem
 	}
 	return state.CollectorPlatform{
-		StartedAt:            collectorStartTime,
+		StartedAt:            globalCollectionOpts.StartedAt,
 		Architecture:         runtime.GOARCH,
 		Hostname:             hostInfo.Hostname,
 		OperatingSystem:      hostInfo.OS,

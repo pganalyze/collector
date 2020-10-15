@@ -150,6 +150,8 @@ type StateOnDisk struct {
 }
 
 type CollectionOpts struct {
+	StartedAt time.Time
+
 	CollectPostgresRelations bool
 	CollectPostgresSettings  bool
 	CollectPostgresLocks     bool
