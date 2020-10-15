@@ -21,12 +21,13 @@ import (
 // (1) Self-managed VMs (local log tail)
 // (2) Heroku Postgres (network log drain)
 // (3) Google Cloud SQL (GCP Pub/Sub)
+// (4) Azure Database for PostgreSQL (Azure Event Hub)
 //
 // Self-managed VM log data looks like this:
 // - Correctly ordered (we never have to sort the line for a specific PID earlier than another line)
 // - Subsequent lines will be missing PID data (since the log_line_prefix doesn't get output again)
+// - Subsequent lines will be missing timestamp data (only lines with log_line_prefix have a timestamp)
 // - Data from different PIDs might be mixed, so we need to split data up by PID before analysis
-// - Only lines with log_line_prefix have a timestamp
 //
 // Heroku log data looks like this:
 // - Not correctly ordered (lines from logplex may arrive in any order)
@@ -175,14 +176,28 @@ func AnalyzeStreamInGroups(logLines []state.LogLine) (state.TransientLogState, s
 	//
 	// Its important we do this early, to support out-of-order receipt of log lines,
 	// up to the freshness threshold used in the next function call (3 seconds)
+	allLinesHaveBackendPid := true
+	allLinesHaveLogLineNumber := true
+	allLinesHaveOccurredAt := true
+	for _, logLine := range logLines {
+		if logLine.BackendPid == 0 {
+			allLinesHaveBackendPid = false
+		}
+		if logLine.LogLineNumber == 0 {
+			allLinesHaveLogLineNumber = false
+		}
+		if logLine.OccurredAt.IsZero() {
+			allLinesHaveOccurredAt = false
+		}
+	}
 	sort.SliceStable(logLines, func(i, j int) bool {
-		if logLines[i].BackendPid != 0 && logLines[j].BackendPid != 0 && logLines[i].BackendPid != logLines[j].BackendPid {
+		if allLinesHaveBackendPid && logLines[i].BackendPid != logLines[j].BackendPid {
 			return logLines[i].BackendPid < logLines[j].BackendPid
 		}
-		if logLines[i].LogLineNumber != 0 && logLines[j].LogLineNumber != 0 && logLines[i].LogLineNumber != logLines[j].LogLineNumber {
+		if allLinesHaveLogLineNumber && logLines[i].LogLineNumber != logLines[j].LogLineNumber {
 			return logLines[i].LogLineNumber < logLines[j].LogLineNumber
 		}
-		if !logLines[i].OccurredAt.IsZero() && !logLines[j].OccurredAt.IsZero() {
+		if allLinesHaveOccurredAt {
 			return logLines[i].OccurredAt.Sub(logLines[j].OccurredAt) < 0
 		}
 		return false // Keep initial order

@@ -192,6 +192,69 @@ var tests = []testpair{
 		[]state.LogLine{},
 		nil,
 	},
+	// Multiple lines not concatenated yet (use case for self-managed systems)
+	{
+		[]state.LogLine{
+			{
+				CollectedAt: now.Add(-10 * time.Second),
+				OccurredAt:  now.Add(-10 * time.Second),
+				LogLevel:    pganalyze_collector.LogLineInformation_LOG,
+				BackendPid:  80,
+				Content:     "zero\n",
+			},
+			{
+				CollectedAt: now.Add(-5 * time.Second),
+				OccurredAt:  now.Add(-5 * time.Second),
+				LogLevel:    pganalyze_collector.LogLineInformation_LOG,
+				BackendPid:  42,
+				Content:     "first\n",
+			},
+			{
+				CollectedAt: now.Add(-5 * time.Second),
+				Content:     "second\n",
+			},
+			{
+				CollectedAt: now.Add(-3 * time.Second),
+				OccurredAt:  now.Add(-3 * time.Second),
+				LogLevel:    pganalyze_collector.LogLineInformation_ERROR,
+				BackendPid:  77,
+				Content:     "third\n",
+			},
+		},
+		state.TransientLogState{},
+		state.LogFile{
+			LogLines: []state.LogLine{
+				{
+					CollectedAt: now.Add(-10 * time.Second),
+					OccurredAt:  now.Add(-10 * time.Second),
+					LogLevel:    pganalyze_collector.LogLineInformation_LOG,
+					ByteEnd:     5,
+					BackendPid:  80,
+				},
+				{
+					CollectedAt:      now.Add(-5 * time.Second),
+					OccurredAt:       now.Add(-5 * time.Second),
+					LogLevel:         pganalyze_collector.LogLineInformation_LOG,
+					ByteStart:        5,
+					ByteContentStart: 5,
+					ByteEnd:          18,
+					BackendPid:       42,
+				},
+				{
+					CollectedAt:      now.Add(-3 * time.Second),
+					OccurredAt:       now.Add(-3 * time.Second),
+					LogLevel:         pganalyze_collector.LogLineInformation_ERROR,
+					ByteStart:        18,
+					ByteContentStart: 18,
+					ByteEnd:          24,
+					BackendPid:       77,
+				},
+			},
+		},
+		"zero\nfirst\nsecond\nthird\n",
+		[]state.LogLine{},
+		nil,
+	},
 	//{
 	// There should be a test for this method
 	// - Pass in two logLines, one at X, one at X + 2, and assume the time is x + 3
