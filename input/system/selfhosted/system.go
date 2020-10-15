@@ -59,7 +59,6 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger) (system sta
 		system.Info.SelfHosted.PlatformFamily = hostInfo.PlatformFamily
 		system.Info.SelfHosted.PlatformVersion = hostInfo.PlatformVersion
 		system.Info.SelfHosted.KernelVersion = hostInfo.KernelVersion
-		system.Info.SelfHosted.KernelVersion = hostInfo.KernelVersion
 
 		if hostInfo.VirtualizationRole == "guest" {
 			system.Info.SelfHosted.VirtualizationSystem = hostInfo.VirtualizationSystem
