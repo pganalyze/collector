@@ -4,13 +4,16 @@ import (
 	"runtime"
 
 	"github.com/pganalyze/collector/state"
+	"github.com/pganalyze/collector/util"
 	"github.com/shirou/gopsutil/host"
 )
 
-func getCollectorPlatform(globalCollectionOpts state.CollectionOpts) state.CollectorPlatform {
+func getCollectorPlatform(globalCollectionOpts state.CollectionOpts, logger *util.Logger) state.CollectorPlatform {
 	hostInfo, err := host.Info()
 	if err != nil {
-		// TODO: log this? return error?
+		if globalCollectionOpts.TestRun {
+			logger.PrintVerbose("Could not get collector host information: %s", err)
+		}
 		return state.CollectorPlatform{}
 	}
 
