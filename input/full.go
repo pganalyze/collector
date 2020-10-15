@@ -113,6 +113,8 @@ func CollectFull(server state.Server, connection *sql.DB, globalCollectionOpts s
 	}
 
 	ps.CollectorStats = getCollectorStats()
+	ts.CollectorConfig = getCollectorConfig(server.Config)
+	ts.CollectorPlatform = getCollectorPlatform(globalCollectionOpts, logger)
 
 	return
 }

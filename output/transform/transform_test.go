@@ -8,6 +8,7 @@ import (
 	"github.com/pganalyze/collector/output/transform"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func TestStatements(t *testing.T) {
@@ -33,7 +34,12 @@ func TestStatements(t *testing.T) {
 	actualJSON, _ := json.Marshal(actual)
 
 	expected := pganalyze_collector.FullSnapshot{
+		Config:             &pganalyze_collector.CollectorConfig{},
 		CollectorStatistic: &pganalyze_collector.CollectorStatistic{},
+		CollectorStartedAt: &timestamppb.Timestamp{
+			Seconds: -62135596800,
+			Nanos:   0,
+		},
 		System: &pganalyze_collector.System{
 			SystemInformation:  &pganalyze_collector.SystemInformation{},
 			SchedulerStatistic: &pganalyze_collector.SchedulerStatistic{},
@@ -81,7 +87,12 @@ func TestStatements(t *testing.T) {
 
 	// Sadly this is the quickest way with all the idx references...
 	expectedAlt := pganalyze_collector.FullSnapshot{
+		Config:             &pganalyze_collector.CollectorConfig{},
 		CollectorStatistic: &pganalyze_collector.CollectorStatistic{},
+		CollectorStartedAt: &timestamppb.Timestamp{
+			Seconds: -62135596800,
+			Nanos:   0,
+		},
 		System: &pganalyze_collector.System{
 			SystemInformation:  &pganalyze_collector.SystemInformation{},
 			SchedulerStatistic: &pganalyze_collector.SchedulerStatistic{},
