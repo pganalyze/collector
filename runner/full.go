@@ -90,13 +90,13 @@ func processDatabase(server state.Server, globalCollectionOpts state.CollectionO
 		}
 	}
 
-	transientState := state.TransientState{}
+	var sentryClient *raven.Client
 	if server.Grant.Config.SentryDsn != "" {
-		transientState.SentryClient, err = raven.NewWithTags(server.Grant.Config.SentryDsn, map[string]string{"server_id": server.Grant.Config.ServerID})
-		transientState.SentryClient.SetRelease(util.CollectorVersion)
+		sentryClient, err = raven.NewWithTags(server.Grant.Config.SentryDsn, map[string]string{"server_id": server.Grant.Config.ServerID})
 		if err != nil {
-			transientState.SentryClient = nil
 			logger.PrintVerbose("Failed to setup Sentry client: %s", err)
+		} else {
+			sentryClient.SetRelease(util.CollectorVersion)
 		}
 	}
 
@@ -106,10 +106,9 @@ func processDatabase(server state.Server, globalCollectionOpts state.CollectionO
 
 	var panicErr interface{}
 	var stackTrace []byte
-	if transientState.SentryClient != nil {
-		panicErr, _ = transientState.SentryClient.CapturePanic(runFunc, nil)
-		transientState.SentryClient.Wait()
-		transientState.SentryClient = nil
+	if sentryClient != nil {
+		panicErr, _ = sentryClient.CapturePanic(runFunc, nil)
+		sentryClient.Wait()
 	} else {
 		panicErr, stackTrace = capturePanic(runFunc)
 	}
