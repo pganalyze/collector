@@ -224,7 +224,6 @@ func CollectAllServers(servers []state.Server, globalCollectionOpts state.Collec
 				server.Grant = grant
 				server.PrevState = newState
 				server.StateMutex.Unlock()
-
 				if server.Config.SuccessCallback != "" {
 					go runCompletionCallback("success", server.Config.SuccessCallback, server.Config.SectionName, "full", nil, prefixedLogger)
 				}
