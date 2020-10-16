@@ -65,9 +65,6 @@ type TransientState struct {
 
 	CollectorConfig   CollectorConfig
 	CollectorPlatform CollectorPlatform
-
-	CollectorLogSnapshotDisabled       bool
-	CollectorLogSnapshotDisabledReason string
 }
 
 type CollectorConfig struct {

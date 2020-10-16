@@ -32,6 +32,9 @@ type TransientLogState struct {
 type PersistedLogState struct {
 	AwsFilename string
 	AwsMarker   string
+
+	LogSnapshotDisabled       bool
+	LogSnapshotDisabledReason string
 }
 
 // LogFile - Log file that we are uploading for reference in log line metadata

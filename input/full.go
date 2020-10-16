@@ -116,9 +116,5 @@ func CollectFull(server state.Server, connection *sql.DB, globalCollectionOpts s
 	ts.CollectorConfig = getCollectorConfig(server.Config)
 	ts.CollectorPlatform = getCollectorPlatform(globalCollectionOpts, logger)
 
-	logSnapshotDisabled, logSnapshotDisabledReason := getCollectorLogSnapshotStatus(server.Config, globalCollectionOpts, ts.Settings)
-	ts.CollectorLogSnapshotDisabled = logSnapshotDisabled
-	ts.CollectorLogSnapshotDisabledReason = logSnapshotDisabledReason
-
 	return
 }

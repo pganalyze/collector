@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os/exec"
 	"runtime/debug"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -17,17 +19,66 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
-func collectDiffAndSubmit(server state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.PersistedState, error) {
+const MinSupportedLogMinDurationStatement = 100
+
+func enforceLogCollectionLimits(server *state.Server, transientState state.TransientState) {
+	var disabled = false
+	var disabledReasons []string
+	if server.Config.DisableLogs {
+		disabled = true
+		disabledReasons = append(disabledReasons, "the collector setting disable_logs or environment variable PGA_DISABLE_LOGS is set")
+	}
+
+	if !disabled {
+		for _, setting := range transientState.Settings {
+			if setting.Name == "log_min_duration_statement" && setting.CurrentValue.Valid {
+				numVal, err := strconv.Atoi(setting.CurrentValue.String)
+				if err != nil {
+					continue
+				}
+				if numVal < MinSupportedLogMinDurationStatement {
+					disabled = true
+					disabledReasons = append(disabledReasons,
+						fmt.Sprintf("log_min_duration_statement is set to '%d', below minimum supported threshold '%d'", numVal, MinSupportedLogMinDurationStatement),
+					)
+				}
+			} else if setting.Name == "log_duration" && setting.CurrentValue.Valid {
+				if setting.CurrentValue.String == "on" {
+					disabled = true
+					disabledReasons = append(disabledReasons, "log_duration is set to unsupported value 'on'")
+				}
+			} else if setting.Name == "log_statement" && setting.CurrentValue.Valid {
+				if setting.CurrentValue.String == "all" {
+					disabled = true
+					disabledReasons = append(disabledReasons, "log_statement is set to unsupported value 'all'")
+				}
+			}
+		}
+	}
+
+	server.LogStateMutex.Lock()
+	reason := strings.Join(disabledReasons, "; ")
+	if server.LogPrevState.LogSnapshotDisabled != disabled ||
+		server.LogPrevState.LogSnapshotDisabledReason != reason {
+		var newState = server.LogPrevState
+		newState.LogSnapshotDisabled = disabled
+		newState.LogSnapshotDisabledReason = reason
+	}
+
+	server.LogStateMutex.Unlock()
+}
+
+func collectDiffAndSubmit(server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.PersistedState, error) {
 	var newState state.PersistedState
 	var err error
 	var connection *sql.DB
 
-	connection, err = postgres.EstablishConnection(server, logger, globalCollectionOpts, "")
+	connection, err = postgres.EstablishConnection(*server, logger, globalCollectionOpts, "")
 	if err != nil {
 		return newState, fmt.Errorf("Failed to connect to database: %s", err)
 	}
 
-	newState, transientState, err := input.CollectFull(server, connection, globalCollectionOpts, logger)
+	newState, transientState, err := input.CollectFull(*server, connection, globalCollectionOpts, logger)
 	if err != nil {
 		connection.Close()
 		return newState, err
@@ -35,6 +86,8 @@ func collectDiffAndSubmit(server state.Server, globalCollectionOpts state.Collec
 
 	// This is the easiest way to avoid opening multiple connections to different databases on the same instance
 	connection.Close()
+
+	enforceLogCollectionLimits(server, transientState)
 
 	collectedIntervalSecs := uint32(newState.CollectedAt.Sub(server.PrevState.CollectedAt) / time.Second)
 	if collectedIntervalSecs == 0 {
@@ -45,7 +98,7 @@ func collectDiffAndSubmit(server state.Server, globalCollectionOpts state.Collec
 
 	transientState.HistoricStatementStats = server.PrevState.UnidentifiedStatementStats
 
-	err = output.SendFull(server, globalCollectionOpts, logger, newState, diffState, transientState, collectedIntervalSecs)
+	err = output.SendFull(*server, globalCollectionOpts, logger, newState, diffState, transientState, collectedIntervalSecs)
 	if err != nil {
 		return newState, err
 	}
@@ -71,14 +124,14 @@ func capturePanic(f func()) (err interface{}, stackTrace []byte) {
 	return
 }
 
-func processDatabase(server state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.PersistedState, state.Grant, error) {
+func processServer(server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.PersistedState, state.Grant, error) {
 	var newGrant state.Grant
 	var newState state.PersistedState
 	var err error
 
 	if !globalCollectionOpts.ForceEmptyGrant {
 		// Note: In case of server errors, we should reuse the old grant if its still recent (i.e. less than 50 minutes ago)
-		newGrant, err = grant.GetDefaultGrant(server, globalCollectionOpts, logger)
+		newGrant, err = grant.GetDefaultGrant(*server, globalCollectionOpts, logger)
 		if err != nil {
 			if server.Grant.Valid {
 				logger.PrintVerbose("Could not acquire snapshot grant, reusing previous grant: %s", err)
@@ -152,7 +205,7 @@ func CollectAllServers(servers []state.Server, globalCollectionOpts state.Collec
 			}
 
 			server.StateMutex.Lock()
-			newState, grant, err := processDatabase(*server, globalCollectionOpts, prefixedLogger)
+			newState, grant, err := processServer(server, globalCollectionOpts, prefixedLogger)
 			if err != nil {
 				server.StateMutex.Unlock()
 				allSuccessful = false
@@ -171,6 +224,7 @@ func CollectAllServers(servers []state.Server, globalCollectionOpts state.Collec
 				server.Grant = grant
 				server.PrevState = newState
 				server.StateMutex.Unlock()
+
 				if server.Config.SuccessCallback != "" {
 					go runCompletionCallback("success", server.Config.SuccessCallback, server.Config.SectionName, "full", nil, prefixedLogger)
 				}

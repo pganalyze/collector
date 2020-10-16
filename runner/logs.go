@@ -19,7 +19,9 @@ import (
 func downloadLogsForServer(server state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.PersistedLogState, error) {
 	newLogState := server.LogPrevState
 
-	// check prev log state; if it has the "no logs flag", return
+	if server.LogPrevState.LogSnapshotDisabled {
+		return newLogState, errors.New(server.LogPrevState.LogSnapshotDisabledReason)
+	}
 
 	grant, err := grant.GetLogsGrant(server, globalCollectionOpts, logger)
 	if err != nil {
@@ -149,17 +151,17 @@ func DownloadLogsFromAllServers(servers []state.Server, globalCollectionOpts sta
 		return
 	}
 
-	for idx := range servers {
-		if servers[idx].Config.DisableLogs || (servers[idx].Grant.Valid && !servers[idx].Grant.Config.EnableLogs) {
+	for _, server := range servers {
+		if server.Config.DisableLogs || (server.Grant.Valid && !server.Grant.Config.EnableLogs) {
 			continue
 		}
 
-		if servers[idx].Config.AwsDbInstanceID == "" {
+		if server.Config.AwsDbInstanceID == "" {
 			continue
 		}
 
 		wg.Add(1)
-		go downloadLogsFromOneServer(&wg, &servers[idx], globalCollectionOpts, logger)
+		go downloadLogsFromOneServer(&wg, &server, globalCollectionOpts, logger)
 	}
 
 	wg.Wait()
