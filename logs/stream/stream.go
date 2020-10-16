@@ -217,13 +217,14 @@ func LogTestNone(server state.Server, logFile state.LogFile, logTestSucceeded ch
 //
 // The caller is not expected to do any special time-based buffering themselves.
 func ProcessLogStream(server state.Server, logLines []state.LogLine, globalCollectionOpts state.CollectionOpts, prefixedLogger *util.Logger, logTestSucceeded chan<- bool, logTestFunc func(s state.Server, lf state.LogFile, lt chan<- bool)) []state.LogLine {
-	server.LogStateMutex.Lock()
-	if server.LogPrevState.LogSnapshotDisabled {
-		warning := fmt.Sprintf("Skipping logs: %s", server.LogPrevState.LogSnapshotDisabledReason)
+	server.CollectionStatusMutex.Lock()
+	if server.CollectionStatus.LogSnapshotDisabled {
+		warning := fmt.Sprintf("Skipping logs: %s", server.CollectionStatus.LogSnapshotDisabledReason)
 		prefixedLogger.PrintWarning(warning)
-		server.LogStateMutex.Unlock()
+		server.CollectionStatusMutex.Unlock()
 		return []state.LogLine{}
 	}
+	server.CollectionStatusMutex.Unlock()
 
 	logState, logFile, tooFreshLogLines, err := AnalyzeStreamInGroups(logLines)
 	if err != nil {

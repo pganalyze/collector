@@ -19,10 +19,6 @@ import (
 func downloadLogsForServer(server state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.PersistedLogState, error) {
 	newLogState := server.LogPrevState
 
-	if server.LogPrevState.LogSnapshotDisabled {
-		return newLogState, errors.New(server.LogPrevState.LogSnapshotDisabledReason)
-	}
-
 	grant, err := grant.GetLogsGrant(server, globalCollectionOpts, logger)
 	if err != nil {
 		return newLogState, errors.Wrap(err, "could not get log grant")
@@ -56,7 +52,16 @@ func downloadLogsForServer(server state.Server, globalCollectionOpts state.Colle
 }
 
 func downloadLogsFromOneServer(wg *sync.WaitGroup, server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
+	defer wg.Done()
 	prefixedLogger := logger.WithPrefixAndRememberErrors(server.Config.SectionName)
+
+	server.CollectionStatusMutex.Lock()
+	if server.CollectionStatus.LogSnapshotDisabled {
+		server.CollectionStatusMutex.Unlock()
+		prefixedLogger.PrintError("Could not collect logs for server: %s", server.CollectionStatus.LogSnapshotDisabledReason)
+		return
+	}
+	server.CollectionStatusMutex.Unlock()
 
 	server.LogStateMutex.Lock()
 	newLogState, err := downloadLogsForServer(*server, globalCollectionOpts, prefixedLogger)
@@ -73,7 +78,6 @@ func downloadLogsFromOneServer(wg *sync.WaitGroup, server *state.Server, globalC
 			go runCompletionCallback("success", server.Config.SuccessCallback, server.Config.SectionName, "logs", nil, prefixedLogger)
 		}
 	}
-	wg.Done()
 }
 
 // TestLogsForAllServers - Test log download/tailing

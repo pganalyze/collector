@@ -21,7 +21,7 @@ import (
 
 const MinSupportedLogMinDurationStatement = 100
 
-func enforceLogCollectionLimits(server state.Server, transientState state.TransientState) {
+func validateLogCollectionConfig(server state.Server, transientState state.TransientState) (bool, string) {
 	var disabled = false
 	var disabledReasons []string
 	if server.Config.DisableLogs {
@@ -56,38 +56,33 @@ func enforceLogCollectionLimits(server state.Server, transientState state.Transi
 		}
 	}
 
-	server.LogStateMutex.Lock()
-	reason := strings.Join(disabledReasons, "; ")
-	if server.LogPrevState.LogSnapshotDisabled != disabled ||
-		server.LogPrevState.LogSnapshotDisabledReason != reason {
-		var newState = server.LogPrevState
-		newState.LogSnapshotDisabled = disabled
-		newState.LogSnapshotDisabledReason = reason
-	}
-
-	server.LogStateMutex.Unlock()
+	return disabled, strings.Join(disabledReasons, "; ")
 }
 
-func collectDiffAndSubmit(server state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.PersistedState, error) {
+func collectDiffAndSubmit(server state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.PersistedState, state.CollectionStatus, error) {
 	var newState state.PersistedState
 	var err error
 	var connection *sql.DB
 
 	connection, err = postgres.EstablishConnection(server, logger, globalCollectionOpts, "")
 	if err != nil {
-		return newState, fmt.Errorf("Failed to connect to database: %s", err)
+		return newState, state.CollectionStatus{}, fmt.Errorf("Failed to connect to database: %s", err)
 	}
 
 	newState, transientState, err := input.CollectFull(server, connection, globalCollectionOpts, logger)
 	if err != nil {
 		connection.Close()
-		return newState, err
+		return newState, state.CollectionStatus{}, err
 	}
 
 	// This is the easiest way to avoid opening multiple connections to different databases on the same instance
 	connection.Close()
 
-	enforceLogCollectionLimits(server, transientState)
+	logsDisabled, logsDisabledReason := validateLogCollectionConfig(server, transientState)
+	collectionStatus := state.CollectionStatus{
+		LogSnapshotDisabled:       logsDisabled,
+		LogSnapshotDisabledReason: logsDisabledReason,
+	}
 
 	collectedIntervalSecs := uint32(newState.CollectedAt.Sub(server.PrevState.CollectedAt) / time.Second)
 	if collectedIntervalSecs == 0 {
@@ -100,7 +95,7 @@ func collectDiffAndSubmit(server state.Server, globalCollectionOpts state.Collec
 
 	err = output.SendFull(server, globalCollectionOpts, logger, newState, diffState, transientState, collectedIntervalSecs)
 	if err != nil {
-		return newState, err
+		return newState, collectionStatus, err
 	}
 
 	// After we've done all processing, and in case we did a reset, make sure the
@@ -109,7 +104,7 @@ func collectDiffAndSubmit(server state.Server, globalCollectionOpts state.Collec
 		newState.StatementStats = transientState.ResetStatementStats
 	}
 
-	return newState, nil
+	return newState, collectionStatus, nil
 }
 
 func capturePanic(f func()) (err interface{}, stackTrace []byte) {
@@ -124,9 +119,10 @@ func capturePanic(f func()) (err interface{}, stackTrace []byte) {
 	return
 }
 
-func processServer(server state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.PersistedState, state.Grant, error) {
+func processServer(server state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.PersistedState, state.Grant, state.CollectionStatus, error) {
 	var newGrant state.Grant
 	var newState state.PersistedState
+	var collectionStatus state.CollectionStatus
 	var err error
 
 	if !globalCollectionOpts.ForceEmptyGrant {
@@ -136,7 +132,7 @@ func processServer(server state.Server, globalCollectionOpts state.CollectionOpt
 			if server.Grant.Valid {
 				logger.PrintVerbose("Could not acquire snapshot grant, reusing previous grant: %s", err)
 			} else {
-				return state.PersistedState{}, state.Grant{}, err
+				return state.PersistedState{}, state.Grant{}, state.CollectionStatus{}, err
 			}
 		} else {
 			server.Grant = newGrant
@@ -154,7 +150,7 @@ func processServer(server state.Server, globalCollectionOpts state.CollectionOpt
 	}
 
 	runFunc := func() {
-		newState, err = collectDiffAndSubmit(server, globalCollectionOpts, logger)
+		newState, collectionStatus, err = collectDiffAndSubmit(server, globalCollectionOpts, logger)
 	}
 
 	var panicErr interface{}
@@ -170,7 +166,7 @@ func processServer(server state.Server, globalCollectionOpts state.CollectionOpt
 		logger.PrintVerbose("Panic: %s\n%s", err, stackTrace)
 	}
 
-	return newState, newGrant, err
+	return newState, newGrant, collectionStatus, err
 }
 
 func runCompletionCallback(callbackType string, callbackCmd string, sectionName string, snapshotType string, errIn error, logger *util.Logger) {
@@ -205,7 +201,7 @@ func CollectAllServers(servers []state.Server, globalCollectionOpts state.Collec
 			}
 
 			server.StateMutex.Lock()
-			newState, grant, err := processServer(*server, globalCollectionOpts, prefixedLogger)
+			newState, grant, newCollectionStatus, err := processServer(*server, globalCollectionOpts, prefixedLogger)
 			if err != nil {
 				server.StateMutex.Unlock()
 				allSuccessful = false
@@ -224,6 +220,9 @@ func CollectAllServers(servers []state.Server, globalCollectionOpts state.Collec
 				server.Grant = grant
 				server.PrevState = newState
 				server.StateMutex.Unlock()
+				server.CollectionStatusMutex.Lock()
+				server.CollectionStatus = newCollectionStatus
+				server.CollectionStatusMutex.Unlock()
 				if server.Config.SuccessCallback != "" {
 					go runCompletionCallback("success", server.Config.SuccessCallback, server.Config.SectionName, "full", nil, prefixedLogger)
 				}

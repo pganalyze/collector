@@ -214,6 +214,11 @@ type GrantS3 struct {
 	S3Fields map[string]string `json:"s3_fields"`
 }
 
+type CollectionStatus struct {
+	LogSnapshotDisabled       bool
+	LogSnapshotDisabledReason string
+}
+
 type Server struct {
 	Config           config.ServerConfig
 	RequestedSslMode string
@@ -227,4 +232,7 @@ type Server struct {
 
 	ActivityPrevState  PersistedActivityState
 	ActivityStateMutex *sync.Mutex
+
+	CollectionStatus      CollectionStatus
+	CollectionStatusMutex *sync.Mutex
 }

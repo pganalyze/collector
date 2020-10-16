@@ -20,7 +20,7 @@ import (
 	"github.com/pganalyze/collector/output/transform"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
-	"github.com/satori/go.uuid"
+	uuid "github.com/satori/go.uuid"
 )
 
 func SendFull(server state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, newState state.PersistedState, diffState state.DiffState, transientState state.TransientState, collectedIntervalSecs uint32) error {
@@ -47,6 +47,8 @@ func submitFull(s snapshot.FullSnapshot, server state.Server, collectionOpts sta
 	s.CollectorVersion = util.CollectorNameAndVersion
 	s.SnapshotUuid = snapshotUUID.String()
 	s.CollectedAt, _ = ptypes.TimestampProto(collectedAt)
+	s.CollectorLogSnapshotDisabled = server.CollectionStatus.LogSnapshotDisabled
+	s.CollectorLogSnapshotDisabledReason = server.CollectionStatus.LogSnapshotDisabledReason
 
 	data, err = proto.Marshal(&s)
 	if err != nil {
