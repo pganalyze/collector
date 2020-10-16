@@ -16,12 +16,14 @@ import (
 	"github.com/pkg/errors"
 )
 
-func downloadLogsForServer(server state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.PersistedLogState, bool, error) {
+func downloadLogsForServer(server state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.PersistedLogState, error) {
 	newLogState := server.LogPrevState
+
+	// check prev log state; if it has the "no logs flag", return
 
 	grant, err := grant.GetLogsGrant(server, globalCollectionOpts, logger)
 	if err != nil {
-		return newLogState, false, errors.Wrap(err, "could not get log grant")
+		return newLogState, errors.Wrap(err, "could not get log grant")
 	}
 
 	if !grant.Valid {
@@ -30,13 +32,13 @@ func downloadLogsForServer(server state.Server, globalCollectionOpts state.Colle
 		} else {
 			logger.PrintVerbose("Skipping log data: Feature not available on this pganalyze plan, or log data limit exceeded")
 		}
-		return newLogState, false, nil
+		return newLogState, nil
 	}
 
 	transientLogState, persistedLogState, err := input.DownloadLogs(server, server.LogPrevState, globalCollectionOpts, logger)
 	if err != nil {
 		transientLogState.Cleanup()
-		return newLogState, false, errors.Wrap(err, "could not collect logs")
+		return newLogState, errors.Wrap(err, "could not collect logs")
 	}
 
 	newLogState = persistedLogState
@@ -44,11 +46,32 @@ func downloadLogsForServer(server state.Server, globalCollectionOpts state.Colle
 	err = output.UploadAndSendLogs(server, grant, globalCollectionOpts, logger, transientLogState)
 	if err != nil {
 		transientLogState.Cleanup()
-		return newLogState, false, errors.Wrap(err, "failed to upload/send logs")
+		return newLogState, errors.Wrap(err, "failed to upload/send logs")
 	}
 
 	transientLogState.Cleanup()
-	return newLogState, true, nil
+	return newLogState, nil
+}
+
+func downloadLogsFromOneServer(wg *sync.WaitGroup, server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
+	prefixedLogger := logger.WithPrefixAndRememberErrors(server.Config.SectionName)
+
+	server.LogStateMutex.Lock()
+	newLogState, err := downloadLogsForServer(*server, globalCollectionOpts, prefixedLogger)
+	if err != nil {
+		server.LogStateMutex.Unlock()
+		prefixedLogger.PrintError("Could not collect logs for server: %s", err)
+		if server.Config.ErrorCallback != "" {
+			go runCompletionCallback("error", server.Config.ErrorCallback, server.Config.SectionName, "logs", err, prefixedLogger)
+		}
+	} else {
+		server.LogPrevState = newLogState
+		server.LogStateMutex.Unlock()
+		if server.Config.SuccessCallback != "" {
+			go runCompletionCallback("success", server.Config.SuccessCallback, server.Config.SectionName, "logs", nil, prefixedLogger)
+		}
+	}
+	wg.Done()
 }
 
 // TestLogsForAllServers - Test log download/tailing
@@ -87,7 +110,7 @@ func TestLogsForAllServers(servers []state.Server, globalCollectionOpts state.Co
 			}
 		} else if server.Config.AwsDbInstanceID != "" {
 			prefixedLogger.PrintInfo("Testing log collection (Amazon RDS)...")
-			_, _, err := downloadLogsForServer(server, globalCollectionOpts, prefixedLogger)
+			_, err := downloadLogsForServer(server, globalCollectionOpts, prefixedLogger)
 			if err != nil {
 				hasFailedServers = true
 				prefixedLogger.PrintError("ERROR - Could not get Amazon RDS logs: %s", err)
@@ -136,26 +159,7 @@ func DownloadLogsFromAllServers(servers []state.Server, globalCollectionOpts sta
 		}
 
 		wg.Add(1)
-		go func(server *state.Server) {
-			prefixedLogger := logger.WithPrefixAndRememberErrors(server.Config.SectionName)
-
-			server.LogStateMutex.Lock()
-			newLogState, success, err := downloadLogsForServer(*server, globalCollectionOpts, prefixedLogger)
-			if err != nil {
-				server.LogStateMutex.Unlock()
-				prefixedLogger.PrintError("Could not collect logs for server: %s", err)
-				if server.Config.ErrorCallback != "" {
-					go runCompletionCallback("error", server.Config.ErrorCallback, server.Config.SectionName, "logs", err, prefixedLogger)
-				}
-			} else if success {
-				server.LogPrevState = newLogState
-				server.LogStateMutex.Unlock()
-				if server.Config.SuccessCallback != "" {
-					go runCompletionCallback("success", server.Config.SuccessCallback, server.Config.SectionName, "logs", nil, prefixedLogger)
-				}
-			}
-			wg.Done()
-		}(&servers[idx])
+		go downloadLogsFromOneServer(&wg, &servers[idx], globalCollectionOpts, logger)
 	}
 
 	wg.Wait()
