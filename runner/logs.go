@@ -58,7 +58,7 @@ func downloadLogsFromOneServer(wg *sync.WaitGroup, server *state.Server, globalC
 	server.CollectionStatusMutex.Lock()
 	if server.CollectionStatus.LogSnapshotDisabled {
 		server.CollectionStatusMutex.Unlock()
-		prefixedLogger.PrintError("Could not collect logs for server: %s", server.CollectionStatus.LogSnapshotDisabledReason)
+		prefixedLogger.PrintWarning("Could not collect logs for server: %s", server.CollectionStatus.LogSnapshotDisabledReason)
 		return
 	}
 	server.CollectionStatusMutex.Unlock()
