@@ -21,7 +21,7 @@ import (
 
 const MinSupportedLogMinDurationStatement = 100
 
-func validateLogCollectionConfig(server state.Server, transientState state.TransientState) (bool, string) {
+func validateLogCollectionConfig(server state.Server, settings []state.PostgresSetting) (bool, string) {
 	var disabled = false
 	var disabledReasons []string
 	if server.Config.DisableLogs {
@@ -30,7 +30,7 @@ func validateLogCollectionConfig(server state.Server, transientState state.Trans
 	}
 
 	if !disabled {
-		for _, setting := range transientState.Settings {
+		for _, setting := range settings {
 			if setting.Name == "log_min_duration_statement" && setting.CurrentValue.Valid {
 				numVal, err := strconv.Atoi(setting.CurrentValue.String)
 				if err != nil {
@@ -78,7 +78,7 @@ func collectDiffAndSubmit(server state.Server, globalCollectionOpts state.Collec
 	// This is the easiest way to avoid opening multiple connections to different databases on the same instance
 	connection.Close()
 
-	logsDisabled, logsDisabledReason := validateLogCollectionConfig(server, transientState)
+	logsDisabled, logsDisabledReason := validateLogCollectionConfig(server, transientState.Settings)
 	collectionStatus := state.CollectionStatus{
 		LogSnapshotDisabled:       logsDisabled,
 		LogSnapshotDisabledReason: logsDisabledReason,
