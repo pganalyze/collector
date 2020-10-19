@@ -72,7 +72,7 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 
 	serverConfigs := conf.Servers
 	for _, config := range serverConfigs {
-		servers = append(servers, state.Server{Config: config, StateMutex: &sync.Mutex{}, LogStateMutex: &sync.Mutex{}, ActivityStateMutex: &sync.Mutex{}})
+		servers = append(servers, state.Server{Config: config, StateMutex: &sync.Mutex{}, LogStateMutex: &sync.Mutex{}, ActivityStateMutex: &sync.Mutex{}, CollectionStatusMutex: &sync.Mutex{}})
 		if config.EnableReports {
 			hasAnyReportsEnabled = true
 		}
