@@ -218,7 +218,6 @@ func LogTestNone(server *state.Server, logFile state.LogFile, logTestSucceeded c
 // The caller is not expected to do any special time-based buffering themselves.
 func ProcessLogStream(server *state.Server, logLines []state.LogLine, globalCollectionOpts state.CollectionOpts, prefixedLogger *util.Logger, logTestSucceeded chan<- bool, logTestFunc func(s *state.Server, lf state.LogFile, lt chan<- bool)) []state.LogLine {
 	server.CollectionStatusMutex.Lock()
-	prefixedLogger.PrintWarning("disabled: %t, reason: %s", server.CollectionStatus.LogSnapshotDisabled, server.CollectionStatus.LogSnapshotDisabledReason)
 	if server.CollectionStatus.LogSnapshotDisabled {
 		warning := fmt.Sprintf("Skipping logs: %s", server.CollectionStatus.LogSnapshotDisabledReason)
 		prefixedLogger.PrintWarning(warning)
