@@ -25,7 +25,7 @@ func ValidateLogCollectionConfig(server *state.Server, settings []state.Postgres
 				if err != nil {
 					continue
 				}
-				if numVal < MinSupportedLogMinDurationStatement {
+				if numVal != -1 && numVal < MinSupportedLogMinDurationStatement {
 					disabled = true
 					disabledReasons = append(disabledReasons,
 						fmt.Sprintf("log_min_duration_statement is set to '%d', below minimum supported threshold '%d'", numVal, MinSupportedLogMinDurationStatement),
