@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"os/exec"
 	"runtime/debug"
-	"strconv"
-	"strings"
 	"sync"
 	"time"
 
@@ -14,50 +12,11 @@ import (
 	"github.com/pganalyze/collector/grant"
 	"github.com/pganalyze/collector/input"
 	"github.com/pganalyze/collector/input/postgres"
+	"github.com/pganalyze/collector/logs"
 	"github.com/pganalyze/collector/output"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
 )
-
-const MinSupportedLogMinDurationStatement = 100
-
-func validateLogCollectionConfig(server *state.Server, settings []state.PostgresSetting) (bool, string) {
-	var disabled = false
-	var disabledReasons []string
-	if server.Config.DisableLogs {
-		disabled = true
-		disabledReasons = append(disabledReasons, "the collector setting disable_logs or environment variable PGA_DISABLE_LOGS is set")
-	}
-
-	if !disabled {
-		for _, setting := range settings {
-			if setting.Name == "log_min_duration_statement" && setting.CurrentValue.Valid {
-				numVal, err := strconv.Atoi(setting.CurrentValue.String)
-				if err != nil {
-					continue
-				}
-				if numVal < MinSupportedLogMinDurationStatement {
-					disabled = true
-					disabledReasons = append(disabledReasons,
-						fmt.Sprintf("log_min_duration_statement is set to '%d', below minimum supported threshold '%d'", numVal, MinSupportedLogMinDurationStatement),
-					)
-				}
-			} else if setting.Name == "log_duration" && setting.CurrentValue.Valid {
-				if setting.CurrentValue.String == "on" {
-					disabled = true
-					disabledReasons = append(disabledReasons, "log_duration is set to unsupported value 'on'")
-				}
-			} else if setting.Name == "log_statement" && setting.CurrentValue.Valid {
-				if setting.CurrentValue.String == "all" {
-					disabled = true
-					disabledReasons = append(disabledReasons, "log_statement is set to unsupported value 'all'")
-				}
-			}
-		}
-	}
-
-	return disabled, strings.Join(disabledReasons, "; ")
-}
 
 func collectDiffAndSubmit(server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.PersistedState, state.CollectionStatus, error) {
 	var newState state.PersistedState
@@ -78,7 +37,7 @@ func collectDiffAndSubmit(server *state.Server, globalCollectionOpts state.Colle
 	// This is the easiest way to avoid opening multiple connections to different databases on the same instance
 	connection.Close()
 
-	logsDisabled, logsDisabledReason := validateLogCollectionConfig(server, transientState.Settings)
+	logsDisabled, logsDisabledReason := logs.ValidateLogCollectionConfig(server, transientState.Settings)
 	collectionStatus := state.CollectionStatus{
 		LogSnapshotDisabled:       logsDisabled,
 		LogSnapshotDisabledReason: logsDisabledReason,
