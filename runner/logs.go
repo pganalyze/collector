@@ -73,10 +73,10 @@ func downloadLogsFromOneServer(wg *sync.WaitGroup, server *state.Server, globalC
 		if server.Config.ErrorCallback != "" {
 			go runCompletionCallback("error", server.Config.ErrorCallback, server.Config.SectionName, "logs", err, prefixedLogger)
 		}
-	} else if success {
+	} else {
 		server.LogPrevState = newLogState
 		server.LogStateMutex.Unlock()
-		if server.Config.SuccessCallback != "" {
+		if success && server.Config.SuccessCallback != "" {
 			go runCompletionCallback("success", server.Config.SuccessCallback, server.Config.SectionName, "logs", nil, prefixedLogger)
 		}
 	}
