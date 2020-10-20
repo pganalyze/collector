@@ -219,8 +219,6 @@ func LogTestNone(server *state.Server, logFile state.LogFile, logTestSucceeded c
 func ProcessLogStream(server *state.Server, logLines []state.LogLine, globalCollectionOpts state.CollectionOpts, prefixedLogger *util.Logger, logTestSucceeded chan<- bool, logTestFunc func(s *state.Server, lf state.LogFile, lt chan<- bool)) []state.LogLine {
 	server.CollectionStatusMutex.Lock()
 	if server.CollectionStatus.LogSnapshotDisabled {
-		warning := fmt.Sprintf("Skipping logs: %s", server.CollectionStatus.LogSnapshotDisabledReason)
-		prefixedLogger.PrintWarning(warning)
 		server.CollectionStatusMutex.Unlock()
 		return []state.LogLine{}
 	}
