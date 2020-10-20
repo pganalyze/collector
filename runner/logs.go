@@ -57,6 +57,9 @@ func downloadLogsFromOneServer(wg *sync.WaitGroup, server *state.Server, globalC
 
 	server.CollectionStatusMutex.Lock()
 	if server.CollectionStatus.LogSnapshotDisabled {
+		server.LogStateMutex.Lock()
+		server.LogPrevState = state.PersistedLogState{}
+		server.LogStateMutex.Unlock()
 		server.CollectionStatusMutex.Unlock()
 		return
 	}
