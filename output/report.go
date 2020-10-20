@@ -15,7 +15,7 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
-func submitReportRun(server state.Server, report reports.Report, logger *util.Logger, s3Location string) error {
+func submitReportRun(server *state.Server, report reports.Report, logger *util.Logger, s3Location string) error {
 	data := url.Values{"s3_location": {s3Location}}
 
 	req, err := http.NewRequest("POST", server.Config.APIBaseURL+"/v2/reports/submit_run", strings.NewReader(data.Encode()))
@@ -56,7 +56,7 @@ func submitReportRun(server state.Server, report reports.Report, logger *util.Lo
 	return nil
 }
 
-func SubmitReport(server state.Server, grant state.Grant, report reports.Report, logger *util.Logger) error {
+func SubmitReport(server *state.Server, grant state.Grant, report reports.Report, logger *util.Logger) error {
 	var err error
 	var data []byte
 

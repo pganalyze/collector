@@ -11,7 +11,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func gatherQueryStatsForServer(server state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.PersistedState, error) {
+func gatherQueryStatsForServer(server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.PersistedState, error) {
 	var err error
 	var connection *sql.DB
 
@@ -60,7 +60,7 @@ func gatherQueryStatsForServer(server state.Server, globalCollectionOpts state.C
 	return newState, nil
 }
 
-func GatherQueryStatsFromAllServers(servers []state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
+func GatherQueryStatsFromAllServers(servers []*state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
 	var wg sync.WaitGroup
 
 	for idx := range servers {
@@ -73,7 +73,7 @@ func GatherQueryStatsFromAllServers(servers []state.Server, globalCollectionOpts
 			prefixedLogger := logger.WithPrefixAndRememberErrors(server.Config.SectionName)
 
 			server.StateMutex.Lock()
-			newState, err := gatherQueryStatsForServer(*server, globalCollectionOpts, prefixedLogger)
+			newState, err := gatherQueryStatsForServer(server, globalCollectionOpts, prefixedLogger)
 
 			if err != nil {
 				server.StateMutex.Unlock()
@@ -90,7 +90,7 @@ func GatherQueryStatsFromAllServers(servers []state.Server, globalCollectionOpts
 				}
 			}
 			wg.Done()
-		}(&servers[idx])
+		}(servers[idx])
 	}
 
 	wg.Wait()

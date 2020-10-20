@@ -10,7 +10,7 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
-func GetDefaultGrant(server state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.Grant, error) {
+func GetDefaultGrant(server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.Grant, error) {
 	req, err := http.NewRequest("GET", server.Config.APIBaseURL+"/v2/snapshots/grant", nil)
 	if err != nil {
 		return state.Grant{}, err

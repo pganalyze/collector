@@ -13,7 +13,7 @@ import (
 type Report interface {
 	RunID() string
 	ReportType() string
-	Run(server state.Server, logger *util.Logger, connection *sql.DB) error
+	Run(server *state.Server, logger *util.Logger, connection *sql.DB) error
 	Result() *pganalyze_collector.Report
 }
 

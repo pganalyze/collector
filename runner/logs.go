@@ -16,7 +16,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func downloadLogsForServer(server state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.PersistedLogState, bool, error) {
+func downloadLogsForServer(server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.PersistedLogState, bool, error) {
 	newLogState := server.LogPrevState
 
 	grant, err := grant.GetLogsGrant(server, globalCollectionOpts, logger)
@@ -51,8 +51,39 @@ func downloadLogsForServer(server state.Server, globalCollectionOpts state.Colle
 	return newLogState, true, nil
 }
 
+func downloadLogsFromOneServer(wg *sync.WaitGroup, server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
+	defer wg.Done()
+	prefixedLogger := logger.WithPrefixAndRememberErrors(server.Config.SectionName)
+
+	server.CollectionStatusMutex.Lock()
+	if server.CollectionStatus.LogSnapshotDisabled {
+		server.LogStateMutex.Lock()
+		server.LogPrevState = state.PersistedLogState{}
+		server.LogStateMutex.Unlock()
+		server.CollectionStatusMutex.Unlock()
+		return
+	}
+	server.CollectionStatusMutex.Unlock()
+
+	server.LogStateMutex.Lock()
+	newLogState, success, err := downloadLogsForServer(server, globalCollectionOpts, prefixedLogger)
+	if err != nil {
+		server.LogStateMutex.Unlock()
+		prefixedLogger.PrintError("Could not collect logs for server: %s", err)
+		if server.Config.ErrorCallback != "" {
+			go runCompletionCallback("error", server.Config.ErrorCallback, server.Config.SectionName, "logs", err, prefixedLogger)
+		}
+	} else {
+		server.LogPrevState = newLogState
+		server.LogStateMutex.Unlock()
+		if success && server.Config.SuccessCallback != "" {
+			go runCompletionCallback("success", server.Config.SuccessCallback, server.Config.SectionName, "logs", nil, prefixedLogger)
+		}
+	}
+}
+
 // TestLogsForAllServers - Test log download/tailing
-func TestLogsForAllServers(servers []state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (hasFailedServers bool, hasSuccessfulLocalServers bool) {
+func TestLogsForAllServers(servers []*state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (hasFailedServers bool, hasSuccessfulLocalServers bool) {
 	if !globalCollectionOpts.TestRun {
 		return
 	}
@@ -63,6 +94,11 @@ func TestLogsForAllServers(servers []state.Server, globalCollectionOpts state.Co
 		}
 
 		prefixedLogger := logger.WithPrefixAndRememberErrors(server.Config.SectionName)
+		if server.CollectionStatus.LogSnapshotDisabled {
+			prefixedLogger.PrintWarning("WARNING - Configuration issue: %s", server.CollectionStatus.LogSnapshotDisabledReason)
+			prefixedLogger.PrintWarning("  Log collection will be disabled for this server")
+			continue
+		}
 
 		logLinePrefix, err := postgres.GetPostgresSetting("log_line_prefix", server, globalCollectionOpts, prefixedLogger)
 		if err != nil {
@@ -119,43 +155,24 @@ func TestLogsForAllServers(servers []state.Server, globalCollectionOpts state.Co
 }
 
 // DownloadLogsFromAllServers - Downloads logs from all servers that are remote systems and sends them to the pganalyze service
-func DownloadLogsFromAllServers(servers []state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
+func DownloadLogsFromAllServers(servers []*state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
 	var wg sync.WaitGroup
 
 	if !globalCollectionOpts.CollectLogs {
 		return
 	}
 
-	for idx := range servers {
-		if servers[idx].Config.DisableLogs || (servers[idx].Grant.Valid && !servers[idx].Grant.Config.EnableLogs) {
+	for _, server := range servers {
+		if server.Config.DisableLogs || (server.Grant.Valid && !server.Grant.Config.EnableLogs) {
 			continue
 		}
 
-		if servers[idx].Config.AwsDbInstanceID == "" {
+		if server.Config.AwsDbInstanceID == "" {
 			continue
 		}
 
 		wg.Add(1)
-		go func(server *state.Server) {
-			prefixedLogger := logger.WithPrefixAndRememberErrors(server.Config.SectionName)
-
-			server.LogStateMutex.Lock()
-			newLogState, success, err := downloadLogsForServer(*server, globalCollectionOpts, prefixedLogger)
-			if err != nil {
-				server.LogStateMutex.Unlock()
-				prefixedLogger.PrintError("Could not collect logs for server: %s", err)
-				if server.Config.ErrorCallback != "" {
-					go runCompletionCallback("error", server.Config.ErrorCallback, server.Config.SectionName, "logs", err, prefixedLogger)
-				}
-			} else if success {
-				server.LogPrevState = newLogState
-				server.LogStateMutex.Unlock()
-				if server.Config.SuccessCallback != "" {
-					go runCompletionCallback("success", server.Config.SuccessCallback, server.Config.SectionName, "logs", nil, prefixedLogger)
-				}
-			}
-			wg.Done()
-		}(&servers[idx])
+		go downloadLogsFromOneServer(&wg, server, globalCollectionOpts, logger)
 	}
 
 	wg.Wait()

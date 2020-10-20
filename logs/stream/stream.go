@@ -229,7 +229,7 @@ func AnalyzeStreamInGroups(logLines []state.LogLine) (state.TransientLogState, s
 
 // LogTestCollectorIdentify - Checks for the special "pganalyze-collector-identify:" event
 // (used on log pipelines that forward messages under than 10 seconds)
-func LogTestCollectorIdentify(server state.Server, logFile state.LogFile, logTestSucceeded chan<- bool) {
+func LogTestCollectorIdentify(server *state.Server, logFile state.LogFile, logTestSucceeded chan<- bool) {
 	for _, logLine := range logFile.LogLines {
 		if logLine.Classification == pganalyze_collector.LogLineInformation_PGA_COLLECTOR_IDENTIFY &&
 			logLine.Details["config_section"] == server.Config.SectionName {
@@ -240,12 +240,12 @@ func LogTestCollectorIdentify(server state.Server, logFile state.LogFile, logTes
 
 // LogTestAnyEvent - Checks for any log message
 // (used on log pipelines that take longer than 10 seconds, e.g. Azure Event Hub)
-func LogTestAnyEvent(server state.Server, logFile state.LogFile, logTestSucceeded chan<- bool) {
+func LogTestAnyEvent(server *state.Server, logFile state.LogFile, logTestSucceeded chan<- bool) {
 	logTestSucceeded <- true
 }
 
 // LogTestNone - Don't confirm the log test
-func LogTestNone(server state.Server, logFile state.LogFile, logTestSucceeded chan<- bool) {
+func LogTestNone(server *state.Server, logFile state.LogFile, logTestSucceeded chan<- bool) {
 }
 
 // ProcessLogStream - Accepts one or more log lines to be analyzed and processed
@@ -255,7 +255,14 @@ func LogTestNone(server state.Server, logFile state.LogFile, logTestSucceeded ch
 // the next call.
 //
 // The caller is not expected to do any special time-based buffering themselves.
-func ProcessLogStream(server state.Server, logLines []state.LogLine, globalCollectionOpts state.CollectionOpts, prefixedLogger *util.Logger, logTestSucceeded chan<- bool, logTestFunc func(s state.Server, lf state.LogFile, lt chan<- bool)) []state.LogLine {
+func ProcessLogStream(server *state.Server, logLines []state.LogLine, globalCollectionOpts state.CollectionOpts, prefixedLogger *util.Logger, logTestSucceeded chan<- bool, logTestFunc func(s *state.Server, lf state.LogFile, lt chan<- bool)) []state.LogLine {
+	server.CollectionStatusMutex.Lock()
+	if server.CollectionStatus.LogSnapshotDisabled {
+		server.CollectionStatusMutex.Unlock()
+		return []state.LogLine{}
+	}
+	server.CollectionStatusMutex.Unlock()
+
 	logState, logFile, tooFreshLogLines, err := AnalyzeStreamInGroups(logLines)
 	if err != nil {
 		prefixedLogger.PrintError("%s", err)

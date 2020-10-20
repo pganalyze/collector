@@ -10,11 +10,11 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
-func LogTestRun(server state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) error {
+func LogTestRun(server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) error {
 	cctx, cancel := context.WithCancel(context.Background())
 
 	// We're testing one server at a time during the test run for now
-	servers := []state.Server{server}
+	servers := []*state.Server{server}
 
 	logTestSucceeded := make(chan bool, 1)
 	azureLogStream := make(chan AzurePostgresLogRecord, 500)

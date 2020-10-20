@@ -12,29 +12,36 @@ import (
 	"github.com/pganalyze/collector/grant"
 	"github.com/pganalyze/collector/input"
 	"github.com/pganalyze/collector/input/postgres"
+	"github.com/pganalyze/collector/logs"
 	"github.com/pganalyze/collector/output"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
 )
 
-func collectDiffAndSubmit(server state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.PersistedState, error) {
+func collectDiffAndSubmit(server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.PersistedState, state.CollectionStatus, error) {
 	var newState state.PersistedState
 	var err error
 	var connection *sql.DB
 
 	connection, err = postgres.EstablishConnection(server, logger, globalCollectionOpts, "")
 	if err != nil {
-		return newState, fmt.Errorf("Failed to connect to database: %s", err)
+		return newState, state.CollectionStatus{}, fmt.Errorf("Failed to connect to database: %s", err)
 	}
 
 	newState, transientState, err := input.CollectFull(server, connection, globalCollectionOpts, logger)
 	if err != nil {
 		connection.Close()
-		return newState, err
+		return newState, state.CollectionStatus{}, err
 	}
 
 	// This is the easiest way to avoid opening multiple connections to different databases on the same instance
 	connection.Close()
+
+	logsDisabled, logsDisabledReason := logs.ValidateLogCollectionConfig(server, transientState.Settings)
+	collectionStatus := state.CollectionStatus{
+		LogSnapshotDisabled:       logsDisabled,
+		LogSnapshotDisabledReason: logsDisabledReason,
+	}
 
 	collectedIntervalSecs := uint32(newState.CollectedAt.Sub(server.PrevState.CollectedAt) / time.Second)
 	if collectedIntervalSecs == 0 {
@@ -47,7 +54,7 @@ func collectDiffAndSubmit(server state.Server, globalCollectionOpts state.Collec
 
 	err = output.SendFull(server, globalCollectionOpts, logger, newState, diffState, transientState, collectedIntervalSecs)
 	if err != nil {
-		return newState, err
+		return newState, collectionStatus, err
 	}
 
 	// After we've done all processing, and in case we did a reset, make sure the
@@ -56,7 +63,7 @@ func collectDiffAndSubmit(server state.Server, globalCollectionOpts state.Collec
 		newState.StatementStats = transientState.ResetStatementStats
 	}
 
-	return newState, nil
+	return newState, collectionStatus, nil
 }
 
 func capturePanic(f func()) (err interface{}, stackTrace []byte) {
@@ -71,9 +78,10 @@ func capturePanic(f func()) (err interface{}, stackTrace []byte) {
 	return
 }
 
-func processDatabase(server state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.PersistedState, state.Grant, error) {
+func processServer(server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.PersistedState, state.Grant, state.CollectionStatus, error) {
 	var newGrant state.Grant
 	var newState state.PersistedState
+	var collectionStatus state.CollectionStatus
 	var err error
 
 	if !globalCollectionOpts.ForceEmptyGrant {
@@ -83,33 +91,32 @@ func processDatabase(server state.Server, globalCollectionOpts state.CollectionO
 			if server.Grant.Valid {
 				logger.PrintVerbose("Could not acquire snapshot grant, reusing previous grant: %s", err)
 			} else {
-				return state.PersistedState{}, state.Grant{}, err
+				return state.PersistedState{}, state.Grant{}, state.CollectionStatus{}, err
 			}
 		} else {
 			server.Grant = newGrant
 		}
 	}
 
-	transientState := state.TransientState{}
+	var sentryClient *raven.Client
 	if server.Grant.Config.SentryDsn != "" {
-		transientState.SentryClient, err = raven.NewWithTags(server.Grant.Config.SentryDsn, map[string]string{"server_id": server.Grant.Config.ServerID})
-		transientState.SentryClient.SetRelease(util.CollectorVersion)
+		sentryClient, err = raven.NewWithTags(server.Grant.Config.SentryDsn, map[string]string{"server_id": server.Grant.Config.ServerID})
 		if err != nil {
-			transientState.SentryClient = nil
 			logger.PrintVerbose("Failed to setup Sentry client: %s", err)
+		} else {
+			sentryClient.SetRelease(util.CollectorVersion)
 		}
 	}
 
 	runFunc := func() {
-		newState, err = collectDiffAndSubmit(server, globalCollectionOpts, logger)
+		newState, collectionStatus, err = collectDiffAndSubmit(server, globalCollectionOpts, logger)
 	}
 
 	var panicErr interface{}
 	var stackTrace []byte
-	if transientState.SentryClient != nil {
-		panicErr, _ = transientState.SentryClient.CapturePanic(runFunc, nil)
-		transientState.SentryClient.Wait()
-		transientState.SentryClient = nil
+	if sentryClient != nil {
+		panicErr, _ = sentryClient.CapturePanic(runFunc, nil)
+		sentryClient.Wait()
 	} else {
 		panicErr, stackTrace = capturePanic(runFunc)
 	}
@@ -118,7 +125,7 @@ func processDatabase(server state.Server, globalCollectionOpts state.CollectionO
 		logger.PrintVerbose("Panic: %s\n%s", err, stackTrace)
 	}
 
-	return newState, newGrant, err
+	return newState, newGrant, collectionStatus, err
 }
 
 func runCompletionCallback(callbackType string, callbackCmd string, sectionName string, snapshotType string, errIn error, logger *util.Logger) {
@@ -136,7 +143,7 @@ func runCompletionCallback(callbackType string, callbackCmd string, sectionName 
 }
 
 // CollectAllServers - Collects statistics from all servers and sends them as full snapshots to the pganalyze service
-func CollectAllServers(servers []state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (allSuccessful bool) {
+func CollectAllServers(servers []*state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (allSuccessful bool) {
 	var wg sync.WaitGroup
 
 	allSuccessful = true
@@ -153,14 +160,14 @@ func CollectAllServers(servers []state.Server, globalCollectionOpts state.Collec
 			}
 
 			server.StateMutex.Lock()
-			newState, grant, err := processDatabase(*server, globalCollectionOpts, prefixedLogger)
+			newState, grant, newCollectionStatus, err := processServer(server, globalCollectionOpts, prefixedLogger)
 			if err != nil {
 				server.StateMutex.Unlock()
 				allSuccessful = false
 				prefixedLogger.PrintError("Could not process server: %s", err)
 				if grant.Valid && !globalCollectionOpts.TestRun && globalCollectionOpts.SubmitCollectedData {
 					server.Grant = grant
-					err = output.SendFailedFull(*server, globalCollectionOpts, prefixedLogger)
+					err = output.SendFailedFull(server, globalCollectionOpts, prefixedLogger)
 					if err != nil {
 						prefixedLogger.PrintWarning("Could not send error information to remote server: %s", err)
 					}
@@ -172,12 +179,19 @@ func CollectAllServers(servers []state.Server, globalCollectionOpts state.Collec
 				server.Grant = grant
 				server.PrevState = newState
 				server.StateMutex.Unlock()
+				server.CollectionStatusMutex.Lock()
+				if newCollectionStatus.LogSnapshotDisabled {
+					warning := fmt.Sprintf("Skipping logs: %s", server.CollectionStatus.LogSnapshotDisabledReason)
+					prefixedLogger.PrintWarning(warning)
+				}
+				server.CollectionStatus = newCollectionStatus
+				server.CollectionStatusMutex.Unlock()
 				if server.Config.SuccessCallback != "" {
 					go runCompletionCallback("success", server.Config.SuccessCallback, server.Config.SectionName, "full", nil, prefixedLogger)
 				}
 			}
 			wg.Done()
-		}(&servers[idx])
+		}(servers[idx])
 	}
 
 	wg.Wait()

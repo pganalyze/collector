@@ -8,7 +8,7 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
-func SubmitCompactActivitySnapshot(server state.Server, grant state.Grant, collectionOpts state.CollectionOpts, logger *util.Logger, activityState state.TransientActivityState) error {
+func SubmitCompactActivitySnapshot(server *state.Server, grant state.Grant, collectionOpts state.CollectionOpts, logger *util.Logger, activityState state.TransientActivityState) error {
 	as, r := transform.ActivityStateToCompactActivitySnapshot(server, activityState)
 
 	if server.Config.FilterQuerySample == "all" {

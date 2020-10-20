@@ -14,7 +14,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func processActivityForServer(server state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.PersistedActivityState, bool, error) {
+func processActivityForServer(server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.PersistedActivityState, bool, error) {
 	var newGrant state.Grant
 	var err error
 	var connection *sql.DB
@@ -76,7 +76,7 @@ func processActivityForServer(server state.Server, globalCollectionOpts state.Co
 }
 
 // CollectActivityFromAllServers - Collects activity from all servers and sends them to the pganalyze service
-func CollectActivityFromAllServers(servers []state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (allSuccessful bool) {
+func CollectActivityFromAllServers(servers []*state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (allSuccessful bool) {
 	var wg sync.WaitGroup
 
 	allSuccessful = true
@@ -95,7 +95,7 @@ func CollectActivityFromAllServers(servers []state.Server, globalCollectionOpts 
 			}
 
 			server.ActivityStateMutex.Lock()
-			newState, success, err := processActivityForServer(*server, globalCollectionOpts, prefixedLogger)
+			newState, success, err := processActivityForServer(server, globalCollectionOpts, prefixedLogger)
 			if err != nil {
 				server.ActivityStateMutex.Unlock()
 				allSuccessful = false
@@ -111,7 +111,7 @@ func CollectActivityFromAllServers(servers []state.Server, globalCollectionOpts 
 				}
 			}
 			wg.Done()
-		}(&servers[idx])
+		}(servers[idx])
 	}
 
 	wg.Wait()

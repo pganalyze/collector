@@ -14,7 +14,7 @@ import (
 )
 
 // CollectFull - Collects a "full" snapshot of all data we need on a regular interval
-func CollectFull(server state.Server, connection *sql.DB, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (ps state.PersistedState, ts state.TransientState, err error) {
+func CollectFull(server *state.Server, connection *sql.DB, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (ps state.PersistedState, ts state.TransientState, err error) {
 	systemType := server.Config.SystemType
 
 	ps.CollectedAt = time.Now()

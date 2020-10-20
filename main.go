@@ -37,7 +37,7 @@ import (
 const streamBufferLen = 500
 
 func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *util.Logger, configFilename string) (keepRunning bool, reloadOkay bool) {
-	var servers []state.Server
+	var servers []*state.Server
 
 	keepRunning = false
 	reloadOkay = false
@@ -72,7 +72,7 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 
 	serverConfigs := conf.Servers
 	for _, config := range serverConfigs {
-		servers = append(servers, state.Server{Config: config, StateMutex: &sync.Mutex{}, LogStateMutex: &sync.Mutex{}, ActivityStateMutex: &sync.Mutex{}})
+		servers = append(servers, &state.Server{Config: config, StateMutex: &sync.Mutex{}, LogStateMutex: &sync.Mutex{}, ActivityStateMutex: &sync.Mutex{}, CollectionStatusMutex: &sync.Mutex{}})
 		if config.EnableReports {
 			hasAnyReportsEnabled = true
 		}

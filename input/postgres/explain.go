@@ -13,7 +13,7 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
-func RunExplain(server state.Server, inputs []state.PostgresQuerySample, collectionOpts state.CollectionOpts, logger *util.Logger) (outputs []state.PostgresQuerySample) {
+func RunExplain(server *state.Server, inputs []state.PostgresQuerySample, collectionOpts state.CollectionOpts, logger *util.Logger) (outputs []state.PostgresQuerySample) {
 	var samplesByDb = make(map[string]([]state.PostgresQuerySample))
 
 	skip := func(sample state.PostgresQuerySample) bool {
