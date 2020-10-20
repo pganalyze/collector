@@ -39,7 +39,7 @@ type SystemSample struct {
 	WriteIops         float64 `logfmt:"sample#write-iops"`
 }
 
-func SetupLogReceiver(servers []state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger, herokuLogStream <-chan HerokuLogStreamItem) {
+func SetupLogReceiver(servers []*state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger, herokuLogStream <-chan HerokuLogStreamItem) {
 	go logReceiver(servers, herokuLogStream, globalCollectionOpts, logger)
 
 	for _, server := range servers {
@@ -51,7 +51,7 @@ func SetupLogReceiver(servers []state.Server, globalCollectionOpts state.Collect
 	}
 }
 
-func catchIdentifyServerLine(sourceName string, content string, nameToServer map[string]state.Server, servers []state.Server) map[string]state.Server {
+func catchIdentifyServerLine(sourceName string, content string, nameToServer map[string]*state.Server, servers []*state.Server) map[string]*state.Server {
 	identifyParts := regexp.MustCompile(`^pganalyze-collector-identify: ([\w_]+)`).FindStringSubmatch(content)
 	if len(identifyParts) == 2 {
 		for _, server := range servers {
@@ -64,7 +64,7 @@ func catchIdentifyServerLine(sourceName string, content string, nameToServer map
 	return nameToServer
 }
 
-func processSystemMetrics(timestamp time.Time, content []byte, nameToServer map[string]state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger, namespace string) {
+func processSystemMetrics(timestamp time.Time, content []byte, nameToServer map[string]*state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger, namespace string) {
 	var sample SystemSample
 	err := logfmt.Unmarshal(content, &sample)
 	if err != nil {
@@ -135,7 +135,7 @@ func processSystemMetrics(timestamp time.Time, content []byte, nameToServer map[
 	return
 }
 
-func makeLogLine(timestamp time.Time, backendPid int64, logLineNumber int64, logLevel string, content string, nameToServer map[string]state.Server) *state.LogLine {
+func makeLogLine(timestamp time.Time, backendPid int64, logLineNumber int64, logLevel string, content string, nameToServer map[string]*state.Server) *state.LogLine {
 	var logLine state.LogLine
 
 	logLine.CollectedAt = time.Now()
@@ -152,7 +152,7 @@ func makeLogLine(timestamp time.Time, backendPid int64, logLineNumber int64, log
 	return &logLine
 }
 
-func logStreamItemToLogLine(item HerokuLogStreamItem, servers []state.Server, nameToServer map[string]state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (map[string]state.Server, *state.LogLine, string) {
+func logStreamItemToLogLine(item HerokuLogStreamItem, servers []*state.Server, nameToServer map[string]*state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (map[string]*state.Server, *state.LogLine, string) {
 	timestamp, err := time.Parse(time.RFC3339, string(item.Header.Time))
 	if err != nil {
 		return nameToServer, nil, ""
@@ -195,12 +195,12 @@ func logStreamItemToLogLine(item HerokuLogStreamItem, servers []state.Server, na
 	return nameToServer, newLogLine, sourceName
 }
 
-func logReceiver(servers []state.Server, in <-chan HerokuLogStreamItem, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
+func logReceiver(servers []*state.Server, in <-chan HerokuLogStreamItem, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
 	var logLinesByName map[string][]state.LogLine
-	var nameToServer map[string]state.Server
+	var nameToServer map[string]*state.Server
 
 	logLinesByName = make(map[string][]state.LogLine)
-	nameToServer = make(map[string]state.Server)
+	nameToServer = make(map[string]*state.Server)
 
 	for {
 		item, ok := <-in

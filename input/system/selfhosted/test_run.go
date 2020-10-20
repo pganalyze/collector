@@ -13,7 +13,7 @@ import (
 
 // TestLogTail - Tests the tailing of a log file (without watching it continuously)
 // as well as parsing and analyzing the log data
-func TestLogTail(server state.Server, globalCollectionOpts state.CollectionOpts, prefixedLogger *util.Logger) error {
+func TestLogTail(server *state.Server, globalCollectionOpts state.CollectionOpts, prefixedLogger *util.Logger) error {
 	cctx, cancel := context.WithCancel(context.Background())
 
 	logLinePrefix, err := getPostgresSetting("log_line_prefix", server, globalCollectionOpts, prefixedLogger)

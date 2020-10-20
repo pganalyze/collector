@@ -6,7 +6,7 @@ import (
 	"github.com/pganalyze/collector/state"
 )
 
-func ActivityStateToCompactActivitySnapshot(server state.Server, activityState state.TransientActivityState) (snapshot.CompactActivitySnapshot, snapshot.CompactSnapshot_BaseRefs) {
+func ActivityStateToCompactActivitySnapshot(server *state.Server, activityState state.TransientActivityState) (snapshot.CompactActivitySnapshot, snapshot.CompactSnapshot_BaseRefs) {
 	var s snapshot.CompactActivitySnapshot
 	var r snapshot.CompactSnapshot_BaseRefs
 

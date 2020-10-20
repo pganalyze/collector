@@ -16,7 +16,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func downloadLogsForServer(server state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.PersistedLogState, bool, error) {
+func downloadLogsForServer(server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.PersistedLogState, bool, error) {
 	newLogState := server.LogPrevState
 
 	grant, err := grant.GetLogsGrant(server, globalCollectionOpts, logger)
@@ -64,7 +64,7 @@ func downloadLogsFromOneServer(wg *sync.WaitGroup, server *state.Server, globalC
 	server.CollectionStatusMutex.Unlock()
 
 	server.LogStateMutex.Lock()
-	newLogState, success, err := downloadLogsForServer(*server, globalCollectionOpts, prefixedLogger)
+	newLogState, success, err := downloadLogsForServer(server, globalCollectionOpts, prefixedLogger)
 	if err != nil {
 		server.LogStateMutex.Unlock()
 		prefixedLogger.PrintError("Could not collect logs for server: %s", err)
@@ -81,7 +81,7 @@ func downloadLogsFromOneServer(wg *sync.WaitGroup, server *state.Server, globalC
 }
 
 // TestLogsForAllServers - Test log download/tailing
-func TestLogsForAllServers(servers []state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (hasFailedServers bool, hasSuccessfulLocalServers bool) {
+func TestLogsForAllServers(servers []*state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (hasFailedServers bool, hasSuccessfulLocalServers bool) {
 	if !globalCollectionOpts.TestRun {
 		return
 	}
@@ -153,7 +153,7 @@ func TestLogsForAllServers(servers []state.Server, globalCollectionOpts state.Co
 }
 
 // DownloadLogsFromAllServers - Downloads logs from all servers that are remote systems and sends them to the pganalyze service
-func DownloadLogsFromAllServers(servers []state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
+func DownloadLogsFromAllServers(servers []*state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
 	var wg sync.WaitGroup
 
 	if !globalCollectionOpts.CollectLogs {
@@ -170,7 +170,7 @@ func DownloadLogsFromAllServers(servers []state.Server, globalCollectionOpts sta
 		}
 
 		wg.Add(1)
-		go downloadLogsFromOneServer(&wg, &server, globalCollectionOpts, logger)
+		go downloadLogsFromOneServer(&wg, server, globalCollectionOpts, logger)
 	}
 
 	wg.Wait()

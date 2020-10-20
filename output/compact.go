@@ -21,7 +21,7 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
-func uploadAndSubmitCompactSnapshot(s pganalyze_collector.CompactSnapshot, grant state.Grant, server state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, collectedAt time.Time, quiet bool, kind string) error {
+func uploadAndSubmitCompactSnapshot(s pganalyze_collector.CompactSnapshot, grant state.Grant, server *state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, collectedAt time.Time, quiet bool, kind string) error {
 	var err error
 	var data []byte
 
@@ -89,7 +89,7 @@ func debugCompactOutputAsJSON(logger *util.Logger, compressedData bytes.Buffer) 
 	fmt.Printf("%s\n", out.String())
 }
 
-func submitCompactSnapshot(server state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, s3Location string, collectedAt time.Time, quiet bool, kind string) error {
+func submitCompactSnapshot(server *state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, s3Location string, collectedAt time.Time, quiet bool, kind string) error {
 	requestURL := server.Config.APIBaseURL + "/v2/snapshots/compact"
 
 	if collectionOpts.TestRun {

@@ -9,7 +9,7 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
-func LogStateToLogSnapshot(server state.Server, logState state.TransientLogState) (snapshot.CompactLogSnapshot, snapshot.CompactSnapshot_BaseRefs) {
+func LogStateToLogSnapshot(server *state.Server, logState state.TransientLogState) (snapshot.CompactLogSnapshot, snapshot.CompactSnapshot_BaseRefs) {
 	var s snapshot.CompactLogSnapshot
 	var r snapshot.CompactSnapshot_BaseRefs
 	s, r = transformPostgresQuerySamples(server, s, r, logState)
@@ -62,7 +62,7 @@ func upsertRelationReference(refs []*snapshot.RelationReference, databaseIdx int
 	return idx, refs
 }
 
-func transformPostgresQuerySamples(server state.Server, s snapshot.CompactLogSnapshot, r snapshot.CompactSnapshot_BaseRefs, logState state.TransientLogState) (snapshot.CompactLogSnapshot, snapshot.CompactSnapshot_BaseRefs) {
+func transformPostgresQuerySamples(server *state.Server, s snapshot.CompactLogSnapshot, r snapshot.CompactSnapshot_BaseRefs, logState state.TransientLogState) (snapshot.CompactLogSnapshot, snapshot.CompactSnapshot_BaseRefs) {
 	for _, sampleIn := range logState.QuerySamples {
 		occurredAt, _ := ptypes.TimestampProto(sampleIn.OccurredAt)
 
@@ -112,7 +112,7 @@ func transformPostgresQuerySamples(server state.Server, s snapshot.CompactLogSna
 	return s, r
 }
 
-func transformSystemLogs(server state.Server, s snapshot.CompactLogSnapshot, r snapshot.CompactSnapshot_BaseRefs, logState state.TransientLogState) (snapshot.CompactLogSnapshot, snapshot.CompactSnapshot_BaseRefs) {
+func transformSystemLogs(server *state.Server, s snapshot.CompactLogSnapshot, r snapshot.CompactSnapshot_BaseRefs, logState state.TransientLogState) (snapshot.CompactLogSnapshot, snapshot.CompactSnapshot_BaseRefs) {
 	for _, logFileIn := range logState.LogFiles {
 		fileIdx := int32(len(s.LogFileReferences))
 		logFileReference := &snapshot.LogFileReference{
@@ -151,7 +151,7 @@ func transformSystemLogs(server state.Server, s snapshot.CompactLogSnapshot, r s
 	return s, r
 }
 
-func transformSystemLogLine(server state.Server, r *snapshot.CompactSnapshot_BaseRefs, logFileIdx int32, logLineIn state.LogLine) snapshot.LogLineInformation {
+func transformSystemLogLine(server *state.Server, r *snapshot.CompactSnapshot_BaseRefs, logFileIdx int32, logLineIn state.LogLine) snapshot.LogLineInformation {
 	occurredAt, _ := ptypes.TimestampProto(logLineIn.OccurredAt)
 
 	logLine := snapshot.LogLineInformation{

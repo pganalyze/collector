@@ -21,7 +21,7 @@ import (
 
 const MinSupportedLogMinDurationStatement = 100
 
-func validateLogCollectionConfig(server state.Server, settings []state.PostgresSetting) (bool, string) {
+func validateLogCollectionConfig(server *state.Server, settings []state.PostgresSetting) (bool, string) {
 	var disabled = false
 	var disabledReasons []string
 	if server.Config.DisableLogs {
@@ -59,7 +59,7 @@ func validateLogCollectionConfig(server state.Server, settings []state.PostgresS
 	return disabled, strings.Join(disabledReasons, "; ")
 }
 
-func collectDiffAndSubmit(server state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.PersistedState, state.CollectionStatus, error) {
+func collectDiffAndSubmit(server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.PersistedState, state.CollectionStatus, error) {
 	var newState state.PersistedState
 	var err error
 	var connection *sql.DB
@@ -119,7 +119,7 @@ func capturePanic(f func()) (err interface{}, stackTrace []byte) {
 	return
 }
 
-func processServer(server state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.PersistedState, state.Grant, state.CollectionStatus, error) {
+func processServer(server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.PersistedState, state.Grant, state.CollectionStatus, error) {
 	var newGrant state.Grant
 	var newState state.PersistedState
 	var collectionStatus state.CollectionStatus
@@ -184,7 +184,7 @@ func runCompletionCallback(callbackType string, callbackCmd string, sectionName 
 }
 
 // CollectAllServers - Collects statistics from all servers and sends them as full snapshots to the pganalyze service
-func CollectAllServers(servers []state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (allSuccessful bool) {
+func CollectAllServers(servers []*state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (allSuccessful bool) {
 	var wg sync.WaitGroup
 
 	allSuccessful = true
@@ -201,14 +201,14 @@ func CollectAllServers(servers []state.Server, globalCollectionOpts state.Collec
 			}
 
 			server.StateMutex.Lock()
-			newState, grant, newCollectionStatus, err := processServer(*server, globalCollectionOpts, prefixedLogger)
+			newState, grant, newCollectionStatus, err := processServer(server, globalCollectionOpts, prefixedLogger)
 			if err != nil {
 				server.StateMutex.Unlock()
 				allSuccessful = false
 				prefixedLogger.PrintError("Could not process server: %s", err)
 				if grant.Valid && !globalCollectionOpts.TestRun && globalCollectionOpts.SubmitCollectedData {
 					server.Grant = grant
-					err = output.SendFailedFull(*server, globalCollectionOpts, prefixedLogger)
+					err = output.SendFailedFull(server, globalCollectionOpts, prefixedLogger)
 					if err != nil {
 						prefixedLogger.PrintWarning("Could not send error information to remote server: %s", err)
 					}
@@ -228,7 +228,7 @@ func CollectAllServers(servers []state.Server, globalCollectionOpts state.Collec
 				}
 			}
 			wg.Done()
-		}(&servers[idx])
+		}(servers[idx])
 	}
 
 	wg.Wait()

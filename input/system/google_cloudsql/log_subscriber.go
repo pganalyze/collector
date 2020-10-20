@@ -96,7 +96,7 @@ func setupPubSubSubscriber(ctx context.Context, wg *sync.WaitGroup, logger *util
 	return nil
 }
 
-func SetupLogSubscriber(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *util.Logger, servers []state.Server, gcpLogStream chan LogStreamItem) error {
+func SetupLogSubscriber(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *util.Logger, servers []*state.Server, gcpLogStream chan LogStreamItem) error {
 	// This map is used to avoid duplicate receivers to the same subscriber
 	gcpPubSubHandlers := make(map[string]bool)
 

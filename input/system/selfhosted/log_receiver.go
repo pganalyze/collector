@@ -31,7 +31,7 @@ SELECT setting
 	FROM pg_settings
  WHERE name = '%s'`
 
-func getPostgresSetting(settingName string, server state.Server, globalCollectionOpts state.CollectionOpts, prefixedLogger *util.Logger) (string, error) {
+func getPostgresSetting(settingName string, server *state.Server, globalCollectionOpts state.CollectionOpts, prefixedLogger *util.Logger) (string, error) {
 	var value string
 
 	db, err := postgres.EstablishConnection(server, prefixedLogger, globalCollectionOpts, "")
@@ -50,7 +50,7 @@ func getPostgresSetting(settingName string, server state.Server, globalCollectio
 
 // DiscoverLogLocation - Tries to find the log location for a currently running Postgres
 // process and outputs the presumed location using the logger
-func DiscoverLogLocation(servers []state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
+func DiscoverLogLocation(servers []*state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
 	for _, server := range servers {
 		prefixedLogger := logger.WithPrefix(server.Config.SectionName)
 
@@ -121,7 +121,7 @@ func DiscoverLogLocation(servers []state.Server, globalCollectionOpts state.Coll
 
 // SetupLogTails - Sets up continuously running log tails for all servers with a
 // local log directory or file specified
-func SetupLogTails(ctx context.Context, servers []state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
+func SetupLogTails(ctx context.Context, servers []*state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
 	for _, server := range servers {
 		prefixedLogger := logger.WithPrefix(server.Config.SectionName)
 
@@ -356,7 +356,7 @@ func setupDockerTail(ctx context.Context, containerName string, out chan<- strin
 	return nil
 }
 
-func logReceiver(ctx context.Context, server state.Server, globalCollectionOpts state.CollectionOpts, prefixedLogger *util.Logger, logTestSucceeded chan<- bool) chan<- string {
+func logReceiver(ctx context.Context, server *state.Server, globalCollectionOpts state.CollectionOpts, prefixedLogger *util.Logger, logTestSucceeded chan<- bool) chan<- string {
 	logStream := make(chan string)
 
 	go func() {

@@ -8,7 +8,7 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
-func WriteStateFile(servers []Server, globalCollectionOpts CollectionOpts, logger *util.Logger) {
+func WriteStateFile(servers []*Server, globalCollectionOpts CollectionOpts, logger *util.Logger) {
 	stateOnDisk := StateOnDisk{PrevStateByServer: make(map[config.ServerIdentifier]PersistedState), FormatVersion: StateOnDiskFormatVersion}
 
 	for _, server := range servers {
@@ -27,7 +27,7 @@ func WriteStateFile(servers []Server, globalCollectionOpts CollectionOpts, logge
 }
 
 // ReadStateFile - This reads in the prevState structs from the state file - only run this on initial bootup and SIGHUP!
-func ReadStateFile(servers []Server, globalCollectionOpts CollectionOpts, logger *util.Logger) {
+func ReadStateFile(servers []*Server, globalCollectionOpts CollectionOpts, logger *util.Logger) {
 	var stateOnDisk StateOnDisk
 
 	file, err := os.Open(globalCollectionOpts.StateFilename)

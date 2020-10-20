@@ -19,7 +19,7 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
-func runReport(reportType string, server state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (report reports.Report) {
+func runReport(reportType string, server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (report reports.Report) {
 	var err error
 	var connection *sql.DB
 
@@ -61,7 +61,7 @@ type reportsApiResponse struct {
 	Grant            *state.Grant
 }
 
-func getRequestedReports(server state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (requestedReports []reports.Report, grant state.Grant, err error) {
+func getRequestedReports(server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (requestedReports []reports.Report, grant state.Grant, err error) {
 	data := url.Values{"supported_reports": {strings.Join(reports.SupportedReports, ",")}}
 	req, err := http.NewRequest("POST", server.Config.APIBaseURL+"/v2/reports/fetch_runs", strings.NewReader(data.Encode()))
 	if err != nil {
@@ -117,7 +117,7 @@ func getRequestedReports(server state.Server, globalCollectionOpts state.Collect
 }
 
 // RunTestReport - Runs globalCollectionOpts.TestReport for all servers and outputs the result to stdout
-func RunTestReport(servers []state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
+func RunTestReport(servers []*state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
 	for _, server := range servers {
 		report := runReport(globalCollectionOpts.TestReport, server, globalCollectionOpts, logger)
 		if report == nil {
@@ -137,7 +137,7 @@ func RunTestReport(servers []state.Server, globalCollectionOpts state.Collection
 }
 
 // RunRequestedReports - Retrieves current report requests from the server, runs them and submits their data
-func RunRequestedReports(servers []state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
+func RunRequestedReports(servers []*state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
 	for _, server := range servers {
 		if !server.Config.EnableReports {
 			continue

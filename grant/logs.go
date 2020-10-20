@@ -10,7 +10,7 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
-func GetLogsGrant(server state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.GrantLogs, error) {
+func GetLogsGrant(server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.GrantLogs, error) {
 	req, err := http.NewRequest("GET", server.Config.APIBaseURL+"/v2/snapshots/grant_logs", nil)
 	if err != nil {
 		return state.GrantLogs{}, err

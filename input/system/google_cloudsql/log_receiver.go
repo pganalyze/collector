@@ -19,11 +19,11 @@ type LogStreamItem struct {
 	Content               string
 }
 
-func SetupLogReceiver(ctx context.Context, servers []state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger, gcpLogStream <-chan LogStreamItem) {
+func SetupLogReceiver(ctx context.Context, servers []*state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger, gcpLogStream <-chan LogStreamItem) {
 	logReceiver(ctx, servers, gcpLogStream, globalCollectionOpts, logger, nil)
 }
 
-func logReceiver(ctx context.Context, servers []state.Server, in <-chan LogStreamItem, globalCollectionOpts state.CollectionOpts, logger *util.Logger, logTestSucceeded chan<- bool) {
+func logReceiver(ctx context.Context, servers []*state.Server, in <-chan LogStreamItem, globalCollectionOpts state.CollectionOpts, logger *util.Logger, logTestSucceeded chan<- bool) {
 	go func() {
 		logLinesByServer := make(map[config.ServerIdentifier][]state.LogLine)
 
@@ -70,7 +70,7 @@ func logReceiver(ctx context.Context, servers []state.Server, in <-chan LogStrea
 			case <-timeout:
 				for identifier := range logLinesByServer {
 					if len(logLinesByServer[identifier]) > 0 {
-						server := state.Server{}
+						server := &state.Server{}
 						for _, s := range servers {
 							if s.Config.Identifier == identifier {
 								server = s

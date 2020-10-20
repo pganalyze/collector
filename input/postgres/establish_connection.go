@@ -10,7 +10,7 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
-func EstablishConnection(server state.Server, logger *util.Logger, globalCollectionOpts state.CollectionOpts, databaseName string) (connection *sql.DB, err error) {
+func EstablishConnection(server *state.Server, logger *util.Logger, globalCollectionOpts state.CollectionOpts, databaseName string) (connection *sql.DB, err error) {
 	connection, err = connectToDb(server.Config, logger, globalCollectionOpts, databaseName)
 	if err != nil {
 		if err.Error() == "pq: SSL is not enabled on the server" && (server.Config.DbSslMode == "prefer" || server.Config.DbSslMode == "") {
@@ -75,7 +75,7 @@ func SetStatementTimeout(connection *sql.DB, statementTimeoutMs int32) {
 	return
 }
 
-func SetDefaultStatementTimeout(connection *sql.DB, logger *util.Logger, server state.Server) {
+func SetDefaultStatementTimeout(connection *sql.DB, logger *util.Logger, server *state.Server) {
 	statementTimeoutMs := server.Grant.Config.Features.StatementTimeoutMs
 	if statementTimeoutMs == 0 { // Default value
 		statementTimeoutMs = 30000
@@ -92,7 +92,7 @@ func SetDefaultStatementTimeout(connection *sql.DB, logger *util.Logger, server 
 	return
 }
 
-func SetQueryTextStatementTimeout(connection *sql.DB, logger *util.Logger, server state.Server) {
+func SetQueryTextStatementTimeout(connection *sql.DB, logger *util.Logger, server *state.Server) {
 	queryTextStatementTimeoutMs := server.Grant.Config.Features.StatementTimeoutMsQueryText
 	if queryTextStatementTimeoutMs == 0 { // Default value
 		queryTextStatementTimeoutMs = 120000

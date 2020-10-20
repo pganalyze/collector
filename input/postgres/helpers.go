@@ -71,7 +71,7 @@ SELECT setting
 	FROM pg_settings
  WHERE name = '%s'`
 
-func GetPostgresSetting(settingName string, server state.Server, globalCollectionOpts state.CollectionOpts, prefixedLogger *util.Logger) (string, error) {
+func GetPostgresSetting(settingName string, server *state.Server, globalCollectionOpts state.CollectionOpts, prefixedLogger *util.Logger) (string, error) {
 	var value string
 
 	db, err := EstablishConnection(server, prefixedLogger, globalCollectionOpts, "")

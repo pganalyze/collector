@@ -78,7 +78,7 @@ func ResetStatements(logger *util.Logger, db *sql.DB, systemType string) error {
 	return nil
 }
 
-func GetStatements(server state.Server, logger *util.Logger, db *sql.DB, globalCollectionOpts state.CollectionOpts, postgresVersion state.PostgresVersion, showtext bool, systemType string) (state.PostgresStatementMap, state.PostgresStatementTextMap, state.PostgresStatementStatsMap, error) {
+func GetStatements(server *state.Server, logger *util.Logger, db *sql.DB, globalCollectionOpts state.CollectionOpts, postgresVersion state.PostgresVersion, showtext bool, systemType string) (state.PostgresStatementMap, state.PostgresStatementTextMap, state.PostgresStatementStatsMap, error) {
 	var err error
 	var totalTimeField string
 	var optionalFields string

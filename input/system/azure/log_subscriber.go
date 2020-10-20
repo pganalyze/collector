@@ -114,7 +114,7 @@ func setupEventHubReceiver(ctx context.Context, wg *sync.WaitGroup, logger *util
 	return nil
 }
 
-func SetupLogSubscriber(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *util.Logger, servers []state.Server, azureLogStream chan AzurePostgresLogRecord) error {
+func SetupLogSubscriber(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *util.Logger, servers []*state.Server, azureLogStream chan AzurePostgresLogRecord) error {
 	// This map is used to avoid duplicate receivers to the same Azure Event Hub
 	eventHubReceivers := make(map[string]bool)
 

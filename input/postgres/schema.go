@@ -7,7 +7,7 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
-func CollectAllSchemas(server state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, ps state.PersistedState, ts state.TransientState, systemType string) (state.PersistedState, state.TransientState) {
+func CollectAllSchemas(server *state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, ps state.PersistedState, ts state.TransientState, systemType string) (state.PersistedState, state.TransientState) {
 	schemaDbNames := []string{}
 
 	if server.Config.DbAllNames {
