@@ -92,6 +92,11 @@ func TestLogsForAllServers(servers []state.Server, globalCollectionOpts state.Co
 		}
 
 		prefixedLogger := logger.WithPrefixAndRememberErrors(server.Config.SectionName)
+		if server.CollectionStatus.LogSnapshotDisabled {
+			prefixedLogger.PrintWarning("WARNING - Configuration issue: %s", server.CollectionStatus.LogSnapshotDisabledReason)
+			prefixedLogger.PrintWarning("  Log collection will be disabled for this server")
+			continue
+		}
 
 		logLinePrefix, err := postgres.GetPostgresSetting("log_line_prefix", server, globalCollectionOpts, prefixedLogger)
 		if err != nil {
