@@ -181,7 +181,7 @@ func CollectAllServers(servers []*state.Server, globalCollectionOpts state.Colle
 				server.StateMutex.Unlock()
 				server.CollectionStatusMutex.Lock()
 				if newCollectionStatus.LogSnapshotDisabled {
-					warning := fmt.Sprintf("Skipping logs: %s", server.CollectionStatus.LogSnapshotDisabledReason)
+					warning := fmt.Sprintf("Skipping logs: %s", newCollectionStatus.LogSnapshotDisabledReason)
 					prefixedLogger.PrintWarning(warning)
 				}
 				server.CollectionStatus = newCollectionStatus
