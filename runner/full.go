@@ -33,6 +33,9 @@ func collectDiffAndSubmit(server *state.Server, globalCollectionOpts state.Colle
 		connection.Close()
 		return newState, state.CollectionStatus{}, err
 	}
+	if globalCollectionOpts.TestRun {
+		logger.PrintInfo("  Test collection successful for %s", transientState.Version.Full)
+	}
 
 	// This is the easiest way to avoid opening multiple connections to different databases on the same instance
 	connection.Close()
