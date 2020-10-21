@@ -98,6 +98,7 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 	// We intentionally don't do a test-run in the normal mode, since we're fine with
 	// a later SIGHUP that fixes the config (or a temporarily unreachable server at start)
 	if globalCollectionOpts.TestRun {
+		logger.PrintInfo("Running collector test with %s", util.CollectorNameAndVersion)
 		if globalCollectionOpts.TestReport != "" {
 			runner.RunTestReport(servers, globalCollectionOpts, logger)
 			return
