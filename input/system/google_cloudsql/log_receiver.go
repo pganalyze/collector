@@ -2,6 +2,7 @@ package google_cloudsql
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/pganalyze/collector/config"
@@ -44,6 +45,7 @@ func logReceiver(ctx context.Context, servers []*state.Server, in <-chan LogStre
 				if !ok {
 					return
 				}
+				fmt.Printf("=> Taking TS %s from queue\n", in.OccurredAt)
 
 				// We ignore failures here since we want the per-backend stitching logic
 				// that runs later on (and any other parsing errors will just be ignored)
@@ -70,6 +72,7 @@ func logReceiver(ctx context.Context, servers []*state.Server, in <-chan LogStre
 			case <-timeout:
 				for identifier := range logLinesByServer {
 					if len(logLinesByServer[identifier]) > 0 {
+						fmt.Printf("=> %d log lines on hold for server %s\n", len(logLinesByServer[identifier]), identifier)
 						server := &state.Server{}
 						for _, s := range servers {
 							if s.Config.Identifier == identifier {

@@ -57,21 +57,32 @@ func setupPubSubSubscriber(ctx context.Context, wg *sync.WaitGroup, logger *util
 		for {
 			logger.PrintVerbose("Initializing Google Pub/Sub handler")
 			err := sub.Receive(ctx, func(ctx context.Context, pubsubMsg *pubsub.Message) {
+				pubsubMsg.Ack()
+				fmt.Printf("ACKed message\n")
+
 				var msg googleLogMessage
-				json.Unmarshal(pubsubMsg.Data, &msg)
+				err = json.Unmarshal(pubsubMsg.Data, &msg)
+				if err != nil {
+					logger.PrintError("Error parsing JSON: %s", err)
+					return
+				}
+				fmt.Printf("Received message - receive TS: %s, TS: %s, now: %s\n", msg.ReceiveTimestamp, msg.Timestamp, time.Now())
 
 				if msg.Resource.ResourceType != "cloudsql_database" {
+					fmt.Printf("=> Other resource type: %s\n", msg.Resource.ResourceType)
 					return
 				}
 				if !strings.HasSuffix(msg.LogName, "postgres.log") {
+					fmt.Printf("=> Other log type: %s\n", msg.LogName)
 					return
 				}
 				databaseID, ok := msg.Resource.Labels["database_id"]
 				if !ok || strings.Count(databaseID, ":") != 1 {
+					fmt.Printf("=> Other database ID, or missing: %s\n", databaseID)
 					return
 				}
 
-				pubsubMsg.Ack()
+				fmt.Printf("=> Put into queue\n")
 
 				parts := strings.SplitN(databaseID, ":", 2) // project_id:instance_id
 				t, _ := time.Parse(time.RFC3339Nano, msg.Timestamp)
