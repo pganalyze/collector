@@ -57,8 +57,14 @@ func setupPubSubSubscriber(ctx context.Context, wg *sync.WaitGroup, logger *util
 		for {
 			logger.PrintVerbose("Initializing Google Pub/Sub handler")
 			err := sub.Receive(ctx, func(ctx context.Context, pubsubMsg *pubsub.Message) {
+				pubsubMsg.Ack()
+
 				var msg googleLogMessage
-				json.Unmarshal(pubsubMsg.Data, &msg)
+				err = json.Unmarshal(pubsubMsg.Data, &msg)
+				if err != nil {
+					logger.PrintError("Error parsing JSON: %s", err)
+					return
+				}
 
 				if msg.Resource.ResourceType != "cloudsql_database" {
 					return
@@ -71,7 +77,6 @@ func setupPubSubSubscriber(ctx context.Context, wg *sync.WaitGroup, logger *util
 					return
 				}
 
-				pubsubMsg.Ack()
 
 				parts := strings.SplitN(databaseID, ":", 2) // project_id:instance_id
 				t, _ := time.Parse(time.RFC3339Nano, msg.Timestamp)
