@@ -125,7 +125,7 @@ func processServer(server *state.Server, globalCollectionOpts state.CollectionOp
 	}
 	if panicErr != nil {
 		err = fmt.Errorf("%s", panicErr)
-		logger.PrintVerbose("Panic: %s\n%s", err, stackTrace)
+		logger.PrintWarning("Panic: %s\n%s", err, stackTrace)
 	}
 
 	return newState, newGrant, collectionStatus, err
