@@ -8,7 +8,7 @@ import (
 	"github.com/pganalyze/collector/state"
 )
 
-const MinSupportedLogMinDurationStatement = 100
+const MinSupportedLogMinDurationStatement = 10
 
 func ValidateLogCollectionConfig(server *state.Server, settings []state.PostgresSetting) (bool, string) {
 	var disabled = false
