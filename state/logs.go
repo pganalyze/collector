@@ -163,6 +163,7 @@ type LogLine struct {
 }
 
 func (logFile LogFile) Cleanup() {
+	logFile.TmpFile.Close()
 	os.Remove(logFile.TmpFile.Name())
 }
 
