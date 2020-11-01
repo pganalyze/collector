@@ -269,6 +269,8 @@ func ProcessLogStream(server *state.Server, logLines []state.LogLine, globalColl
 		return tooFreshLogLines
 	}
 
+	logState.LogFiles = []state.LogFile{logFile}
+
 	// Nothing to send, so just skip getting the grant and other work
 	if len(logFile.LogLines) == 0 && len(logState.QuerySamples) == 0 {
 		logState.Cleanup()
@@ -278,8 +280,6 @@ func ProcessLogStream(server *state.Server, logLines []state.LogLine, globalColl
 	if server.Config.EnableLogExplain && len(logState.QuerySamples) != 0 {
 		logState.QuerySamples = postgres.RunExplain(server, logState.QuerySamples, globalCollectionOpts, prefixedLogger)
 	}
-
-	logState.LogFiles = []state.LogFile{logFile}
 
 	if globalCollectionOpts.DebugLogs {
 		prefixedLogger.PrintInfo("Would have sent log state:\n")
