@@ -163,18 +163,17 @@ func tailFile(ctx context.Context, path string, out chan<- string, prefixedLogge
 
 	go func() {
 		defer t.Close()
+	TailLoop:
 		for {
 			select {
 			case line := <-t.Lines():
 				out <- line.String()
 			case <-ctx.Done():
 				prefixedLogger.PrintVerbose("Stopping log tail for %s (stop requested)", path)
-				t.Close()
-				return
+				break TailLoop
 			}
 		}
 		if t.Err() != nil {
-			t.Close()
 			prefixedLogger.PrintError("Failed log file tail: %s", t.Err())
 		}
 	}()
