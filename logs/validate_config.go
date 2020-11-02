@@ -41,6 +41,11 @@ func ValidateLogCollectionConfig(server *state.Server, settings []state.Postgres
 					disabled = true
 					disabledReasons = append(disabledReasons, "log_statement is set to unsupported value 'all'")
 				}
+			} else if setting.Name == "log_error_verbosity" && setting.CurrentValue.Valid {
+				if setting.CurrentValue.String == "verbose" {
+					disabled = true
+					disabledReasons = append(disabledReasons, "log_error_verbosity is set to unsupported value 'verbose'")
+				}
 			}
 		}
 	}
