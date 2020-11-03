@@ -173,6 +173,7 @@ type CollectionOpts struct {
 	TestRun             bool
 	TestReport          string
 	TestRunLogs         bool
+	TestExplain         bool
 	DebugLogs           bool
 	DiscoverLogLocation bool
 
@@ -227,6 +228,7 @@ type Server struct {
 	Config           config.ServerConfig
 	RequestedSslMode string
 	Grant            Grant
+	PGAnalyzeURL     string
 
 	PrevState  PersistedState
 	StateMutex *sync.Mutex

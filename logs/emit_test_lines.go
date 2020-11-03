@@ -1,0 +1,40 @@
+package logs
+
+import (
+	"fmt"
+
+	"github.com/pganalyze/collector/input/postgres"
+	"github.com/pganalyze/collector/state"
+	"github.com/pganalyze/collector/util"
+)
+
+func EmitTestLogMsg(server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) error {
+	db, err := postgres.EstablishConnection(server, logger, globalCollectionOpts, "")
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	_, err = db.Exec(postgres.QueryMarkerSQL + fmt.Sprintf("DO $$BEGIN\nRAISE LOG 'pganalyze-collector-identify: %s';\nEND$$;", server.Config.SectionName))
+	return err
+}
+
+func EmitTestExplain(server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) error {
+	db, err := postgres.EstablishConnection(server, logger, globalCollectionOpts, "")
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+	// Emit a query that's slow enough to trigger an explain if a log_min_duration is
+	// configured (either through auto_explain or the standard one)
+	_, err = db.Exec(postgres.QueryMarkerSQL + `WITH naptime(value) AS (
+SELECT
+	COALESCE(pg_catalog.max(setting::float), 0) / 1000 * 1.2
+FROM
+	pg_settings
+WHERE
+	name IN ('log_min_duration_statement', 'auto_explain.log_min_duration')
+)
+SELECT pg_catalog.pg_sleep(value) FROM naptime WHERE value > 0`)
+	return err
+}

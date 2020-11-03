@@ -1,5 +1,6 @@
 pganalyze-collector
 pganalyze-collector-helper
+pganalyze-collector-setup
 packages/tmp
 integration_test/*.json
 integration_test/*.out

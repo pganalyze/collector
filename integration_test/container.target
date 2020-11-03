@@ -1,0 +1,2 @@
+[Unit]
+Description=Simplistic target for containers that avoids starting unnecessary systemd components

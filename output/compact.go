@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
@@ -120,19 +119,18 @@ func submitCompactSnapshot(server *state.Server, collectionOpts state.Collection
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
 
-	body, err := ioutil.ReadAll(resp.Body)
+	msg, serverURL, err := parseSnapshotResponse(resp, collectionOpts)
 	if err != nil {
 		return err
 	}
 
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("Error when submitting: %s\n", body)
+	if serverURL != "" {
+		server.PGAnalyzeURL = serverURL
 	}
 
-	if len(body) > 0 && collectionOpts.TestRun {
-		logger.PrintInfo("  %s", body)
+	if len(msg) > 0 && collectionOpts.TestRun {
+		logger.PrintInfo("  %s", msg)
 	} else if !quiet {
 		logger.PrintInfo("Submitted compact %s snapshot successfully", kind)
 	}

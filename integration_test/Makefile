@@ -1,9 +1,18 @@
 DOCKER_BUILD_OPTS = -t pganalyze-collector-test ..
-DOCKER_RUN_CMD = docker run --name pganalyze-collector-test -v `pwd`/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d/ -e POSTGRES_HOST_AUTH_METHOD=trust -d pganalyze-collector-test
+DOCKER_RUN_CMD = docker run --name pganalyze-collector-test \
+  --mount type=bind,source=/sys/fs/cgroup,target=/sys/fs/cgroup \
+  --mount type=bind,source=/sys/fs/fuse,target=/sys/fs/fuse \
+  --mount type=tmpfs,destination=/tmp \
+  --mount type=tmpfs,destination=/run \
+  --mount type=tmpfs,destination=/run/lock \
+  -v `pwd`/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d/ \
+  -e POSTGRES_HOST_AUTH_METHOD=trust \
+  -d \
+  pganalyze-collector-test
 
-.PHONY: pg92 pg93 pg94 pg95 pg96 pg10 pg11 pg12 pg13
+.PHONY: pg92 pg93 pg94 pg95 pg96 pg10 pg11 pg12 pg13 guided-setup
 
-all: pg92 pg93 pg94 pg95 pg96 pg10 pg11 pg12 pg13
+all: pg92 pg93 pg94 pg95 pg96 pg10 pg11 pg12 pg13 guided-setup
 
 pg92:
 	docker build -f Dockerfile.test-pg92 $(DOCKER_BUILD_OPTS)
@@ -211,3 +220,36 @@ pg13:
 	fi
 	jq '.queryInformations[].normalizedQuery' pg13_2.json | sort --version-sort -f > pg13.out
 	diff -Naur pg13.expected pg13.out && echo 'success'
+
+guided-setup:
+	docker build -f Dockerfile.test-guided-setup $(DOCKER_BUILD_OPTS)
+	$(DOCKER_RUN_CMD)
+	sleep 10
+	docker exec pganalyze-collector-test systemctl start postgresql
+	docker exec --user pganalyze --detach pganalyze-collector-test pganalyze-collector
+
+	docker exec --privileged pganalyze-collector-test env PGA_SETUP_COLLECTOR_TEST_EXTRA_ARGS='--dry-run' pganalyze-collector-setup --api-key=abc123 --recommended --db-name=postgres
+
+	docker exec --user postgres pganalyze-collector-test psql -c "SHOW shared_preload_libraries" \
+		-c "SELECT count(*) FROM pg_settings WHERE pending_restart" \
+		-c "SELECT name, setting FROM pg_settings WHERE name IN ('log_duration', 'log_error_verbosity', 'log_line_prefix', 'log_min_duration_statement', 'log_statement', 'auto_explain.log_analyze', 'auto_explain.log_buffers', 'auto_explain.log_timing', 'auto_explain.log_triggers', 'auto_explain.log_verbose', 'auto_explain.log_format', 'auto_explain.log_min_duration', 'auto_explain.log_nested_statements') ORDER BY name" \
+		-c "SELECT pg_has_role('pganalyze', 'pg_monitor', 'usage')" \
+		> guided-setup.postgres.out
+	docker exec --user pganalyze pganalyze-collector-test cat /etc/pganalyze-collector.conf > guided-setup.collector-config.out
+	docker exec pganalyze-collector-test sh -c "PGA_DISABLE_ACTIVITY=1 pganalyze-collector --dry-run --force-state-update -v" > guided-setup.snapshot.json.out 2>guided-setup-snapshot.log.out
+
+	docker exec --user postgres pganalyze-collector-test pg_ctl --pgdata /var/lib/postgresql/10/main --wait stop --mode fast
+	docker rm -f pganalyze-collector-test
+	docker rmi pganalyze-collector-test
+
+	diff -Nau guided-setup.postgres.expected guided-setup.postgres.out && echo 'postgres configuration modified as expected'
+	grep -v db_password guided-setup.collector-config.out > guided-setup.collector-config.nopass.out
+	diff -Nau guided-setup.collector-config.nopass.expected guided-setup.collector-config.nopass.out \
+		&& grep --extended-regexp --quiet 'db_password\s+=\s+[a-f0-9]{32}' guided-setup.collector-config.out && echo 'collector config file modified as expected'
+	jq '{fns: .functionReferences, roles: .roleReferences[] |  select(.name == "pganalyze")}' < guided-setup.snapshot.json.out > guided-setup.snapshot-subset.json.out
+	if [ "`grep 'Local log test successful' guided-setup-snapshot.log.out | wc -l`" -ne 2 ]; then \
+		echo "expected post-setup log test to succeed with both full and reduced privileges; test failed:"; \
+		cat guided-setup-snapshot.log.out; \
+		exit 1; \
+	fi
+	diff -Nau guided-setup.snapshot-subset.json.expected guided-setup.snapshot-subset.json.out && echo 'success'
