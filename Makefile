@@ -11,6 +11,7 @@ build: output/pganalyze_collector/snapshot.pb.go build_dist
 build_dist:
 	go build -o ${OUTFILE}
 	make -C helper OUTFILE=../pganalyze-collector-helper
+	make -C setup OUTFILE=../pganalyze-collector-setup
 
 vendor:
 	GO111MODULE=on go mod tidy

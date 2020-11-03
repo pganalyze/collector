@@ -7,7 +7,7 @@ if ! getent group pganalyze > /dev/null; then
   usermod -g pganalyze pganalyze
 fi
 
-if ! groups pganalyze-collector | grep --quiet adm; then
+if ! groups pganalyze | grep --quiet adm; then
   usermod --append --groups adm pganalyze
 fi
 

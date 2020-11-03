@@ -19,11 +19,11 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
-const defaultAPIBaseURL = "https://api.pganalyze.com"
+const DefaultAPIBaseURL = "https://api.pganalyze.com"
 
 func getDefaultConfig() *ServerConfig {
 	config := &ServerConfig{
-		APIBaseURL:              defaultAPIBaseURL,
+		APIBaseURL:              DefaultAPIBaseURL,
 		SectionName:             "default",
 		QueryStatsInterval:      60,
 		MaxCollectorConnections: 10,
@@ -226,7 +226,7 @@ func getDefaultConfig() *ServerConfig {
 }
 
 func CreateHTTPClient(conf ServerConfig) *http.Client {
-	requireSSL := conf.APIBaseURL == defaultAPIBaseURL
+	requireSSL := conf.APIBaseURL == DefaultAPIBaseURL
 	proxyConfig := httpproxy.Config{
 		HTTPProxy:  conf.HTTPProxy,
 		HTTPSProxy: conf.HTTPSProxy,

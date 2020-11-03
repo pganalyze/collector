@@ -5,6 +5,7 @@ module github.com/pganalyze/collector
 require (
 	cloud.google.com/go v0.68.0 // indirect
 	cloud.google.com/go/pubsub v1.8.1
+	github.com/AlecAivazis/survey/v2 v2.2.1
 	github.com/Azure/azure-amqp-common-go v1.1.4
 	github.com/Azure/azure-event-hubs-go v1.3.1
 	github.com/Azure/go-autorest v11.1.1+incompatible
@@ -15,7 +16,7 @@ require (
 	github.com/fsnotify/fsnotify v1.4.9
 	github.com/gedex/inflector v0.0.0-20161103042756-046f2c312046
 	github.com/getsentry/raven-go v0.0.0-20161115135411-3f7439d3e74d
-	github.com/go-ini/ini v1.18.0
+	github.com/go-ini/ini v1.62.0
 	github.com/go-ole/go-ole v0.0.0-20160708033836-be49f7c07711 // indirect
 	github.com/golang/protobuf v1.4.2
 	github.com/gopherjs/gopherjs v0.0.0-20181103185306-d547d1d9531e // indirect

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/pganalyze/collector/input/postgres"
+	"github.com/pganalyze/collector/logs"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
 )
@@ -24,11 +24,7 @@ func TestLogTail(server *state.Server, globalCollectionOpts state.CollectionOpts
 		return err
 	}
 
-	db, err := postgres.EstablishConnection(server, prefixedLogger, globalCollectionOpts, "")
-	if err == nil {
-		db.Exec(postgres.QueryMarkerSQL + fmt.Sprintf("DO $$BEGIN\nRAISE LOG 'pganalyze-collector-identify: %s';\nEND$$;", server.Config.SectionName))
-		db.Close()
-	}
+	logs.EmitTestLogMsg(server, globalCollectionOpts, prefixedLogger)
 
 	select {
 	case <-logTestSucceeded:
