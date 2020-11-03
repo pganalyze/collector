@@ -5,6 +5,7 @@ module github.com/pganalyze/collector
 require (
 	cloud.google.com/go v0.68.0 // indirect
 	cloud.google.com/go/pubsub v1.8.1
+	github.com/AlecAivazis/survey/v2 v2.2.0 // indirect
 	github.com/Azure/azure-amqp-common-go v1.1.4
 	github.com/Azure/azure-event-hubs-go v1.3.1
 	github.com/Azure/go-autorest v11.1.1+incompatible
