@@ -21,7 +21,10 @@ func NewRunner() *Runner {
 }
 
 func (qr *Runner) Ping() error {
-	// check if we can connect
+	// TODO: we should check that this is actually a superuser
+	// and account for cloud provider faux superusers (since we
+	// may want a consistent interface for this even if users
+	// have to enter credentials)
 	_, err := qr.runSQL("select 1")
 	return err
 }

@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 
 	survey "github.com/AlecAivazis/survey/v2"
@@ -45,6 +46,7 @@ func main() {
 	steps := []*Step{
 		determinePlatform,
 		loadConfig,
+		saveAPIKey,
 		establishSuperuserConnection,
 		checkPostgresVersion,
 		checkReplicationStatus,
@@ -53,6 +55,14 @@ func main() {
 		createMonitoringUser,
 		configureMonitoringUserPassword,
 		setUpMonitoringUser,
+		checkPgssAvailable,
+		createPgss,
+		enablePgss,
+		restartPg,
+		configureLogSettings,
+		checkAutoExplainAvailable,
+		enableAutoExplain,
+		configureAutoExplain,
 	}
 
 	var setupState SetupState
@@ -105,9 +115,6 @@ func doStep(setupState *SetupState, step *Step) error {
 	return nil
 }
 
-// setup is a series of steps
-// each step, we check if done,
-
 // for package installation / init system interaction
 var determinePlatform = &Step{
 	Description: "Determine platform",
@@ -121,13 +128,14 @@ var determinePlatform = &Step{
 		state.PlatformFamily = hostInfo.PlatformFamily
 		state.PlatformVersion = hostInfo.PlatformVersion
 
+		// TODO: fail on unsupported platforms
 		return true, nil
 	},
 }
 
 // for package installation / init system interaction
 var loadConfig = &Step{
-	Description: "Load pganalyze config",
+	Description: "Load collector config",
 	Check: func(state *SetupState) (bool, error) {
 		// TODO: also stat and check we can write to it?
 		config, err := ini.Load(state.ConfigFilename)
@@ -141,7 +149,7 @@ var loadConfig = &Step{
 		}
 		state.Config = config
 		for _, section := range config.Sections() {
-			if section.Name() == "pganalyze" {
+			if section.Name() == "pganalyze" || section.Name() == "DEFAULT" {
 				continue
 			} else {
 				state.CurrentSection = section
@@ -152,12 +160,28 @@ var loadConfig = &Step{
 	},
 }
 
-// assume local socket trust auth for postgres user; prompt for credentials if necessary
-// N.B.: should make sure this works with cloud provider faux superusers
+var saveAPIKey = &Step{
+	Description: "Add pganalyze API key to collector config",
+	Check: func(state *SetupState) (bool, error) {
+		return state.CurrentSection.HasKey("api_key"), nil
+	},
+	Run: func(state *SetupState) error {
+		// TODO: prompt for API key if not present in env
+		apiKey := os.Getenv("PGA_API_KEY")
+		if apiKey == "" {
+			return errors.New("PGA_API_KEY not set")
+		}
+		_, err := state.CurrentSection.NewKey("api_key", apiKey)
+		if err != nil {
+			return err
+		}
+		return state.Config.SaveTo(state.ConfigFilename)
+	},
+}
+
 var establishSuperuserConnection = &Step{
 	Description: "Ensure Postgres superuser connection",
 	Check: func(state *SetupState) (bool, error) {
-		// TODO: for now this is automatic, but we should
 		if state.QueryRunner == nil {
 			return false, nil
 		}
@@ -165,7 +189,7 @@ var establishSuperuserConnection = &Step{
 		return err == nil, err
 	},
 	Run: func(state *SetupState) error {
-		// TODO: prompt for credentials
+		// TODO: Ping and prompt for credentials if necessary if ping fails
 		state.QueryRunner = query.NewRunner()
 		return nil
 	},
@@ -472,7 +496,19 @@ var restartPg = &Step{
 	},
 }
 
-var checkAutoExplainvailable = &Step{
+// log_error_verbosity, log_duration, log_min_duration_statement, log_statement, log_line_prefix
+var configureLogSettings = &Step{
+	Description: "Configure logging-related settings",
+	Check: func(state *SetupState) (bool, error) {
+		// TODO: check recommended/required configuration settings
+		return false, nil
+	},
+	Run: func(state *SetupState) error {
+		return nil
+	},
+}
+
+var checkAutoExplainAvailable = &Step{
 	Description: "Prepare for auto_explain install",
 	Check: func(state *SetupState) (bool, error) {
 		err := state.QueryRunner.Exec("LOAD auto_explain")
@@ -518,8 +554,8 @@ var enableAutoExplain = &Step{
 	},
 }
 
-var setUpAutoExplain = &Step{
-	Description: "Set up auto_explain",
+var configureAutoExplain = &Step{
+	Description: "Configure auto_explain",
 	Check: func(state *SetupState) (bool, error) {
 		// TODO: check recommended/required configuration settings
 		return false, nil
