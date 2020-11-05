@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	survey "github.com/AlecAivazis/survey/v2"
 	"github.com/go-ini/ini"
@@ -50,6 +51,7 @@ func main() {
 		selectDatabases,
 		specifyMonitoringUser,
 		createMonitoringUser,
+		configureMonitoringUserPassword,
 		setUpMonitoringUser,
 	}
 
@@ -276,12 +278,42 @@ var createMonitoringUser = &Step{
 			return err
 		}
 		pgaUser := pgaUserKey.String()
-		// TODO: generate secure password
-		pgaPassword := "hunter2"
 
 		err = state.QueryRunner.Exec(
 			fmt.Sprintf(
-				"CREATE USER %s WITH ENCRYPTED PASSWORD %s",
+				"CREATE USER %s",
+				pq.QuoteIdentifier(pgaUser),
+			),
+		)
+		return err
+	},
+}
+
+var configureMonitoringUserPassword = &Step{
+	Description: "Configure monitoring user password",
+	Check: func(state *SetupState) (bool, error) {
+		// TODO: we should check the password actually works
+		hasPassword := state.CurrentSection.HasKey("db_password")
+		return hasPassword, nil
+	},
+	Run: func(state *SetupState) error {
+		// TODO: prompt to generate secure password, enter existing password
+		// (only update config, no alter user though in theory shouldn't hurt),
+		// or enter new password
+		pgaUserKey, err := state.CurrentSection.GetKey("db_user")
+		if err != nil {
+			return err
+		}
+		pgaUser := pgaUserKey.String()
+		pgaPassword := "hunter2"
+
+		_, err = state.CurrentSection.NewKey("db_password", pgaPassword)
+		if err != nil {
+			return err
+		}
+		err = state.QueryRunner.Exec(
+			fmt.Sprintf(
+				"ALTER USER %s WITH ENCRYPTED PASSWORD %s",
 				pq.QuoteIdentifier(pgaUser),
 				pq.QuoteLiteral(pgaPassword),
 			),
@@ -294,7 +326,6 @@ var createMonitoringUser = &Step{
 		if err != nil {
 			return err
 		}
-
 		return state.Config.SaveTo(state.ConfigFilename)
 	},
 }
@@ -313,8 +344,7 @@ var setUpMonitoringUser = &Step{
 		// TODO: deal with postgres <10
 		// TODO: more lenient check--we don't necessarily need role membership--just access to
 		// all the necessary tables and functions
-		var row query.Row
-		row, err = state.QueryRunner.QueryRow(
+		row, err := state.QueryRunner.QueryRow(
 			fmt.Sprintf(
 				"SELECT true FROM pg_user WHERE usename = %s AND (usesuper OR pg_has_role(usename, 'pg_monitor', 'member'))",
 				pq.QuoteLiteral(pgaUser),
@@ -347,15 +377,154 @@ var setUpMonitoringUser = &Step{
 	},
 }
 
-// check if installed / available; see if postgresql-contrib package is necessary
-var setUpPgStatStatements = &Step{}
-
-// check log settings, log file configuration, update config file if necessary
-var setUpLogInsights = &Step{
-	Description: "log insights setup",
+var checkPgssAvailable = &Step{
+	Description: "Prepare for pg_stat_statements install",
+	Check: func(state *SetupState) (bool, error) {
+		row, err := state.QueryRunner.QueryRow(
+			fmt.Sprintf(
+				"SELECT true FROM pg_available_extensions WHERE name = 'pg_stat_statements'",
+			),
+		)
+		if err == query.ErrNoRows {
+			return false, nil
+		} else if err != nil {
+			return false, err
+		}
+		return row.GetBool(0), nil
+	},
+	Run: func(state *SetupState) error {
+		// install contrib package?
+		return nil
+	},
 }
 
-// ask if user wants auto_explain or log-based explain (and steer them appropriately)
-var setUpExplain = &Step{
-	Description: "EXPLAIN setup",
+// install pg_stat_statements extension
+var createPgss = &Step{
+	Description: "Install pg_stat_statements",
+	Check: func(state *SetupState) (bool, error) {
+		row, err := state.QueryRunner.QueryRow(
+			fmt.Sprintf(
+				"SELECT extnamespace::regnamespace::text FROM pg_extension WHERE extname = 'pg_stat_statements'",
+			),
+		)
+		if err == query.ErrNoRows {
+			return false, nil
+		} else if err != nil {
+			return false, err
+		}
+		extNsp := row.GetString(0)
+		if extNsp != "public" {
+			return false, fmt.Errorf("pg_stat_statements is installed, but in unsupported schema %s; must be installed in 'public'", extNsp)
+		}
+		return true, nil
+	},
+	Run: func(state *SetupState) error {
+		return state.QueryRunner.Exec("CREATE EXTENSION pg_stat_statements SCHEMA public")
+	},
+}
+
+var enablePgss = &Step{
+	Description: "Enable pg_stat_statements",
+	Check: func(state *SetupState) (bool, error) {
+		row, err := state.QueryRunner.QueryRow("SHOW shared_preload_libraries")
+		if err != nil {
+			return false, err
+		}
+		return strings.Contains(row.GetString(0), "pg_stat_statements"), nil
+	},
+	Run: func(state *SetupState) error {
+		row, err := state.QueryRunner.QueryRow("SHOW shared_preload_libraries")
+		if err != nil {
+			return err
+		}
+		var existingSpl = row.GetString(0)
+		var newSpl string
+		if existingSpl == "" {
+			newSpl = "pg_stat_statements"
+		} else {
+			newSpl = existingSpl + ",pg_stat_statements"
+		}
+		return state.QueryRunner.Exec(
+			fmt.Sprintf("ALTER SYSTEM SET shared_preload_libraries = %s", pq.QuoteLiteral(newSpl)),
+		)
+	},
+}
+
+var restartPg = &Step{
+	Description: "Restart Postgres to have configuration changes take effect",
+	Check: func(state *SetupState) (bool, error) {
+		rows, err := state.QueryRunner.Query("SELECT name FROM pg_settings WHERE pending_restart;")
+		if err != nil {
+			return false, err
+		}
+		if len(rows) > 0 {
+			return false, nil
+		}
+		return true, nil
+	},
+	Run: func(state *SetupState) error {
+		// Postgres must be restarted for changes to the following settings to take effect:
+		// "select name from pg_settings where pending_restart;"
+		// Note that if you also intend to install auto_explain, that will also require a
+		// restart--you can skip restarting now (check whether one of the settings is shared_preload_libraries and whether its value includes auto_explain)
+		// allow this to set a SkipRestart flag that's checked and cleared in Check
+		return nil
+	},
+}
+
+var checkAutoExplainvailable = &Step{
+	Description: "Prepare for auto_explain install",
+	Check: func(state *SetupState) (bool, error) {
+		err := state.QueryRunner.Exec("LOAD auto_explain")
+		if err != nil {
+			if strings.Contains(err.Error(), "No such file or directory") {
+				return false, nil
+			}
+
+			return false, err
+		}
+		return true, err
+	},
+	Run: func(state *SetupState) error {
+		// install contrib package?
+		return nil
+	},
+}
+
+var enableAutoExplain = &Step{
+	Description: "Enable auto_explain",
+	Check: func(state *SetupState) (bool, error) {
+		row, err := state.QueryRunner.QueryRow("SHOW shared_preload_libraries")
+		if err != nil {
+			return false, err
+		}
+		return strings.Contains(row.GetString(0), "auto_explain"), nil
+	},
+	Run: func(state *SetupState) error {
+		row, err := state.QueryRunner.QueryRow("SHOW shared_preload_libraries")
+		if err != nil {
+			return err
+		}
+		var existingSpl = row.GetString(0)
+		var newSpl string
+		if existingSpl == "" {
+			newSpl = "auto_explain"
+		} else {
+			newSpl = existingSpl + ",auto_explain"
+		}
+		return state.QueryRunner.Exec(
+			fmt.Sprintf("ALTER SYSTEM SET shared_preload_libraries = %s", pq.QuoteLiteral(newSpl)),
+		)
+	},
+}
+
+var setUpAutoExplain = &Step{
+	Description: "Set up auto_explain",
+	Check: func(state *SetupState) (bool, error) {
+		// TODO: check recommended/required configuration settings
+		return false, nil
+	},
+	Run: func(state *SetupState) error {
+		return nil
+	},
 }
