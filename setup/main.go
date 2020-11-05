@@ -1,7 +1,6 @@
 package main
 
 import (
-	"database/sql"
 	"errors"
 	"fmt"
 
@@ -9,6 +8,8 @@ import (
 	"github.com/go-ini/ini"
 	"github.com/lib/pq"
 	"github.com/shirou/gopsutil/host"
+
+	"github.com/pganalyze/collector/setup/query"
 )
 
 type SetupState struct {
@@ -17,7 +18,7 @@ type SetupState struct {
 	PlatformFamily  string
 	PlatformVersion string
 
-	SetupConn    *sql.DB
+	QueryRunner  *query.Runner
 	PGVersionNum int
 	PGVersionStr string
 
@@ -152,31 +153,18 @@ var loadConfig = &Step{
 // assume local socket trust auth for postgres user; prompt for credentials if necessary
 // N.B.: should make sure this works with cloud provider faux superusers
 var establishSuperuserConnection = &Step{
-	Description: "Establish Postgres superuser connection",
+	Description: "Ensure Postgres superuser connection",
 	Check: func(state *SetupState) (bool, error) {
-		if state.SetupConn == nil {
+		// TODO: for now this is automatic, but we should
+		if state.QueryRunner == nil {
 			return false, nil
 		}
-
-		err := state.SetupConn.Ping()
-		if err != nil {
-			return false, err
-		}
-
-		return true, nil
+		err := state.QueryRunner.Ping()
+		return err == nil, err
 	},
 	Run: func(state *SetupState) error {
 		// TODO: prompt for credentials
-		// TODO: right now we assume standard Debian location unix domain socket on 5432; should prompt or attempt more discovery and try /tmp as well
-		connStr := "host=/run/postgresql port=5432"
-		db, err := sql.Open("postgres", connStr)
-		if err != nil {
-			return err
-		}
-
-		db.SetMaxOpenConns(1)
-		state.SetupConn = db
-
+		state.QueryRunner = query.NewRunner()
 		return nil
 	},
 }
@@ -185,10 +173,13 @@ var establishSuperuserConnection = &Step{
 var checkPostgresVersion = &Step{
 	Description: "Check Postgres version",
 	Check: func(state *SetupState) (bool, error) {
-		err := state.SetupConn.QueryRow("SELECT current_setting('server_version'), current_setting('server_version_num')::integer").Scan(&state.PGVersionStr, &state.PGVersionNum)
+		row, err := state.QueryRunner.QueryRow("SELECT current_setting('server_version'), current_setting('server_version_num')::integer")
 		if err != nil {
 			return false, err
 		}
+		state.PGVersionStr = row.GetString(0)
+		state.PGVersionNum = row.GetInt(1)
+
 		return true, nil
 	},
 }
@@ -197,11 +188,12 @@ var checkPostgresVersion = &Step{
 var checkReplicationStatus = &Step{
 	Description: "Check replication status",
 	Check: func(state *SetupState) (bool, error) {
-		var isReplicationTarget bool
-		err := state.SetupConn.QueryRow("SELECT pg_is_in_recovery()").Scan(&isReplicationTarget)
+		result, err := state.QueryRunner.QueryRow("SELECT pg_is_in_recovery()")
 		if err != nil {
 			return false, err
 		}
+		isReplicationTarget := result.GetBool(0)
+
 		if isReplicationTarget {
 			return false, errors.New("not supported for replication target")
 		}
@@ -216,21 +208,13 @@ var selectDatabases = &Step{
 		return state.CurrentSection.HasKey("db_name"), nil
 	},
 	Run: func(state *SetupState) error {
-		rows, err := state.SetupConn.Query("SELECT datname FROM pg_database WHERE datallowconn AND NOT datistemplate")
+		rows, err := state.QueryRunner.Query("SELECT datname FROM pg_database WHERE datallowconn AND NOT datistemplate")
 		if err != nil {
 			return err
 		}
 		var dbOpts []string
-		for rows.Next() {
-			var db string
-			err = rows.Scan(&db)
-			if err != nil {
-				return err
-			}
-			dbOpts = append(dbOpts, db)
-		}
-		if err = rows.Err(); err != nil {
-			return err
+		for _, row := range rows {
+			dbOpts = append(dbOpts, row.GetString(0))
 		}
 		// TODO: deal with db_url
 
@@ -277,14 +261,14 @@ var createMonitoringUser = &Step{
 		}
 		pgaUser := pgaUserKey.String()
 
-		var exists bool
-		err = state.SetupConn.QueryRow("SELECT true FROM pg_user WHERE usename = $1", pgaUser).Scan(&exists)
-		if err == sql.ErrNoRows {
+		var result query.Row
+		result, err = state.QueryRunner.QueryRow(fmt.Sprintf("SELECT true FROM pg_user WHERE usename = %s", pq.QuoteLiteral(pgaUser)))
+		if err == query.ErrNoRows {
 			return false, nil
 		} else if err != nil {
 			return false, err
 		}
-		return true, nil
+		return result.GetBool(0), nil
 	},
 	Run: func(state *SetupState) error {
 		pgaUserKey, err := state.CurrentSection.GetKey("db_user")
@@ -295,7 +279,7 @@ var createMonitoringUser = &Step{
 		// TODO: generate secure password
 		pgaPassword := "hunter2"
 
-		_, err = state.SetupConn.Exec(
+		err = state.QueryRunner.Exec(
 			fmt.Sprintf(
 				"CREATE USER %s WITH ENCRYPTED PASSWORD %s",
 				pq.QuoteIdentifier(pgaUser),
@@ -326,16 +310,24 @@ var setUpMonitoringUser = &Step{
 		}
 		pgaUser := pgaUserKey.String()
 
-		var hasPermissions bool
 		// TODO: deal with postgres <10
-		// TODO: more lenient check
-		err = state.SetupConn.QueryRow("SELECT true FROM pg_user WHERE usename = $1 AND (usesuper OR pg_has_role(usename, 'pg_monitor', 'member'))", pgaUser).Scan(&hasPermissions)
-		if err == sql.ErrNoRows {
+		// TODO: more lenient check--we don't necessarily need role membership--just access to
+		// all the necessary tables and functions
+		var row query.Row
+		row, err = state.QueryRunner.QueryRow(
+			fmt.Sprintf(
+				"SELECT true FROM pg_user WHERE usename = %s AND (usesuper OR pg_has_role(usename, 'pg_monitor', 'member'))",
+				pq.QuoteLiteral(pgaUser),
+			),
+		)
+		if err == query.ErrNoRows {
+			fmt.Printf("nope")
 			return false, nil
 		} else if err != nil {
 			return false, err
 		}
-		return true, nil
+
+		return row.GetBool(0), nil
 	},
 	Run: func(state *SetupState) error {
 		pgaUserKey, err := state.CurrentSection.GetKey("db_user")
@@ -345,7 +337,7 @@ var setUpMonitoringUser = &Step{
 		pgaUser := pgaUserKey.String()
 
 		// TODO: deal with postgres <10
-		_, err = state.SetupConn.Exec(
+		err = state.QueryRunner.Exec(
 			fmt.Sprintf(
 				"GRANT pg_monitor to %s",
 				pq.QuoteIdentifier(pgaUser),
