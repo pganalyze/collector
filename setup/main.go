@@ -75,8 +75,7 @@ func main() {
 
 	// TODO: check for root?
 
-	fmt.Println(`
-Welcome to the pganalyze collector installer
+	fmt.Println(`Welcome to the pganalyze collector installer
 
 We will go through a series of steps to set up the collector to monitor your
 Postgres database. At each step, we'll check if any changes are necessary,
