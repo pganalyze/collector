@@ -64,6 +64,7 @@ type ServerConfig struct {
 	DbAllNames   bool     // All databases except template databases should be fetched (determined by * in the db_name list)
 
 	AwsRegion          string `ini:"aws_region"`
+	AwsAccountID       string `ini:"aws_account_id"`
 	AwsDbInstanceID    string `ini:"aws_db_instance_id"`
 	AwsAccessKeyID     string `ini:"aws_access_key_id"`
 	AwsSecretAccessKey string `ini:"aws_secret_access_key"`
