@@ -1,9 +1,12 @@
 package main
 
 import (
+	"crypto/rand"
+	"database/sql"
 	"errors"
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	"strings"
 
@@ -12,7 +15,9 @@ import (
 	"github.com/lib/pq"
 	"github.com/shirou/gopsutil/host"
 
+	"github.com/pganalyze/collector/config"
 	"github.com/pganalyze/collector/setup/query"
+	"github.com/pganalyze/collector/util"
 )
 
 type SetupState struct {
@@ -57,7 +62,8 @@ func main() {
 		selectDatabases,
 		specifyMonitoringUser,
 		createMonitoringUser,
-		configureMonitoringUserPassword,
+		configureMonitoringUserPasswd,
+		applyMonitoringUserPasswd,
 		setUpMonitoringUser,
 		checkPgssAvailable,
 		createPgss,
@@ -67,6 +73,7 @@ func main() {
 		checkAutoExplainAvailable,
 		enableAutoExplain,
 		configureAutoExplain,
+		restartPg, // N.B.: this is in this list twice
 	}
 
 	var setupState SetupState
@@ -231,7 +238,6 @@ var establishSuperuserConnection = &Step{
 	},
 }
 
-// this will affect some of the other checks we can run
 var checkPostgresVersion = &Step{
 	Description: "Check Postgres version",
 	Check: func(state *SetupState) (bool, error) {
@@ -262,7 +268,6 @@ var checkReplicationStatus = &Step{
 	},
 }
 
-// get list of databases, set one as primary in config
 var selectDatabases = &Step{
 	Description: "Select database(s) to monitor",
 	Check: func(state *SetupState) (bool, error) {
@@ -277,7 +282,6 @@ var selectDatabases = &Step{
 		for _, row := range rows {
 			dbOpts = append(dbOpts, row.GetString(0))
 		}
-		// TODO: deal with db_url
 
 		var selectedDb string
 		survey.AskOne(&survey.Select{
@@ -330,7 +334,6 @@ var specifyMonitoringUser = &Step{
 var createMonitoringUser = &Step{
 	Description: "Ensure monitoring user exists",
 	Check: func(state *SetupState) (bool, error) {
-		// TODO: deal with db_url
 		pgaUserKey, err := state.CurrentSection.GetKey("db_user")
 		if err != nil {
 			return false, err
@@ -363,44 +366,94 @@ var createMonitoringUser = &Step{
 	},
 }
 
-var configureMonitoringUserPassword = &Step{
+var configureMonitoringUserPasswd = &Step{
 	Description: "Configure monitoring user password",
 	Check: func(state *SetupState) (bool, error) {
-		// TODO: we should check the password actually works
 		hasPassword := state.CurrentSection.HasKey("db_password")
 		return hasPassword, nil
 	},
 	Run: func(state *SetupState) error {
-		// TODO: prompt to generate secure password, enter existing password
-		// (only update config, no alter user though in theory shouldn't hurt),
-		// or enter new password
+		var passwordStrategy int
+		err := survey.AskOne(&survey.Select{
+			Message: "Select how to set up the collector user password:",
+			Options: []string{"generate random password (recommended)", "enter existing password"},
+		}, &passwordStrategy)
+		if err != nil {
+			return err
+		}
+
+		var pgaPasswd string
+		if passwordStrategy == 0 {
+			passwdBytes := make([]byte, 32)
+			rand.Read(passwdBytes)
+			pgaPasswd = string(passwdBytes)
+		} else if passwordStrategy == 1 {
+			err = survey.AskOne(&survey.Input{
+				Message: "Enter password for the collector to use:",
+			}, &passwordStrategy)
+			if err != nil {
+				return err
+			}
+		}
+		_, err = state.CurrentSection.NewKey("db_password", pgaPasswd)
+		if err != nil {
+			return err
+		}
+
+		return state.Config.SaveTo(state.ConfigFilename)
+	},
+}
+
+var applyMonitoringUserPasswd = &Step{
+	Description: "Apply monitoring user password",
+	Check: func(state *SetupState) (bool, error) {
+		cfg, err := config.Read(
+			&util.Logger{Destination: log.New(os.Stderr, "", 0)},
+			state.ConfigFilename,
+		)
+		if err != nil {
+			return false, err
+		}
+		if len(cfg.Servers) != 1 {
+			return false, fmt.Errorf("expected one server in config; found %d", len(cfg.Servers))
+		}
+		serverCfg := cfg.Servers[0]
+		pqStr := serverCfg.GetPqOpenString("")
+		conn, err := sql.Open("postgres", pqStr)
+		err = conn.Ping()
+		return err == nil, err
+	},
+	Run: func(state *SetupState) error {
 		pgaUserKey, err := state.CurrentSection.GetKey("db_user")
 		if err != nil {
 			return err
 		}
 		pgaUser := pgaUserKey.String()
-		pgaPassword := "hunter2"
-
-		_, err = state.CurrentSection.NewKey("db_password", pgaPassword)
+		pgaPasswdKey, err := state.CurrentSection.GetKey("db_password")
 		if err != nil {
 			return err
+		}
+		pgaPasswd := pgaPasswdKey.String()
+
+		var doPasswdUpdate bool
+		err = survey.AskOne(&survey.Confirm{
+			Message: "Update password for user %s in Postgres with configured value?",
+			Help:    "If you skip this step, ensure the password matches before proceeding",
+		}, &doPasswdUpdate)
+		if err != nil {
+			return err
+		}
+		if !doPasswdUpdate {
+			return nil
 		}
 		err = state.QueryRunner.Exec(
 			fmt.Sprintf(
 				"ALTER USER %s WITH ENCRYPTED PASSWORD %s",
 				pq.QuoteIdentifier(pgaUser),
-				pq.QuoteLiteral(pgaPassword),
+				pq.QuoteLiteral(pgaPasswd),
 			),
 		)
-		if err != nil {
-			return err
-		}
-
-		_, err = state.CurrentSection.NewKey("db_password", pgaPassword)
-		if err != nil {
-			return err
-		}
-		return state.Config.SaveTo(state.ConfigFilename)
+		return err
 	},
 }
 
@@ -408,7 +461,6 @@ var configureMonitoringUserPassword = &Step{
 var setUpMonitoringUser = &Step{
 	Description: "Set up monitoring user",
 	Check: func(state *SetupState) (bool, error) {
-		// TODO: deal with db_url
 		pgaUserKey, err := state.CurrentSection.GetKey("db_user")
 		if err != nil {
 			return false, err
@@ -467,7 +519,7 @@ var checkPgssAvailable = &Step{
 		return row.GetBool(0), nil
 	},
 	Run: func(state *SetupState) error {
-		// install contrib package?
+		// TODO: install contrib package?
 		return nil
 	},
 }
@@ -572,7 +624,7 @@ var checkAutoExplainAvailable = &Step{
 		return true, err
 	},
 	Run: func(state *SetupState) error {
-		// install contrib package?
+		// TODO: install contrib package?
 		return nil
 	},
 }
