@@ -86,14 +86,23 @@ func main() {
 	fmt.Println(`Welcome to the pganalyze collector installer
 
 We will go through a series of steps to set up the collector to monitor your
-Postgres database. At each step, we'll check if any changes are necessary,
-and if so, prompt you to provide input or just proceed to make the change.
+Postgres database.
+
+At a high level, we will:
+
+ 1. Update the collector config file with credentials to connect to your database
+ 2. Create and configure a monitoring user and helper functions in your database
+ 3. Set up the pg_stat_statements extension in your database for basic query performance monitoring
+ 4. (Optional) Make log-related configuration settings changes to enable our Log Insights feature
+ 5. (Optional) Set up EXPLAIN plan collection to enable our Automated EXPLAIN feature
+
+At each step, we'll check if any changes are necessary, and if so, prompt you to
+provide input or confirm any required changes.
 
 You can stop at any time by pressing Ctrl+C.
 
 If you stop before completing setup, you can resume by running the installer
-again. We can pick up where you left off.
-	`)
+again. We can pick up where you left off.`)
 	var doSetup bool
 	survey.AskOne(&survey.Confirm{
 		Message: "Continue with setup?",
