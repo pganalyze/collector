@@ -79,10 +79,23 @@ func main() {
 
 We will go through a series of steps to set up the collector to monitor your
 Postgres database. At each step, we'll check if any changes are necessary,
-and if so, prompt you to proceed to make the change or cancel. If you stop at
-any point, you can resume setup by running the installer again—it will pick up
-in the right place.
+and if so, prompt you to provide input or just proceed to make the change.
+
+You can stop at any time by pressing Ctrl+C.
+
+If you stop before completing setup, you can resume by running the installer
+again. We can pick up where you left off.
 	`)
+	var doSetup bool
+	survey.AskOne(&survey.Confirm{
+		Message: "Continue with setup?",
+		Default: false,
+	}, &doSetup)
+	if !doSetup {
+		fmt.Println("exiting...")
+		os.Exit(0)
+	}
+
 	for _, step := range steps {
 		err := doStep(&setupState, step)
 		if err != nil {
@@ -142,7 +155,10 @@ var determinePlatform = &Step{
 		state.PlatformFamily = hostInfo.PlatformFamily
 		state.PlatformVersion = hostInfo.PlatformVersion
 
-		// TODO: fail on unsupported platforms
+		if state.Platform != "ubuntu" || state.PlatformVersion != "20.04" {
+			return false, errors.New("automated setup only supported on Ubuntu 20.04")
+		}
+
 		return true, nil
 	},
 }
@@ -154,7 +170,7 @@ var loadConfig = &Step{
 		if err != nil {
 			return false, err
 		}
-		// TODO: in theory we could do this for each server instead
+
 		if len(config.Sections()) != 3 {
 			// N.B.: DEFAULT section, pganalyze section, server section
 			return false, fmt.Errorf("not supported for config file defining more than one server")
@@ -170,6 +186,10 @@ var loadConfig = &Step{
 			}
 		}
 
+		if state.CurrentSection.HasKey("db_url") {
+			return false, errors.New("not supported when db_url is already configured")
+		}
+
 		return true, nil
 	},
 }
@@ -180,10 +200,12 @@ var saveAPIKey = &Step{
 		return state.PGAnalyzeSection.HasKey("api_key"), nil
 	},
 	Run: func(state *SetupState) error {
-		// TODO: prompt for API key if not present in env
 		apiKey := os.Getenv("PGA_API_KEY")
 		if apiKey == "" {
-			return errors.New("PGA_API_KEY not set")
+			survey.AskOne(&survey.Input{
+				Message: "PGA_API_KEY environment variable not found; please enter API key:",
+				Help:    "The key can be found on the API keys page for your organization in the pganalyze app",
+			}, &apiKey, survey.WithValidator(survey.Required))
 		}
 		_, err := state.PGAnalyzeSection.NewKey("api_key", apiKey)
 		if err != nil {
@@ -203,7 +225,7 @@ var establishSuperuserConnection = &Step{
 		return err == nil, err
 	},
 	Run: func(state *SetupState) error {
-		// TODO: Ping and prompt for credentials if necessary if ping fails
+		// TODO: Ping and prompt for credentials if ping fails
 		state.QueryRunner = query.NewRunner()
 		return nil
 	},
@@ -224,7 +246,6 @@ var checkPostgresVersion = &Step{
 	},
 }
 
-// is replication target? if so some setup may need to happen on primary instead;
 var checkReplicationStatus = &Step{
 	Description: "Check replication status",
 	Check: func(state *SetupState) (bool, error) {
@@ -276,13 +297,28 @@ var selectDatabases = &Step{
 var specifyMonitoringUser = &Step{
 	Description: "Check config for monitoring user",
 	Check: func(state *SetupState) (bool, error) {
-		// TODO: deal with db_url
 		hasUser := state.CurrentSection.HasKey("db_user")
 		return hasUser, nil
 	},
 	Run: func(state *SetupState) error {
-		// TODO: prompt for user
-		pgaUser := "pganalyze"
+		var monitoringUser int
+		survey.AskOne(&survey.Select{
+			Message: "Select Postgres user for the collector to use:",
+			Help:    "If the user does not exist, it can be created in a later step",
+			Options: []string{"pganalyze (recommended)", "a different user"},
+		}, &monitoringUser)
+		var pgaUser string
+		if monitoringUser == 0 {
+			pgaUser = "pganalyze"
+		} else if monitoringUser == 1 {
+			survey.AskOne(&survey.Input{
+				Message: "Enter Postgres user for the collector to use:",
+				Help:    "If the user does not exist, it can be created in a later step",
+			}, &pgaUser, survey.WithValidator(survey.Required))
+		} else {
+			panic(fmt.Sprintf("unexpected selection: %d", monitoringUser))
+		}
+
 		_, err := state.CurrentSection.NewKey("db_user", pgaUser)
 		if err != nil {
 			return err
