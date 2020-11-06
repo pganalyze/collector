@@ -101,6 +101,7 @@ func getCollectorConfig(c config.ServerConfig) state.CollectorConfig {
 		ApiSystemId:             c.SystemID,
 		ApiSystemType:           c.SystemType,
 		ApiSystemScope:          c.SystemScope,
+		ApiSystemScopeFallback:  c.SystemScopeFallback,
 		DbLogLocation:           c.LogLocation,
 		DbLogDockerTail:         c.LogDockerTail,
 		IgnoreTablePattern:      c.IgnoreTablePattern,

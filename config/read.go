@@ -45,6 +45,9 @@ func getDefaultConfig() *ServerConfig {
 	if systemScope := os.Getenv("PGA_API_SYSTEM_SCOPE"); systemScope != "" {
 		config.SystemScope = systemScope
 	}
+	if systemScopeFallback := os.Getenv("PGA_API_SYSTEM_SCOPE_FALLBACK"); systemScopeFallback != "" {
+		config.SystemScopeFallback = systemScopeFallback
+	}
 	if enableReports := os.Getenv("PGA_ENABLE_REPORTS"); enableReports != "" && enableReports != "0" {
 		config.EnableReports = true
 	}
@@ -384,7 +387,7 @@ func Read(logger *util.Logger, filename string) (Config, error) {
 				return conf, err
 			}
 			config.SectionName = section.Name()
-			config.SystemType, config.SystemScope, config.SystemID = identifySystem(*config)
+			config.SystemType, config.SystemScope, config.SystemScopeFallback, config.SystemID = identifySystem(*config)
 
 			config.Identifier = ServerIdentifier{
 				APIKey:      config.APIKey,
@@ -436,7 +439,7 @@ func Read(logger *util.Logger, filename string) (Config, error) {
 			if err != nil {
 				return conf, err
 			}
-			config.SystemType, config.SystemScope, config.SystemID = identifySystem(*config)
+			config.SystemType, config.SystemScope, config.SystemScopeFallback, config.SystemID = identifySystem(*config)
 			conf.Servers = append(conf.Servers, *config)
 		} else {
 			return conf, fmt.Errorf("No configuration file found at %s, and no environment variables set", filename)

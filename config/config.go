@@ -12,6 +12,11 @@ type Config struct {
 	Servers []ServerConfig
 }
 
+// ServerIdentifier -
+//   Unique identity of each configured server, for deduplication inside the collector.
+//
+//   Note we intentionally don't include SystemScopeFallback in the identifier, since that is mostly intended
+//   to help transition different scope values on the API side - in the collector we rely on system scope only.
 type ServerIdentifier struct {
 	APIKey      string
 	APIBaseURL  string
@@ -92,9 +97,10 @@ type ServerConfig struct {
 	SectionName string
 	Identifier  ServerIdentifier
 
-	SystemID    string `ini:"api_system_id"`
-	SystemType  string `ini:"api_system_type"`
-	SystemScope string `ini:"api_system_scope"`
+	SystemID            string `ini:"api_system_id"`
+	SystemType          string `ini:"api_system_type"`
+	SystemScope         string `ini:"api_system_scope"`
+	SystemScopeFallback string `ini:"api_system_scope_fallback"`
 
 	// Configures the location where logfiles are - this can either be a directory,
 	// or a file - needs to readable by the regular pganalyze user

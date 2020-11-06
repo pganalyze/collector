@@ -39,6 +39,7 @@ func transformCollectorConfig(s snapshot.FullSnapshot, state state.TransientStat
 		ApiSystemId:             c.ApiSystemId,
 		ApiSystemType:           c.ApiSystemType,
 		ApiSystemScope:          c.ApiSystemScope,
+		ApiSystemScopeFallback:  c.ApiSystemScopeFallback,
 		DbLogLocation:           c.DbLogLocation,
 		DbLogDockerTail:         c.DbLogDockerTail,
 		IgnoreTablePattern:      c.IgnoreTablePattern,
