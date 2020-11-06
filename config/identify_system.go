@@ -6,10 +6,11 @@ import (
 )
 
 // Figure out if we're self-hosted or on RDS, as well as what ID we can use - Heroku is treated separately
-func identifySystem(config ServerConfig) (systemType string, systemScope string, systemID string) {
+func identifySystem(config ServerConfig) (systemType string, systemScope string, systemScopeFallback string, systemID string) {
 	// Allow overrides from config or env variables
 	systemType = config.SystemType
 	systemScope = config.SystemScope
+	systemScopeFallback = config.SystemScopeFallback
 	systemID = config.SystemID
 
 	if config.AwsDbInstanceID != "" || systemType == "amazon_rds" {
