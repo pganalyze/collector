@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/rand"
 	"database/sql"
+	"encoding/hex"
 	"errors"
 	"flag"
 	"fmt"
@@ -301,7 +302,7 @@ var selectDatabases = &Step{
 var specifyMonitoringUser = &Step{
 	Description: "Check config for monitoring user",
 	Check: func(state *SetupState) (bool, error) {
-		hasUser := state.CurrentSection.HasKey("db_user")
+		hasUser := state.CurrentSection.HasKey("db_username")
 		return hasUser, nil
 	},
 	Run: func(state *SetupState) error {
@@ -323,7 +324,7 @@ var specifyMonitoringUser = &Step{
 			panic(fmt.Sprintf("unexpected selection: %d", monitoringUser))
 		}
 
-		_, err := state.CurrentSection.NewKey("db_user", pgaUser)
+		_, err := state.CurrentSection.NewKey("db_username", pgaUser)
 		if err != nil {
 			return err
 		}
@@ -334,7 +335,7 @@ var specifyMonitoringUser = &Step{
 var createMonitoringUser = &Step{
 	Description: "Ensure monitoring user exists",
 	Check: func(state *SetupState) (bool, error) {
-		pgaUserKey, err := state.CurrentSection.GetKey("db_user")
+		pgaUserKey, err := state.CurrentSection.GetKey("db_username")
 		if err != nil {
 			return false, err
 		}
@@ -350,7 +351,7 @@ var createMonitoringUser = &Step{
 		return result.GetBool(0), nil
 	},
 	Run: func(state *SetupState) error {
-		pgaUserKey, err := state.CurrentSection.GetKey("db_user")
+		pgaUserKey, err := state.CurrentSection.GetKey("db_username")
 		if err != nil {
 			return err
 		}
@@ -384,9 +385,9 @@ var configureMonitoringUserPasswd = &Step{
 
 		var pgaPasswd string
 		if passwordStrategy == 0 {
-			passwdBytes := make([]byte, 32)
+			passwdBytes := make([]byte, 16)
 			rand.Read(passwdBytes)
-			pgaPasswd = string(passwdBytes)
+			pgaPasswd = hex.EncodeToString(passwdBytes)
 		} else if passwordStrategy == 1 {
 			err = survey.AskOne(&survey.Input{
 				Message: "Enter password for the collector to use:",
@@ -424,7 +425,7 @@ var applyMonitoringUserPasswd = &Step{
 		return err == nil, err
 	},
 	Run: func(state *SetupState) error {
-		pgaUserKey, err := state.CurrentSection.GetKey("db_user")
+		pgaUserKey, err := state.CurrentSection.GetKey("db_username")
 		if err != nil {
 			return err
 		}
@@ -461,7 +462,7 @@ var applyMonitoringUserPasswd = &Step{
 var setUpMonitoringUser = &Step{
 	Description: "Set up monitoring user",
 	Check: func(state *SetupState) (bool, error) {
-		pgaUserKey, err := state.CurrentSection.GetKey("db_user")
+		pgaUserKey, err := state.CurrentSection.GetKey("db_username")
 		if err != nil {
 			return false, err
 		}
@@ -486,7 +487,7 @@ var setUpMonitoringUser = &Step{
 		return row.GetBool(0), nil
 	},
 	Run: func(state *SetupState) error {
-		pgaUserKey, err := state.CurrentSection.GetKey("db_user")
+		pgaUserKey, err := state.CurrentSection.GetKey("db_username")
 		if err != nil {
 			return err
 		}
