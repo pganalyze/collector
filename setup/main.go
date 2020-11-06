@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"flag"
 	"fmt"
 	"os"
 	"strings"
@@ -24,9 +25,10 @@ type SetupState struct {
 	PGVersionNum int
 	PGVersionStr string
 
-	ConfigFilename string
-	Config         *ini.File
-	CurrentSection *ini.Section
+	ConfigFilename   string
+	Config           *ini.File
+	CurrentSection   *ini.Section
+	PGAnalyzeSection *ini.Section
 
 	UseLogInsights bool
 	UseAutoExplain bool
@@ -41,6 +43,8 @@ type Step struct {
 	// can be done automatically may not have a Run func
 	Run func(state *SetupState) error
 }
+
+const defaultConfigFile = "/etc/pganalyze-collector.conf"
 
 func main() {
 	steps := []*Step{
@@ -66,8 +70,20 @@ func main() {
 	}
 
 	var setupState SetupState
-	// TODO: use same logic as main collector program to set config file location
-	setupState.ConfigFilename = "/home/maciek/duboce-labs/collector/pganalyze-collector-autosetup-test.conf"
+	flag.StringVar(&setupState.ConfigFilename, "config", defaultConfigFile, "Specify alternative path for config file")
+	flag.Parse()
+
+	// TODO: check for root?
+
+	fmt.Println(`
+Welcome to the pganalyze collector installer
+
+We will go through a series of steps to set up the collector to monitor your
+Postgres database. At each step, we'll check if any changes are necessary,
+and if so, prompt you to proceed to make the change or cancel. If you stop at
+any point, you can resume setup by running the installer again—it will pick up
+in the right place.
+	`)
 	for _, step := range steps {
 		err := doStep(&setupState, step)
 		if err != nil {
@@ -115,7 +131,6 @@ func doStep(setupState *SetupState, step *Step) error {
 	return nil
 }
 
-// for package installation / init system interaction
 var determinePlatform = &Step{
 	Description: "Determine platform",
 	Check: func(state *SetupState) (bool, error) {
@@ -133,11 +148,9 @@ var determinePlatform = &Step{
 	},
 }
 
-// for package installation / init system interaction
 var loadConfig = &Step{
 	Description: "Load collector config",
 	Check: func(state *SetupState) (bool, error) {
-		// TODO: also stat and check we can write to it?
 		config, err := ini.Load(state.ConfigFilename)
 		if err != nil {
 			return false, err
@@ -149,7 +162,9 @@ var loadConfig = &Step{
 		}
 		state.Config = config
 		for _, section := range config.Sections() {
-			if section.Name() == "pganalyze" || section.Name() == "DEFAULT" {
+			if section.Name() == "pganalyze" {
+				state.PGAnalyzeSection = section
+			} else if section.Name() == "DEFAULT" {
 				continue
 			} else {
 				state.CurrentSection = section
@@ -163,7 +178,7 @@ var loadConfig = &Step{
 var saveAPIKey = &Step{
 	Description: "Add pganalyze API key to collector config",
 	Check: func(state *SetupState) (bool, error) {
-		return state.CurrentSection.HasKey("api_key"), nil
+		return state.PGAnalyzeSection.HasKey("api_key"), nil
 	},
 	Run: func(state *SetupState) error {
 		// TODO: prompt for API key if not present in env
@@ -171,7 +186,7 @@ var saveAPIKey = &Step{
 		if apiKey == "" {
 			return errors.New("PGA_API_KEY not set")
 		}
-		_, err := state.CurrentSection.NewKey("api_key", apiKey)
+		_, err := state.PGAnalyzeSection.NewKey("api_key", apiKey)
 		if err != nil {
 			return err
 		}
