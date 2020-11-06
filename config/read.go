@@ -105,6 +105,9 @@ func getDefaultConfig() *ServerConfig {
 	if awsRegion := os.Getenv("AWS_REGION"); awsRegion != "" {
 		config.AwsRegion = awsRegion
 	}
+	if awsAccountID := os.Getenv("AWS_ACCOUNT_ID"); awsAccountID != "" {
+		config.AwsAccountID = awsAccountID
+	}
 	if awsInstanceID := os.Getenv("AWS_INSTANCE_ID"); awsInstanceID != "" {
 		config.AwsDbInstanceID = awsInstanceID
 	}
@@ -295,6 +298,9 @@ func preprocessConfig(config *ServerConfig) (*ServerConfig, error) {
 		if len(parts) == 4 && parts[3] == "rds.amazonaws.com" { // Safety check for any escaping issues
 			if config.AwsDbInstanceID == "" {
 				config.AwsDbInstanceID = parts[0]
+			}
+			if config.AwsAccountID == "" {
+				config.AwsAccountID = parts[1]
 			}
 			if config.AwsRegion == "" {
 				config.AwsRegion = parts[2]

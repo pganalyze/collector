@@ -16,7 +16,14 @@ func identifySystem(config ServerConfig) (systemType string, systemScope string,
 	if config.AwsDbInstanceID != "" || systemType == "amazon_rds" {
 		systemType = "amazon_rds"
 		if systemScope == "" {
-			systemScope = config.AwsRegion
+			if config.AwsAccountID != "" {
+				systemScope = config.AwsRegion + "/" + config.AwsAccountID
+				if systemScopeFallback == "" {
+					systemScopeFallback = config.AwsRegion
+				}
+			} else {
+				systemScope = config.AwsRegion
+			}
 		}
 		if systemID == "" {
 			systemID = config.AwsDbInstanceID
