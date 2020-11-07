@@ -84,7 +84,7 @@ func getCollectorConfig(c config.ServerConfig) state.CollectorConfig {
 		DbHasSslkey:             c.DbSslKey != "" || c.DbSslKeyContents != "",
 		DbExtraNames:            c.DbExtraNames,
 		DbAllNames:              c.DbAllNames,
-		DbURL:                   c.GetDbURLRedacted(),
+		DbURLRedacted:           c.GetDbURLRedacted(),
 		AwsRegion:               c.AwsRegion,
 		AwsDbInstanceId:         c.AwsDbInstanceID,
 		AwsHasAccessKeyId:       c.AwsAccessKeyID != "",

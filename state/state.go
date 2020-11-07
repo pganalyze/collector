@@ -82,7 +82,7 @@ type CollectorConfig struct {
 	DbHasSslkey             bool
 	DbExtraNames            []string
 	DbAllNames              bool
-	DbURL                   string
+	DbURLRedacted           string
 	AwsRegion               string
 	AwsDbInstanceId         string
 	AwsHasAccessKeyId       bool
