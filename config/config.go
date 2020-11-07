@@ -293,6 +293,20 @@ func (config ServerConfig) GetDbHost() string {
 	return config.DbHost
 }
 
+func (config ServerConfig) GetDbURLRedacted() string {
+	if config.DbURL == "" {
+		return ""
+	}
+
+	u, err := url.Parse(config.DbURL)
+	if err != nil {
+		return "<unparsable>"
+	}
+
+	u.User = url.User(u.User.Username())
+	return u.String()
+}
+
 // GetDbPort - Gets the database port from the given configuration
 func (config ServerConfig) GetDbPort() int {
 	if config.DbURL != "" {
