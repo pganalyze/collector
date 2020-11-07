@@ -36,9 +36,7 @@ type SetupState struct {
 	CurrentSection   *ini.Section
 	PGAnalyzeSection *ini.Section
 
-	UseLogInsights bool
-	UseAutoExplain bool
-	UseLogExplain  bool
+	SkipNextRestart bool
 }
 
 type Step struct {
@@ -90,7 +88,7 @@ Postgres database.
 
 At a high level, we will:
 
- 1. Update the collector config file with credentials to connect to your database
+ 1. Ask for credentials to connect to your database and store them in the collector config file
  2. Create and configure a monitoring user and helper functions in your database
  3. Set up the pg_stat_statements extension in your database for basic query performance monitoring
  4. (Optional) Make log-related configuration settings changes to enable our Log Insights feature
@@ -587,8 +585,12 @@ var enablePgss = &Step{
 }
 
 var restartPg = &Step{
-	Description: "Restart Postgres to have configuration changes take effect",
+	Description: "If necessary, restart Postgres to have configuration changes take effect",
 	Check: func(state *SetupState) (bool, error) {
+		if state.SkipNextRestart {
+			state.SkipNextRestart = false
+			return true, nil
+		}
 		rows, err := state.QueryRunner.Query("SELECT name FROM pg_settings WHERE pending_restart;")
 		if err != nil {
 			return false, err
@@ -599,6 +601,61 @@ var restartPg = &Step{
 		return true, nil
 	},
 	Run: func(state *SetupState) error {
+		rows, err := state.QueryRunner.Query(`
+			SELECT
+				name,
+				pending_restart,
+				left(
+					right(
+						regexp_replace(
+							(regexp_split_to_array(
+								pg_read_file(sourcefile), '\s*$\s*', 'm'
+							))[sourceline],
+							name || ' = ', ''
+						),
+					-1),
+				-1) AS pending_value
+			FROM
+				pg_settings
+			WHERE
+				pending_restart OR name = 'shared_preload_libraries'`)
+		if err != nil {
+			return err
+		}
+		var pendingSettings []string
+		var splPending bool
+		var splPendingValue string
+		for _, row := range rows {
+			setting := row.GetString(0)
+			if setting == "shared_preload_libraries" {
+				// N.B.: if there are no pending changes to spl, this is identical
+				// to its current value, but we still need it for the pgss/auto_explain
+				// notice below
+				splPendingValue = row.GetString(2)
+				splPending = row.GetBool(1)
+				if !splPending {
+					continue
+				}
+			}
+
+			pendingSettings = append(pendingSettings, setting)
+		}
+
+		splHasPgss := strings.Contains(splPendingValue, "pg_stat_statements")
+		splHasAutoExplain := strings.Contains(splPendingValue, "auto_explain")
+
+		if !splHasPgss || !splHasAutoExplain {
+			var notInSpl string
+			if !splHasPgss && !splHasAutoExplain {
+				notInSpl = "pg_stat_statements and (if desired) auto_explain"
+			} else if !splHasPgss {
+				notInSpl = "pg_stat_statements"
+			} else if !splHasAutoExplain {
+				notInSpl = "auto_explain (if desired)"
+			}
+			fmt.Printf("! Note: you will also need to restart later after adding %s to shared_preload_libraries\n", notInSpl)
+		}
+
 		// Postgres must be restarted for changes to the following settings to take effect:
 		// "select name from pg_settings where pending_restart;"
 		// Note that if you also intend to install auto_explain, that will also require a
