@@ -13,8 +13,10 @@ type testItem struct {
 
 var tests = []testItem{
 	{"postgres://user:password@example.com", "postgres://user@example.com"},
+	{"postgres://user:password@example.com?sslmode=verify-full", "postgres://user@example.com?sslmode=verify-full"},
 	{"postgres://user@example.com", "postgres://user@example.com"},
 	{string([]byte{0x7f}), "<unparsable>"},
+	{"postgres://user:pass:word@example.com", "postgres://user@example.com"},
 	{"", ""},
 }
 
