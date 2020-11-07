@@ -1,5 +1,69 @@
 # Changelog
 
+## 0.34.0      2020-11-07
+
+* Check and report problematic log collection settings
+  - Some Postgres settings almost always cause a drastic increase in log
+    volume for little actual benefit. They tend to cause operational problems
+    for the collector (due to the load of additional log parsing) and the
+    pganalyze service itself (or indeed, likely for any service that would
+    process collector snapshots), and do not add any meaningful insights.
+    Furthermore, we found that these settings are often turned on
+    accidentally.
+  - To avoid these issues, add some client-side checks in the collector to
+    disable log processing if any of the problematic settings are on.
+  - The settings in question are:
+     * [log_min_duration_statement](https://www.postgresql.org/docs/current/runtime-config-logging.html#GUC-LOG-MIN-DURATION-STATEMENT) less than 10ms
+     * [log_statement](https://www.postgresql.org/docs/current/runtime-config-logging.html#GUC-LOG-STATEMENT) set to 'all'
+     * [log_duration](https://www.postgresql.org/docs/current/runtime-config-logging.html#GUC-LOG-DURATION) set to 'on'
+     * [log_error_verbosity](https://www.postgresql.org/docs/current/runtime-config-logging.html#GUC-LOG-ERROR-VERBOSITY) set to 'verbose'
+  - If any of these are set to these unsupported values, all log collection will be
+    disabled for that server. The settings are re-checked every full snapshot, and can be
+    explicitly re-checked with a collector reload.
+* Log Insights improvements
+  * Self-managed server: Process logs every 3 seconds, instead of on-demand
+  * Self-managed server: Improve handling of multi-line log events
+  * Google Cloud SQL: Always acknowledge Pub Sub messages, even if collector doesn't handle them
+  * Optimize stitching logic for reduced CPU consumption
+  * Explicitly close temporary files to avoid running out of file descriptors
+* Multiple changes to improve debugging in support situations
+  * Report collector config in full snapshot
+    - This reports certain collector config settings (except for passwords/keys/credentials)
+      to the pganalyze servers to help with debugging.
+  * Print collector version at beginning of test for better support handling
+  * Print collection status and Postgres version before submitting snapshots
+  * Change panic stack trace logging from Verbose to Warning
+* Add support for running the collector on ARM systems
+  * Note that we don't provide packages yet, but with this the collector
+    can be built on ARM systems without any additional patches.
+* Introduce API system scope fallback
+  - This fallback is intended to allow changing the API scope, either based
+    on user configuration (e.g. moving the collector between different
+    cloud provider accounts), or because of changes in the collector identify
+    system logic.
+  - The new "api_system_scope_fallback" / PGA_API_SYSTEM_SCOPE_FALLBACK config
+    variable is intended to be set to the old value of the scope. When the
+    pganalyze backend receives a snapshot with a fallback scope set, and there
+    is no server created with the regular scope, it will first search the
+    servers with the fallback scope. If found, that server's scope will be
+    updated to the (new) regular scope. If not found, a new server will be
+    created with the regular scope. The main goal of the fallback scope is to
+    avoid creating a duplicate server when changing the scope value
+* Use new fallback scope mechanism to change scope for RDS databases
+  - Previously we identified RDS databases by there ID and region only, but
+    the ID does not have to be unique within a region, it only has to be
+    unique within the same AWS account in that region. Thus, adjust the
+    scope to include both the region and AWS Account ID (if configured or
+    auto-detected), and use the fallback scope mechanism to migrate existing
+    servers.
+* Add support for GKE workload identity [Yash Bhutwala](https://github.com/yashbhutwala) [#91](https://github.com/pganalyze/collector/pull/91)
+* Add support for assuming AWS instance roles
+  - Set the role to be assumed using the new `aws_assume_role` / `AWS_ASSUME_ROLE`
+    configuration setting. This is useful when the collector runs in a different
+    AWS account than your database.
+
+
+
 ## 0.33.1      2020-09-11
 
 * Ignore internal admin databases for GCP and Azure
