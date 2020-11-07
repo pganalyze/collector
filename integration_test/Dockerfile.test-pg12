@@ -1,6 +1,6 @@
 FROM postgres:12
 
-ENV GOVERSION 1.14.3
+ENV GOVERSION 1.14.11
 ENV CODE_DIR /collector
 ENV PATH $PATH:/usr/local/go/bin
 
