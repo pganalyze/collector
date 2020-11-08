@@ -170,7 +170,7 @@ github.com/kr/logfmt
 ## explicit
 github.com/kylelemons/godebug/diff
 github.com/kylelemons/godebug/pretty
-# github.com/lfittl/pg_query_go v1.0.0
+# github.com/lfittl/pg_query_go v1.0.1
 ## explicit
 github.com/lfittl/pg_query_go
 github.com/lfittl/pg_query_go/nodes
@@ -362,6 +362,7 @@ google.golang.org/grpc/stats
 google.golang.org/grpc/status
 google.golang.org/grpc/tap
 # google.golang.org/protobuf v1.25.0
+## explicit
 google.golang.org/protobuf/cmd/protoc-gen-go/internal_gengo
 google.golang.org/protobuf/compiler/protogen
 google.golang.org/protobuf/encoding/protojson

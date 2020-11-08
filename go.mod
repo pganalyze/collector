@@ -26,7 +26,7 @@ require (
 	github.com/keybase/go-ps v0.0.0-20160809205621-9c11ca40a479
 	github.com/kr/logfmt v0.0.0-20140226030751-b84e30acd515
 	github.com/kylelemons/godebug v0.0.0-20170224010052-a616ab194758
-	github.com/lfittl/pg_query_go v1.0.0
+	github.com/lfittl/pg_query_go v1.0.1
 	github.com/lib/pq v1.3.0
 	github.com/ogier/pflag v0.0.0-20160129220114-45c278ab3607
 	github.com/papertrail/go-tail v0.0.0-20180509224916-973c153b0431
@@ -38,6 +38,7 @@ require (
 	github.com/smartystreets/goconvey v0.0.0-20160704134950-4622128e06c7 // indirect
 	golang.org/x/net v0.0.0-20200927032502-5d4f70055728
 	google.golang.org/api v0.32.0
+	google.golang.org/protobuf v1.25.0
 )
 
 go 1.14
