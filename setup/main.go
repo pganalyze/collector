@@ -46,6 +46,7 @@ type SetupState struct {
 	LogBasedExplain bool
 
 	SkipNextRestart bool
+	DidReload       bool
 }
 
 type Step struct {
@@ -183,6 +184,7 @@ var determinePlatform = &Step{
 		state.PlatformFamily = hostInfo.PlatformFamily
 		state.PlatformVersion = hostInfo.PlatformVersion
 
+		// TODO: relax this
 		if state.Platform != "ubuntu" || state.PlatformVersion != "20.04" {
 			return false, errors.New("automated setup only supported on Ubuntu 20.04")
 		}
@@ -199,6 +201,7 @@ var loadConfig = &Step{
 			return false, err
 		}
 
+		// TODO: relax this
 		if len(config.Sections()) != 3 {
 			// N.B.: DEFAULT section, pganalyze section, server section
 			return false, fmt.Errorf("not supported for config file defining more than one server")
@@ -603,14 +606,12 @@ var enablePgss = &Step{
 		} else {
 			newSpl = existingSpl + ",pg_stat_statements"
 		}
-		return state.QueryRunner.Exec(
-			fmt.Sprintf("ALTER SYSTEM SET shared_preload_libraries = %s", pq.QuoteLiteral(newSpl)),
-		)
+		return applyConfigSetting("shared_preload_libraries", newSpl, state.QueryRunner)
 	},
 }
 
 var confirmLogInsightsSetup = &Step{
-	Description: "Check if Log Insights should be configured",
+	Description: "Check whether Log Insights should be configured",
 	Check: func(state *SetupState) (bool, error) {
 		return state.AskedLogInsights, nil
 	},
@@ -642,7 +643,7 @@ var configureLogErrorVerbosity = &Step{
 			return false, err
 		}
 
-		return row.GetString(0) != "all", nil
+		return row.GetString(0) != "verbose", nil
 	},
 	Run: func(state *SetupState) error {
 		var newVal string
@@ -653,7 +654,7 @@ var configureLogErrorVerbosity = &Step{
 		if err != nil {
 			return err
 		}
-		return state.QueryRunner.Exec(fmt.Sprintf("ALTER SYSTEM SET log_error_verbosity = %s", pq.QuoteLiteral(newVal)))
+		return applyConfigSetting("log_error_verbosity", newVal, state.QueryRunner)
 	},
 }
 
@@ -683,7 +684,7 @@ var configureLogDuration = &Step{
 			// technically there is no error to report here; the re-check will fail
 			return nil
 		}
-		return state.QueryRunner.Exec("ALTER SYSTEM SET log_duration = 'off'")
+		return applyConfigSetting("log_duration", "off", state.QueryRunner)
 	},
 }
 
@@ -710,7 +711,7 @@ var configureLogStatement = &Step{
 			return err
 		}
 
-		return state.QueryRunner.Exec(fmt.Sprintf("ALTER SYSTEM SET log_statement = %s", pq.QuoteLiteral(newVal)))
+		return applyConfigSetting("log_statement", newVal, state.QueryRunner)
 	},
 }
 
@@ -761,12 +762,7 @@ var configureLogMinDurationStatement = &Step{
 			return err
 		}
 
-		return state.QueryRunner.Exec(
-			fmt.Sprintf(
-				"ALTER SYSTEM SET log_min_duration_statement = %s",
-				pq.QuoteLiteral(newVal),
-			),
-		)
+		return applyConfigSetting("log_min_duration_statement", newVal, state.QueryRunner)
 	},
 }
 
@@ -818,12 +814,60 @@ var configureLogLinePrefix = &Step{
 			return err
 		}
 		selectedPrefix := supportedLogLinePrefixes[prefixIdx]
-		return state.QueryRunner.Exec(fmt.Sprintf("ALTER SYSTEM SET log_line_prefix = %s", pq.QuoteLiteral(selectedPrefix)))
+		return applyConfigSetting("log_line_prefix", selectedPrefix, state.QueryRunner)
+	},
+}
+
+func validatePath(ans interface{}) error {
+	ansStr, ok := ans.(string)
+	if !ok {
+		return errors.New("expected string value")
+	}
+	// TODO: also confirm this is readable by the regular pganalyze user
+	_, err := os.Stat(ansStr)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+var configureLogLocation = &Step{
+	Description: "Determine log location",
+	Check: func(state *SetupState) (bool, error) {
+		if state.SkipLogInsights {
+			return true, nil
+		}
+		return state.CurrentSection.HasKey("db_log_location"), nil
+	},
+	Run: func(state *SetupState) error {
+		guessedLogLocation, err := discoverLogLocation(state.CurrentSection, state.QueryRunner)
+		if err != nil {
+			return err
+		}
+		var logLocationConfirmed bool
+		err = survey.AskOne(&survey.Confirm{
+			Message: fmt.Sprintf("Your database log file or directory appears to be %s; is this correct?", guessedLogLocation),
+			Default: false,
+		}, &logLocationConfirmed)
+		if err != nil {
+			return err
+		}
+		var logLocation string
+		if logLocationConfirmed {
+			logLocation = guessedLogLocation
+		} else {
+			err = survey.AskOne(&survey.Input{
+				Message: "Please enter the Postgres log file location",
+			}, &logLocation, survey.WithValidator(validatePath))
+		}
+		state.CurrentSection.NewKey("db_log_location", logLocation)
+		return state.Config.SaveTo(state.ConfigFilename)
 	},
 }
 
 var confirmAutoExplainSetup = &Step{
-	Description: "Check if Automated EXPLAIN should be configured",
+	Description: "Check whether to configure Automated EXPLAIN",
 	Check: func(state *SetupState) (bool, error) {
 		return state.AskedAutomatedExplain, nil
 	},
@@ -890,9 +934,7 @@ var enableAutoExplain = &Step{
 		} else {
 			newSpl = existingSpl + ",auto_explain"
 		}
-		return state.QueryRunner.Exec(
-			fmt.Sprintf("ALTER SYSTEM SET shared_preload_libraries = %s", pq.QuoteLiteral(newSpl)),
-		)
+		return applyConfigSetting("shared_preload_libraries", newSpl, state.QueryRunner)
 	},
 }
 
@@ -906,6 +948,21 @@ var configureAutoExplain = &Step{
 		return false, nil
 	},
 	Run: func(state *SetupState) error {
+		return nil
+	},
+}
+
+var reloadCollector = &Step{
+	Description: "Reload collector configuration",
+	Check: func(state *SetupState) (bool, error) {
+		return state.DidReload, nil
+	},
+	Run: func(state *SetupState) error {
+		err := reload()
+		if err != nil {
+			return err
+		}
+		state.DidReload = true
 		return nil
 	},
 }
