@@ -4,6 +4,7 @@ import (
 	"encoding/csv"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"os/exec"
 	"os/user"
 	"strconv"
@@ -12,12 +13,13 @@ import (
 )
 
 type Runner struct {
-	user     string
-	password string
+	User     string
+	Password string
+	Database string
 }
 
 func NewRunner() *Runner {
-	return &Runner{user: "postgres", password: ""}
+	return &Runner{User: "postgres", Password: "", Database: ""}
 }
 
 func (qr *Runner) Ping() error {
@@ -30,9 +32,20 @@ func (qr *Runner) Ping() error {
 }
 
 func (qr *Runner) runSQL(sql string) (string, error) {
-	// TODO: should we try to find the socket for psql here and pass it as -d,
+	// TODO: should we try to find the socket for psql here and pass it as -d or PGHOST,
 	// rather than relying on it to do that itself?
 	cmd := exec.Command("psql", "--no-psqlrc", "--csv", "--tuples-only", "--command", sql)
+	cmd.Env = os.Environ()
+	// N.B.: if there are conflicts, these later values override what's in os.Environ()
+	if qr.User != "" {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("PGUSER=%s", qr.User))
+	}
+	if qr.Password != "" {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("PGPASSWORD=%s", qr.Password))
+	}
+	if qr.Database != "" {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("PGDATABASE=%s", qr.Database))
+	}
 	cmd.SysProcAttr = &syscall.SysProcAttr{}
 	pgUser, err := user.Lookup("postgres")
 	if err != nil {

@@ -45,16 +45,20 @@ type SetupState struct {
 
 	LogBasedExplain bool
 
-	SkipNextRestart bool
-	DidReload       bool
+	DidReload bool
 }
 
+// Step is a discrete step in the install process
 type Step struct {
+	// Description of what the step entails
 	Description string
-	// check if the step has already been completed--may modify state
+	// Check if the step has already been completed--may modify the state struct, but
+	// never modifies Postgres, the collector config, or anything else in the installed
+	// system
 	Check func(state *SetupState) (bool, error)
-	// apply the step, possibly with user input--note that some steps that
-	// can be done automatically may not have a Run func
+	// Make changes to the system necessary for the check to pass, always prompting for
+	// user input before any change that modifies Postgres, the collector config, or
+	// anything else in the installed system
 	Run func(state *SetupState) error
 }
 
@@ -77,10 +81,21 @@ func main() {
 		checkPgssAvailable,
 		createPgss,
 		enablePgss,
-		configureLogSettings,
+
+		confirmLogInsightsSetup,
+		configureLogErrorVerbosity,
+		configureLogDuration,
+		configureLogStatement,
+		configureLogMinDurationStatement,
+		configureLogLinePrefix,
+		configureLogLocation,
+
+		confirmAutoExplainSetup,
 		checkAutoExplainAvailable,
 		enableAutoExplain,
 		configureAutoExplain,
+
+		reloadCollector,
 		restartPg,
 	}
 
@@ -166,7 +181,7 @@ func doStep(setupState *SetupState, step *Step) error {
 		return err
 	}
 	if !done {
-		return errors.New("check still failed after running resolution")
+		return errors.New("check still failed after running resolution; please try again")
 	}
 	fmt.Println("✓")
 	return nil
@@ -234,11 +249,23 @@ var saveAPIKey = &Step{
 		apiKey := os.Getenv("PGA_API_KEY")
 		if apiKey == "" {
 			err := survey.AskOne(&survey.Input{
-				Message: "PGA_API_KEY environment variable not found; please enter API key:",
+				Message: "PGA_API_KEY environment variable not found; please enter API key (will be saved to collector config):",
 				Help:    "The key can be found on the API keys page for your organization in the pganalyze app",
 			}, &apiKey, survey.WithValidator(survey.Required))
 			if err != nil {
 				return err
+			}
+		} else {
+			var configWriteConfirmed bool
+			err := survey.AskOne(&survey.Confirm{
+				Message: "PGA_API_KEY found in environment; save to config file?",
+				Default: false,
+			}, &configWriteConfirmed)
+			if err != nil {
+				return err
+			}
+			if !configWriteConfirmed {
+				return nil
 			}
 		}
 		_, err := state.PGAnalyzeSection.NewKey("api_key", apiKey)
@@ -259,7 +286,8 @@ var establishSuperuserConnection = &Step{
 		return err == nil, err
 	},
 	Run: func(state *SetupState) error {
-		// TODO: Ping and prompt for credentials if ping fails
+		// TODO: Ping and prompt for credentials if ping fails; even if ping succeed, confirm
+		// the connection we are using
 		state.QueryRunner = query.NewRunner()
 		return nil
 	},
@@ -289,7 +317,7 @@ var checkReplicationStatus = &Step{
 		isReplicationTarget := result.GetBool(0)
 
 		if isReplicationTarget {
-			return false, errors.New("not supported for replication target")
+			return false, errors.New("not supported for replicas")
 		}
 		return true, nil
 	},
@@ -298,7 +326,18 @@ var checkReplicationStatus = &Step{
 var selectDatabases = &Step{
 	Description: "Select database(s) to monitor",
 	Check: func(state *SetupState) (bool, error) {
-		return state.CurrentSection.HasKey("db_name"), nil
+		key, err := state.CurrentSection.GetKey("db_name")
+		if err != nil {
+			return false, err
+		}
+		db := key.String()
+		if db == "" {
+			return false, nil
+		}
+		// Now that we know the database, connect to the right one for setup:
+		// this is important for extensions and helper functions
+		state.QueryRunner.Database = db
+		return true, nil
 	},
 	Run: func(state *SetupState) error {
 		rows, err := state.QueryRunner.Query("SELECT datname FROM pg_database WHERE datallowconn AND NOT datistemplate")
@@ -310,9 +349,10 @@ var selectDatabases = &Step{
 			dbOpts = append(dbOpts, row.GetString(0))
 		}
 
+		// TODO: monitor other databases or *
 		var selectedDb string
 		err = survey.AskOne(&survey.Select{
-			Message: "Choose a primary database to monitor:",
+			Message: "Choose a primary database to monitor (will be saved to collector config):",
 			Options: dbOpts,
 		}, &selectedDb)
 		if err != nil {
@@ -337,7 +377,7 @@ var specifyMonitoringUser = &Step{
 	Run: func(state *SetupState) error {
 		var monitoringUser int
 		err := survey.AskOne(&survey.Select{
-			Message: "Select Postgres user for the collector to use:",
+			Message: "Select Postgres user for the collector to use (will be saved to collector config):",
 			Help:    "If the user does not exist, it can be created in a later step",
 			Options: []string{"pganalyze (recommended)", "a different user"},
 		}, &monitoringUser)
@@ -349,14 +389,14 @@ var specifyMonitoringUser = &Step{
 			pgaUser = "pganalyze"
 		} else if monitoringUser == 1 {
 			err := survey.AskOne(&survey.Input{
-				Message: "Enter Postgres user for the collector to use:",
+				Message: "Enter Postgres user for the collector to use (will be saved to collector config):",
 				Help:    "If the user does not exist, it can be created in a later step",
 			}, &pgaUser, survey.WithValidator(survey.Required))
 			if err != nil {
 				return err
 			}
 		} else {
-			panic(fmt.Sprintf("unexpected selection: %d", monitoringUser))
+			panic(fmt.Sprintf("unexpected user selection: %d", monitoringUser))
 		}
 
 		_, err = state.CurrentSection.NewKey("db_username", pgaUser)
@@ -392,13 +432,25 @@ var createMonitoringUser = &Step{
 		}
 		pgaUser := pgaUserKey.String()
 
-		err = state.QueryRunner.Exec(
+		var doCreateUser bool
+		err = survey.AskOne(&survey.Confirm{
+			Message: fmt.Sprintf("User %s does not exist in Postgres; create user (will be saved to Postgres)?", pgaUser),
+			Help:    "If you skip this step, create the user manually before proceeding",
+			Default: false,
+		}, &doCreateUser)
+		if err != nil {
+			return err
+		}
+		if !doCreateUser {
+			return nil
+		}
+
+		return state.QueryRunner.Exec(
 			fmt.Sprintf(
 				"CREATE USER %s",
 				pq.QuoteIdentifier(pgaUser),
 			),
 		)
-		return err
 	},
 }
 
@@ -411,7 +463,7 @@ var configureMonitoringUserPasswd = &Step{
 	Run: func(state *SetupState) error {
 		var passwordStrategy int
 		err := survey.AskOne(&survey.Select{
-			Message: "Select how to set up the collector user password:",
+			Message: "Select how to set up the collector user password (will be saved to collector config):",
 			Options: []string{"generate random password (recommended)", "enter existing password"},
 		}, &passwordStrategy)
 		if err != nil {
@@ -425,8 +477,8 @@ var configureMonitoringUserPasswd = &Step{
 			pgaPasswd = hex.EncodeToString(passwdBytes)
 		} else if passwordStrategy == 1 {
 			err = survey.AskOne(&survey.Input{
-				Message: "Enter password for the collector to use:",
-			}, &passwordStrategy)
+				Message: "Enter password for the collector to use (will be saved to collector config):",
+			}, &passwordStrategy, survey.WithValidator(survey.Required))
 			if err != nil {
 				return err
 			}
@@ -457,7 +509,11 @@ var applyMonitoringUserPasswd = &Step{
 		pqStr := serverCfg.GetPqOpenString("")
 		conn, err := sql.Open("postgres", pqStr)
 		err = conn.Ping()
-		return err == nil, err
+		isAuthErr := strings.Contains(err.Error(), "authentication failed")
+		if isAuthErr {
+			return false, nil
+		}
+		return false, err
 	},
 	Run: func(state *SetupState) error {
 		pgaUserKey, err := state.CurrentSection.GetKey("db_username")
@@ -473,7 +529,7 @@ var applyMonitoringUserPasswd = &Step{
 
 		var doPasswdUpdate bool
 		err = survey.AskOne(&survey.Confirm{
-			Message: "Update password for user %s in Postgres with configured value?",
+			Message: "Update password for user %s with configured value (will be saved to Postgres)?",
 			Help:    "If you skip this step, ensure the password matches before proceeding",
 		}, &doPasswdUpdate)
 		if err != nil {
@@ -508,12 +564,11 @@ var setUpMonitoringUser = &Step{
 		// all the necessary tables and functions
 		row, err := state.QueryRunner.QueryRow(
 			fmt.Sprintf(
-				"SELECT true FROM pg_user WHERE usename = %s AND (usesuper OR pg_has_role(usename, 'pg_monitor', 'member'))",
+				"SELECT usesuper OR pg_has_role(usename, 'pg_monitor', 'member') FROM pg_user WHERE usename = %s",
 				pq.QuoteLiteral(pgaUser),
 			),
 		)
 		if err == query.ErrNoRows {
-			fmt.Printf("nope")
 			return false, nil
 		} else if err != nil {
 			return false, err
@@ -529,13 +584,24 @@ var setUpMonitoringUser = &Step{
 		pgaUser := pgaUserKey.String()
 
 		// TODO: deal with postgres <10
-		err = state.QueryRunner.Exec(
+		var doGrant bool
+		err = survey.AskOne(&survey.Confirm{
+			Message: fmt.Sprintf("Grant role pg_monitor to user %s (will be saved to Postgres)?", pgaUser),
+			Help:    "Learn more about pg_monitor here: https://www.postgresql.org/docs/current/default-roles.html",
+		}, &doGrant)
+		if err != nil {
+			return err
+		}
+		if !doGrant {
+			return nil
+		}
+
+		return state.QueryRunner.Exec(
 			fmt.Sprintf(
 				"GRANT pg_monitor to %s",
 				pq.QuoteIdentifier(pgaUser),
 			),
 		)
-		return err
 	},
 }
 
@@ -556,7 +622,7 @@ var checkPgssAvailable = &Step{
 	},
 	Run: func(state *SetupState) error {
 		// TODO: install contrib package?
-		return nil
+		return errors.New("extension pg_stat_statements is not available")
 	},
 }
 
@@ -581,6 +647,18 @@ var createPgss = &Step{
 		return true, nil
 	},
 	Run: func(state *SetupState) error {
+		var doCreate bool
+		err := survey.AskOne(&survey.Confirm{
+			Message: "Create extension pg_stat_statements in public schema (will be saved to Postgres)?",
+			Default: false,
+			Help:    "Learn more about pg_stat_statements here: https://www.postgresql.org/docs/current/pgstatstatements.html",
+		}, &doCreate)
+		if err != nil {
+			return err
+		}
+		if !doCreate {
+			return nil
+		}
 		return state.QueryRunner.Exec("CREATE EXTENSION pg_stat_statements SCHEMA public")
 	},
 }
@@ -595,6 +673,19 @@ var enablePgss = &Step{
 		return strings.Contains(row.GetString(0), "pg_stat_statements"), nil
 	},
 	Run: func(state *SetupState) error {
+		var doAdd bool
+		err := survey.AskOne(&survey.Confirm{
+			Message: "Add pg_stat_statements to shared_preload_libraries (will be saved to Postgres)?",
+			Default: false,
+			Help:    "Postgres will have to be restarted in a later step to apply this configuration change; learn more about shared_preload_libraries here: https://www.postgresql.org/docs/current/runtime-config-client.html#GUC-SHARED-PRELOAD-LIBRARIES",
+		}, &doAdd)
+		if err != nil {
+			return err
+		}
+		if !doAdd {
+			return nil
+		}
+
 		row, err := state.QueryRunner.QueryRow("SHOW shared_preload_libraries")
 		if err != nil {
 			return err
@@ -618,7 +709,7 @@ var confirmLogInsightsSetup = &Step{
 	Run: func(state *SetupState) error {
 		var setUpLogInsights bool
 		err := survey.AskOne(&survey.Confirm{
-			Message: "Proceed with configuring optional Log Insights feature?",
+			Message: "Proceed to configuring optional Log Insights feature?",
 			Help:    "Learn more at https://pganalyze.com/log-insights",
 			Default: false,
 		}, &setUpLogInsights)
@@ -648,7 +739,7 @@ var configureLogErrorVerbosity = &Step{
 	Run: func(state *SetupState) error {
 		var newVal string
 		err := survey.AskOne(&survey.Select{
-			Message: "Setting 'log_error_verbosity' is set to unsupported value 'all'; select supported value:",
+			Message: "Setting 'log_error_verbosity' is set to unsupported value 'all'; select supported value (will be saved to Postgres):",
 			Options: []string{"terse", "default"},
 		}, &newVal)
 		if err != nil {
@@ -674,7 +765,7 @@ var configureLogDuration = &Step{
 	Run: func(state *SetupState) error {
 		var turnOffLogDuration bool
 		err := survey.AskOne(&survey.Confirm{
-			Message: "Setting 'log_duration' is set to unsupported value 'on'; set to 'off'?",
+			Message: "Setting 'log_duration' is set to unsupported value 'on'; set to 'off' (will be saved to Postgres)?",
 			Default: false,
 		}, &turnOffLogDuration)
 		if err != nil {
@@ -704,7 +795,7 @@ var configureLogStatement = &Step{
 	Run: func(state *SetupState) error {
 		var newVal string
 		err := survey.AskOne(&survey.Select{
-			Message: "Setting 'log_statement' is set to unsupported value 'all'; select supported value:",
+			Message: "Setting 'log_statement' is set to unsupported value 'all'; select supported value (will be saved to Postgres):",
 			Options: []string{"none", "ddl", "mod"},
 		}, &newVal)
 		if err != nil {
@@ -754,7 +845,7 @@ var configureLogMinDurationStatement = &Step{
 		var newVal string
 		err = survey.AskOne(&survey.Input{
 			Message: fmt.Sprintf(
-				"Setting 'log_min_duration_statement' is set to '%s', below supported threshold of 10ms; enter supported value in ms or 0 to disable:",
+				"Setting 'log_min_duration_statement' is set to '%s', below supported threshold of 10ms; enter supported value in ms or 0 to disable (will be saved to Postgres):",
 				oldVal,
 			),
 		}, &newVal, survey.WithValidator(validateLmds))
@@ -799,14 +890,20 @@ var configureLogLinePrefix = &Step{
 		}
 		oldVal := row.GetString(0)
 		var opts []string
-		for _, llp := range supportedLogLinePrefixes {
+		for i, llp := range supportedLogLinePrefixes {
 			// N.B.: we quote the options because many prefixes end in whitespace; we need to make that clear
-			opts = append(opts, fmt.Sprintf("'%s'", llp))
+			var opt string
+			if i == 0 {
+				opt = fmt.Sprintf("'%s' (recommended)", llp)
+			} else {
+				opt = fmt.Sprintf("'%s'", llp)
+			}
+			opts = append(opts, opt)
 		}
 
 		var prefixIdx int
 		err = survey.AskOne(&survey.Select{
-			Message: fmt.Sprintf("Setting 'log_line_prefix' is set to unsupported value '%s'; set to (first option is recommended):", oldVal),
+			Message: fmt.Sprintf("Setting 'log_line_prefix' is set to unsupported value '%s'; set to (will be saved to Postgres):", oldVal),
 			Help:    "Check format specifier reference in Postgres documentation: https://www.postgresql.org/docs/current/runtime-config-logging.html#GUC-LOG-LINE-PREFIX",
 			Options: opts,
 		}, &prefixIdx, survey.WithPageSize(len(supportedLogLinePrefixes)))
@@ -847,7 +944,7 @@ var configureLogLocation = &Step{
 		}
 		var logLocationConfirmed bool
 		err = survey.AskOne(&survey.Confirm{
-			Message: fmt.Sprintf("Your database log file or directory appears to be %s; is this correct?", guessedLogLocation),
+			Message: fmt.Sprintf("Your database log file or directory appears to be %s; is this correct (will be saved to collector config)?", guessedLogLocation),
 			Default: false,
 		}, &logLocationConfirmed)
 		if err != nil {
@@ -858,10 +955,13 @@ var configureLogLocation = &Step{
 			logLocation = guessedLogLocation
 		} else {
 			err = survey.AskOne(&survey.Input{
-				Message: "Please enter the Postgres log file location",
+				Message: "Please enter the Postgres log file location (will be saved to collector config)",
 			}, &logLocation, survey.WithValidator(validatePath))
 		}
-		state.CurrentSection.NewKey("db_log_location", logLocation)
+		_, err = state.CurrentSection.NewKey("db_log_location", logLocation)
+		if err != nil {
+			return err
+		}
 		return state.Config.SaveTo(state.ConfigFilename)
 	},
 }
@@ -874,7 +974,7 @@ var confirmAutoExplainSetup = &Step{
 	Run: func(state *SetupState) error {
 		var setUpExplain bool
 		err := survey.AskOne(&survey.Confirm{
-			Message: "Proceed with configuring optional Automated EXPLAIN feature?",
+			Message: "Proceed to configuring optional Automated EXPLAIN feature?",
 			Help:    "Learn more at https://pganalyze.com/postgres-explain",
 			Default: false,
 		}, &setUpExplain)
@@ -906,7 +1006,7 @@ var checkAutoExplainAvailable = &Step{
 	},
 	Run: func(state *SetupState) error {
 		// TODO: install contrib package?
-		return nil
+		return errors.New("module auto_explain is not available")
 	},
 }
 
@@ -923,6 +1023,18 @@ var enableAutoExplain = &Step{
 		return strings.Contains(row.GetString(0), "auto_explain"), nil
 	},
 	Run: func(state *SetupState) error {
+		var doAdd bool
+		err := survey.AskOne(&survey.Confirm{
+			Message: "Add auto_explain to shared_preload_libraries (will be saved to Postgres)?",
+			Default: false,
+			Help:    "Postgres will have to be restarted in a later step to apply this configuration change; learn more about shared_preload_libraries here: https://www.postgresql.org/docs/current/runtime-config-client.html#GUC-SHARED-PRELOAD-LIBRARIES",
+		}, &doAdd)
+		if err != nil {
+			return err
+		}
+		if !doAdd {
+			return nil
+		}
 		row, err := state.QueryRunner.QueryRow("SHOW shared_preload_libraries")
 		if err != nil {
 			return err
@@ -970,85 +1082,33 @@ var reloadCollector = &Step{
 var restartPg = &Step{
 	Description: "If necessary, restart Postgres to have configuration changes take effect",
 	Check: func(state *SetupState) (bool, error) {
-		if state.SkipNextRestart {
-			state.SkipNextRestart = false
-			return true, nil
-		}
-		rows, err := state.QueryRunner.Query("SELECT name FROM pg_settings WHERE pending_restart;")
+		row, err := state.QueryRunner.QueryRow("SELECT COUNT(*) FROM pg_settings WHERE pending_restart;")
 		if err != nil {
 			return false, err
 		}
-		if len(rows) > 0 {
-			return false, nil
-		}
-		return true, nil
+		return row.GetInt(0) == 0, nil
 	},
 	Run: func(state *SetupState) error {
-		rows, err := state.QueryRunner.Query(`
-			SELECT
-				name,
-				pending_restart,
-				left(
-					right(
-						regexp_replace(
-							(regexp_split_to_array(
-								pg_read_file(sourcefile), '\s*$\s*', 'm'
-							))[sourceline],
-							name || ' = ', ''
-						),
-					-1),
-				-1) AS pending_value
-			FROM
-				pg_settings
-			WHERE
-				pending_restart OR name = 'shared_preload_libraries'`)
+		rows, err := state.QueryRunner.Query("SELECT name FROM pg_settings WHERE pending_restart")
 		if err != nil {
 			return err
 		}
 		var pendingSettings []string
-		var splPending bool
-		var splPendingValue string
 		for _, row := range rows {
-			setting := row.GetString(0)
-			if setting == "shared_preload_libraries" {
-				// N.B.: if there are no pending changes to spl, this is identical
-				// to its current value, but we still need it for the pgss/auto_explain
-				// notice below
-				splPendingValue = row.GetString(2)
-				splPending = row.GetBool(1)
-				if !splPending {
-					continue
-				}
-			}
-
-			pendingSettings = append(pendingSettings, setting)
+			pendingSettings = append(pendingSettings, row.GetString(0))
 		}
 
-		fmt.Printf("%s Postgres must be restarted for the changes to the following settings to take effect: %s\n", bold("-"), strings.Join(pendingSettings, ", "))
-
-		// TODO: account for Skip flags above
-		splHasPgss := strings.Contains(splPendingValue, "pg_stat_statements")
-		splHasAutoExplain := strings.Contains(splPendingValue, "auto_explain")
-		if !splHasPgss || !splHasAutoExplain {
-			var notInSpl string
-			if !splHasPgss && !splHasAutoExplain {
-				notInSpl = "pg_stat_statements and (if desired) auto_explain"
-			} else if !splHasPgss {
-				notInSpl = "pg_stat_statements"
-			} else if !splHasAutoExplain {
-				notInSpl = "auto_explain (if desired)"
-			}
-			fmt.Printf("%s Note: you will also need to restart later after adding %s to shared_preload_libraries\n", bold("!"), notInSpl)
-		}
-
+		pendingList := getConjuctionList(pendingSettings)
 		var restartNow bool
-		survey.AskOne(&survey.Confirm{
-			Message: "Restart Postgres now?",
+		err = survey.AskOne(&survey.Confirm{
+			Message: fmt.Sprintf("Postgres must be restarted for changes to %s to take effect; restart Postgres now?", pendingList),
 			Default: false,
 		}, &restartNow)
+		if err != nil {
+			return err
+		}
 
 		if !restartNow {
-			state.SkipNextRestart = true
 			return nil
 		}
 

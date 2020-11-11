@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/go-ini/ini"
-	"github.com/lib/pq"
 	"github.com/pganalyze/collector/setup/query"
 )
 
@@ -108,7 +107,9 @@ func discoverLogLocation(config *ini.Section, runner *query.Runner) (string, err
 }
 
 func applyConfigSetting(setting, value string, runner *query.Runner) error {
-	err := runner.Exec(fmt.Sprintf("ALTER SYSTEM SET %s = %s", setting, pq.QuoteLiteral(value)))
+	// N.B.: we don't quote the value because in the case of lists (like shared_preload_libraries)
+	// that does not parse the list correctly
+	err := runner.Exec(fmt.Sprintf("ALTER SYSTEM SET %s = %s", setting, value))
 	if err != nil {
 		return fmt.Errorf("failed to apply setting: %s", err)
 	}
@@ -118,4 +119,49 @@ func applyConfigSetting(setting, value string, runner *query.Runner) error {
 	}
 
 	return nil
+}
+
+func getPendingSharedPreloadLibraries(runner *query.Runner) (string, error) {
+	// When shared_preload_libraries is updated, since the setting requires a restart for the
+	// changes to take effect, the new value is not reflected with SHOW or current_setting().
+	// To make sure we don't clobber any pending changes (including our own, if adding both
+	// pg_stat_statements *and* auto_explain), we need to read the configured-but-not-yet-applied
+	// value from the config file (there does not appear to be a better way to do this)
+	row, err := runner.QueryRow(`
+		SELECT
+			CASE
+			  WHEN pending_restart THEN
+					left(
+						right(
+							regexp_replace(
+								(regexp_split_to_array(
+									pg_read_file(sourcefile), '\s*$\s*', 'm'
+								))[sourceline],
+								name || ' = ', ''
+							),
+						-1),
+					-1)
+				ELSE current_setting(name)
+			END AS pending_value
+		FROM
+			pg_settings
+		WHERE
+			name = 'shared_preload_libraries'`)
+	if err != nil {
+		return "", err
+	}
+	return row.GetString(0), nil
+}
+
+func getConjuctionList(strs []string) string {
+	switch len(strs) {
+	case 0:
+		return ""
+	case 1:
+		return strs[0]
+	case 2:
+		return fmt.Sprintf("%s and %s", strs[0], strs[1])
+	default:
+		return fmt.Sprintf("%s, and %s", strings.Join(strs[:len(strs)-1], ", "), strs[len(strs)-1])
+	}
 }
