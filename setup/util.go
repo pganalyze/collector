@@ -36,42 +36,42 @@ type LocalPostgres struct {
 
 var pgsqlDomainSocketPortRe = regexp.MustCompile("\\d+$")
 
+func getSocketDirMatches(dir string) ([]LocalPostgres, error) {
+	var result []LocalPostgres
+	// technically this should be a filepath.Join, but Unix-domain sockets do not work
+	// on windows anyway
+	globPattern := fmt.Sprintf("%s/.s.PGSQL.*", dir)
+	matches, err := filepath.Glob(globPattern)
+	if err != nil {
+		return nil, err
+	}
+	for _, match := range matches {
+		portStr := pgsqlDomainSocketPortRe.FindString(match)
+		if portStr == "" {
+			continue
+		}
+		port, err := strconv.Atoi(portStr)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, LocalPostgres{SocketDir: dir, Port: port})
+	}
+	return result, nil
+}
+
 func discoverLocalPostgres() ([]LocalPostgres, error) {
 	// TODO: find tcp sockets if no unix sockets?
 	// TODO: confirm these are live by checking pids?
+	varRunMatches, err := getSocketDirMatches("/var/run/postgresql")
+	if err != nil {
+		return nil, err
+	}
+	tmpMatches, err := getSocketDirMatches("/tmp")
+	if err != nil {
+		return nil, err
+	}
 	var result []LocalPostgres
-	varRunMatches, err := filepath.Glob("/var/run/postgresql/.s.PGSQL.*")
-	if err != nil {
-		return nil, err
-	}
-	for _, match := range varRunMatches {
-		portStr := pgsqlDomainSocketPortRe.FindString(match)
-		if portStr == "" {
-			continue
-		}
-		port, err := strconv.Atoi(portStr)
-		if err != nil {
-			return nil, err
-		}
-		result = append(result, LocalPostgres{SocketDir: "/var/run/postgresql", Port: port})
-	}
-	tmpMatches, err := filepath.Glob("/tmp/.s.PGSQL.*")
-	if err != nil {
-		return nil, err
-	}
-	for _, match := range tmpMatches {
-		portStr := pgsqlDomainSocketPortRe.FindString(match)
-		if portStr == "" {
-			continue
-		}
-		port, err := strconv.Atoi(portStr)
-		if err != nil {
-			return nil, err
-		}
-		result = append(result, LocalPostgres{SocketDir: "/tmp", Port: port})
-	}
-
-	return result, nil
+	return append(append(result, varRunMatches...), tmpMatches...), nil
 }
 
 func getPostmasterPid() (int, error) {
