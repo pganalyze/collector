@@ -14,12 +14,14 @@ import (
 
 type Runner struct {
 	User     string
+	Host     string
+	Port     int
 	Password string
 	Database string
 }
 
-func NewRunner() *Runner {
-	return &Runner{User: "postgres", Password: "", Database: ""}
+func NewRunner(user, host string, port int) *Runner {
+	return &Runner{User: user, Host: host, Port: port, Password: "", Database: ""}
 }
 
 func (qr *Runner) Ping() error {
@@ -27,16 +29,20 @@ func (qr *Runner) Ping() error {
 	// and account for cloud provider faux superusers (since we
 	// may want a consistent interface for this even if users
 	// have to enter credentials)
-	_, err := qr.runSQL("select 1")
+	_, err := qr.runSQL("SELECT 1")
 	return err
 }
 
 func (qr *Runner) runSQL(sql string) (string, error) {
-	// TODO: should we try to find the socket for psql here and pass it as -d or PGHOST,
-	// rather than relying on it to do that itself?
 	cmd := exec.Command("psql", "--no-psqlrc", "--csv", "--tuples-only", "--command", sql)
 	cmd.Env = os.Environ()
 	// N.B.: if there are conflicts, these later values override what's in os.Environ()
+	if qr.Host != "" {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("PGHOST=%s", qr.Host))
+	}
+	if qr.Port != 0 {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("PGPORT=%d", qr.Port))
+	}
 	if qr.User != "" {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("PGUSER=%s", qr.User))
 	}
@@ -47,7 +53,7 @@ func (qr *Runner) runSQL(sql string) (string, error) {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("PGDATABASE=%s", qr.Database))
 	}
 	cmd.SysProcAttr = &syscall.SysProcAttr{}
-	pgUser, err := user.Lookup("postgres")
+	pgUser, err := user.Lookup(qr.User)
 	if err != nil {
 		return "", err
 	}

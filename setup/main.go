@@ -299,9 +299,50 @@ var establishSuperuserConnection = &Step{
 		return err == nil, err
 	},
 	Run: func(state *SetupState) error {
-		// TODO: Ping and prompt for credentials if ping fails; even if ping succeed, confirm
-		// the connection we are using
-		state.QueryRunner = query.NewRunner()
+		localPgs, err := discoverLocalPostgres()
+		if err != nil {
+			return err
+		}
+		var selectedPg LocalPostgres
+		if len(localPgs) == 0 {
+			return errors.New("failed to find a running local Postgres install")
+		} else if len(localPgs) == 1 {
+			selectedPg = localPgs[0]
+		} else {
+			var opts []string
+			for _, localPg := range localPgs {
+				opts = append(opts, fmt.Sprintf("port %d in socket dir %s", localPg.Port, localPg.SocketDir))
+			}
+			var selectedIdx int
+			err := survey.AskOne(&survey.Select{
+				Message: "Found several Postgres installations; please select one",
+				Options: opts,
+			}, &selectedIdx)
+			if err != nil {
+				return err
+			}
+			selectedPg = localPgs[selectedIdx]
+		}
+		var pgSuperuser string
+		err = survey.AskOne(&survey.Select{
+			Message: "Select Postgres superuser to connect as for configuration purposes",
+			Help:    "We will create a separate, restricted monitoring user for the collector later",
+			Options: []string{"postgres", "another user"},
+		}, &pgSuperuser)
+		if err != nil {
+			return err
+		}
+		if pgSuperuser != "postgres" {
+			err = survey.AskOne(&survey.Input{
+				Message: "Enter Postgres superuser to connect as for configuration purposes",
+				Help:    "We will create a separate monitoring user for the collector later",
+			}, &pgSuperuser, survey.WithValidator(survey.Required))
+			if err != nil {
+				return err
+			}
+		}
+
+		state.QueryRunner = query.NewRunner(pgSuperuser, selectedPg.SocketDir, selectedPg.Port)
 		return nil
 	},
 }

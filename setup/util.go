@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -25,6 +26,52 @@ func includes(strings []string, str string) bool {
 		}
 	}
 	return false
+}
+
+type LocalPostgres struct {
+	SocketDir string
+	LocalAddr string
+	Port      int
+}
+
+var pgsqlDomainSocketPortRe = regexp.MustCompile("\\d+$")
+
+func discoverLocalPostgres() ([]LocalPostgres, error) {
+	// TODO: find tcp sockets if no unix sockets?
+	// TODO: confirm these are live by checking pids?
+	var result []LocalPostgres
+	varRunMatches, err := filepath.Glob("/var/run/postgresql/.s.PGSQL.*")
+	if err != nil {
+		return nil, err
+	}
+	for _, match := range varRunMatches {
+		portStr := pgsqlDomainSocketPortRe.FindString(match)
+		if portStr == "" {
+			continue
+		}
+		port, err := strconv.Atoi(portStr)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, LocalPostgres{SocketDir: "/var/run/postgresql", Port: port})
+	}
+	tmpMatches, err := filepath.Glob("/tmp/.s.PGSQL.*")
+	if err != nil {
+		return nil, err
+	}
+	for _, match := range tmpMatches {
+		portStr := pgsqlDomainSocketPortRe.FindString(match)
+		if portStr == "" {
+			continue
+		}
+		port, err := strconv.Atoi(portStr)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, LocalPostgres{SocketDir: "/tmp", Port: port})
+	}
+
+	return result, nil
 }
 
 func getPostmasterPid() (int, error) {
