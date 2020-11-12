@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/go-ini/ini"
+	"github.com/lib/pq"
 	"github.com/pganalyze/collector/setup/query"
 )
 
@@ -164,4 +165,38 @@ func getConjuctionList(strs []string) string {
 	default:
 		return fmt.Sprintf("%s, and %s", strings.Join(strs[:len(strs)-1], ", "), strs[len(strs)-1])
 	}
+}
+
+func usingLogExplain(section *ini.Section) (bool, error) {
+	k, err := section.GetKey("enable_log_explain")
+	if err != nil {
+		return false, err
+	}
+	return k.Bool()
+}
+
+var expectedMd5s = map[string]string{
+	"explain":              "814292aad6ba4a207ea7b8c9fb47836b",
+	"get_stat_replication": "d4321fedd7286ca0752c6eff13991288",
+}
+
+func validateHelperFunction(fn string, runner *query.Runner) (bool, error) {
+	// TODO: validating full function definition may be too strict?
+	expected, ok := expectedMd5s[fn]
+	if !ok {
+		return false, fmt.Errorf("unrecognized helper function %s", fn)
+	}
+	row, err := runner.QueryRow(
+		fmt.Sprintf(
+			"SELECT md5(prosrc) FROM pg_proc WHERE proname = %s AND pronamespace::regnamespace::text = 'pganalyze'",
+			pq.QuoteLiteral(fn),
+		),
+	)
+	if err == query.ErrNoRows {
+		return false, nil
+	} else if err != nil {
+		return false, err
+	}
+	actual := row.GetString(0)
+	return actual == expected, nil
 }

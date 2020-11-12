@@ -43,7 +43,7 @@ type SetupState struct {
 	AskedAutomatedExplain bool
 	SkipAutomatedExplain  bool
 
-	LogBasedExplain bool
+	SkipRevokePublicSchema bool
 
 	DidReload bool
 }
@@ -78,6 +78,8 @@ func main() {
 		configureMonitoringUserPasswd,
 		applyMonitoringUserPasswd,
 		setUpMonitoringUser,
+		createPganalyzeSchema,
+		revokePrivilegesFromMonitoringUser,
 		checkPgssAvailable,
 		createPgss,
 		enablePgss,
@@ -91,6 +93,8 @@ func main() {
 		configureLogLocation,
 
 		confirmAutoExplainSetup,
+		checkUseLogBasedExplain,
+		createLogExplainHelper,
 		checkAutoExplainAvailable,
 		enableAutoExplain,
 		configureAutoExplain,
@@ -201,7 +205,7 @@ var determinePlatform = &Step{
 
 		// TODO: relax this
 		if state.Platform != "ubuntu" || state.PlatformVersion != "20.04" {
-			return false, errors.New("automated setup only supported on Ubuntu 20.04")
+			return false, errors.New("not supported on platforms other than Ubuntu 20.04")
 		}
 
 		return true, nil
@@ -302,6 +306,10 @@ var checkPostgresVersion = &Step{
 		}
 		state.PGVersionStr = row.GetString(0)
 		state.PGVersionNum = row.GetInt(1)
+
+		if state.PGVersionNum < 100000 {
+			return false, fmt.Errorf("not supported for Postgres versions older than 10; found %s", state.PGVersionStr)
+		}
 
 		return true, nil
 	},
@@ -445,6 +453,7 @@ var createMonitoringUser = &Step{
 			return nil
 		}
 
+		// TODO: connection limit (5 in our setup docs)
 		return state.QueryRunner.Exec(
 			fmt.Sprintf(
 				"CREATE USER %s",
@@ -560,8 +569,6 @@ var setUpMonitoringUser = &Step{
 		pgaUser := pgaUserKey.String()
 
 		// TODO: deal with postgres <10
-		// TODO: more lenient check--we don't necessarily need role membership--just access to
-		// all the necessary tables and functions
 		row, err := state.QueryRunner.QueryRow(
 			fmt.Sprintf(
 				"SELECT usesuper OR pg_has_role(usename, 'pg_monitor', 'member') FROM pg_user WHERE usename = %s",
@@ -602,6 +609,110 @@ var setUpMonitoringUser = &Step{
 				pq.QuoteIdentifier(pgaUser),
 			),
 		)
+	},
+}
+
+var createPganalyzeSchema = &Step{
+	Description: "Create pganalyze schema and helper functions",
+	Check: func(state *SetupState) (bool, error) {
+		row, err := state.QueryRunner.QueryRow("SELECT COUNT(*) FROM pg_namespace WHERE nspname = 'pganalyze'")
+		if err != nil {
+			return false, err
+		}
+		count := row.GetInt(0)
+		if count != 1 {
+			return false, nil
+		}
+		userKey, err := state.CurrentSection.GetKey("db_username")
+		if err != nil {
+			return false, err
+		}
+		pgaUser := userKey.String()
+		row, err = state.QueryRunner.QueryRow(fmt.Sprintf("SELECT has_schema_privilege(%s, 'pganalyze', 'USAGE')", pq.QuoteLiteral(pgaUser)))
+		if err != nil {
+			return false, err
+		}
+		hasUsage := row.GetBool(0)
+		if !hasUsage {
+			return false, nil
+		}
+		row, err = state.QueryRunner.QueryRow("SELECT COUNT(*) FROM pg_proc WHERE proname = 'get_stat_replication' AND pronargs = 0")
+		if err != nil {
+			return false, err
+		}
+		count = row.GetInt(0)
+		if count != 1 {
+			return false, nil
+		}
+		return true, nil
+	},
+	Run: func(state *SetupState) error {
+		var doSetup bool
+		err := survey.AskOne(&survey.Confirm{
+			Message: "Create pganalyze schema and helper functions (will be saved to Postgres)?",
+			Default: false,
+			// TODO: better link?
+			Help: "These helper functions allow the collector to monitor database statistics without being able to read your data; learn more here: https://github.com/pganalyze/collector/#setting-up-a-restricted-monitoring-user",
+		}, &doSetup)
+		if err != nil {
+			return err
+		}
+		if !doSetup {
+			return nil
+		}
+		return state.QueryRunner.Exec(`CREATE SCHEMA IF NOT EXISTS pganalyze;
+GRANT USAGE ON SCHEMA pganalyze TO pganalyze;
+
+CREATE OR REPLACE FUNCTION pganalyze.get_stat_replication() RETURNS SETOF pg_stat_replication AS
+$$
+	/* pganalyze-collector */ SELECT * FROM pg_catalog.pg_stat_replication;
+$$ LANGUAGE sql VOLATILE SECURITY DEFINER;`)
+	},
+}
+
+var revokePrivilegesFromMonitoringUser = &Step{
+	Description: "Ensure the monitoring user has no unnecessary database privileges",
+	Check: func(state *SetupState) (bool, error) {
+		if state.SkipRevokePublicSchema {
+			return true, nil
+		}
+		pgaKey, err := state.CurrentSection.GetKey("db_username")
+		if err != nil {
+			return false, err
+		}
+		pgaUser := pgaKey.String()
+
+		row, err := state.QueryRunner.QueryRow(
+			fmt.Sprintf(
+				"SELECT has_schema_privilege(%s, 'public', 'CREATE') OR has_schema_privilege(%[1]s, 'public', 'USAGE')",
+				pgaUser,
+			),
+		)
+		if err != nil {
+			return false, err
+		}
+		return !row.GetBool(0), nil
+	},
+	Run: func(state *SetupState) error {
+		pgaKey, err := state.CurrentSection.GetKey("db_username")
+		if err != nil {
+			return err
+		}
+		pgaUser := pgaKey.String()
+		var doRevoke bool
+		err = survey.AskOne(&survey.Confirm{
+			Message: fmt.Sprintf("Revoke privileges on public schema from %s user (will be saved to Postgres)?", pgaUser),
+			Default: true,
+			Help:    "The collector does not need this access; we recommend revoking these privileges",
+		}, &doRevoke)
+		if err != nil {
+			return err
+		}
+		if !doRevoke {
+			state.SkipRevokePublicSchema = true
+			return nil
+		}
+		return state.QueryRunner.Exec(fmt.Sprintf("REVOKE ALL ON SCHEMA public FROM %s", pq.QuoteIdentifier(pgaUser)))
 	},
 }
 
@@ -988,13 +1099,98 @@ var confirmAutoExplainSetup = &Step{
 	},
 }
 
+var checkUseLogBasedExplain = &Step{
+	Description: "Check whether to use the auto_explain module or log-based EXPLAIN",
+	Check: func(state *SetupState) (bool, error) {
+		return state.CurrentSection.HasKey("enable_log_explain"), nil
+	},
+	Run: func(state *SetupState) error {
+		var optIdx int
+		err := survey.AskOne(&survey.Select{
+			Message: "Select automated EXPLAIN mechanism to use (will be saved to collector config):",
+			Help:    "Learn more about the options at https://pganalyze.com/docs/explain/setup",
+			Options: []string{"auto_explain (recommended)", "log-based EXPLAIN"},
+		}, optIdx)
+		if err != nil {
+			return err
+		}
+		useLogBased := optIdx == 1
+		_, err = state.CurrentSection.NewKey("enable_log_explain", strconv.FormatBool(useLogBased))
+		if err != nil {
+			return err
+		}
+		return state.Config.SaveTo(state.ConfigFilename)
+	},
+}
+
+var createLogExplainHelper = &Step{
+	Description: "Create log-based EXPLAIN helper function",
+	Check: func(state *SetupState) (bool, error) {
+		logExplain, err := usingLogExplain(state.CurrentSection)
+		if err != nil {
+			return false, err
+		}
+		if !logExplain {
+			return true, nil
+		}
+		return validateHelperFunction("explain", state.QueryRunner)
+	},
+	Run: func(state *SetupState) error {
+		var doCreate bool
+		err := survey.AskOne(&survey.Confirm{
+			Message: "Create (or update) EXPLAIN helper function (will be saved to Postgres)?",
+			Default: false,
+		}, &doCreate)
+		if err != nil {
+			return err
+		}
+		if !doCreate {
+			return nil
+		}
+		return state.QueryRunner.Exec(`CREATE OR REPLACE FUNCTION pganalyze.explain(query text, params text[]) RETURNS text AS
+$$
+DECLARE
+	prepared_query text;
+	prepared_params text;
+	result text;
+BEGIN
+	SELECT regexp_replace(query, ';+\s*\Z', '') INTO prepared_query;
+	IF prepared_query LIKE '%;%' THEN
+		RAISE EXCEPTION 'cannot run EXPLAIN when query contains semicolon';
+	END IF;
+
+	IF array_length(params, 1) > 0 THEN
+		SELECT string_agg(quote_literal(param) || '::unknown', ',') FROM unnest(params) p(param) INTO prepared_params;
+
+		EXECUTE 'PREPARE pganalyze_explain AS ' || prepared_query;
+		BEGIN
+			EXECUTE 'EXPLAIN (VERBOSE, FORMAT JSON) EXECUTE pganalyze_explain(' || prepared_params || ')' INTO STRICT result;
+		EXCEPTION WHEN OTHERS THEN
+			DEALLOCATE pganalyze_explain;
+			RAISE;
+		END;
+		DEALLOCATE pganalyze_explain;
+	ELSE
+		EXECUTE 'EXPLAIN (VERBOSE, FORMAT JSON) ' || prepared_query INTO STRICT result;
+	END IF;
+
+	RETURN result;
+END
+$$ LANGUAGE plpgsql VOLATILE SECURITY DEFINER;`)
+	},
+}
+
 var checkAutoExplainAvailable = &Step{
 	Description: "Prepare for auto_explain install",
 	Check: func(state *SetupState) (bool, error) {
 		if state.SkipAutomatedExplain {
 			return true, nil
 		}
-		err := state.QueryRunner.Exec("LOAD auto_explain")
+		logExplain, err := usingLogExplain(state.CurrentSection)
+		if err != nil || logExplain {
+			return logExplain, err
+		}
+		err = state.QueryRunner.Exec("LOAD auto_explain")
 		if err != nil {
 			if strings.Contains(err.Error(), "No such file or directory") {
 				return false, nil
@@ -1015,6 +1211,10 @@ var enableAutoExplain = &Step{
 	Check: func(state *SetupState) (bool, error) {
 		if state.SkipAutomatedExplain {
 			return true, nil
+		}
+		logExplain, err := usingLogExplain(state.CurrentSection)
+		if err != nil || logExplain {
+			return logExplain, err
 		}
 		row, err := state.QueryRunner.QueryRow("SHOW shared_preload_libraries")
 		if err != nil {
@@ -1056,10 +1256,15 @@ var configureAutoExplain = &Step{
 		if state.SkipAutomatedExplain {
 			return true, nil
 		}
+		logExplain, err := usingLogExplain(state.CurrentSection)
+		if err != nil || logExplain {
+			return logExplain, err
+		}
 		// TODO: check recommended/required configuration settings
 		return false, nil
 	},
 	Run: func(state *SetupState) error {
+
 		return nil
 	},
 }
@@ -1067,10 +1272,24 @@ var configureAutoExplain = &Step{
 var reloadCollector = &Step{
 	Description: "Reload collector configuration",
 	Check: func(state *SetupState) (bool, error) {
+		// N.B.: there's no way to tell whether the collector actually needs to reload; we
+		// force this once per setup helper invocation (this starts out as false and is set
+		// to true below)
 		return state.DidReload, nil
 	},
 	Run: func(state *SetupState) error {
-		err := reload()
+		var doReload bool
+		err := survey.AskOne(&survey.Confirm{
+			Message: "The collector configuration must be reloaded for changes to take effect; reload now?",
+			Default: false,
+		}, &doReload)
+		if err != nil {
+			return err
+		}
+		if !doReload {
+			return nil
+		}
+		err = reload()
 		if err != nil {
 			return err
 		}

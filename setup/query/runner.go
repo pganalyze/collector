@@ -103,6 +103,8 @@ func (qr *Runner) QueryRow(sql string) (Row, error) {
 	}
 	if len(rows) == 0 {
 		return nil, ErrNoRows
+	} else if len(rows) > 1 {
+		return nil, fmt.Errorf("expected one row; got %d", len(rows))
 	}
 	return rows[0], err
 }
