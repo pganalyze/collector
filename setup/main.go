@@ -82,7 +82,9 @@ func main() {
 		applyMonitoringUserPasswd,
 		setUpMonitoringUser,
 		createPganalyzeSchema,
-		revokePrivilegesFromMonitoringUser,
+		// TODO: this does not work right now--we check with has_schema_privilege, and after
+		// a revoke, the user still has the privilege
+		//revokePrivilegesFromMonitoringUser,
 		checkPgssAvailable,
 		createPgss,
 		enablePgss,
