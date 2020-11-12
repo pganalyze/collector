@@ -384,6 +384,10 @@ var checkReplicationStatus = &Step{
 var selectDatabases = &Step{
 	Description: "Select database(s) to monitor",
 	Check: func(state *SetupState) (bool, error) {
+		hasDb := state.CurrentSection.HasKey("db_name")
+		if !hasDb {
+			return false, nil
+		}
 		key, err := state.CurrentSection.GetKey("db_name")
 		if err != nil {
 			return false, err
@@ -393,7 +397,9 @@ var selectDatabases = &Step{
 			return false, nil
 		}
 		// Now that we know the database, connect to the right one for setup:
-		// this is important for extensions and helper functions
+		// this is important for extensions and helper functions. Note that we
+		// need to do this in Check, rather than the Run, since a subsequent
+		// execution, resuming an incomplete setup, will not run Run again
 		state.QueryRunner.Database = db
 		return true, nil
 	},
