@@ -599,7 +599,7 @@ var applyMonitoringUserPasswd = &Step{
 
 		var doPasswdUpdate bool
 		err = survey.AskOne(&survey.Confirm{
-			Message: "Update password for user %s with configured value (will be saved to Postgres)?",
+			Message: fmt.Sprintf("Update password for user %s with configured value (will be saved to Postgres)?", pgaUser),
 			Help:    "If you skip this step, ensure the password matches before proceeding",
 		}, &doPasswdUpdate)
 		if err != nil {
