@@ -45,8 +45,10 @@ type SetupState struct {
 
 	SkipRevokePublicSchema             bool
 	SkipAutoExplainRecommendedSettings bool
+	SkipPgSleep                        bool
 
-	DidReload bool
+	DidReload  bool
+	DidPgSleep bool
 }
 
 // Step is a discrete step in the install process
@@ -98,10 +100,11 @@ func main() {
 		createLogExplainHelper,
 		checkAutoExplainAvailable,
 		enableAutoExplain,
-		configureAutoExplain,
 
 		reloadCollector,
 		restartPg,
+		configureAutoExplain,
+		runPgSleep,
 	}
 
 	var setupState SetupState
@@ -524,11 +527,16 @@ var applyMonitoringUserPasswd = &Step{
 		pqStr := serverCfg.GetPqOpenString("")
 		conn, err := sql.Open("postgres", pqStr)
 		err = conn.Ping()
-		isAuthErr := strings.Contains(err.Error(), "authentication failed")
-		if isAuthErr {
-			return false, nil
+		if err != nil {
+			isAuthErr := strings.Contains(err.Error(), "authentication failed")
+			if isAuthErr {
+				return false, nil
+			}
+			return false, err
 		}
-		return false, err
+
+		return true, nil
+
 	},
 	Run: func(state *SetupState) error {
 		pgaUserKey, err := state.CurrentSection.GetKey("db_username")
@@ -1479,6 +1487,37 @@ var configureAutoExplain = &Step{
 		}
 		logNested := logNestedOpts[logNestedIdx]
 		err = applyConfigSetting("auto_explain.log_nested", logNested, state.QueryRunner)
+		return err
+	},
+}
+
+var runPgSleep = &Step{
+	Description: "Run a pg_sleep command to confirm everything is working",
+	Check: func(state *SetupState) (bool, error) {
+		return state.SkipPgSleep || state.DidPgSleep, nil
+	},
+	Run: func(state *SetupState) error {
+		var doPgSleep bool
+		err := survey.AskOne(&survey.Confirm{
+			Message: "Run pg_sleep command to confirm configuration?",
+			Default: true,
+			Help:    "You should see results in pganalyze a few seconds after the query completes",
+		}, &doPgSleep)
+		if err != nil {
+			return err
+		}
+		if !doPgSleep {
+			state.SkipPgSleep = true
+			return nil
+		}
+		row, err := state.QueryRunner.QueryRow(
+			"SELECT max(setting::float) / 1000 * 1.2 from pg_settings where name IN ('log_min_duration_statement', 'auto_explain.log_min_duration')",
+		)
+		if err != nil {
+			return err
+		}
+		sleepDuration := row.GetFloat(0)
+		err = state.QueryRunner.Exec(fmt.Sprintf("SELECT pg_sleep(%f)", sleepDuration))
 		return err
 	},
 }

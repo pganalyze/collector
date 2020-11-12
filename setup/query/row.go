@@ -25,3 +25,11 @@ func (r Row) GetInt(idx int) int {
 	}
 	return num
 }
+
+func (r Row) GetFloat(idx int) float64 {
+	num, err := strconv.ParseFloat(r[idx], 64)
+	if err != nil {
+		panic(fmt.Sprintf("expected float in column %d; found %s", idx, r[idx]))
+	}
+	return num
+}
