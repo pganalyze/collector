@@ -746,7 +746,7 @@ var revokePrivilegesFromMonitoringUser = &Step{
 		row, err := state.QueryRunner.QueryRow(
 			fmt.Sprintf(
 				"SELECT has_schema_privilege(%s, 'public', 'CREATE') OR has_schema_privilege(%[1]s, 'public', 'USAGE')",
-				pgaUser,
+				pq.QuoteLiteral(pgaUser),
 			),
 		)
 		if err != nil {
