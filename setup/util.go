@@ -167,6 +167,20 @@ func getConjuctionList(strs []string) string {
 	}
 }
 
+func getOptsWithRecommendation(opts []string, recommendedIdx int) []string {
+	result := make([]string, len(opts))
+	for i, opt := range opts {
+		var newOpt string
+		if i == recommendedIdx {
+			newOpt = fmt.Sprintf("%s (recommended)", opt)
+		} else {
+			newOpt = opt
+		}
+		result[i] = newOpt
+	}
+	return result
+}
+
 func usingLogExplain(section *ini.Section) (bool, error) {
 	k, err := section.GetKey("enable_log_explain")
 	if err != nil {

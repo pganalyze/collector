@@ -43,7 +43,8 @@ type SetupState struct {
 	AskedAutomatedExplain bool
 	SkipAutomatedExplain  bool
 
-	SkipRevokePublicSchema bool
+	SkipRevokePublicSchema             bool
+	SkipAutoExplainRecommendedSettings bool
 
 	DidReload bool
 }
@@ -125,6 +126,11 @@ At a high level, we will:
 
 At each step, we'll check if any changes are necessary, and if so, prompt you to
 provide input or confirm any required changes.
+
+Changes to Postgres configuration settings will be done with the ALTER SYSTEM command.
+If you later need to refine any of these, make sure to use ALTER SYSTEM or ALTER SYSTEM RESET,
+since otherwise, the ALTER SYSTEM chanes will override any direct config file edits. Learn
+more at https://www.postgresql.org/docs/current/sql-altersystem.html .
 
 You can stop at any time by pressing Ctrl+C.
 
@@ -777,11 +783,12 @@ var createPgss = &Step{
 var enablePgss = &Step{
 	Description: "Enable pg_stat_statements",
 	Check: func(state *SetupState) (bool, error) {
-		row, err := state.QueryRunner.QueryRow("SHOW shared_preload_libraries")
+		spl, err := getPendingSharedPreloadLibraries(state.QueryRunner)
 		if err != nil {
 			return false, err
 		}
-		return strings.Contains(row.GetString(0), "pg_stat_statements"), nil
+
+		return strings.Contains(spl, "pg_stat_statements"), nil
 	},
 	Run: func(state *SetupState) error {
 		var doAdd bool
@@ -797,11 +804,11 @@ var enablePgss = &Step{
 			return nil
 		}
 
-		row, err := state.QueryRunner.QueryRow("SHOW shared_preload_libraries")
+		existingSpl, err := getPendingSharedPreloadLibraries(state.QueryRunner)
 		if err != nil {
 			return err
 		}
-		var existingSpl = row.GetString(0)
+
 		var newSpl string
 		if existingSpl == "" {
 			newSpl = "pg_stat_statements"
@@ -926,8 +933,8 @@ func validateLmds(ans interface{}) error {
 	if err != nil {
 		return errors.New("value must be numeric")
 	}
-	if ansNum < 10 && ansNum != 0 {
-		return errors.New("value must be either 0 or 10 or greater")
+	if ansNum < 10 && ansNum != -1 {
+		return errors.New("value must be either -1 to disable or 10 or greater")
 	}
 	return nil
 }
@@ -1216,11 +1223,11 @@ var enableAutoExplain = &Step{
 		if err != nil || logExplain {
 			return logExplain, err
 		}
-		row, err := state.QueryRunner.QueryRow("SHOW shared_preload_libraries")
+		spl, err := getPendingSharedPreloadLibraries(state.QueryRunner)
 		if err != nil {
 			return false, err
 		}
-		return strings.Contains(row.GetString(0), "auto_explain"), nil
+		return strings.Contains(spl, "auto_explain"), nil
 	},
 	Run: func(state *SetupState) error {
 		var doAdd bool
@@ -1235,11 +1242,11 @@ var enableAutoExplain = &Step{
 		if !doAdd {
 			return nil
 		}
-		row, err := state.QueryRunner.QueryRow("SHOW shared_preload_libraries")
+
+		existingSpl, err := getPendingSharedPreloadLibraries(state.QueryRunner)
 		if err != nil {
 			return err
 		}
-		var existingSpl = row.GetString(0)
 		var newSpl string
 		if existingSpl == "" {
 			newSpl = "auto_explain"
@@ -1247,25 +1254,6 @@ var enableAutoExplain = &Step{
 			newSpl = existingSpl + ",auto_explain"
 		}
 		return applyConfigSetting("shared_preload_libraries", newSpl, state.QueryRunner)
-	},
-}
-
-var configureAutoExplain = &Step{
-	Description: "Configure auto_explain",
-	Check: func(state *SetupState) (bool, error) {
-		if state.SkipAutomatedExplain {
-			return true, nil
-		}
-		logExplain, err := usingLogExplain(state.CurrentSection)
-		if err != nil || logExplain {
-			return logExplain, err
-		}
-		// TODO: check recommended/required configuration settings
-		return false, nil
-	},
-	Run: func(state *SetupState) error {
-
-		return nil
 	},
 }
 
@@ -1332,5 +1320,165 @@ var restartPg = &Step{
 		}
 
 		return service.RestartPostgres()
+	},
+}
+
+// N.B.: this needs to happen *after* the Postgres restart so that ALTER SYSTEM
+// recognizes these as valid configuration settings
+var configureAutoExplain = &Step{
+	Description: "Review auto_explain settings",
+	Check: func(state *SetupState) (bool, error) {
+		if state.SkipAutomatedExplain {
+			return true, nil
+		}
+		logExplain, err := usingLogExplain(state.CurrentSection)
+		if err != nil || logExplain {
+			return logExplain, err
+		}
+		if state.SkipAutoExplainRecommendedSettings {
+			return true, nil
+		}
+
+		return false, nil
+	},
+	Run: func(state *SetupState) error {
+		var doReview bool
+		err := survey.AskOne(&survey.Confirm{
+			Message: "Review auto_explain configuration settings?",
+			Default: false,
+			Help:    "Optional, but will ensure best balance of monitoring visibility and performance; review these settings at https://www.postgresql.org/docs/current/auto-explain.html#id-1.11.7.13.5",
+		}, &doReview)
+		if err != nil {
+			return err
+		}
+		if !doReview {
+			state.SkipAutoExplainRecommendedSettings = true
+			return nil
+		}
+
+		var logAnalyzeIdx int
+		var logAnalyzeOpts = []string{"on", "off"}
+		err = survey.AskOne(&survey.Select{
+			Message: "Set auto_explain.log_analyze to (will be saved to Postgres):",
+			Help:    "Include EXPLAIN ANALYZE output rather than just EXPLAIN output when a plan is logged; required on for several other settings",
+			Options: getOptsWithRecommendation(logAnalyzeOpts, 0),
+		}, &logAnalyzeIdx)
+		if err != nil {
+			return err
+		}
+		logAnalyze := logAnalyzeOpts[logAnalyzeIdx]
+		err = applyConfigSetting("auto_explain.log_analyze", logAnalyze, state.QueryRunner)
+		if err != nil {
+			return err
+		}
+
+		if logAnalyze == "on" {
+			var logBuffersIdx int
+			var logBuffersOpts = []string{"on", "off"}
+			err = survey.AskOne(&survey.Select{
+				Message: "Set auto_explain.log_buffers to (will be saved to Postgres):",
+				Help:    "Include BUFFERS usage information when a plan is logged",
+				Options: getOptsWithRecommendation(logBuffersOpts, 0),
+			}, &logBuffersIdx)
+			if err != nil {
+				return err
+			}
+			logBuffers := logBuffersOpts[logBuffersIdx]
+			err = applyConfigSetting("auto_explain.log_buffers", logBuffers, state.QueryRunner)
+			if err != nil {
+				return err
+			}
+
+			var logTimingIdx int
+			var logTimingOpts = []string{"on", "off"}
+			err = survey.AskOne(&survey.Select{
+				Message: "Set auto_explain.log_timing to (will be saved to Postgres):",
+				Help:    "Include timing information for each plan node when a plan is logged; can have high performance impact",
+				Options: getOptsWithRecommendation(logTimingOpts, 1),
+			}, &logTimingIdx)
+			if err != nil {
+				return err
+			}
+			logTiming := logTimingOpts[logTimingIdx]
+			err = applyConfigSetting("auto_explain.log_timing", logTiming, state.QueryRunner)
+			if err != nil {
+				return err
+			}
+
+			var logTriggersIdx int
+			var logTriggersOpts = []string{"on", "off"}
+			err = survey.AskOne(&survey.Select{
+				Message: "Set auto_explain.log_triggers to (will be saved to Postgres):",
+				Help:    "Include trigger execution statistics when a plan is logged",
+				Options: getOptsWithRecommendation(logTriggersOpts, 0),
+			}, &logTriggersIdx)
+			if err != nil {
+				return err
+			}
+			logTriggers := logTriggersOpts[logTriggersIdx]
+			err = applyConfigSetting("auto_explain.log_triggers", logTriggers, state.QueryRunner)
+			if err != nil {
+				return err
+			}
+
+			var logVerboseIdx int
+			var logVerboseOpts = []string{"on", "off"}
+			err = survey.AskOne(&survey.Select{
+				Message: "Set auto_explain.log_verbose to (will be saved to Postgres):",
+				Help:    "Include VERBOSE EXPLAIN details when a plan is logged",
+				Options: getOptsWithRecommendation(logVerboseOpts, 0),
+			}, &logVerboseIdx)
+			if err != nil {
+				return err
+			}
+			logVerbose := logVerboseOpts[logVerboseIdx]
+			err = applyConfigSetting("auto_explain.log_verbose", logVerbose, state.QueryRunner)
+			if err != nil {
+				return err
+			}
+		}
+
+		var logFormatIdx int
+		var logFormatOpts = []string{"text", "json"}
+		err = survey.AskOne(&survey.Select{
+			Message: "Set auto_explain.log_format to (will be saved to Postgres):",
+			Help:    "Select EXPLAIN output format to be used (only text and json are supported; text format is currently experimental)",
+			Options: getOptsWithRecommendation(logFormatOpts, 1),
+		}, &logFormatIdx)
+		if err != nil {
+			return err
+		}
+		logFormat := logFormatOpts[logFormatIdx]
+		err = applyConfigSetting("auto_explain.log_format", logFormat, state.QueryRunner)
+		if err != nil {
+			return err
+		}
+
+		var logMinDuration int
+		err = survey.AskOne(&survey.Input{
+			Message: "Set auto_explain.log_min_duration, in milliseconds, to (will be saved to Postgres):",
+			Help:    "Threshold to log EXPLAIN plans; recommend 1000, must be at least 10",
+		}, &logMinDuration, survey.WithValidator(validateLmds))
+		if err != nil {
+			return err
+		}
+		err = applyConfigSetting("auto_explain.log_min_duration", strconv.Itoa(logMinDuration), state.QueryRunner)
+		if err != nil {
+			return err
+		}
+
+		var logNestedIdx int
+		var logNestedOpts = []string{"on", "off"}
+		err = survey.AskOne(&survey.Select{
+			Message: "Set auto_explain.log_nested_statements to (will be saved to Postgres):",
+			Help:    "Consider statements executed inside functions for logging",
+			Options: getOptsWithRecommendation(logNestedOpts, 0),
+		}, &logNestedIdx)
+		if err != nil {
+			return err
+		}
+		logNested := logNestedOpts[logNestedIdx]
+		err = applyConfigSetting("auto_explain.log_nested", logNested, state.QueryRunner)
+		return err
 	},
 }
