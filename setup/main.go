@@ -132,7 +132,7 @@ provide input or confirm any required changes.
 
 Changes to Postgres configuration settings will be done with the ALTER SYSTEM command.
 If you later need to refine any of these, make sure to use ALTER SYSTEM or ALTER SYSTEM RESET,
-since otherwise, the ALTER SYSTEM chanes will override any direct config file edits. Learn
+since otherwise, the ALTER SYSTEM changes will override any direct config file edits. Learn
 more at https://www.postgresql.org/docs/current/sql-altersystem.html .
 
 You can stop at any time by pressing Ctrl+C.
