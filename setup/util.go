@@ -182,27 +182,41 @@ func getPendingSharedPreloadLibraries(runner *query.Runner) (string, error) {
 	// because of https://github.com/golang/go/issues/39119 , that value cannot
 	// be parsed correctly by Go's encoding/csv if that's the only value in the
 	// CSV file output.
+
+	// N.B.: note also that checking sourcefile/sourceline here is a heuristic: these
+	// describe where the *current* value comes from (not the pending value), but this
+	// is our best guess.
 	row, err := runner.QueryRow(`
-		SELECT
-			name,
-			CASE
-			  WHEN pending_restart THEN
-					left(
-						right(
-							regexp_replace(
-								(regexp_split_to_array(
-									pg_read_file(sourcefile), '\s*$\s*', 'm'
-								))[sourceline],
-								name || ' = ', ''
-							),
-						-1),
-					-1)
-				ELSE current_setting(name)
-			END AS pending_value
-		FROM
-			pg_settings
-		WHERE
-			name = 'shared_preload_libraries'`)
+SELECT
+  name,
+  CASE
+    WHEN pending_restart THEN
+      left(
+        right(
+          regexp_replace(
+            (SELECT line FROM
+              (SELECT row_number() OVER () AS line_no, line FROM
+                regexp_split_to_table(
+                  pg_read_file(
+                    COALESCE(
+                      sourcefile, current_setting('data_directory') || '/postgresql.auto.conf'
+                    )
+                  ), '\s*$\s*', 'm'
+                ) AS lines(line)
+              ) AS numbered_lines(line_no, line)
+             WHERE
+               CASE WHEN sourceline IS NULL THEN line LIKE name || ' = %' ELSE line_no = sourceline END
+            ),
+            name || ' = ', ''
+          ),
+      -1),
+    -1)
+    ELSE current_setting(name)
+  END AS pending_value
+FROM
+  pg_settings
+WHERE
+  name = 'shared_preload_libraries'`)
 	if err != nil {
 		return "", err
 	}
