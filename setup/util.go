@@ -103,13 +103,15 @@ func getDataDirectory(postmasterPid int) (string, error) {
 }
 
 func discoverLogLocation(config *ini.Section, runner *query.Runner) (string, error) {
-	dbHostKey, err := config.GetKey("db_host")
-	if err != nil {
-		return "", err
-	}
-	dbHost := dbHostKey.String()
-	if dbHost != "localhost" && dbHost != "127.0.0.1" {
-		return "", errors.New("detected remote server - Log Insights requires the collector to run on the database server directly for self-hosted systems")
+	if config.HasKey("db_host") {
+		dbHostKey, err := config.GetKey("db_host")
+		if err != nil {
+			return "", err
+		}
+		dbHost := dbHostKey.String()
+		if dbHost != "localhost" && dbHost != "127.0.0.1" {
+			return "", errors.New("detected remote server - Log Insights requires the collector to run on the database server directly for self-hosted systems")
+		}
 	}
 
 	row, err := runner.QueryRow("SELECT current_setting('log_destination'), current_setting('logging_collector'), current_setting('log_directory')")
