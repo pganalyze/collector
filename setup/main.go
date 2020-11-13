@@ -1086,7 +1086,7 @@ var configureLogLinePrefix = &Step{
 			return err
 		}
 		selectedPrefix := supportedLogLinePrefixes[prefixIdx]
-		return applyConfigSetting("log_line_prefix", selectedPrefix, state.QueryRunner)
+		return applyConfigSetting("log_line_prefix", pq.QuoteLiteral(selectedPrefix), state.QueryRunner)
 	},
 }
 
