@@ -1254,7 +1254,7 @@ var checkAutoExplainAvailable = &Step{
 		if err != nil || logExplain {
 			return logExplain, err
 		}
-		err = state.QueryRunner.Exec("LOAD auto_explain")
+		err = state.QueryRunner.Exec("LOAD 'auto_explain'")
 		if err != nil {
 			if strings.Contains(err.Error(), "No such file or directory") {
 				return false, nil
