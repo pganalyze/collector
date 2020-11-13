@@ -175,8 +175,16 @@ func getPendingSharedPreloadLibraries(runner *query.Runner) (string, error) {
 	// To make sure we don't clobber any pending changes (including our own, if adding both
 	// pg_stat_statements *and* auto_explain), we need to read the configured-but-not-yet-applied
 	// value from the config file (there does not appear to be a better way to do this)
+
+	// N.B.: we project name here even though we don't explicitly need it,
+	// because a valid (and in fact, common) value for shared_preload_libraries
+	// is the empty string, and because our query mechanism depends on CSV, and
+	// because of https://github.com/golang/go/issues/39119 , that value cannot
+	// be parsed correctly by Go's encoding/csv if that's the only value in the
+	// CSV file output.
 	row, err := runner.QueryRow(`
 		SELECT
+			name,
 			CASE
 			  WHEN pending_restart THEN
 					left(
@@ -198,7 +206,7 @@ func getPendingSharedPreloadLibraries(runner *query.Runner) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return row.GetString(0), nil
+	return row.GetString(1), nil
 }
 
 func getConjuctionList(strs []string) string {
