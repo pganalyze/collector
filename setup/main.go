@@ -1567,6 +1567,10 @@ var runPgSleep = &Step{
 		}
 		sleepDuration := row.GetFloat(0)
 		err = state.QueryRunner.Exec(fmt.Sprintf("SELECT pg_sleep(%f)", sleepDuration))
-		return err
+		if err != nil {
+			return err
+		}
+		state.DidPgSleep = true
+		return nil
 	},
 }
