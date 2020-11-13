@@ -1174,7 +1174,7 @@ var checkUseLogBasedExplain = &Step{
 			Message: "Select automated EXPLAIN mechanism to use (will be saved to collector config):",
 			Help:    "Learn more about the options at https://pganalyze.com/docs/explain/setup",
 			Options: []string{"auto_explain (recommended)", "log-based EXPLAIN"},
-		}, optIdx)
+		}, &optIdx)
 		if err != nil {
 			return err
 		}
