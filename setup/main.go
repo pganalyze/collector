@@ -1535,7 +1535,7 @@ var configureAutoExplain = &Step{
 			return err
 		}
 		logNested := logNestedOpts[logNestedIdx]
-		err = applyConfigSetting("auto_explain.log_nested", logNested, state.QueryRunner)
+		err = applyConfigSetting("auto_explain.log_nested_statements", logNested, state.QueryRunner)
 		return err
 	},
 }
