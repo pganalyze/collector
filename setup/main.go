@@ -616,7 +616,7 @@ var configureMonitoringUserPasswd = &Step{
 		} else if passwordStrategy == 1 {
 			err = survey.AskOne(&survey.Input{
 				Message: "Enter password for the collector to use (will be saved to collector config):",
-			}, &passwordStrategy, survey.WithValidator(survey.Required))
+			}, &pgaPasswd, survey.WithValidator(survey.Required))
 			if err != nil {
 				return err
 			}
