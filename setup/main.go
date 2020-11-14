@@ -7,6 +7,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"strconv"
@@ -49,6 +50,16 @@ type SetupState struct {
 
 	DidReload  bool
 	DidPgSleep bool
+
+	Logger *Logger
+}
+
+func (state *SetupState) Log(line string, params ...interface{}) error {
+	return state.Logger.Log(line, params...)
+}
+
+func (state *SetupState) Verbose(line string, params ...interface{}) error {
+	return state.Logger.Verbose(line, params...)
 }
 
 // Step is a discrete step in the install process
@@ -110,12 +121,39 @@ func main() {
 	}
 
 	var setupState SetupState
+	var verbose bool
+	var logFile string
 	flag.StringVar(&setupState.ConfigFilename, "config", defaultConfigFile, "Specify alternative path for config file")
+	flag.BoolVar(&verbose, "verbose", false, "Include verbose logging output")
+	flag.StringVar(&logFile, "log", "", "Save output to log file (always includes verbose output)")
 	flag.Parse()
+	var logger Logger
+	if logFile != "" {
+		logger = NewLogger()
+		log, err := os.Create(logFile)
+		if err != nil {
+			fmt.Errorf("could not open %s for writes: %s", logFile, err)
+			return
+		}
+		defer log.Close()
+		outputBoth := io.MultiWriter(os.Stdout, log)
+		logger.StandardOutput = outputBoth
+		if verbose {
+			logger.VerboseOutput = outputBoth
+		} else {
+			logger.VerboseOutput = log
+		}
+	} else {
+		logger = NewLogger()
+		if verbose {
+			logger.VerboseOutput = os.Stdout
+		}
+	}
+	setupState.Logger = &logger
 
 	// TODO: check for root?
 
-	fmt.Println(`Welcome to the pganalyze collector installer!
+	setupState.Log(`Welcome to the pganalyze collector installer!
 
 We will go through a series of steps to set up the collector to monitor your
 Postgres database. We will not make any changes to your database or system
@@ -141,25 +179,24 @@ You can stop at any time by pressing Ctrl+C.
 
 If you stop before completing setup, you can resume by running the installer
 again. We can pick up where you left off.`)
-	fmt.Println()
+	setupState.Log("")
 	var doSetup bool
 	err := survey.AskOne(&survey.Confirm{
 		Message: "Continue with setup?",
 		Default: false,
 	}, &doSetup)
 	if err != nil {
-		fmt.Printf("  automated setup failed: %s\n", err)
+		setupState.Log("  automated setup failed: %s", err)
 	}
 	if !doSetup {
-		fmt.Println("Exiting...")
+		setupState.Log("Exiting...")
 		os.Exit(0)
 	}
 
 	for _, step := range steps {
 		err := doStep(&setupState, step)
 		if err != nil {
-			fmt.Printf("    automated setup failed: %s\n", err)
-			return
+			os.Exit(1)
 		}
 	}
 }
@@ -168,37 +205,40 @@ func doStep(setupState *SetupState, step *Step) error {
 	if step.Check == nil {
 		panic("step missing completion check")
 	}
-	fmt.Printf("%s %s: ", bold("*"), step.Description)
+	setupState.Logger.StartStep(step.Description)
+	defer setupState.Logger.EndStep()
 	done, err := step.Check(setupState)
 	if err != nil {
-		fmt.Println("✗")
+		setupState.Log("✗ failed to check status: %s", err)
 		return err
 	}
 	if done {
-		fmt.Println("✓")
+		setupState.Verbose("✓ no changes needed")
 		return nil
 	}
 	if step.Run == nil {
 		// panic because we should always define a Run func if a check can fail
 		panic("check failed and no resolution defined")
 	}
-	fmt.Println("?")
+	setupState.Verbose("? suggesting resolution")
 
 	err = step.Run(setupState)
 	if err != nil {
 		return err
 	}
 
-	fmt.Print("    re-checking: ")
+	setupState.Verbose("  re-checking...")
 	done, err = step.Check(setupState)
 	if err != nil {
-		fmt.Println("✗")
+		setupState.Log("✗ failed to check status: %s", err)
 		return err
 	}
 	if !done {
-		return errors.New("check still failed after running resolution; please try again")
+		err := errors.New("check still failed after running resolution; please try again")
+		setupState.Log("✗ %s", err)
+		return err
 	}
-	fmt.Println("✓")
+	setupState.Verbose("✓ step completed")
 	return nil
 }
 

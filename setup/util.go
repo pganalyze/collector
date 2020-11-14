@@ -15,10 +15,6 @@ import (
 	"github.com/pganalyze/collector/setup/query"
 )
 
-func bold(str string) string {
-	return fmt.Sprintf("\033[1m%s\033[0m", str)
-}
-
 func includes(strings []string, str string) bool {
 	for _, s := range strings {
 		if s == str {
