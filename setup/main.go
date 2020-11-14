@@ -434,10 +434,11 @@ var selectDatabases = &Step{
 		if err != nil {
 			return false, err
 		}
-		db := key.String()
-		if db == "" {
+		dbs := key.Strings(",")
+		if len(dbs) == 0 || dbs[0] == "" {
 			return false, nil
 		}
+		db := dbs[0]
 		// Now that we know the database, connect to the right one for setup:
 		// this is important for extensions and helper functions. Note that we
 		// need to do this in Check, rather than the Run, since a subsequent
@@ -455,17 +456,48 @@ var selectDatabases = &Step{
 			dbOpts = append(dbOpts, row.GetString(0))
 		}
 
-		// TODO: monitor other databases or *
-		var selectedDb string
+		var primaryDb string
 		err = survey.AskOne(&survey.Select{
 			Message: "Choose a primary database to monitor (will be saved to collector config):",
 			Options: dbOpts,
-		}, &selectedDb)
+			Help:    "The collector will connect to this database for monitoring; others can be added next",
+		}, &primaryDb)
 		if err != nil {
 			return err
 		}
+		var otherDbs []string
+		for _, db := range dbOpts {
+			if db == primaryDb {
+				continue
+			}
+			otherDbs = append(otherDbs, db)
+		}
+		var dbNames []string = []string{primaryDb}
+		if len(otherDbs) > 0 {
+			var othersOpt int
+			err = survey.AskOne(&survey.Select{
+				Message: "Monitor other databases? (will be saved to collector config):",
+				Options: []string{"no other databases", "all other databases", "select databases"},
+			}, &othersOpt)
+			if err != nil {
+				return err
+			}
+			if othersOpt == 1 {
+				dbNames = append(dbNames, "*")
+			} else if othersOpt == 2 {
+				var otherDbsSelected []string
+				err = survey.AskOne(&survey.MultiSelect{
+					Message: "Select other databases to monitor (will be saved to collector config):",
+					Options: otherDbs,
+				}, &otherDbsSelected)
+				if err != nil {
+					return err
+				}
+				dbNames = append(dbNames, otherDbsSelected...)
+			}
+		}
 
-		_, err = state.CurrentSection.NewKey("db_name", selectedDb)
+		_, err = state.CurrentSection.NewKey("db_name", strings.Join(dbNames, ","))
 		if err != nil {
 			return err
 		}
@@ -1121,7 +1153,7 @@ var configureLogLinePrefix = &Step{
 			Message: fmt.Sprintf("Setting 'log_line_prefix' is set to unsupported value '%s'; set to (will be saved to Postgres):", oldVal),
 			Help:    "Check format specifier reference in Postgres documentation: https://www.postgresql.org/docs/current/runtime-config-logging.html#GUC-LOG-LINE-PREFIX",
 			Options: opts,
-		}, &prefixIdx, survey.WithPageSize(len(supportedLogLinePrefixes)))
+		}, &prefixIdx)
 		if err != nil {
 			return err
 		}
