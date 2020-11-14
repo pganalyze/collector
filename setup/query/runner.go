@@ -24,13 +24,17 @@ func NewRunner(user, host string, port int) *Runner {
 	return &Runner{User: user, Host: host, Port: port, Password: "", Database: ""}
 }
 
-func (qr *Runner) Ping() error {
-	// TODO: we should check that this is actually a superuser
-	// and account for cloud provider faux superusers (since we
-	// may want a consistent interface for this even if users
-	// have to enter credentials)
-	_, err := qr.runSQL("SELECT 1")
-	return err
+func (qr *Runner) PingSuper() error {
+	// TODO: we should account for cloud provider faux superusers (since we may
+	// want a consistent interface for this even if users have to enter credentials)
+	row, err := qr.QueryRow("SELECT usesuper FROM pg_user WHERE usename = current_user")
+	if err != nil {
+		return err
+	}
+	if !row.GetBool(0) {
+		return fmt.Errorf("user %s is not a superuser; Postgres superuser is required for setup", qr.User)
+	}
+	return nil
 }
 
 func (qr *Runner) runSQL(sql string) (string, error) {

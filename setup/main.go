@@ -337,7 +337,7 @@ var establishSuperuserConnection = &Step{
 		if state.QueryRunner == nil {
 			return false, nil
 		}
-		err := state.QueryRunner.Ping()
+		err := state.QueryRunner.PingSuper()
 		return err == nil, err
 	},
 	Run: func(state *SetupState) error {
