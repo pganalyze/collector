@@ -1237,6 +1237,9 @@ var confirmAutoExplainSetup = &Step{
 var checkUseLogBasedExplain = &Step{
 	Description: "Check whether to use the auto_explain module or log-based EXPLAIN",
 	Check: func(state *SetupState) (bool, error) {
+		if state.SkipAutomatedExplain {
+			return true, nil
+		}
 		return state.CurrentSection.HasKey("enable_log_explain"), nil
 	},
 	Run: func(state *SetupState) error {
@@ -1261,6 +1264,9 @@ var checkUseLogBasedExplain = &Step{
 var createLogExplainHelper = &Step{
 	Description: "Create log-based EXPLAIN helper function",
 	Check: func(state *SetupState) (bool, error) {
+		if state.SkipAutomatedExplain {
+			return true, nil
+		}
 		logExplain, err := usingLogExplain(state.CurrentSection)
 		if err != nil {
 			return false, err
