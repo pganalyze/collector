@@ -583,10 +583,9 @@ var createMonitoringUser = &Step{
 			return nil
 		}
 
-		// TODO: connection limit (5 in our setup docs)
 		return state.QueryRunner.Exec(
 			fmt.Sprintf(
-				"CREATE USER %s",
+				"CREATE USER %s CONNECTION LIMIT 5",
 				pq.QuoteIdentifier(pgaUser),
 			),
 		)
