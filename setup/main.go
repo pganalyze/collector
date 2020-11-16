@@ -133,7 +133,7 @@ func main() {
 		logger = NewLogger()
 		log, err := os.Create(logFile)
 		if err != nil {
-			fmt.Errorf("could not open %s for writes: %s", logFile, err)
+			fmt.Printf("WARNING: could not open log file %s for writes: %s", logFile, err)
 			return
 		}
 		defer log.Close()
