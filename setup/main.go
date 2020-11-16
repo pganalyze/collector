@@ -48,8 +48,9 @@ type SetupState struct {
 	SkipAutoExplainRecommendedSettings bool
 	SkipPgSleep                        bool
 
-	DidReload  bool
-	DidPgSleep bool
+	DidReload                         bool
+	DidPgSleep                        bool
+	DidAutoExplainRecommendedSettings bool
 
 	Logger *Logger
 }
@@ -1462,15 +1463,12 @@ var restartPg = &Step{
 var configureAutoExplain = &Step{
 	Description: "Review auto_explain settings",
 	Check: func(state *SetupState) (bool, error) {
-		if state.SkipAutomatedExplain {
+		if state.SkipAutomatedExplain || state.DidAutoExplainRecommendedSettings || state.SkipAutoExplainRecommendedSettings {
 			return true, nil
 		}
 		logExplain, err := usingLogExplain(state.CurrentSection)
 		if err != nil || logExplain {
 			return logExplain, err
-		}
-		if state.SkipAutoExplainRecommendedSettings {
-			return true, nil
 		}
 
 		return false, nil
@@ -1613,7 +1611,11 @@ var configureAutoExplain = &Step{
 		}
 		logNested := logNestedOpts[logNestedIdx]
 		err = applyConfigSetting("auto_explain.log_nested_statements", logNested, state.QueryRunner)
-		return err
+		if err != nil {
+			return err
+		}
+		state.DidAutoExplainRecommendedSettings = true
+		return nil
 	},
 }
 
