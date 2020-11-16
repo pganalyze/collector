@@ -162,11 +162,11 @@ without confirmation.
 
 At a high level, we will:
 
- 1. Configure a database user and helper functions for the collector, with minimal access
+ 1. Configure database access and, if necessary, create the pganalyze database user with monitoring-only access
  2. Update the collector configuration file with these settings
- 3. Set up the pg_stat_statements extension in your database for basic query performance monitoring
- 4. (Optional) Make log-related configuration settings changes to enable our Log Insights feature
- 5. (Optional) Set up EXPLAIN plan collection to enable our Automated EXPLAIN feature
+ 3. Set up the pg_stat_statements extension in your database for query performance monitoring
+ 4. (Optional) Change log-related configuration settings to enable the pganalyze Log Insights feature
+ 5. (Optional) Set up EXPLAIN plan collection to enable the pganalyze Automated EXPLAIN feature
 
 At each step, we'll check if any changes are necessary, and if so, prompt you to
 provide input or confirm any required changes.
