@@ -152,7 +152,14 @@ func main() {
 	}
 	setupState.Logger = &logger
 
-	// TODO: check for root?
+	id := os.Geteuid()
+	if id > 0 {
+		setupState.Log(`The pganalyze installer must be run with root privileges. It will provide
+details on the process and prompt you before making any changes to the
+collector config file or your database. If you prefer, you can instead follow
+the manual collector install instructions.`)
+		os.Exit(1)
+	}
 
 	setupState.Log(`Welcome to the pganalyze collector installer!
 
