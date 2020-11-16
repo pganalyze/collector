@@ -1193,7 +1193,7 @@ var confirmAutoExplainSetup = &Step{
 }
 
 var checkUseLogBasedExplain = &Step{
-	Description: "Check whether to use the auto_explain module or log-based EXPLAIN",
+	Description: "Check whether to use the auto_explain module or Log-based EXPLAIN",
 	Check: func(state *SetupState) (bool, error) {
 		if state.SkipAutomatedExplain {
 			return true, nil
@@ -1205,7 +1205,7 @@ var checkUseLogBasedExplain = &Step{
 		err := survey.AskOne(&survey.Select{
 			Message: "Select automated EXPLAIN mechanism to use (will be saved to collector config):",
 			Help:    "Learn more about the options at https://pganalyze.com/docs/explain/setup",
-			Options: []string{"auto_explain (recommended)", "log-based EXPLAIN"},
+			Options: []string{"auto_explain (recommended)", "Log-based EXPLAIN"},
 		}, &optIdx)
 		if err != nil {
 			return err
