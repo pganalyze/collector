@@ -44,7 +44,6 @@ type SetupState struct {
 	AskedAutomatedExplain bool
 	SkipAutomatedExplain  bool
 
-	SkipRevokePublicSchema             bool
 	SkipAutoExplainRecommendedSettings bool
 	SkipPgSleep                        bool
 
@@ -94,9 +93,6 @@ func main() {
 		applyMonitoringUserPasswd,
 		setUpMonitoringUser,
 		createPganalyzeSchema,
-		// TODO: this does not work right now--we check with has_schema_privilege, and after
-		// a revoke, the user still has the privilege
-		//revokePrivilegesFromMonitoringUser,
 		checkPgssAvailable,
 		createPgss,
 		enablePgss,
@@ -809,52 +805,6 @@ CREATE OR REPLACE FUNCTION pganalyze.get_stat_replication() RETURNS SETOF pg_sta
 $$
 	/* pganalyze-collector */ SELECT * FROM pg_catalog.pg_stat_replication;
 $$ LANGUAGE sql VOLATILE SECURITY DEFINER;`)
-	},
-}
-
-var revokePrivilegesFromMonitoringUser = &Step{
-	Description: "Ensure the monitoring user has no unnecessary database privileges",
-	Check: func(state *SetupState) (bool, error) {
-		if state.SkipRevokePublicSchema {
-			return true, nil
-		}
-		pgaKey, err := state.CurrentSection.GetKey("db_username")
-		if err != nil {
-			return false, err
-		}
-		pgaUser := pgaKey.String()
-
-		row, err := state.QueryRunner.QueryRow(
-			fmt.Sprintf(
-				"SELECT has_schema_privilege(%s, 'public', 'CREATE') OR has_schema_privilege(%[1]s, 'public', 'USAGE')",
-				pq.QuoteLiteral(pgaUser),
-			),
-		)
-		if err != nil {
-			return false, err
-		}
-		return !row.GetBool(0), nil
-	},
-	Run: func(state *SetupState) error {
-		pgaKey, err := state.CurrentSection.GetKey("db_username")
-		if err != nil {
-			return err
-		}
-		pgaUser := pgaKey.String()
-		var doRevoke bool
-		err = survey.AskOne(&survey.Confirm{
-			Message: fmt.Sprintf("Revoke privileges on public schema from %s user (will be saved to Postgres)?", pgaUser),
-			Default: true,
-			Help:    "The collector does not need this access; we recommend revoking these privileges",
-		}, &doRevoke)
-		if err != nil {
-			return err
-		}
-		if !doRevoke {
-			state.SkipRevokePublicSchema = true
-			return nil
-		}
-		return state.QueryRunner.Exec(fmt.Sprintf("REVOKE ALL ON SCHEMA public FROM %s", pq.QuoteIdentifier(pgaUser)))
 	},
 }
 
