@@ -15,6 +15,7 @@ import (
 
 	survey "github.com/AlecAivazis/survey/v2"
 	"github.com/go-ini/ini"
+	"github.com/guregu/null"
 	"github.com/lib/pq"
 	"github.com/shirou/gopsutil/host"
 
@@ -23,6 +24,13 @@ import (
 	"github.com/pganalyze/collector/setup/service"
 	"github.com/pganalyze/collector/util"
 )
+
+type SetupInputs struct {
+	SkipLogInsights            null.Bool
+	SkipAutomatedExplain       null.Bool
+	SkipAutoExplainRecommended null.Bool
+	SkipPgSleep                null.Bool
+}
 
 type SetupState struct {
 	OperatingSystem string
@@ -39,13 +47,7 @@ type SetupState struct {
 	CurrentSection   *ini.Section
 	PGAnalyzeSection *ini.Section
 
-	AskedLogInsights      bool
-	SkipLogInsights       bool
-	AskedAutomatedExplain bool
-	SkipAutomatedExplain  bool
-
-	SkipAutoExplainRecommendedSettings bool
-	SkipPgSleep                        bool
+	Inputs *SetupInputs
 
 	NeedsReload bool
 
@@ -69,8 +71,18 @@ func (state *SetupState) SaveConfig() error {
 	return state.Config.SaveTo(state.ConfigFilename)
 }
 
+type StepKind int
+
+const (
+	GeneralStep          StepKind = 0
+	LogInsightsStep      StepKind = 1
+	AutomatedExplainStep StepKind = 2
+)
+
 // Step is a discrete step in the install process
 type Step struct {
+	// Kind of step
+	Kind StepKind
 	// Description of what the step entails
 	Description string
 	// Check if the step has already been completed--may modify the state struct, but
@@ -205,6 +217,16 @@ again. We can pick up where you left off.`)
 	}
 
 	for _, step := range steps {
+		if (step.Kind == LogInsightsStep &&
+			setupState.Inputs.SkipLogInsights.Valid &&
+			setupState.Inputs.SkipLogInsights.Bool) ||
+			(step.Kind == AutomatedExplainStep &&
+				((setupState.Inputs.SkipLogInsights.Valid &&
+					setupState.Inputs.SkipLogInsights.Bool) ||
+					(setupState.Inputs.SkipAutomatedExplain.Valid &&
+						setupState.Inputs.SkipAutomatedExplain.Bool))) {
+			continue
+		}
 		err := doStep(&setupState, step)
 		if err != nil {
 			if setupState.NeedsReload {
@@ -922,7 +944,7 @@ var enablePgss = &Step{
 var confirmLogInsightsSetup = &Step{
 	Description: "Check whether Log Insights should be configured",
 	Check: func(state *SetupState) (bool, error) {
-		return state.AskedLogInsights, nil
+		return state.Inputs.SkipLogInsights.Valid, nil
 	},
 	Run: func(state *SetupState) error {
 		var setUpLogInsights bool
@@ -934,19 +956,16 @@ var confirmLogInsightsSetup = &Step{
 		if err != nil {
 			return err
 		}
-		state.AskedLogInsights = true
-		state.SkipLogInsights = !setUpLogInsights
+		state.Inputs.SkipLogInsights = null.BoolFrom(!setUpLogInsights)
 
 		return nil
 	},
 }
 
 var configureLogErrorVerbosity = &Step{
+	Kind:        LogInsightsStep,
 	Description: "Check log_error_verbosity",
 	Check: func(state *SetupState) (bool, error) {
-		if state.SkipLogInsights {
-			return true, nil
-		}
 		row, err := state.QueryRunner.QueryRow(`SELECT setting FROM pg_settings WHERE name = 'log_error_verbosity'`)
 		if err != nil {
 			return false, err
@@ -968,11 +987,9 @@ var configureLogErrorVerbosity = &Step{
 }
 
 var configureLogDuration = &Step{
+	Kind:        LogInsightsStep,
 	Description: "Check log_duration",
 	Check: func(state *SetupState) (bool, error) {
-		if state.SkipLogInsights {
-			return true, nil
-		}
 		row, err := state.QueryRunner.QueryRow(`SELECT setting FROM pg_settings WHERE name = 'log_duration'`)
 		if err != nil {
 			return false, err
@@ -998,11 +1015,9 @@ var configureLogDuration = &Step{
 }
 
 var configureLogStatement = &Step{
+	Kind:        LogInsightsStep,
 	Description: "Check log_statement",
 	Check: func(state *SetupState) (bool, error) {
-		if state.SkipLogInsights {
-			return true, nil
-		}
 		row, err := state.QueryRunner.QueryRow(`SELECT setting FROM pg_settings WHERE name = 'log_statement'`)
 		if err != nil {
 			return false, err
@@ -1040,11 +1055,9 @@ func validateLmds(ans interface{}) error {
 }
 
 var configureLogMinDurationStatement = &Step{
+	Kind:        LogInsightsStep,
 	Description: "Check log_min_duration_statement",
 	Check: func(state *SetupState) (bool, error) {
-		if state.SkipLogInsights {
-			return true, nil
-		}
 		row, err := state.QueryRunner.QueryRow(`SELECT setting FROM pg_settings WHERE name = 'log_min_duration_statement'`)
 		if err != nil {
 			return false, err
@@ -1089,11 +1102,9 @@ var supportedLogLinePrefixes = []string{
 }
 
 var configureLogLinePrefix = &Step{
+	Kind:        LogInsightsStep,
 	Description: "Check log_line_prefix",
 	Check: func(state *SetupState) (bool, error) {
-		if state.SkipLogInsights {
-			return true, nil
-		}
 		row, err := state.QueryRunner.QueryRow(`SELECT setting FROM pg_settings WHERE name = 'log_line_prefix'`)
 		if err != nil {
 			return false, err
@@ -1148,11 +1159,9 @@ func validatePath(ans interface{}) error {
 }
 
 var configureLogLocation = &Step{
+	Kind:        LogInsightsStep,
 	Description: "Determine log location",
 	Check: func(state *SetupState) (bool, error) {
-		if state.SkipLogInsights {
-			return true, nil
-		}
 		return state.CurrentSection.HasKey("db_log_location"), nil
 	},
 	Run: func(state *SetupState) error {
@@ -1185,9 +1194,12 @@ var configureLogLocation = &Step{
 }
 
 var confirmAutoExplainSetup = &Step{
+	// N.B.: this step, asking the user whether to set up automated explain, is *not* an AutomatedExplainStep
+	// itself, but it is a LogInsightsStep because it depends on log insights
+	Kind:        LogInsightsStep,
 	Description: "Check whether to configure Automated EXPLAIN",
 	Check: func(state *SetupState) (bool, error) {
-		return state.AskedAutomatedExplain, nil
+		return state.Inputs.SkipAutomatedExplain.Valid, nil
 	},
 	Run: func(state *SetupState) error {
 		var setUpExplain bool
@@ -1199,19 +1211,16 @@ var confirmAutoExplainSetup = &Step{
 		if err != nil {
 			return err
 		}
-		state.AskedAutomatedExplain = true
-		state.SkipAutomatedExplain = !setUpExplain
+		state.Inputs.SkipAutomatedExplain = null.BoolFrom(!setUpExplain)
 
 		return nil
 	},
 }
 
 var checkUseLogBasedExplain = &Step{
+	Kind:        AutomatedExplainStep,
 	Description: "Check whether to use the auto_explain module or Log-based EXPLAIN",
 	Check: func(state *SetupState) (bool, error) {
-		if state.SkipAutomatedExplain {
-			return true, nil
-		}
 		return state.CurrentSection.HasKey("enable_log_explain"), nil
 	},
 	Run: func(state *SetupState) error {
@@ -1234,11 +1243,9 @@ var checkUseLogBasedExplain = &Step{
 }
 
 var createLogExplainHelper = &Step{
+	Kind:        AutomatedExplainStep,
 	Description: "Create log-based EXPLAIN helper function",
 	Check: func(state *SetupState) (bool, error) {
-		if state.SkipAutomatedExplain {
-			return true, nil
-		}
 		logExplain, err := usingLogExplain(state.CurrentSection)
 		if err != nil {
 			return false, err
@@ -1294,11 +1301,9 @@ $$ LANGUAGE plpgsql VOLATILE SECURITY DEFINER;`)
 }
 
 var checkAutoExplainAvailable = &Step{
+	Kind:        AutomatedExplainStep,
 	Description: "Prepare for auto_explain install",
 	Check: func(state *SetupState) (bool, error) {
-		if state.SkipAutomatedExplain {
-			return true, nil
-		}
 		logExplain, err := usingLogExplain(state.CurrentSection)
 		if err != nil || logExplain {
 			return logExplain, err
@@ -1320,11 +1325,9 @@ var checkAutoExplainAvailable = &Step{
 }
 
 var enableAutoExplain = &Step{
+	Kind:        AutomatedExplainStep,
 	Description: "Enable auto_explain",
 	Check: func(state *SetupState) (bool, error) {
-		if state.SkipAutomatedExplain {
-			return true, nil
-		}
 		logExplain, err := usingLogExplain(state.CurrentSection)
 		if err != nil || logExplain {
 			return logExplain, err
@@ -1441,9 +1444,11 @@ var restartPg = &Step{
 // N.B.: this needs to happen *after* the Postgres restart so that ALTER SYSTEM
 // recognizes these as valid configuration settings
 var configureAutoExplain = &Step{
+	Kind:        AutomatedExplainStep,
 	Description: "Review auto_explain settings",
 	Check: func(state *SetupState) (bool, error) {
-		if state.SkipAutomatedExplain || state.DidAutoExplainRecommendedSettings || state.SkipAutoExplainRecommendedSettings {
+		if state.DidAutoExplainRecommendedSettings ||
+			(state.Inputs.SkipAutoExplainRecommended.Valid && state.Inputs.SkipAutoExplainRecommended.Bool) {
 			return true, nil
 		}
 		logExplain, err := usingLogExplain(state.CurrentSection)
@@ -1464,7 +1469,7 @@ var configureAutoExplain = &Step{
 			return err
 		}
 		if !doReview {
-			state.SkipAutoExplainRecommendedSettings = true
+			state.Inputs.SkipAutoExplainRecommended = null.BoolFrom(true)
 			return nil
 		}
 
@@ -1703,7 +1708,7 @@ WHERE
 var runPgSleep = &Step{
 	Description: "Run a pg_sleep command to confirm everything is working",
 	Check: func(state *SetupState) (bool, error) {
-		return state.SkipPgSleep || state.DidPgSleep, nil
+		return state.DidPgSleep || (state.Inputs.SkipPgSleep.Valid && state.Inputs.SkipPgSleep.Bool), nil
 	},
 	Run: func(state *SetupState) error {
 		var doPgSleep bool
@@ -1716,7 +1721,7 @@ var runPgSleep = &Step{
 			return err
 		}
 		if !doPgSleep {
-			state.SkipPgSleep = true
+			state.Inputs.SkipPgSleep = null.BoolFrom(true)
 			return nil
 		}
 		row, err := state.QueryRunner.QueryRow(
