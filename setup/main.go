@@ -387,7 +387,7 @@ var establishSuperuserConnection = &Step{
 		err = survey.AskOne(&survey.Select{
 			Message: "Select Postgres superuser to connect as for configuration purposes",
 			Help:    "We will create a separate, restricted monitoring user for the collector later",
-			Options: []string{"postgres", "another user"},
+			Options: []string{"postgres", "another user..."},
 		}, &pgSuperuser)
 		if err != nil {
 			return err
@@ -495,7 +495,7 @@ var selectDatabases = &Step{
 			var othersOpt int
 			err = survey.AskOne(&survey.Select{
 				Message: "Monitor other databases? (will be saved to collector config):",
-				Options: []string{"no other databases", "all other databases", "select databases"},
+				Options: []string{"no other databases", "all other databases", "select databases..."},
 			}, &othersOpt)
 			if err != nil {
 				return err
@@ -1468,131 +1468,232 @@ var configureAutoExplain = &Step{
 			return nil
 		}
 
-		var logAnalyzeIdx int
-		var logAnalyzeOpts = []string{"on", "off"}
-		err = survey.AskOne(&survey.Select{
-			Message: "Set auto_explain.log_analyze to (will be saved to Postgres):",
-			Help:    "Include EXPLAIN ANALYZE output rather than just EXPLAIN output when a plan is logged; required on for several other settings",
-			Options: getOptsWithRecommendation(logAnalyzeOpts, 0),
-		}, &logAnalyzeIdx)
+		settingsToReview := make(map[string]string)
+		rows, err := state.QueryRunner.Query(
+			`SELECT name, setting
+FROM pg_settings
+WHERE
+	(name = 'auto_explain.log_analyze' AND setting <> 'on') OR
+	(name = 'auto_explain.log_buffers' AND setting <> 'on') OR
+	(name = 'auto_explain.log_timing' AND setting <> 'off') OR
+	(name = 'auto_explain.log_triggers' AND setting <> 'on') OR
+	(name = 'auto_explain.log_verbose' AND setting <> 'on') OR
+	(name = 'auto_explain.log_format' AND setting <> 'json') OR
+	(name = 'auto_explain.log_min_duration' AND setting::float < 1000) OR
+	(name = 'auto_explain.log_nested_statements' AND setting <> 'on')`,
+		)
 		if err != nil {
-			return err
+			return fmt.Errorf("error checking existing settings: %s", err)
 		}
-		logAnalyze := logAnalyzeOpts[logAnalyzeIdx]
-		err = applyConfigSetting("auto_explain.log_analyze", logAnalyze, state.QueryRunner)
-		if err != nil {
-			return err
+		if len(rows) == 0 {
+			state.Log("all auto_explain configuration settings using recommended values")
+			return nil
+		}
+		for _, row := range rows {
+			settingsToReview[row.GetString(0)] = row.GetString(1)
 		}
 
-		if logAnalyze == "on" {
-			var logBuffersIdx int
-			var logBuffersOpts = []string{"on", "off"}
+		var isLogAnalyzeOn bool
+		if currValue, ok := settingsToReview["auto_explain.log_analyze"]; ok {
+			var logAnalyzeIdx int
+			var logAnalyzeOpts = []string{"on", "off"}
+			var optLabels = []string{"set to 'on' (recommended; will be saved to Postgres)", "leave as 'off'"}
 			err = survey.AskOne(&survey.Select{
-				Message: "Set auto_explain.log_buffers to (will be saved to Postgres):",
-				Help:    "Include BUFFERS usage information when a plan is logged",
-				Options: getOptsWithRecommendation(logBuffersOpts, 0),
-			}, &logBuffersIdx)
+				Message: fmt.Sprintf("Setting auto_explain.log_analyze is currently set to '%s':", currValue),
+				Help:    "Include EXPLAIN ANALYZE output rather than just EXPLAIN output when a plan is logged; required for several other settings",
+				Options: optLabels,
+			}, &logAnalyzeIdx)
 			if err != nil {
 				return err
 			}
-			logBuffers := logBuffersOpts[logBuffersIdx]
-			err = applyConfigSetting("auto_explain.log_buffers", logBuffers, state.QueryRunner)
-			if err != nil {
-				return err
+			logAnalyze := logAnalyzeOpts[logAnalyzeIdx]
+			if logAnalyze != currValue {
+				err = applyConfigSetting("auto_explain.log_analyze", logAnalyze, state.QueryRunner)
+				if err != nil {
+					return err
+				}
+			}
+			isLogAnalyzeOn = logAnalyze == "on"
+		} else {
+			isLogAnalyzeOn = true
+		}
+
+		if isLogAnalyzeOn {
+			if currValue, ok := settingsToReview["auto_explain.log_buffers"]; ok {
+				var logBuffersIdx int
+				var logBuffersOpts = []string{"on", "off"}
+				var optLabels = []string{"set to 'on' (recommended; will be saved to Postgres)", "leave as 'off'"}
+				err = survey.AskOne(&survey.Select{
+					Message: fmt.Sprintf("Setting auto_explain.log_buffers is currently set to '%s'", currValue),
+					Help:    "Include BUFFERS usage information when a plan is logged",
+					Options: optLabels,
+				}, &logBuffersIdx)
+				if err != nil {
+					return err
+				}
+				logBuffers := logBuffersOpts[logBuffersIdx]
+				if logBuffers != currValue {
+					err = applyConfigSetting("auto_explain.log_buffers", logBuffers, state.QueryRunner)
+					if err != nil {
+						return err
+					}
+				}
 			}
 
-			var logTimingIdx int
-			var logTimingOpts = []string{"on", "off"}
+			if currValue, ok := settingsToReview["auto_explain.log_timing"]; ok {
+				var logTimingIdx int
+				var logTimingOpts = []string{"off", "on"}
+				var optLabels = []string{"set to 'off' (recommended; will be saved to Postgres)", "leave as 'on'"}
+				err = survey.AskOne(&survey.Select{
+					Message: fmt.Sprintf("Setting auto_explain.log_timing is currently set to '%s'", currValue),
+					Help:    "Include timing information for each plan node when a plan is logged; can have high performance impact",
+					Options: optLabels,
+				}, &logTimingIdx)
+				if err != nil {
+					return err
+				}
+				logTiming := logTimingOpts[logTimingIdx]
+				if logTiming != currValue {
+					err = applyConfigSetting("auto_explain.log_timing", logTiming, state.QueryRunner)
+					if err != nil {
+						return err
+					}
+				}
+			}
+
+			if currValue, ok := settingsToReview["auto_explain.log_triggers"]; ok {
+				var logTriggersIdx int
+				var logTriggersOpts = []string{"on", "off"}
+				var optLabels = []string{"set to 'on' (recommended; will be saved to Postgres)", "leave as 'off'"}
+				err = survey.AskOne(&survey.Select{
+					Message: fmt.Sprintf("Setting auto_explain.log_triggers is currently set to '%s'", currValue),
+					Help:    "Include trigger execution statistics when a plan is logged",
+					Options: optLabels,
+				}, &logTriggersIdx)
+				if err != nil {
+					return err
+				}
+				logTriggers := logTriggersOpts[logTriggersIdx]
+				if logTriggers != currValue {
+					err = applyConfigSetting("auto_explain.log_triggers", logTriggers, state.QueryRunner)
+					if err != nil {
+						return err
+					}
+				}
+			}
+
+			if currValue, ok := settingsToReview["auto_explain.log_verbose"]; ok {
+				var logVerboseIdx int
+				var logVerboseOpts = []string{"on", "off"}
+				var optLabels = []string{"set to 'on' (recommended; will be saved to Postgres)", "leave as 'off'"}
+				err = survey.AskOne(&survey.Select{
+					Message: fmt.Sprintf("Setting auto_explain.log_verbose is currently set to '%s'", currValue),
+					Help:    "Include VERBOSE EXPLAIN details when a plan is logged",
+					Options: optLabels,
+				}, &logVerboseIdx)
+				if err != nil {
+					return err
+				}
+				logVerbose := logVerboseOpts[logVerboseIdx]
+				if logVerbose != currValue {
+					err = applyConfigSetting("auto_explain.log_verbose", logVerbose, state.QueryRunner)
+					if err != nil {
+						return err
+					}
+				}
+			}
+		}
+
+		if currValue, ok := settingsToReview["auto_explain.log_format"]; ok {
+			var logFormatIdx int
+			var logFormatOpts = []string{"json", "text"}
+			var optLabels = []string{"set to 'json' (recommended; will be saved to Postgres)"}
+			if currValue == "text" {
+				optLabels = append(optLabels, "leave as 'text' (text format support is experimental)")
+			} else {
+				optLabels = append(
+					optLabels,
+					"set to 'text' (text format support is experimental; will be saved to Postgres)",
+					fmt.Sprintf("leave as '%s' (unsupported)", currValue),
+				)
+			}
+
 			err = survey.AskOne(&survey.Select{
-				Message: "Set auto_explain.log_timing to (will be saved to Postgres):",
-				Help:    "Include timing information for each plan node when a plan is logged; can have high performance impact",
-				Options: getOptsWithRecommendation(logTimingOpts, 1),
-			}, &logTimingIdx)
+				Message: fmt.Sprintf("Setting auto_explain.log_format is currently set to '%s'", currValue),
+				Help:    "Select EXPLAIN output format to be used (only 'text' and 'json' are supported)",
+				Options: optLabels,
+			}, &logFormatIdx)
 			if err != nil {
 				return err
 			}
-			logTiming := logTimingOpts[logTimingIdx]
-			err = applyConfigSetting("auto_explain.log_timing", logTiming, state.QueryRunner)
-			if err != nil {
-				return err
+			if logFormatIdx < len(logFormatOpts) {
+				logFormat := logFormatOpts[logFormatIdx]
+				if logFormat != currValue {
+					err = applyConfigSetting("auto_explain.log_format", logFormat, state.QueryRunner)
+					if err != nil {
+						return err
+					}
+				}
 			}
+		}
 
-			var logTriggersIdx int
-			var logTriggersOpts = []string{"on", "off"}
+		if currValue, ok := settingsToReview["auto_explain.log_min_duration"]; ok {
+			var durationOpts = []string{
+				"set to 1000ms (recommended inital value; will be saved to Postgres)",
+				"set to other value...",
+				fmt.Sprintf("leave at %sms", currValue),
+			}
+			var durationOptIdx int
 			err = survey.AskOne(&survey.Select{
-				Message: "Set auto_explain.log_triggers to (will be saved to Postgres):",
-				Help:    "Include trigger execution statistics when a plan is logged",
-				Options: getOptsWithRecommendation(logTriggersOpts, 0),
-			}, &logTriggersIdx)
-			if err != nil {
-				return err
-			}
-			logTriggers := logTriggersOpts[logTriggersIdx]
-			err = applyConfigSetting("auto_explain.log_triggers", logTriggers, state.QueryRunner)
+				Message: fmt.Sprintf("Setting auto_explain.log_min_duration is currently set to '%s ms'", currValue),
+				Help:    "Threshold to log EXPLAIN plans, in ms; recommend 1000, must be at least 10",
+				Options: durationOpts,
+			}, &durationOptIdx)
 			if err != nil {
 				return err
 			}
 
-			var logVerboseIdx int
-			var logVerboseOpts = []string{"on", "off"}
+			var logMinDuration string
+			if durationOptIdx == 0 {
+				logMinDuration = "1000"
+			} else if durationOptIdx == 1 {
+				err = survey.AskOne(&survey.Input{
+					Message: "Set auto_explain.log_min_duration, in milliseconds, to (will be saved to Postgres):",
+					Help:    "Threshold to log EXPLAIN plans, in ms; recommend 1000, must be at least 10",
+				}, &logMinDuration, survey.WithValidator(validateLmds))
+				if err != nil {
+					return err
+				}
+			} else {
+				logMinDuration = currValue
+			}
+			if logMinDuration != currValue {
+				err = applyConfigSetting("auto_explain.log_min_duration", logMinDuration, state.QueryRunner)
+				if err != nil {
+					return err
+				}
+			}
+		}
+
+		if currValue, ok := settingsToReview["auto_explain.log_nested_statements"]; ok {
+			var logNestedIdx int
+			var logNestedOpts = []string{"on", "off"}
+			var optLabels = []string{"set to 'on' (recommended; will be saved to Postgres)", "leave as 'off'"}
 			err = survey.AskOne(&survey.Select{
-				Message: "Set auto_explain.log_verbose to (will be saved to Postgres):",
-				Help:    "Include VERBOSE EXPLAIN details when a plan is logged",
-				Options: getOptsWithRecommendation(logVerboseOpts, 0),
-			}, &logVerboseIdx)
+				Message: fmt.Sprintf("Setting auto_explain.log_nested_statements is currently set to '%s'", currValue),
+				Help:    "Consider statements executed inside functions for logging",
+				Options: optLabels,
+			}, &logNestedIdx)
 			if err != nil {
 				return err
 			}
-			logVerbose := logVerboseOpts[logVerboseIdx]
-			err = applyConfigSetting("auto_explain.log_verbose", logVerbose, state.QueryRunner)
-			if err != nil {
-				return err
+			logNested := logNestedOpts[logNestedIdx]
+			if logNested != currValue {
+				err = applyConfigSetting("auto_explain.log_nested_statements", logNested, state.QueryRunner)
+				if err != nil {
+					return err
+				}
 			}
-		}
-
-		var logFormatIdx int
-		var logFormatOpts = []string{"text", "json"}
-		err = survey.AskOne(&survey.Select{
-			Message: "Set auto_explain.log_format to (will be saved to Postgres):",
-			Help:    "Select EXPLAIN output format to be used (only text and json are supported; text format is currently experimental)",
-			Options: getOptsWithRecommendation(logFormatOpts, 1),
-		}, &logFormatIdx)
-		if err != nil {
-			return err
-		}
-		logFormat := logFormatOpts[logFormatIdx]
-		err = applyConfigSetting("auto_explain.log_format", logFormat, state.QueryRunner)
-		if err != nil {
-			return err
-		}
-
-		var logMinDuration int
-		err = survey.AskOne(&survey.Input{
-			Message: "Set auto_explain.log_min_duration, in milliseconds, to (will be saved to Postgres):",
-			Help:    "Threshold to log EXPLAIN plans; recommend 1000, must be at least 10",
-		}, &logMinDuration, survey.WithValidator(validateLmds))
-		if err != nil {
-			return err
-		}
-		err = applyConfigSetting("auto_explain.log_min_duration", strconv.Itoa(logMinDuration), state.QueryRunner)
-		if err != nil {
-			return err
-		}
-
-		var logNestedIdx int
-		var logNestedOpts = []string{"on", "off"}
-		err = survey.AskOne(&survey.Select{
-			Message: "Set auto_explain.log_nested_statements to (will be saved to Postgres):",
-			Help:    "Consider statements executed inside functions for logging",
-			Options: getOptsWithRecommendation(logNestedOpts, 0),
-		}, &logNestedIdx)
-		if err != nil {
-			return err
-		}
-		logNested := logNestedOpts[logNestedIdx]
-		err = applyConfigSetting("auto_explain.log_nested_statements", logNested, state.QueryRunner)
-		if err != nil {
-			return err
 		}
 		state.DidAutoExplainRecommendedSettings = true
 		return nil
