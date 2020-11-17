@@ -228,6 +228,7 @@ func doStep(setupState *SetupState, step *Step) error {
 
 	err = step.Run(setupState)
 	if err != nil {
+		setupState.Log("✗ step failed: %s", err)
 		return err
 	}
 
