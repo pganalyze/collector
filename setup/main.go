@@ -47,6 +47,8 @@ type SetupState struct {
 	SkipAutoExplainRecommendedSettings bool
 	SkipPgSleep                        bool
 
+	NeedsReload bool
+
 	DidReload                         bool
 	DidPgSleep                        bool
 	DidAutoExplainRecommendedSettings bool
@@ -60,6 +62,11 @@ func (state *SetupState) Log(line string, params ...interface{}) error {
 
 func (state *SetupState) Verbose(line string, params ...interface{}) error {
 	return state.Logger.Verbose(line, params...)
+}
+
+func (state *SetupState) SaveConfig() error {
+	state.NeedsReload = true
+	return state.Config.SaveTo(state.ConfigFilename)
 }
 
 // Step is a discrete step in the install process
@@ -200,6 +207,12 @@ again. We can pick up where you left off.`)
 	for _, step := range steps {
 		err := doStep(&setupState, step)
 		if err != nil {
+			if setupState.NeedsReload {
+				setupState.Log(`
+WARNING: Exiting with pending changes to collector config.
+
+Please run pganalyze-collector --reload to apply these changes.`)
+			}
 			os.Exit(1)
 		}
 	}
@@ -332,7 +345,7 @@ var saveAPIKey = &Step{
 		if err != nil {
 			return err
 		}
-		return state.Config.SaveTo(state.ConfigFilename)
+		return state.SaveConfig()
 	},
 }
 
@@ -507,7 +520,7 @@ var selectDatabases = &Step{
 			return err
 		}
 
-		return state.Config.SaveTo(state.ConfigFilename)
+		return state.SaveConfig()
 	},
 }
 
@@ -546,7 +559,7 @@ var specifyMonitoringUser = &Step{
 		if err != nil {
 			return err
 		}
-		return state.Config.SaveTo(state.ConfigFilename)
+		return state.SaveConfig()
 	},
 }
 
@@ -631,7 +644,7 @@ var configureMonitoringUserPasswd = &Step{
 			return err
 		}
 
-		return state.Config.SaveTo(state.ConfigFilename)
+		return state.SaveConfig()
 	},
 }
 
@@ -1167,7 +1180,7 @@ var configureLogLocation = &Step{
 		if err != nil {
 			return err
 		}
-		return state.Config.SaveTo(state.ConfigFilename)
+		return state.SaveConfig()
 	},
 }
 
@@ -1216,7 +1229,7 @@ var checkUseLogBasedExplain = &Step{
 		if err != nil {
 			return err
 		}
-		return state.Config.SaveTo(state.ConfigFilename)
+		return state.SaveConfig()
 	},
 }
 
@@ -1353,10 +1366,7 @@ var enableAutoExplain = &Step{
 var reloadCollector = &Step{
 	Description: "Reload collector configuration",
 	Check: func(state *SetupState) (bool, error) {
-		// N.B.: there's no way to tell whether the collector actually needs to reload; we
-		// force this once per setup helper invocation (this starts out as false and is set
-		// to true below)
-		return state.DidReload, nil
+		return !state.NeedsReload || state.DidReload, nil
 	},
 	Run: func(state *SetupState) error {
 		var doReload bool
