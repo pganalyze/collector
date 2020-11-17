@@ -1411,7 +1411,19 @@ var restartPg = &Step{
 		pendingList := getConjuctionList(pendingSettings)
 		var restartNow bool
 		err = survey.AskOne(&survey.Confirm{
-			Message: fmt.Sprintf("Postgres must be restarted for changes to %s to take effect; restart Postgres now?", pendingList),
+			Message: fmt.Sprintf("WARNING: Postgres must be restarted for changes to %s to take effect; restart Postgres now?", pendingList),
+			Default: false,
+		}, &restartNow)
+		if err != nil {
+			return err
+		}
+
+		if !restartNow {
+			return nil
+		}
+
+		err = survey.AskOne(&survey.Confirm{
+			Message: "WARNING: Your database will be restarted. Are you sure?",
 			Default: false,
 		}, &restartNow)
 		if err != nil {
