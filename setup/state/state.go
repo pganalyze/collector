@@ -28,6 +28,10 @@ type SetupSettings struct {
 	DBLogLocation null.String `json:"db_log_location"`
 }
 
+var RecommendedSettings = SetupSettings{
+	DBUsername: null.StringFrom("pganalyze"),
+}
+
 type SetupGUCS struct {
 	LogErrorVerbosity       null.String `json:"log_error_verbosity"`
 	LogDuration             null.String `json:"log_duration"`
@@ -93,6 +97,37 @@ type SetupInputs struct {
 	SkipAutomatedExplain       null.Bool `json:"skip_automated_explain"`
 	SkipAutoExplainRecommended null.Bool `json:"skip_automated_explain_recommended_settings"`
 	SkipPgSleep                null.Bool `json:"skip_pg_sleep"`
+}
+
+var RecommendedInputs = SetupInputs{
+	Scripted: true,
+
+	Settings: RecommendedSettings,
+	GUCS:     RecommendedGUCS,
+
+	PGSetupConnPort: null.IntFrom(5432),
+	PGSetupConnUser: null.StringFrom("postgres"),
+
+	CreateMonitoringUser:       null.BoolFrom(true),
+	GenerateMonitoringPassword: null.BoolFrom(true),
+	UpdateMonitoringPassword:   null.BoolFrom(true),
+	SetUpMonitoringUser:        null.BoolFrom(true),
+	CreateHelperFunctions:      null.BoolFrom(true),
+	CreatePgStatStatements:     null.BoolFrom(true),
+	EnablePgStatStatements:     null.BoolFrom(true),
+
+	GuessLogLocation: null.BoolFrom(true),
+
+	UseLogBasedExplain: null.BoolFrom(false),
+	EnableAutoExplain:  null.BoolFrom(true),
+
+	ConfirmCollectorReload: null.BoolFrom(true),
+	ConfirmPostgresRestart: null.BoolFrom(true),
+
+	SkipLogInsights:            null.BoolFrom(false),
+	SkipAutomatedExplain:       null.BoolFrom(false),
+	SkipAutoExplainRecommended: null.BoolFrom(false),
+	SkipPgSleep:                null.BoolFrom(false),
 }
 
 type SetupState struct {

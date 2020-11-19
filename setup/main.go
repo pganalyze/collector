@@ -62,10 +62,12 @@ func main() {
 	var verbose bool
 	var logFile string
 	var inputsFile string
-	flag.StringVar(&setupState.ConfigFilename, "config", defaultConfigFile, "Specify alternative path for config file")
-	flag.BoolVar(&verbose, "verbose", false, "Include verbose logging output")
-	flag.StringVar(&logFile, "log", "", "Save output to log file (always includes verbose output)")
-	flag.StringVar(&inputsFile, "inputs", "", "JSON file describing answers to all setup prompts")
+	var recommended bool
+	flag.StringVar(&setupState.ConfigFilename, "config", defaultConfigFile, "specify alternative path for config file")
+	flag.BoolVar(&verbose, "verbose", false, "include verbose logging output")
+	flag.StringVar(&logFile, "log", "", "save output to log file (always includes verbose output)")
+	flag.StringVar(&inputsFile, "inputs", "", "do not prompt for user inputs and use JSON file describing answers to all setup prompts")
+	flag.BoolVar(&recommended, "recommended", false, "do not prompt for user inputs and use recommended values (the --inputs flag can override individual settings)")
 	flag.Parse()
 
 	logger := log.NewLogger()
@@ -91,6 +93,9 @@ func main() {
 	setupState.Logger = &logger
 
 	var inputs state.SetupInputs
+	if recommended {
+		inputs = s.RecommendedInputs
+	}
 	if inputsFile != "" {
 		inputsReader, err := os.Open(inputsFile)
 		if err != nil {
