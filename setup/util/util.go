@@ -50,8 +50,8 @@ func ValidateLogMinDurationStatement(ans interface{}) error {
 }
 
 var expectedMd5s = map[string]string{
-	"explain":              "814292aad6ba4a207ea7b8c9fb47836b",
-	"get_stat_replication": "d4321fedd7286ca0752c6eff13991288",
+	"explain":              "6fb9a769167dcec3087c42ea74443c5f",
+	"get_stat_replication": "066680efec598232c0245477976a2c3d",
 }
 
 func ValidateHelperFunction(fn string, runner *query.Runner) (bool, error) {
@@ -62,7 +62,7 @@ func ValidateHelperFunction(fn string, runner *query.Runner) (bool, error) {
 	}
 	row, err := runner.QueryRow(
 		fmt.Sprintf(
-			"SELECT md5(prosrc) FROM pg_proc WHERE proname = %s AND pronamespace::regnamespace::text = 'pganalyze'",
+			"SELECT md5(btrim(prosrc, E' \\n\\r\\t')) FROM pg_proc WHERE proname = %s AND pronamespace::regnamespace::text = 'pganalyze'",
 			pq.QuoteLiteral(fn),
 		),
 	)
