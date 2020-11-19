@@ -25,7 +25,9 @@ var SaveAPIKey = &s.Step{
 				}
 				apiKey = inputsAPIKey
 				configWriteConfirmed = true
-			} else if apiKey == "" {
+			} else if apiKey != "" {
+				configWriteConfirmed = true
+			} else {
 				return errors.New("no api_key setting specified and PGA_API_KEY not found in env")
 			}
 		} else if apiKey == "" {
