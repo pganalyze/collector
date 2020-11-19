@@ -62,6 +62,7 @@ var ConfigureAutoExplain = &s.Step{
 		}
 		if len(rows) == 0 {
 			state.Log("all auto_explain configuration settings using recommended values")
+			state.DidAutoExplainRecommendedSettings = true
 			return nil
 		}
 		for _, row := range rows {
