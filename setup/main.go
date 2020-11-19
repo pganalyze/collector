@@ -2250,14 +2250,10 @@ var runPgSleep = &Step{
 			state.Inputs.SkipPgSleep = null.BoolFrom(true)
 			return nil
 		}
-		row, err := state.QueryRunner.QueryRow(
-			"SELECT max(setting::float) / 1000 * 1.2 from pg_settings where name IN ('log_min_duration_statement', 'auto_explain.log_min_duration')",
+
+		err = state.QueryRunner.Exec(
+			"SELECT pg_sleep(max(setting::float) / 1000 * 1.2) from pg_settings where name IN ('log_min_duration_statement', 'auto_explain.log_min_duration')",
 		)
-		if err != nil {
-			return err
-		}
-		sleepDuration := row.GetFloat(0)
-		err = state.QueryRunner.Exec(fmt.Sprintf("SELECT pg_sleep(%f)", sleepDuration))
 		if err != nil {
 			return err
 		}
