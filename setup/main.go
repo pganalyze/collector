@@ -199,7 +199,7 @@ func doStep(setupState *s.SetupState, step *s.Step) error {
 	defer setupState.Logger.EndStep()
 	done, err := step.Check(setupState)
 	if err != nil {
-		setupState.Log("✗ failed to check status: %s", err)
+		setupState.Log("✗ step check failed: %s", err)
 		return err
 	}
 	if done {
@@ -207,7 +207,8 @@ func doStep(setupState *s.SetupState, step *s.Step) error {
 		return nil
 	}
 	if step.Run == nil {
-		// panic because we should always define a Run func if a check can fail
+		// panic because we should always define a Run func if a check does not
+		// pass but there is no fatal error
 		panic("check failed and no resolution defined")
 	}
 	setupState.Verbose("? suggesting resolution")
@@ -221,7 +222,7 @@ func doStep(setupState *s.SetupState, step *s.Step) error {
 	setupState.Verbose("  re-checking...")
 	done, err = step.Check(setupState)
 	if err != nil {
-		setupState.Log("✗ failed to check status: %s", err)
+		setupState.Log("✗ step check failed: %s", err)
 		return err
 	}
 	if !done {
