@@ -36,6 +36,7 @@ var ReloadCollector = &s.Step{
 		if err != nil {
 			return err
 		}
+		state.NeedsReload = false
 		state.DidReload = true
 		return nil
 	},
