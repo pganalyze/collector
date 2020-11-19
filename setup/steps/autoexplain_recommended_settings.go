@@ -32,16 +32,23 @@ var ConfigureAutoExplain = &s.Step{
 	},
 	Run: func(state *s.SetupState) error {
 		var doReview bool
-		err := survey.AskOne(&survey.Confirm{
-			Message: "Review auto_explain configuration settings?",
-			Default: false,
-			Help:    "Optional, but will ensure best balance of monitoring visibility and performance; review these settings at https://www.postgresql.org/docs/current/auto-explain.html#id-1.11.7.13.5",
-		}, &doReview)
-		if err != nil {
-			return err
+		if state.Inputs.Scripted {
+			if state.Inputs.SkipAutoExplainRecommended.Valid {
+				doReview = !state.Inputs.SkipAutoExplainRecommended.Bool
+			}
+		} else {
+			err := survey.AskOne(&survey.Confirm{
+				Message: "Review auto_explain configuration settings?",
+				Default: false,
+				Help:    "Optional, but will ensure best balance of monitoring visibility and performance; review these settings at https://www.postgresql.org/docs/current/auto-explain.html#id-1.11.7.13.5",
+			}, &doReview)
+			if err != nil {
+				return err
+			}
+			state.Inputs.SkipAutoExplainRecommended = null.BoolFrom(!doReview)
 		}
+
 		if !doReview {
-			state.Inputs.SkipAutoExplainRecommended = null.BoolFrom(true)
 			return nil
 		}
 
