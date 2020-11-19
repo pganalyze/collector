@@ -1,6 +1,6 @@
 // +build linux freebsd darwin
 
-package main
+package util
 
 import (
 	"errors"
@@ -27,7 +27,7 @@ func reloadPid(pid int) error {
 	return nil
 }
 
-func reload() error {
+func ReloadCollector() error {
 	processes, err := ps.Processes()
 	if err != nil {
 		return errors.New("failed to reload collector: could not read process list")

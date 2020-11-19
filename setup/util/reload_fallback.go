@@ -1,11 +1,11 @@
 // +build !darwin,!linux,!freebsd
 
-package main
+package util
 
 import (
 	"errors"
 )
 
-func Reload() error {
+func ReloadCollector() error {
 	return errors.New("the reload command is only supported on POSIX systems")
 }

@@ -4,8 +4,10 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/go-ini/ini"
+	"github.com/lib/pq"
 	"github.com/pganalyze/collector/setup/query"
 )
 
@@ -45,4 +47,106 @@ func ValidateLogMinDurationStatement(ans interface{}) error {
 		return errors.New("value must be either -1 to disable or 10 or greater")
 	}
 	return nil
+}
+
+var expectedMd5s = map[string]string{
+	"explain":              "814292aad6ba4a207ea7b8c9fb47836b",
+	"get_stat_replication": "d4321fedd7286ca0752c6eff13991288",
+}
+
+func ValidateHelperFunction(fn string, runner *query.Runner) (bool, error) {
+	// TODO: validating full function definition may be too strict?
+	expected, ok := expectedMd5s[fn]
+	if !ok {
+		return false, fmt.Errorf("unrecognized helper function %s", fn)
+	}
+	row, err := runner.QueryRow(
+		fmt.Sprintf(
+			"SELECT md5(prosrc) FROM pg_proc WHERE proname = %s AND pronamespace::regnamespace::text = 'pganalyze'",
+			pq.QuoteLiteral(fn),
+		),
+	)
+	if err == query.ErrNoRows {
+		return false, nil
+	} else if err != nil {
+		return false, err
+	}
+	actual := row.GetString(0)
+	return actual == expected, nil
+}
+
+func GetPendingSharedPreloadLibraries(runner *query.Runner) (string, error) {
+	// When shared_preload_libraries is updated, since the setting requires a restart for the
+	// changes to take effect, the new value is not reflected with SHOW or current_setting().
+	// To make sure we don't clobber any pending changes (including our own, if adding both
+	// pg_stat_statements *and* auto_explain), we need to read the configured-but-not-yet-applied
+	// value from the config file (there does not appear to be a better way to do this)
+
+	// N.B.: we project name here even though we don't explicitly need it,
+	// because a valid (and in fact, common) value for shared_preload_libraries
+	// is the empty string, and because our query mechanism depends on CSV, and
+	// because of https://github.com/golang/go/issues/39119 , that value cannot
+	// be parsed correctly by Go's encoding/csv if that's the only value in the
+	// CSV file output.
+
+	// N.B.: note also that checking sourcefile/sourceline here is a heuristic: these
+	// describe where the *current* value comes from (not the pending value), but this
+	// is our best guess.
+	row, err := runner.QueryRow(`
+SELECT
+  name,
+  CASE
+    WHEN pending_restart THEN
+      left(
+        right(
+          regexp_replace(
+            (SELECT line FROM
+              (SELECT row_number() OVER () AS line_no, line FROM
+                regexp_split_to_table(
+                  pg_read_file(
+                    COALESCE(
+                      sourcefile, current_setting('data_directory') || '/postgresql.auto.conf'
+                    )
+                  ), '\s*$\s*', 'm'
+                ) AS lines(line)
+              ) AS numbered_lines(line_no, line)
+             WHERE
+               CASE WHEN sourceline IS NULL THEN line LIKE name || ' = %' ELSE line_no = sourceline END
+            ),
+            name || ' = ', ''
+          ),
+      -1),
+    -1)
+    ELSE current_setting(name)
+  END AS pending_value
+FROM
+  pg_settings
+WHERE
+  name = 'shared_preload_libraries'`)
+	if err != nil {
+		return "", err
+	}
+	return row.GetString(1), nil
+}
+
+func Includes(strings []string, str string) bool {
+	for _, s := range strings {
+		if s == str {
+			return true
+		}
+	}
+	return false
+}
+
+func JoinWithAnd(strs []string) string {
+	switch len(strs) {
+	case 0:
+		return ""
+	case 1:
+		return strs[0]
+	case 2:
+		return fmt.Sprintf("%s and %s", strs[0], strs[1])
+	default:
+		return fmt.Sprintf("%s, and %s", strings.Join(strs[:len(strs)-1], ", "), strs[len(strs)-1])
+	}
 }
