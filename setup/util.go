@@ -152,21 +152,6 @@ func discoverLogLocation(config *ini.Section, runner *query.Runner) (string, err
 	return logLocation, nil
 }
 
-func applyConfigSetting(setting, value string, runner *query.Runner) error {
-	// N.B.: we don't quote the value because in the case of lists (like shared_preload_libraries)
-	// that does not parse the list correctly
-	err := runner.Exec(fmt.Sprintf("ALTER SYSTEM SET %s = %s", setting, value))
-	if err != nil {
-		return fmt.Errorf("failed to apply setting: %s", err)
-	}
-	err = runner.Exec("SELECT pg_reload_conf()")
-	if err != nil {
-		return fmt.Errorf("failed to reload Postgres configuration after applying setting: %s", err)
-	}
-
-	return nil
-}
-
 func getPendingSharedPreloadLibraries(runner *query.Runner) (string, error) {
 	// When shared_preload_libraries is updated, since the setting requires a restart for the
 	// changes to take effect, the new value is not reflected with SHOW or current_setting().
@@ -232,14 +217,6 @@ func getConjuctionList(strs []string) string {
 	default:
 		return fmt.Sprintf("%s, and %s", strings.Join(strs[:len(strs)-1], ", "), strs[len(strs)-1])
 	}
-}
-
-func usingLogExplain(section *ini.Section) (bool, error) {
-	k, err := section.GetKey("enable_log_explain")
-	if err != nil {
-		return false, err
-	}
-	return k.Bool()
 }
 
 var expectedMd5s = map[string]string{
