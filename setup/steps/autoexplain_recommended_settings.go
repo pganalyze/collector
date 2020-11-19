@@ -251,7 +251,7 @@ WHERE `
 			predParts = append(
 				predParts,
 				fmt.Sprintf(
-					"(name = 'auto_explain.log_min_duration' AND setting <> %d)",
+					"(name = 'auto_explain.log_min_duration' AND setting::float <> %d)",
 					state.Inputs.GUCS.AutoExplainLogMinDuration.Int64,
 				),
 			)
