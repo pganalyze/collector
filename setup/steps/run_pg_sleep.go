@@ -13,20 +13,27 @@ var RunPgSleep = &s.Step{
 	},
 	Run: func(state *s.SetupState) error {
 		var doPgSleep bool
-		err := survey.AskOne(&survey.Confirm{
-			Message: "Run pg_sleep command to confirm configuration?",
-			Default: true,
-			Help:    "You should see results in pganalyze a few seconds after the query completes",
-		}, &doPgSleep)
-		if err != nil {
-			return err
+		if state.Inputs.Scripted {
+			if state.Inputs.SkipPgSleep.Valid {
+				doPgSleep = !state.Inputs.SkipPgSleep.Bool
+			}
+		} else {
+			err := survey.AskOne(&survey.Confirm{
+				Message: "Run pg_sleep command to confirm configuration?",
+				Default: true,
+				Help:    "You should see results in pganalyze a few seconds after the query completes",
+			}, &doPgSleep)
+			if err != nil {
+				return err
+			}
+			state.Inputs.SkipPgSleep = null.BoolFrom(!doPgSleep)
 		}
+
 		if !doPgSleep {
-			state.Inputs.SkipPgSleep = null.BoolFrom(true)
 			return nil
 		}
 
-		err = state.QueryRunner.Exec(
+		err := state.QueryRunner.Exec(
 			"SELECT pg_sleep(max(setting::float) / 1000 * 1.2) from pg_settings where name IN ('log_min_duration_statement', 'auto_explain.log_min_duration')",
 		)
 		if err != nil {
