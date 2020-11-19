@@ -4,10 +4,12 @@ import (
 	"crypto/rand"
 	"database/sql"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"os"
 	"strconv"
@@ -25,11 +27,79 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
+type SetupSettings struct {
+	APIKey        null.String `json:"api_key"`
+	DBName        null.String `json:"db_name"`
+	DBUsername    null.String `json:"db_username"`
+	DBPassword    null.String `json:"db_password"`
+	DBLogLocation null.String `json:"db_log_location"`
+}
+
+type SetupGUCS struct {
+	LogErrorVerbosity       null.String `json:"log_error_verbosity"`
+	LogDuration             null.String `json:"log_duration"`
+	LogStatement            null.String `json:"log_statement"`
+	LogMinDurationStatement null.Int    `json:"log_min_duration_statement"`
+	LogLinePrefix           null.String `json:"log_line_prefix"`
+
+	AutoExplainLogAnalyze          null.String `json:"auto_explain.log_analyze"`
+	AutoExplainLogBuffers          null.String `json:"auto_explain.log_buffers"`
+	AutoExplainLogTiming           null.String `json:"auto_explain.log_timing"`
+	AutoExplainLogTriggers         null.String `json:"auto_explain.log_triggers"`
+	AutoExplainLogVerbose          null.String `json:"auto_explain.log_verbose"`
+	AutoExplainLogFormat           null.String `json:"auto_explain.log_format"`
+	AutoExplainLogMinDuration      null.Int    `json:"auto_explain.log_min_duration"`
+	AutoExplainLogNestedStatements null.String `json:"auto_explain.log_nested_statements"`
+}
+
+var RecommendedGUCS = SetupGUCS{
+	LogErrorVerbosity:       null.StringFrom("default"),
+	LogDuration:             null.StringFrom("off"),
+	LogStatement:            null.StringFrom("none"),
+	LogMinDurationStatement: null.IntFrom(1000),
+	LogLinePrefix:           null.StringFrom(supportedLogLinePrefixes[0]),
+
+	AutoExplainLogAnalyze:          null.StringFrom("on"),
+	AutoExplainLogBuffers:          null.StringFrom("on"),
+	AutoExplainLogTiming:           null.StringFrom("off"),
+	AutoExplainLogTriggers:         null.StringFrom("on"),
+	AutoExplainLogVerbose:          null.StringFrom("on"),
+	AutoExplainLogFormat:           null.StringFrom("json"),
+	AutoExplainLogMinDuration:      null.IntFrom(1000),
+	AutoExplainLogNestedStatements: null.StringFrom("on"),
+}
+
 type SetupInputs struct {
-	SkipLogInsights            null.Bool
-	SkipAutomatedExplain       null.Bool
-	SkipAutoExplainRecommended null.Bool
-	SkipPgSleep                null.Bool
+	Scripted bool
+
+	Settings SetupSettings `json:"settings"`
+	GUCS     SetupGUCS     `json:"gucs"`
+
+	PGSetupConnSocketDir null.String `json:"pg_setup_conn_socket_dir"`
+	PGSetupConnPort      null.Int    `json:"pg_setup_conn_port"`
+	PGSetupConnUser      null.String `json:"pg_setup_conn_user"`
+
+	CreateMonitoringUser       null.Bool `json:"create_monitoring_user"`
+	GenerateMonitoringPassword null.Bool `json:"generate_monitoring_password"`
+	UpdateMonitoringPassword   null.Bool `json:"update_monitoring_password"`
+	SetUpMonitoringUser        null.Bool `json:"set_up_monitoring_user"`
+	CreateHelperFunctions      null.Bool `json:"create_helper_functions"`
+	CreatePgStatStatements     null.Bool `json:"create_pg_stat_statements"`
+	EnablePgStatStatements     null.Bool `json:"enable_pg_stat_statements"`
+
+	GuessLogLocation null.Bool `json:"guess_log_location"`
+
+	UseLogBasedExplain  null.Bool `json:"use_log_based_explain"`
+	CreateExplainHelper null.Bool `json:"create_explain_helper"`
+	EnableAutoExplain   null.Bool `json:"enable_auto_explain"`
+
+	ConfirmCollectorReload null.Bool `json:"confirm_collector_reload"`
+	ConfirmPostgresRestart null.Bool `json:"confirm_postgres_restart"`
+
+	SkipLogInsights            null.Bool `json:"skip_log_insights"`
+	SkipAutomatedExplain       null.Bool `json:"skip_automated_explain"`
+	SkipAutoExplainRecommended null.Bool `json:"skip_automated_explain_recommended_settings"`
+	SkipPgSleep                null.Bool `json:"skip_pg_sleep"`
 }
 
 type SetupState struct {
@@ -139,17 +209,23 @@ func main() {
 	var setupState SetupState
 	var verbose bool
 	var logFile string
+	var inputsFile string
 	flag.StringVar(&setupState.ConfigFilename, "config", defaultConfigFile, "Specify alternative path for config file")
 	flag.BoolVar(&verbose, "verbose", false, "Include verbose logging output")
 	flag.StringVar(&logFile, "log", "", "Save output to log file (always includes verbose output)")
+	flag.StringVar(&inputsFile, "inputs", "", "JSON file describing answers to all setup prompts")
 	flag.Parse()
-	var logger Logger
-	if logFile != "" {
-		logger = NewLogger()
+
+	logger := NewLogger()
+	if logFile == "" {
+		if verbose {
+			logger.VerboseOutput = os.Stdout
+		}
+	} else {
 		log, err := os.Create(logFile)
 		if err != nil {
-			fmt.Printf("WARNING: could not open log file %s for writes: %s", logFile, err)
-			return
+			fmt.Printf("ERROR: could not open log file %s for writes: %s\n", logFile, err)
+			os.Exit(1)
 		}
 		defer log.Close()
 		outputBoth := io.MultiWriter(os.Stdout, log)
@@ -159,13 +235,34 @@ func main() {
 		} else {
 			logger.VerboseOutput = log
 		}
-	} else {
-		logger = NewLogger()
-		if verbose {
-			logger.VerboseOutput = os.Stdout
-		}
 	}
 	setupState.Logger = &logger
+
+	var inputs SetupInputs
+	if inputsFile != "" {
+		inputsReader, err := os.Open(inputsFile)
+		if err != nil {
+			setupState.Log("ERROR: could not open inputs file %s: %s", logFile, err)
+			os.Exit(1)
+		}
+		inputsBytes, err := ioutil.ReadAll(inputsReader)
+		if err != nil {
+			setupState.Log("ERROR: could not open inputs file %s: %s", logFile, err)
+			os.Exit(1)
+		}
+		err = json.Unmarshal(inputsBytes, &inputs)
+		if err != nil {
+			setupState.Log("ERROR: could not parse inputs file %s: %s", logFile, err)
+			os.Exit(1)
+		}
+		inputs.Scripted = true
+		err = os.Stdin.Close()
+		if err != nil {
+			setupState.Log("ERROR: could not close stdin for scripted input: %s", logFile, err)
+			os.Exit(1)
+		}
+	}
+	setupState.Inputs = &inputs
 
 	id := os.Geteuid()
 	if id > 0 {
@@ -203,17 +300,19 @@ You can stop at any time by pressing Ctrl+C.
 If you stop before completing setup, you can resume by running the installer
 again. We can pick up where you left off.`)
 	setupState.Log("")
-	var doSetup bool
-	err := survey.AskOne(&survey.Confirm{
-		Message: "Continue with setup?",
-		Default: false,
-	}, &doSetup)
-	if err != nil {
-		setupState.Log("  automated setup failed: %s", err)
-	}
-	if !doSetup {
-		setupState.Log("Exiting...")
-		os.Exit(0)
+	if !setupState.Inputs.Scripted {
+		var doSetup bool
+		err := survey.AskOne(&survey.Confirm{
+			Message: "Continue with setup?",
+			Default: false,
+		}, &doSetup)
+		if err != nil {
+			setupState.Log("  automated setup failed: %s", err)
+		}
+		if !doSetup {
+			setupState.Log("Exiting...")
+			os.Exit(0)
+		}
 	}
 
 	for _, step := range steps {
@@ -342,7 +441,20 @@ var saveAPIKey = &Step{
 	},
 	Run: func(state *SetupState) error {
 		apiKey := os.Getenv("PGA_API_KEY")
-		if apiKey == "" {
+		var configWriteConfirmed bool
+
+		if state.Inputs.Scripted {
+			if state.Inputs.Settings.APIKey.Valid {
+				inputsAPIKey := state.Inputs.Settings.APIKey.String
+				if apiKey != "" && inputsAPIKey != apiKey {
+					state.Log("WARNING: overriding API key from env with API key from inputs file")
+				}
+				apiKey = inputsAPIKey
+				configWriteConfirmed = true
+			} else if apiKey == "" {
+				return errors.New("no api_key setting specified and PGA_API_KEY not found in env")
+			}
+		} else if apiKey == "" {
 			err := survey.AskOne(&survey.Input{
 				Message: "PGA_API_KEY environment variable not found; please enter API key (will be saved to collector config):",
 				Help:    "The key can be found on the API keys page for your organization in the pganalyze app",
@@ -350,8 +462,8 @@ var saveAPIKey = &Step{
 			if err != nil {
 				return err
 			}
+			configWriteConfirmed = true
 		} else {
-			var configWriteConfirmed bool
 			err := survey.AskOne(&survey.Confirm{
 				Message: "PGA_API_KEY found in environment; save to config file?",
 				Default: false,
@@ -359,9 +471,9 @@ var saveAPIKey = &Step{
 			if err != nil {
 				return err
 			}
-			if !configWriteConfirmed {
-				return nil
-			}
+		}
+		if !configWriteConfirmed {
+			return nil
 		}
 		_, err := state.PGAnalyzeSection.NewKey("api_key", apiKey)
 		if err != nil {
@@ -386,41 +498,75 @@ var establishSuperuserConnection = &Step{
 			return err
 		}
 		var selectedPg LocalPostgres
-		if len(localPgs) == 0 {
-			return errors.New("failed to find a running local Postgres install")
-		} else if len(localPgs) == 1 {
-			selectedPg = localPgs[0]
+		if state.Inputs.Scripted {
+			if !state.Inputs.PGSetupConnPort.Valid {
+				return errors.New("no port specified for setup Postgres connection")
+			}
+			for _, pg := range localPgs {
+				if int(state.Inputs.PGSetupConnPort.Int64) == pg.Port &&
+					(!state.Inputs.PGSetupConnSocketDir.Valid ||
+						state.Inputs.PGSetupConnSocketDir.String == pg.SocketDir) {
+					selectedPg = pg
+					break
+				}
+			}
+			if selectedPg.Port == 0 {
+				var socketDirStr string
+				if state.Inputs.PGSetupConnSocketDir.Valid {
+					socketDirStr = " in " + state.Inputs.PGSetupConnSocketDir.String
+				}
+
+				return fmt.Errorf(
+					"no Postgres server found listening on %d%s",
+					state.Inputs.PGSetupConnPort.Int64,
+					socketDirStr,
+				)
+			}
 		} else {
-			var opts []string
-			for _, localPg := range localPgs {
-				opts = append(opts, fmt.Sprintf("port %d in socket dir %s", localPg.Port, localPg.SocketDir))
+			if len(localPgs) == 0 {
+				return errors.New("failed to find a running local Postgres install")
+			} else if len(localPgs) == 1 {
+				selectedPg = localPgs[0]
+			} else {
+				var opts []string
+				for _, localPg := range localPgs {
+					opts = append(opts, fmt.Sprintf("port %d in socket dir %s", localPg.Port, localPg.SocketDir))
+				}
+				var selectedIdx int
+				err := survey.AskOne(&survey.Select{
+					Message: "Found several Postgres installations; please select one",
+					Options: opts,
+				}, &selectedIdx)
+				if err != nil {
+					return err
+				}
+				selectedPg = localPgs[selectedIdx]
 			}
-			var selectedIdx int
-			err := survey.AskOne(&survey.Select{
-				Message: "Found several Postgres installations; please select one",
-				Options: opts,
-			}, &selectedIdx)
-			if err != nil {
-				return err
-			}
-			selectedPg = localPgs[selectedIdx]
 		}
+
 		var pgSuperuser string
-		err = survey.AskOne(&survey.Select{
-			Message: "Select Postgres superuser to connect as for configuration purposes",
-			Help:    "We will create a separate, restricted monitoring user for the collector later",
-			Options: []string{"postgres", "another user..."},
-		}, &pgSuperuser)
-		if err != nil {
-			return err
-		}
-		if pgSuperuser != "postgres" {
-			err = survey.AskOne(&survey.Input{
-				Message: "Enter Postgres superuser to connect as for configuration purposes",
-				Help:    "We will create a separate monitoring user for the collector later",
-			}, &pgSuperuser, survey.WithValidator(survey.Required))
+		if state.Inputs.Scripted {
+			if !state.Inputs.PGSetupConnUser.Valid {
+				return errors.New("no user specified for setup Postgres connection")
+			}
+			pgSuperuser = state.Inputs.PGSetupConnUser.String
+		} else {
+			err = survey.AskOne(&survey.Select{
+				Message: "Select Postgres superuser to connect as for configuration purposes",
+				Help:    "We will create a separate, restricted monitoring user for the collector later",
+				Options: []string{"postgres", "another user..."},
+			}, &pgSuperuser)
 			if err != nil {
 				return err
+			}
+			if pgSuperuser != "postgres" {
+				err = survey.AskOne(&survey.Input{
+					Message: "Enter Postgres superuser to connect as for configuration purposes",
+					Help:    "We will create a separate, restricted monitoring user for the collector later",
+				}, &pgSuperuser, survey.WithValidator(survey.Required))
+				if err != nil {
+					return err
+				}
 			}
 		}
 
@@ -496,48 +642,76 @@ var selectDatabases = &Step{
 			dbOpts = append(dbOpts, row.GetString(0))
 		}
 
-		var primaryDb string
-		err = survey.AskOne(&survey.Select{
-			Message: "Choose a primary database to monitor (will be saved to collector config):",
-			Options: dbOpts,
-			Help:    "The collector will connect to this database for monitoring; others can be added next",
-		}, &primaryDb)
-		if err != nil {
-			return err
-		}
-		var otherDbs []string
-		for _, db := range dbOpts {
-			if db == primaryDb {
-				continue
+		var dbNames []string
+		if state.Inputs.Scripted {
+			if !state.Inputs.Settings.DBName.Valid {
+				return errors.New("no db_name setting specified")
 			}
-			otherDbs = append(otherDbs, db)
-		}
-		var dbNames []string = []string{primaryDb}
-		if len(otherDbs) > 0 {
-			var othersOpt int
+			dbNameInputs := strings.Split(state.Inputs.Settings.DBName.String, ",")
+			for i, dbNameInput := range dbNameInputs {
+				trimmed := strings.TrimSpace(dbNameInput)
+				if trimmed == "*" {
+					dbNames = append(dbNames, trimmed)
+				} else {
+					for _, opt := range dbOpts {
+						if trimmed == opt {
+							dbNames = append(dbNames, trimmed)
+							break
+						}
+					}
+				}
+
+				if len(dbNames) != i+1 {
+					return fmt.Errorf("database %s not found", trimmed)
+				}
+			}
+		} else {
+			var primaryDb string
 			err = survey.AskOne(&survey.Select{
-				Message: "Monitor other databases? (will be saved to collector config):",
-				Options: []string{"no other databases", "all other databases", "select databases..."},
-			}, &othersOpt)
+				Message: "Choose a primary database to monitor (will be saved to collector config):",
+				Options: dbOpts,
+				Help:    "The collector will connect to this database for monitoring; others can be added next",
+			}, &primaryDb)
 			if err != nil {
 				return err
 			}
-			if othersOpt == 1 {
-				dbNames = append(dbNames, "*")
-			} else if othersOpt == 2 {
-				var otherDbsSelected []string
-				err = survey.AskOne(&survey.MultiSelect{
-					Message: "Select other databases to monitor (will be saved to collector config):",
-					Options: otherDbs,
-				}, &otherDbsSelected)
+
+			dbNames = append(dbNames, primaryDb)
+			if len(dbOpts) > 0 {
+				var otherDbs []string
+				for _, db := range dbOpts {
+					if db == primaryDb {
+						continue
+					}
+					otherDbs = append(otherDbs, db)
+				}
+				var othersOpt int
+				err = survey.AskOne(&survey.Select{
+					Message: "Monitor other databases? (will be saved to collector config):",
+					Help:    "The 'all' option will also automatically monitor all future databases created on this server",
+					Options: []string{"no other databases", "all other databases", "select databases..."},
+				}, &othersOpt)
 				if err != nil {
 					return err
 				}
-				dbNames = append(dbNames, otherDbsSelected...)
+				if othersOpt == 1 {
+					dbNames = append(dbNames, "*")
+				} else if othersOpt == 2 {
+					var otherDbsSelected []string
+					err = survey.AskOne(&survey.MultiSelect{
+						Message: "Select other databases to monitor (will be saved to collector config):",
+						Options: otherDbs,
+					}, &otherDbsSelected)
+					if err != nil {
+						return err
+					}
+					dbNames = append(dbNames, otherDbsSelected...)
+				}
 			}
 		}
 
-		_, err = state.CurrentSection.NewKey("db_name", strings.Join(dbNames, ","))
+		dbNamesStr := strings.Join(dbNames, ",")
+		_, err = state.CurrentSection.NewKey("db_name", dbNamesStr)
 		if err != nil {
 			return err
 		}
@@ -553,31 +727,40 @@ var specifyMonitoringUser = &Step{
 		return hasUser, nil
 	},
 	Run: func(state *SetupState) error {
-		var monitoringUser int
-		err := survey.AskOne(&survey.Select{
-			Message: "Select Postgres user for the collector to use (will be saved to collector config):",
-			Help:    "If the user does not exist, it can be created in a later step",
-			Options: []string{"pganalyze (recommended)", "a different user"},
-		}, &monitoringUser)
-		if err != nil {
-			return err
-		}
 		var pgaUser string
-		if monitoringUser == 0 {
-			pgaUser = "pganalyze"
-		} else if monitoringUser == 1 {
-			err := survey.AskOne(&survey.Input{
-				Message: "Enter Postgres user for the collector to use (will be saved to collector config):",
+
+		if state.Inputs.Scripted {
+			if !state.Inputs.Settings.DBUsername.Valid {
+				return errors.New("no db_username setting specified")
+			}
+			pgaUser = state.Inputs.Settings.DBUsername.String
+		} else {
+			var monitoringUserIdx int
+			err := survey.AskOne(&survey.Select{
+				Message: "Select Postgres user for the collector to use (will be saved to collector config):",
 				Help:    "If the user does not exist, it can be created in a later step",
-			}, &pgaUser, survey.WithValidator(survey.Required))
+				Options: []string{"pganalyze (recommended)", "a different user"},
+			}, &monitoringUserIdx)
 			if err != nil {
 				return err
 			}
-		} else {
-			panic(fmt.Sprintf("unexpected user selection: %d", monitoringUser))
+
+			if monitoringUserIdx == 0 {
+				pgaUser = "pganalyze"
+			} else if monitoringUserIdx == 1 {
+				err := survey.AskOne(&survey.Input{
+					Message: "Enter Postgres user for the collector to use (will be saved to collector config):",
+					Help:    "If the user does not exist, it can be created in a later step",
+				}, &pgaUser, survey.WithValidator(survey.Required))
+				if err != nil {
+					return err
+				}
+			} else {
+				panic(fmt.Sprintf("unexpected user selection: %d", monitoringUserIdx))
+			}
 		}
 
-		_, err = state.CurrentSection.NewKey("db_username", pgaUser)
+		_, err := state.CurrentSection.NewKey("db_username", pgaUser)
 		if err != nil {
 			return err
 		}
@@ -611,14 +794,23 @@ var createMonitoringUser = &Step{
 		pgaUser := pgaUserKey.String()
 
 		var doCreateUser bool
-		err = survey.AskOne(&survey.Confirm{
-			Message: fmt.Sprintf("User %s does not exist in Postgres; create user (will be saved to Postgres)?", pgaUser),
-			Help:    "If you skip this step, create the user manually before proceeding",
-			Default: false,
-		}, &doCreateUser)
-		if err != nil {
-			return err
+		if state.Inputs.Scripted {
+			if !state.Inputs.CreateMonitoringUser.Valid ||
+				!state.Inputs.CreateMonitoringUser.Bool {
+				return fmt.Errorf("create_monitoring_user flag not set and specified monitoring user %s does not exist", pgaUser)
+			}
+			doCreateUser = state.Inputs.CreateMonitoringUser.Bool
+		} else {
+			err = survey.AskOne(&survey.Confirm{
+				Message: fmt.Sprintf("User %s does not exist in Postgres; create user (will be saved to Postgres)?", pgaUser),
+				Help:    "If you skip this step, create the user manually before proceeding",
+				Default: false,
+			}, &doCreateUser)
+			if err != nil {
+				return err
+			}
 		}
+
 		if !doCreateUser {
 			return nil
 		}
@@ -640,12 +832,25 @@ var configureMonitoringUserPasswd = &Step{
 	},
 	Run: func(state *SetupState) error {
 		var passwordStrategy int
-		err := survey.AskOne(&survey.Select{
-			Message: "Select how to set up the collector user password (will be saved to collector config):",
-			Options: []string{"generate random password (recommended)", "enter existing password"},
-		}, &passwordStrategy)
-		if err != nil {
-			return err
+		if state.Inputs.Scripted {
+			if state.Inputs.GenerateMonitoringPassword.Valid && state.Inputs.GenerateMonitoringPassword.Bool {
+				if state.Inputs.Settings.DBPassword.Valid && state.Inputs.Settings.DBPassword.String != "" {
+					return errors.New("cannot specify both generate password and set explicit password")
+				}
+				passwordStrategy = 0
+			} else if state.Inputs.Settings.DBPassword.Valid && state.Inputs.Settings.DBPassword.String != "" {
+				passwordStrategy = 1
+			} else {
+				return errors.New("no db_password specified and generate_monitoring_password flag not set")
+			}
+		} else {
+			err := survey.AskOne(&survey.Select{
+				Message: "Select how to set up the collector user password (will be saved to collector config):",
+				Options: []string{"generate random password (recommended)", "enter existing password"},
+			}, &passwordStrategy)
+			if err != nil {
+				return err
+			}
 		}
 
 		var pgaPasswd string
@@ -654,14 +859,21 @@ var configureMonitoringUserPasswd = &Step{
 			rand.Read(passwdBytes)
 			pgaPasswd = hex.EncodeToString(passwdBytes)
 		} else if passwordStrategy == 1 {
-			err = survey.AskOne(&survey.Input{
-				Message: "Enter password for the collector to use (will be saved to collector config):",
-			}, &pgaPasswd, survey.WithValidator(survey.Required))
-			if err != nil {
-				return err
+			if state.Inputs.Scripted {
+				pgaPasswd = state.Inputs.Settings.DBPassword.String
+			} else {
+				err := survey.AskOne(&survey.Input{
+					Message: "Enter password for the collector to use (will be saved to collector config):",
+				}, &pgaPasswd, survey.WithValidator(survey.Required))
+				if err != nil {
+					return err
+				}
 			}
+		} else {
+			panic(fmt.Sprintf("unexpected password option selection: %d", passwordStrategy))
 		}
-		_, err = state.CurrentSection.NewKey("db_password", pgaPasswd)
+
+		_, err := state.CurrentSection.NewKey("db_password", pgaPasswd)
 		if err != nil {
 			return err
 		}
@@ -711,13 +923,21 @@ var applyMonitoringUserPasswd = &Step{
 		pgaPasswd := pgaPasswdKey.String()
 
 		var doPasswdUpdate bool
-		err = survey.AskOne(&survey.Confirm{
-			Message: fmt.Sprintf("Update password for user %s with configured value (will be saved to Postgres)?", pgaUser),
-			Help:    "If you skip this step, ensure the password matches before proceeding",
-		}, &doPasswdUpdate)
-		if err != nil {
-			return err
+		if state.Inputs.Scripted {
+			if !state.Inputs.UpdateMonitoringPassword.Valid || !state.Inputs.UpdateMonitoringPassword.Bool {
+				return errors.New("update_monitoring_password flag not set and cannot log in with current credentials")
+			}
+			doPasswdUpdate = state.Inputs.UpdateMonitoringPassword.Bool
+		} else {
+			err = survey.AskOne(&survey.Confirm{
+				Message: fmt.Sprintf("Update password for user %s with configured value (will be saved to Postgres)?", pgaUser),
+				Help:    "If you skip this step, ensure the password matches before proceeding",
+			}, &doPasswdUpdate)
+			if err != nil {
+				return err
+			}
 		}
+
 		if !doPasswdUpdate {
 			return nil
 		}
@@ -766,12 +986,19 @@ var setUpMonitoringUser = &Step{
 
 		// TODO: deal with postgres <10
 		var doGrant bool
-		err = survey.AskOne(&survey.Confirm{
-			Message: fmt.Sprintf("Grant role pg_monitor to user %s (will be saved to Postgres)?", pgaUser),
-			Help:    "Learn more about pg_monitor here: https://www.postgresql.org/docs/current/default-roles.html",
-		}, &doGrant)
-		if err != nil {
-			return err
+		if state.Inputs.Scripted {
+			if !state.Inputs.SetUpMonitoringUser.Valid || !state.Inputs.SetUpMonitoringUser.Bool {
+				return errors.New("set_up_monitoring_user flag not set and monitoring user does not have adequate permissions")
+			}
+			doGrant = state.Inputs.SetUpMonitoringUser.Bool
+		} else {
+			err = survey.AskOne(&survey.Confirm{
+				Message: fmt.Sprintf("Grant role pg_monitor to user %s (will be saved to Postgres)?", pgaUser),
+				Help:    "Learn more about pg_monitor here: https://www.postgresql.org/docs/current/default-roles.html",
+			}, &doGrant)
+			if err != nil {
+				return err
+			}
 		}
 		if !doGrant {
 			return nil
@@ -810,27 +1037,35 @@ var createPganalyzeSchema = &Step{
 		if !hasUsage {
 			return false, nil
 		}
-		row, err = state.QueryRunner.QueryRow("SELECT COUNT(*) FROM pg_proc WHERE proname = 'get_stat_replication' AND pronargs = 0")
+		valid, err := validateHelperFunction("get_stat_replication", state.QueryRunner)
 		if err != nil {
 			return false, err
 		}
-		count = row.GetInt(0)
-		if count != 1 {
+		if !valid {
 			return false, nil
 		}
+
 		return true, nil
 	},
 	Run: func(state *SetupState) error {
 		var doSetup bool
-		err := survey.AskOne(&survey.Confirm{
-			Message: "Create pganalyze schema and helper functions (will be saved to Postgres)?",
-			Default: false,
-			// TODO: better link?
-			Help: "These helper functions allow the collector to monitor database statistics without being able to read your data; learn more here: https://github.com/pganalyze/collector/#setting-up-a-restricted-monitoring-user",
-		}, &doSetup)
-		if err != nil {
-			return err
+		if state.Inputs.Scripted {
+			if !state.Inputs.CreateHelperFunctions.Valid || !state.Inputs.CreateHelperFunctions.Bool {
+				return errors.New("create_helper_functions flag not set and pganalyze schema or helper functions do not exist")
+			}
+			doSetup = state.Inputs.CreateHelperFunctions.Bool
+		} else {
+			err := survey.AskOne(&survey.Confirm{
+				Message: "Create pganalyze schema and helper functions (will be saved to Postgres)?",
+				Default: false,
+				// TODO: better link?
+				Help: "These helper functions allow the collector to monitor database statistics without being able to read your data; learn more here: https://github.com/pganalyze/collector/#setting-up-a-restricted-monitoring-user",
+			}, &doSetup)
+			if err != nil {
+				return err
+			}
 		}
+
 		if !doSetup {
 			return nil
 		}
@@ -887,14 +1122,22 @@ var createPgss = &Step{
 	},
 	Run: func(state *SetupState) error {
 		var doCreate bool
-		err := survey.AskOne(&survey.Confirm{
-			Message: "Create extension pg_stat_statements in public schema (will be saved to Postgres)?",
-			Default: false,
-			Help:    "Learn more about pg_stat_statements here: https://www.postgresql.org/docs/current/pgstatstatements.html",
-		}, &doCreate)
-		if err != nil {
-			return err
+		if state.Inputs.Scripted {
+			if !state.Inputs.CreatePgStatStatements.Valid || !state.Inputs.CreatePgStatStatements.Bool {
+				return errors.New("create_pg_stat_statements flag not set and pg_stat_statements does not exist in primary database")
+			}
+			doCreate = state.Inputs.CreatePgStatStatements.Bool
+		} else {
+			err := survey.AskOne(&survey.Confirm{
+				Message: "Create extension pg_stat_statements in public schema (will be saved to Postgres)?",
+				Default: false,
+				Help:    "Learn more about pg_stat_statements here: https://www.postgresql.org/docs/current/pgstatstatements.html",
+			}, &doCreate)
+			if err != nil {
+				return err
+			}
 		}
+
 		if !doCreate {
 			return nil
 		}
@@ -914,13 +1157,20 @@ var enablePgss = &Step{
 	},
 	Run: func(state *SetupState) error {
 		var doAdd bool
-		err := survey.AskOne(&survey.Confirm{
-			Message: "Add pg_stat_statements to shared_preload_libraries (will be saved to Postgres)?",
-			Default: false,
-			Help:    "Postgres will have to be restarted in a later step to apply this configuration change; learn more about shared_preload_libraries here: https://www.postgresql.org/docs/current/runtime-config-client.html#GUC-SHARED-PRELOAD-LIBRARIES",
-		}, &doAdd)
-		if err != nil {
-			return err
+		if state.Inputs.Scripted {
+			if !state.Inputs.EnablePgStatStatements.Valid || !state.Inputs.EnablePgStatStatements.Bool {
+				return errors.New("enable_pg_stat_statements flag not set but pg_stat_statements not in shared_preload_libraries")
+			}
+			doAdd = state.Inputs.EnablePgStatStatements.Bool
+		} else {
+			err := survey.AskOne(&survey.Confirm{
+				Message: "Add pg_stat_statements to shared_preload_libraries (will be saved to Postgres)?",
+				Default: false,
+				Help:    "Postgres will have to be restarted in a later step to apply this configuration change; learn more about shared_preload_libraries here: https://www.postgresql.org/docs/current/runtime-config-client.html#GUC-SHARED-PRELOAD-LIBRARIES",
+			}, &doAdd)
+			if err != nil {
+				return err
+			}
 		}
 		if !doAdd {
 			return nil
@@ -971,17 +1221,31 @@ var configureLogErrorVerbosity = &Step{
 			return false, err
 		}
 
-		return row.GetString(0) != "verbose", nil
+		currVal := row.GetString(0)
+		needsUpdate := currVal == "verbose" ||
+			(state.Inputs.Scripted &&
+				state.Inputs.GUCS.LogErrorVerbosity.Valid &&
+				currVal != state.Inputs.GUCS.LogErrorVerbosity.String)
+
+		return !needsUpdate, nil
 	},
 	Run: func(state *SetupState) error {
 		var newVal string
-		err := survey.AskOne(&survey.Select{
-			Message: "Setting 'log_error_verbosity' is set to unsupported value 'all'; select supported value (will be saved to Postgres):",
-			Options: []string{"terse", "default"},
-		}, &newVal)
-		if err != nil {
-			return err
+		if state.Inputs.Scripted {
+			if !state.Inputs.GUCS.LogErrorVerbosity.Valid {
+				return errors.New("log_error_verbosity value not provided and current value not supported")
+			}
+			newVal = state.Inputs.GUCS.LogErrorVerbosity.String
+		} else {
+			err := survey.AskOne(&survey.Select{
+				Message: "Setting 'log_error_verbosity' is set to unsupported value 'all'; select supported value (will be saved to Postgres):",
+				Options: []string{"terse", "default"},
+			}, &newVal)
+			if err != nil {
+				return err
+			}
 		}
+
 		return applyConfigSetting("log_error_verbosity", newVal, state.QueryRunner)
 	},
 }
@@ -995,16 +1259,28 @@ var configureLogDuration = &Step{
 			return false, err
 		}
 
-		return row.GetString(0) == "off", nil
+		currValue := row.GetString(0)
+		needsUpdate := currValue == "on" ||
+			(state.Inputs.Scripted && state.Inputs.GUCS.LogDuration.Valid &&
+				state.Inputs.GUCS.LogDuration.String != currValue)
+
+		return !needsUpdate, nil
 	},
 	Run: func(state *SetupState) error {
 		var turnOffLogDuration bool
-		err := survey.AskOne(&survey.Confirm{
-			Message: "Setting 'log_duration' is set to unsupported value 'on'; set to 'off' (will be saved to Postgres)?",
-			Default: false,
-		}, &turnOffLogDuration)
-		if err != nil {
-			return err
+		if state.Inputs.Scripted {
+			if !state.Inputs.GUCS.LogDuration.Valid {
+				return errors.New("log_error_verbosity value not provided and current value not supported")
+			}
+			turnOffLogDuration = state.Inputs.GUCS.LogDuration.String == "off"
+		} else {
+			err := survey.AskOne(&survey.Confirm{
+				Message: "Setting 'log_duration' is set to unsupported value 'on'; set to 'off' (will be saved to Postgres)?",
+				Default: false,
+			}, &turnOffLogDuration)
+			if err != nil {
+				return err
+			}
 		}
 		if !turnOffLogDuration {
 			// technically there is no error to report here; the re-check will fail
@@ -1022,17 +1298,29 @@ var configureLogStatement = &Step{
 		if err != nil {
 			return false, err
 		}
+		currValue := row.GetString(0)
+		needsUpdate := currValue == "all" ||
+			(state.Inputs.Scripted &&
+				state.Inputs.GUCS.LogStatement.Valid &&
+				currValue != state.Inputs.GUCS.LogStatement.String)
 
-		return row.GetString(0) != "all", nil
+		return !needsUpdate, nil
 	},
 	Run: func(state *SetupState) error {
 		var newVal string
-		err := survey.AskOne(&survey.Select{
-			Message: "Setting 'log_statement' is set to unsupported value 'all'; select supported value (will be saved to Postgres):",
-			Options: []string{"none", "ddl", "mod"},
-		}, &newVal)
-		if err != nil {
-			return err
+		if state.Inputs.Scripted {
+			if !state.Inputs.GUCS.LogStatement.Valid {
+				return errors.New("log_statement value not provided and current value not supported")
+			}
+			newVal = state.Inputs.GUCS.LogStatement.String
+		} else {
+			err := survey.AskOne(&survey.Select{
+				Message: "Setting 'log_statement' is set to unsupported value 'all'; select supported value (will be saved to Postgres):",
+				Options: []string{"none", "ddl", "mod"},
+			}, &newVal)
+			if err != nil {
+				return err
+			}
 		}
 
 		return applyConfigSetting("log_statement", newVal, state.QueryRunner)
@@ -1064,7 +1352,11 @@ var configureLogMinDurationStatement = &Step{
 		}
 
 		lmdsVal := row.GetInt(0)
-		return lmdsVal == -1 || lmdsVal >= 10, nil
+		needsUpdate := (lmdsVal < 10 && lmdsVal != -1) ||
+			(state.Inputs.Scripted &&
+				state.Inputs.GUCS.LogMinDurationStatement.Valid &&
+				int(state.Inputs.GUCS.LogMinDurationStatement.Int64) != lmdsVal)
+		return !needsUpdate, nil
 	},
 	Run: func(state *SetupState) error {
 		row, err := state.QueryRunner.QueryRow(`SELECT setting FROM pg_settings WHERE name = 'log_min_duration_statement'`)
@@ -1074,14 +1366,21 @@ var configureLogMinDurationStatement = &Step{
 		oldVal := fmt.Sprintf("%sms", row.GetString(0))
 
 		var newVal string
-		err = survey.AskOne(&survey.Input{
-			Message: fmt.Sprintf(
-				"Setting 'log_min_duration_statement' is set to '%s', below supported threshold of 10ms; enter supported value in ms or 0 to disable (will be saved to Postgres):",
-				oldVal,
-			),
-		}, &newVal, survey.WithValidator(validateLmds))
-		if err != nil {
-			return err
+		if state.Inputs.Scripted {
+			if !state.Inputs.GUCS.LogMinDurationStatement.Valid {
+				return errors.New("log_min_duration_statement not provided and current value is unsupported")
+			}
+			newVal = strconv.Itoa(int(state.Inputs.GUCS.LogMinDurationStatement.Int64))
+		} else {
+			err = survey.AskOne(&survey.Input{
+				Message: fmt.Sprintf(
+					"Setting 'log_min_duration_statement' is set to '%s', below supported threshold of 10ms; enter supported value in ms or 0 to disable (will be saved to Postgres):",
+					oldVal,
+				),
+			}, &newVal, survey.WithValidator(validateLmds))
+			if err != nil {
+				return err
+			}
 		}
 
 		return applyConfigSetting("log_min_duration_statement", newVal, state.QueryRunner)
@@ -1110,7 +1409,13 @@ var configureLogLinePrefix = &Step{
 			return false, err
 		}
 
-		return includes(supportedLogLinePrefixes, row.GetString(0)), nil
+		currValue := row.GetString(0)
+		needsUpdate := !includes(supportedLogLinePrefixes, currValue) ||
+			(state.Inputs.Scripted &&
+				state.Inputs.GUCS.LogLinePrefix.Valid &&
+				currValue != state.Inputs.GUCS.LogLinePrefix.String)
+
+		return !needsUpdate, nil
 	},
 	Run: func(state *SetupState) error {
 		row, err := state.QueryRunner.QueryRow(`SELECT setting FROM pg_settings WHERE name = 'log_line_prefix'`)
@@ -1130,16 +1435,24 @@ var configureLogLinePrefix = &Step{
 			opts = append(opts, opt)
 		}
 
-		var prefixIdx int
-		err = survey.AskOne(&survey.Select{
-			Message: fmt.Sprintf("Setting 'log_line_prefix' is set to unsupported value '%s'; set to (will be saved to Postgres):", oldVal),
-			Help:    "Check format specifier reference in Postgres documentation: https://www.postgresql.org/docs/current/runtime-config-logging.html#GUC-LOG-LINE-PREFIX",
-			Options: opts,
-		}, &prefixIdx)
-		if err != nil {
-			return err
+		var selectedPrefix string
+		if state.Inputs.Scripted {
+			if !state.Inputs.GUCS.LogLinePrefix.Valid {
+				return errors.New("log_line_prefix not provided and current setting is not supported")
+			}
+			selectedPrefix = state.Inputs.GUCS.LogLinePrefix.String
+		} else {
+			var prefixIdx int
+			err = survey.AskOne(&survey.Select{
+				Message: fmt.Sprintf("Setting 'log_line_prefix' is set to unsupported value '%s'; set to (will be saved to Postgres):", oldVal),
+				Help:    "Check format specifier reference in Postgres documentation: https://www.postgresql.org/docs/current/runtime-config-logging.html#GUC-LOG-LINE-PREFIX",
+				Options: opts,
+			}, &prefixIdx)
+			if err != nil {
+				return err
+			}
+			selectedPrefix = supportedLogLinePrefixes[prefixIdx]
 		}
-		selectedPrefix := supportedLogLinePrefixes[prefixIdx]
 		return applyConfigSetting("log_line_prefix", pq.QuoteLiteral(selectedPrefix), state.QueryRunner)
 	},
 }
@@ -1170,16 +1483,31 @@ var configureLogLocation = &Step{
 			return err
 		}
 		var logLocationConfirmed bool
-		err = survey.AskOne(&survey.Confirm{
-			Message: fmt.Sprintf("Your database log file or directory appears to be %s; is this correct (will be saved to collector config)?", guessedLogLocation),
-			Default: false,
-		}, &logLocationConfirmed)
-		if err != nil {
-			return err
+		if state.Inputs.Scripted {
+			if state.Inputs.GuessLogLocation.Valid && state.Inputs.GuessLogLocation.Bool {
+				if state.Inputs.Settings.DBLogLocation.Valid && state.Inputs.Settings.DBLogLocation.String != "" {
+					return errors.New("cannot specify both guess_log_location and set explicit db_log_location")
+				}
+				logLocationConfirmed = state.Inputs.GuessLogLocation.Bool
+			}
+		} else {
+			err = survey.AskOne(&survey.Confirm{
+				Message: fmt.Sprintf("Your database log file or directory appears to be %s; is this correct (will be saved to collector config)?", guessedLogLocation),
+				Default: false,
+			}, &logLocationConfirmed)
+			if err != nil {
+				return err
+			}
 		}
+
 		var logLocation string
 		if logLocationConfirmed {
 			logLocation = guessedLogLocation
+		} else if state.Inputs.Scripted {
+			if !state.Inputs.Settings.DBLogLocation.Valid || state.Inputs.Settings.DBLogLocation.String == "" {
+				return errors.New("db_log_location not provided and guess_log_location flag not set")
+			}
+			logLocation = state.Inputs.Settings.DBLogLocation.String
 		} else {
 			err = survey.AskOne(&survey.Input{
 				Message: "Please enter the Postgres log file location (will be saved to collector config)",
@@ -1224,17 +1552,26 @@ var checkUseLogBasedExplain = &Step{
 		return state.CurrentSection.HasKey("enable_log_explain"), nil
 	},
 	Run: func(state *SetupState) error {
-		var optIdx int
-		err := survey.AskOne(&survey.Select{
-			Message: "Select automated EXPLAIN mechanism to use (will be saved to collector config):",
-			Help:    "Learn more about the options at https://pganalyze.com/docs/explain/setup",
-			Options: []string{"auto_explain (recommended)", "Log-based EXPLAIN"},
-		}, &optIdx)
-		if err != nil {
-			return err
+		var useLogBased bool
+		if state.Inputs.Scripted {
+			if !state.Inputs.UseLogBasedExplain.Valid {
+				return errors.New("use_log_based_explain not set")
+			}
+			useLogBased = state.Inputs.UseLogBasedExplain.Bool
+		} else {
+			var optIdx int
+			err := survey.AskOne(&survey.Select{
+				Message: "Select automated EXPLAIN mechanism to use (will be saved to collector config):",
+				Help:    "Learn more about the options at https://pganalyze.com/docs/explain/setup",
+				Options: []string{"auto_explain (recommended)", "Log-based EXPLAIN"},
+			}, &optIdx)
+			if err != nil {
+				return err
+			}
+			useLogBased = optIdx == 1
 		}
-		useLogBased := optIdx == 1
-		_, err = state.CurrentSection.NewKey("enable_log_explain", strconv.FormatBool(useLogBased))
+
+		_, err := state.CurrentSection.NewKey("enable_log_explain", strconv.FormatBool(useLogBased))
 		if err != nil {
 			return err
 		}
@@ -1257,13 +1594,21 @@ var createLogExplainHelper = &Step{
 	},
 	Run: func(state *SetupState) error {
 		var doCreate bool
-		err := survey.AskOne(&survey.Confirm{
-			Message: "Create (or update) EXPLAIN helper function (will be saved to Postgres)?",
-			Default: false,
-		}, &doCreate)
-		if err != nil {
-			return err
+		if state.Inputs.Scripted {
+			if !state.Inputs.CreateExplainHelper.Valid || !state.Inputs.CreateHelperFunctions.Bool {
+				return errors.New("create_explain_helper flag not set and helper function does not exist or does not match expected signature")
+			}
+			doCreate = state.Inputs.CreateHelperFunctions.Bool
+		} else {
+			err := survey.AskOne(&survey.Confirm{
+				Message: "Create (or update) EXPLAIN helper function (will be saved to Postgres)?",
+				Default: false,
+			}, &doCreate)
+			if err != nil {
+				return err
+			}
 		}
+
 		if !doCreate {
 			return nil
 		}
@@ -1340,13 +1685,20 @@ var enableAutoExplain = &Step{
 	},
 	Run: func(state *SetupState) error {
 		var doAdd bool
-		err := survey.AskOne(&survey.Confirm{
-			Message: "Add auto_explain to shared_preload_libraries (will be saved to Postgres)?",
-			Default: false,
-			Help:    "Postgres will have to be restarted in a later step to apply this configuration change; learn more about shared_preload_libraries here: https://www.postgresql.org/docs/current/runtime-config-client.html#GUC-SHARED-PRELOAD-LIBRARIES",
-		}, &doAdd)
-		if err != nil {
-			return err
+		if state.Inputs.Scripted {
+			if !state.Inputs.EnableAutoExplain.Valid || !state.Inputs.EnableAutoExplain.Bool {
+				return errors.New("enable_auto_explain flag not set but auto_explain configuration selected")
+			}
+			doAdd = state.Inputs.EnableAutoExplain.Bool
+		} else {
+			err := survey.AskOne(&survey.Confirm{
+				Message: "Add auto_explain to shared_preload_libraries (will be saved to Postgres)?",
+				Default: false,
+				Help:    "Postgres will have to be restarted in a later step to apply this configuration change; learn more about shared_preload_libraries here: https://www.postgresql.org/docs/current/runtime-config-client.html#GUC-SHARED-PRELOAD-LIBRARIES",
+			}, &doAdd)
+			if err != nil {
+				return err
+			}
 		}
 		if !doAdd {
 			return nil
@@ -1373,17 +1725,24 @@ var reloadCollector = &Step{
 	},
 	Run: func(state *SetupState) error {
 		var doReload bool
-		err := survey.AskOne(&survey.Confirm{
-			Message: "The collector configuration must be reloaded for changes to take effect; reload now?",
-			Default: false,
-		}, &doReload)
-		if err != nil {
-			return err
+		if state.Inputs.Scripted {
+			if !state.Inputs.ConfirmCollectorReload.Valid || !state.Inputs.ConfirmCollectorReload.Bool {
+				return errors.New("confirm_collector_reload flag not set but collector reload required")
+			}
+			doReload = state.Inputs.ConfirmCollectorReload.Bool
+		} else {
+			err := survey.AskOne(&survey.Confirm{
+				Message: "The collector configuration must be reloaded for changes to take effect; reload now?",
+				Default: false,
+			}, &doReload)
+			if err != nil {
+				return err
+			}
 		}
 		if !doReload {
 			return nil
 		}
-		err = reload()
+		err := reload()
 		if err != nil {
 			return err
 		}
@@ -1413,24 +1772,31 @@ var restartPg = &Step{
 
 		pendingList := getConjuctionList(pendingSettings)
 		var restartNow bool
-		err = survey.AskOne(&survey.Confirm{
-			Message: fmt.Sprintf("WARNING: Postgres must be restarted for changes to %s to take effect; restart Postgres now?", pendingList),
-			Default: false,
-		}, &restartNow)
-		if err != nil {
-			return err
-		}
+		if state.Inputs.Scripted {
+			if !state.Inputs.ConfirmPostgresRestart.Valid || !state.Inputs.ConfirmPostgresRestart.Bool {
+				return errors.New("confirm_postgres_restart flag not set but Postgres restart required")
+			}
+			restartNow = state.Inputs.ConfirmPostgresRestart.Bool
+		} else {
+			err = survey.AskOne(&survey.Confirm{
+				Message: fmt.Sprintf("WARNING: Postgres must be restarted for changes to %s to take effect; restart Postgres now?", pendingList),
+				Default: false,
+			}, &restartNow)
+			if err != nil {
+				return err
+			}
 
-		if !restartNow {
-			return nil
-		}
+			if !restartNow {
+				return nil
+			}
 
-		err = survey.AskOne(&survey.Confirm{
-			Message: "WARNING: Your database will be restarted. Are you sure?",
-			Default: false,
-		}, &restartNow)
-		if err != nil {
-			return err
+			err = survey.AskOne(&survey.Confirm{
+				Message: "WARNING: Your database will be restarted. Are you sure?",
+				Default: false,
+			}, &restartNow)
+			if err != nil {
+				return err
+			}
 		}
 
 		if !restartNow {
@@ -1474,18 +1840,105 @@ var configureAutoExplain = &Step{
 		}
 
 		settingsToReview := make(map[string]string)
+		autoExplainGucsQuery := (func() string {
+			query := `SELECT name, setting
+	FROM pg_settings
+	WHERE `
+			var predicate string
+
+			if state.Inputs.Scripted {
+				var predParts []string
+				appendPredicate := func(name, value string) []string {
+					return append(predParts,
+						fmt.Sprintf(
+							"(name = %s AND setting <> %s)",
+							pq.QuoteLiteral(name),
+							pq.QuoteLiteral(value),
+						),
+					)
+				}
+				if state.Inputs.GUCS.AutoExplainLogAnalyze.Valid {
+					predParts = appendPredicate(
+						"auto_explain.log_analyze",
+						state.Inputs.GUCS.AutoExplainLogAnalyze.String,
+					)
+				}
+				if state.Inputs.GUCS.AutoExplainLogBuffers.Valid {
+					predParts = appendPredicate(
+						"auto_explain.log_buffers",
+						state.Inputs.GUCS.AutoExplainLogBuffers.String,
+					)
+				}
+				if state.Inputs.GUCS.AutoExplainLogTiming.Valid {
+					predParts = appendPredicate(
+						"auto_explain.log_timing",
+						state.Inputs.GUCS.AutoExplainLogTiming.String,
+					)
+				}
+				if state.Inputs.GUCS.AutoExplainLogTriggers.Valid {
+					predParts = appendPredicate(
+						"auto_explain.log_triggers",
+						state.Inputs.GUCS.AutoExplainLogTriggers.String,
+					)
+				}
+				if state.Inputs.GUCS.AutoExplainLogVerbose.Valid {
+					predParts = appendPredicate(
+						"auto_explain.log_verbose",
+						state.Inputs.GUCS.AutoExplainLogVerbose.String,
+					)
+				}
+				if state.Inputs.GUCS.AutoExplainLogFormat.Valid {
+					predParts = appendPredicate(
+						"auto_explain.log_format",
+						state.Inputs.GUCS.AutoExplainLogFormat.String,
+					)
+				}
+				if state.Inputs.GUCS.AutoExplainLogMinDuration.Valid {
+					// N.B.: here we check for exact equality with the setting, rather than
+					// under the threshold, since the semantics of that behavior are more
+					// straightforward when entering a setting in a config file
+					predParts = append(
+						predParts,
+						fmt.Sprintf(
+							"(name = 'auto_explain.log_min_duration' AND setting <> %d)",
+							state.Inputs.GUCS.AutoExplainLogMinDuration.Int64,
+						),
+					)
+				}
+				if state.Inputs.GUCS.AutoExplainLogNestedStatements.Valid {
+					predParts = appendPredicate(
+						"auto_explain.log_nested_statements",
+						state.Inputs.GUCS.AutoExplainLogNestedStatements.String,
+					)
+				}
+
+				predicate = strings.Join(predParts, " OR ")
+
+			} else {
+				predicate = fmt.Sprintf(
+					`(name = 'auto_explain.log_analyze' AND setting <> %s) OR
+(name = 'auto_explain.log_buffers' AND setting <> %s) OR
+(name = 'auto_explain.log_timing' AND setting <> %s) OR
+(name = 'auto_explain.log_triggers' AND setting <> %s) OR
+(name = 'auto_explain.log_verbose' AND setting <> %s) OR
+(name = 'auto_explain.log_format' AND setting <> %s) OR
+(name = 'auto_explain.log_min_duration' AND setting::float < %d) OR
+(name = 'auto_explain.log_nested_statements' AND setting <> %s)`,
+					pq.QuoteLiteral(state.Inputs.GUCS.AutoExplainLogAnalyze.String),
+					pq.QuoteLiteral(state.Inputs.GUCS.AutoExplainLogBuffers.String),
+					pq.QuoteLiteral(state.Inputs.GUCS.AutoExplainLogTiming.String),
+					pq.QuoteLiteral(state.Inputs.GUCS.AutoExplainLogTriggers.String),
+					pq.QuoteLiteral(state.Inputs.GUCS.AutoExplainLogVerbose.String),
+					pq.QuoteLiteral(state.Inputs.GUCS.AutoExplainLogFormat.String),
+					state.Inputs.GUCS.AutoExplainLogMinDuration.Int64,
+					pq.QuoteLiteral(state.Inputs.GUCS.AutoExplainLogNestedStatements.String),
+				)
+			}
+
+			return query + predicate
+		})()
 		rows, err := state.QueryRunner.Query(
-			`SELECT name, setting
-FROM pg_settings
-WHERE
-	(name = 'auto_explain.log_analyze' AND setting <> 'on') OR
-	(name = 'auto_explain.log_buffers' AND setting <> 'on') OR
-	(name = 'auto_explain.log_timing' AND setting <> 'off') OR
-	(name = 'auto_explain.log_triggers' AND setting <> 'on') OR
-	(name = 'auto_explain.log_verbose' AND setting <> 'on') OR
-	(name = 'auto_explain.log_format' AND setting <> 'json') OR
-	(name = 'auto_explain.log_min_duration' AND setting::float < 1000) OR
-	(name = 'auto_explain.log_nested_statements' AND setting <> 'on')`,
+			autoExplainGucsQuery,
 		)
 		if err != nil {
 			return fmt.Errorf("error checking existing settings: %s", err)
@@ -1500,18 +1953,26 @@ WHERE
 
 		var isLogAnalyzeOn bool
 		if currValue, ok := settingsToReview["auto_explain.log_analyze"]; ok {
-			var logAnalyzeIdx int
-			var logAnalyzeOpts = []string{"on", "off"}
-			var optLabels = []string{"set to 'on' (recommended; will be saved to Postgres)", "leave as 'off'"}
-			err = survey.AskOne(&survey.Select{
-				Message: fmt.Sprintf("Setting auto_explain.log_analyze is currently set to '%s':", currValue),
-				Help:    "Include EXPLAIN ANALYZE output rather than just EXPLAIN output when a plan is logged; required for several other settings",
-				Options: optLabels,
-			}, &logAnalyzeIdx)
-			if err != nil {
-				return err
+			var logAnalyze string
+			if state.Inputs.Scripted {
+				if !state.Inputs.GUCS.AutoExplainLogAnalyze.Valid {
+					panic("auto_explain.log_analyze setting needs review but was not provided")
+				}
+				logAnalyze = state.Inputs.GUCS.AutoExplainLogAnalyze.String
+			} else {
+				var logAnalyzeIdx int
+				var logAnalyzeOpts = []string{"on", "off"}
+				var optLabels = []string{"set to 'on' (recommended; will be saved to Postgres)", "leave as 'off'"}
+				err = survey.AskOne(&survey.Select{
+					Message: fmt.Sprintf("Setting auto_explain.log_analyze is currently set to '%s':", currValue),
+					Help:    "Include EXPLAIN ANALYZE output rather than just EXPLAIN output when a plan is logged; required for several other settings",
+					Options: optLabels,
+				}, &logAnalyzeIdx)
+				if err != nil {
+					return err
+				}
+				logAnalyze = logAnalyzeOpts[logAnalyzeIdx]
 			}
-			logAnalyze := logAnalyzeOpts[logAnalyzeIdx]
 			if logAnalyze != currValue {
 				err = applyConfigSetting("auto_explain.log_analyze", logAnalyze, state.QueryRunner)
 				if err != nil {
@@ -1525,18 +1986,26 @@ WHERE
 
 		if isLogAnalyzeOn {
 			if currValue, ok := settingsToReview["auto_explain.log_buffers"]; ok {
-				var logBuffersIdx int
-				var logBuffersOpts = []string{"on", "off"}
-				var optLabels = []string{"set to 'on' (recommended; will be saved to Postgres)", "leave as 'off'"}
-				err = survey.AskOne(&survey.Select{
-					Message: fmt.Sprintf("Setting auto_explain.log_buffers is currently set to '%s'", currValue),
-					Help:    "Include BUFFERS usage information when a plan is logged",
-					Options: optLabels,
-				}, &logBuffersIdx)
-				if err != nil {
-					return err
+				var logBuffers string
+				if state.Inputs.Scripted {
+					if !state.Inputs.GUCS.AutoExplainLogBuffers.Valid {
+						panic("auto_explain.log_buffers setting needs review but was not provided")
+					}
+					logBuffers = state.Inputs.GUCS.AutoExplainLogBuffers.String
+				} else {
+					var logBuffersIdx int
+					var logBuffersOpts = []string{"on", "off"}
+					var optLabels = []string{"set to 'on' (recommended; will be saved to Postgres)", "leave as 'off'"}
+					err = survey.AskOne(&survey.Select{
+						Message: fmt.Sprintf("Setting auto_explain.log_buffers is currently set to '%s'", currValue),
+						Help:    "Include BUFFERS usage information when a plan is logged",
+						Options: optLabels,
+					}, &logBuffersIdx)
+					if err != nil {
+						return err
+					}
+					logBuffers = logBuffersOpts[logBuffersIdx]
 				}
-				logBuffers := logBuffersOpts[logBuffersIdx]
 				if logBuffers != currValue {
 					err = applyConfigSetting("auto_explain.log_buffers", logBuffers, state.QueryRunner)
 					if err != nil {
@@ -1546,18 +2015,26 @@ WHERE
 			}
 
 			if currValue, ok := settingsToReview["auto_explain.log_timing"]; ok {
-				var logTimingIdx int
-				var logTimingOpts = []string{"off", "on"}
-				var optLabels = []string{"set to 'off' (recommended; will be saved to Postgres)", "leave as 'on'"}
-				err = survey.AskOne(&survey.Select{
-					Message: fmt.Sprintf("Setting auto_explain.log_timing is currently set to '%s'", currValue),
-					Help:    "Include timing information for each plan node when a plan is logged; can have high performance impact",
-					Options: optLabels,
-				}, &logTimingIdx)
-				if err != nil {
-					return err
+				var logTiming string
+				if state.Inputs.Scripted {
+					if !state.Inputs.GUCS.AutoExplainLogTiming.Valid {
+						panic("auto_explain.log_timing setting needs review but was not provided")
+					}
+					logTiming = state.Inputs.GUCS.AutoExplainLogTiming.String
+				} else {
+					var logTimingIdx int
+					var logTimingOpts = []string{"off", "on"}
+					var optLabels = []string{"set to 'off' (recommended; will be saved to Postgres)", "leave as 'on'"}
+					err = survey.AskOne(&survey.Select{
+						Message: fmt.Sprintf("Setting auto_explain.log_timing is currently set to '%s'", currValue),
+						Help:    "Include timing information for each plan node when a plan is logged; can have high performance impact",
+						Options: optLabels,
+					}, &logTimingIdx)
+					if err != nil {
+						return err
+					}
+					logTiming = logTimingOpts[logTimingIdx]
 				}
-				logTiming := logTimingOpts[logTimingIdx]
 				if logTiming != currValue {
 					err = applyConfigSetting("auto_explain.log_timing", logTiming, state.QueryRunner)
 					if err != nil {
@@ -1567,18 +2044,27 @@ WHERE
 			}
 
 			if currValue, ok := settingsToReview["auto_explain.log_triggers"]; ok {
-				var logTriggersIdx int
-				var logTriggersOpts = []string{"on", "off"}
-				var optLabels = []string{"set to 'on' (recommended; will be saved to Postgres)", "leave as 'off'"}
-				err = survey.AskOne(&survey.Select{
-					Message: fmt.Sprintf("Setting auto_explain.log_triggers is currently set to '%s'", currValue),
-					Help:    "Include trigger execution statistics when a plan is logged",
-					Options: optLabels,
-				}, &logTriggersIdx)
-				if err != nil {
-					return err
+				var logTriggers string
+				if state.Inputs.Scripted {
+					if !state.Inputs.GUCS.AutoExplainLogTriggers.Valid {
+						panic("auto_explain.log_triggers setting needs review but was not provided")
+					}
+					logTriggers = state.Inputs.GUCS.AutoExplainLogTriggers.String
+				} else {
+					var logTriggersIdx int
+					var logTriggersOpts = []string{"on", "off"}
+					var optLabels = []string{"set to 'on' (recommended; will be saved to Postgres)", "leave as 'off'"}
+					err = survey.AskOne(&survey.Select{
+						Message: fmt.Sprintf("Setting auto_explain.log_triggers is currently set to '%s'", currValue),
+						Help:    "Include trigger execution statistics when a plan is logged",
+						Options: optLabels,
+					}, &logTriggersIdx)
+					if err != nil {
+						return err
+					}
+					logTriggers = logTriggersOpts[logTriggersIdx]
 				}
-				logTriggers := logTriggersOpts[logTriggersIdx]
+
 				if logTriggers != currValue {
 					err = applyConfigSetting("auto_explain.log_triggers", logTriggers, state.QueryRunner)
 					if err != nil {
@@ -1588,18 +2074,26 @@ WHERE
 			}
 
 			if currValue, ok := settingsToReview["auto_explain.log_verbose"]; ok {
-				var logVerboseIdx int
-				var logVerboseOpts = []string{"on", "off"}
-				var optLabels = []string{"set to 'on' (recommended; will be saved to Postgres)", "leave as 'off'"}
-				err = survey.AskOne(&survey.Select{
-					Message: fmt.Sprintf("Setting auto_explain.log_verbose is currently set to '%s'", currValue),
-					Help:    "Include VERBOSE EXPLAIN details when a plan is logged",
-					Options: optLabels,
-				}, &logVerboseIdx)
-				if err != nil {
-					return err
+				var logVerbose string
+				if state.Inputs.Scripted {
+					if !state.Inputs.GUCS.AutoExplainLogVerbose.Valid {
+						panic("auto_explain.log_verbose setting needs review but was not provided")
+					}
+					logVerbose = state.Inputs.GUCS.AutoExplainLogVerbose.String
+				} else {
+					var logVerboseIdx int
+					var logVerboseOpts = []string{"on", "off"}
+					var optLabels = []string{"set to 'on' (recommended; will be saved to Postgres)", "leave as 'off'"}
+					err = survey.AskOne(&survey.Select{
+						Message: fmt.Sprintf("Setting auto_explain.log_verbose is currently set to '%s'", currValue),
+						Help:    "Include VERBOSE EXPLAIN details when a plan is logged",
+						Options: optLabels,
+					}, &logVerboseIdx)
+					if err != nil {
+						return err
+					}
+					logVerbose = logVerboseOpts[logVerboseIdx]
 				}
-				logVerbose := logVerboseOpts[logVerboseIdx]
 				if logVerbose != currValue {
 					err = applyConfigSetting("auto_explain.log_verbose", logVerbose, state.QueryRunner)
 					if err != nil {
@@ -1610,68 +2104,91 @@ WHERE
 		}
 
 		if currValue, ok := settingsToReview["auto_explain.log_format"]; ok {
-			var logFormatIdx int
-			var logFormatOpts = []string{"json", "text"}
-			var optLabels = []string{"set to 'json' (recommended; will be saved to Postgres)"}
-			if currValue == "text" {
-				optLabels = append(optLabels, "leave as 'text' (text format support is experimental)")
+			var logFormat string
+			if state.Inputs.Scripted {
+				if !state.Inputs.GUCS.AutoExplainLogFormat.Valid {
+					panic("auto_explain.log_format setting needs review but was not provided")
+				}
+				logFormat = state.Inputs.GUCS.AutoExplainLogFormat.String
+				if logFormat != "text" && logFormat != "json" {
+					return fmt.Errorf("unsupported auto_explain.log_format: %s", logFormat)
+				}
 			} else {
-				optLabels = append(
-					optLabels,
-					"set to 'text' (text format support is experimental; will be saved to Postgres)",
-					fmt.Sprintf("leave as '%s' (unsupported)", currValue),
-				)
+				var logFormatIdx int
+				var logFormatOpts = []string{"json", "text"}
+				var optLabels = []string{"set to 'json' (recommended; will be saved to Postgres)"}
+				if currValue == "text" {
+					optLabels = append(optLabels, "leave as 'text' (text format support is experimental)")
+				} else {
+					optLabels = append(
+						optLabels,
+						"set to 'text' (text format support is experimental; will be saved to Postgres)",
+						fmt.Sprintf("leave as '%s' (unsupported)", currValue),
+					)
+				}
+
+				err = survey.AskOne(&survey.Select{
+					Message: fmt.Sprintf("Setting auto_explain.log_format is currently set to '%s'", currValue),
+					Help:    "Select EXPLAIN output format to be used (only 'text' and 'json' are supported)",
+					Options: optLabels,
+				}, &logFormatIdx)
+				if err != nil {
+					return err
+				}
+
+				if logFormatIdx >= len(logFormatOpts) {
+					logFormat = currValue
+				} else {
+					logFormat = logFormatOpts[logFormatIdx]
+				}
 			}
 
-			err = survey.AskOne(&survey.Select{
-				Message: fmt.Sprintf("Setting auto_explain.log_format is currently set to '%s'", currValue),
-				Help:    "Select EXPLAIN output format to be used (only 'text' and 'json' are supported)",
-				Options: optLabels,
-			}, &logFormatIdx)
-			if err != nil {
-				return err
-			}
-			if logFormatIdx < len(logFormatOpts) {
-				logFormat := logFormatOpts[logFormatIdx]
-				if logFormat != currValue {
-					err = applyConfigSetting("auto_explain.log_format", logFormat, state.QueryRunner)
-					if err != nil {
-						return err
-					}
+			if logFormat != currValue {
+				err = applyConfigSetting("auto_explain.log_format", logFormat, state.QueryRunner)
+				if err != nil {
+					return err
 				}
 			}
 		}
 
 		if currValue, ok := settingsToReview["auto_explain.log_min_duration"]; ok {
-			var durationOpts = []string{
-				"set to 1000ms (recommended inital value; will be saved to Postgres)",
-				"set to other value...",
-				fmt.Sprintf("leave at %sms", currValue),
-			}
-			var durationOptIdx int
-			err = survey.AskOne(&survey.Select{
-				Message: fmt.Sprintf("Setting auto_explain.log_min_duration is currently set to '%s ms'", currValue),
-				Help:    "Threshold to log EXPLAIN plans, in ms; recommend 1000, must be at least 10",
-				Options: durationOpts,
-			}, &durationOptIdx)
-			if err != nil {
-				return err
-			}
-
 			var logMinDuration string
-			if durationOptIdx == 0 {
-				logMinDuration = "1000"
-			} else if durationOptIdx == 1 {
-				err = survey.AskOne(&survey.Input{
-					Message: "Set auto_explain.log_min_duration, in milliseconds, to (will be saved to Postgres):",
+			if state.Inputs.Scripted {
+				if !state.Inputs.GUCS.AutoExplainLogMinDuration.Valid {
+					panic("auto_explain.log_min_duration setting needs review but was not provided")
+				}
+				logMinDuration = strconv.Itoa(int(state.Inputs.GUCS.AutoExplainLogMinDuration.Int64))
+			} else {
+				var durationOpts = []string{
+					"set to 1000ms (recommended inital value; will be saved to Postgres)",
+					"set to other value...",
+					fmt.Sprintf("leave at %sms", currValue),
+				}
+				var durationOptIdx int
+				err = survey.AskOne(&survey.Select{
+					Message: fmt.Sprintf("Setting auto_explain.log_min_duration is currently set to '%s ms'", currValue),
 					Help:    "Threshold to log EXPLAIN plans, in ms; recommend 1000, must be at least 10",
-				}, &logMinDuration, survey.WithValidator(validateLmds))
+					Options: durationOpts,
+				}, &durationOptIdx)
 				if err != nil {
 					return err
 				}
-			} else {
-				logMinDuration = currValue
+
+				if durationOptIdx == 0 {
+					logMinDuration = "1000"
+				} else if durationOptIdx == 1 {
+					err = survey.AskOne(&survey.Input{
+						Message: "Set auto_explain.log_min_duration, in milliseconds, to (will be saved to Postgres):",
+						Help:    "Threshold to log EXPLAIN plans, in ms; recommend 1000, must be at least 10",
+					}, &logMinDuration, survey.WithValidator(validateLmds))
+					if err != nil {
+						return err
+					}
+				} else {
+					logMinDuration = currValue
+				}
 			}
+
 			if logMinDuration != currValue {
 				err = applyConfigSetting("auto_explain.log_min_duration", logMinDuration, state.QueryRunner)
 				if err != nil {
@@ -1681,18 +2198,27 @@ WHERE
 		}
 
 		if currValue, ok := settingsToReview["auto_explain.log_nested_statements"]; ok {
-			var logNestedIdx int
-			var logNestedOpts = []string{"on", "off"}
-			var optLabels = []string{"set to 'on' (recommended; will be saved to Postgres)", "leave as 'off'"}
-			err = survey.AskOne(&survey.Select{
-				Message: fmt.Sprintf("Setting auto_explain.log_nested_statements is currently set to '%s'", currValue),
-				Help:    "Consider statements executed inside functions for logging",
-				Options: optLabels,
-			}, &logNestedIdx)
-			if err != nil {
-				return err
+			var logNested string
+			if state.Inputs.Scripted {
+				if !state.Inputs.GUCS.AutoExplainLogNestedStatements.Valid {
+					panic("auto_explain.log_nested_statements setting needs review but was not provided")
+				}
+				logNested = state.Inputs.GUCS.AutoExplainLogNestedStatements.String
+			} else {
+				var logNestedIdx int
+				var logNestedOpts = []string{"on", "off"}
+				var optLabels = []string{"set to 'on' (recommended; will be saved to Postgres)", "leave as 'off'"}
+				err = survey.AskOne(&survey.Select{
+					Message: fmt.Sprintf("Setting auto_explain.log_nested_statements is currently set to '%s'", currValue),
+					Help:    "Consider statements executed inside functions for logging",
+					Options: optLabels,
+				}, &logNestedIdx)
+				if err != nil {
+					return err
+				}
+				logNested = logNestedOpts[logNestedIdx]
 			}
-			logNested := logNestedOpts[logNestedIdx]
+
 			if logNested != currValue {
 				err = applyConfigSetting("auto_explain.log_nested_statements", logNested, state.QueryRunner)
 				if err != nil {
