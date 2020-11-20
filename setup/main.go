@@ -216,7 +216,7 @@ func doStep(setupState *s.SetupState, step *s.Step) error {
 		// pass but there is no fatal error
 		panic("check failed and no resolution defined")
 	}
-	setupState.Verbose("? suggesting resolution")
+	setupState.Verbose("? attempting resolution")
 
 	err = step.Run(setupState)
 	if err != nil {
