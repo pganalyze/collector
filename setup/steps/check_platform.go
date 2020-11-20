@@ -7,8 +7,8 @@ import (
 	"github.com/shirou/gopsutil/host"
 )
 
-var DeterminePlatform = &s.Step{
-	Description: "Determine platform",
+var CheckPlatform = &s.Step{
+	Description: "Check platform",
 	Check: func(state *s.SetupState) (bool, error) {
 		hostInfo, err := host.Info()
 		if err != nil {

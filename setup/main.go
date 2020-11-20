@@ -21,7 +21,7 @@ const defaultConfigFile = "/etc/pganalyze-collector.conf"
 
 func main() {
 	steps := []*s.Step{
-		steps.DeterminePlatform,
+		steps.CheckPlatform,
 		steps.LoadConfig,
 		steps.SaveAPIKey,
 		steps.EstablishSuperuserConnection,
