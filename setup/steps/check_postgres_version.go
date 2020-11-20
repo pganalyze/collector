@@ -20,6 +20,10 @@ var CheckPostgresVersion = &s.Step{
 			return false, fmt.Errorf("not supported for Postgres versions older than 10; found %s", state.PGVersionStr)
 		}
 
+		if state.PGVersionNum >= 120000 {
+			state.QueryRunner.EnableCSV()
+		}
+
 		return true, nil
 	},
 }

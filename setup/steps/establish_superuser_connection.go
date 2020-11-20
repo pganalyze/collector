@@ -100,6 +100,7 @@ var EstablishSuperuserConnection = &s.Step{
 		}
 
 		state.QueryRunner = query.NewRunner(pgSuperuser, selectedPg.SocketDir, selectedPg.Port)
+
 		return nil
 	},
 }

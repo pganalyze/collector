@@ -18,10 +18,18 @@ type Runner struct {
 	Port     int
 	Password string
 	Database string
+
+	separator rune
+	csv       bool
 }
 
 func NewRunner(user, host string, port int) *Runner {
-	return &Runner{User: user, Host: host, Port: port, Password: "", Database: ""}
+	return &Runner{User: user, Host: host, Port: port, Password: "", Database: "", separator: '\t', csv: false}
+}
+
+func (qr *Runner) EnableCSV() {
+	qr.csv = true
+	qr.separator = ','
 }
 
 func (qr *Runner) PingSuper() error {
@@ -38,7 +46,16 @@ func (qr *Runner) PingSuper() error {
 }
 
 func (qr *Runner) runSQL(sql string) (string, error) {
-	cmd := exec.Command("psql", "--no-psqlrc", "--csv", "--tuples-only", "--command", sql)
+	args := []string{
+		"--no-psqlrc", "--tuples-only", "--command", sql,
+	}
+	if qr.csv {
+		args = append(args, "--csv")
+	} else {
+		args = append(args, "--no-align", "--field-separator", string(qr.separator))
+	}
+
+	cmd := exec.Command("psql", args...)
 	cmd.Env = os.Environ()
 	// N.B.: if there are conflicts, these later values override what's in os.Environ()
 	if qr.Host != "" {
@@ -126,6 +143,7 @@ func (qr *Runner) Query(sql string) ([]Row, error) {
 	}
 
 	r := csv.NewReader(strings.NewReader(result))
+	r.Comma = qr.separator
 	data, err := r.ReadAll()
 	if err != nil {
 		return nil, err
