@@ -19,9 +19,16 @@ var DeterminePlatform = &s.Step{
 		state.PlatformFamily = hostInfo.PlatformFamily
 		state.PlatformVersion = hostInfo.PlatformVersion
 
-		// TODO: relax this
-		if state.Platform != "ubuntu" || state.PlatformVersion != "20.04" {
-			return false, errors.New("not supported on platforms other than Ubuntu 20.04")
+		if state.Platform == "ubuntu" {
+			if state.PlatformVersion < "14.04" {
+				return false, errors.New("Ubuntu versions older than 14.04 are not supported")
+			}
+		} else if state.Platform == "debian" {
+			if state.PlatformVersion < "10.0" {
+				return false, errors.New("Debian versions older than 10 are not supported")
+			}
+		} else {
+			return false, errors.New("this distribution is not currently supported; please contact support")
 		}
 
 		return true, nil
