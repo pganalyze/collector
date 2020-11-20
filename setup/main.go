@@ -23,10 +23,11 @@ func main() {
 	steps := []*s.Step{
 		steps.CheckPlatform,
 		steps.LoadConfig,
-		steps.SaveAPIKey,
 		steps.EstablishSuperuserConnection,
 		steps.CheckPostgresVersion,
 		steps.CheckReplicationStatus,
+		steps.CheckRestartNeeded,
+		steps.SaveAPIKey,
 		steps.SelectDatabases,
 		steps.SpecifyMonitoringUser,
 		steps.CreateMonitoringUser,
