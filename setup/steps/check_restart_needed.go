@@ -1,15 +1,15 @@
 package steps
 
 import (
+	"errors"
+
+	"github.com/AlecAivazis/survey/v2"
 	s "github.com/pganalyze/collector/setup/state"
 )
 
 var CheckRestartNeeded = &s.Step{
 	Description: "Check whether a Postgres restart will be necessary to install",
 	Check: func(state *s.SetupState) (bool, error) {
-		if state.QueryRunner == nil {
-			return false, nil
-		}
 		row, err := state.QueryRunner.QueryRow(
 			`SELECT
 current_setting('shared_preload_libraries') LIKE '%pg_stat_statements%',
@@ -37,6 +37,21 @@ but you can use the alternative log-based setup to explore the feature without h
 restart Postgres.
 `,
 			)
+		}
+		if state.Inputs.Scripted {
+			return true, nil
+		}
+
+		var doSetup bool
+		err = survey.AskOne(&survey.Confirm{
+			Message: "Continue with setup?",
+			Default: false,
+		}, &doSetup)
+		if err != nil {
+			return false, err
+		}
+		if !doSetup {
+			return false, errors.New("setup aborted")
 		}
 		return true, nil
 	},
