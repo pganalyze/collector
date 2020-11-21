@@ -2,8 +2,10 @@ package steps
 
 import (
 	"errors"
+	"fmt"
 
 	survey "github.com/AlecAivazis/survey/v2"
+	"github.com/lib/pq"
 	s "github.com/pganalyze/collector/setup/state"
 	"github.com/pganalyze/collector/setup/util"
 )
@@ -42,7 +44,7 @@ var CreateLogExplainHelper = &s.Step{
 			doCreate = state.Inputs.CreateHelperFunctions.Bool
 		} else {
 			err := survey.AskOne(&survey.Confirm{
-				Message: "Create (or update) EXPLAIN helper function (will be saved to Postgres)?",
+				Message: "Create (or update) EXPLAIN helper function in each monitored database (will be saved to Postgres)?",
 				Default: false,
 			}, &doCreate)
 			if err != nil {
@@ -76,37 +78,47 @@ func createHelperInDB(state *s.SetupState, db string) error {
 	if isValid {
 		return nil
 	}
+	userKey, err := state.CurrentSection.GetKey("db_username")
+	if err != nil {
+		return err
+	}
+	pgaUser := userKey.String()
 
-	return dbRunner.Exec(`CREATE OR REPLACE FUNCTION pganalyze.explain(query text, params text[]) RETURNS text AS
-	$$
-	DECLARE
-		prepared_query text;
-		prepared_params text;
-		result text;
-	BEGIN
-		SELECT regexp_replace(query, ';+\s*\Z', '') INTO prepared_query;
-		IF prepared_query LIKE '%;%' THEN
-			RAISE EXCEPTION 'cannot run EXPLAIN when query contains semicolon';
-		END IF;
+	return dbRunner.Exec(
+		fmt.Sprintf(
+			`CREATE SCHEMA IF NOT EXISTS pganalyze; GRANT USAGE ON SCHEMA pganalyze TO %s;`,
+			pq.QuoteIdentifier(pgaUser),
+		) + `
+CREATE OR REPLACE FUNCTION pganalyze.explain(query text, params text[]) RETURNS text AS
+$$
+DECLARE
+	prepared_query text;
+	prepared_params text;
+	result text;
+BEGIN
+	SELECT regexp_replace(query, ';+\s*\Z', '') INTO prepared_query;
+	IF prepared_query LIKE '%;%' THEN
+		RAISE EXCEPTION 'cannot run EXPLAIN when query contains semicolon';
+	END IF;
 
-		IF array_length(params, 1) > 0 THEN
-			SELECT string_agg(quote_literal(param) || '::unknown', ',') FROM unnest(params) p(param) INTO prepared_params;
+	IF array_length(params, 1) > 0 THEN
+		SELECT string_agg(quote_literal(param) || '::unknown', ',') FROM unnest(params) p(param) INTO prepared_params;
 
-			EXECUTE 'PREPARE pganalyze_explain AS ' || prepared_query;
-			BEGIN
-				EXECUTE 'EXPLAIN (VERBOSE, FORMAT JSON) EXECUTE pganalyze_explain(' || prepared_params || ')' INTO STRICT result;
-			EXCEPTION WHEN OTHERS THEN
-				DEALLOCATE pganalyze_explain;
-				RAISE;
-			END;
+		EXECUTE 'PREPARE pganalyze_explain AS ' || prepared_query;
+		BEGIN
+			EXECUTE 'EXPLAIN (VERBOSE, FORMAT JSON) EXECUTE pganalyze_explain(' || prepared_params || ')' INTO STRICT result;
+		EXCEPTION WHEN OTHERS THEN
 			DEALLOCATE pganalyze_explain;
-		ELSE
-			EXECUTE 'EXPLAIN (VERBOSE, FORMAT JSON) ' || prepared_query INTO STRICT result;
-		END IF;
+			RAISE;
+		END;
+		DEALLOCATE pganalyze_explain;
+	ELSE
+		EXECUTE 'EXPLAIN (VERBOSE, FORMAT JSON) ' || prepared_query INTO STRICT result;
+	END IF;
 
-		RETURN result;
-	END
-	$$ LANGUAGE plpgsql VOLATILE SECURITY DEFINER;`)
+	RETURN result;
+END
+$$ LANGUAGE plpgsql VOLATILE SECURITY DEFINER;`)
 }
 
 func getMonitoredDBs(state *s.SetupState) ([]string, error) {

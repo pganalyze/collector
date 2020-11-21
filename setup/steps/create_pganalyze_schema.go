@@ -66,12 +66,19 @@ var CreatePganalyzeSchema = &s.Step{
 		if !doSetup {
 			return nil
 		}
-		return state.QueryRunner.Exec(`CREATE SCHEMA IF NOT EXISTS pganalyze;
-GRANT USAGE ON SCHEMA pganalyze TO pganalyze;
+
+		userKey, err := state.CurrentSection.GetKey("db_username")
+		if err != nil {
+			return err
+		}
+		pgaUser := userKey.String()
+
+		return state.QueryRunner.Exec(fmt.Sprintf(`CREATE SCHEMA IF NOT EXISTS pganalyze;
+GRANT USAGE ON SCHEMA pganalyze TO %s;
 
 CREATE OR REPLACE FUNCTION pganalyze.get_stat_replication() RETURNS SETOF pg_stat_replication AS
 $$
 	/* pganalyze-collector */ SELECT * FROM pg_catalog.pg_stat_replication;
-$$ LANGUAGE sql VOLATILE SECURITY DEFINER;`)
+$$ LANGUAGE sql VOLATILE SECURITY DEFINER;`, pq.QuoteIdentifier(pgaUser)))
 	},
 }

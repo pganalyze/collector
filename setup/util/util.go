@@ -50,7 +50,7 @@ func ValidateLogMinDurationStatement(ans interface{}) error {
 }
 
 var expectedMd5s = map[string]string{
-	"explain":              "6fb9a769167dcec3087c42ea74443c5f",
+	"explain":              "7a0a1784d170975d8538d3b8b38c3fad",
 	"get_stat_replication": "066680efec598232c0245477976a2c3d",
 }
 
