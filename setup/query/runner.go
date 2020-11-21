@@ -27,6 +27,12 @@ func NewRunner(user, host string, port int) *Runner {
 	return &Runner{User: user, Host: host, Port: port, Password: "", Database: "", separator: '\t', csv: false}
 }
 
+func (qr *Runner) InDB(dbname string) *Runner {
+	var newRunner Runner = *qr
+	newRunner.Database = dbname
+	return &newRunner
+}
+
 func (qr *Runner) EnableCSV() {
 	qr.csv = true
 	qr.separator = ','

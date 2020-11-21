@@ -19,7 +19,19 @@ var CreateLogExplainHelper = &s.Step{
 		if !logExplain {
 			return true, nil
 		}
-		return util.ValidateHelperFunction("explain", state.QueryRunner)
+		monitoredDBs, err := getMonitoredDBs(state)
+		if err != nil {
+			return false, err
+		}
+
+		for _, db := range monitoredDBs {
+			dbRunner := state.QueryRunner.InDB(db)
+			isValid, err := util.ValidateHelperFunction("explain", dbRunner)
+			if !isValid || err != nil {
+				return isValid, err
+			}
+		}
+		return true, nil
 	},
 	Run: func(state *s.SetupState) error {
 		var doCreate bool
@@ -41,35 +53,87 @@ var CreateLogExplainHelper = &s.Step{
 		if !doCreate {
 			return nil
 		}
-		return state.QueryRunner.Exec(`CREATE OR REPLACE FUNCTION pganalyze.explain(query text, params text[]) RETURNS text AS
-$$
-DECLARE
-	prepared_query text;
-	prepared_params text;
-	result text;
-BEGIN
-	SELECT regexp_replace(query, ';+\s*\Z', '') INTO prepared_query;
-	IF prepared_query LIKE '%;%' THEN
-		RAISE EXCEPTION 'cannot run EXPLAIN when query contains semicolon';
-	END IF;
-
-	IF array_length(params, 1) > 0 THEN
-		SELECT string_agg(quote_literal(param) || '::unknown', ',') FROM unnest(params) p(param) INTO prepared_params;
-
-		EXECUTE 'PREPARE pganalyze_explain AS ' || prepared_query;
-		BEGIN
-			EXECUTE 'EXPLAIN (VERBOSE, FORMAT JSON) EXECUTE pganalyze_explain(' || prepared_params || ')' INTO STRICT result;
-		EXCEPTION WHEN OTHERS THEN
-			DEALLOCATE pganalyze_explain;
-			RAISE;
-		END;
-		DEALLOCATE pganalyze_explain;
-	ELSE
-		EXECUTE 'EXPLAIN (VERBOSE, FORMAT JSON) ' || prepared_query INTO STRICT result;
-	END IF;
-
-	RETURN result;
-END
-$$ LANGUAGE plpgsql VOLATILE SECURITY DEFINER;`)
+		monitoredDBs, err := getMonitoredDBs(state)
+		if err != nil {
+			return err
+		}
+		for _, db := range monitoredDBs {
+			err := createHelperInDB(state, db)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
 	},
+}
+
+func createHelperInDB(state *s.SetupState, db string) error {
+	dbRunner := state.QueryRunner.InDB(db)
+	isValid, err := util.ValidateHelperFunction("explain", dbRunner)
+	if err != nil {
+		return err
+	}
+	if isValid {
+		return nil
+	}
+
+	return dbRunner.Exec(`CREATE OR REPLACE FUNCTION pganalyze.explain(query text, params text[]) RETURNS text AS
+	$$
+	DECLARE
+		prepared_query text;
+		prepared_params text;
+		result text;
+	BEGIN
+		SELECT regexp_replace(query, ';+\s*\Z', '') INTO prepared_query;
+		IF prepared_query LIKE '%;%' THEN
+			RAISE EXCEPTION 'cannot run EXPLAIN when query contains semicolon';
+		END IF;
+
+		IF array_length(params, 1) > 0 THEN
+			SELECT string_agg(quote_literal(param) || '::unknown', ',') FROM unnest(params) p(param) INTO prepared_params;
+
+			EXECUTE 'PREPARE pganalyze_explain AS ' || prepared_query;
+			BEGIN
+				EXECUTE 'EXPLAIN (VERBOSE, FORMAT JSON) EXECUTE pganalyze_explain(' || prepared_params || ')' INTO STRICT result;
+			EXCEPTION WHEN OTHERS THEN
+				DEALLOCATE pganalyze_explain;
+				RAISE;
+			END;
+			DEALLOCATE pganalyze_explain;
+		ELSE
+			EXECUTE 'EXPLAIN (VERBOSE, FORMAT JSON) ' || prepared_query INTO STRICT result;
+		END IF;
+
+		RETURN result;
+	END
+	$$ LANGUAGE plpgsql VOLATILE SECURITY DEFINER;`)
+}
+
+func getMonitoredDBs(state *s.SetupState) ([]string, error) {
+	key, err := state.CurrentSection.GetKey("db_name")
+	if err != nil {
+		return nil, err
+	}
+	dbs := key.Strings(",")
+	if len(dbs) == 0 || dbs[0] == "" {
+		return nil, errors.New("no databases found under db_name")
+	}
+	includesAll := dbs[len(dbs)-1] == "*"
+	if !includesAll {
+		return dbs, nil
+	}
+
+	// Expand the "*" entry here
+	dbs = dbs[:len(dbs)-1]
+	rows, err := state.QueryRunner.Query("SELECT datname FROM pg_database WHERE datallowconn AND NOT datistemplate")
+	if err != nil {
+		return nil, err
+	}
+	for _, row := range rows {
+		db := row.GetString(0)
+		if !util.Includes(dbs, db) {
+			dbs = append(dbs, db)
+		}
+	}
+	return dbs, nil
 }
