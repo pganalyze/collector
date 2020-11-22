@@ -505,7 +505,7 @@ func getBooleanOpts(currValue, recommendedValue string) (opts []string, optLabel
 		if currValue == "on" {
 			return opts, []string{"leave as 'on' (recommended)", "set to 'off' (will be saved to Postgres)"}
 		} else {
-			return opts, []string{"set to 'on' (recommended; will be saved to Postgres)", "leave as 'off"}
+			return opts, []string{"set to 'on' (recommended; will be saved to Postgres)", "leave as 'off'"}
 		}
 	} else {
 		opts = []string{"off", "on"}
