@@ -135,13 +135,17 @@ the manual collector install instructions: https://pganalyze.com/docs/install`)
 	setupState.Log(`Welcome to the pganalyze collector guided setup!
 
 We will go through a series of steps to set up the collector to monitor your
-Postgres database. We will not make any changes to your database or system
+Postgres server. We will not make any changes to Postgres or your system
 without confirmation.
 
-At a high level, we will:
+Before we do anything else, we will check whether a Postgres restart is necessary
+to enable any features. This will happen before making any changes to your system.
+You can abort the process if a restart would be required but is not feasible.
+
+After that, at a high level, we will:
 
  1. Configure database access and, if necessary, create the pganalyze database user with monitoring-only access
- 2. Update the collector configuration file with these settings
+ 2. Update the collector configuration file
  3. Set up the pg_stat_statements extension in your database for query performance monitoring
  4. (Optional) Change log-related configuration settings to enable the pganalyze Log Insights feature
  5. (Optional) Set up EXPLAIN plan collection to enable the pganalyze Automated EXPLAIN feature
