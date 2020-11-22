@@ -60,12 +60,12 @@ func main() {
 	}
 
 	var setupState state.SetupState
-	var verbose bool
+	var quiet bool
 	var logFile string
 	var inputsFile string
 	var recommended bool
 	flag.StringVar(&setupState.ConfigFilename, "config", defaultConfigFile, "specify alternative path for config file")
-	flag.BoolVar(&verbose, "verbose", false, "include verbose logging output")
+	flag.BoolVar(&quiet, "quiet", false, "omit verbose logging output")
 	flag.StringVar(&logFile, "log", "", "save output to log file (always includes verbose output)")
 	flag.StringVar(&inputsFile, "inputs", "", "do not prompt for user inputs and use JSON file describing answers to all setup prompts")
 	flag.BoolVar(&recommended, "recommended", false, "do not prompt for user inputs and use recommended values (the --inputs flag can override individual settings)")
@@ -73,7 +73,7 @@ func main() {
 
 	logger := log.NewLogger()
 	if logFile == "" {
-		if verbose {
+		if !quiet {
 			logger.VerboseOutput = os.Stdout
 		}
 	} else {
@@ -85,10 +85,10 @@ func main() {
 		defer log.Close()
 		outputBoth := io.MultiWriter(os.Stdout, log)
 		logger.StandardOutput = outputBoth
-		if verbose {
-			logger.VerboseOutput = outputBoth
-		} else {
+		if quiet {
 			logger.VerboseOutput = log
+		} else {
+			logger.VerboseOutput = outputBoth
 		}
 	}
 	setupState.Logger = &logger
