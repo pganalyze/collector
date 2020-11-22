@@ -200,6 +200,10 @@ Please run pganalyze-collector --reload to apply these changes.`)
 			os.Exit(1)
 		}
 	}
+	setupState.Log(`
+Setup complete!
+
+Check for integration instructions in the pganalyze app.`)
 }
 
 func doStep(setupState *s.SetupState, step *s.Step) error {
