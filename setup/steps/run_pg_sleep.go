@@ -1,6 +1,8 @@
 package steps
 
 import (
+	"fmt"
+
 	survey "github.com/AlecAivazis/survey/v2"
 	"github.com/guregu/null"
 	s "github.com/pganalyze/collector/setup/state"
@@ -9,7 +11,10 @@ import (
 var RunPgSleep = &s.Step{
 	Description: "Run a pg_sleep command to confirm everything is working",
 	Check: func(state *s.SetupState) (bool, error) {
-		return state.DidPgSleep || (state.Inputs.SkipPgSleep.Valid && state.Inputs.SkipPgSleep.Bool), nil
+		needsSleep := (state.Inputs.SkipLogInsights.Valid && !state.Inputs.SkipLogInsights.Bool) ||
+			(state.Inputs.SkipAutomatedExplain.Valid && !state.Inputs.SkipAutomatedExplain.Bool)
+		return !needsSleep || state.DidPgSleep ||
+			(state.Inputs.SkipPgSleep.Valid && state.Inputs.SkipPgSleep.Bool), nil
 	},
 	Run: func(state *s.SetupState) error {
 		var doPgSleep bool
@@ -18,8 +23,15 @@ var RunPgSleep = &s.Step{
 				doPgSleep = !state.Inputs.SkipPgSleep.Bool
 			}
 		} else {
+			hasAutomatedExplain := state.Inputs.SkipAutomatedExplain.Valid && !state.Inputs.SkipAutomatedExplain.Bool
+			var features string
+			if hasAutomatedExplain {
+				features = "Log Insights and Automated EXPLAIN"
+			} else {
+				features = "Log Insights"
+			}
 			err := survey.AskOne(&survey.Confirm{
-				Message: "Run pg_sleep command to confirm configuration?",
+				Message: fmt.Sprintf("Run pg_sleep command to confirm %s configuration?", features),
 				Default: true,
 				Help:    "You should see results in pganalyze a few seconds after the query completes",
 			}, &doPgSleep)
