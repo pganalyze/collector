@@ -24,7 +24,7 @@ current_setting('shared_preload_libraries') LIKE '%auto_explain%'`,
 			state.Log(
 				`
 NOTICE: A Postgres restart will be required to set up query performance monitoring.
-A prompt will ask to confirm the restart before this installer performs it.
+A prompt will ask to confirm the restart before this guided setup performs it.
 `,
 			)
 		} else if !hasAutoExplain {

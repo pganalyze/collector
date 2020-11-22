@@ -124,14 +124,15 @@ func main() {
 
 	id := os.Geteuid()
 	if id > 0 {
-		setupState.Log(`The pganalyze installer must be run with root privileges. It will provide
-details on the process and prompt you before making any changes to the
+		setupState.Log(`ERROR: The pganalyze collector guided setup must be run as root (or with sudo, if available)
+
+It will provide details on the process and prompt you before making any changes to the
 collector config file or your database. If you prefer, you can instead follow
-the manual collector install instructions.`)
+the manual collector install instructions: https://pganalyze.com/docs/install`)
 		os.Exit(1)
 	}
 
-	setupState.Log(`Welcome to the pganalyze collector installer!
+	setupState.Log(`Welcome to the pganalyze collector guided setup!
 
 We will go through a series of steps to set up the collector to monitor your
 Postgres database. We will not make any changes to your database or system
@@ -155,7 +156,7 @@ more at https://www.postgresql.org/docs/current/sql-altersystem.html .
 
 You can stop at any time by pressing Ctrl+C.
 
-If you stop before completing setup, you can resume by running the installer
+If you stop before completing setup, you can resume by running the guided setup
 again. We can pick up where you left off.`)
 	setupState.Log("")
 	if !setupState.Inputs.Scripted {
