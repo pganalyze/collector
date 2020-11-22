@@ -77,7 +77,19 @@ var SelectDatabases = &s.Step{
 			}
 
 			dbNames = append(dbNames, primaryDb)
-			if len(dbOpts) > 0 {
+			if len(dbOpts) == 1 {
+				var monitorAll bool
+				err = survey.AskOne(&survey.Confirm{
+					Message: "Monitor other databases created in the future (will be saved to collector config)?",
+					Default: true,
+				}, &monitorAll)
+				if err != nil {
+					return err
+				}
+				if monitorAll {
+					dbNames = append(dbNames, "*")
+				}
+			} else if len(dbOpts) > 1 {
 				var otherDbs []string
 				for _, db := range dbOpts {
 					if db == primaryDb {
@@ -85,18 +97,20 @@ var SelectDatabases = &s.Step{
 					}
 					otherDbs = append(otherDbs, db)
 				}
-				var othersOpt int
+				var othersOptIdx int
 				err = survey.AskOne(&survey.Select{
-					Message: "Monitor other databases? (will be saved to collector config):",
+					Message: "Monitor other databases (will be saved to collector config)?",
 					Help:    "The 'all' option will also automatically monitor all future databases created on this server",
-					Options: []string{"no other databases", "all other databases", "select databases..."},
-				}, &othersOpt)
+					Options: []string{"all other databases (including future ones)", "no other databases", "select databases..."},
+				}, &othersOptIdx)
 				if err != nil {
 					return err
 				}
-				if othersOpt == 1 {
+				if othersOptIdx == 0 {
 					dbNames = append(dbNames, "*")
-				} else if othersOpt == 2 {
+				} else if othersOptIdx == 1 {
+					/* do nothing */
+				} else if othersOptIdx == 2 {
 					var otherDbsSelected []string
 					err = survey.AskOne(&survey.MultiSelect{
 						Message: "Select other databases to monitor (will be saved to collector config):",
@@ -106,6 +120,8 @@ var SelectDatabases = &s.Step{
 						return err
 					}
 					dbNames = append(dbNames, otherDbsSelected...)
+				} else {
+					panic(fmt.Sprintf("unexpected other databases selection: %d", othersOptIdx))
 				}
 			}
 		}
