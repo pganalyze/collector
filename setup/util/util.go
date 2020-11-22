@@ -104,9 +104,7 @@ SELECT
               (SELECT row_number() OVER () AS line_no, line FROM
                 regexp_split_to_table(
                   pg_read_file(
-                    COALESCE(
-                      sourcefile, current_setting('data_directory') || '/postgresql.auto.conf'
-                    )
+                    COALESCE(sourcefile, 'postgresql.auto.conf')
                   ), '\s*$\s*', 'm'
                 ) AS lines(line)
               ) AS numbered_lines(line_no, line)
