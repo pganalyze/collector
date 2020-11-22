@@ -37,6 +37,15 @@ but you can use the alternative log-based setup to explore the feature without h
 restart Postgres.
 `,
 			)
+		} else {
+			state.Log(
+				`
+NOTICE: A Postgres restart will *not* be required to set up any features.
+
+Your system is ready to configure query performance monitoring, Log Insights, and
+Automated EXPLAIN.
+`,
+			)
 		}
 		if state.Inputs.Scripted {
 			return true, nil
@@ -45,7 +54,8 @@ restart Postgres.
 		var doSetup bool
 		err = survey.AskOne(&survey.Confirm{
 			Message: "Continue with setup?",
-			Default: false,
+			// Default to continue if no restart required
+			Default: hasPgss && hasAutoExplain,
 		}, &doSetup)
 		if err != nil {
 			return false, err
