@@ -394,7 +394,7 @@ func main() {
 	}
 
 	if reloadRun && !testRun {
-		util.Reload(logger)
+		Reload(logger)
 		return
 	}
 
@@ -498,7 +498,7 @@ ReadConfigAndRun:
 
 	if reloadRun {
 		if reloadOkay {
-			util.Reload(logger)
+			Reload(logger)
 		} else {
 			logger.PrintError("Error: Reload requested, but ignoring since configuration errors are present")
 		}
@@ -507,4 +507,14 @@ ReadConfigAndRun:
 	if testRunAndTrace {
 		trace.Stop()
 	}
+}
+
+func Reload(logger *util.Logger) {
+	pid, err := util.Reload()
+	if err != nil {
+		logger.PrintError("Error: Failed to reload collector: %s\n", err)
+		os.Exit(1)
+	}
+	logger.PrintInfo("Successfully reloaded pganalyze collector (PID %d)\n", pid)
+	os.Exit(0)
 }

@@ -2,11 +2,8 @@
 
 package util
 
-import (
-	"os"
-)
+import "errors"
 
-func Reload(logger *Logger) {
-	logger.PrintError("Error: The reload command is only supported on POSIX systems\n")
-	os.Exit(1)
+func Reload(logger *Logger) (reloadedPid int, err error) {
+	return -1, errors.New("the reload command is only supported on POSIX systems")
 }

@@ -2,10 +2,11 @@ package steps
 
 import (
 	"errors"
+	"fmt"
 
 	survey "github.com/AlecAivazis/survey/v2"
 	s "github.com/pganalyze/collector/setup/state"
-	"github.com/pganalyze/collector/setup/util"
+	"github.com/pganalyze/collector/util"
 )
 
 var ReloadCollector = &s.Step{
@@ -32,9 +33,9 @@ var ReloadCollector = &s.Step{
 		if !doReload {
 			return nil
 		}
-		err := util.ReloadCollector()
+		_, err := util.Reload()
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to reload collector: %s", err)
 		}
 		state.NeedsReload = false
 		state.DidReload = true
