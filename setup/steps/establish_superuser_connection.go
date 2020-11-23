@@ -81,7 +81,7 @@ var EstablishSuperuserConnection = &s.Step{
 			pgSuperuser = state.Inputs.PGSetupConnUser.String
 		} else {
 			err = survey.AskOne(&survey.Select{
-				Message: "Select Postgres superuser to connect as for configuration purposes",
+				Message: "Select Postgres superuser to connect as for initial setup:",
 				Help:    "We will create a separate, restricted monitoring user for the collector later",
 				Options: []string{"postgres", "another user..."},
 			}, &pgSuperuser)
@@ -90,7 +90,7 @@ var EstablishSuperuserConnection = &s.Step{
 			}
 			if pgSuperuser != "postgres" {
 				err = survey.AskOne(&survey.Input{
-					Message: "Enter Postgres superuser to connect as for configuration purposes",
+					Message: "Enter Postgres superuser to connect as for initial setup:",
 					Help:    "We will create a separate, restricted monitoring user for the collector later",
 				}, &pgSuperuser, survey.WithValidator(survey.Required))
 				if err != nil {
