@@ -135,6 +135,10 @@ the manual collector install instructions: https://pganalyze.com/docs/install`)
 
 	setupState.Log(`Welcome to the pganalyze collector guided setup!
 
+IMPORTANT: Please note that this setup only works when monitoring a self-managed system,
+and installing the collector directly on your database server. For other setup types,
+please check the installation instructions https://pganalyze.com/docs/install .
+
 We will go through a series of steps to set up the collector to monitor your
 Postgres server. We will not make any changes to Postgres or your system
 without confirmation.
