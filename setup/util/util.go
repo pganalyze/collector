@@ -55,14 +55,18 @@ var expectedMd5s = map[string]string{
 }
 
 func ValidateHelperFunction(fn string, runner *query.Runner) (bool, error) {
-	// TODO: validating full function definition may be too strict?
 	expected, ok := expectedMd5s[fn]
 	if !ok {
 		return false, fmt.Errorf("unrecognized helper function %s", fn)
 	}
 	row, err := runner.QueryRow(
 		fmt.Sprintf(
-			"SELECT md5(btrim(prosrc, E' \\n\\r\\t')) FROM pg_proc WHERE proname = %s AND pronamespace::regnamespace::text = 'pganalyze'",
+			`SELECT md5(btrim(prosrc, E' \\n\\r\\t'))
+FROM pg_proc INNER JOIN pg_user ON (pg_proc.proowner = pg_user.usesysid)
+WHERE proname = %s
+	AND pronamespace::regnamespace::text = 'pganalyze'
+	AND prosecdef
+  AND pg_user.usesuper`,
 			pq.QuoteLiteral(fn),
 		),
 	)
