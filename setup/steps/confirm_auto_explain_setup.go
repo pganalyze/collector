@@ -1,10 +1,13 @@
 package steps
 
 import (
+	"strings"
+
 	survey "github.com/AlecAivazis/survey/v2"
 	"github.com/guregu/null"
 	"github.com/pganalyze/collector/setup/state"
 	s "github.com/pganalyze/collector/setup/state"
+	"github.com/pganalyze/collector/setup/util"
 )
 
 var ConfirmAutoExplainSetup = &s.Step{
@@ -13,13 +16,43 @@ var ConfirmAutoExplainSetup = &s.Step{
 	Kind:        state.LogInsightsStep,
 	Description: "Check whether to configure Automated EXPLAIN",
 	Check: func(state *s.SetupState) (bool, error) {
-		return state.Inputs.SkipAutomatedExplain.Valid, nil
+		if state.Inputs.SkipAutomatedExplain.Valid {
+			return !state.Inputs.SkipAutomatedExplain.Bool, nil
+		}
+
+		if state.CurrentSection.HasKey("enable_log_explain") {
+			isLogExplainKey, err := state.CurrentSection.GetKey("enable_log_explain")
+			if err != nil {
+				return false, err
+			}
+			isLogExplain, err := isLogExplainKey.Bool()
+			if err != nil {
+				return false, err
+			}
+			if isLogExplain {
+				return true, nil
+			}
+		}
+
+		// assume auto_explain if we got this far
+		spl, err := util.GetPendingSharedPreloadLibraries(state.QueryRunner)
+		if err != nil {
+			return false, err
+		}
+		return strings.Contains(spl, "auto_explain"), nil
 	},
 	Run: func(state *s.SetupState) error {
+		state.Log(`
+Log Insights and query performance setup is almost complete. You can complete it
+now, or proceed to configuring the optional Automated EXPLAIN feature. Automated
+EXPLAIN will require either setting up the auto_explain module (recommended) or
+creating helper functions in all monitored databases.
+
+Learn more at https://pganalyze.com/postgres-explain
+`)
 		var setUpExplain bool
 		err := survey.AskOne(&survey.Confirm{
 			Message: "Proceed to configuring optional Automated EXPLAIN feature?",
-			Help:    "Learn more at https://pganalyze.com/postgres-explain",
 			Default: false,
 		}, &setUpExplain)
 		if err != nil {
