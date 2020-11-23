@@ -180,16 +180,15 @@ again. We can pick up where you left off.`)
 	}
 
 	for _, step := range steps {
-		if (step.Kind == state.LogInsightsStep &&
-			setupState.Inputs.SkipLogInsights.Valid &&
-			setupState.Inputs.SkipLogInsights.Bool) ||
-			(step.Kind == state.AutomatedExplainStep &&
-				((setupState.Inputs.SkipLogInsights.Valid &&
-					setupState.Inputs.SkipLogInsights.Bool) ||
-					(setupState.Inputs.SkipAutomatedExplain.Valid &&
-						setupState.Inputs.SkipAutomatedExplain.Bool))) {
+		skipLogInsights := setupState.Inputs.SkipLogInsights.Valid && setupState.Inputs.SkipLogInsights.Bool
+		skipAutomatedExplain := setupState.Inputs.SkipLogInsights.Valid && setupState.Inputs.SkipLogInsights.Bool
+		if step.Kind == state.LogInsightsStep && skipLogInsights {
 			continue
 		}
+		if step.Kind == state.AutomatedExplainStep && (skipLogInsights || skipAutomatedExplain) {
+			continue
+		}
+
 		err := doStep(&setupState, step)
 		if err != nil {
 			if setupState.NeedsReload {
