@@ -34,7 +34,7 @@ var EnableAutoExplain = &s.Step{
 			err := survey.AskOne(&survey.Confirm{
 				Message: "Add auto_explain to shared_preload_libraries (will be saved to Postgres)?",
 				Default: false,
-				Help:    "Postgres will have to be restarted in a later step to apply this configuration change; learn more about shared_preload_libraries here: https://www.postgresql.org/docs/current/runtime-config-client.html#GUC-SHARED-PRELOAD-LIBRARIES",
+				Help:    "Postgres will have to be restarted in a later step to apply this configuration change; learn more about Automated EXPLAIN at https://pganalyze.com/postgres-explain",
 			}, &doAdd)
 			if err != nil {
 				return err
