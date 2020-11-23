@@ -29,6 +29,8 @@ const LogPrefixCustom10 string = "%m [%p]: [%l-1] db=%d,user=%u "
 const LogPrefixSimple string = "%m [%p] "
 const LogPrefixEmpty string = ""
 
+var RecommendedPrefixIdx = 4
+
 var SupportedPrefixes = []string{
 	LogPrefixAmazonRds, LogPrefixAzure, LogPrefixCustom1, LogPrefixCustom2,
 	LogPrefixCustom3, LogPrefixCustom4, LogPrefixCustom5, LogPrefixCustom6,

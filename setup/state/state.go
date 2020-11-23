@@ -1,23 +1,48 @@
 package state
 
 import (
+	"sort"
+
 	"github.com/go-ini/ini"
 	"github.com/guregu/null"
+	"github.com/pganalyze/collector/logs"
 	"github.com/pganalyze/collector/setup/log"
 	"github.com/pganalyze/collector/setup/query"
 )
 
-var SupportedLogLinePrefixes = []string{
-	"%m [%p] %q[user=%u,db=%d,app=%a] ",
-	"%m [%p] %q[user=%u,db=%d,app=%a,host=%h] ",
-	"%t:%r:%u@%d:[%p]:",
-	"%t [%p-%l] %q%u@%d ",
-	"%t [%p]: [%l-1] user=%u,db=%d - PG-%e ",
-	"%t [%p]: [%l-1] user=%u,db=%d,app=%a,client=%h ",
-	"%t [%p]: [%l-1] [trx_id=%x] user=%u,db=%d ",
-	"%m %r %u %a [%c] [%p] ",
-	"%m [%p][%v] : [%l-1] %q[app=%a] ",
-	"%m [%p] ",
+var SupportedLogLinePrefixes []string
+
+func init() {
+	SupportedLogLinePrefixes = make([]string, len(logs.SupportedPrefixes))
+	copy(SupportedLogLinePrefixes, logs.SupportedPrefixes)
+	recommended := SupportedLogLinePrefixes[logs.RecommendedPrefixIdx]
+
+	sort.SliceStable(SupportedLogLinePrefixes, func(i, j int) bool {
+		if SupportedLogLinePrefixes[i] == recommended {
+			return true
+		} else if SupportedLogLinePrefixes[j] == recommended {
+			return false
+		} else {
+			return i < j
+		}
+	})
+
+	RecommendedGUCS = SetupGUCS{
+		LogErrorVerbosity:       null.StringFrom("default"),
+		LogDuration:             null.StringFrom("off"),
+		LogStatement:            null.StringFrom("none"),
+		LogMinDurationStatement: null.IntFrom(1000),
+		LogLinePrefix:           null.StringFrom(SupportedLogLinePrefixes[0]),
+
+		AutoExplainLogAnalyze:          null.StringFrom("on"),
+		AutoExplainLogBuffers:          null.StringFrom("on"),
+		AutoExplainLogTiming:           null.StringFrom("off"),
+		AutoExplainLogTriggers:         null.StringFrom("on"),
+		AutoExplainLogVerbose:          null.StringFrom("on"),
+		AutoExplainLogFormat:           null.StringFrom("json"),
+		AutoExplainLogMinDuration:      null.IntFrom(1000),
+		AutoExplainLogNestedStatements: null.StringFrom("on"),
+	}
 }
 
 type SetupSettings struct {
@@ -49,22 +74,7 @@ type SetupGUCS struct {
 	AutoExplainLogNestedStatements null.String `json:"auto_explain.log_nested_statements"`
 }
 
-var RecommendedGUCS = SetupGUCS{
-	LogErrorVerbosity:       null.StringFrom("default"),
-	LogDuration:             null.StringFrom("off"),
-	LogStatement:            null.StringFrom("none"),
-	LogMinDurationStatement: null.IntFrom(1000),
-	LogLinePrefix:           null.StringFrom(SupportedLogLinePrefixes[0]),
-
-	AutoExplainLogAnalyze:          null.StringFrom("on"),
-	AutoExplainLogBuffers:          null.StringFrom("on"),
-	AutoExplainLogTiming:           null.StringFrom("off"),
-	AutoExplainLogTriggers:         null.StringFrom("on"),
-	AutoExplainLogVerbose:          null.StringFrom("on"),
-	AutoExplainLogFormat:           null.StringFrom("json"),
-	AutoExplainLogMinDuration:      null.IntFrom(1000),
-	AutoExplainLogNestedStatements: null.StringFrom("on"),
-}
+var RecommendedGUCS SetupGUCS
 
 type SetupInputs struct {
 	Scripted bool
