@@ -62,6 +62,6 @@ var RestartPostgres = &s.Step{
 			return nil
 		}
 
-		return service.RestartPostgres()
+		return service.RestartPostgres(state)
 	},
 }
