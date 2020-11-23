@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"os"
 
+	"github.com/guregu/null"
 	flag "github.com/ogier/pflag"
 
 	survey "github.com/AlecAivazis/survey/v2"
@@ -65,7 +66,11 @@ func main() {
 	var logFile string
 	var inputsFile string
 	var recommended bool
+	var apiKey string
+	var apiBaseURL string
 	flag.StringVar(&setupState.ConfigFilename, "config", defaultConfigFile, "specify alternative path for config file")
+	flag.StringVar(&apiKey, "api-key", "", "pganalyze API key")
+	flag.StringVar(&apiBaseURL, "api-base-url", "", "pganalyze API base URL")
 	flag.BoolVar(&quiet, "quiet", false, "omit verbose logging output")
 	flag.StringVar(&logFile, "log", "", "save output to log file (always includes verbose output)")
 	flag.StringVar(&inputsFile, "inputs", "", "do not prompt for user inputs and use JSON file describing answers to all setup prompts")
@@ -120,6 +125,12 @@ func main() {
 			setupState.Log("ERROR: could not close stdin for scripted input: %s", err)
 			os.Exit(1)
 		}
+	}
+	if apiKey != "" {
+		inputs.Settings.APIKey = null.StringFrom(apiKey)
+	}
+	if apiBaseURL != "" {
+		inputs.Settings.APIBaseURL = null.StringFrom(apiBaseURL)
 	}
 	setupState.Inputs = &inputs
 

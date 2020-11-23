@@ -47,6 +47,7 @@ func init() {
 
 type SetupSettings struct {
 	APIKey        null.String `json:"api_key"`
+	APIBaseURL    null.String `json:"api_base_url"`
 	DBName        null.String `json:"db_name"`
 	DBUsername    null.String `json:"db_username"`
 	DBPassword    null.String `json:"db_password"`
