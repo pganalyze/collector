@@ -69,6 +69,20 @@ var ConfigureAutoExplain = &s.Step{
 			settingsToReview[row.GetString(0)] = row.GetString(1)
 		}
 
+		// N.B.: we ask about log_timing first since this is typically most impactful
+		if currValue, ok := settingsToReview["auto_explain.log_timing"]; ok {
+			logTiming, err := getLogTimingValue(state, currValue)
+			if err != nil {
+				return err
+			}
+			if logTiming != currValue {
+				err = util.ApplyConfigSetting("auto_explain.log_timing", logTiming, state.QueryRunner)
+				if err != nil {
+					return err
+				}
+			}
+		}
+
 		if currValue, ok := settingsToReview["auto_explain.log_analyze"]; ok {
 			logAnalyze, err := getLogAnalyzeValue(state, currValue)
 			if err != nil {
@@ -99,19 +113,6 @@ var ConfigureAutoExplain = &s.Step{
 
 				if logBuffers != currValue {
 					err = util.ApplyConfigSetting("auto_explain.log_buffers", logBuffers, state.QueryRunner)
-					if err != nil {
-						return err
-					}
-				}
-			}
-
-			if currValue, ok := settingsToReview["auto_explain.log_timing"]; ok {
-				logTiming, err := getLogTimingValue(state, currValue)
-				if err != nil {
-					return err
-				}
-				if logTiming != currValue {
-					err = util.ApplyConfigSetting("auto_explain.log_timing", logTiming, state.QueryRunner)
 					if err != nil {
 						return err
 					}
