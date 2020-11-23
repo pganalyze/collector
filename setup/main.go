@@ -3,11 +3,12 @@ package main
 import (
 	"encoding/json"
 	"errors"
-	"flag"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
+
+	flag "github.com/ogier/pflag"
 
 	survey "github.com/AlecAivazis/survey/v2"
 
