@@ -201,9 +201,9 @@ Please run pganalyze-collector --reload to apply these changes.`)
 		}
 	}
 	setupState.Log(`
-Setup complete!
+Collector setup complete!
 
-Check for integration instructions in the pganalyze app.`)
+For next steps, go back to the pganalyze app in your web browser.`)
 }
 
 func doStep(setupState *s.SetupState, step *s.Step) error {
