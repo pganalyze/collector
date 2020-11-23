@@ -46,7 +46,9 @@ var ConfirmAutoExplainSetup = &s.Step{
 Log Insights and query performance setup is almost complete. You can complete it
 now, or proceed to configuring the optional Automated EXPLAIN feature. Automated
 EXPLAIN will require either setting up the auto_explain module (recommended) or
-creating helper functions in all monitored databases.
+creating helper functions in all monitored databases. The auto_explain module has
+minimal impact on most query workloads with our recommended settings; we will review
+these during setup.
 
 Learn more at https://pganalyze.com/postgres-explain
 `)
