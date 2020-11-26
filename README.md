@@ -51,7 +51,7 @@ to run as a superuser, you can setup a separate monitoring user like this:
 ```
 CREATE SCHEMA pganalyze;
 
-CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
+CREATE EXTENSION IF NOT EXISTS pg_stat_statements WITH SCHEMA public;
 
 CREATE OR REPLACE FUNCTION pganalyze.get_stat_statements(showtext boolean = true) RETURNS SETOF pg_stat_statements AS
 $$
@@ -102,7 +102,7 @@ $$ LANGUAGE sql VOLATILE SECURITY DEFINER;
 If you are using the Buffer Cache report in pganalyze, you will also need to create this additional helper method:
 
 ```
-CREATE EXTENSION IF NOT EXISTS pg_buffercache;
+CREATE EXTENSION IF NOT EXISTS pg_buffercache WITH SCHEMA public;
 CREATE OR REPLACE FUNCTION pganalyze.get_buffercache() RETURNS SETOF public.pg_buffercache AS
 $$
   /* pganalyze-collector */ SELECT * FROM public.pg_buffercache;
