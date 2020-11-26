@@ -8,7 +8,9 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"os/user"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 
@@ -54,13 +56,30 @@ func restartPostgresPgCtl(state *s.SetupState) error {
 	} else {
 		return errors.New("could not determine data directory ownership")
 	}
+	datDirOwner, err := user.LookupId(fmt.Sprintf("%d", uid))
+	if err != nil {
+		return err
+	}
+	gids, err := datDirOwner.GroupIds()
+	if err != nil {
+		return fmt.Errorf("could not determine data directory ownership: %s", err)
+	}
+	var numGids []uint32
+	for _, gid := range gids {
+		numGid, err := strconv.ParseUint(gid, 10, 32)
+		if err != nil {
+			return fmt.Errorf("could not determine data directory ownership: user group %s could not be parsed: %s", gid, err)
+		}
+		numGids = append(numGids, uint32(numGid))
+	}
 
 	pgCtlPath, err := getPgCtlLocation()
 	cmd := exec.Command(pgCtlPath, "--pgdata", dataDir, "--wait", "--mode", "fast", "restart")
 	cmd.SysProcAttr = &syscall.SysProcAttr{}
 	cmd.SysProcAttr.Credential = &syscall.Credential{
-		Uid: uid,
-		Gid: gid,
+		Uid:    uid,
+		Gid:    gid,
+		Groups: numGids,
 	}
 
 	out, err := cmd.CombinedOutput()
