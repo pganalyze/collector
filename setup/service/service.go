@@ -67,6 +67,11 @@ func restartPostgresPgCtl(state *s.SetupState) error {
 }
 
 func getPgCtlLocation() (string, error) {
+	_, err := exec.Command("pg_ctl", "--help").CombinedOutput()
+	if err == nil {
+		// it's in PATH, no need to look for it
+		return "pg_ctl", nil
+	}
 	cmd := exec.Command("pg_config")
 
 	stdout, err := cmd.StdoutPipe()
@@ -112,6 +117,6 @@ func getPgCtlLocation() (string, error) {
 		val := strings.TrimSpace(keyVal[1])
 		return filepath.Join(val, "pg_ctl"), nil
 	}
-	// we did not find it; let's hope that it's in PATH
-	return "pg_ctl", nil
+
+	return "", errors.New("could not find pg_ctl")
 }
