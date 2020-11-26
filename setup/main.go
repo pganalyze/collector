@@ -68,9 +68,11 @@ func main() {
 	var recommended bool
 	var apiKey string
 	var apiBaseURL string
+	var dbName string
 	flag.StringVar(&setupState.ConfigFilename, "config", defaultConfigFile, "specify alternative path for config file")
 	flag.StringVar(&apiKey, "api-key", "", "pganalyze API key")
 	flag.StringVar(&apiBaseURL, "api-base-url", "", "pganalyze API base URL")
+	flag.StringVar(&dbName, "db-name", "", "database name to monitor")
 	flag.BoolVar(&quiet, "quiet", false, "omit verbose logging output")
 	flag.StringVar(&logFile, "log", "", "save output to log file (always includes verbose output)")
 	flag.StringVar(&inputsFile, "inputs", "", "do not prompt for user inputs and use JSON file describing answers to all setup prompts")
@@ -132,6 +134,10 @@ func main() {
 	if apiBaseURL != "" {
 		inputs.Settings.APIBaseURL = null.StringFrom(apiBaseURL)
 	}
+	if dbName != "" {
+		inputs.Settings.DBName = null.StringFrom(dbName)
+	}
+
 	setupState.Inputs = &inputs
 
 	id := os.Geteuid()
