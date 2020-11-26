@@ -1,9 +1,9 @@
 DOCKER_BUILD_OPTS = -t pganalyze-collector-test ..
 DOCKER_RUN_CMD = docker run --name pganalyze-collector-test -v `pwd`/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d/ -e POSTGRES_HOST_AUTH_METHOD=trust -d pganalyze-collector-test
 
-.PHONY: pg92 pg93 pg94 pg95 pg96 pg10 pg11 pg12 pg13
+.PHONY: pg92 pg93 pg94 pg95 pg96 pg10 pg11 pg12 pg13 guided-setup
 
-all: pg92 pg93 pg94 pg95 pg96 pg10 pg11 pg12 pg13
+all: pg92 pg93 pg94 pg95 pg96 pg10 pg11 pg12 pg13 guided-setup
 
 pg92:
 	docker build -f Dockerfile.test-pg92 $(DOCKER_BUILD_OPTS)
@@ -211,3 +211,16 @@ pg13:
 	fi
 	jq '.queryInformations[].normalizedQuery' pg13_2.json | sort --version-sort -f > pg13.out
 	diff -Naur pg13.expected pg13.out && echo 'success'
+
+guided-setup:
+	docker build -f Dockerfile.test-guided-setup $(DOCKER_BUILD_OPTS)
+	$(DOCKER_RUN_CMD)
+	sleep 10
+	docker exec --user postgres pganalyze-collector-test pg_ctl --pgdata /var/lib/postgresql/10/main --wait start --log /tmp/postgres.log --options "-c config_file=/etc/postgresql/10/main/postgresql.conf"
+	docker exec --user pganalyze --detach pganalyze-collector-test pganalyze-collector
+
+	docker exec --privileged pganalyze-collector-test env PGA_SETUP_USE_PG_CTL=true pganalyze-collector-setup --api-key=abc123 --recommended --db-name=postgres
+
+	docker exec --user postgres pganalyze-collector-test pg_ctl --pgdata /tmp/pgdata --wait stop --mode fast
+	docker rm -f pganalyze-collector-test
+	docker rmi pganalyze-collector-test
