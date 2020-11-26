@@ -43,6 +43,37 @@ func init() {
 		AutoExplainLogMinDuration:      null.IntFrom(1000),
 		AutoExplainLogNestedStatements: null.StringFrom("on"),
 	}
+
+	RecommendedInputs = SetupInputs{
+		Scripted: true,
+
+		Settings: RecommendedSettings,
+		GUCS:     RecommendedGUCS,
+
+		PGSetupConnPort: null.IntFrom(5432),
+		PGSetupConnUser: null.StringFrom("postgres"),
+
+		CreateMonitoringUser:       null.BoolFrom(true),
+		GenerateMonitoringPassword: null.BoolFrom(true),
+		UpdateMonitoringPassword:   null.BoolFrom(true),
+		SetUpMonitoringUser:        null.BoolFrom(true),
+		CreateHelperFunctions:      null.BoolFrom(true),
+		CreatePgStatStatements:     null.BoolFrom(true),
+		EnablePgStatStatements:     null.BoolFrom(true),
+
+		GuessLogLocation: null.BoolFrom(true),
+
+		UseLogBasedExplain: null.BoolFrom(false),
+		EnableAutoExplain:  null.BoolFrom(true),
+
+		ConfirmCollectorReload: null.BoolFrom(true),
+		ConfirmPostgresRestart: null.BoolFrom(true),
+
+		SkipLogInsights:            null.BoolFrom(false),
+		SkipAutomatedExplain:       null.BoolFrom(false),
+		SkipAutoExplainRecommended: null.BoolFrom(false),
+		SkipPgSleep:                null.BoolFrom(false),
+	}
 }
 
 type SetupSettings struct {
@@ -110,36 +141,7 @@ type SetupInputs struct {
 	SkipPgSleep                null.Bool `json:"skip_pg_sleep"`
 }
 
-var RecommendedInputs = SetupInputs{
-	Scripted: true,
-
-	Settings: RecommendedSettings,
-	GUCS:     RecommendedGUCS,
-
-	PGSetupConnPort: null.IntFrom(5432),
-	PGSetupConnUser: null.StringFrom("postgres"),
-
-	CreateMonitoringUser:       null.BoolFrom(true),
-	GenerateMonitoringPassword: null.BoolFrom(true),
-	UpdateMonitoringPassword:   null.BoolFrom(true),
-	SetUpMonitoringUser:        null.BoolFrom(true),
-	CreateHelperFunctions:      null.BoolFrom(true),
-	CreatePgStatStatements:     null.BoolFrom(true),
-	EnablePgStatStatements:     null.BoolFrom(true),
-
-	GuessLogLocation: null.BoolFrom(true),
-
-	UseLogBasedExplain: null.BoolFrom(false),
-	EnableAutoExplain:  null.BoolFrom(true),
-
-	ConfirmCollectorReload: null.BoolFrom(true),
-	ConfirmPostgresRestart: null.BoolFrom(true),
-
-	SkipLogInsights:            null.BoolFrom(false),
-	SkipAutomatedExplain:       null.BoolFrom(false),
-	SkipAutoExplainRecommended: null.BoolFrom(false),
-	SkipPgSleep:                null.BoolFrom(false),
-}
+var RecommendedInputs SetupInputs
 
 type SetupState struct {
 	OperatingSystem string
