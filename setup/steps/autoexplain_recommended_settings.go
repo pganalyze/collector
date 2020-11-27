@@ -28,7 +28,15 @@ var ConfigureAutoExplain = &s.Step{
 			return logExplain, err
 		}
 
-		return false, nil
+		autoExplainGucsQuery := getAutoExplainGUCSQuery(state)
+		rows, err := state.QueryRunner.Query(
+			autoExplainGucsQuery,
+		)
+		if err != nil {
+			return false, fmt.Errorf("error checking existing settings: %s", err)
+		}
+
+		return len(rows) == 0, nil
 	},
 	Run: func(state *s.SetupState) error {
 		var doReview bool
@@ -40,7 +48,7 @@ var ConfigureAutoExplain = &s.Step{
 			err := survey.AskOne(&survey.Confirm{
 				Message: "Review auto_explain configuration settings?",
 				Default: false,
-				Help:    "Optional, but will ensure best balance of monitoring visibility and performance; review these settings at https://www.postgresql.org/docs/current/auto-explain.html#id-1.11.7.13.5",
+				Help:    "Optional, but will ensure best balance of monitoring visibility and performance; review these settings at https://pganalyze.com/docs/explain/setup/auto_explain",
 			}, &doReview)
 			if err != nil {
 				return err
@@ -52,7 +60,6 @@ var ConfigureAutoExplain = &s.Step{
 			return nil
 		}
 
-		settingsToReview := make(map[string]string)
 		autoExplainGucsQuery := getAutoExplainGUCSQuery(state)
 		rows, err := state.QueryRunner.Query(
 			autoExplainGucsQuery,
@@ -65,6 +72,7 @@ var ConfigureAutoExplain = &s.Step{
 			state.DidAutoExplainRecommendedSettings = true
 			return nil
 		}
+		settingsToReview := make(map[string]string)
 		for _, row := range rows {
 			settingsToReview[row.GetString(0)] = row.GetString(1)
 		}
@@ -253,7 +261,7 @@ WHERE `
 			predParts = append(
 				predParts,
 				fmt.Sprintf(
-					"(name = 'auto_explain.log_min_duration' AND setting::float <> %d)",
+					"(name = 'auto_explain.log_min_duration' AND setting::integer <> %d)",
 					state.Inputs.GUCS.AutoExplainLogMinDuration.Int64,
 				),
 			)
@@ -275,7 +283,7 @@ WHERE `
 (name = 'auto_explain.log_triggers' AND setting <> %s) OR
 (name = 'auto_explain.log_verbose' AND setting <> %s) OR
 (name = 'auto_explain.log_format' AND setting <> %s) OR
-(name = 'auto_explain.log_min_duration' AND setting::float < %d) OR
+(name = 'auto_explain.log_min_duration' AND setting::integer < %d) OR
 (name = 'auto_explain.log_nested_statements' AND setting <> %s)`,
 			pq.QuoteLiteral(s.RecommendedGUCS.AutoExplainLogAnalyze.String),
 			pq.QuoteLiteral(s.RecommendedGUCS.AutoExplainLogBuffers.String),
@@ -491,7 +499,7 @@ func getLogNestedStatements(state *s.SetupState, currValue string) (string, erro
 	opts, optLabels := getBooleanOpts(currValue, s.RecommendedGUCS.AutoExplainLogNestedStatements.String)
 	err := survey.AskOne(&survey.Select{
 		Message: fmt.Sprintf("Setting auto_explain.log_nested_statements is currently set to '%s'", currValue),
-		Help:    "Consider statements executed inside functions for logging",
+		Help:    "Causes nested statements (statements executed inside a function) to be considered for logging",
 		Options: optLabels,
 	}, &logNestedIdx)
 	if err != nil {
