@@ -18,6 +18,8 @@ import (
 var ApplyMonitoringUserPasswd = &s.Step{
 	Description: "Apply monitoring user password",
 	Check: func(state *s.SetupState) (bool, error) {
+		// We're using config.Read here (and only here) to be able to use the same
+		// GetPqOpenString we use in the main collector code
 		cfg, err := config.Read(
 			&mainUtil.Logger{Destination: log.New(os.Stderr, "", 0)},
 			state.ConfigFilename,
@@ -57,7 +59,7 @@ var ApplyMonitoringUserPasswd = &s.Step{
 
 		var doPasswdUpdate bool
 		if state.Inputs.Scripted {
-			if !state.Inputs.UpdateMonitoringPassword.Valid || !state.Inputs.UpdateMonitoringPassword.Bool {
+			if !state.Inputs.UpdateMonitoringPassword.Valid {
 				return errors.New("update_monitoring_password flag not set and cannot log in with current credentials")
 			}
 			doPasswdUpdate = state.Inputs.UpdateMonitoringPassword.Bool
@@ -76,7 +78,7 @@ var ApplyMonitoringUserPasswd = &s.Step{
 		}
 		err = state.QueryRunner.Exec(
 			fmt.Sprintf(
-				"ALTER USER %s WITH ENCRYPTED PASSWORD %s",
+				"SET log_statement = none; ALTER USER %s WITH ENCRYPTED PASSWORD %s",
 				pq.QuoteIdentifier(pgaUser),
 				pq.QuoteLiteral(pgaPasswd),
 			),
