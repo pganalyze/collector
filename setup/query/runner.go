@@ -51,7 +51,8 @@ func (qr *Runner) PingSuper() error {
 	return nil
 }
 
-func (qr *Runner) runSQL(sql string) (string, error) {
+func (qr *Runner) runSQL(querySQL string) (string, error) {
+	sql := "SET search_path = pg_catalog; " + querySQL
 	args := []string{
 		"--no-psqlrc", "--tuples-only", "--command", sql,
 	}
