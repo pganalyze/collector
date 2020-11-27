@@ -84,13 +84,13 @@ func (qr *Runner) runSQL(sql string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	var pgUserUid int64
-	pgUserUid, err = strconv.ParseInt(pgUser.Uid, 10, 64)
+	var pgUserUid uint64
+	pgUserUid, err = strconv.ParseUint(pgUser.Uid, 10, 32)
 	if err != nil {
 		return "", err
 	}
-	var pgUserGid int64
-	pgUserGid, err = strconv.ParseInt(pgUser.Gid, 10, 64)
+	var pgUserGid uint64
+	pgUserGid, err = strconv.ParseUint(pgUser.Gid, 10, 32)
 	if err != nil {
 		return "", err
 	}
