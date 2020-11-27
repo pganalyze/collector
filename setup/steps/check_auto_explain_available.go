@@ -27,7 +27,6 @@ var CheckAutoExplainAvailable = &s.Step{
 		return true, err
 	},
 	Run: func(state *s.SetupState) error {
-		// TODO: install contrib package?
-		return errors.New("module auto_explain is not available")
+		return errors.New("contrib module auto_explain is not available")
 	},
 }
