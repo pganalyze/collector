@@ -1,7 +1,6 @@
 package steps
 
 import (
-	"errors"
 	"fmt"
 
 	survey "github.com/AlecAivazis/survey/v2"
@@ -33,7 +32,7 @@ var RestartPostgres = &s.Step{
 		var restartNow bool
 		if state.Inputs.Scripted {
 			if !state.Inputs.ConfirmPostgresRestart.Valid || !state.Inputs.ConfirmPostgresRestart.Bool {
-				return errors.New("confirm_postgres_restart flag not set but Postgres restart required")
+				return fmt.Errorf("confirm_postgres_restart flag not set but Postgres restart required for settings %s", pendingList)
 			}
 			restartNow = state.Inputs.ConfirmPostgresRestart.Bool
 		} else {
