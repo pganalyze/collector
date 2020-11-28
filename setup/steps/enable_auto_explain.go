@@ -32,7 +32,7 @@ var EnableAutoExplain = &s.Step{
 			doAdd = state.Inputs.EnableAutoExplain.Bool
 		} else {
 			err := survey.AskOne(&survey.Confirm{
-				Message: "Add auto_explain to shared_preload_libraries (will be saved to Postgres)?",
+				Message: "Add auto_explain to shared_preload_libraries (will be saved to Postgres--requires restart in a later step)?",
 				Default: false,
 				Help:    "Postgres will have to be restarted in a later step to apply this configuration change; learn more about Automated EXPLAIN at https://pganalyze.com/postgres-explain",
 			}, &doAdd)
