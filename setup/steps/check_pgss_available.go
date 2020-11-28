@@ -24,7 +24,6 @@ var CheckPgssAvailable = &s.Step{
 		return row.GetBool(0), nil
 	},
 	Run: func(state *s.SetupState) error {
-		// TODO: install contrib package on systems where packaged separately
-		return errors.New("extension pg_stat_statements is not available")
+		return errors.New("contrib extension pg_stat_statements is not available")
 	},
 }
