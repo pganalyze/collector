@@ -62,7 +62,7 @@ var SelectDatabases = &s.Step{
 				}
 
 				if len(dbNames) != i+1 {
-					return fmt.Errorf("database %s not found", trimmed)
+					return fmt.Errorf("database %s configured for db_name but not found in Postgres", trimmed)
 				}
 			}
 		} else {
@@ -80,7 +80,7 @@ var SelectDatabases = &s.Step{
 			if len(dbOpts) == 1 {
 				var monitorAll bool
 				err = survey.AskOne(&survey.Confirm{
-					Message: "Monitor other databases created in the future (will be saved to collector config)?",
+					Message: "Monitor all other databases created in the future (will be saved to collector config)?",
 					Default: true,
 				}, &monitorAll)
 				if err != nil {
