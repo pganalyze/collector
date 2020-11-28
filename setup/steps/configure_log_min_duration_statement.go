@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	survey "github.com/AlecAivazis/survey/v2"
+	"github.com/pganalyze/collector/logs"
 	"github.com/pganalyze/collector/setup/state"
 	s "github.com/pganalyze/collector/setup/state"
 	"github.com/pganalyze/collector/setup/util"
@@ -21,7 +22,7 @@ var ConfigureLogMinDurationStatement = &s.Step{
 		}
 
 		lmdsVal := row.GetInt(0)
-		needsUpdate := (lmdsVal < 10 && lmdsVal != -1) ||
+		needsUpdate := !isSupportedLmds(lmdsVal) ||
 			(state.Inputs.Scripted &&
 				state.Inputs.GUCS.LogMinDurationStatement.Valid &&
 				int(state.Inputs.GUCS.LogMinDurationStatement.Int64) != lmdsVal)
@@ -39,11 +40,15 @@ var ConfigureLogMinDurationStatement = &s.Step{
 			if !state.Inputs.GUCS.LogMinDurationStatement.Valid {
 				return errors.New("log_min_duration_statement not provided and current value is unsupported")
 			}
-			newVal = strconv.Itoa(int(state.Inputs.GUCS.LogMinDurationStatement.Int64))
+			newValNum := int(state.Inputs.GUCS.LogMinDurationStatement.Int64)
+			if !isSupportedLmds(newValNum) {
+				return fmt.Errorf("log_min_duration_statement provided as unsupported value '%d'", newValNum)
+			}
+			newVal = strconv.Itoa(newValNum)
 		} else {
 			err = survey.AskOne(&survey.Input{
 				Message: fmt.Sprintf(
-					"Setting 'log_min_duration_statement' is set to '%s', below supported threshold of 10ms; enter supported value in ms or 0 to disable (will be saved to Postgres):",
+					"Setting 'log_min_duration_statement' is set to '%s', below supported threshold of 10ms; enter supported value in ms or -1 to disable (will be saved to Postgres):",
 					oldVal,
 				),
 			}, &newVal, survey.WithValidator(util.ValidateLogMinDurationStatement))
@@ -54,4 +59,8 @@ var ConfigureLogMinDurationStatement = &s.Step{
 
 		return util.ApplyConfigSetting("log_min_duration_statement", newVal, state.QueryRunner)
 	},
+}
+
+func isSupportedLmds(value int) bool {
+	return value == -1 || value >= logs.MinSupportedLogMinDurationStatement
 }
