@@ -1,6 +1,7 @@
 package steps
 
 import (
+	"errors"
 	"strings"
 
 	survey "github.com/AlecAivazis/survey/v2"
@@ -42,6 +43,10 @@ var ConfirmAutoExplainSetup = &s.Step{
 		return strings.Contains(spl, "auto_explain"), nil
 	},
 	Run: func(state *s.SetupState) error {
+		if state.Inputs.Scripted {
+			return errors.New("skip_auto_explain value must be specified")
+		}
+
 		state.Log(`
 Log Insights and query performance setup is almost complete. You can complete it
 now, or proceed to configuring the optional Automated EXPLAIN feature. Automated
