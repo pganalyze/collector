@@ -29,7 +29,10 @@ var ConfigureLogDuration = &s.Step{
 		var turnOffLogDuration bool
 		if state.Inputs.Scripted {
 			if !state.Inputs.GUCS.LogDuration.Valid {
-				return errors.New("log_error_verbosity value not provided and current value not supported")
+				return errors.New("log_duration value not provided and current value not supported")
+			}
+			if state.Inputs.GUCS.LogDuration.String == "on" {
+				return errors.New("log_duration provided as unsupported value 'on'")
 			}
 			turnOffLogDuration = state.Inputs.GUCS.LogDuration.String == "off"
 		} else {
