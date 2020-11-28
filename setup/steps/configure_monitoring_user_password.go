@@ -13,8 +13,7 @@ import (
 var ConfigureMonitoringUserPasswd = &s.Step{
 	Description: "Configure monitoring user password",
 	Check: func(state *s.SetupState) (bool, error) {
-		hasPassword := state.CurrentSection.HasKey("db_password")
-		return hasPassword, nil
+		return state.CurrentSection.HasKey("db_password"), nil
 	},
 	Run: func(state *s.SetupState) error {
 		var passwordStrategy int
@@ -32,7 +31,7 @@ var ConfigureMonitoringUserPasswd = &s.Step{
 		} else {
 			err := survey.AskOne(&survey.Select{
 				Message: "Select how to set up the collector user password (will be saved to collector config):",
-				Options: []string{"generate random password (recommended)", "enter existing password"},
+				Options: []string{"generate random password (recommended)", "enter password"},
 			}, &passwordStrategy)
 			if err != nil {
 				return err
