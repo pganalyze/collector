@@ -1,6 +1,8 @@
 package steps
 
 import (
+	"errors"
+
 	survey "github.com/AlecAivazis/survey/v2"
 	"github.com/guregu/null"
 	s "github.com/pganalyze/collector/setup/state"
@@ -12,6 +14,9 @@ var ConfirmLogInsightsSetup = &s.Step{
 		return state.Inputs.SkipLogInsights.Valid || state.PGAnalyzeSection.HasKey("db_log_location"), nil
 	},
 	Run: func(state *s.SetupState) error {
+		if state.Inputs.Scripted {
+			return errors.New("skip_log_insights value must be specified")
+		}
 		state.Log(`
 Basic setup is almost complete. You can complete it now, or proceed to
 configuring the optional Log Insights feature. Log Insights will require
