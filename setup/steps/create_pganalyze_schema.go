@@ -34,7 +34,7 @@ var CreatePganalyzeSchema = &s.Step{
 		if !hasUsage {
 			return false, nil
 		}
-		valid, err := util.ValidateHelperFunction("get_stat_replication", state.QueryRunner)
+		valid, err := util.ValidateHelperFunction(util.GetStatReplicationHelper, state.QueryRunner)
 		if err != nil {
 			return false, err
 		}
@@ -73,12 +73,11 @@ var CreatePganalyzeSchema = &s.Step{
 		}
 		pgaUser := userKey.String()
 
-		return state.QueryRunner.Exec(fmt.Sprintf(`CREATE SCHEMA IF NOT EXISTS pganalyze;
-GRANT USAGE ON SCHEMA pganalyze TO %s;
-
-CREATE OR REPLACE FUNCTION pganalyze.get_stat_replication() RETURNS SETOF pg_stat_replication AS
-$$
-	/* pganalyze-collector */ SELECT * FROM pg_catalog.pg_stat_replication;
-$$ LANGUAGE sql VOLATILE SECURITY DEFINER;`, pq.QuoteIdentifier(pgaUser)))
+		return state.QueryRunner.Exec(
+			fmt.Sprintf(
+				`CREATE SCHEMA IF NOT EXISTS pganalyze; GRANT USAGE ON SCHEMA pganalyze TO %s;`,
+				pq.QuoteIdentifier(pgaUser),
+			) + util.GetStatReplicationHelper.GetDefinition(),
+		)
 	},
 }

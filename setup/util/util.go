@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/go-ini/ini"
-	"github.com/lib/pq"
 	"github.com/pganalyze/collector/setup/query"
 )
 
@@ -47,36 +46,6 @@ func ValidateLogMinDurationStatement(ans interface{}) error {
 		return errors.New("value must be either -1 to disable or 10 or greater")
 	}
 	return nil
-}
-
-var expectedMd5s = map[string]string{
-	"explain":              "7a0a1784d170975d8538d3b8b38c3fad",
-	"get_stat_replication": "4cc3b87c1f030eeb680d4f0bd2732836",
-}
-
-func ValidateHelperFunction(fn string, runner *query.Runner) (bool, error) {
-	expected, ok := expectedMd5s[fn]
-	if !ok {
-		return false, fmt.Errorf("unrecognized helper function %s", fn)
-	}
-	row, err := runner.QueryRow(
-		fmt.Sprintf(
-			`SELECT md5(btrim(prosrc, E' \\n\\r\\t'))
-FROM pg_proc INNER JOIN pg_user ON (pg_proc.proowner = pg_user.usesysid)
-WHERE proname = %s
-	AND pronamespace::regnamespace::text = 'pganalyze'
-	AND prosecdef
-  AND pg_user.usesuper`,
-			pq.QuoteLiteral(fn),
-		),
-	)
-	if err == query.ErrNoRows {
-		return false, nil
-	} else if err != nil {
-		return false, err
-	}
-	actual := row.GetString(0)
-	return actual == expected, nil
 }
 
 func GetPendingSharedPreloadLibraries(runner *query.Runner) (string, error) {

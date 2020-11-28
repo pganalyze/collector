@@ -28,7 +28,7 @@ var CreateLogExplainHelper = &s.Step{
 
 		for _, db := range monitoredDBs {
 			dbRunner := state.QueryRunner.InDB(db)
-			isValid, err := util.ValidateHelperFunction("explain", dbRunner)
+			isValid, err := util.ValidateHelperFunction(util.ExplainHelper, dbRunner)
 			if !isValid || err != nil {
 				return isValid, err
 			}
@@ -71,7 +71,7 @@ var CreateLogExplainHelper = &s.Step{
 
 func createHelperInDB(state *s.SetupState, db string) error {
 	dbRunner := state.QueryRunner.InDB(db)
-	isValid, err := util.ValidateHelperFunction("explain", dbRunner)
+	isValid, err := util.ValidateHelperFunction(util.ExplainHelper, dbRunner)
 	if err != nil {
 		return err
 	}
@@ -88,37 +88,8 @@ func createHelperInDB(state *s.SetupState, db string) error {
 		fmt.Sprintf(
 			`CREATE SCHEMA IF NOT EXISTS pganalyze; GRANT USAGE ON SCHEMA pganalyze TO %s;`,
 			pq.QuoteIdentifier(pgaUser),
-		) + `
-CREATE OR REPLACE FUNCTION pganalyze.explain(query text, params text[]) RETURNS text AS
-$$
-DECLARE
-	prepared_query text;
-	prepared_params text;
-	result text;
-BEGIN
-	SELECT regexp_replace(query, ';+\s*\Z', '') INTO prepared_query;
-	IF prepared_query LIKE '%;%' THEN
-		RAISE EXCEPTION 'cannot run EXPLAIN when query contains semicolon';
-	END IF;
-
-	IF array_length(params, 1) > 0 THEN
-		SELECT string_agg(quote_literal(param) || '::unknown', ',') FROM unnest(params) p(param) INTO prepared_params;
-
-		EXECUTE 'PREPARE pganalyze_explain AS ' || prepared_query;
-		BEGIN
-			EXECUTE 'EXPLAIN (VERBOSE, FORMAT JSON) EXECUTE pganalyze_explain(' || prepared_params || ')' INTO STRICT result;
-		EXCEPTION WHEN OTHERS THEN
-			DEALLOCATE pganalyze_explain;
-			RAISE;
-		END;
-		DEALLOCATE pganalyze_explain;
-	ELSE
-		EXECUTE 'EXPLAIN (VERBOSE, FORMAT JSON) ' || prepared_query INTO STRICT result;
-	END IF;
-
-	RETURN result;
-END
-$$ LANGUAGE plpgsql VOLATILE SECURITY DEFINER;`)
+		) + util.ExplainHelper.GetDefinition(),
+	)
 }
 
 func getMonitoredDBs(state *s.SetupState) ([]string, error) {
