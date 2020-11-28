@@ -13,10 +13,10 @@ var CheckReplicationStatus = &s.Step{
 		if err != nil {
 			return false, err
 		}
-		isReplicationTarget := result.GetBool(0)
+		isInRecovery := result.GetBool(0)
 
-		if isReplicationTarget {
-			return false, errors.New("not supported for replicas")
+		if isInRecovery {
+			return false, errors.New("Postgres server is a replica; this is currently not supported")
 		}
 		return true, nil
 	},
