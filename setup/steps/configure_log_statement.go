@@ -31,6 +31,10 @@ var ConfigureLogStatement = &s.Step{
 			if !state.Inputs.GUCS.LogStatement.Valid {
 				return errors.New("log_statement value not provided and current value not supported")
 			}
+			if state.Inputs.GUCS.LogStatement.String == "all" {
+				return errors.New("log_statement provided as unsupported value 'all'")
+			}
+
 			newVal = state.Inputs.GUCS.LogStatement.String
 		} else {
 			err := survey.AskOne(&survey.Select{
