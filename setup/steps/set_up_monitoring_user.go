@@ -10,7 +10,6 @@ import (
 	s "github.com/pganalyze/collector/setup/state"
 )
 
-// ensure user has correct permissions
 var SetUpMonitoringUser = &s.Step{
 	Description: "Set up monitoring user",
 	Check: func(state *s.SetupState) (bool, error) {
@@ -20,10 +19,9 @@ var SetUpMonitoringUser = &s.Step{
 		}
 		pgaUser := pgaUserKey.String()
 
-		// TODO: deal with postgres <10
 		row, err := state.QueryRunner.QueryRow(
 			fmt.Sprintf(
-				"SELECT usesuper OR pg_has_role(usename, 'pg_monitor', 'member') FROM pg_user WHERE usename = %s",
+				"SELECT usesuper OR pg_has_role(usename, 'pg_monitor', 'usage') FROM pg_user WHERE usename = %s",
 				pq.QuoteLiteral(pgaUser),
 			),
 		)
@@ -42,7 +40,6 @@ var SetUpMonitoringUser = &s.Step{
 		}
 		pgaUser := pgaUserKey.String()
 
-		// TODO: deal with postgres <10
 		var doGrant bool
 		if state.Inputs.Scripted {
 			if !state.Inputs.SetUpMonitoringUser.Valid || !state.Inputs.SetUpMonitoringUser.Bool {
