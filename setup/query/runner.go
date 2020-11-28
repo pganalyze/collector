@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"os/user"
+	"regexp"
 	"strconv"
 	"strings"
 	"syscall"
@@ -19,8 +20,9 @@ type Runner struct {
 	Password string
 	Database string
 
-	separator rune
-	csv       bool
+	csvChecked bool
+	csv        bool
+	separator  rune
 }
 
 func NewRunner(user, host string, port int) *Runner {
@@ -33,9 +35,37 @@ func (qr *Runner) InDB(dbname string) *Runner {
 	return &newRunner
 }
 
-func (qr *Runner) EnableCSV() {
-	qr.csv = true
-	qr.separator = ','
+// N.B.: older Postgres version will follow with another trailing dot and the point
+// release number, but we don't care about that so we can match just the first two.
+// This format goes back to at least Postgres 10.0, our oldest supported version
+// right now.
+var versionRE = regexp.MustCompile("psql \\(PostgreSQL\\) (\\d+\\.\\d+)")
+
+func (qr *Runner) checkUseCSV() {
+	if qr.csvChecked {
+		return
+	}
+	// the check is best-effort, so just flag it as done now:
+	qr.csvChecked = true
+
+	// we could use \show :VERSION_NUM here, but this allows us to check the version without
+	// requiring a valid connection, so we can avoid error handling for that here
+	output, err := exec.Command("psql", "--no-psqlrc", "--version").CombinedOutput()
+	if err != nil {
+		return
+	}
+	verMatches := versionRE.FindStringSubmatch(string(output))
+	if len(verMatches) != 2 {
+		return
+	}
+	verNum, err := strconv.ParseFloat(verMatches[1], 32)
+	if err != nil {
+		return
+	}
+	if verNum >= 12 {
+		qr.csv = true
+		qr.separator = ','
+	}
 }
 
 func (qr *Runner) PingSuper() error {
@@ -52,6 +82,7 @@ func (qr *Runner) PingSuper() error {
 }
 
 func (qr *Runner) runSQL(querySQL string) (string, error) {
+	qr.checkUseCSV()
 	sql := "SET search_path = pg_catalog; " + querySQL
 	args := []string{
 		"--no-psqlrc", "--tuples-only", "--command", sql,
