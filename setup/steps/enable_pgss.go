@@ -28,7 +28,7 @@ var EnablePgss = &s.Step{
 			doAdd = state.Inputs.EnablePgStatStatements.Bool
 		} else {
 			err := survey.AskOne(&survey.Confirm{
-				Message: "Add pg_stat_statements to shared_preload_libraries (will be saved to Postgres)?",
+				Message: "Add pg_stat_statements to shared_preload_libraries (will be saved to Postgres--requires restart in a later step)?",
 				Default: false,
 				Help:    "Postgres will have to be restarted in a later step to apply this configuration change; learn more about shared_preload_libraries here: https://www.postgresql.org/docs/current/runtime-config-client.html#GUC-SHARED-PRELOAD-LIBRARIES",
 			}, &doAdd)
