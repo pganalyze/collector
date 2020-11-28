@@ -32,10 +32,13 @@ var ConfigureLogErrorVerbosity = &s.Step{
 			if !state.Inputs.GUCS.LogErrorVerbosity.Valid {
 				return errors.New("log_error_verbosity value not provided and current value not supported")
 			}
+			if state.Inputs.GUCS.LogErrorVerbosity.String == "verbose" {
+				return errors.New("log_error_verbosity provided as unsupported value 'verbose'")
+			}
 			newVal = state.Inputs.GUCS.LogErrorVerbosity.String
 		} else {
 			err := survey.AskOne(&survey.Select{
-				Message: "Setting 'log_error_verbosity' is set to unsupported value 'all'; select supported value (will be saved to Postgres):",
+				Message: "Setting 'log_error_verbosity' is set to unsupported value 'verbose'; select supported value (will be saved to Postgres):",
 				Options: []string{"terse", "default"},
 			}, &newVal)
 			if err != nil {
