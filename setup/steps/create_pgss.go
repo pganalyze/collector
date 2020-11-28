@@ -37,7 +37,7 @@ var CreatePgss = &s.Step{
 			doCreate = state.Inputs.CreatePgStatStatements.Bool
 		} else {
 			err := survey.AskOne(&survey.Confirm{
-				Message: "Create extension pg_stat_statements in public schema for performance monitoring (will be saved to Postgres)?",
+				Message: "Create extension pg_stat_statements in public schema for query performance monitoring (will be saved to Postgres)?",
 				Default: false,
 				Help:    "Learn more about pg_stat_statements here: https://www.postgresql.org/docs/current/pgstatstatements.html",
 			}, &doCreate)
