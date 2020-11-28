@@ -23,47 +23,75 @@ var ConfigureLogLocation = &s.Step{
 		return state.CurrentSection.HasKey("db_log_location"), nil
 	},
 	Run: func(state *s.SetupState) error {
-		guessedLogLocation, err := discoverLogLocation(state.CurrentSection, state.QueryRunner)
-		if err != nil {
-			return err
-		}
-		var logLocationConfirmed bool
+		var logLocation string
 		if state.Inputs.Scripted {
-			if state.Inputs.GuessLogLocation.Valid && state.Inputs.GuessLogLocation.Bool {
-				if state.Inputs.Settings.DBLogLocation.Valid && state.Inputs.Settings.DBLogLocation.String != "" {
-					return errors.New("cannot specify both guess_log_location and set explicit db_log_location")
-				}
-				logLocationConfirmed = state.Inputs.GuessLogLocation.Bool
-			}
-		} else {
-			err = survey.AskOne(&survey.Confirm{
-				Message: fmt.Sprintf("Your database log file or directory appears to be %s; is this correct (will be saved to collector config)?", guessedLogLocation),
-				Default: false,
-			}, &logLocationConfirmed)
+			loc, err := getLogLocationScripted(state)
 			if err != nil {
 				return err
 			}
+			logLocation = loc
+		} else {
+			loc, err := getLogLocationInteractive(state)
+			if err != nil {
+				return err
+			}
+			logLocation = loc
 		}
 
-		var logLocation string
-		if logLocationConfirmed {
-			logLocation = guessedLogLocation
-		} else if state.Inputs.Scripted {
-			if !state.Inputs.Settings.DBLogLocation.Valid || state.Inputs.Settings.DBLogLocation.String == "" {
-				return errors.New("db_log_location not provided and guess_log_location flag not set")
-			}
-			logLocation = state.Inputs.Settings.DBLogLocation.String
-		} else {
-			err = survey.AskOne(&survey.Input{
-				Message: "Please enter the Postgres log file location (will be saved to collector config)",
-			}, &logLocation, survey.WithValidator(validatePath))
-		}
-		_, err = state.CurrentSection.NewKey("db_log_location", logLocation)
+		_, err := state.CurrentSection.NewKey("db_log_location", logLocation)
 		if err != nil {
 			return err
 		}
 		return state.SaveConfig()
 	},
+}
+
+func getLogLocationScripted(state *s.SetupState) (string, error) {
+	doGuess := state.Inputs.GuessLogLocation.Valid && state.Inputs.GuessLogLocation.Bool
+
+	if state.Inputs.Settings.DBLogLocation.Valid {
+		explicitVal := state.Inputs.Settings.DBLogLocation.String
+		if doGuess && explicitVal != "" {
+			return "", errors.New("cannot specify both guess_log_location and set explicit db_log_location")
+		}
+		return explicitVal, nil
+	}
+
+	if !doGuess {
+		return "", errors.New("db_log_location not provided and guess_log_location flag not set")
+	}
+
+	guessedLogLocation, err := discoverLogLocation(state.CurrentSection, state.QueryRunner)
+	if err != nil {
+		return "", fmt.Errorf("could not determine Postgres log location automatically: %s", err)
+	}
+	return guessedLogLocation, nil
+}
+
+func getLogLocationInteractive(state *s.SetupState) (string, error) {
+	guessedLogLocation, err := discoverLogLocation(state.CurrentSection, state.QueryRunner)
+	if err != nil {
+		state.Verbose("could not determine Postgres log location automatically: %s", err)
+	} else {
+		var logLocationConfirmed bool
+		err = survey.AskOne(&survey.Confirm{
+			Message: fmt.Sprintf("Your database log file or directory appears to be %s; is this correct (will be saved to collector config)?", guessedLogLocation),
+			Default: false,
+		}, &logLocationConfirmed)
+		if err != nil {
+			return "", err
+		}
+		if logLocationConfirmed {
+			return guessedLogLocation, nil
+		}
+		// otherwise proceed below
+	}
+
+	var logLocation string
+	err = survey.AskOne(&survey.Input{
+		Message: "Please enter the Postgres log file location (will be saved to collector config)",
+	}, &logLocation, survey.WithValidator(validatePath))
+	return logLocation, err
 }
 
 func validatePath(ans interface{}) error {
