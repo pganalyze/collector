@@ -22,41 +22,51 @@ var EstablishSuperuserConnection = &s.Step{
 		return err == nil, err
 	},
 	Run: func(state *s.SetupState) error {
-		localPgs, err := discoverLocalPostgres()
+		localPgs, err := discoverLocalPgFromUnixSockets()
 		if err != nil {
 			return err
 		}
 		var selectedPg LocalPostgres
+		if len(localPgs) == 0 {
+			return errors.New("failed to find a running local Postgres install")
+		} else if len(localPgs) == 1 {
+			selectedPg = localPgs[0]
+		}
 		if state.Inputs.Scripted {
-			if !state.Inputs.PGSetupConnPort.Valid {
-				return errors.New("no port specified for setup Postgres connection")
-			}
-			for _, pg := range localPgs {
-				if int(state.Inputs.PGSetupConnPort.Int64) == pg.Port &&
-					(!state.Inputs.PGSetupConnSocketDir.Valid ||
-						state.Inputs.PGSetupConnSocketDir.String == pg.SocketDir) {
-					selectedPg = pg
-					break
+			if selectedPg.Port != 0 {
+				// skip finding the server if there's only one, but validate it matches config, if present
+				if (state.Inputs.PGSetupConnPort.Valid && int(state.Inputs.PGSetupConnPort.Int64) != selectedPg.Port) ||
+					(state.Inputs.PGSetupConnSocketDir.Valid && state.Inputs.PGSetupConnSocketDir.String != selectedPg.SocketDir) {
+					// just clear the selection and depend on error handling below
+					selectedPg = LocalPostgres{}
+				}
+			} else {
+				if !state.Inputs.PGSetupConnPort.Valid {
+					return errors.New("no port specified for setup Postgres connection")
+				}
+				for _, pg := range localPgs {
+					if int(state.Inputs.PGSetupConnPort.Int64) == pg.Port &&
+						(!state.Inputs.PGSetupConnSocketDir.Valid ||
+							state.Inputs.PGSetupConnSocketDir.String == pg.SocketDir) {
+						selectedPg = pg
+						break
+					}
 				}
 			}
 			if selectedPg.Port == 0 {
+				var portStr string
+				if state.Inputs.PGSetupConnPort.Valid {
+					portStr = " on " + strconv.Itoa(int(state.Inputs.PGSetupConnPort.Int64))
+				}
 				var socketDirStr string
 				if state.Inputs.PGSetupConnSocketDir.Valid {
 					socketDirStr = " in " + state.Inputs.PGSetupConnSocketDir.String
 				}
 
-				return fmt.Errorf(
-					"no Postgres server found listening on %d%s",
-					state.Inputs.PGSetupConnPort.Int64,
-					socketDirStr,
-				)
+				return fmt.Errorf("no Postgres server found listening%s%s", portStr, socketDirStr)
 			}
 		} else {
-			if len(localPgs) == 0 {
-				return errors.New("failed to find a running local Postgres install")
-			} else if len(localPgs) == 1 {
-				selectedPg = localPgs[0]
-			} else {
+			if selectedPg.Port == 0 {
 				var opts []string
 				for _, localPg := range localPgs {
 					opts = append(opts, fmt.Sprintf("port %d in socket dir %s", localPg.Port, localPg.SocketDir))
@@ -115,9 +125,7 @@ var pgsqlDomainSocketPortRe = regexp.MustCompile("\\d+$")
 
 func getSocketDirMatches(dir string) ([]LocalPostgres, error) {
 	var result []LocalPostgres
-	// technically this should be a filepath.Join, but Unix-domain sockets do not work
-	// on windows anyway
-	globPattern := fmt.Sprintf("%s/.s.PGSQL.*", dir)
+	globPattern := filepath.Join(dir, ".s.PGSQL.*")
 	matches, err := filepath.Glob(globPattern)
 	if err != nil {
 		return nil, err
@@ -136,9 +144,7 @@ func getSocketDirMatches(dir string) ([]LocalPostgres, error) {
 	return result, nil
 }
 
-func discoverLocalPostgres() ([]LocalPostgres, error) {
-	// TODO: find tcp sockets if no unix sockets?
-	// TODO: confirm these are live by checking pids?
+func discoverLocalPgFromUnixSockets() ([]LocalPostgres, error) {
 	varRunMatches, err := getSocketDirMatches("/var/run/postgresql")
 	if err != nil {
 		return nil, err
