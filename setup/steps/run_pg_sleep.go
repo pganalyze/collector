@@ -45,9 +45,20 @@ var RunPgSleep = &s.Step{
 			return nil
 		}
 
-		err := state.QueryRunner.Exec(
-			"SELECT pg_sleep(max(setting::float) / 1000 * 1.2) from pg_settings where name IN ('log_min_duration_statement', 'auto_explain.log_min_duration')",
+		row, err := state.QueryRunner.QueryRow(
+			"SELECT coalesce(max(setting::float), 0) / 1000 * 1.2 from pg_settings where name IN ('log_min_duration_statement', 'auto_explain.log_min_duration')",
 		)
+		if err != nil {
+			return err
+		}
+		naptime := row.GetFloat(0)
+		var checkStatement string
+		if naptime > 0 {
+			checkStatement = fmt.Sprintf("SELECT pg_sleep(%f)", naptime)
+		} else {
+			checkStatement = "DO $$BEGIN RAISE NOTICE 'pganalyze collector test statement'; END$$;"
+		}
+		err = state.QueryRunner.Exec(checkStatement)
 		if err != nil {
 			return err
 		}
