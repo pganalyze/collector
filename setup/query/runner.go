@@ -81,11 +81,13 @@ func (qr *Runner) PingSuper() error {
 	return nil
 }
 
-func (qr *Runner) runSQL(querySQL string) (string, error) {
+func (qr *Runner) runSQL(sql string) (string, error) {
 	qr.checkUseCSV()
-	sql := "SET search_path = pg_catalog; " + querySQL
+	// N.B.: we pass search_path as a separate command, since otherwise psql sends the whole
+	// thing to the server as a single query, which forces a single transaction, which is not
+	// supported for some things we want to run like ALTER SYSTEM
 	args := []string{
-		"--no-psqlrc", "--tuples-only", "--command", sql,
+		"--no-psqlrc", "--tuples-only", "--command", "SET search_path = pg_catalog", "--command", sql,
 	}
 	if qr.csv {
 		args = append(args, "--csv")
@@ -181,13 +183,19 @@ func (qr *Runner) Query(sql string) ([]Row, error) {
 	}
 
 	r := csv.NewReader(strings.NewReader(result))
+	// See below: we need to ignore the first row, the result
+	// of SET search_path, which may produce a different number
+	// of columns (1) than our actual query
+	r.FieldsPerRecord = -1
 	r.Comma = qr.separator
 	data, err := r.ReadAll()
 	if err != nil {
 		return nil, err
 	}
 	var rows []Row
-	for _, row := range data {
+	// N.B.: we ignore the first row, because that will
+	// always be the result of SET search_path
+	for _, row := range data[1:] {
 		rows = append(rows, row)
 	}
 	return rows, err
