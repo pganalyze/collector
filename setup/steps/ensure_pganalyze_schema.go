@@ -47,10 +47,10 @@ var EnsurePganalyzeSchema = &s.Step{
 	Run: func(state *s.SetupState) error {
 		var doSetup bool
 		if state.Inputs.Scripted {
-			if !state.Inputs.CreateHelperFunctions.Valid || !state.Inputs.CreateHelperFunctions.Bool {
+			if !state.Inputs.EnsureHelperFunctions.Valid || !state.Inputs.EnsureHelperFunctions.Bool {
 				return errors.New("create_helper_functions flag not set and pganalyze schema or helper functions do not exist")
 			}
-			doSetup = state.Inputs.CreateHelperFunctions.Bool
+			doSetup = state.Inputs.EnsureHelperFunctions.Bool
 		} else {
 			err := survey.AskOne(&survey.Confirm{
 				Message: "Create pganalyze schema and helper functions (will be saved to Postgres)?",

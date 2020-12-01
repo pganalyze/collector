@@ -38,10 +38,10 @@ var EnsureLogExplainHelpers = &s.Step{
 	Run: func(state *s.SetupState) error {
 		var doCreate bool
 		if state.Inputs.Scripted {
-			if !state.Inputs.CreateExplainHelper.Valid || !state.Inputs.CreateExplainHelper.Bool {
+			if !state.Inputs.EnsureLogExplainHelpers.Valid || !state.Inputs.EnsureLogExplainHelpers.Bool {
 				return errors.New("create_explain_helper flag not set and helper function does not exist or does not match expected signature on all monitored databases")
 			}
-			doCreate = state.Inputs.CreateExplainHelper.Bool
+			doCreate = state.Inputs.EnsureLogExplainHelpers.Bool
 		} else {
 			err := survey.AskOne(&survey.Confirm{
 				Message: "Create (or update) EXPLAIN helper function in each monitored database (will be saved to Postgres)?",

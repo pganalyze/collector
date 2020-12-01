@@ -31,10 +31,10 @@ var EnsurePgssExtInstalled = &s.Step{
 	Run: func(state *s.SetupState) error {
 		var doCreate bool
 		if state.Inputs.Scripted {
-			if !state.Inputs.CreatePgStatStatements.Valid || !state.Inputs.CreatePgStatStatements.Bool {
+			if !state.Inputs.EnsurePgStatStatementsInstalled.Valid || !state.Inputs.EnsurePgStatStatementsInstalled.Bool {
 				return errors.New("create_pg_stat_statements flag not set and pg_stat_statements does not exist in primary database")
 			}
-			doCreate = state.Inputs.CreatePgStatStatements.Bool
+			doCreate = state.Inputs.EnsurePgStatStatementsInstalled.Bool
 		} else {
 			err := survey.AskOne(&survey.Confirm{
 				Message: "Create extension pg_stat_statements in public schema for query performance monitoring (will be saved to Postgres)?",

@@ -22,10 +22,10 @@ var EnablePgssInSpl = &s.Step{
 	Run: func(state *s.SetupState) error {
 		var doAdd bool
 		if state.Inputs.Scripted {
-			if !state.Inputs.EnablePgStatStatements.Valid || !state.Inputs.EnablePgStatStatements.Bool {
+			if !state.Inputs.EnsurePgStatStatementsLoaded.Valid || !state.Inputs.EnsurePgStatStatementsLoaded.Bool {
 				return errors.New("enable_pg_stat_statements flag not set but pg_stat_statements not in shared_preload_libraries")
 			}
-			doAdd = state.Inputs.EnablePgStatStatements.Bool
+			doAdd = state.Inputs.EnsurePgStatStatementsLoaded.Bool
 		} else {
 			err := survey.AskOne(&survey.Confirm{
 				Message: "Add pg_stat_statements to shared_preload_libraries (will be saved to Postgres--requires restart in a later step)?",

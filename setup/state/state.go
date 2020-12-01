@@ -53,18 +53,18 @@ func init() {
 		PGSetupConnPort: null.IntFrom(5432),
 		PGSetupConnUser: null.StringFrom("postgres"),
 
-		CreateMonitoringUser:       null.BoolFrom(true),
-		GenerateMonitoringPassword: null.BoolFrom(true),
-		UpdateMonitoringPassword:   null.BoolFrom(true),
-		SetUpMonitoringUser:        null.BoolFrom(true),
-		CreateHelperFunctions:      null.BoolFrom(true),
-		CreatePgStatStatements:     null.BoolFrom(true),
-		EnablePgStatStatements:     null.BoolFrom(true),
+		EnsureMonitoringUser:            null.BoolFrom(true),
+		GenerateMonitoringPassword:      null.BoolFrom(true),
+		EnsureMonitoringPassword:        null.BoolFrom(true),
+		EnsureMonitoringPermissions:     null.BoolFrom(true),
+		EnsureHelperFunctions:           null.BoolFrom(true),
+		EnsurePgStatStatementsInstalled: null.BoolFrom(true),
+		EnsurePgStatStatementsLoaded:    null.BoolFrom(true),
 
 		GuessLogLocation: null.BoolFrom(true),
 
-		UseLogBasedExplain: null.BoolFrom(false),
-		EnableAutoExplain:  null.BoolFrom(true),
+		UseLogBasedExplain:      null.BoolFrom(false),
+		EnsureAutoExplainLoaded: null.BoolFrom(true),
 
 		ConfirmCollectorReload: null.BoolFrom(true),
 		ConfirmPostgresRestart: null.BoolFrom(true),
@@ -118,19 +118,19 @@ type SetupInputs struct {
 	PGSetupConnPort      null.Int    `json:"pg_setup_conn_port"`
 	PGSetupConnUser      null.String `json:"pg_setup_conn_user"`
 
-	CreateMonitoringUser       null.Bool `json:"create_monitoring_user"`
-	GenerateMonitoringPassword null.Bool `json:"generate_monitoring_password"`
-	UpdateMonitoringPassword   null.Bool `json:"update_monitoring_password"`
-	SetUpMonitoringUser        null.Bool `json:"set_up_monitoring_user"`
-	CreateHelperFunctions      null.Bool `json:"create_helper_functions"`
-	CreatePgStatStatements     null.Bool `json:"create_pg_stat_statements"`
-	EnablePgStatStatements     null.Bool `json:"enable_pg_stat_statements"`
+	EnsureMonitoringUser            null.Bool `json:"ensure_monitoring_user"`
+	GenerateMonitoringPassword      null.Bool `json:"generate_monitoring_password"`
+	EnsureMonitoringPassword        null.Bool `json:"ensure_monitoring_password"`
+	EnsureMonitoringPermissions     null.Bool `json:"ensure_monitoring_permissions"`
+	EnsureHelperFunctions           null.Bool `json:"ensure_helper_functions"`
+	EnsurePgStatStatementsInstalled null.Bool `json:"ensure_pg_stat_statements_installed"`
+	EnsurePgStatStatementsLoaded    null.Bool `json:"ensure_pg_stat_statements_loaded"`
 
 	GuessLogLocation null.Bool `json:"guess_log_location"`
 
-	UseLogBasedExplain  null.Bool `json:"use_log_based_explain"`
-	CreateExplainHelper null.Bool `json:"create_explain_helper"`
-	EnableAutoExplain   null.Bool `json:"enable_auto_explain"`
+	UseLogBasedExplain      null.Bool `json:"use_log_based_explain"`
+	EnsureLogExplainHelpers null.Bool `json:"ensure_log_explain_helpers"`
+	EnsureAutoExplainLoaded null.Bool `json:"ensure_auto_explain_loaded"`
 
 	ConfirmCollectorReload null.Bool `json:"confirm_collector_reload"`
 	ConfirmPostgresRestart null.Bool `json:"confirm_postgres_restart"`

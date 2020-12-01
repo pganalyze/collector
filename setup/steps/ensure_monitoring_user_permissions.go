@@ -42,10 +42,10 @@ var EnsureMonitoringUserPermissions = &s.Step{
 
 		var doGrant bool
 		if state.Inputs.Scripted {
-			if !state.Inputs.SetUpMonitoringUser.Valid || !state.Inputs.SetUpMonitoringUser.Bool {
+			if !state.Inputs.EnsureMonitoringPermissions.Valid || !state.Inputs.EnsureMonitoringPermissions.Bool {
 				return errors.New("set_up_monitoring_user flag not set and monitoring user does not have adequate permissions")
 			}
-			doGrant = state.Inputs.SetUpMonitoringUser.Bool
+			doGrant = state.Inputs.EnsureMonitoringPermissions.Bool
 		} else {
 			err = survey.AskOne(&survey.Confirm{
 				Message: fmt.Sprintf("Grant role pg_monitor to user %s (will be saved to Postgres)?", pgaUser),

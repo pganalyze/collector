@@ -36,11 +36,11 @@ var EnsureMonitoringUser = &s.Step{
 
 		var doCreateUser bool
 		if state.Inputs.Scripted {
-			if !state.Inputs.CreateMonitoringUser.Valid ||
-				!state.Inputs.CreateMonitoringUser.Bool {
+			if !state.Inputs.EnsureMonitoringUser.Valid ||
+				!state.Inputs.EnsureMonitoringUser.Bool {
 				return fmt.Errorf("create_monitoring_user flag not set and specified monitoring user %s does not exist", pgaUser)
 			}
-			doCreateUser = state.Inputs.CreateMonitoringUser.Bool
+			doCreateUser = state.Inputs.EnsureMonitoringUser.Bool
 		} else {
 			err = survey.AskOne(&survey.Confirm{
 				Message: fmt.Sprintf("User %s does not exist in Postgres; create user (will be saved to Postgres)?", pgaUser),

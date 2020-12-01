@@ -26,10 +26,10 @@ var EnsureAutoExplainInSpl = &s.Step{
 	Run: func(state *s.SetupState) error {
 		var doAdd bool
 		if state.Inputs.Scripted {
-			if !state.Inputs.EnableAutoExplain.Valid || !state.Inputs.EnableAutoExplain.Bool {
+			if !state.Inputs.EnsureAutoExplainLoaded.Valid || !state.Inputs.EnsureAutoExplainLoaded.Bool {
 				return errors.New("enable_auto_explain flag not set but auto_explain configuration selected")
 			}
-			doAdd = state.Inputs.EnableAutoExplain.Bool
+			doAdd = state.Inputs.EnsureAutoExplainLoaded.Bool
 		} else {
 			err := survey.AskOne(&survey.Confirm{
 				Message: "Add auto_explain to shared_preload_libraries (will be saved to Postgres--requires restart in a later step)?",

@@ -59,10 +59,10 @@ var EnsureMonitoringUserPassword = &s.Step{
 
 		var doPasswdUpdate bool
 		if state.Inputs.Scripted {
-			if !state.Inputs.UpdateMonitoringPassword.Valid {
+			if !state.Inputs.EnsureMonitoringPassword.Valid {
 				return errors.New("update_monitoring_password flag not set and cannot log in with current credentials")
 			}
-			doPasswdUpdate = state.Inputs.UpdateMonitoringPassword.Bool
+			doPasswdUpdate = state.Inputs.EnsureMonitoringPassword.Bool
 		} else {
 			err = survey.AskOne(&survey.Confirm{
 				Message: fmt.Sprintf("Update password for user %s with configured value (will be saved to Postgres)?", pgaUser),
