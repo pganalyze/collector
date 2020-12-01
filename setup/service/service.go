@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -64,13 +65,20 @@ func restartPostgresPgCtl(state *s.SetupState) error {
 	if err != nil {
 		return fmt.Errorf("could not determine data directory ownership: %s", err)
 	}
+
+	// N.B.: need to fetch user's additional groups, since e.g. in the default Ubuntu
+	// install, the Postgres user has access to /etc/ssl/private/ssl-cert-snakeoil.key
+	// through the ssl-cert group, and reading that is required during restart
 	var numGids []uint32
-	for _, gid := range gids {
-		numGid, err := strconv.ParseUint(gid, 10, 32)
+	for _, gidStr := range gids {
+		gidNum, err := strconv.ParseUint(gidStr, 10, 32)
 		if err != nil {
-			return fmt.Errorf("could not determine data directory ownership: user group %s could not be parsed: %s", gid, err)
+			return fmt.Errorf("could not determine data directory ownership: user group %s could not be parsed: %s", gidStr, err)
 		}
-		numGids = append(numGids, uint32(numGid))
+		gidNum32 := uint32(gidNum)
+		if gidNum32 != gid {
+			numGids = append(numGids, gidNum32)
+		}
 	}
 
 	pgCtlPath, err := getPgCtlLocation()
@@ -81,16 +89,71 @@ func restartPostgresPgCtl(state *s.SetupState) error {
 		Gid:    gid,
 		Groups: numGids,
 	}
+	cmd.Stdin = nil
 
-	out, err := cmd.CombinedOutput()
+	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		var errInfo = err.Error()
-		if len(out) > 0 {
-			errInfo += "; " + string(out)
-		}
-		return fmt.Errorf("failed to restart: %s", errInfo)
+		return err
 	}
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return err
+	}
+
+	err = cmd.Start()
+	if err != nil {
+		return err
+	}
+	// N.B.: this is a bit weird because since cmd.Wait waits for the invoked process to close stdout
+	// and stderr, but pg_ctl does not do that, possibly related to: https://github.com/golang/go/issues/13155 .
+	// Instead, we copy what is available, then wait and if we hit os.ErrClosed on either stream we
+	// ignore it
+	stdoutCh := make(chan OutputResult)
+	stderrCh := make(chan OutputResult)
+	go getOutput(stdout, stdoutCh)
+	go getOutput(stderr, stderrCh)
+
+	err = cmd.Wait()
+	outResult := <-stdoutCh
+	errResult := <-stderrCh
+	if err != nil || outResult.err != nil || errResult.err != nil {
+		return fmt.Errorf(
+			"cmd err: %s\nstdout: %s\nstdout err: %s\nstderr: %s\nstderr err: %s",
+			err,
+			outResult.content,
+			outResult.err,
+			errResult.content,
+			errResult.err,
+		)
+	}
+
 	return nil
+}
+
+type OutputResult struct {
+	content string
+	err     error
+}
+
+func getOutput(stream io.ReadCloser, ch chan<- OutputResult) {
+	var result strings.Builder
+	var buf = make([]byte, 1024)
+	for {
+		n, err := stream.Read(buf)
+		if n > 0 {
+			result.Write(buf[0:n])
+		}
+		if err != nil {
+			var actualErr error
+			if err == io.EOF || err == os.ErrClosed || errors.Unwrap(err) == os.ErrClosed {
+				actualErr = nil
+			} else {
+				actualErr = err
+			}
+			ch <- OutputResult{result.String(), actualErr}
+			break
+		}
+	}
 }
 
 func getPgCtlLocation() (string, error) {
@@ -105,7 +168,7 @@ func getPgCtlLocation() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	stderr, _ := cmd.StderrPipe()
+	stderr, err := cmd.StderrPipe()
 	if err != nil {
 		return "", err
 	}
@@ -118,7 +181,7 @@ func getPgCtlLocation() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	stderrBytes, _ := ioutil.ReadAll(stderr)
+	stderrBytes, err := ioutil.ReadAll(stderr)
 	if err != nil {
 		return "", err
 	}
