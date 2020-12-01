@@ -207,8 +207,8 @@ again. We can pick up where you left off.`)
 	}
 
 	for _, step := range steps {
-		skipLogInsights := setupState.Inputs.SkipLogInsights.Valid && setupState.Inputs.SkipLogInsights.Bool
-		skipAutomatedExplain := setupState.Inputs.SkipLogInsights.Valid && setupState.Inputs.SkipLogInsights.Bool
+		skipLogInsights := setupState.Inputs.ConfirmSetUpLogInsights.Valid && !setupState.Inputs.ConfirmSetUpLogInsights.Bool
+		skipAutomatedExplain := setupState.Inputs.ConfirmSetUpAutomatedExplain.Valid && !setupState.Inputs.ConfirmSetUpAutomatedExplain.Bool
 		if step.Kind == state.LogInsightsStep && skipLogInsights {
 			continue
 		}

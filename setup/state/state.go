@@ -69,10 +69,10 @@ func init() {
 		ConfirmCollectorReload: null.BoolFrom(true),
 		ConfirmPostgresRestart: null.BoolFrom(true),
 
-		SkipLogInsights:            null.BoolFrom(false),
-		SkipAutomatedExplain:       null.BoolFrom(false),
-		SkipAutoExplainRecommended: null.BoolFrom(false),
-		SkipPgSleep:                null.BoolFrom(false),
+		ConfirmSetUpLogInsights:              null.BoolFrom(false),
+		ConfirmSetUpAutomatedExplain:         null.BoolFrom(false),
+		EnsureAutoExplainRecommendedSettings: null.BoolFrom(false),
+		ConfirmRunTestCommand:                null.BoolFrom(false),
 	}
 }
 
@@ -135,10 +135,10 @@ type SetupInputs struct {
 	ConfirmCollectorReload null.Bool `json:"confirm_collector_reload"`
 	ConfirmPostgresRestart null.Bool `json:"confirm_postgres_restart"`
 
-	SkipLogInsights            null.Bool `json:"skip_log_insights"`
-	SkipAutomatedExplain       null.Bool `json:"skip_automated_explain"`
-	SkipAutoExplainRecommended null.Bool `json:"skip_automated_explain_recommended_settings"`
-	SkipPgSleep                null.Bool `json:"skip_pg_sleep"`
+	ConfirmSetUpLogInsights              null.Bool `json:"confirm_set_up_log_insights"`
+	ConfirmSetUpAutomatedExplain         null.Bool `json:"confirm_set_up_automated_explain"`
+	EnsureAutoExplainRecommendedSettings null.Bool `json:"ensure_auto_explain_recommended_settings"`
+	ConfirmRunTestCommand                null.Bool `json:"confirm_run_test_command"`
 }
 
 var RecommendedInputs SetupInputs

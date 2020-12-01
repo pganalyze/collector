@@ -17,22 +17,26 @@ var ConfirmSetUpAutoExplain = &s.Step{
 	Kind:        state.LogInsightsStep,
 	Description: "Confirm whether to set up the optional Automated EXPLAIN feature",
 	Check: func(state *s.SetupState) (bool, error) {
-		if state.Inputs.SkipAutomatedExplain.Valid {
-			return !state.Inputs.SkipAutomatedExplain.Bool, nil
+		// skip the question if we've already answered one way or the other
+		if state.Inputs.ConfirmSetUpAutomatedExplain.Valid {
+			return true, nil
 		}
 
+		// also skip the question if it's already set up
 		if state.CurrentSection.HasKey("enable_log_explain") {
-			isLogExplainKey, err := state.CurrentSection.GetKey("enable_log_explain")
-			if err != nil {
-				return false, err
-			}
-			isLogExplain, err := isLogExplainKey.Bool()
-			if err != nil {
-				return false, err
-			}
-			if isLogExplain {
-				return true, nil
-			}
+			return false, nil
+		}
+
+		isLogExplainKey, err := state.CurrentSection.GetKey("enable_log_explain")
+		if err != nil {
+			return false, err
+		}
+		isLogExplain, err := isLogExplainKey.Bool()
+		if err != nil {
+			return false, err
+		}
+		if isLogExplain {
+			return true, nil
 		}
 
 		// assume auto_explain if we got this far
@@ -65,7 +69,7 @@ Learn more at https://pganalyze.com/postgres-explain
 		if err != nil {
 			return err
 		}
-		state.Inputs.SkipAutomatedExplain = null.BoolFrom(!setUpExplain)
+		state.Inputs.ConfirmSetUpAutomatedExplain = null.BoolFrom(setUpExplain)
 
 		return nil
 	},

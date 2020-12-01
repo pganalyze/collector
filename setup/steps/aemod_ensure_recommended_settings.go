@@ -20,7 +20,7 @@ var EnsureRecommendedAutoExplainSettings = &s.Step{
 	Description: "Ensure auto_explain settings in Postgres are configured as recommended, if desired",
 	Check: func(state *s.SetupState) (bool, error) {
 		if state.DidAutoExplainRecommendedSettings ||
-			(state.Inputs.SkipAutoExplainRecommended.Valid && state.Inputs.SkipAutoExplainRecommended.Bool) {
+			(state.Inputs.EnsureAutoExplainRecommendedSettings.Valid && !state.Inputs.EnsureAutoExplainRecommendedSettings.Bool) {
 			return true, nil
 		}
 		logExplain, err := util.UsingLogExplain(state.CurrentSection)
@@ -41,8 +41,8 @@ var EnsureRecommendedAutoExplainSettings = &s.Step{
 	Run: func(state *s.SetupState) error {
 		var doReview bool
 		if state.Inputs.Scripted {
-			if state.Inputs.SkipAutoExplainRecommended.Valid {
-				doReview = !state.Inputs.SkipAutoExplainRecommended.Bool
+			if state.Inputs.EnsureAutoExplainRecommendedSettings.Valid {
+				doReview = state.Inputs.EnsureAutoExplainRecommendedSettings.Bool
 			}
 		} else {
 			err := survey.AskOne(&survey.Confirm{
@@ -53,7 +53,7 @@ var EnsureRecommendedAutoExplainSettings = &s.Step{
 			if err != nil {
 				return err
 			}
-			state.Inputs.SkipAutoExplainRecommended = null.BoolFrom(!doReview)
+			state.Inputs.EnsureAutoExplainRecommendedSettings = null.BoolFrom(doReview)
 		}
 
 		if !doReview {

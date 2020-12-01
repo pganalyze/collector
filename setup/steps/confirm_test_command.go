@@ -11,10 +11,10 @@ import (
 var ConfirmTestCommand = &s.Step{
 	Description: "Run a test command in Postgres to confirm everything is working",
 	Check: func(state *s.SetupState) (bool, error) {
-		needsSleep := (state.Inputs.SkipLogInsights.Valid && !state.Inputs.SkipLogInsights.Bool) ||
-			(state.Inputs.SkipAutomatedExplain.Valid && !state.Inputs.SkipAutomatedExplain.Bool)
+		needsSleep := (state.Inputs.ConfirmSetUpLogInsights.Valid && state.Inputs.ConfirmSetUpLogInsights.Bool) ||
+			(state.Inputs.ConfirmSetUpAutomatedExplain.Valid && state.Inputs.ConfirmSetUpAutomatedExplain.Bool)
 		return !needsSleep || state.DidPgSleep ||
-			(state.Inputs.SkipPgSleep.Valid && state.Inputs.SkipPgSleep.Bool), nil
+			(state.Inputs.ConfirmRunTestCommand.Valid && !state.Inputs.ConfirmRunTestCommand.Bool), nil
 	},
 	Run: func(state *s.SetupState) error {
 		row, err := state.QueryRunner.QueryRow(
@@ -24,10 +24,10 @@ var ConfirmTestCommand = &s.Step{
 			return err
 		}
 		naptime := row.GetFloat(0)
-		var doPgSleep bool
+		var runTestCommand bool
 		if state.Inputs.Scripted {
-			if state.Inputs.SkipPgSleep.Valid {
-				doPgSleep = !state.Inputs.SkipPgSleep.Bool
+			if state.Inputs.ConfirmRunTestCommand.Valid {
+				runTestCommand = state.Inputs.ConfirmRunTestCommand.Bool
 			}
 		} else {
 			var testCmdType string
@@ -37,7 +37,7 @@ var ConfirmTestCommand = &s.Step{
 				testCmdType = "RAISE NOTICE"
 			}
 
-			hasAutomatedExplain := state.Inputs.SkipAutomatedExplain.Valid && !state.Inputs.SkipAutomatedExplain.Bool
+			hasAutomatedExplain := state.Inputs.ConfirmSetUpAutomatedExplain.Valid && state.Inputs.ConfirmSetUpAutomatedExplain.Bool
 			var features string
 			if hasAutomatedExplain {
 				features = "Log Insights and Automated EXPLAIN"
@@ -48,14 +48,14 @@ var ConfirmTestCommand = &s.Step{
 				Message: fmt.Sprintf("Run a test command (%s) to confirm %s configuration?", testCmdType, features),
 				Default: true,
 				Help:    "You should see results in pganalyze a few seconds after the query completes",
-			}, &doPgSleep)
+			}, &runTestCommand)
 			if err != nil {
 				return err
 			}
-			state.Inputs.SkipPgSleep = null.BoolFrom(!doPgSleep)
+			state.Inputs.ConfirmRunTestCommand = null.BoolFrom(runTestCommand)
 		}
 
-		if !doPgSleep {
+		if !runTestCommand {
 			return nil
 		}
 

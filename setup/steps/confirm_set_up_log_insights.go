@@ -11,7 +11,7 @@ import (
 var ConfirmSetUpLogInsights = &s.Step{
 	Description: "Confirm whether to set up the optional Log Insights feature",
 	Check: func(state *s.SetupState) (bool, error) {
-		return state.Inputs.SkipLogInsights.Valid || state.PGAnalyzeSection.HasKey("db_log_location"), nil
+		return state.Inputs.ConfirmSetUpLogInsights.Valid || state.PGAnalyzeSection.HasKey("db_log_location"), nil
 	},
 	Run: func(state *s.SetupState) error {
 		if state.Inputs.Scripted {
@@ -35,7 +35,7 @@ Learn more at https://pganalyze.com/log-insights
 		if err != nil {
 			return err
 		}
-		state.Inputs.SkipLogInsights = null.BoolFrom(!setUpLogInsights)
+		state.Inputs.ConfirmSetUpLogInsights = null.BoolFrom(setUpLogInsights)
 
 		return nil
 	},
