@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"os"
 
+	"github.com/go-ini/ini"
 	"github.com/guregu/null"
 	flag "github.com/ogier/pflag"
 
@@ -24,7 +25,6 @@ const defaultConfigFile = "/etc/pganalyze-collector.conf"
 func main() {
 	steps := []*s.Step{
 		steps.CheckPlatform,
-		steps.DoLoadConfig,
 		steps.AskSuperuserConnection,
 		steps.CheckPostgresVersion,
 		steps.CheckReplicationStatus,
@@ -150,6 +150,12 @@ the manual collector install instructions: https://pganalyze.com/docs/install`)
 		os.Exit(1)
 	}
 
+	err := loadCollectorConfig(&setupState)
+	if err != nil {
+		setupState.Log("ERROR: could not load collector config: %s", err)
+		os.Exit(1)
+	}
+
 	setupState.Log(`Welcome to the pganalyze collector guided setup!
 
 IMPORTANT: Please note that this setup only works when monitoring a self-managed system,
@@ -267,5 +273,34 @@ func doStep(setupState *s.SetupState, step *s.Step) error {
 		return err
 	}
 	setupState.Verbose("✓ step completed")
+	return nil
+}
+
+func loadCollectorConfig(state *s.SetupState) error {
+	config, err := ini.Load(state.ConfigFilename)
+	if err != nil {
+		return err
+	}
+
+	// TODO: relax this
+	if len(config.Sections()) != 3 {
+		// N.B.: DEFAULT section, pganalyze section, server section
+		return fmt.Errorf("not supported for config file defining more than one server")
+	}
+	state.Config = config
+	for _, section := range config.Sections() {
+		if section.Name() == "pganalyze" {
+			state.PGAnalyzeSection = section
+		} else if section.Name() == "DEFAULT" {
+			continue
+		} else {
+			state.CurrentSection = section
+		}
+	}
+
+	if state.CurrentSection.HasKey("db_url") {
+		return errors.New("not supported when db_url is already configured")
+	}
+
 	return nil
 }
