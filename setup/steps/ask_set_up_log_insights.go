@@ -8,8 +8,8 @@ import (
 	s "github.com/pganalyze/collector/setup/state"
 )
 
-var ConfirmLogInsightsSetup = &s.Step{
-	Description: "Check whether Log Insights should be configured",
+var AskSetUpLogInsights = &s.Step{
+	Description: "Ask whether Log Insights should be configured",
 	Check: func(state *s.SetupState) (bool, error) {
 		return state.Inputs.SkipLogInsights.Valid || state.PGAnalyzeSection.HasKey("db_log_location"), nil
 	},

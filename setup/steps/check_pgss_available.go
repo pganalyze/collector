@@ -8,8 +8,8 @@ import (
 	s "github.com/pganalyze/collector/setup/state"
 )
 
-var CheckPgssAvailable = &s.Step{
-	Description: "Prepare for pg_stat_statements install",
+var ConfirmPgssAvailable = &s.Step{
+	Description: "Confirm the pg_stat_statements extension is ready to be installed",
 	Check: func(state *s.SetupState) (bool, error) {
 		row, err := state.QueryRunner.QueryRow(
 			fmt.Sprintf(

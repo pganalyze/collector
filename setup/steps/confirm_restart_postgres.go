@@ -9,8 +9,8 @@ import (
 	"github.com/pganalyze/collector/setup/util"
 )
 
-var RestartPostgres = &s.Step{
-	Description: "If necessary, restart Postgres to have configuration changes take effect",
+var ConfirmRestartPostgres = &s.Step{
+	Description: "Confirm whether Postgres should be restarted to have pending configuration changes take effect",
 	Check: func(state *s.SetupState) (bool, error) {
 		row, err := state.QueryRunner.QueryRow("SELECT COUNT(*) FROM pg_settings WHERE pending_restart;")
 		if err != nil {

@@ -9,8 +9,8 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
-var ReloadCollector = &s.Step{
-	Description: "Reload collector configuration",
+var ConfirmReloadCollector = &s.Step{
+	Description: "Signal the installed collector service to reload its configuration file",
 	Check: func(state *s.SetupState) (bool, error) {
 		return !state.NeedsReload || state.DidReload, nil
 	},

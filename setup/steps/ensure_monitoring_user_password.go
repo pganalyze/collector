@@ -15,8 +15,8 @@ import (
 	mainUtil "github.com/pganalyze/collector/util"
 )
 
-var ApplyMonitoringUserPasswd = &s.Step{
-	Description: "Apply monitoring user password",
+var EnsureMonitoringUserPassword = &s.Step{
+	Description: "Ensure the monitoring user password in Postgres matches db_password in the collector config file",
 	Check: func(state *s.SetupState) (bool, error) {
 		// We're using config.Read here (and only here) to be able to use the same
 		// GetPqOpenString we use in the main collector code

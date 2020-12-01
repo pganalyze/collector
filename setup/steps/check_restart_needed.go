@@ -8,7 +8,7 @@ import (
 )
 
 var CheckRestartNeeded = &s.Step{
-	Description: "Check whether a Postgres restart will be necessary to install",
+	Description: "Check whether a Postgres restart will be necessary in a future step to install the collector",
 	Check: func(state *s.SetupState) (bool, error) {
 		row, err := state.QueryRunner.QueryRow(
 			`SELECT

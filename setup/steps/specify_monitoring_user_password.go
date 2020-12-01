@@ -10,8 +10,8 @@ import (
 	s "github.com/pganalyze/collector/setup/state"
 )
 
-var ConfigureMonitoringUserPasswd = &s.Step{
-	Description: "Configure monitoring user password",
+var SpecifyMonitoringUserPasswd = &s.Step{
+	Description: "Specify monitoring user password (db_password) in the collector config file",
 	Check: func(state *s.SetupState) (bool, error) {
 		return state.CurrentSection.HasKey("db_password"), nil
 	},

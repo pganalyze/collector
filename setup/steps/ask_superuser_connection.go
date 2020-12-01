@@ -12,8 +12,8 @@ import (
 	s "github.com/pganalyze/collector/setup/state"
 )
 
-var EstablishSuperuserConnection = &s.Step{
-	Description: "Ensure Postgres superuser connection",
+var AskSuperuserConnection = &s.Step{
+	Description: "Configure the superuser connection to Postgres to use only for this guided setup session",
 	Check: func(state *s.SetupState) (bool, error) {
 		if state.QueryRunner == nil {
 			return false, nil

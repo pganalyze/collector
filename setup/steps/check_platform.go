@@ -10,7 +10,7 @@ import (
 )
 
 var CheckPlatform = &s.Step{
-	Description: "Check platform",
+	Description: "Check whether this platform is supported by pganalyze guided setup",
 	Check: func(state *s.SetupState) (bool, error) {
 		hostInfo, err := host.Info()
 		if err != nil {

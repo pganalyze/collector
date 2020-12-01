@@ -9,8 +9,8 @@ import (
 	"github.com/pganalyze/collector/setup/util"
 )
 
-var EnablePgss = &s.Step{
-	Description: "Enable pg_stat_statements",
+var EnablePgssInSpl = &s.Step{
+	Description: "Ensure the pg_stat_statements extension is included in the shared_preload_libraries setting in Postgres",
 	Check: func(state *s.SetupState) (bool, error) {
 		spl, err := util.GetPendingSharedPreloadLibraries(state.QueryRunner)
 		if err != nil {

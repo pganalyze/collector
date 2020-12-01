@@ -10,9 +10,9 @@ import (
 	"github.com/pganalyze/collector/setup/util"
 )
 
-var ConfigureLogLinePrefix = &s.Step{
+var EnsureSupportedLogLinePrefix = &s.Step{
 	Kind:        s.LogInsightsStep,
-	Description: "Check log_line_prefix",
+	Description: "Ensure the log_line_prefix setting in Postgres is supported by the collector",
 	Check: func(state *s.SetupState) (bool, error) {
 		row, err := state.QueryRunner.QueryRow(`SELECT setting FROM pg_settings WHERE name = 'log_line_prefix'`)
 		if err != nil {

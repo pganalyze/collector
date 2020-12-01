@@ -10,9 +10,9 @@ import (
 	"github.com/pganalyze/collector/setup/util"
 )
 
-var CreateLogExplainHelper = &s.Step{
+var EnsureLogExplainHelpers = &s.Step{
 	Kind:        s.AutomatedExplainStep,
-	Description: "Create log-based EXPLAIN helper function",
+	Description: "Ensure EXPLAIN helper functions for log-based EXPLAIN exist in all monitored Postgres databases",
 	Check: func(state *s.SetupState) (bool, error) {
 		logExplain, err := util.UsingLogExplain(state.CurrentSection)
 		if err != nil {

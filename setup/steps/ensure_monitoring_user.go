@@ -9,8 +9,8 @@ import (
 	s "github.com/pganalyze/collector/setup/state"
 )
 
-var CreateMonitoringUser = &s.Step{
-	Description: "Ensure monitoring user exists",
+var EnsureMonitoringUser = &s.Step{
+	Description: "Ensure the monitoring user (db_user in the collector config file) exists in Postgres",
 	Check: func(state *s.SetupState) (bool, error) {
 		pgaUserKey, err := state.CurrentSection.GetKey("db_username")
 		if err != nil {

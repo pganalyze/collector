@@ -9,7 +9,7 @@ import (
 )
 
 var SpecifyMonitoringUser = &s.Step{
-	Description: "Check config for monitoring user",
+	Description: "Specify the monitoring user to connect as (db_username) in the collector config file",
 	Check: func(state *s.SetupState) (bool, error) {
 		hasUser := state.CurrentSection.HasKey("db_username")
 		return hasUser, nil

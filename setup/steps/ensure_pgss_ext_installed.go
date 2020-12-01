@@ -9,8 +9,8 @@ import (
 	s "github.com/pganalyze/collector/setup/state"
 )
 
-var CreatePgss = &s.Step{
-	Description: "Install pg_stat_statements",
+var EnsurePgssExtInstalled = &s.Step{
+	Description: "Ensure the pg_stat_statements extension is installed in Postgres",
 	Check: func(state *s.SetupState) (bool, error) {
 		row, err := state.QueryRunner.QueryRow(
 			fmt.Sprintf(

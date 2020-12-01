@@ -10,8 +10,8 @@ import (
 	"github.com/pganalyze/collector/setup/util"
 )
 
-var CreatePganalyzeSchema = &s.Step{
-	Description: "Create pganalyze schema and helper functions",
+var EnsurePganalyzeSchema = &s.Step{
+	Description: "Ensure the pganalyze schema exists and db_user in the collector config file has USAGE privilege on it",
 	Check: func(state *s.SetupState) (bool, error) {
 		row, err := state.QueryRunner.QueryRow("SELECT COUNT(*) FROM pg_namespace WHERE nspname = 'pganalyze'")
 		if err != nil {

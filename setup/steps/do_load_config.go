@@ -8,8 +8,8 @@ import (
 	s "github.com/pganalyze/collector/setup/state"
 )
 
-var LoadConfig = &s.Step{
-	Description: "Load collector config",
+var DoLoadConfig = &s.Step{
+	Description: "Load the collector config file for use in this session",
 	Check: func(state *s.SetupState) (bool, error) {
 		config, err := ini.Load(state.ConfigFilename)
 		if err != nil {

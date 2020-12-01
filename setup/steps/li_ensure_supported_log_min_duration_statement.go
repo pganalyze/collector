@@ -14,7 +14,7 @@ import (
 
 var ConfigureLogMinDurationStatement = &s.Step{
 	Kind:        state.LogInsightsStep,
-	Description: "Check log_min_duration_statement",
+	Description: "Ensure the log_min_duration_statement setting in Postgres is supported by the collector",
 	Check: func(state *s.SetupState) (bool, error) {
 		row, err := state.QueryRunner.QueryRow(`SELECT setting FROM pg_settings WHERE name = 'log_min_duration_statement'`)
 		if err != nil {

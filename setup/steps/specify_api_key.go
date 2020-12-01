@@ -7,8 +7,8 @@ import (
 	s "github.com/pganalyze/collector/setup/state"
 )
 
-var SaveAPIKey = &s.Step{
-	Description: "Add pganalyze API key to collector config",
+var SpecifyAPIKey = &s.Step{
+	Description: "Specify the pganalyze API key (api_key) in the collector config file",
 	Check: func(state *s.SetupState) (bool, error) {
 		return state.PGAnalyzeSection.HasKey("api_key"), nil
 	},

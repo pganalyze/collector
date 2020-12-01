@@ -8,9 +8,9 @@ import (
 	s "github.com/pganalyze/collector/setup/state"
 )
 
-var CheckUseLogBasedExplain = &s.Step{
+var AskUseLogBasedExplain = &s.Step{
 	Kind:        s.AutomatedExplainStep,
-	Description: "Check whether to use the auto_explain module or Log-based EXPLAIN",
+	Description: "Ask whether to implement Automated EXPLAIN via the recommended auto_explain module or the alternative log-based EXPLAIN",
 	Check: func(state *s.SetupState) (bool, error) {
 		return state.CurrentSection.HasKey("enable_log_explain"), nil
 	},

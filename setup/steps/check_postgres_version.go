@@ -7,7 +7,7 @@ import (
 )
 
 var CheckPostgresVersion = &s.Step{
-	Description: "Check Postgres version",
+	Description: "Check whether this Postgres version is supported by pganalyze guided setup",
 	Check: func(state *s.SetupState) (bool, error) {
 		row, err := state.QueryRunner.QueryRow("SELECT current_setting('server_version'), current_setting('server_version_num')::integer")
 		if err != nil {

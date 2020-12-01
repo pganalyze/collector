@@ -8,9 +8,9 @@ import (
 	"github.com/pganalyze/collector/setup/util"
 )
 
-var CheckAutoExplainAvailable = &s.Step{
+var ConfirmAutoExplainAvailable = &s.Step{
 	Kind:        s.AutomatedExplainStep,
-	Description: "Prepare for auto_explain install",
+	Description: "Confirm the auto_explain contrib module is available",
 	Check: func(state *s.SetupState) (bool, error) {
 		logExplain, err := util.UsingLogExplain(state.CurrentSection)
 		if err != nil || logExplain {

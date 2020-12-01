@@ -7,7 +7,7 @@ import (
 )
 
 var CheckReplicationStatus = &s.Step{
-	Description: "Check replication status",
+	Description: "Check whether the database is a replica, which is currently unsupported by pganalyze guided setup",
 	Check: func(state *s.SetupState) (bool, error) {
 		result, err := state.QueryRunner.QueryRow("SELECT pg_is_in_recovery()")
 		if err != nil {

@@ -15,9 +15,9 @@ import (
 
 // N.B.: this needs to happen *after* the Postgres restart so that ALTER SYSTEM
 // recognizes these as valid configuration settings
-var ConfigureAutoExplain = &s.Step{
+var EnsureRecommendedAutoExplainSettings = &s.Step{
 	Kind:        s.AutomatedExplainStep,
-	Description: "Review auto_explain settings",
+	Description: "Ensure auto_explain settings in Postgres are configured as recommended, if desired",
 	Check: func(state *s.SetupState) (bool, error) {
 		if state.DidAutoExplainRecommendedSettings ||
 			(state.Inputs.SkipAutoExplainRecommended.Valid && state.Inputs.SkipAutoExplainRecommended.Bool) {

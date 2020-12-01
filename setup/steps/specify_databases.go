@@ -9,8 +9,8 @@ import (
 	s "github.com/pganalyze/collector/setup/state"
 )
 
-var SelectDatabases = &s.Step{
-	Description: "Select database(s) to monitor",
+var SpecifyDatabases = &s.Step{
+	Description: "Specify database(s) to monitor (db_name) in the collector config file",
 	Check: func(state *s.SetupState) (bool, error) {
 		hasDb := state.CurrentSection.HasKey("db_name")
 		if !hasDb {

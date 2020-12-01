@@ -10,8 +10,8 @@ import (
 	s "github.com/pganalyze/collector/setup/state"
 )
 
-var SetUpMonitoringUser = &s.Step{
-	Description: "Set up monitoring user",
+var EnsureMonitoringUserPermissions = &s.Step{
+	Description: "Ensure the monitoring user has sufficient permissions in Postgres for access to queries and monitoring metadata",
 	Check: func(state *s.SetupState) (bool, error) {
 		pgaUserKey, err := state.CurrentSection.GetKey("db_username")
 		if err != nil {

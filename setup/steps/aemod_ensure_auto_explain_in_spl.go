@@ -9,9 +9,9 @@ import (
 	"github.com/pganalyze/collector/setup/util"
 )
 
-var EnableAutoExplain = &s.Step{
+var EnsureAutoExplainInSpl = &s.Step{
 	Kind:        s.AutomatedExplainStep,
-	Description: "Enable auto_explain",
+	Description: "Ensure the auto_explain module is included in the shared_preload_libraries setting in Postgres",
 	Check: func(state *s.SetupState) (bool, error) {
 		logExplain, err := util.UsingLogExplain(state.CurrentSection)
 		if err != nil || logExplain {

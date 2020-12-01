@@ -16,9 +16,9 @@ import (
 	s "github.com/pganalyze/collector/setup/state"
 )
 
-var ConfigureLogLocation = &s.Step{
+var SpecifyDbLogLocation = &s.Step{
 	Kind:        state.LogInsightsStep,
-	Description: "Determine log location",
+	Description: "Specify the location of Postgres log files (db_log_location) in the collector config file",
 	Check: func(state *s.SetupState) (bool, error) {
 		return state.CurrentSection.HasKey("db_log_location"), nil
 	},

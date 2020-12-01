@@ -9,9 +9,9 @@ import (
 	"github.com/pganalyze/collector/setup/util"
 )
 
-var ConfigureLogErrorVerbosity = &s.Step{
+var EnsureSupportedLogErrorVerbosity = &s.Step{
 	Kind:        state.LogInsightsStep,
-	Description: "Check log_error_verbosity",
+	Description: "Ensure the log_error_verbosity setting in Postgres is supported by the collector",
 	Check: func(state *s.SetupState) (bool, error) {
 		row, err := state.QueryRunner.QueryRow(`SELECT setting FROM pg_settings WHERE name = 'log_error_verbosity'`)
 		if err != nil {
