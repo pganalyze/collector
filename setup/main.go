@@ -25,7 +25,7 @@ const defaultConfigFile = "/etc/pganalyze-collector.conf"
 func main() {
 	steps := []*s.Step{
 		steps.CheckPlatform,
-		steps.AskSuperuserConnection,
+		steps.ConfirmSuperuserConnection,
 		steps.CheckPostgresVersion,
 		steps.CheckReplicationStatus,
 		steps.CheckRestartNeeded,
@@ -41,7 +41,7 @@ func main() {
 		steps.EnsurePgssExtInstalled,
 		steps.EnablePgssInSpl,
 
-		steps.AskSetUpLogInsights,
+		steps.ConfirmSetUpLogInsights,
 		steps.EnsureSupportedLogErrorVerbosity,
 		steps.EnsureSupportedLogDuration,
 		steps.EnsureSupportedLogStatement,
@@ -49,8 +49,8 @@ func main() {
 		steps.EnsureSupportedLogLinePrefix,
 		steps.SpecifyDbLogLocation,
 
-		steps.AskSetUpAutoExplain,
-		steps.AskUseLogBasedExplain,
+		steps.ConfirmSetUpAutoExplain,
+		steps.ConfirmAutomatedExplainMode,
 		steps.EnsureLogExplainHelpers,
 		steps.ConfirmAutoExplainAvailable,
 		steps.EnsureAutoExplainInSpl,

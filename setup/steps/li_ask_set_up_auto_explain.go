@@ -11,11 +11,11 @@ import (
 	"github.com/pganalyze/collector/setup/util"
 )
 
-var AskSetUpAutoExplain = &s.Step{
+var ConfirmSetUpAutoExplain = &s.Step{
 	// N.B.: this step, asking the user whether to set up automated explain, is *not* an AutomatedExplainStep
 	// itself, but it is a state.LogInsightsStep because it depends on log insights
 	Kind:        state.LogInsightsStep,
-	Description: "Ask whether to configure Automated EXPLAIN",
+	Description: "Confirm whether to set up the optional Automated EXPLAIN feature",
 	Check: func(state *s.SetupState) (bool, error) {
 		if state.Inputs.SkipAutomatedExplain.Valid {
 			return !state.Inputs.SkipAutomatedExplain.Bool, nil
