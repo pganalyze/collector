@@ -30,6 +30,4 @@ RUN sh $CODE_DIR/packages/src/deb-systemd/after-install.sh
 
 # install postgres
 RUN apt-get install --yes --quiet postgresql
-RUN usermod --append --groups ssl-cert postgres
-RUN newgrp ssl-cert
 ENV PATH $PATH:/usr/lib/postgresql/10/bin
