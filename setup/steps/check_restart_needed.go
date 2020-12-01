@@ -33,7 +33,7 @@ A prompt will ask to confirm the restart before this guided setup performs it.
 NOTICE: A Postgres restart will not be required to set up query performance monitoring.
 
 However, a restart *will* be required for the recommended setup of the Automated EXPLAIN
-feature, but you can use the alternative log-based setup to explore the feature without
+feature. You can still use the alternative log-based setup to explore the feature without
 having to restart Postgres.
 `,
 			)
