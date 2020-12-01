@@ -221,6 +221,6 @@ guided-setup:
 
 	docker exec --privileged pganalyze-collector-test env PGA_SETUP_USE_PG_CTL=true pganalyze-collector-setup --api-key=abc123 --recommended --db-name=postgres
 
-	docker exec --user postgres pganalyze-collector-test pg_ctl --pgdata /tmp/pgdata --wait stop --mode fast
+	docker exec --user postgres pganalyze-collector-test pg_ctl --pgdata /var/lib/postgresql/10/main --wait stop --mode fast
 	docker rm -f pganalyze-collector-test
 	docker rmi pganalyze-collector-test
