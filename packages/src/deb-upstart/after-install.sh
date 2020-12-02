@@ -7,6 +7,10 @@ if ! getent group pganalyze > /dev/null; then
   usermod -g pganalyze pganalyze
 fi
 
+if ! groups pganalyze-collector | grep --quiet adm; then
+  usermod --append --groups adm pganalyze
+fi
+
 mkdir -p /var/lib/pganalyze-collector
 su -s /bin/sh pganalyze -c "test -O /var/lib/pganalyze-collector" || chown pganalyze /var/lib/pganalyze-collector
 
