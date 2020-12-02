@@ -69,10 +69,10 @@ func init() {
 		ConfirmCollectorReload: null.BoolFrom(true),
 		ConfirmPostgresRestart: null.BoolFrom(true),
 
-		ConfirmSetUpLogInsights:              null.BoolFrom(false),
-		ConfirmSetUpAutomatedExplain:         null.BoolFrom(false),
-		EnsureAutoExplainRecommendedSettings: null.BoolFrom(false),
-		ConfirmRunTestCommand:                null.BoolFrom(false),
+		ConfirmSetUpLogInsights:              null.BoolFrom(true),
+		ConfirmSetUpAutomatedExplain:         null.BoolFrom(true),
+		EnsureAutoExplainRecommendedSettings: null.BoolFrom(true),
+		ConfirmRunTestCommand:                null.BoolFrom(true),
 	}
 }
 
