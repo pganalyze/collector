@@ -221,6 +221,17 @@ guided-setup:
 
 	docker exec --privileged pganalyze-collector-test env PGA_SETUP_USE_PG_CTL=true pganalyze-collector-setup --api-key=abc123 --recommended --db-name=postgres
 
+	docker exec --user postgres pganalyze-collector-test psql -c "SHOW shared_preload_libraries" \
+	  -c "SELECT count(*) FROM pg_settings WHERE pending_restart" \
+	  -c "SELECT name, setting FROM pg_settings WHERE name IN ('log_duration', 'log_error_verbosity', 'log_line_prefix', 'log_min_duration_statement', 'log_statement', 'auto_explain.log_analyze', 'auto_explain.log_buffers', 'auto_explain.log_timing', 'auto_explain.log_triggers', 'auto_explain.log_verbose', 'auto_explain.log_format', 'auto_explain.log_min_duration', 'auto_explain.log_nested_statements') ORDER BY name" \
+	  -c "SELECT pg_has_role('pganalyze', 'pg_monitor', 'usage')" \
+	  > guided-setup.postgres.out
+	docker exec --user pganalyze pganalyze-collector-test cat /etc/pganalyze-collector.conf > guided-setup.collector-config.out
+
 	docker exec --user postgres pganalyze-collector-test pg_ctl --pgdata /var/lib/postgresql/10/main --wait stop --mode fast
 	docker rm -f pganalyze-collector-test
 	docker rmi pganalyze-collector-test
+	diff -Nau guided-setup.postgres.expected guided-setup.postgres.out && echo 'postgres configuration modified as expected'
+	grep -v db_password guided-setup.collector-config.out > guided-setup.collector-config.nopass.out
+	diff -Nau guided-setup.collector-config.nopass.expected guided-setup.collector-config.nopass.out \
+	  && grep --extended-regexp --quiet 'db_password\s+=\s+[a-f0-9]{32}' guided-setup.collector-config.out && echo 'collector config file modified as expected'
