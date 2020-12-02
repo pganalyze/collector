@@ -82,7 +82,7 @@ SELECT
                 ) AS lines(line)
               ) AS numbered_lines(line_no, line)
              WHERE
-               CASE WHEN sourceline IS NULL THEN line LIKE name || ' = %' ELSE line_no = sourceline END
+               line LIKE name || ' = %'
             ),
             name || ' = ', ''
           ),
