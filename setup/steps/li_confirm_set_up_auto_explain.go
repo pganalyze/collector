@@ -22,8 +22,8 @@ var ConfirmSetUpAutoExplain = &s.Step{
 			return true, nil
 		}
 
-		// also skip the question if it's already set up
-		if state.CurrentSection.HasKey("enable_log_explain") {
+		// otherwise, definitely prompt if it's not set up
+		if !state.CurrentSection.HasKey("enable_log_explain") {
 			return false, nil
 		}
 
