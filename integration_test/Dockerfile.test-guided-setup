@@ -31,3 +31,5 @@ RUN sh $CODE_DIR/packages/src/deb-systemd/after-install.sh
 # install postgres
 RUN apt-get install --yes --quiet postgresql
 ENV PATH $PATH:/usr/lib/postgresql/10/bin
+RUN mkdir -p /var/run/postgresql/10-main.pg_stat_tmp
+RUN chown --recursive postgres.postgres /var/run/postgresql/10-main.pg_stat_tmp
