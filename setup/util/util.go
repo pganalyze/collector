@@ -87,21 +87,21 @@ SELECT
                       sourcefile
                   END
                 ), '\s*$\s*', 'm'
-              ) AS lines(line)
+              ) WITH ORDINALITY AS lines(line, line_num)
               WHERE
                 line LIKE name || ' = %'
               ORDER BY
-                row_number() OVER() DESC
+                line_num DESC
               LIMIT 1
             ),
             (SELECT line FROM
               regexp_split_to_table(
                 pg_read_file(sourcefile), '\s*$\s*', 'm'
-              ) AS lines(line)
+              ) WITH ORDINALITY AS lines(line, line_num)
               WHERE
                 line LIKE name || ' = %'
               ORDER BY
-                row_number() OVER() DESC
+                line_num DESC
               LIMIT 1
             )
           ),
