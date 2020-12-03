@@ -73,7 +73,9 @@ func GetPendingSharedPreloadLibraries(runner *query.Runner) (string, error) {
 SELECT
   name,
   CASE
-    WHEN pending_restart THEN
+    WHEN NOT pending_restart THEN
+      setting
+    ELSE
       btrim(
         regexp_replace(
           COALESCE(
@@ -109,7 +111,6 @@ SELECT
         ),
         ''''
       )
-    ELSE current_setting(name)
   END AS pending_value
 FROM
   pg_settings
