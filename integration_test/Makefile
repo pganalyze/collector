@@ -227,6 +227,7 @@ guided-setup:
 	  -c "SELECT pg_has_role('pganalyze', 'pg_monitor', 'usage')" \
 	  > guided-setup.postgres.out
 	docker exec --user pganalyze pganalyze-collector-test cat /etc/pganalyze-collector.conf > guided-setup.collector-config.out
+	docker exec pganalyze-collector-test sh -c "PGA_DISABLE_ACTIVITY=1 pganalyze-collector --dry-run --force-state-update -v" > guided-setup.snapshot.json.out
 
 	docker exec --user postgres pganalyze-collector-test pg_ctl --pgdata /var/lib/postgresql/10/main --wait stop --mode fast
 	docker rm -f pganalyze-collector-test
@@ -235,3 +236,5 @@ guided-setup:
 	grep -v db_password guided-setup.collector-config.out > guided-setup.collector-config.nopass.out
 	diff -Nau guided-setup.collector-config.nopass.expected guided-setup.collector-config.nopass.out \
 	  && grep --extended-regexp --quiet 'db_password\s+=\s+[a-f0-9]{32}' guided-setup.collector-config.out && echo 'collector config file modified as expected'
+	jq '{fns: .functionReferences, roles: .roleReferences[] |  select(.name == "pganalyze")}' < guided-setup.snapshot.json.out > guided-setup.snapshot-subset.json.out
+	diff -Nau guided-setup.snapshot-subset.json.expected guided-setup.snapshot-subset.json.out && echo 'success'
