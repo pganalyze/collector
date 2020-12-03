@@ -58,7 +58,6 @@ func main() {
 		steps.ConfirmReloadCollector,
 		steps.ConfirmRestartPostgres,
 		steps.EnsureRecommendedAutoExplainSettings,
-		steps.ConfirmTestCommand,
 	}
 
 	var setupState state.SetupState

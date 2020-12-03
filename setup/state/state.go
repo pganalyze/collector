@@ -72,7 +72,6 @@ func init() {
 		ConfirmSetUpLogInsights:              null.BoolFrom(true),
 		ConfirmSetUpAutomatedExplain:         null.BoolFrom(true),
 		EnsureAutoExplainRecommendedSettings: null.BoolFrom(true),
-		ConfirmRunTestCommand:                null.BoolFrom(true),
 	}
 }
 
@@ -138,7 +137,6 @@ type SetupInputs struct {
 	ConfirmSetUpLogInsights              null.Bool `json:"confirm_set_up_log_insights"`
 	ConfirmSetUpAutomatedExplain         null.Bool `json:"confirm_set_up_automated_explain"`
 	EnsureAutoExplainRecommendedSettings null.Bool `json:"ensure_auto_explain_recommended_settings"`
-	ConfirmRunTestCommand                null.Bool `json:"confirm_run_test_command"`
 }
 
 var RecommendedInputs SetupInputs
@@ -163,7 +161,6 @@ type SetupState struct {
 	NeedsReload bool
 
 	DidReload                         bool
-	DidPgSleep                        bool
 	DidAutoExplainRecommendedSettings bool
 
 	Logger *log.Logger

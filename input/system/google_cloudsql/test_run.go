@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pganalyze/collector/input/postgres"
+	"github.com/pganalyze/collector/logs"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
 )
@@ -27,11 +27,7 @@ func LogTestRun(server *state.Server, globalCollectionOpts state.CollectionOpts,
 	}
 	logReceiver(cctx, servers, gcpLogStream, globalCollectionOpts, logger, logTestSucceeded)
 
-	db, err := postgres.EstablishConnection(server, logger, globalCollectionOpts, "")
-	if err == nil {
-		db.Exec(postgres.QueryMarkerSQL + fmt.Sprintf("DO $$BEGIN\nRAISE LOG 'pganalyze-collector-identify: %s';\nEND$$;", server.Config.SectionName))
-		db.Close()
-	}
+	logs.EmitTestLogMsg(server, globalCollectionOpts, logger)
 
 	select {
 	case <-logTestSucceeded:

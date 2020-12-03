@@ -10,7 +10,7 @@ import (
 	"github.com/bmizerany/lpx"
 	"github.com/kr/logfmt"
 	"github.com/pganalyze/collector/grant"
-	"github.com/pganalyze/collector/input/postgres"
+	"github.com/pganalyze/collector/logs"
 	"github.com/pganalyze/collector/logs/stream"
 	"github.com/pganalyze/collector/output"
 	"github.com/pganalyze/collector/output/pganalyze_collector"
@@ -43,11 +43,7 @@ func SetupLogReceiver(servers []*state.Server, globalCollectionOpts state.Collec
 	go logReceiver(servers, herokuLogStream, globalCollectionOpts, logger)
 
 	for _, server := range servers {
-		db, err := postgres.EstablishConnection(server, logger, globalCollectionOpts, "")
-		if err == nil {
-			db.Exec(postgres.QueryMarkerSQL + fmt.Sprintf("DO $$BEGIN\nRAISE LOG 'pganalyze-collector-identify: %s';\nEND$$;", server.Config.SectionName))
-			db.Close()
-		}
+		logs.EmitTestLogMsg(server, globalCollectionOpts, logger)
 	}
 }
 
