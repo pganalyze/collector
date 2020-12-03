@@ -1,0 +1,13 @@
+FROM ubuntu:18.04
+ENV container=docker
+
+RUN apt-get update -qq && apt-get install -y -q systemd
+
+COPY container.target /etc/systemd/system/container.target
+RUN ln -sf /etc/systemd/system/container.target /etc/systemd/system/default.target
+
+STOPSIGNAL SIGRTMIN+3
+
+#ENTRYPOINT ["/usr/lib/systemd/systemd"]
+ENTRYPOINT ["/sbin/init"]
+CMD ["--log-level=info"]

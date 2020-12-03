@@ -1,6 +1,13 @@
-FROM phusion/baseimage:bionic-1.0.0
+FROM ubuntu:18.04
 
-ENTRYPOINT [ "sleep", "infinity" ]
+# Systemd-based container setup
+ENV container=docker
+RUN apt-get update -qq && apt-get install -y -q systemd
+COPY integration_test/container.target /etc/systemd/system/container.target
+RUN ln -sf /etc/systemd/system/container.target /etc/systemd/system/default.target
+STOPSIGNAL SIGRTMIN+3
+ENTRYPOINT ["/sbin/init"]
+CMD ["--log-level=info"]
 
 ENV GOVERSION 1.14.11
 ENV CODE_DIR /collector
@@ -29,7 +36,5 @@ RUN cp $CODE_DIR/contrib/pganalyze-collector.conf /etc/pganalyze-collector.conf
 RUN sh $CODE_DIR/packages/src/deb-systemd/after-install.sh
 
 # install postgres
-RUN apt-get install --yes --quiet postgresql
+RUN DEBIAN_FRONTEND=noninteractive apt-get install --yes --quiet postgresql
 ENV PATH $PATH:/usr/lib/postgresql/10/bin
-RUN mkdir -p /var/run/postgresql/10-main.pg_stat_tmp
-RUN chown --recursive postgres.postgres /var/run/postgresql/10-main.pg_stat_tmp
