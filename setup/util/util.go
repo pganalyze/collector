@@ -55,39 +55,60 @@ func GetPendingSharedPreloadLibraries(runner *query.Runner) (string, error) {
 	// pg_stat_statements *and* auto_explain), we need to read the configured-but-not-yet-applied
 	// value from the config file (there does not appear to be a better way to do this)
 
-	// N.B.: we project name here even though we don't explicitly need it,
-	// because a valid (and in fact, common) value for shared_preload_libraries
-	// is the empty string, and because our query mechanism depends on CSV, and
-	// because of https://github.com/golang/go/issues/39119 , that value cannot
-	// be parsed correctly by Go's encoding/csv if that's the only value in the
+	// N.B.: we project name here even though we don't explicitly need it, because a valid (and
+	// in fact, common) value for shared_preload_libraries is the empty string, and because our
+	// query mechanism depends on CSV, and because of https://github.com/golang/go/issues/39119 ,
+	// that value cannot be parsed correctly by Go's encoding/csv if that's the only value in the
 	// CSV file output.
 
-	// N.B.: note also that checking sourcefile/sourceline here is a heuristic: these
-	// describe where the *current* value comes from (not the pending value), but this
-	// is our best guess.
+	// N.B.: note that although pg_settings contains sourcefile and sourceline, these refer
+	// to a snapshot of the config file as it existed when the currently-active value of a setting
+	// was loaded, which may be totally different from what the config file looks like now. Because
+	// of that, we check postgresql.auto.conf first (if it exists and contains the value) and fall
+	// back to sourcefile.
+
+	// N.B.: we need IS DISTINCT FROM NULL rather than IS NOT NULL because of the latter's odd behavior
+	// with row-valued expressions: https://www.postgresql.org/docs/current/functions-comparison.html#id-1.5.8.8.19.1
 	row, err := runner.QueryRow(`
 SELECT
   name,
   CASE
     WHEN pending_restart THEN
-      left(
-        right(
-          regexp_replace(
+      btrim(
+        regexp_replace(
+          COALESCE(
             (SELECT line FROM
-              (SELECT row_number() OVER () AS line_no, line FROM
-                regexp_split_to_table(
-                  pg_read_file(
-                    COALESCE(sourcefile, 'postgresql.auto.conf')
-                  ), '\s*$\s*', 'm'
-                ) AS lines(line)
-              ) AS numbered_lines(line_no, line)
-             WHERE
-               line LIKE name || ' = %'
+              regexp_split_to_table(
+                pg_read_file(
+                  CASE
+                    WHEN pg_stat_file('postgresql.auto.conf') IS DISTINCT FROM NULL THEN
+                      'postgresql.auto.conf'
+                    ELSE
+                      sourcefile
+                  END
+                ), '\s*$\s*', 'm'
+              ) AS lines(line)
+              WHERE
+                line LIKE name || ' = %'
+              ORDER BY
+                row_number() OVER() DESC
+              LIMIT 1
             ),
-            name || ' = ', ''
+            (SELECT line FROM
+              regexp_split_to_table(
+                pg_read_file(sourcefile), '\s*$\s*', 'm'
+              ) AS lines(line)
+              WHERE
+                line LIKE name || ' = %'
+              ORDER BY
+                row_number() OVER() DESC
+              LIMIT 1
+            )
           ),
-      -1),
-    -1)
+          name || ' = ', ''
+        ),
+        ''''
+      )
     ELSE current_setting(name)
   END AS pending_value
 FROM
