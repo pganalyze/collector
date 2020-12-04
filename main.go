@@ -17,10 +17,12 @@ import (
 	"time"
 
 	"github.com/juju/syslog"
+	"github.com/pkg/errors"
 
 	flag "github.com/ogier/pflag"
 
 	"github.com/pganalyze/collector/config"
+	"github.com/pganalyze/collector/input/postgres"
 	"github.com/pganalyze/collector/input/system/azure"
 	"github.com/pganalyze/collector/input/system/google_cloudsql"
 	"github.com/pganalyze/collector/input/system/heroku"
@@ -94,6 +96,8 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 	}
 
 	state.ReadStateFile(servers, globalCollectionOpts, logger)
+
+	checkAllInitialCollectionStatus(servers, globalCollectionOpts, logger)
 
 	// We intentionally don't do a test-run in the normal mode, since we're fine with
 	// a later SIGHUP that fixes the config (or a temporarily unreachable server at start)
@@ -507,4 +511,46 @@ ReadConfigAndRun:
 	if testRunAndTrace {
 		trace.Stop()
 	}
+}
+
+func checkAllInitialCollectionStatus(servers []*state.Server, opts state.CollectionOpts, logger *util.Logger) {
+	for _, server := range servers {
+		err := checkOneInitialCollectionStatus(server, opts, logger)
+		if err != nil {
+			logger.PrintVerbose("could not check initial collection status: %s", err)
+		}
+	}
+}
+
+func checkOneInitialCollectionStatus(server *state.Server, opts state.CollectionOpts, logger *util.Logger) error {
+	conn, err := postgres.EstablishConnection(server, logger, opts, "")
+	if err != nil {
+		return errors.Wrap(err, "failed to connect to database")
+	}
+	defer conn.Close()
+
+	settings, err := postgres.GetSettings(conn)
+	if err != nil {
+		return err
+	}
+	logsDisabled, logsDisabledReason := logs.ValidateLogCollectionConfig(server, settings)
+
+	var isIgnoredReplica bool
+	var collectionDisabledReason string
+	if !server.Config.SkipIfReplica {
+		isIgnoredReplica, err = postgres.GetIsReplica(logger, conn)
+		if err != nil {
+			return err
+		}
+		collectionDisabledReason = state.ErrReplicaCollectionDisabled.Error()
+	}
+	server.CollectionStatusMutex.Lock()
+	defer server.CollectionStatusMutex.Unlock()
+	server.CollectionStatus = state.CollectionStatus{
+		LogSnapshotDisabled:       logsDisabled,
+		LogSnapshotDisabledReason: logsDisabledReason,
+		CollectionDisabled:        isIgnoredReplica,
+		CollectionDisabledReason:  collectionDisabledReason,
+	}
+	return nil
 }

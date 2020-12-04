@@ -19,6 +19,19 @@ func CollectFull(server *state.Server, connection *sql.DB, globalCollectionOpts 
 
 	ps.CollectedAt = time.Now()
 
+	if server.Config.SkipIfReplica {
+		var isReplica bool
+		isReplica, err = postgres.GetIsReplica(logger, connection)
+		if err != nil {
+			logger.PrintError("Error checking replication status")
+			return
+		}
+		if isReplica {
+			err = state.ErrReplicaCollectionDisabled
+			return
+		}
+	}
+
 	ts.Version, err = postgres.GetPostgresVersion(logger, connection)
 	if err != nil {
 		logger.PrintError("Error collecting Postgres Version")
@@ -67,7 +80,7 @@ func CollectFull(server *state.Server, connection *sql.DB, globalCollectionOpts 
 	}
 
 	if globalCollectionOpts.CollectPostgresSettings {
-		ts.Settings, err = postgres.GetSettings(connection, ts.Version)
+		ts.Settings, err = postgres.GetSettings(connection)
 		if err != nil {
 			logger.PrintError("Error collecting config settings")
 			return

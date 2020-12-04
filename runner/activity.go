@@ -45,6 +45,17 @@ func processActivityForServer(server *state.Server, globalCollectionOpts state.C
 
 	defer connection.Close()
 
+	if server.Config.SkipIfReplica {
+		var isReplica bool
+		isReplica, err = postgres.GetIsReplica(logger, connection)
+		if err != nil {
+			return newState, false, err
+		}
+		if isReplica {
+			return newState, false, state.ErrReplicaCollectionDisabled
+		}
+	}
+
 	activity.Version, err = postgres.GetPostgresVersion(logger, connection)
 	if err != nil {
 		return newState, false, errors.Wrap(err, "error collecting postgres version")
@@ -98,9 +109,23 @@ func CollectActivityFromAllServers(servers []*state.Server, globalCollectionOpts
 			newState, success, err := processActivityForServer(server, globalCollectionOpts, prefixedLogger)
 			if err != nil {
 				server.ActivityStateMutex.Unlock()
+
+				server.CollectionStatusMutex.Lock()
+				isIgnoredReplica := err == state.ErrReplicaCollectionDisabled
+				if isIgnoredReplica {
+					reason := err.Error()
+					server.CollectionStatus = state.CollectionStatus{
+						CollectionDisabled:        true,
+						CollectionDisabledReason:  reason,
+						LogSnapshotDisabled:       true,
+						LogSnapshotDisabledReason: reason,
+					}
+				}
+				server.CollectionStatusMutex.Unlock()
+
 				allSuccessful = false
 				prefixedLogger.PrintError("Could not collect activity for server: %s", err)
-				if server.Config.ErrorCallback != "" {
+				if !isIgnoredReplica && server.Config.ErrorCallback != "" {
 					go runCompletionCallback("error", server.Config.ErrorCallback, server.Config.SectionName, "activity", err, prefixedLogger)
 				}
 			} else {

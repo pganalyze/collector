@@ -167,15 +167,29 @@ func CollectAllServers(servers []*state.Server, globalCollectionOpts state.Colle
 			if err != nil {
 				server.StateMutex.Unlock()
 				allSuccessful = false
+
+				server.CollectionStatusMutex.Lock()
+				isIgnoredReplica := err == state.ErrReplicaCollectionDisabled
+				if isIgnoredReplica {
+					reason := err.Error()
+					server.CollectionStatus = state.CollectionStatus{
+						CollectionDisabled:        true,
+						CollectionDisabledReason:  reason,
+						LogSnapshotDisabled:       true,
+						LogSnapshotDisabledReason: reason,
+					}
+				}
+				server.CollectionStatusMutex.Unlock()
+
 				prefixedLogger.PrintError("Could not process server: %s", err)
-				if grant.Valid && !globalCollectionOpts.TestRun && globalCollectionOpts.SubmitCollectedData {
+				if grant.Valid && !isIgnoredReplica && !globalCollectionOpts.TestRun && globalCollectionOpts.SubmitCollectedData {
 					server.Grant = grant
 					err = output.SendFailedFull(server, globalCollectionOpts, prefixedLogger)
 					if err != nil {
 						prefixedLogger.PrintWarning("Could not send error information to remote server: %s", err)
 					}
 				}
-				if server.Config.ErrorCallback != "" {
+				if !isIgnoredReplica && server.Config.ErrorCallback != "" {
 					go runCompletionCallback("error", server.Config.ErrorCallback, server.Config.SectionName, "full", err, prefixedLogger)
 				}
 			} else {

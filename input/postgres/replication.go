@@ -139,3 +139,9 @@ func GetReplication(logger *util.Logger, db *sql.DB, postgresVersion state.Postg
 
 	return repl, nil
 }
+
+func GetIsReplica(logger *util.Logger, db *sql.DB) (bool, error) {
+	var isReplica bool
+	err := db.QueryRow(QueryMarkerSQL + "SELECT pg_catalog.pg_is_in_recovery()").Scan(&isReplica)
+	return isReplica, err
+}
