@@ -515,9 +515,10 @@ ReadConfigAndRun:
 
 func checkAllInitialCollectionStatus(servers []*state.Server, opts state.CollectionOpts, logger *util.Logger) {
 	for _, server := range servers {
-		err := checkOneInitialCollectionStatus(server, opts, logger)
+		var prefixedLogger = logger.WithPrefix(server.Config.SectionName)
+		err := checkOneInitialCollectionStatus(server, opts, prefixedLogger)
 		if err != nil {
-			logger.PrintVerbose("could not check initial collection status: %s", err)
+			prefixedLogger.PrintVerbose("could not check initial collection status: %s", err)
 		}
 	}
 }
@@ -544,6 +545,12 @@ func checkOneInitialCollectionStatus(server *state.Server, opts state.Collection
 		}
 		collectionDisabledReason = state.ErrReplicaCollectionDisabled.Error()
 	}
+	if isIgnoredReplica {
+		logger.PrintInfo("All monitoring disabled for this server: %s", collectionDisabledReason)
+	} else if logsDisabled {
+		logger.PrintInfo("Log collection disabled for this server: %s", logsDisabledReason)
+	}
+
 	server.CollectionStatusMutex.Lock()
 	defer server.CollectionStatusMutex.Unlock()
 	server.CollectionStatus = state.CollectionStatus{
@@ -552,5 +559,6 @@ func checkOneInitialCollectionStatus(server *state.Server, opts state.Collection
 		CollectionDisabled:        isIgnoredReplica,
 		CollectionDisabledReason:  collectionDisabledReason,
 	}
+
 	return nil
 }
