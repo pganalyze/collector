@@ -23,8 +23,18 @@ func gatherQueryStatsForServer(server *state.Server, globalCollectionOpts state.
 	if err != nil {
 		return newState, errors.Wrap(err, "failed to connect to database")
 	}
-
 	defer connection.Close()
+
+	if server.Config.SkipIfReplica {
+		var isReplica bool
+		isReplica, err = postgres.GetIsReplica(logger, connection)
+		if err != nil {
+			return newState, err
+		}
+		if isReplica {
+			return newState, state.ErrReplicaCollectionDisabled
+		}
+	}
 
 	postgresVersion, err := postgres.GetPostgresVersion(logger, connection)
 	if err != nil {
@@ -77,6 +87,20 @@ func GatherQueryStatsFromAllServers(servers []*state.Server, globalCollectionOpt
 
 			if err != nil {
 				server.StateMutex.Unlock()
+
+				server.CollectionStatusMutex.Lock()
+				isIgnoredReplica := err == state.ErrReplicaCollectionDisabled
+				if isIgnoredReplica {
+					reason := err.Error()
+					server.CollectionStatus = state.CollectionStatus{
+						CollectionDisabled:        true,
+						CollectionDisabledReason:  reason,
+						LogSnapshotDisabled:       true,
+						LogSnapshotDisabledReason: reason,
+					}
+				}
+				server.CollectionStatusMutex.Unlock()
+
 				prefixedLogger.PrintError("Could not collect query stats for server: %s", err)
 				if server.Config.ErrorCallback != "" {
 					go runCompletionCallback("error", server.Config.ErrorCallback, server.Config.SectionName, "query_stats", err, prefixedLogger)
