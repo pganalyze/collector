@@ -123,10 +123,14 @@ func CollectActivityFromAllServers(servers []*state.Server, globalCollectionOpts
 				}
 				server.CollectionStatusMutex.Unlock()
 
-				allSuccessful = false
-				prefixedLogger.PrintError("Could not collect activity for server: %s", err)
-				if !isIgnoredReplica && server.Config.ErrorCallback != "" {
-					go runCompletionCallback("error", server.Config.ErrorCallback, server.Config.SectionName, "activity", err, prefixedLogger)
+				if isIgnoredReplica {
+					prefixedLogger.PrintVerbose("All monitoring suspended while server is replica")
+				} else {
+					allSuccessful = false
+					prefixedLogger.PrintError("Could not collect activity for server: %s", err)
+					if !isIgnoredReplica && server.Config.ErrorCallback != "" {
+						go runCompletionCallback("error", server.Config.ErrorCallback, server.Config.SectionName, "activity", err, prefixedLogger)
+					}
 				}
 			} else {
 				server.ActivityPrevState = newState

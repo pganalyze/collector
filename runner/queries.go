@@ -101,9 +101,13 @@ func GatherQueryStatsFromAllServers(servers []*state.Server, globalCollectionOpt
 				}
 				server.CollectionStatusMutex.Unlock()
 
-				prefixedLogger.PrintError("Could not collect query stats for server: %s", err)
-				if server.Config.ErrorCallback != "" {
-					go runCompletionCallback("error", server.Config.ErrorCallback, server.Config.SectionName, "query_stats", err, prefixedLogger)
+				if isIgnoredReplica {
+					prefixedLogger.PrintVerbose("All monitoring suspended while server is replica")
+				} else {
+					prefixedLogger.PrintError("Could not collect query stats for server: %s", err)
+					if server.Config.ErrorCallback != "" {
+						go runCompletionCallback("error", server.Config.ErrorCallback, server.Config.SectionName, "query_stats", err, prefixedLogger)
+					}
 				}
 			} else {
 				server.PrevState = newState
