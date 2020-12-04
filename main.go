@@ -537,7 +537,7 @@ func checkOneInitialCollectionStatus(server *state.Server, opts state.Collection
 
 	var isIgnoredReplica bool
 	var collectionDisabledReason string
-	if !server.Config.SkipIfReplica {
+	if server.Config.SkipIfReplica {
 		isIgnoredReplica, err = postgres.GetIsReplica(logger, conn)
 		if err != nil {
 			return err
