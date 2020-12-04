@@ -546,9 +546,9 @@ func checkOneInitialCollectionStatus(server *state.Server, opts state.Collection
 		collectionDisabledReason = state.ErrReplicaCollectionDisabled.Error()
 	}
 	if isIgnoredReplica {
-		logger.PrintInfo("All monitoring disabled for this server: %s", collectionDisabledReason)
+		logger.PrintInfo("All monitoring suspended for this server: %s", collectionDisabledReason)
 	} else if logsDisabled {
-		logger.PrintInfo("Log collection disabled for this server: %s", logsDisabledReason)
+		logger.PrintInfo("Log collection suspended for this server: %s", logsDisabledReason)
 	}
 
 	server.CollectionStatusMutex.Lock()
