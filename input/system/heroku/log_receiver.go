@@ -80,6 +80,12 @@ func processSystemMetrics(timestamp time.Time, content []byte, nameToServer map[
 		logger.PrintInfo("Ignoring system data since server can't be matched yet - if this keeps showing up you have a configuration error for %s", namespace+" / "+sourceName)
 		return
 	}
+	server.CollectionStatusMutex.Lock()
+	if server.CollectionStatus.CollectionDisabled {
+		server.CollectionStatusMutex.Unlock()
+		return
+	}
+	server.CollectionStatusMutex.Unlock()
 
 	prefixedLogger := logger.WithPrefix(server.Config.SectionName)
 
