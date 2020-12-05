@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/guregu/null"
 	"github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
 )
@@ -44,8 +45,8 @@ var duration = analyzeGroup{
 		remainderKind: state.StatementTextLogSecret,
 	},
 	detail: match{
-		regexp:  regexp.MustCompile(`(?:parameters: |, )\$\d+ = '([^']*)'`),
-		secrets: []state.LogSecretKind{state.StatementParameterLogSecret},
+		regexp:  regexp.MustCompile(`(?:parameters: |, )\$\d+ = (?:(NULL)|'([^']*)')`),
+		secrets: []state.LogSecretKind{state.StatementParameterLogSecret, state.StatementParameterLogSecret},
 	},
 }
 var autovacuumCancel = analyzeGroup{
@@ -1536,8 +1537,12 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 					var parameterParts [][]string
 					detailLine, parameterParts = matchLogLineAll(detailLine, duration.detail)
 					for _, part := range parameterParts {
-						if len(part) == 2 {
-							sample.Parameters = append(sample.Parameters, string(part[1]))
+						if len(part) == 3 {
+							if part[1] == "NULL" {
+								sample.Parameters = append(sample.Parameters, null.NewString("", false))
+							} else {
+								sample.Parameters = append(sample.Parameters, null.StringFrom(part[2]))
+							}
 						}
 					}
 				}

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/guregu/null"
 	pg_query "github.com/lfittl/pg_query_go"
 	pg_query_nodes "github.com/lfittl/pg_query_go/nodes"
 	"github.com/lib/pq"
@@ -129,10 +130,14 @@ func contains(strs []string, val string) bool {
 	return false
 }
 
-func getQuotedParamsStr(parameters []string) string {
+func getQuotedParamsStr(parameters []null.String) string {
 	params := []string{}
 	for i := 0; i < len(parameters); i++ {
-		params = append(params, pq.QuoteLiteral(parameters[i]))
+		if parameters[i].Valid {
+			params = append(params, pq.QuoteLiteral(parameters[i].String))
+		} else {
+			params = append(params, "NULL")
+		}
 	}
 	return strings.Join(params, ", ")
 }
