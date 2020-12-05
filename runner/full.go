@@ -87,6 +87,11 @@ func processServer(server *state.Server, globalCollectionOpts state.CollectionOp
 	var collectionStatus state.CollectionStatus
 	var err error
 
+	err = checkReplicaCollectionDisabled(server, globalCollectionOpts, logger)
+	if err != nil {
+		return state.PersistedState{}, state.Grant{}, state.CollectionStatus{}, err
+	}
+
 	if !globalCollectionOpts.ForceEmptyGrant {
 		// Note: In case of server errors, we should reuse the old grant if its still recent (i.e. less than 50 minutes ago)
 		newGrant, err = grant.GetDefaultGrant(server, globalCollectionOpts, logger)
@@ -142,6 +147,29 @@ func runCompletionCallback(callbackType string, callbackCmd string, sectionName 
 	err := cmd.Run()
 	if err != nil {
 		logger.PrintError("Could not run %s callback (%s snapshot): %s", callbackType, snapshotType, callbackCmd)
+	}
+}
+
+func checkReplicaCollectionDisabled(server *state.Server, opts state.CollectionOpts, logger *util.Logger) error {
+	if !server.Config.SkipIfReplica {
+		return nil
+	}
+
+	connection, err := postgres.EstablishConnection(server, logger, opts, "")
+	if err != nil {
+		return fmt.Errorf("Failed to connect to database: %s", err)
+	}
+	defer connection.Close()
+
+	var isReplica bool
+	isReplica, err = postgres.GetIsReplica(logger, connection)
+	if err != nil {
+		return fmt.Errorf("Error checking replication status")
+	}
+	if isReplica {
+		return state.ErrReplicaCollectionDisabled
+	} else {
+		return nil
 	}
 }
 

@@ -22,22 +22,6 @@ func processActivityForServer(server *state.Server, globalCollectionOpts state.C
 
 	newState := server.ActivityPrevState
 
-	if !globalCollectionOpts.ForceEmptyGrant {
-		newGrant, err = grant.GetDefaultGrant(server, globalCollectionOpts, logger)
-		if err != nil {
-			return newState, false, errors.Wrap(err, "could not get default grant for activity snapshot")
-		}
-
-		if !newGrant.Config.EnableActivity {
-			if globalCollectionOpts.TestRun {
-				logger.PrintError("  Failed - Activity snapshots disabled by pganalyze")
-			} else {
-				logger.PrintVerbose("Activity snapshots disabled by pganalyze, skipping")
-			}
-			return newState, false, nil
-		}
-	}
-
 	connection, err = postgres.EstablishConnection(server, logger, globalCollectionOpts, "")
 	if err != nil {
 		return newState, false, errors.Wrap(err, "failed to connect to database")
@@ -53,6 +37,22 @@ func processActivityForServer(server *state.Server, globalCollectionOpts state.C
 		}
 		if isReplica {
 			return newState, false, state.ErrReplicaCollectionDisabled
+		}
+	}
+
+	if !globalCollectionOpts.ForceEmptyGrant {
+		newGrant, err = grant.GetDefaultGrant(server, globalCollectionOpts, logger)
+		if err != nil {
+			return newState, false, errors.Wrap(err, "could not get default grant for activity snapshot")
+		}
+
+		if !newGrant.Config.EnableActivity {
+			if globalCollectionOpts.TestRun {
+				logger.PrintError("  Failed - Activity snapshots disabled by pganalyze")
+			} else {
+				logger.PrintVerbose("Activity snapshots disabled by pganalyze, skipping")
+			}
+			return newState, false, nil
 		}
 	}
 
