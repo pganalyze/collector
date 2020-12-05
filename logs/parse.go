@@ -79,6 +79,8 @@ var RsyslogHostnameRegxp = `(\S+)`
 var RsyslogProcessNameRegexp = `(\w+)`
 var RsyslogRegexp = regexp.MustCompile(`^` + RsyslogTimeRegexp + ` ` + RsyslogHostnameRegxp + ` ` + RsyslogProcessNameRegexp + `\[` + PidRegexp + `\]: ` + SyslogSequenceAndSplitRegexp + ` ` + RsyslogLevelAndContentRegexp)
 
+// The Heroku log_line_prefix is handled directly in the Heroku log receiver, included here for reference only
+var HerokuLogLinePrefix = " sql_error_code = %e "
 var HerokuPostgresDebugRegexp = regexp.MustCompile(`^(\w+ \d+ \d+:\d+:\d+ \w+ app\[postgres\] \w+ )?\[(\w+)\] \[\d+-\d+\] ( sql_error_code = ` + SqlstateRegexp + ` (\w+):  )?(.+)`)
 
 func IsSupportedPrefix(prefix string) bool {
