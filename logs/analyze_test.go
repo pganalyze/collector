@@ -3,6 +3,7 @@ package logs_test
 import (
 	"testing"
 
+	"github.com/guregu/null"
 	"github.com/kylelemons/godebug/pretty"
 	"github.com/pganalyze/collector/logs"
 	"github.com/pganalyze/collector/output/pganalyze_collector"
@@ -73,9 +74,58 @@ var tests = []testpair{
 			}},
 		}},
 		[]state.PostgresQuerySample{{
-			Query:      "SELECT * FROM x WHERE y = $1 LIMIT $2",
-			RuntimeMs:  4079.697,
-			Parameters: []string{"long string", "1"},
+			Query:     "SELECT * FROM x WHERE y = $1 LIMIT $2",
+			RuntimeMs: 4079.697,
+			Parameters: []null.String{
+				null.StringFrom("long string"),
+				null.StringFrom("1"),
+			},
+		}},
+	},
+	{
+		[]state.LogLine{{
+			Content:  "duration: 4079.697 ms  execute <unnamed>: \nSELECT * FROM x WHERE y = $1 AND z = $2 LIMIT $3",
+			LogLevel: pganalyze_collector.LogLineInformation_LOG,
+		}, {
+			Content:  "parameters: $1 = 'long string', $2 = NULL, $3 = '10'",
+			LogLevel: pganalyze_collector.LogLineInformation_DETAIL,
+		}},
+		[]state.LogLine{{
+			Query:              "SELECT * FROM x WHERE y = $1 AND z = $2 LIMIT $3",
+			Classification:     pganalyze_collector.LogLineInformation_STATEMENT_DURATION,
+			LogLevel:           pganalyze_collector.LogLineInformation_LOG,
+			Details:            map[string]interface{}{"duration_ms": 4079.697},
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 43,
+				ByteEnd:   91,
+				Kind:      state.StatementTextLogSecret,
+			}},
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_DETAIL,
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 18,
+				ByteEnd:   29,
+				Kind:      state.StatementParameterLogSecret,
+			}, {
+				ByteStart: 37,
+				ByteEnd:   41,
+				Kind:      state.StatementParameterLogSecret,
+			}, {
+				ByteStart: 49,
+				ByteEnd:   51,
+				Kind:      state.StatementParameterLogSecret,
+			}},
+		}},
+		[]state.PostgresQuerySample{{
+			Query:     "SELECT * FROM x WHERE y = $1 AND z = $2 LIMIT $3",
+			RuntimeMs: 4079.697,
+			Parameters: []null.String{
+				null.StringFrom("long string"),
+				null.NewString("", false),
+				null.StringFrom("10"),
+			},
 		}},
 	},
 	{

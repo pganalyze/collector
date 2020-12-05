@@ -3,6 +3,7 @@ package state
 import (
 	"time"
 
+	"github.com/guregu/null"
 	"github.com/pganalyze/collector/output/pganalyze_collector"
 	uuid "github.com/satori/go.uuid"
 )
@@ -12,7 +13,7 @@ type PostgresQuerySample struct {
 	Username   string
 	Database   string
 	Query      string
-	Parameters []string
+	Parameters []null.String
 
 	LogLineUUID uuid.UUID
 

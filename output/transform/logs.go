@@ -92,13 +92,26 @@ func transformPostgresQuerySamples(server *state.Server, s snapshot.CompactLogSn
 			sampleIn.Query,
 		)
 
+		var parameters []*snapshot.NullString
+		var parametersLegacy []string
+		for _, param := range sampleIn.Parameters {
+			if param.Valid {
+				parameters = append(parameters, &snapshot.NullString{Valid: true, Value: param.String})
+				parametersLegacy = append(parametersLegacy, param.String)
+			} else {
+				parameters = append(parameters, &snapshot.NullString{Valid: false, Value: ""})
+				parametersLegacy = append(parametersLegacy, "")
+			}
+		}
+
 		sample := snapshot.QuerySample{
-			QueryIdx:    queryIdx,
-			OccurredAt:  occurredAt,
-			RuntimeMs:   sampleIn.RuntimeMs,
-			LogLineUuid: sampleIn.LogLineUUID.String(),
-			QueryText:   sampleIn.Query,
-			Parameters:  sampleIn.Parameters,
+			QueryIdx:         queryIdx,
+			OccurredAt:       occurredAt,
+			RuntimeMs:        sampleIn.RuntimeMs,
+			LogLineUuid:      sampleIn.LogLineUUID.String(),
+			QueryText:        sampleIn.Query,
+			Parameters:       parameters,
+			ParametersLegacy: parametersLegacy,
 
 			HasExplain:    sampleIn.HasExplain,
 			ExplainSource: sampleIn.ExplainSource,
