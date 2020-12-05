@@ -105,7 +105,7 @@ func TestLogsForAllServers(servers []*state.Server, globalCollectionOpts state.C
 			prefixedLogger.PrintError("ERROR - Could not check log_line_prefix for server: %s", err)
 			hasFailedServers = true
 			continue
-		} else if !logs.IsSupportedPrefix(logLinePrefix) {
+		} else if !logs.IsSupportedPrefix(logLinePrefix) && !(server.Config.SystemType == "heroku" && logLinePrefix == logs.HerokuLogLinePrefix) {
 			prefixedLogger.PrintError("ERROR - Unsupported log_line_prefix setting: '%s'", logLinePrefix)
 			hasFailedServers = true
 			continue
@@ -148,6 +148,8 @@ func TestLogsForAllServers(servers []*state.Server, globalCollectionOpts state.C
 			} else {
 				prefixedLogger.PrintInfo("  Log test successful")
 			}
+		} else if server.Config.SystemType == "heroku" {
+			prefixedLogger.PrintInfo("NOTICE - To confirm Log Insights config, setup Heroku log drain per docs (https://pganalyze.com/docs/log-insights/setup/heroku-postgres) and verify data shows up in pganalyze app.")
 		}
 	}
 
