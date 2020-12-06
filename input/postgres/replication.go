@@ -143,13 +143,13 @@ func GetReplication(logger *util.Logger, db *sql.DB, postgresVersion state.Postg
 func GetIsReplica(logger *util.Logger, db *sql.DB) (bool, error) {
 	isAwsAurora, err := GetIsAwsAurora(db)
 	if err != nil {
-		logger.PrintVerbose("Error collecting Postgres Version: %s", err)
+		logger.PrintVerbose("Error checking Postgres version: %s", err)
 		return false, err
 	}
 
 	if isAwsAurora {
-		// replication works differently in Aurora and is not currently supported
-		// by the skip_if_replica flag
+		// AWS Aurora is always considered a primary for purposes of the
+		// skip_if_replica flag
 		return false, nil
 	}
 
