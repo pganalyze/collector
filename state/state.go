@@ -1,7 +1,6 @@
 package state
 
 import (
-	"errors"
 	"sync"
 	"time"
 
@@ -216,8 +215,6 @@ type GrantS3 struct {
 	S3URL    string            `json:"s3_url"`
 	S3Fields map[string]string `json:"s3_fields"`
 }
-
-var ErrReplicaCollectionDisabled error = errors.New("monitored server is replica and replication collection disabled via config")
 
 type CollectionStatus struct {
 	CollectionDisabled        bool
