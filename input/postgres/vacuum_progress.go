@@ -80,7 +80,7 @@ SELECT (query_start_epoch || padded_pid)::bigint AS vacuum_identity,
 			 JOIN activity a USING (pid)
 			 LEFT JOIN pg_catalog.pg_class c ON (c.oid = v.relid)
 			 LEFT JOIN pg_catalog.pg_namespace n ON (n.oid = c.relnamespace)
- WHERE v.relid IS NOT NULL OR a.query <> '<insufficient privilege>'
+ WHERE v.relid IS NOT NULL OR (a.query <> '<insufficient privilege>' AND a.nspname IS NOT NULL AND a.relname IS NOT NULL)
 `
 
 func GetVacuumProgress(logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion, ignoreRegexp string) ([]state.PostgresVacuumProgress, error) {
