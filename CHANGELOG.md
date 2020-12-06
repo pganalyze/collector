@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.35.0      2020-12-05
+
+* Add new "pganalyze-collector-setup" program that streamlines collector installation
+  * This is initially targeted for self-managed servers to make it easier to set up
+    the collector and required configuration settings for a locally running Postgres
+    server
+  * To start, this supports the following environments:
+    * Postgres 10 and newer, running on the same server as the collector
+    * Ubuntu 14.04 and newer
+    * Debian 10 and newer
+* Collector test: Show server URLs to make it easier to access the servers in
+  pganalyze after the test
+* Collector test+reload: In case of errors, return exit code 1
+* Ignore manual vacuums if the collector can't access pg_stat_progress_vacuum
+* Don't run log test for Heroku, instead provide info message
+  * Also fixes "Unsupported log_line_prefix setting: ' sql_error_code = %e '"
+    error on Heroku Postgres
+* Add pganalyze system user to adm group in Debian/Ubuntu packages
+  * This gives the collector permission to read Postgres log files in a default
+    install, simplifying Log Insights setup
+* Handle NULL parameters for query samples correctly
+* Add a skip_if_replica / SKIP_IF_REPLICA option (#117)
+  * You can use this to configure the collector in a no-op mode on
+    replicas (we only query if the monitored database is a replica), and
+    automatically switch to active monitoring when the database is no
+    longer a replica.
+
+
 ## 0.34.0      2020-11-07
 
 * Check and report problematic log collection settings
