@@ -217,6 +217,8 @@ type GrantS3 struct {
 }
 
 type CollectionStatus struct {
+	CollectionDisabled        bool
+	CollectionDisabledReason  string
 	LogSnapshotDisabled       bool
 	LogSnapshotDisabledReason string
 }

@@ -18,7 +18,7 @@ SELECT name,
 			 sourceline
 	FROM pg_catalog.pg_settings`
 
-func GetSettings(db *sql.DB, postgresVersion state.PostgresVersion) ([]state.PostgresSetting, error) {
+func GetSettings(db *sql.DB) ([]state.PostgresSetting, error) {
 	stmt, err := db.Prepare(QueryMarkerSQL + settingsSQL)
 	if err != nil {
 		err = fmt.Errorf("Settings/Prepare: %s", err)

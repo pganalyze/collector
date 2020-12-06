@@ -139,3 +139,21 @@ func GetReplication(logger *util.Logger, db *sql.DB, postgresVersion state.Postg
 
 	return repl, nil
 }
+
+func GetIsReplica(logger *util.Logger, db *sql.DB) (bool, error) {
+	isAwsAurora, err := GetIsAwsAurora(db)
+	if err != nil {
+		logger.PrintVerbose("Error checking Postgres version: %s", err)
+		return false, err
+	}
+
+	if isAwsAurora {
+		// AWS Aurora is always considered a primary for purposes of the
+		// skip_if_replica flag
+		return false, nil
+	}
+
+	var isReplica bool
+	err = db.QueryRow(QueryMarkerSQL + "SELECT pg_catalog.pg_is_in_recovery()").Scan(&isReplica)
+	return isReplica, err
+}

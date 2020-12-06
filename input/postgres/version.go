@@ -24,10 +24,11 @@ func GetPostgresVersion(logger *util.Logger, db *sql.DB) (version state.Postgres
 		return
 	}
 
-	err = db.QueryRow(QueryMarkerSQL + "SELECT pg_catalog.count(1) = 1 FROM pg_settings WHERE name = 'rds.extensions' AND setting LIKE '%aurora_stat_utils%'").Scan(&version.IsAwsAurora)
+	isAwsAurora, err := GetIsAwsAurora(db)
 	if err != nil {
 		return
 	}
+	version.IsAwsAurora = isAwsAurora
 
 	err = db.QueryRow(QueryMarkerSQL + "SELECT pg_catalog.count(1) = 1 FROM pg_extension WHERE extname = 'citus'").Scan(&version.IsCitus)
 	if err != nil {
@@ -37,4 +38,10 @@ func GetPostgresVersion(logger *util.Logger, db *sql.DB) (version state.Postgres
 	logger.PrintVerbose("Detected PostgreSQL Version %d (%s)", version.Numeric, version.Full)
 
 	return
+}
+
+func GetIsAwsAurora(db *sql.DB) (bool, error) {
+	var isAurora bool
+	err := db.QueryRow(QueryMarkerSQL + "SELECT pg_catalog.count(1) = 1 FROM pg_settings WHERE name = 'rds.extensions' AND setting LIKE '%aurora_stat_utils%'").Scan(&isAurora)
+	return isAurora, err
 }

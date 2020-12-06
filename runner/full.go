@@ -87,6 +87,11 @@ func processServer(server *state.Server, globalCollectionOpts state.CollectionOp
 	var collectionStatus state.CollectionStatus
 	var err error
 
+	err = checkReplicaCollectionDisabled(server, globalCollectionOpts, logger)
+	if err != nil {
+		return state.PersistedState{}, state.Grant{}, state.CollectionStatus{}, err
+	}
+
 	if !globalCollectionOpts.ForceEmptyGrant {
 		// Note: In case of server errors, we should reuse the old grant if its still recent (i.e. less than 50 minutes ago)
 		newGrant, err = grant.GetDefaultGrant(server, globalCollectionOpts, logger)
@@ -145,6 +150,29 @@ func runCompletionCallback(callbackType string, callbackCmd string, sectionName 
 	}
 }
 
+func checkReplicaCollectionDisabled(server *state.Server, opts state.CollectionOpts, logger *util.Logger) error {
+	if !server.Config.SkipIfReplica {
+		return nil
+	}
+
+	connection, err := postgres.EstablishConnection(server, logger, opts, "")
+	if err != nil {
+		return fmt.Errorf("Failed to connect to database: %s", err)
+	}
+	defer connection.Close()
+
+	var isReplica bool
+	isReplica, err = postgres.GetIsReplica(logger, connection)
+	if err != nil {
+		return fmt.Errorf("Error checking replication status")
+	}
+	if isReplica {
+		return state.ErrReplicaCollectionDisabled
+	} else {
+		return nil
+	}
+}
+
 // CollectAllServers - Collects statistics from all servers and sends them as full snapshots to the pganalyze service
 func CollectAllServers(servers []*state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (allSuccessful bool) {
 	var wg sync.WaitGroup
@@ -166,17 +194,37 @@ func CollectAllServers(servers []*state.Server, globalCollectionOpts state.Colle
 			newState, grant, newCollectionStatus, err := processServer(server, globalCollectionOpts, prefixedLogger)
 			if err != nil {
 				server.StateMutex.Unlock()
-				allSuccessful = false
-				prefixedLogger.PrintError("Could not process server: %s", err)
-				if grant.Valid && !globalCollectionOpts.TestRun && globalCollectionOpts.SubmitCollectedData {
-					server.Grant = grant
-					err = output.SendFailedFull(server, globalCollectionOpts, prefixedLogger)
-					if err != nil {
-						prefixedLogger.PrintWarning("Could not send error information to remote server: %s", err)
+
+				server.CollectionStatusMutex.Lock()
+				isIgnoredReplica := err == state.ErrReplicaCollectionDisabled
+				if isIgnoredReplica {
+					reason := err.Error()
+					server.CollectionStatus = state.CollectionStatus{
+						CollectionDisabled:        true,
+						CollectionDisabledReason:  reason,
+						LogSnapshotDisabled:       true,
+						LogSnapshotDisabledReason: reason,
 					}
 				}
-				if server.Config.ErrorCallback != "" {
-					go runCompletionCallback("error", server.Config.ErrorCallback, server.Config.SectionName, "full", err, prefixedLogger)
+				server.CollectionStatusMutex.Unlock()
+
+				if isIgnoredReplica {
+					prefixedLogger.PrintVerbose("All monitoring suspended while server is replica")
+				} else {
+					allSuccessful = false
+					prefixedLogger.PrintError("Could not process server: %s", err)
+
+					if grant.Valid && !globalCollectionOpts.TestRun && globalCollectionOpts.SubmitCollectedData {
+						server.Grant = grant
+						err = output.SendFailedFull(server, globalCollectionOpts, prefixedLogger)
+						if err != nil {
+							prefixedLogger.PrintWarning("Could not send error information to remote server: %s", err)
+						}
+					}
+
+					if !isIgnoredReplica && server.Config.ErrorCallback != "" {
+						go runCompletionCallback("error", server.Config.ErrorCallback, server.Config.SectionName, "full", err, prefixedLogger)
+					}
 				}
 			} else {
 				server.Grant = grant

@@ -143,6 +143,11 @@ type ServerConfig struct {
 	// the collector multiple times against the same database server
 	MaxCollectorConnections int `ini:"max_collector_connections"`
 
+	// Do not monitor this server while it is a replica (according to pg_is_in_recovery),
+	// but keep checking on standard snapshot intervals and automatically start monitoring
+	// once the server is promoted
+	SkipIfReplica bool `ini:"skip_if_replica"`
+
 	// Configuration for PII filtering
 	FilterLogSecret   string `ini:"filter_log_secret"`   // none/all/credential/parsing_error/statement_text/statement_parameter/table_data/ops/unidentified (comma separated)
 	FilterQuerySample string `ini:"filter_query_sample"` // none/all (defaults to "none")

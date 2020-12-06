@@ -22,6 +22,22 @@ func processActivityForServer(server *state.Server, globalCollectionOpts state.C
 
 	newState := server.ActivityPrevState
 
+	if server.Config.SkipIfReplica {
+		connection, err = postgres.EstablishConnection(server, logger, globalCollectionOpts, "")
+		if err != nil {
+			return newState, false, errors.Wrap(err, "failed to connect to database")
+		}
+		defer connection.Close()
+		var isReplica bool
+		isReplica, err = postgres.GetIsReplica(logger, connection)
+		if err != nil {
+			return newState, false, err
+		}
+		if isReplica {
+			return newState, false, state.ErrReplicaCollectionDisabled
+		}
+	}
+
 	if !globalCollectionOpts.ForceEmptyGrant {
 		newGrant, err = grant.GetDefaultGrant(server, globalCollectionOpts, logger)
 		if err != nil {
@@ -37,13 +53,15 @@ func processActivityForServer(server *state.Server, globalCollectionOpts state.C
 			return newState, false, nil
 		}
 	}
-
-	connection, err = postgres.EstablishConnection(server, logger, globalCollectionOpts, "")
-	if err != nil {
-		return newState, false, errors.Wrap(err, "failed to connect to database")
+	// N.B.: Without the SkipIfReplica flag, we wait to establish the connection to avoid opening
+	// and closing it for no reason when the grant EnableActivity is not set (e.g., production plans)
+	if connection == nil {
+		connection, err = postgres.EstablishConnection(server, logger, globalCollectionOpts, "")
+		if err != nil {
+			return newState, false, errors.Wrap(err, "failed to connect to database")
+		}
+		defer connection.Close()
 	}
-
-	defer connection.Close()
 
 	activity.Version, err = postgres.GetPostgresVersion(logger, connection)
 	if err != nil {
@@ -98,10 +116,28 @@ func CollectActivityFromAllServers(servers []*state.Server, globalCollectionOpts
 			newState, success, err := processActivityForServer(server, globalCollectionOpts, prefixedLogger)
 			if err != nil {
 				server.ActivityStateMutex.Unlock()
-				allSuccessful = false
-				prefixedLogger.PrintError("Could not collect activity for server: %s", err)
-				if server.Config.ErrorCallback != "" {
-					go runCompletionCallback("error", server.Config.ErrorCallback, server.Config.SectionName, "activity", err, prefixedLogger)
+
+				server.CollectionStatusMutex.Lock()
+				isIgnoredReplica := err == state.ErrReplicaCollectionDisabled
+				if isIgnoredReplica {
+					reason := err.Error()
+					server.CollectionStatus = state.CollectionStatus{
+						CollectionDisabled:        true,
+						CollectionDisabledReason:  reason,
+						LogSnapshotDisabled:       true,
+						LogSnapshotDisabledReason: reason,
+					}
+				}
+				server.CollectionStatusMutex.Unlock()
+
+				if isIgnoredReplica {
+					prefixedLogger.PrintVerbose("All monitoring suspended while server is replica")
+				} else {
+					allSuccessful = false
+					prefixedLogger.PrintError("Could not collect activity for server: %s", err)
+					if !isIgnoredReplica && server.Config.ErrorCallback != "" {
+						go runCompletionCallback("error", server.Config.ErrorCallback, server.Config.SectionName, "activity", err, prefixedLogger)
+					}
 				}
 			} else {
 				server.ActivityPrevState = newState
