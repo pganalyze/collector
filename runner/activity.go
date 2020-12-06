@@ -22,14 +22,12 @@ func processActivityForServer(server *state.Server, globalCollectionOpts state.C
 
 	newState := server.ActivityPrevState
 
-	connection, err = postgres.EstablishConnection(server, logger, globalCollectionOpts, "")
-	if err != nil {
-		return newState, false, errors.Wrap(err, "failed to connect to database")
-	}
-
-	defer connection.Close()
-
 	if server.Config.SkipIfReplica {
+		connection, err = postgres.EstablishConnection(server, logger, globalCollectionOpts, "")
+		if err != nil {
+			return newState, false, errors.Wrap(err, "failed to connect to database")
+		}
+		defer connection.Close()
 		var isReplica bool
 		isReplica, err = postgres.GetIsReplica(logger, connection)
 		if err != nil {
@@ -54,6 +52,15 @@ func processActivityForServer(server *state.Server, globalCollectionOpts state.C
 			}
 			return newState, false, nil
 		}
+	}
+	// N.B.: Without the SkipIfReplica flag, we wait to establish the connection to avoid opening
+	// and closing it for no reason when the grant EnableActivity is not set (e.g., production plans)
+	if connection == nil {
+		connection, err = postgres.EstablishConnection(server, logger, globalCollectionOpts, "")
+		if err != nil {
+			return newState, false, errors.Wrap(err, "failed to connect to database")
+		}
+		defer connection.Close()
 	}
 
 	activity.Version, err = postgres.GetPostgresVersion(logger, connection)
