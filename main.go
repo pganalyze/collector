@@ -543,7 +543,9 @@ func checkOneInitialCollectionStatus(server *state.Server, opts state.Collection
 		if err != nil {
 			return err
 		}
-		collectionDisabledReason = state.ErrReplicaCollectionDisabled.Error()
+		if isIgnoredReplica {
+			collectionDisabledReason = state.ErrReplicaCollectionDisabled.Error()
+		}
 	}
 	if isIgnoredReplica {
 		logger.PrintInfo("All monitoring suspended for this server: %s", collectionDisabledReason)
