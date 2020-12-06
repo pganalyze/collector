@@ -26,6 +26,9 @@
     replicas (we only query if the monitored database is a replica), and
     automatically switch to active monitoring when the database is no
     longer a replica.
+* Stop building packages for CentOS 6 and Ubuntu 14.04 (Trusty)
+  * Both of these systems are now end of life, and the remaining survivor
+    of the CentOS 6 line (Amazon Linux 1) will be EOL on December 31st 2020.
 
 
 ## 0.34.0      2020-11-07

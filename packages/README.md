@@ -6,7 +6,7 @@ pganalyze collector for all recent Linux-based operating systems.
 
 The process is split into three parts, and three corresponding directories:
 
-1. **src/**: Build an appropriate deb/rpm package for the required init systems (systemd, upstart, sysvinit)
+1. **src/**: Build an appropriate deb/rpm package for the systemd init system
 2. **test/**: Test the deb/rpm package installation on all supported distributions
 3. **repo/**: Sign the deb/rpm packages using the signing key (https://keybase.io/pganalyze) and
    synchronize the S3 hosted package repositories for each distribution
@@ -19,19 +19,7 @@ Contributions welcome!
 Supported Linux distributions
 -----------------------------
 
-* RHEL/CentOS
-  * 6
-  * 7
-* Fedora
-  * 24
-* Amazon Linux (2014.03 or newer)
-* Debian
-  * Jessie
-  * Stretch (Testing)
-* Ubuntu
-  * Precise (12.04 LTS)
-  * Trusty (14.04 LTS)
-  * Xenial (16.04 LTS)
+See packages/test/Makefile file.
 
 These are the distributions that are automatically tested and for which repositories exist - others might work as well.
 
@@ -43,9 +31,7 @@ When changing the initial package build step one needs to be careful to not incr
 
 Currently the following minimum glibc versions apply:
 
-* RPM, sysvinit: glibc 2.12 (CentOS 6)
 * RPM, systemd: glibc 2.17 (CentOS 7)
-* DEB, upstart: glibc 2.12 (Ubuntu Precise / 12.04 LTS)
 * DEB, systemd: glibc 2.19 (Debian Jessie)
 
 

@@ -18,10 +18,8 @@ upload_repo:
 	aws s3 sync --acl public-read --cache-control no-cache $(REPO_DIR) s3://packages.pganalyze.com/
 
 update_rpm:
-	cp $(TMP_DIR)/$(RPM_SYSVINIT_PACKAGE) .
 	cp $(TMP_DIR)/$(RPM_SYSTEMD_PACKAGE) .
 	docker build --build-arg VERSION=$(VERSION) -f Dockerfile.repo-rpm -t pga-collector-repo .
-	rm $(RPM_SYSVINIT_PACKAGE)
 	rm $(RPM_SYSTEMD_PACKAGE)
 	docker run --name pga-collector-repo -v $(REPO_DIR):/repo -d \
 		-e REPO_GPG_KEY=$(REPO_GPG_KEY) -e RPM_PACKAGE=$(RPM_PACKAGE_OUT) \
@@ -31,10 +29,8 @@ update_rpm:
 	$(call docker_clean)
 
 update_deb:
-	cp $(TMP_DIR)/$(DEB_UPSTART_PACKAGE) .
 	cp $(TMP_DIR)/$(DEB_SYSTEMD_PACKAGE) .
 	docker build --build-arg VERSION=$(VERSION) -f Dockerfile.repo-deb -t pga-collector-repo .
-	rm $(DEB_UPSTART_PACKAGE)
 	rm $(DEB_SYSTEMD_PACKAGE)
 	docker run --name pga-collector-repo -v $(REPO_DIR):/repo -d \
 		-e REPO_GPG_KEY=$(REPO_GPG_KEY) -e DEB_PACKAGE=$(DEB_PACKAGE_OUT) \

@@ -6,40 +6,21 @@ docker_exec  = docker exec pga-collector-test $(1)
 docker_test  = docker exec pga-collector-test /root/$(1)_test.sh
 docker_clean = docker kill pga-collector-test && docker rm pga-collector-test && docker rmi -f pga-collector-test
 
-DISTROS=centos6 centos7 rhel8 fedora29 fedora30 ubuntu-trusty ubuntu-xenial ubuntu-bionic ubuntu-focal debian-jessie debian-stretch debian-buster
+DISTROS=centos7 rhel8 fedora29 fedora30 ubuntu-xenial ubuntu-bionic ubuntu-focal debian-jessie debian-stretch debian-buster
 
 .PHONY: all $(DISTROS)
 
 all: $(DISTROS) clean
 
-$(RPM_SYSVINIT_PACKAGE):
-	cp $(TMP_DIR)/$(RPM_SYSVINIT_PACKAGE) .
-
 $(RPM_SYSTEMD_PACKAGE):
 	cp $(TMP_DIR)/$(RPM_SYSTEMD_PACKAGE) .
-
-$(DEB_UPSTART_PACKAGE):
-	cp $(TMP_DIR)/$(DEB_UPSTART_PACKAGE) .
 
 $(DEB_SYSTEMD_PACKAGE):
 	cp $(TMP_DIR)/$(DEB_SYSTEMD_PACKAGE) .
 
 clean:
-	rm $(RPM_SYSVINIT_PACKAGE)
 	rm $(RPM_SYSTEMD_PACKAGE)
-	rm $(DEB_UPSTART_PACKAGE)
 	rm $(DEB_SYSTEMD_PACKAGE)
-
-centos6: $(RPM_SYSVINIT_PACKAGE)
-	echo "FROM centos:6" > Dockerfile.tmp
-	echo "RUN yum install -y sysvinit-tools syslog" >> Dockerfile.tmp
-	echo "COPY . /root" >> Dockerfile.tmp
-	$(call docker_build)
-	$(call docker_run)
-	$(call docker_exec,service rsyslog start) # The Docker images are weird (usually this would be running)
-	$(call docker_exec,yum install -y --nogpgcheck /root/$(RPM_SYSVINIT_PACKAGE))
-	$(call docker_test,sysvinit)
-	$(call docker_clean)
 
 centos7: $(RPM_SYSTEMD_PACKAGE)
 	echo "FROM centos:7" > Dockerfile.tmp
@@ -78,15 +59,6 @@ fedora30: $(RPM_SYSTEMD_PACKAGE)
 	$(call docker_run)
 	$(call docker_exec,dnf install -y --nogpgcheck /root/$(RPM_SYSTEMD_PACKAGE))
 	$(call docker_test,systemd)
-	$(call docker_clean)
-
-ubuntu-trusty: $(DEB_UPSTART_PACKAGE)
-	echo "FROM ubuntu-upstart:trusty" > Dockerfile.tmp
-	echo "COPY . /root" >> Dockerfile.tmp
-	$(call docker_build)
-	$(call docker_run)
-	$(call docker_exec,dpkg -i /root/$(DEB_UPSTART_PACKAGE))
-	$(call docker_test,upstart)
 	$(call docker_clean)
 
 ubuntu-xenial: $(DEB_SYSTEMD_PACKAGE)
