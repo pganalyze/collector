@@ -184,7 +184,7 @@ func GetStatements(server *state.Server, logger *util.Logger, db *sql.DB, global
 
 		if queryID.Valid {
 			key.QueryID = queryID.Int64
-		} else if receivedQuery.Valid {
+		} else if receivedQuery.Valid && receivedQuery.String != "<insufficient privilege>" {
 			// Note: This is a heuristic for old Postgres versions and will not work for duplicate queries (e.g. when tables are dropped and recreated)
 			h := fnv.New64a()
 			h.Write([]byte(receivedQuery.String))
