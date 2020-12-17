@@ -86,6 +86,8 @@ type CollectorConfig struct {
 	AwsRegion               string
 	AwsDbInstanceId         string
 	AwsHasAccessKeyId       bool
+	AwsHasAssumeRole        bool
+	AwsHasAccountId         bool
 	AzureDbServerName       string
 	AzureEventhubNamespace  string
 	AzureEventhubName       string
@@ -106,8 +108,10 @@ type CollectorConfig struct {
 	IgnoreSchemaRegexp      string
 	QueryStatsInterval      int32
 	MaxCollectorConnections int32
+	SkipIfReplica           bool
 	FilterLogSecret         string
 	FilterQuerySample       string
+	FilterQueryText         string
 	HasProxy                bool
 	ConfigFromEnv           bool
 }
