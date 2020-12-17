@@ -50,7 +50,7 @@ github.com/Azure/go-autorest/version
 # github.com/StackExchange/wmi v0.0.0-20150520194626-f3e2bae1e0cb
 ## explicit
 github.com/StackExchange/wmi
-# github.com/aws/aws-sdk-go v1.26.8
+# github.com/aws/aws-sdk-go v1.36.10
 ## explicit
 github.com/aws/aws-sdk-go/aws
 github.com/aws/aws-sdk-go/aws/arn
@@ -71,13 +71,19 @@ github.com/aws/aws-sdk-go/aws/endpoints
 github.com/aws/aws-sdk-go/aws/request
 github.com/aws/aws-sdk-go/aws/session
 github.com/aws/aws-sdk-go/aws/signer/v4
+github.com/aws/aws-sdk-go/internal/context
 github.com/aws/aws-sdk-go/internal/ini
-github.com/aws/aws-sdk-go/internal/s3err
+github.com/aws/aws-sdk-go/internal/s3shared
+github.com/aws/aws-sdk-go/internal/s3shared/arn
+github.com/aws/aws-sdk-go/internal/s3shared/s3err
 github.com/aws/aws-sdk-go/internal/sdkio
 github.com/aws/aws-sdk-go/internal/sdkmath
 github.com/aws/aws-sdk-go/internal/sdkrand
 github.com/aws/aws-sdk-go/internal/sdkuri
 github.com/aws/aws-sdk-go/internal/shareddefaults
+github.com/aws/aws-sdk-go/internal/strings
+github.com/aws/aws-sdk-go/internal/sync/singleflight
+github.com/aws/aws-sdk-go/private/checksum
 github.com/aws/aws-sdk-go/private/protocol
 github.com/aws/aws-sdk-go/private/protocol/eventstream
 github.com/aws/aws-sdk-go/private/protocol/eventstream/eventstreamapi
@@ -94,7 +100,6 @@ github.com/aws/aws-sdk-go/service/kms
 github.com/aws/aws-sdk-go/service/kms/kmsiface
 github.com/aws/aws-sdk-go/service/rds
 github.com/aws/aws-sdk-go/service/s3
-github.com/aws/aws-sdk-go/service/s3/internal/arn
 github.com/aws/aws-sdk-go/service/s3/s3crypto
 github.com/aws/aws-sdk-go/service/s3/s3iface
 github.com/aws/aws-sdk-go/service/sts
@@ -151,7 +156,7 @@ github.com/gorhill/cronexpr
 # github.com/guregu/null v0.0.0-20160228005316-41961cea0328
 ## explicit
 github.com/guregu/null
-# github.com/jmespath/go-jmespath v0.0.0-20180206201540-c2b33e8439af
+# github.com/jmespath/go-jmespath v0.4.0
 github.com/jmespath/go-jmespath
 # github.com/jpillora/backoff v0.0.0-20180909062703-3050d21c67d7
 github.com/jpillora/backoff
@@ -201,7 +206,7 @@ github.com/ogier/pflag
 # github.com/papertrail/go-tail v0.0.0-20180509224916-973c153b0431
 ## explicit
 github.com/papertrail/go-tail/follower
-# github.com/pkg/errors v0.8.2-0.20190227000051-27936f6d90f9
+# github.com/pkg/errors v0.9.1
 ## explicit
 github.com/pkg/errors
 # github.com/satori/go.uuid v0.0.0-20160713180306-0aa62d5ddceb
@@ -250,7 +255,7 @@ golang.org/x/lint/golint
 # golang.org/x/mod v0.3.0
 golang.org/x/mod/module
 golang.org/x/mod/semver
-# golang.org/x/net v0.0.0-20200927032502-5d4f70055728
+# golang.org/x/net v0.0.0-20201110031124-69a78807bb2b
 ## explicit
 golang.org/x/net/context
 golang.org/x/net/context/ctxhttp
@@ -271,7 +276,7 @@ golang.org/x/oauth2/jwt
 # golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208
 golang.org/x/sync/errgroup
 golang.org/x/sync/semaphore
-# golang.org/x/sys v0.0.0-20200905004654-be1d3432aa8f
+# golang.org/x/sys v0.0.0-20200930185726-fdedc70b468f
 golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/unix
 golang.org/x/sys/windows

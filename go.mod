@@ -10,7 +10,7 @@ require (
 	github.com/Azure/azure-event-hubs-go v1.3.1
 	github.com/Azure/go-autorest v11.1.1+incompatible
 	github.com/StackExchange/wmi v0.0.0-20150520194626-f3e2bae1e0cb // indirect
-	github.com/aws/aws-sdk-go v1.26.8
+	github.com/aws/aws-sdk-go v1.36.10
 	github.com/bmizerany/lpx v0.0.0-20130503172629-af85cf24c156
 	github.com/certifi/gocertifi v0.0.0-20160926115448-a61bf5eafa3a // indirect
 	github.com/fsnotify/fsnotify v1.4.9
@@ -31,15 +31,16 @@ require (
 	github.com/lib/pq v1.3.0
 	github.com/ogier/pflag v0.0.0-20160129220114-45c278ab3607
 	github.com/papertrail/go-tail v0.0.0-20180509224916-973c153b0431
-	github.com/pkg/errors v0.8.2-0.20190227000051-27936f6d90f9
+	github.com/pkg/errors v0.9.1
 	github.com/satori/go.uuid v0.0.0-20160713180306-0aa62d5ddceb
 	github.com/shirou/gopsutil v0.0.0-20170222144203-d371ba1293cb
 	github.com/shirou/w32 v0.0.0-20160204003529-3c9377fc6748 // indirect
 	github.com/smartystreets/assertions v0.0.0-20160707190355-2063fd1cc7c9 // indirect
 	github.com/smartystreets/goconvey v0.0.0-20160704134950-4622128e06c7 // indirect
-	golang.org/x/net v0.0.0-20200927032502-5d4f70055728
+	golang.org/x/net v0.0.0-20201110031124-69a78807bb2b
 	google.golang.org/api v0.32.0
 	google.golang.org/protobuf v1.25.0
+	gopkg.in/ini.v1 v1.62.0 // indirect
 )
 
 go 1.14
