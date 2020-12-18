@@ -250,6 +250,8 @@ func LogTestNone(server *state.Server, logFile state.LogFile, logTestSucceeded c
 
 // ProcessLogStream - Accepts one or more log lines to be analyzed and processed
 //
+// Note that input log lines are expected to preserve their trailing newlines.
+//
 // Note that this returns the lines that were not processed, based on the
 // time-based buffering logic. These lines should be passed in again with
 // the next call.
