@@ -383,7 +383,10 @@ func logReceiver(ctx context.Context, server *state.Server, globalCollectionOpts
 
 				// We ignore failures here since we want the per-backend stitching logic
 				// that runs later on (and any other parsing errors will just be ignored)
-				logLine, _ := logs.ParseLogLineWithPrefix("", line)
+				// Note that we need to restore the original trailing newlines since
+				// ProcessLogStream below expects them and they are not present in the tail
+				// log stream.
+				logLine, _ := logs.ParseLogLineWithPrefix("", line+"\n")
 				logLine.CollectedAt = time.Now()
 				logLine.UUID = uuid.NewV4()
 
