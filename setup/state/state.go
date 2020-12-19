@@ -249,7 +249,7 @@ func (state *SetupState) ReportLastStep(step *Step, stepErr error) {
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Add("Accept", "application/json,text/plain")
 
-	resp, _ := client.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		// again, ignoring errors
 		return
