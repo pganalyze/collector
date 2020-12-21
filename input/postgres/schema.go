@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"database/sql"
+	"fmt"
 
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
@@ -27,28 +28,13 @@ func CollectAllSchemas(server *state.Server, collectionOpts state.CollectionOpts
 	ps.Functions = []state.PostgresFunction{}
 
 	for _, dbName := range schemaDbNames {
-		schemaConnection, err := EstablishConnection(server, logger, collectionOpts, dbName)
+		psNext, databaseOid, err := collectOneSchema(server, collectionOpts, logger, ps, dbName, ts.Version)
 		if err != nil {
-			logger.PrintVerbose("Failed to connect to database %s to retrieve schema: %s", dbName, err)
+			logger.PrintVerbose("Failed to collect schema metadata for database %s: %s", dbName, err)
 			continue
 		}
-
-		databaseOid, err := CurrentDatabaseOid(schemaConnection)
-		if err != nil {
-			logger.PrintError("Error getting OID of database %s", dbName)
-			schemaConnection.Close()
-			continue
-		}
-
-		ps.SchemaStats[databaseOid] = &state.SchemaStats{
-			RelationStats: make(state.PostgresRelationStatsMap),
-			IndexStats:    make(state.PostgresIndexStatsMap),
-		}
-
-		ps = collectSchemaData(collectionOpts, logger, schemaConnection, ps, databaseOid, dbName, ts.Version, server.Config.IgnoreSchemaRegexp)
+		ps = psNext
 		ts.DatabaseOidsWithLocalCatalog = append(ts.DatabaseOidsWithLocalCatalog, databaseOid)
-
-		schemaConnection.Close()
 	}
 	if relCount := len(ps.Relations); relCount > 5000 {
 		logger.PrintWarning("Too many tables: got %d, but only 5000 can be monitored per server; use ignore_schema_regexp config setting to filter", relCount)
@@ -57,19 +43,42 @@ func CollectAllSchemas(server *state.Server, collectionOpts state.CollectionOpts
 	return ps, ts
 }
 
-func collectSchemaData(collectionOpts state.CollectionOpts, logger *util.Logger, db *sql.DB, ps state.PersistedState, databaseOid state.Oid, databaseName string, postgresVersion state.PostgresVersion, ignoreRegexp string) state.PersistedState {
+func collectOneSchema(server *state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, ps state.PersistedState, dbName string, postgresVersion state.PostgresVersion) (psOut state.PersistedState, databaseOid state.Oid, err error) {
+	schemaConnection, err := EstablishConnection(server, logger, collectionOpts, dbName)
+	if err != nil {
+		return ps, 0, fmt.Errorf("error connecting: %s", err)
+	}
+	defer schemaConnection.Close()
+
+	databaseOid, err = CurrentDatabaseOid(schemaConnection)
+	if err != nil {
+		return ps, 0, fmt.Errorf("error getting database OID: %s", err)
+	}
+
+	ps.SchemaStats[databaseOid] = &state.SchemaStats{
+		RelationStats: make(state.PostgresRelationStatsMap),
+		IndexStats:    make(state.PostgresIndexStatsMap),
+	}
+
+	psOut, err = collectSchemaData(collectionOpts, logger, schemaConnection, ps, databaseOid, postgresVersion, server.Config.IgnoreSchemaRegexp)
+	if err != nil {
+		return ps, 0, err
+	}
+
+	return psOut, databaseOid, nil
+}
+
+func collectSchemaData(collectionOpts state.CollectionOpts, logger *util.Logger, db *sql.DB, ps state.PersistedState, databaseOid state.Oid, postgresVersion state.PostgresVersion, ignoreRegexp string) (state.PersistedState, error) {
 	if collectionOpts.CollectPostgresRelations {
 		newRelations, err := GetRelations(db, postgresVersion, databaseOid, ignoreRegexp)
 		if err != nil {
-			logger.PrintWarning("Skipping table/index data for database \"%s\", due to error: %s", databaseName, err)
-			return ps
+			return ps, fmt.Errorf("error collecting table/index metadata: %s", err)
 		}
 		ps.Relations = append(ps.Relations, newRelations...)
 
 		newRelationStats, err := GetRelationStats(db, postgresVersion, ignoreRegexp)
 		if err != nil {
-			logger.PrintWarning("Skipping table statistics for database \"%s\", due to error: %s", databaseName, err)
-			return ps
+			return ps, fmt.Errorf("error collecting table statistics: %s", err)
 		}
 		for k, v := range newRelationStats {
 			ps.SchemaStats[databaseOid].RelationStats[k] = v
@@ -77,8 +86,7 @@ func collectSchemaData(collectionOpts state.CollectionOpts, logger *util.Logger,
 
 		newIndexStats, err := GetIndexStats(db, postgresVersion, ignoreRegexp)
 		if err != nil {
-			logger.PrintWarning("Skipping index statistics for database \"%s\", due to error: %s", databaseName, err)
-			return ps
+			return ps, fmt.Errorf("error collecting index statistics: %s", err)
 		}
 		for k, v := range newIndexStats {
 			ps.SchemaStats[databaseOid].IndexStats[k] = v
@@ -88,11 +96,10 @@ func collectSchemaData(collectionOpts state.CollectionOpts, logger *util.Logger,
 	if collectionOpts.CollectPostgresFunctions {
 		newFunctions, err := GetFunctions(db, postgresVersion, databaseOid, ignoreRegexp)
 		if err != nil {
-			logger.PrintWarning("Skipping stored procedure data for database \"%s\", due to error: %s", databaseName, err)
-			return ps
+			return ps, fmt.Errorf("error collecting stored procedure metadata: %s", err)
 		}
 		ps.Functions = append(ps.Functions, newFunctions...)
 	}
 
-	return ps
+	return ps, nil
 }
