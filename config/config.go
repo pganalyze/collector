@@ -168,7 +168,10 @@ func (config ServerConfig) GetPqOpenString(dbNameOverride string) string {
 	var dbPort int
 
 	if config.DbURL != "" {
-		u, _ := url.Parse(config.DbURL)
+		u, err := url.Parse(config.DbURL)
+		if err != nil {
+			return ""
+		}
 
 		if u.User != nil {
 			dbUsername = u.User.Username()
@@ -297,7 +300,10 @@ func (config ServerConfig) GetPqOpenString(dbNameOverride string) string {
 // GetDbHost - Gets the database hostname from the given configuration
 func (config ServerConfig) GetDbHost() string {
 	if config.DbURL != "" {
-		u, _ := url.Parse(config.DbURL)
+		u, err := url.Parse(config.DbURL)
+		if err != nil {
+			return ""
+		}
 		parts := strings.Split(u.Host, ":")
 		return parts[0]
 	}
@@ -322,7 +328,10 @@ func (config ServerConfig) GetDbURLRedacted() string {
 // GetDbPort - Gets the database port from the given configuration
 func (config ServerConfig) GetDbPort() int {
 	if config.DbURL != "" {
-		u, _ := url.Parse(config.DbURL)
+		u, err := url.Parse(config.DbURL)
+		if err != nil {
+			return 5432
+		}
 		parts := strings.Split(u.Host, ":")
 
 		if len(parts) == 2 {
@@ -339,7 +348,10 @@ func (config ServerConfig) GetDbPort() int {
 // GetDbUsername - Gets the database hostname from the given configuration
 func (config ServerConfig) GetDbUsername() string {
 	if config.DbURL != "" {
-		u, _ := url.Parse(config.DbURL)
+		u, err := url.Parse(config.DbURL)
+		if err != nil {
+			return ""
+		}
 		if u != nil && u.User != nil {
 			return u.User.Username()
 		}
@@ -351,7 +363,10 @@ func (config ServerConfig) GetDbUsername() string {
 // GetDbName - Gets the database name from the given configuration
 func (config ServerConfig) GetDbName() string {
 	if config.DbURL != "" {
-		u, _ := url.Parse(config.DbURL)
+		u, err := url.Parse(config.DbURL)
+		if err != nil {
+			return ""
+		}
 		if len(u.Path) > 0 {
 			return u.Path[1:len(u.Path)]
 		}
