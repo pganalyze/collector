@@ -420,6 +420,14 @@ func Read(logger *util.Logger, filename string) (Config, error) {
 					conf.Servers = append(conf.Servers, *config)
 				}
 			}
+
+			if config.DbURL != "" {
+				_, err := url.Parse(config.DbURL)
+				if err != nil {
+					prefixedLogger := logger.WithPrefix(config.SectionName)
+					prefixedLogger.PrintError("Could not parse db_url")
+				}
+			}
 		}
 
 		if len(conf.Servers) == 0 {
