@@ -369,7 +369,7 @@ func Read(logger *util.Logger, filename string) (Config, error) {
 	var err error
 
 	if _, err = os.Stat(filename); err == nil {
-		configFile, err := ini.Load(filename)
+		configFile, err := ini.LoadSources(ini.LoadOptions{SpaceBeforeInlineComment: true}, filename)
 		if err != nil {
 			return conf, err
 		}
