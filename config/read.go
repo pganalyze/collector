@@ -425,7 +425,7 @@ func Read(logger *util.Logger, filename string) (Config, error) {
 				_, err := url.Parse(config.DbURL)
 				if err != nil {
 					prefixedLogger := logger.WithPrefix(config.SectionName)
-					prefixedLogger.PrintError("Could not parse db_url")
+					prefixedLogger.PrintError("Could not parse db_url; check URL format and note that any special characters must be percent-encoded")
 				}
 			}
 		}
