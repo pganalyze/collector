@@ -15,7 +15,7 @@ func groupStatements(statements state.PostgresStatementMap, statementTexts state
 	for sKey, stats := range statsMap {
 		statement, exist := statements[sKey]
 		if !exist {
-			statement = state.PostgresStatement{Unidentified: true, Fingerprint: util.FingerprintQuery("<unidentified queryid>")}
+			statement = state.PostgresStatement{QueryTextUnavailable: true, Fingerprint: util.FingerprintQuery("<query text unavailable>")}
 		}
 
 		key := statementKey{

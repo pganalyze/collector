@@ -10,7 +10,7 @@ import (
 // on the PostgreSQL server.
 type PostgresStatement struct {
 	Fingerprint           [21]byte // Fingerprint for a specific statement
-	Unidentified          bool     // True if this represents an unidentified statement without query text
+	QueryTextUnavailable  bool     // True if this represents a statement without query text
 	InsufficientPrivilege bool     // True if we're missing permissions to see the statement
 	Collector             bool     // True if this statement was produced by the pganalyze collector
 }

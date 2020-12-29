@@ -39,8 +39,8 @@ func upsertQueryReferenceAndInformation(s *snapshot.FullSnapshot, statementTexts
 
 	// Information
 	normalizedQuery := ""
-	if value.statement.Unidentified {
-		normalizedQuery = "<unidentified queryid>"
+	if value.statement.QueryTextUnavailable {
+		normalizedQuery = "<query text unavailable>"
 	} else if value.statement.InsufficientPrivilege {
 		normalizedQuery = "<insufficient privilege>"
 	} else if value.statement.Collector {
