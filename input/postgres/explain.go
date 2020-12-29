@@ -6,8 +6,6 @@ import (
 	"strings"
 
 	"github.com/guregu/null"
-	pg_query "github.com/lfittl/pg_query_go"
-	pg_query_nodes "github.com/lfittl/pg_query_go/nodes"
 	"github.com/lib/pq"
 	"github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
@@ -75,13 +73,8 @@ func runDbExplain(db *sql.DB, inputs []state.PostgresQuerySample, useHelper bool
 	for _, sample := range inputs {
 		// To be on the safe side never EXPLAIN a statement that can't be parsed,
 		// or multiple statements in one (leading to accidental execution)
-		parsetree, err := pg_query.Parse(sample.Query)
-		if err != nil || len(parsetree.Statements) != 1 {
-			continue
-		}
-		stmt := parsetree.Statements[0].(pg_query_nodes.RawStmt).Stmt
-		switch stmt.(type) {
-		case pg_query_nodes.SelectStmt, pg_query_nodes.InsertStmt, pg_query_nodes.UpdateStmt, pg_query_nodes.DeleteStmt:
+		isUtil, err := util.IsUtilityStmt(sample.Query)
+		if err == nil && len(isUtil) == 1 && !isUtil[0] {
 			sample.HasExplain = true
 			sample.ExplainSource = pganalyze_collector.QuerySample_STATEMENT_LOG_EXPLAIN_SOURCE
 			sample.ExplainFormat = pganalyze_collector.QuerySample_JSON_EXPLAIN_FORMAT
