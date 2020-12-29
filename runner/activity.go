@@ -3,6 +3,7 @@ package runner
 import (
 	"database/sql"
 	"fmt"
+	"strconv"
 	"sync"
 	"time"
 
@@ -61,6 +62,16 @@ func processActivityForServer(server *state.Server, globalCollectionOpts state.C
 			return newState, false, errors.Wrap(err, "failed to connect to database")
 		}
 		defer connection.Close()
+	}
+
+	trackActivityQuerySize, err := postgres.GetPostgresSetting("track_activity_query_size", server, globalCollectionOpts, logger)
+	if err != nil {
+		activity.TrackActivityQuerySize = -1
+	} else {
+		activity.TrackActivityQuerySize, err = strconv.Atoi(trackActivityQuerySize)
+		if err != nil {
+			activity.TrackActivityQuerySize = -1
+		}
 	}
 
 	activity.Version, err = postgres.GetPostgresVersion(logger, connection)

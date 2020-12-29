@@ -5,6 +5,8 @@ import "time"
 type TransientActivityState struct {
 	CollectedAt time.Time
 
+	TrackActivityQuerySize int
+
 	Version  PostgresVersion
 	Backends []PostgresBackend
 

@@ -219,7 +219,7 @@ func GetStatements(server *state.Server, logger *util.Logger, db *sql.DB, global
 	}
 
 	for fp, text := range statementTexts {
-		statementTexts[fp] = util.NormalizeQuery(text, server.Config.FilterQueryText)
+		statementTexts[fp] = util.NormalizeQuery(text, server.Config.FilterQueryText, -1)
 	}
 
 	return statements, statementTexts, statementStats, nil
