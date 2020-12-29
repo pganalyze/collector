@@ -211,6 +211,23 @@ func GetStatements(server *state.Server, logger *util.Logger, db *sql.DB, global
 
 			statements[key] = stmt
 		}
+		if ignoreIOStats(postgresVersion, receivedQuery) {
+			stats.SharedBlksHit = 0
+			stats.SharedBlksRead = 0
+			stats.SharedBlksDirtied = 0
+			stats.SharedBlksWritten = 0
+
+			stats.LocalBlksHit = 0
+			stats.LocalBlksRead = 0
+			stats.LocalBlksDirtied = 0
+			stats.LocalBlksWritten = 0
+
+			stats.TempBlksRead = 0
+			stats.TempBlksWritten = 0
+
+			stats.BlkReadTime = 0
+			stats.BlkWriteTime = 0
+		}
 		statementStats[key] = stats
 	}
 	err = rows.Err()
@@ -223,4 +240,25 @@ func GetStatements(server *state.Server, logger *util.Logger, db *sql.DB, global
 	}
 
 	return statements, statementTexts, statementStats, nil
+}
+
+func ignoreIOStats(postgresVersion state.PostgresVersion, receivedQuery null.String) bool {
+	// Currently, Aurora gives wildly incorrect blk_read_time and blk_write_time values
+	// for utility statements; ignore I/O stats for these altogether.
+	if !postgresVersion.IsAwsAurora || !receivedQuery.Valid {
+		return false
+	}
+
+	isUtil, err := util.IsUtilityStmt(receivedQuery.String)
+	if err != nil {
+		return false
+	}
+
+	for _, isOneUtil := range isUtil {
+		if isOneUtil {
+			return true
+		}
+	}
+
+	return false
 }
