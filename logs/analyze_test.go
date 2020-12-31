@@ -3207,6 +3207,34 @@ var tests = []testpair{
 		}},
 		nil,
 	},
+	{
+		[]state.LogLine{{
+			Content:  "range lower bound must be less than or equal to range upper bound",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+			UUID:     uuid.UUID{1},
+		}, {
+			Content:  "COPY mytable, line 169, column rangecolumn",
+			LogLevel: pganalyze_collector.LogLineInformation_CONTEXT,
+		}, {
+			Content:  "COPY public.mytable(\"rangecolumn\") FROM STDIN BINARY",
+			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
+		}},
+		[]state.LogLine{{
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_INCONSISTENT_RANGE_BOUNDS,
+			UUID:               uuid.UUID{1},
+			Query:              "COPY public.mytable(\"rangecolumn\") FROM STDIN BINARY",
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_CONTEXT,
+			ParentUUID:         uuid.UUID{1},
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
+			ParentUUID: uuid.UUID{1},
+		}},
+		nil,
+	},
 	// auto_explain
 	{
 		[]state.LogLine{{

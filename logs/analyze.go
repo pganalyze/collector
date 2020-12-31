@@ -1054,6 +1054,12 @@ var couldNotSerializeSerializable = analyzeGroup{
 		prefixes: []string{"The transaction might succeed if retried."},
 	},
 }
+var inconsistentRangeBounds = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_INCONSISTENT_RANGE_BOUNDS,
+	primary: match{
+		prefixes: []string{"range lower bound must be less than or equal to range upper bound"},
+	},
+}
 var statementLog = analyzeGroup{
 	classification: pganalyze_collector.LogLineInformation_STATEMENT_LOG,
 	primary: match{
@@ -1228,6 +1234,7 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 		invalidByteSequence,
 		couldNotSerializeRepeatableRead,
 		couldNotSerializeSerializable,
+		inconsistentRangeBounds,
 	}
 	for _, m := range groupX {
 		if matchesPrefix(logLine, m.primary.prefixes) {
@@ -1236,6 +1243,7 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 				logLine.Classification = m.classification
 				detailLine, _ = matchLogLine(detailLine, m.detail)
 				hintLine, _ = matchLogLine(hintLine, m.hint)
+				//statementLine = markLineAsSecret(statementLine, state.StatementTextLogSecret)
 				contextLine = matchOtherContextLogLine(contextLine)
 				return logLine, statementLine, detailLine, contextLine, hintLine, samples
 			}
