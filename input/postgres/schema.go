@@ -27,7 +27,12 @@ func CollectAllSchemas(server *state.Server, collectionOpts state.CollectionOpts
 	ps.SchemaStats = make(map[state.Oid]*state.SchemaStats)
 	ps.Functions = []state.PostgresFunction{}
 
+	collected := make(map[string]bool)
 	for _, dbName := range schemaDbNames {
+		if _, ok := collected[dbName]; ok {
+			continue
+		}
+		collected[dbName] = true
 		psNext, databaseOid, err := collectOneSchema(server, collectionOpts, logger, ps, dbName, ts.Version)
 		if err != nil {
 			logger.PrintVerbose("Failed to collect schema metadata for database %s: %s", dbName, err)
