@@ -376,9 +376,13 @@ func Read(logger *util.Logger, filename string) (Config, error) {
 
 		defaultConfig := getDefaultConfig()
 
-		err = configFile.Section("pganalyze").MapTo(defaultConfig)
+		pgaSection, err := configFile.GetSection("pganalyze")
 		if err != nil {
-			logger.PrintVerbose("Failed to map pganalyze section: %s", err)
+			return conf, fmt.Errorf("Failed to find [pganalyze] section in config: %s", err)
+		}
+		err = pgaSection.MapTo(defaultConfig)
+		if err != nil {
+			return conf, fmt.Errorf("Failed to map [pganalyze] section in config: %s", err)
 		}
 
 		sections := configFile.Sections()
