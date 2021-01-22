@@ -1,5 +1,36 @@
 # Changelog
 
+## 0.36.0      2021-01-21
+
+* Config parsing improvements:
+  * Fail fast when pganalyze section is missing in config file
+  * Ignore duplicates in db_name config setting
+    * Previously this could cause malformed snapshots that would be submitted
+      correctly but could not be processed
+  * Validate db_url parsing to avoid collector crash with invalid URLs
+* Include pganalyze-collector-setup program (see 0.35 release notes) in supported packages
+* Rename `<unidentified queryid>` query text placeholder to `<query text unavailable>`
+  * This makes it clearer what the underlying issue is
+* Revert to using `<truncated query>` instead of `<unparsable query>` in some situations
+  * When a query is cut off due to pg_stat_activity limit being reached,
+    show `<truncated query>`, to make it clear that increasing track_activity_query_size
+    would solve the issue
+* Ignore I/O stats for AWS Aurora utility statements
+  * AWS Aurora appears to report incorrect blk_read_time and blk_write_time values
+    for utility statements (i.e., non-SELECT/INSERT/UPDATE/DELETE); we zero these out for now
+* Fix log-based EXPLAIN bug where query samples could be dropped if EXPLAIN failed
+* Add U140 log event (inconsistent range bounds)
+  * e.g.: ERROR:  range lower bound must be less than or equal to range upper bound
+* Fix issue where incomplete schema information in snapshots was not marked correctly
+  * This could lead to schema objects disappearing and being re-created
+* Fix trailing newline handling for GCP and self-hosted log streams
+  * This could lead to queries being poorly formatted in the UI, or some queries
+    with single-line comments being ignored
+* Include additional collector configuration settings in snapshot metadata for diagnostics
+* Ignore "insufficient privilege" queries w/o queryid
+  * Previously, these could all be aggregated together yielding misleading stats
+
+
 ## 0.35.0      2020-12-05
 
 * Add new "pganalyze-collector-setup" program that streamlines collector installation
