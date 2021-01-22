@@ -12,14 +12,14 @@
 * Rename `<unidentified queryid>` query text placeholder to `<query text unavailable>`
   * This makes it clearer what the underlying issue is
 * Revert to using `<truncated query>` instead of `<unparsable query>` in some situations
-  * When a query is cutoff due to pg_stat_activity limit being reached,
+  * When a query is cut off due to pg_stat_activity limit being reached,
     show `<truncated query>`, to make it clear that increasing track_activity_query_size
     would solve the issue
 * Ignore I/O stats for AWS Aurora utility statements
   * AWS Aurora appears to report incorrect blk_read_time and blk_write_time values
     for utility statements (i.e., non-SELECT/INSERT/UPDATE/DELETE); we zero these out for now
 * Fix log-based EXPLAIN bug where query samples could be dropped if EXPLAIN failed
-* Add U140 log event (inconistent range bounds)
+* Add U140 log event (inconsistent range bounds)
   * e.g.: ERROR:  range lower bound must be less than or equal to range upper bound
 * Fix issue where incomplete schema information in snapshots was not marked correctly
   * This could lead to schema objects disappearing and being re-created
