@@ -9,13 +9,13 @@ BUILD_ARGS=--build-arg VERSION=$(VERSION) --build-arg GIT_VERSION=$(GIT_VERSION)
 
 all: $(TMP_DIR)/$(RPM_SYSTEMD_PACKAGE) $(TMP_DIR)/$(DEB_SYSTEMD_PACKAGE)
 
-$(TMP_DIR)/$(RPM_SYSTEMD_PACKAGE):
+$(TMP_DIR)/$(RPM_SYSTEMD_PACKAGE): Dockerfile.build.rpm-systemd
 	docker build $(BUILD_ARGS) -f Dockerfile.build.rpm-systemd -t pga-collector-build ../../
 	docker run --rm -v $(TMP_RPM_SYSTEMD):/out -it pga-collector-build sh -c "cp /root/*.rpm /out"
 	mv $(TMP_RPM_SYSTEMD)/$(RPM_PACKAGE_OUT) $(TMP_DIR)/$(RPM_SYSTEMD_PACKAGE)
 	docker rmi pga-collector-build
 
-$(TMP_DIR)/$(DEB_SYSTEMD_PACKAGE):
+$(TMP_DIR)/$(DEB_SYSTEMD_PACKAGE): Dockerfile.build.deb-systemd
 	docker build $(BUILD_ARGS) -f Dockerfile.build.deb-systemd -t pga-collector-build ../../
 	docker run --rm -v $(TMP_DEB_SYSTEMD):/out -it pga-collector-build sh -c "cp /root/*.deb /out"
 	mv $(TMP_DEB_SYSTEMD)/$(DEB_PACKAGE_OUT) $(TMP_DIR)/$(DEB_SYSTEMD_PACKAGE)
