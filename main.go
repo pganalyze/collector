@@ -201,7 +201,7 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 			if server.Config.DisableLogs {
 				continue
 			}
-			if server.Config.LogLocation != "" || server.Config.LogDockerTail != "" {
+			if server.Config.LogLocation != "" || server.Config.LogDockerTail != "" || server.Config.LogSyslogServer != "" {
 				hasAnyLogTails = true
 			} else if server.Config.AwsDbInstanceID != "" {
 				hasAnyLogDownloads = true

@@ -147,8 +147,11 @@ type LogLine struct {
 	LogLevel   pganalyze_collector.LogLineInformation_LogLevel
 	BackendPid int32
 
-	// %l in log_line_prefix (or similar syslog equivalents)
+	// %l in log_line_prefix (or similar in syslog)
 	LogLineNumber int32
+
+	// Syslog chunk number (within a particular line)
+	LogLineNumberChunk int32
 
 	Content string
 

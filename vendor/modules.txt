@@ -424,6 +424,13 @@ google.golang.org/protobuf/types/known/timestamppb
 google.golang.org/protobuf/types/pluginpb
 # gopkg.in/ini.v1 v1.62.0
 ## explicit
+# gopkg.in/mcuadros/go-syslog.v2 v2.3.0
+## explicit
+gopkg.in/mcuadros/go-syslog.v2
+gopkg.in/mcuadros/go-syslog.v2/format
+gopkg.in/mcuadros/go-syslog.v2/internal/syslogparser
+gopkg.in/mcuadros/go-syslog.v2/internal/syslogparser/rfc3164
+gopkg.in/mcuadros/go-syslog.v2/internal/syslogparser/rfc5424
 # pack.ag/amqp v0.11.0
 pack.ag/amqp
 pack.ag/amqp/internal/testconn

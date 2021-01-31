@@ -137,13 +137,14 @@ func processSystemMetrics(timestamp time.Time, content []byte, nameToServer map[
 	return
 }
 
-func makeLogLine(timestamp time.Time, backendPid int64, logLineNumber int64, logLevel string, content string, nameToServer map[string]*state.Server) *state.LogLine {
+func makeLogLine(timestamp time.Time, backendPid int64, logLineNumber int64, logLineNumberChunk int64, logLevel string, content string, nameToServer map[string]*state.Server) *state.LogLine {
 	var logLine state.LogLine
 
 	logLine.CollectedAt = time.Now()
 	logLine.OccurredAt = timestamp
 	logLine.BackendPid = int32(backendPid)
 	logLine.LogLineNumber = int32(logLineNumber)
+	logLine.LogLineNumberChunk = int32(logLineNumberChunk)
 	logLine.Content = content
 	logLine.UUID = uuid.NewV4()
 
@@ -175,8 +176,8 @@ func logStreamItemToLogLine(item HerokuLogStreamItem, servers []*state.Server, n
 	}
 	backendPid, _ := strconv.ParseInt(parts[1], 10, 32)
 
-	contentParts := regexp.MustCompile(`^\[(\w+)\] \[\d+-(\d+)\] ( sql_error_code = \w+ (\w+):  )?(.+)`).FindStringSubmatch(string(item.Content))
-	if len(contentParts) != 6 {
+	contentParts := regexp.MustCompile(`^\[(\w+)\] \[(\d+)-(\d+)\] ( sql_error_code = \w+ (\w+):  )?(.+)`).FindStringSubmatch(string(item.Content))
+	if len(contentParts) != 7 {
 		fmt.Printf("ERR: %s\n", string(item.Content))
 		return nameToServer, nil, ""
 	}
@@ -187,12 +188,13 @@ func logStreamItemToLogLine(item HerokuLogStreamItem, servers []*state.Server, n
 	}
 	sourceName = item.Namespace + " / " + sourceName
 	logLineNumber, _ := strconv.ParseInt(contentParts[2], 10, 32)
-	logLevel := contentParts[4]
-	content := contentParts[5]
+	logLineNumberChunk, _ := strconv.ParseInt(contentParts[3], 10, 32)
+	logLevel := contentParts[5]
+	content := contentParts[6]
 
 	nameToServer = catchIdentifyServerLine(sourceName, content, nameToServer, servers)
 
-	newLogLine := makeLogLine(timestamp, backendPid, logLineNumber, logLevel, content, nameToServer)
+	newLogLine := makeLogLine(timestamp, backendPid, logLineNumber, logLineNumberChunk, logLevel, content, nameToServer)
 
 	return nameToServer, newLogLine, sourceName
 }

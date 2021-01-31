@@ -121,6 +121,8 @@ func TestLogsForAllServers(servers []*state.Server, globalCollectionOpts state.C
 				prefixedLogger.PrintInfo("  Local log test successful")
 				hasSuccessfulLocalServers = true
 			}
+		} else if server.Config.LogSyslogServer != "" {
+			prefixedLogger.PrintInfo("Skipping test for log collection (syslog server) - verify log snapshots are sent in collector logs")
 		} else if server.Config.AwsDbInstanceID != "" {
 			prefixedLogger.PrintInfo("Testing log collection (Amazon RDS)...")
 			_, _, err := downloadLogsForServer(server, globalCollectionOpts, prefixedLogger)

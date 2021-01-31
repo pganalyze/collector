@@ -41,6 +41,7 @@ require (
 	google.golang.org/api v0.32.0
 	google.golang.org/protobuf v1.25.0
 	gopkg.in/ini.v1 v1.62.0 // indirect
+	gopkg.in/mcuadros/go-syslog.v2 v2.3.0
 )
 
 go 1.14
