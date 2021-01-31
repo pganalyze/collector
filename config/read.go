@@ -174,6 +174,9 @@ func getDefaultConfig() *ServerConfig {
 	if logLocation := os.Getenv("LOG_LOCATION"); logLocation != "" {
 		config.LogLocation = logLocation
 	}
+	if logSyslogServer := os.Getenv("LOG_SYSLOG_SERVER"); logSyslogServer != "" {
+		config.LogSyslogServer = logSyslogServer
+	}
 	// Note: We don't support LogDockerTail here since it would require the "docker"
 	// binary inside the pganalyze container (as well as full Docker access), instead
 	// the approach for using pganalyze as a sidecar container alongside Postgres

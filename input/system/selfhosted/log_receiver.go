@@ -26,6 +26,16 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
+type SelfHostedLogStreamItem struct {
+	Line string
+
+	// Optional, only used for syslog messages
+	OccurredAt time.Time
+	BackendPid int32
+	LogLineNumber int32
+	LogLineNumberChunk int32
+}
+
 const settingValueSQL string = `
 SELECT setting
 	FROM pg_settings
@@ -145,11 +155,17 @@ func SetupLogTails(ctx context.Context, servers []*state.Server, globalCollectio
 			if err != nil {
 				prefixedLogger.PrintError("ERROR - %s", err)
 			}
+		} else if server.Config.LogSyslogServer != "" {
+			logStream := logReceiver(ctx, server, globalCollectionOpts, prefixedLogger, nil)
+			err := setupSyslogHandler(ctx, server.Config.LogSyslogServer, logStream, prefixedLogger)
+			if err != nil {
+				prefixedLogger.PrintError("ERROR - %s", err)
+			}
 		}
 	}
 }
 
-func tailFile(ctx context.Context, path string, out chan<- string, prefixedLogger *util.Logger) error {
+func tailFile(ctx context.Context, path string, out chan<- SelfHostedLogStreamItem, prefixedLogger *util.Logger) error {
 	prefixedLogger.PrintVerbose("Tailing log file %s", path)
 
 	t, err := follower.New(path, follower.Config{
@@ -167,7 +183,7 @@ func tailFile(ctx context.Context, path string, out chan<- string, prefixedLogge
 		for {
 			select {
 			case line := <-t.Lines():
-				out <- line.String()
+				out <- SelfHostedLogStreamItem{Line: line.String()}
 			case <-ctx.Done():
 				prefixedLogger.PrintVerbose("Stopping log tail for %s (stop requested)", path)
 				break TailLoop
@@ -205,7 +221,7 @@ func filterOutString(strings []string, stringToBeRemoved string) []string {
 
 const maxOpenTails = 10
 
-func setupLogLocationTail(ctx context.Context, logLocation string, out chan<- string, prefixedLogger *util.Logger) error {
+func setupLogLocationTail(ctx context.Context, logLocation string, out chan<- SelfHostedLogStreamItem, prefixedLogger *util.Logger) error {
 	prefixedLogger.PrintVerbose("Searching for log file(s) in %s", logLocation)
 
 	openFiles := make(map[string]context.CancelFunc)
@@ -320,7 +336,7 @@ func setupLogLocationTail(ctx context.Context, logLocation string, out chan<- st
 	return nil
 }
 
-func setupDockerTail(ctx context.Context, containerName string, out chan<- string, prefixedLogger *util.Logger) error {
+func setupDockerTail(ctx context.Context, containerName string, out chan<- SelfHostedLogStreamItem, prefixedLogger *util.Logger) error {
 	var err error
 
 	cmd := exec.Command("docker", "logs", containerName, "-f", "--tail", "0")
@@ -329,7 +345,7 @@ func setupDockerTail(ctx context.Context, containerName string, out chan<- strin
 	scanner := bufio.NewScanner(stderr)
 	go func() {
 		for scanner.Scan() {
-			out <- scanner.Text()
+			out <- SelfHostedLogStreamItem{Line: scanner.Text()}
 		}
 	}()
 
@@ -355,8 +371,8 @@ func setupDockerTail(ctx context.Context, containerName string, out chan<- strin
 	return nil
 }
 
-func logReceiver(ctx context.Context, server *state.Server, globalCollectionOpts state.CollectionOpts, prefixedLogger *util.Logger, logTestSucceeded chan<- bool) chan<- string {
-	logStream := make(chan string)
+func logReceiver(ctx context.Context, server *state.Server, globalCollectionOpts state.CollectionOpts, prefixedLogger *util.Logger, logTestSucceeded chan<- bool) chan<- SelfHostedLogStreamItem {
+	logStream := make(chan SelfHostedLogStreamItem)
 
 	go func() {
 		var logLines []state.LogLine
@@ -376,7 +392,7 @@ func logReceiver(ctx context.Context, server *state.Server, globalCollectionOpts
 
 		for {
 			select {
-			case line, ok := <-logStream:
+			case item, ok := <-logStream:
 				if !ok {
 					return
 				}
@@ -386,9 +402,22 @@ func logReceiver(ctx context.Context, server *state.Server, globalCollectionOpts
 				// Note that we need to restore the original trailing newlines since
 				// ProcessLogStream below expects them and they are not present in the tail
 				// log stream.
-				logLine, _ := logs.ParseLogLineWithPrefix("", line+"\n")
+				logLine, _ := logs.ParseLogLineWithPrefix("", item.Line+"\n")
 				logLine.CollectedAt = time.Now()
 				logLine.UUID = uuid.NewV4()
+
+				if logLine.OccurredAt.IsZero() && !item.OccurredAt.IsZero() {
+					logLine.OccurredAt = item.OccurredAt
+				}
+				if logLine.BackendPid == 0 && item.BackendPid != 0 {
+					logLine.BackendPid = item.BackendPid
+				}
+				if logLine.LogLineNumber == 0 && item.LogLineNumber != 0 {
+					logLine.LogLineNumber = item.LogLineNumber
+				}
+				if item.LogLineNumberChunk != 0 {
+					logLine.LogLineNumberChunk = item.LogLineNumberChunk
+				}
 
 				// Ignore loglines which are outside our time window
 				nullTime := time.Time{}

@@ -112,6 +112,10 @@ type ServerConfig struct {
 	// development and debugging. The value needs to be the name of the container.
 	LogDockerTail string `ini:"db_log_docker_tail"`
 
+	// Configures the collector to start a built-in syslog server that listens
+	// on the specifed "hostname:port" for Postgres log messages
+	LogSyslogServer string `ini:"db_log_syslog_server"`
+
 	// Specifies a table pattern to ignore - no statistics will be collected for
 	// tables that match the name. This uses Golang's filepath.Match function for
 	// comparison, so you can e.g. use "*" for wildcard matching.

@@ -17,8 +17,8 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
-// This file handles stream-based log collection. Currently this is used in three cases:
-// (1) Self-managed VMs (local log tail)
+// This file handles stream-based log collection. This is used in multiple cases:
+// (1) Self-managed VMs (local log tail or syslog)
 // (2) Heroku Postgres (network log drain)
 // (3) Google Cloud SQL (GCP Pub/Sub)
 // (4) Azure Database for PostgreSQL (Azure Event Hub)
@@ -178,6 +178,7 @@ func AnalyzeStreamInGroups(logLines []state.LogLine) (state.TransientLogState, s
 	// up to the freshness threshold used in the next function call (3 seconds)
 	allLinesHaveBackendPid := true
 	allLinesHaveLogLineNumber := true
+	allLinesHaveLogLineNumberChunk := true
 	allLinesHaveOccurredAt := true
 	for _, logLine := range logLines {
 		if logLine.BackendPid == 0 {
@@ -185,6 +186,9 @@ func AnalyzeStreamInGroups(logLines []state.LogLine) (state.TransientLogState, s
 		}
 		if logLine.LogLineNumber == 0 {
 			allLinesHaveLogLineNumber = false
+		}
+		if logLine.LogLineNumberChunk == 0 {
+			allLinesHaveLogLineNumberChunk = false
 		}
 		if logLine.OccurredAt.IsZero() {
 			allLinesHaveOccurredAt = false
@@ -196,6 +200,9 @@ func AnalyzeStreamInGroups(logLines []state.LogLine) (state.TransientLogState, s
 		}
 		if allLinesHaveLogLineNumber && logLines[i].LogLineNumber != logLines[j].LogLineNumber {
 			return logLines[i].LogLineNumber < logLines[j].LogLineNumber
+		}
+		if allLinesHaveLogLineNumberChunk && logLines[i].LogLineNumberChunk != logLines[j].LogLineNumberChunk {
+			return logLines[i].LogLineNumberChunk < logLines[j].LogLineNumberChunk
 		}
 		if allLinesHaveOccurredAt {
 			return logLines[i].OccurredAt.Sub(logLines[j].OccurredAt) < 0
