@@ -348,9 +348,19 @@ var parseTests = []parseTestpair{
 		"",
 		"pid=8284,user=[unknown],db=[unknown],app=[unknown],client=[local] LOG: connection received: host=[local]",
 		state.LogLine{
-			BackendPid:    8284,
-			LogLevel:      pganalyze_collector.LogLineInformation_LOG,
-			Content:       "connection received: host=[local]",
+			BackendPid: 8284,
+			LogLevel:   pganalyze_collector.LogLineInformation_LOG,
+			Content:    "connection received: host=[local]",
+		},
+		true,
+	},
+	// Custom 12 format
+	{
+		"",
+		"user=[unknown],db=[unknown],app=[unknown],client=[local] LOG: connection received: host=[local]",
+		state.LogLine{
+			LogLevel: pganalyze_collector.LogLineInformation_LOG,
+			Content:  "connection received: host=[local]",
 		},
 		true,
 	},
