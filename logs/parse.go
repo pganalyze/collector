@@ -46,7 +46,8 @@ var HostAndPortRegexp = `(.+(?:\(\d+\))?)?`                                  // 
 var PidRegexp = `(\d+)`                                                      // %p
 var UserRegexp = `(\S*)`                                                     // %u
 var DbRegexp = `(\S*)`                                                       // %d
-var AppRegexp = `(\S*)`                                                      // %a
+var AppBeforeSpaceRegexp = `(\S*)`                                           // %a
+var AppBeforeCommaRegexp = `([^,]*)`                                         // %a
 var AppInsideBracketsRegexp = `(\[unknown\]|[^,\]]*)`                        // %a
 var HostRegexp = `(\S*)`                                                     // %h
 var VirtualTxRegexp = `(\d+/\d+)?`                                           // %v
@@ -65,15 +66,15 @@ var LogPrefixAzureRegexp = regexp.MustCompile(`(?s)^` + TimeRegexp + `-` + Sessi
 var LogPrefixCustom1Regexp = regexp.MustCompile(`(?s)^` + TimeRegexp + ` \[` + PidRegexp + `\]\[` + VirtualTxRegexp + `\] : \[` + LogLineCounterRegexp + `-1\] (?:\[app=` + AppInsideBracketsRegexp + `\] )?` + LevelAndContentRegexp)
 var LogPrefixCustom2Regexp = regexp.MustCompile(`(?s)^` + TimeRegexp + ` \[` + PidRegexp + `-` + LogLineCounterRegexp + `\] ` + `(?:` + UserRegexp + `@` + DbRegexp + ` )?` + LevelAndContentRegexp)
 var LogPrefixCustom3Regexp = regexp.MustCompile(`(?s)^` + TimeRegexp + ` \[` + PidRegexp + `\] (?:\[user=` + UserRegexp + `,db=` + DbRegexp + `,app=` + AppInsideBracketsRegexp + `\] )?` + LevelAndContentRegexp)
-var LogPrefixCustom4Regexp = regexp.MustCompile(`(?s)^` + TimeRegexp + ` \[` + PidRegexp + `\] (?:\[user=` + UserRegexp + `,db=` + DbRegexp + `,app=` + AppInsideBracketsRegexp + `,host=` + HostRegexp + `\] )?` + LevelAndContentRegexp)
+var LogPrefixCustom4Regexp = regexp.MustCompile(`(?s)^` + TimeRegexp + ` \[` + PidRegexp + `\] (?:\[user=` + UserRegexp + `,db=` + DbRegexp + `,app=` + AppBeforeCommaRegexp + `,host=` + HostRegexp + `\] )?` + LevelAndContentRegexp)
 var LogPrefixCustom5Regexp = regexp.MustCompile(`(?s)^` + TimeRegexp + ` \[` + PidRegexp + `\]: \[` + LogLineCounterRegexp + `-1\] user=` + UserRegexp + `,db=` + DbRegexp + ` - PG-` + SqlstateRegexp + ` ` + LevelAndContentRegexp)
-var LogPrefixCustom6Regexp = regexp.MustCompile(`(?s)^` + TimeRegexp + ` \[` + PidRegexp + `\]: \[` + LogLineCounterRegexp + `-1\] user=` + UserRegexp + `,db=` + DbRegexp + `,app=` + AppInsideBracketsRegexp + `,client=` + HostRegexp + ` ` + LevelAndContentRegexp)
+var LogPrefixCustom6Regexp = regexp.MustCompile(`(?s)^` + TimeRegexp + ` \[` + PidRegexp + `\]: \[` + LogLineCounterRegexp + `-1\] user=` + UserRegexp + `,db=` + DbRegexp + `,app=` + AppBeforeCommaRegexp + `,client=` + HostRegexp + ` ` + LevelAndContentRegexp)
 var LogPrefixCustom7Regexp = regexp.MustCompile(`(?s)^` + TimeRegexp + ` \[` + PidRegexp + `\]: \[` + LogLineCounterRegexp + `-1\] \[trx_id=` + TransactionIdRegexp + `\] user=` + UserRegexp + `,db=` + DbRegexp + ` ` + LevelAndContentRegexp)
 var LogPrefixCustom8Regexp = regexp.MustCompile(`(?s)^\[` + PidRegexp + `\]: \[` + LogLineCounterRegexp + `-1\] db=` + DbRegexp + `,user=` + UserRegexp + ` ` + LevelAndContentRegexp)
-var LogPrefixCustom9Regexp = regexp.MustCompile(`(?s)^` + TimeRegexp + ` ` + HostAndPortRegexp + ` ` + UserRegexp + ` ` + AppRegexp + ` \[` + SessionIdRegexp + `\] \[` + PidRegexp + `\] ` + LevelAndContentRegexp)
+var LogPrefixCustom9Regexp = regexp.MustCompile(`(?s)^` + TimeRegexp + ` ` + HostAndPortRegexp + ` ` + UserRegexp + ` ` + AppBeforeSpaceRegexp + ` \[` + SessionIdRegexp + `\] \[` + PidRegexp + `\] ` + LevelAndContentRegexp)
 var LogPrefixCustom10Regexp = regexp.MustCompile(`(?s)^` + TimeRegexp + ` \[` + PidRegexp + `\]: \[` + LogLineCounterRegexp + `-1\] db=` + DbRegexp + `,user=` + UserRegexp + ` ` + LevelAndContentRegexp)
-var LogPrefixCustom11Regexp = regexp.MustCompile(`(?s)^pid=` + PidRegexp + `,user=` + UserRegexp + `,db=` + DbRegexp + `,app=` + AppInsideBracketsRegexp + `,client=` + HostRegexp + ` ` + LevelAndContentRegexp)
-var LogPrefixCustom12Regexp = regexp.MustCompile(`(?s)^user=` + UserRegexp + `,db=` + DbRegexp + `,app=` + AppInsideBracketsRegexp + `,client=` + HostRegexp + ` ` + LevelAndContentRegexp)
+var LogPrefixCustom11Regexp = regexp.MustCompile(`(?s)^pid=` + PidRegexp + `,user=` + UserRegexp + `,db=` + DbRegexp + `,app=` + AppBeforeCommaRegexp + `,client=` + HostRegexp + ` ` + LevelAndContentRegexp)
+var LogPrefixCustom12Regexp = regexp.MustCompile(`(?s)^user=` + UserRegexp + `,db=` + DbRegexp + `,app=` + AppBeforeCommaRegexp + `,client=` + HostRegexp + ` ` + LevelAndContentRegexp)
 var LogPrefixSimpleRegexp = regexp.MustCompile(`(?s)^` + TimeRegexp + ` \[` + PidRegexp + `\] ` + LevelAndContentRegexp)
 var LogPrefixNoTimestampUserDatabaseAppRegexp = regexp.MustCompile(`(?s)^\[user=` + UserRegexp + `,db=` + DbRegexp + `,app=` + AppInsideBracketsRegexp + `\] ` + LevelAndContentRegexp)
 
