@@ -5,11 +5,14 @@ import (
 	"regexp"
 	"strconv"
 	"time"
-	
+
 	"gopkg.in/mcuadros/go-syslog.v2"
 
 	"github.com/pganalyze/collector/util"
 )
+
+var logLinePartsRegexp = regexp.MustCompile(`^\[(\d+)-(\d+)\] (.*)`)
+var logLineNumberPartsRegexp = regexp.MustCompile(`^\[(\d+)-(\d+)\]$`)
 
 func setupSyslogHandler(ctx context.Context, logSyslogServer string, out chan<- SelfHostedLogStreamItem, prefixedLogger *util.Logger) error {
 	channel := make(syslog.LogPartsChannel)
@@ -29,7 +32,6 @@ func setupSyslogHandler(ctx context.Context, logSyslogServer string, out chan<- 
 			select {
 			case logParts := <-channel:
 				item := SelfHostedLogStreamItem{}
-				item.Line, _ = logParts["message"].(string)
 
 				item.OccurredAt, _ = logParts["timestamp"].(time.Time)
 
@@ -38,14 +40,28 @@ func setupSyslogHandler(ctx context.Context, logSyslogServer string, out chan<- 
 					item.BackendPid = int32(s)
 				}
 
-				logLineNumberStr, _ := logParts["structured_data"].(string)
-				logLineNumberParts := regexp.MustCompile(`^\[(\d+)-(\d+)\]$`).FindStringSubmatch(logLineNumberStr)
-				if len(logLineNumberParts) != 0 {
-					if s, err := strconv.ParseInt(logLineNumberParts[1], 10, 32); err == nil {
+				logLine, _ := logParts["message"].(string)
+				logLineParts := logLinePartsRegexp.FindStringSubmatch(logLine)
+				if len(logLineParts) != 0 {
+					if s, err := strconv.ParseInt(logLineParts[1], 10, 32); err == nil {
 						item.LogLineNumber = int32(s)
 					}
-					if s, err := strconv.ParseInt(logLineNumberParts[2], 10, 32); err == nil {
+					if s, err := strconv.ParseInt(logLineParts[2], 10, 32); err == nil {
 						item.LogLineNumberChunk = int32(s)
+					}
+					item.Line = logLineParts[3]
+				} else {
+					item.Line = logLine
+
+					logLineNumberStr, _ := logParts["structured_data"].(string)
+					logLineNumberParts := logLineNumberPartsRegexp.FindStringSubmatch(logLineNumberStr)
+					if len(logLineNumberParts) != 0 {
+						if s, err := strconv.ParseInt(logLineNumberParts[1], 10, 32); err == nil {
+							item.LogLineNumber = int32(s)
+						}
+						if s, err := strconv.ParseInt(logLineNumberParts[2], 10, 32); err == nil {
+							item.LogLineNumberChunk = int32(s)
+						}
 					}
 				}
 
