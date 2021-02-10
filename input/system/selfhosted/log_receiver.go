@@ -202,7 +202,7 @@ func isAcceptableLogFile(fileName string, fileNameFilter string) bool {
 		return false
 	}
 
-	if strings.HasSuffix(fileName, ".gz") || strings.HasSuffix(fileName, ".bz2") {
+	if strings.HasSuffix(fileName, ".gz") || strings.HasSuffix(fileName, ".bz2") || strings.HasSuffix(fileName, ".csv") {
 		return false
 	}
 
