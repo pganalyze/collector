@@ -53,7 +53,7 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 	conf, err := config.Read(logger, configFilename)
 	if err != nil {
 		logger.PrintError("Config Error: %s", err)
-		keepRunning = !globalCollectionOpts.TestRun
+		keepRunning = !globalCollectionOpts.TestRun && !globalCollectionOpts.DiscoverLogLocation
 		return
 	}
 
