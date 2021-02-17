@@ -116,7 +116,7 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 			}
 			return
 		} else if globalCollectionOpts.TestRunLogs {
-			runner.TestLogsForAllServers(servers, globalCollectionOpts, logger)
+			reloadOkay = doLogTest(servers, globalCollectionOpts, logger)
 			return
 		} else {
 			var allFullSuccessful bool
@@ -559,32 +559,35 @@ func Reload(logger *util.Logger) {
 	os.Exit(0)
 }
 
-func doLogTest(servers []*state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
+func doLogTest(servers []*state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) bool {
 	// Initial test
 	hasFailedServers, hasSuccessfulLocalServers := runner.TestLogsForAllServers(servers, globalCollectionOpts, logger)
 
 	// Re-test using lower privileges
-	if hasFailedServers || !hasSuccessfulLocalServers {
-		return
+	if hasFailedServers {
+		return false
+	}
+	if !hasSuccessfulLocalServers {
+		return true
 	}
 
 	curUser, err := user.Current()
 	if err != nil {
 		logger.PrintError("Could not determine current user for privilege drop test")
-		return
+		return false
 	}
 	if curUser.Name != "root" {
 		// don't print anything here, since it would always be printed during the actual privilege drop run
-		return
+		return true
 	}
 
 	pgaUser, err := user.Lookup("pganalyze")
 	if err != nil {
 		logger.PrintVerbose("Could not locate pganalyze user, skipping privilege drop test: %s", err)
-		return
+		return false
 	} else if curUser.Uid == pgaUser.Uid {
 		logger.PrintVerbose("Current user is already pganalyze user, skipping privilege drop test")
-		return
+		return true
 	}
 
 	uid, _ := strconv.ParseUint(pgaUser.Uid, 10, 32)
@@ -599,7 +602,7 @@ func doLogTest(servers []*state.Server, globalCollectionOpts state.CollectionOpt
 	collectorBinaryPath, err := os.Executable()
 	if err != nil {
 		logger.PrintError("Could not run collector log test as \"pganalyze\" user due to missing executable: %s", err)
-		return
+		return false
 	}
 	cmd := exec.Command(collectorBinaryPath, "--test-logs")
 	cmd.Stdout = os.Stdout
@@ -609,6 +612,8 @@ func doLogTest(servers []*state.Server, globalCollectionOpts state.CollectionOpt
 	err = cmd.Run()
 	if err != nil {
 		logger.PrintError("Could not run collector log test as \"pganalyze\" user: %s", err)
-		return
+		return false
 	}
+
+	return true
 }
