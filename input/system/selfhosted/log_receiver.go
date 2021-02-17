@@ -112,7 +112,7 @@ func DiscoverLogLocation(servers []*state.Server, globalCollectionOpts state.Col
 			if strings.HasPrefix(logDirectory, "/") {
 				prefixedLogger.PrintInfo("Found log location, add this to your pganalyze-collector.conf in the [%s] section:\ndb_log_location = %s", server.Config.SectionName, logDirectory)
 			} else {
-				prefixedLogger.PrintInfo("WARNING: found log location in data directory - please check our setup guide for instructions.\n")
+				prefixedLogger.PrintInfo("WARNING: Found log location in data directory - please check our setup guide for instructions\n")
 			}
 		} else { // assume stdout/stderr redirect to logfile, typical with postgresql-common on Ubuntu/Debian
 			prefixedLogger.PrintInfo("Discovering log directory using open files in postmaster (PID %d)...", status.PostmasterPid)
