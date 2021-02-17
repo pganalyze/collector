@@ -2,7 +2,7 @@
 [pganalyze]
 api_key = abc123
 
-# api_key: your_api_key
+# api_key = your_api_key
 [server1]
 db_name            = postgres
 db_username        = pganalyze
