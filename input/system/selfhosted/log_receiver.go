@@ -30,9 +30,9 @@ type SelfHostedLogStreamItem struct {
 	Line string
 
 	// Optional, only used for syslog messages
-	OccurredAt time.Time
-	BackendPid int32
-	LogLineNumber int32
+	OccurredAt         time.Time
+	BackendPid         int32
+	LogLineNumber      int32
 	LogLineNumberChunk int32
 }
 
@@ -76,7 +76,7 @@ func DiscoverLogLocation(servers []*state.Server, globalCollectionOpts state.Col
 		}
 
 		if logDestination == "syslog" {
-			prefixedLogger.PrintInfo("Log location detected as syslog - please check our setup guide for rsyslogd or syslog-ng instructions")
+			prefixedLogger.PrintInfo("WARNING: Logging via syslog - please check our setup guide for rsyslogd or syslog-ng instructions")
 			continue
 		} else if logDestination != "stderr" {
 			prefixedLogger.PrintError("ERROR - Unsupported log_destination \"%s\"", logDestination)
@@ -103,20 +103,17 @@ func DiscoverLogLocation(servers []*state.Server, globalCollectionOpts state.Col
 		}
 
 		if loggingCollector == "on" {
-			logDirectoryBytes, err := exec.Command("/usr/bin/pganalyze-collector-helper", "log_directory").Output()
+			logDirectory, err := getPostgresSetting("log_directory", server, globalCollectionOpts, prefixedLogger)
 			if err != nil {
-				prefixedLogger.PrintError("ERROR - Could not run helper process: %s", err)
+				prefixedLogger.PrintError("ERROR - Could not retrieve log_directory setting from Postgres: %s", err)
 				continue
 			}
-			logDirectory := string(logDirectoryBytes)
-			if logDirectory == "" {
-				prefixedLogger.PrintError("ERROR - Could not retrieve log_directory setting from Postgres")
-				continue
+
+			if strings.HasPrefix(logDirectory, "/") {
+				prefixedLogger.PrintInfo("Found log location, add this to your pganalyze-collector.conf in the [%s] section:\ndb_log_location = %s", server.Config.SectionName, logDirectory)
+			} else {
+				prefixedLogger.PrintInfo("WARNING: found log location in data directory - please check our setup guide for instructions.\n")
 			}
-			if !strings.HasPrefix(logDirectory, "/") {
-				logDirectory = status.DataDirectory + "/" + logDirectory
-			}
-			prefixedLogger.PrintInfo("Found log location, add this to your pganalyze-collector.conf in the [%s] section:\ndb_log_location = %s", server.Config.SectionName, logDirectory)
 		} else { // assume stdout/stderr redirect to logfile, typical with postgresql-common on Ubuntu/Debian
 			prefixedLogger.PrintInfo("Discovering log directory using open files in postmaster (PID %d)...", status.PostmasterPid)
 			logFile, err := filepath.EvalSymlinks("/proc/" + strconv.FormatInt(int64(status.PostmasterPid), 10) + "/fd/1")
