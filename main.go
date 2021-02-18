@@ -128,6 +128,10 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 				allActivitySuccessful = true
 			}
 			if hasAnyLogsEnabled {
+				// We intentionally don't fail for the regular test command if the log test fails, since you may not
+				// have Log Insights enabled on your plan (which would fail the log test when getting the log grant).
+				// In these situations we still want --test to be successful (i.e. issue a reload), but --test-logs
+				// would fail (and not reload).
 				doLogTest(servers, globalCollectionOpts, logger)
 			}
 
@@ -584,7 +588,7 @@ func doLogTest(servers []*state.Server, globalCollectionOpts state.CollectionOpt
 	pgaUser, err := user.Lookup("pganalyze")
 	if err != nil {
 		logger.PrintVerbose("Could not locate pganalyze user, skipping privilege drop test: %s", err)
-		return false
+		return true
 	} else if curUser.Uid == pgaUser.Uid {
 		logger.PrintVerbose("Current user is already pganalyze user, skipping privilege drop test")
 		return true
