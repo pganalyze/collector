@@ -116,7 +116,7 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 			}
 			return
 		} else if globalCollectionOpts.TestRunLogs {
-			runner.TestLogsForAllServers(servers, globalCollectionOpts, logger)
+			reloadOkay = doLogTest(servers, globalCollectionOpts, logger)
 			return
 		} else {
 			var allFullSuccessful bool
@@ -128,6 +128,10 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 				allActivitySuccessful = true
 			}
 			if hasAnyLogsEnabled {
+				// We intentionally don't fail for the regular test command if the log test fails, since you may not
+				// have Log Insights enabled on your plan (which would fail the log test when getting the log grant).
+				// In these situations we still want --test to be successful (i.e. issue a reload), but --test-logs
+				// would fail (and not reload).
 				doLogTest(servers, globalCollectionOpts, logger)
 			}
 
@@ -559,56 +563,61 @@ func Reload(logger *util.Logger) {
 	os.Exit(0)
 }
 
-func doLogTest(servers []*state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
+func doLogTest(servers []*state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) bool {
 	// Initial test
 	hasFailedServers, hasSuccessfulLocalServers := runner.TestLogsForAllServers(servers, globalCollectionOpts, logger)
 
 	// Re-test using lower privileges
 	if hasFailedServers {
-		return
+		return false
 	}
-	if hasSuccessfulLocalServers {
-		curUser, err := user.Current()
-		if err != nil {
-			logger.PrintError("Could not determine current user for privilege drop test")
-			return
-		}
-
-		pgaUser, err := user.Lookup("pganalyze")
-		if err != nil {
-			logger.PrintVerbose("Could not locate pganalyze user, skipping privilege drop test: %s", err)
-			return
-		} else if curUser.Name != "root" {
-			logger.PrintVerbose("Current user is not root, skipping privilege drop test")
-			return
-		} else if curUser.Uid == pgaUser.Uid {
-			logger.PrintVerbose("Current user is already pganalyze user, skipping privilege drop test")
-			return
-		}
-
-		uid, _ := strconv.ParseUint(pgaUser.Uid, 10, 32)
-		gid, _ := strconv.ParseUint(pgaUser.Gid, 10, 32)
-		groupIDStrs, _ := pgaUser.GroupIds()
-		var groupIDs []uint32
-		for _, groupIDStr := range groupIDStrs {
-			groupID, _ := strconv.ParseUint(groupIDStr, 10, 32)
-			groupIDs = append(groupIDs, uint32(groupID))
-		}
-		logger.PrintInfo("Re-running log test with reduced privileges of \"pganalyze\" user (uid = %d, gid = %d)", uid, gid)
-		collectorBinaryPath, err := os.Executable()
-		if err != nil {
-			logger.PrintError("Could not run collector log test as \"pganalyze\" user due to missing executable: %s", err)
-			return
-		}
-		cmd := exec.Command(collectorBinaryPath, "--test-logs")
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		cmd.SysProcAttr = &syscall.SysProcAttr{}
-		cmd.SysProcAttr.Credential = &syscall.Credential{Uid: uint32(uid), Gid: uint32(gid), Groups: groupIDs}
-		err = cmd.Run()
-		if err != nil {
-			logger.PrintError("Could not run collector log test as \"pganalyze\" user: %s", err)
-			return
-		}
+	if !hasSuccessfulLocalServers {
+		return true
 	}
+
+	curUser, err := user.Current()
+	if err != nil {
+		logger.PrintError("Could not determine current user for privilege drop test")
+		return false
+	}
+	if curUser.Name != "root" {
+		// don't print anything here, since it would always be printed during the actual privilege drop run
+		return true
+	}
+
+	pgaUser, err := user.Lookup("pganalyze")
+	if err != nil {
+		logger.PrintVerbose("Could not locate pganalyze user, skipping privilege drop test: %s", err)
+		return true
+	} else if curUser.Uid == pgaUser.Uid {
+		logger.PrintVerbose("Current user is already pganalyze user, skipping privilege drop test")
+		return true
+	}
+
+	uid, _ := strconv.ParseUint(pgaUser.Uid, 10, 32)
+	gid, _ := strconv.ParseUint(pgaUser.Gid, 10, 32)
+	groupIDStrs, _ := pgaUser.GroupIds()
+	var groupIDs []uint32
+	for _, groupIDStr := range groupIDStrs {
+		groupID, _ := strconv.ParseUint(groupIDStr, 10, 32)
+		groupIDs = append(groupIDs, uint32(groupID))
+	}
+	logger.PrintInfo("Re-running log test with reduced privileges of \"pganalyze\" user (uid = %d, gid = %d)", uid, gid)
+	collectorBinaryPath, err := os.Executable()
+	if err != nil {
+		logger.PrintError("Could not run collector log test as \"pganalyze\" user due to missing executable: %s", err)
+		return false
+	}
+	cmd := exec.Command(collectorBinaryPath, "--test-logs")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.SysProcAttr = &syscall.SysProcAttr{}
+	cmd.SysProcAttr.Credential = &syscall.Credential{Uid: uint32(uid), Gid: uint32(gid), Groups: groupIDs}
+	err = cmd.Run()
+	if err != nil {
+		logger.PrintError("Could not run collector log test as \"pganalyze\" user: %s", err)
+		return false
+	}
+
+	return true
 }
