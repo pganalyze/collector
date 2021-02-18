@@ -124,20 +124,29 @@ func GetStatements(server *state.Server, logger *util.Logger, db *sql.DB, global
 		}
 	}
 
-	sql := QueryMarkerSQL + fmt.Sprintf(statementSQL, totalTimeField, optionalFields, sourceTable)
+	querySql := QueryMarkerSQL + fmt.Sprintf(statementSQL, totalTimeField, optionalFields, sourceTable)
 
-	stmt, err := db.Prepare(sql)
+	stmt, err := db.Prepare(querySql)
 	if err != nil {
 		var e *pq.Error
 		if !usingStatsHelper && errors.As(err, &e) && (e.Code == "42P01" || e.Code == "42883") { // undefined_table / undefined_function
-			logger.PrintInfo("pg_stat_statements does not exist, trying to create extension...")
+			var pgssSchema string
+			err = db.QueryRow("SELECT extnamespace::regnamespace::text FROM pg_extension WHERE extname = 'pg_stat_statements'").Scan(&pgssSchema)
+			if err == nil && pgssSchema != "public" {
+				return nil, nil, nil, fmt.Errorf("pg_stat_statements must be created in schema \"public\"; found in schema \"%s\"", pgssSchema)
+			}
+			// If we get ErrNoRows, the extension does not exist, which is one of the expected paths
+			if err != nil && err != sql.ErrNoRows {
+				return nil, nil, nil, err
+			}
 
+			logger.PrintInfo("pg_stat_statements does not exist, trying to create extension...")
 			_, err = db.Exec(QueryMarkerSQL + "CREATE EXTENSION IF NOT EXISTS pg_stat_statements SCHEMA public")
 			if err != nil {
 				return nil, nil, nil, err
 			}
 
-			stmt, err = db.Prepare(sql)
+			stmt, err = db.Prepare(querySql)
 			if err != nil {
 				return nil, nil, nil, err
 			}
