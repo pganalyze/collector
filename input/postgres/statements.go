@@ -131,7 +131,7 @@ func GetStatements(server *state.Server, logger *util.Logger, db *sql.DB, global
 		var e *pq.Error
 		if !usingStatsHelper && errors.As(err, &e) && (e.Code == "42P01" || e.Code == "42883") { // undefined_table / undefined_function
 			var pgssSchema string
-			err = db.QueryRow("SELECT extnamespace::regnamespace::text FROM pg_extension WHERE extname = 'pg_stat_statements'").Scan(&pgssSchema)
+			err = db.QueryRow("SELECT nspname FROM pg_extension pge INNER JOIN pg_namespace pgn ON pge.extnamespace = pgn.oid WHERE pge.extname = 'pg_stat_statements'").Scan(&pgssSchema)
 			if err == nil && pgssSchema != "public" {
 				return nil, nil, nil, fmt.Errorf("pg_stat_statements must be created in schema \"public\"; found in schema \"%s\"", pgssSchema)
 			}
