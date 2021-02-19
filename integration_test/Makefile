@@ -10,32 +10,9 @@ DOCKER_RUN_CMD = docker run --name pganalyze-collector-test \
   -d \
   pganalyze-collector-test
 
-.PHONY: pg92 pg93 pg94 pg95 pg96 pg10 pg11 pg12 pg13 guided-setup
+.PHONY: pg93 pg94 pg95 pg96 pg10 pg11 pg12 pg13 guided-setup
 
-all: pg92 pg93 pg94 pg95 pg96 pg10 pg11 pg12 pg13 guided-setup
-
-pg92:
-	docker build -f Dockerfile.test-pg92 $(DOCKER_BUILD_OPTS)
-	$(DOCKER_RUN_CMD)
-	sleep 10
-	docker exec pganalyze-collector-test pgbench -U postgres -i
-	docker exec pganalyze-collector-test pgbench -U postgres
-	docker exec pganalyze-collector-test sh -c "DB_USERNAME=postgres PGA_API_KEY=dummy PGA_DISABLE_ACTIVITY=1 IGNORE_SCHEMA_REGEXP=pgbench_history pganalyze-collector --dry-run --force-state-update -v" > pg92_1.json
-	docker exec pganalyze-collector-test pgbench -U postgres
-	docker exec pganalyze-collector-test sh -c "DB_USERNAME=postgres PGA_API_KEY=dummy PGA_DISABLE_ACTIVITY=1 IGNORE_SCHEMA_REGEXP=pgbench_history pganalyze-collector --dry-run --force-state-update -v" > pg92_2.json
-	docker rm -f pganalyze-collector-test
-	docker rmi pganalyze-collector-test
-	if [ "`jq '.collectorErrors' pg92_2.json | tr -d ' \n\r\t '`" != "null" ]; then \
-		jq '.collectorErrors' pg92_2.json; \
-		exit 1; \
-	fi
-	if jq '.relationReferences' pg92_2.json | grep --quiet pgbench_history; then \
-                echo "failed to ignore table according to IGNORE_SCHEMA_REGEXP=pgbench_history" \
-		jq '.relationReferences' pg92_2.json; \
-		exit 1; \
-	fi
-	jq '.queryInformations[].normalizedQuery' pg92_2.json | sort --version-sort -f > pg92.out
-	diff -Naur pg92.expected pg92.out && echo 'success'
+all: pg93 pg94 pg95 pg96 pg10 pg11 pg12 pg13 guided-setup
 
 pg93:
 	docker build -f Dockerfile.test-pg93 $(DOCKER_BUILD_OPTS)
