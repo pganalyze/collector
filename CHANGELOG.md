@@ -1,5 +1,57 @@
 # Changelog
 
+## 0.37.0      2021-02-19
+
+* Add support for receiving logs from remote servers over syslog
+  - You can now specify the new "db_log_syslog_server" config setting, or
+    "LOG_SYSLOG_SERVER" environment variable in order to setup the collector
+    as a syslog server that can receive logs from a remote server via syslog
+    to the server that runs the collector.
+  - Note that the format of this setting is "listen_address:port", and its
+    recommended to use a high port number to avoid running the collector as root.
+  - For example, you can specify "0.0.0.0:32514" and then send syslog messages
+    to the collector's server address at port 32514.
+  - Note that you need to use protocol RFC5424, with an unencrypted TCP
+    connection. Due to syslog not being an authenticated protocol it is
+    recommended to only use this integration over private networks.
+* Add support for "pid=%p,user=%u,db=%d,app=%a,client=%h " and
+  "user=%u,db=%d,app=%a,client=%h " log_line_prefix settings
+  - This prefix misses a timestamp, but is useful when sending data over syslog.
+* Log parsing: Correctly handle %a containing commas/square brackets
+  - Note that this does not support all cases since Go's regexp engine
+    does not support negative lookahead, so we can't handle an application
+    name containing a comma if the log_line_prefix has a comma following %a.
+* Ignore CSV log files in log directory [#83](https://github.com/pganalyze/collector/issues/83)
+  - Some Postgres installations are configured to log both standard-format
+    log files and CSV log files to the same directory, but the collector
+    currently reads all files specified in a db_log_location, which works
+    poorly with this setup.
+* Tweak collector sample config file to match setup instructions
+* Improvements to "--discover-log-location"
+  - Don't keep running if there's a config error
+  - Drop the log_directory helper command and just fetch the setting from Postgres
+  - Warn and only show relative location if log_directory is inside
+    the data directory (this requires special setup steps to resolve)
+* Improvements to "--test-logs"
+  - Run privilege drop test when running log test as root, to allow running
+    "--test-logs" for a complete log setup test, avoiding the need to run
+    a full "--test"
+* Update pg_query_go to incorporate memory leak fixes
+* Check whether pg_stat_statements exists in a different schema, and give a
+  clear error message
+* Drop support for Postgres 9.2
+  - Postgres 9.2 has been EOL for almost 4 years
+* Update to Go 1.16
+  * This introduces a change to Go's certificate handling, which may break
+    certain older versions of Amazon RDS certificates, as they do not
+    include a SAN. When this is the case you will see an error message like
+    "x509: certificate relies on legacy Common Name field".
+  * As a temporary workaround you can run the collector with the
+    GODEBUG=x509ignoreCN=0 environment setting, which ignores these incorrect
+    fields in these certificates. For a permanent fix, you need to update
+    your RDS certificates to include the correct SAN field: https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.SSL-certificate-rotation.html
+
+
 ## 0.36.0      2021-01-21
 
 * Config parsing improvements:
