@@ -25,7 +25,7 @@ func CollectFull(server *state.Server, connection *sql.DB, globalCollectionOpts 
 	}
 
 	if ts.Version.Numeric < state.MinRequiredPostgresVersion {
-		err = fmt.Errorf("Error: Your PostgreSQL server version (%s) is too old, 9.2 or newer is required.", ts.Version.Short)
+		err = fmt.Errorf("Error: Your PostgreSQL server version (%s) is too old, 9.3 or newer is required.", ts.Version.Short)
 		return
 	}
 
