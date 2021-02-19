@@ -1,4 +1,4 @@
-// +heroku goVersion go1.14
+// +heroku goVersion go1.16
 
 module github.com/pganalyze/collector
 
@@ -44,4 +44,4 @@ require (
 	gopkg.in/mcuadros/go-syslog.v2 v2.3.0
 )
 
-go 1.14
+go 1.16
