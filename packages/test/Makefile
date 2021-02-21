@@ -6,7 +6,7 @@ docker_exec  = docker exec pga-collector-test $(1)
 docker_test  = docker exec pga-collector-test /root/$(1)_test.sh
 docker_clean = docker kill pga-collector-test && docker rm pga-collector-test && docker rmi -f pga-collector-test
 
-DISTROS=centos7 rhel8 fedora29 fedora30 ubuntu-xenial ubuntu-bionic ubuntu-focal debian-jessie debian-stretch debian-buster
+DISTROS=centos7 rhel8 fedora29 fedora30 ubuntu-xenial ubuntu-bionic ubuntu-focal debian-stretch debian-buster
 
 .PHONY: all $(DISTROS)
 

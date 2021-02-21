@@ -1,4 +1,4 @@
-FROM debian:jessie
+FROM debian:stretch
 
 ENV GOPATH /go
 ENV GOVERSION 1.16
