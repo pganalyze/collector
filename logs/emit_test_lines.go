@@ -27,7 +27,10 @@ func EmitTestExplain(server *state.Server, globalCollectionOpts state.Collection
 	defer db.Close()
 	// Emit a query that's slow enough to trigger an explain if a log_min_duration is
 	// configured (either through auto_explain or the standard one)
-	_, err = db.Exec(postgres.QueryMarkerSQL + `WITH naptime(value) AS (
+	//
+	// Note that we intentionally don't use the pganalyze collector query marker here,
+	// since we want the EXPLAIN plan to show up in the pganalyze user interface
+	_, err = db.Exec(`WITH naptime(value) AS (
 SELECT
 	COALESCE(pg_catalog.max(setting::float), 0) / 1000 * 1.2
 FROM
