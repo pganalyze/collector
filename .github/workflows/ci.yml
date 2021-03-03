@@ -34,3 +34,4 @@ jobs:
         make build OUTFILE=pganalyze-collector-linux-amd64
         make test
         make integration_test
+        shellcheck contrib/install.sh
