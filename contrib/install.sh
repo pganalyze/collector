@@ -38,7 +38,7 @@ then
   version=$(grep VERSION_ID /etc/os-release | cut -d= -f2 | tr -d '"' | cut -d. -f1)
   if [ "$version" != 7 ] && [ "$version" != 8 ];
   then
-    read -r -n1 -p "Unsupported RHEL version; try RHEL8 package? [Yn]" confirm_rhel8 </dev/tty
+    read -r -n1 -p "Unsupported RHEL version; try RHEL8 package? [Y/n]" confirm_rhel8 </dev/tty
     if [ -z "$confirm_rhel8" ] || [[ "$confirm_rhel8" =~ [yY] ]];
     then
       version=8
@@ -55,7 +55,7 @@ then
 
   if [ "$version" != 30 ] && [ "$version" != 29 ];
   then
-    read -r -n1 -p "Unsupported Fedora version; try Fedora 30 package? [Yn]" confirm_fedora30 </dev/tty
+    read -r -n1 -p "Unsupported Fedora version; try Fedora 30 package? [Y/n]" confirm_fedora30 </dev/tty
     if [ -z "$confirm_fedora30" ] || [[ "$confirm_fedora30" =~ [yY] ]];
     then
       version=30
@@ -71,7 +71,7 @@ then
   version=$(grep VERSION_CODENAME /etc/os-release | cut -d= -f2)
   if [ "$version" != focal ] && [ "$version" != bionic ] && [ "$version" != xenial ];
   then
-    read -r -n1 -p "Unsupported Ubuntu version; try Ubuntu Focal (20.04) package? [Yn]" confirm_ubuntu_focal </dev/tty
+    read -r -n1 -p "Unsupported Ubuntu version; try Ubuntu Focal (20.04) package? [Y/n]" confirm_ubuntu_focal </dev/tty
     if [ -z "$confirm_ubuntu_focal" ] || [[ "$confirm_ubuntu_focal" =~ [yY] ]];
     then
       version=focal
@@ -87,7 +87,7 @@ then
   version=$(grep VERSION_CODENAME /etc/os-release | cut -d= -f2)
   if [ "$version" != buster ] && [ "$version" != stretch ];
   then
-    read -r -n1 -p "Unsupported Debian version; try Debian Buster (10) package? [Yn]" confirm_debian_buster </dev/tty
+    read -r -n1 -p "Unsupported Debian version; try Debian Buster (10) package? [Y/n]" confirm_debian_buster </dev/tty
     if [ -z "$confirm_debian_buster" ] || [[ "$confirm_debian_buster" =~ [yY] ]];
     then
       version=buster
@@ -137,7 +137,7 @@ then
   # it before trying to invoke it if necessary
   if ! dpkg --verify gnupg 2>/dev/null && ! dpkg --verify gnupg1 2>/dev/null && ! dpkg --verify gnupg2 2>/dev/null;
   then
-    read -r -n1 -p "The gnupg package is required to verify the collector package signature; install it now? [Yn]" confirm_gnupg </dev/tty
+    read -r -n1 -p "The gnupg package is required to verify the collector package signature; install it now? [Y/n]" confirm_gnupg </dev/tty
     if [ -z "$confirm_gnupg" ] || [[ "$confirm_gnupg" =~ [yY] ]];
     then
       $maybe_sudo apt-get install gnupg </dev/tty
