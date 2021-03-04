@@ -3,7 +3,7 @@
 set -e
 
 fail () {
-  >&2 echo "Collector install failed: $1"
+  >&2 echo "Install failed: $1"
   >&2 echo
   >&2 echo "Please contact support@pganalyze.com for help and include information about your platform"
   exit 1
