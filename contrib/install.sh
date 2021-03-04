@@ -10,6 +10,32 @@ fail () {
   exit 1
 }
 
+user_input=''
+yum_opts=''
+apt_opts=''
+pgags_opts=''
+if [ -n "$PGA_INSTALL_NONINTERACTIVE" ];
+then
+  user_input=/dev/null
+  apt_opts='--yes'
+  yum_opts='--assumeyes'
+  pgags_opts="--recommended --db-name=${DB_NAME:-postgres}"
+else
+  user_input=/dev/tty
+fi
+
+confirm () {
+  if [ -n "$PGA_INSTALL_NONINTERACTIVE" ];
+  then
+    return 0
+  fi
+
+  local confirmation
+  # N.B.: default is always yes
+  read -r -n1 -p "$1 [Yn]" confirmation <$user_input
+  [ -z "$confirmation" ] || [[ "$confirmation" =~ [Yy] ]]
+}
+
 pkg=''
 distribution=''
 version=''
@@ -39,8 +65,7 @@ then
   version=$(grep VERSION_ID /etc/os-release | cut -d= -f2 | tr -d '"' | cut -d. -f1)
   if [ "$version" != 7 ] && [ "$version" != 8 ];
   then
-    read -r -n1 -p "Unsupported RHEL version; try RHEL8 package? [Y/n]" confirm_rhel8 </dev/tty
-    if [ -z "$confirm_rhel8" ] || [[ "$confirm_rhel8" =~ [yY] ]];
+    if confirm "Unsupported RHEL version; try RHEL8 package?";
     then
       version=8
     else
@@ -56,8 +81,7 @@ then
 
   if [ "$version" != 30 ] && [ "$version" != 29 ];
   then
-    read -r -n1 -p "Unsupported Fedora version; try Fedora 30 package? [Y/n]" confirm_fedora30 </dev/tty
-    if [ -z "$confirm_fedora30" ] || [[ "$confirm_fedora30" =~ [yY] ]];
+    if confirm "Unsupported Fedora version; try Fedora 30 package?";
     then
       version=30
     else
@@ -72,8 +96,7 @@ then
   version=$(grep VERSION_CODENAME /etc/os-release | cut -d= -f2)
   if [ "$version" != focal ] && [ "$version" != bionic ] && [ "$version" != xenial ];
   then
-    read -r -n1 -p "Unsupported Ubuntu version; try Ubuntu Focal (20.04) package? [Y/n]" confirm_ubuntu_focal </dev/tty
-    if [ -z "$confirm_ubuntu_focal" ] || [[ "$confirm_ubuntu_focal" =~ [yY] ]];
+    if confirm "Unsupported Ubuntu version; try Ubuntu Focal (20.04) package?";
     then
       version=focal
     else
@@ -88,8 +111,7 @@ then
   version=$(grep VERSION_CODENAME /etc/os-release | cut -d= -f2)
   if [ "$version" != buster ] && [ "$version" != stretch ];
   then
-    read -r -n1 -p "Unsupported Debian version; try Debian Buster (10) package? [Y/n]" confirm_debian_buster </dev/tty
-    if [ -z "$confirm_debian_buster" ] || [[ "$confirm_debian_buster" =~ [yY] ]];
+    if confirm "Unsupported Debian version; try Debian Buster (10) package?";
     then
       version=buster
     else
@@ -130,18 +152,17 @@ gpgkey=https://packages.pganalyze.com/pganalyze_signing_key.asc
 sslverify=1
 sslcacert=/etc/pki/tls/certs/ca-bundle.crt
 metadata_expire=300" | $maybe_sudo tee -a /etc/yum.repos.d/pganalyze_collector.repo
-  $maybe_sudo yum makecache </dev/tty
-  $maybe_sudo yum install pganalyze-collector </dev/tty
+  $maybe_sudo yum $yum_opts makecache <$user_input
+  $maybe_sudo yum $yum_opts install pganalyze-collector <$user_input
 elif [ "$pkg" = deb ];
 then
   # on Debian, gnupg, required for apt-key add, is not installed by default, so install
   # it before trying to invoke it if necessary
   if ! dpkg --verify gnupg 2>/dev/null && ! dpkg --verify gnupg1 2>/dev/null && ! dpkg --verify gnupg2 2>/dev/null;
   then
-    read -r -n1 -p "The gnupg package is required to verify the collector package signature; install it now? [Y/n]" confirm_gnupg </dev/tty
-    if [ -z "$confirm_gnupg" ] || [[ "$confirm_gnupg" =~ [yY] ]];
+    if confirm "The gnupg package is required to verify the collector package signature; install it now?";
     then
-      $maybe_sudo apt-get install gnupg </dev/tty
+      $maybe_sudo apt-get $apt_opts install gnupg <$user_input
     else
       fail "cannot install without gnupg"
     fi
@@ -149,8 +170,8 @@ then
   apt_source="deb [arch=amd64] https://packages.pganalyze.com/${distribution}/${version}/ stable main"
   curl -L https://packages.pganalyze.com/pganalyze_signing_key.asc | $maybe_sudo apt-key add -
   echo "$apt_source" | $maybe_sudo tee /etc/apt/sources.list.d/pganalyze_collector.list
-  $maybe_sudo apt-get update </dev/tty
-  $maybe_sudo apt-get install pganalyze-collector </dev/tty
+  $maybe_sudo apt-get $apt_opts update <$user_input
+  $maybe_sudo apt-get $apt_opts install pganalyze-collector <$user_input
 else
   fail "unrecognized package kind: $pkg"
 fi
@@ -169,7 +190,9 @@ echo
 
 if [ -n "$PGA_GUIDED_SETUP" ];
 then
-  $maybe_sudo pganalyze-collector-setup </dev/tty
+  # We want all opts passed separately here: not sure why this is not an issue above for apt-get and yum
+  # shellcheck disable=SC2086
+  $maybe_sudo pganalyze-collector-setup $pgags_opts <$user_input
 else
   echo "Please continue with setup instructions in-app or at https://pganalyze.com/docs/install"
 fi
