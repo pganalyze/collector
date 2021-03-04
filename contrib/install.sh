@@ -88,8 +88,9 @@ if [ "$(id -u)" != "0" ]; then
     fail "not running as root and could not find sudo command"
   fi
 
-  echo "You will be prompted for your password by sudo"
-  # clear any previous sudo permission to avoid inadvertent 
+  echo "You may be prompted for your password by sudo"
+
+  # clear any previous sudo permission to avoid inadvertent confirmation
   $maybe_sudo -k
 fi
 
