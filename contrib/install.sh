@@ -159,10 +159,11 @@ then
   $maybe_sudo sed -i "s/^#api_key = your_api_key$/api_key = ${PGA_API_KEY}/" /etc/pganalyze-collector.conf
 fi
 
-# run to validate install
+echo "Checking install by running 'pganalyze-collector --version'"
 pganalyze-collector --version
+echo
 
-echo "The pganalyze collector has been installed"
+echo "The pganalyze collector was installed successfully"
 echo
 
 if [ -n "$PGA_GUIDED_SETUP" ];
