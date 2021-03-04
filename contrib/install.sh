@@ -80,7 +80,7 @@ fi
 # if we're not, set up sudo for relevant commands
 maybe_sudo=''
 if [ "$(id -u)" != "0" ]; then
-  maybe_sudo=$(which sudo)
+  maybe_sudo=$(command -v sudo)
   echo "This script requires superuser access to install packages"
 
   if [ -z "$maybe_sudo" ];
