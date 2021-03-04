@@ -127,3 +127,11 @@ fi
 pganalyze-collector --version
 
 echo "The pganalyze collector has been installed"
+echo
+
+if [ -n "$PGA_GUIDED_SETUP" ];
+then
+  $maybe_sudo pganalyze-collector-setup </dev/tty
+else
+  echo "Please continue with setup instructions in-app or at https://pganalyze.com/docs/install"
+fi
