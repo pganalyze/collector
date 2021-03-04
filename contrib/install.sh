@@ -105,15 +105,15 @@ gpgkey=https://packages.pganalyze.com/pganalyze_signing_key.asc
 sslverify=1
 sslcacert=/etc/pki/tls/certs/ca-bundle.crt
 metadata_expire=300" | $maybe_sudo tee -a /etc/yum.repos.d/pganalyze_collector.repo
-  $maybe_sudo yum makecache < /dev/tty
-  $maybe_sudo yum install pganalyze-collector < /dev/tty
+  $maybe_sudo yum makecache </dev/tty
+  $maybe_sudo yum install pganalyze-collector </dev/tty
 elif [ "$pkg" = deb ];
 then
   apt_source="deb [arch=amd64] https://packages.pganalyze.com/${distribution}/${version}/ stable main"
   curl -L https://packages.pganalyze.com/pganalyze_signing_key.asc | $maybe_sudo apt-key add -
   echo "$apt_source" | $maybe_sudo tee /etc/apt/sources.list.d/pganalyze_collector.list
-  $maybe_sudo apt-get update < /dev/tty
-  $maybe_sudo apt-get install pganalyze-collector < /dev/tty
+  $maybe_sudo apt-get update </dev/tty
+  $maybe_sudo apt-get install pganalyze-collector </dev/tty
 else
   fail "unrecognized package kind: $pkg"
 fi
