@@ -38,7 +38,13 @@ then
   version=$(grep VERSION_ID /etc/os-release | cut -d= -f2 | tr -d '"' | cut -d. -f1)
   if [ "$version" != 7 ] && [ "$version" != 8 ];
   then
-    fail "unrecognized RHEL version: ${version}"
+    read -r -n1 -p "Unsupported RHEL version; try RHEL8 package? [Yn]" confirm_rhel8 </dev/tty
+    if [ -z "$confirm_rhel8" ] || [[ "$confirm_rhel8" =~ [yY] ]];
+    then
+      version=8
+    else
+      fail "unrecognized RHEL version: ${version}"
+    fi
   fi
 elif grep -q '^ID=fedora$' /etc/os-release;
 then
@@ -49,7 +55,13 @@ then
 
   if [ "$version" != 30 ] && [ "$version" != 29 ];
   then
-    fail "unrecognized Fedora version: ${version}"
+    read -r -n1 -p "Unsupported Fedora version; try Fedora 30 package? [Yn]" confirm_fedora30 </dev/tty
+    if [ -z "$confirm_fedora30" ] || [[ "$confirm_fedora30" =~ [yY] ]];
+    then
+      version=30
+    else
+      fail "unrecognized Fedora version: ${version}"
+    fi
   fi
 elif grep -q '^ID=ubuntu$' /etc/os-release;
 then
@@ -59,7 +71,13 @@ then
   version=$(grep VERSION_CODENAME /etc/os-release | cut -d= -f2)
   if [ "$version" != focal ] && [ "$version" != bionic ] && [ "$version" != xenial ];
   then
-    fail "unrecognized Ubuntu version: ${version}"
+    read -r -n1 -p "Unsupported Ubuntu version; try Ubuntu Focal (20.04) package? [Yn]" confirm_ubuntu_focal </dev/tty
+    if [ -z "$confirm_ubuntu_focal" ] || [[ "$confirm_ubuntu_focal" =~ [yY] ]];
+    then
+      version=focal
+    else
+      fail "unrecognized Ubuntu version: ${version}"
+    fi
   fi
 elif grep -q '^ID=debian$' /etc/os-release;
 then
@@ -69,7 +87,13 @@ then
   version=$(grep VERSION_CODENAME /etc/os-release | cut -d= -f2)
   if [ "$version" != buster ] && [ "$version" != stretch ];
   then
-    fail "unrecognized Debian version: ${version}"
+    read -r -n1 -p "Unsupported Debian version; try Debian Buster (10) package? [Yn]" confirm_debian_buster </dev/tty
+    if [ -z "$confirm_debian_buster" ] || [[ "$confirm_debian_buster" =~ [yY] ]];
+    then
+      version=buster
+    else
+      fail "unrecognized Debian version: ${version}"
+    fi
   fi
 else
   >&2 cat /etc/os-release
