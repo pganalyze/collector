@@ -133,6 +133,18 @@ metadata_expire=300" | $maybe_sudo tee -a /etc/yum.repos.d/pganalyze_collector.r
   $maybe_sudo yum install pganalyze-collector </dev/tty
 elif [ "$pkg" = deb ];
 then
+  # on Debian, gnupg, required for apt-key add, is not installed by default, so install
+  # it before trying to invoke it if necessary
+  if ! dpkg --verify gnupg 2>/dev/null && ! dpkg --verify gnupg1 2>/dev/null && ! dpkg --verify gnupg2 2>/dev/null;
+  then
+    read -r -n1 -p "The gnupg package is required to verify the collector package signature; install it now? [Yn]" confirm_gnupg </dev/tty
+    if [ -z "$confirm_gnupg" ] || [[ "$confirm_gnupg" =~ [yY] ]];
+    then
+      $maybe_sudo apt-get install gnupg </dev/tty
+    else
+      fail "cannot install without gnupg"
+    fi
+  fi
   apt_source="deb [arch=amd64] https://packages.pganalyze.com/${distribution}/${version}/ stable main"
   curl -L https://packages.pganalyze.com/pganalyze_signing_key.asc | $maybe_sudo apt-key add -
   echo "$apt_source" | $maybe_sudo tee /etc/apt/sources.list.d/pganalyze_collector.list
