@@ -10,9 +10,9 @@ DOCKER_RUN_CMD = docker run --name pganalyze-collector-test \
   -d \
   pganalyze-collector-test
 
-.PHONY: pg93 pg94 pg95 pg96 pg10 pg11 pg12 pg13 guided-setup
+.PHONY: pg93 pg94 pg95 pg96 pg10 pg11 pg12 pg13 guided-setup installer
 
-all: pg93 pg94 pg95 pg96 pg10 pg11 pg12 pg13 guided-setup
+all: pg93 pg94 pg95 pg96 pg10 pg11 pg12 pg13 guided-setup installer
 
 pg93:
 	docker build -f Dockerfile.test-pg93 $(DOCKER_BUILD_OPTS)
@@ -230,3 +230,18 @@ guided-setup:
 		exit 1; \
 	fi
 	diff -Nau guided-setup.snapshot-subset.json.expected guided-setup.snapshot-subset.json.out && echo 'success'
+
+installer:
+	docker build -f Dockerfile.test-guided-setup $(DOCKER_BUILD_OPTS)
+	$(DOCKER_RUN_CMD)
+	sleep 10
+
+	docker exec --privileged pganalyze-collector-test env PGA_INSTALL_NONINTERACTIVE=true PGA_API_KEY=abc123 bash -c '</collector/contrib/install.sh bash' >install.out
+	docker rm -f pganalyze-collector-test
+	docker rmi pganalyze-collector-test
+
+	if ! grep -q 'The pganalyze collector was installed successfully' install.out; then \
+		echo "expected installer to install latest published package; test failed:"; \
+		cat install.out; \
+		exit 1; \
+	fi
