@@ -162,6 +162,7 @@ then
   then
     if confirm "The gnupg package is required to verify the collector package signature; install it now?";
     then
+      $maybe_sudo apt-get $apt_opts update <$user_input
       $maybe_sudo apt-get $apt_opts install gnupg <$user_input
     else
       fail "cannot install without gnupg"
