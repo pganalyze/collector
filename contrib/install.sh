@@ -32,7 +32,7 @@ confirm () {
 
   local confirmation
   # N.B.: default is always yes
-  read -r -n1 -p "$1 [Yn]" confirmation <$user_input
+  read -r -n1 -p "$1 [Y/n]" confirmation <$user_input
   [ -z "$confirmation" ] || [[ "$confirmation" =~ [Yy] ]]
 }
 
