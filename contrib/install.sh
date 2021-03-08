@@ -177,6 +177,11 @@ else
   fail "unrecognized package kind: $pkg"
 fi
 
+if [ -n "$PGA_API_BASE_URL" ];
+then
+  $maybe_sudo sed -i "/^\[pganalyze\]$/a api_base_url = ${PGA_API_BASE_URL}" /etc/pganalyze-collector.conf
+fi
+
 if [ -n "$PGA_API_KEY" ];
 then
   $maybe_sudo sed -i "s/^#api_key = your_api_key$/api_key = ${PGA_API_KEY}/" /etc/pganalyze-collector.conf
