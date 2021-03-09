@@ -264,8 +264,8 @@ func CreateHTTPClient(conf ServerConfig) *http.Client {
 					matchesProxyURL = true
 				}
 			}
-			// Require secure conection for everything except proxies, the EC2 and ECS metadata services
-			if !matchesProxyURL && !strings.HasSuffix(addr, ":443") && addr != "169.254.169.254:80" && addr != "169.254.170.2:80" {
+			// Require secure conection for everything except proxies
+			if !matchesProxyURL && !strings.HasSuffix(addr, ":443") {
 				return nil, fmt.Errorf("Unencrypted connection is not permitted by pganalyze configuration")
 			}
 			return (&net.Dialer{Timeout: 30 * time.Second, KeepAlive: 30 * time.Second, DualStack: true}).DialContext(ctx, network, addr)
@@ -276,6 +276,14 @@ func CreateHTTPClient(conf ServerConfig) *http.Client {
 	return &http.Client{
 		Timeout:   120 * time.Second,
 		Transport: transport,
+	}
+}
+
+// CreateEC2IMDSHTTPClient - Create HTTP client for EC2 instance meta data service (IMDS)
+func CreateEC2IMDSHTTPClient(conf ServerConfig) *http.Client {
+	// Match https://github.com/aws/aws-sdk-go/pull/3066
+	return &http.Client{
+		Timeout: 1 * time.Second,
 	}
 }
 
