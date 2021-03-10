@@ -5,7 +5,7 @@ REPO_DIR=$(TMP_DIR)/repo
 
 docker_clean = docker kill pga-collector-repo && docker rm pga-collector-repo && docker rmi -f pga-collector-repo
 
-.PHONY: update_rpm_repo push_packages_release push_packages_latest copy_install_script
+.PHONY: all download_repo upload_repo copy_install_script update_rpm update_deb
 
 all: download_repo update_rpm update_deb copy_install_script upload_repo
 
