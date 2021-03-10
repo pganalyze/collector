@@ -169,7 +169,7 @@ then
     fi
   fi
   apt_source="deb [arch=amd64] https://packages.pganalyze.com/${distribution}/${version}/ stable main"
-  curl -L https://packages.pganalyze.com/pganalyze_signing_key.asc | $maybe_sudo apt-key add -
+  curl -s -L https://packages.pganalyze.com/pganalyze_signing_key.asc | $maybe_sudo apt-key add -
   echo "$apt_source" | $maybe_sudo tee /etc/apt/sources.list.d/pganalyze_collector.list
   $maybe_sudo apt-get $apt_opts update <$user_input
   $maybe_sudo apt-get $apt_opts install pganalyze-collector <$user_input
