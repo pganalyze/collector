@@ -18,7 +18,7 @@ upload_repo:
 	aws s3 sync --acl public-read --cache-control no-cache $(REPO_DIR) s3://packages.pganalyze.com/
 
 copy_install_script:
-  cp ../../contrib/install.sh $(REPO_DIR)/collector-install.sh
+	cp ../../contrib/install.sh $(REPO_DIR)/collector-install.sh
 
 update_rpm:
 	cp $(TMP_DIR)/$(RPM_SYSTEMD_PACKAGE) .
