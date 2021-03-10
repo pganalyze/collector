@@ -5,9 +5,9 @@ REPO_DIR=$(TMP_DIR)/repo
 
 docker_clean = docker kill pga-collector-repo && docker rm pga-collector-repo && docker rmi -f pga-collector-repo
 
-.PHONY: update_rpm_repo push_packages_release push_packages_latest
+.PHONY: all download_repo upload_repo copy_install_script update_rpm update_deb
 
-all: download_repo update_rpm update_deb upload_repo
+all: download_repo update_rpm update_deb copy_install_script upload_repo
 
 download_repo:
 	rm -rf $(REPO_DIR)
@@ -16,6 +16,9 @@ download_repo:
 
 upload_repo:
 	aws s3 sync --acl public-read --cache-control no-cache $(REPO_DIR) s3://packages.pganalyze.com/
+
+copy_install_script:
+  cp ../../contrib/install.sh $(REPO_DIR)/collector-install.sh
 
 update_rpm:
 	cp $(TMP_DIR)/$(RPM_SYSTEMD_PACKAGE) .
