@@ -13,6 +13,13 @@ build_dist:
 	make -C helper OUTFILE=../pganalyze-collector-helper
 	make -C setup OUTFILE=../pganalyze-collector-setup
 
+build_dist_alpine:
+	# Increase stack size from Alpine's default of 80kb to 2mb - otherwise we see
+	# crashes on very complex queries, pg_query expects at least 100kb stack size
+	go build -o ${OUTFILE} -ldflags '-extldflags "-Wl,-z,stack-size=0x200000"'
+	make -C helper OUTFILE=../pganalyze-collector-helper
+	make -C setup OUTFILE=../pganalyze-collector-setup
+
 vendor:
 	GO111MODULE=on go mod tidy
 	# You might need to run "go get -u github.com/goware/modvendor"
