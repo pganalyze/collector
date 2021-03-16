@@ -13,7 +13,7 @@ WORKDIR $CODE_DIR
 RUN apk add --no-cache --virtual .build-deps make curl libc-dev gcc go git tar \
   && apk add --no-cache ca-certificates \
   && curl -o /usr/local/bin/gosu -sSL "https://github.com/tianon/gosu/releases/download/1.6/gosu-amd64" \
-  && make build_dist OUTFILE=$HOME_DIR/collector \
+  && make build_dist_alpine OUTFILE=$HOME_DIR/collector \
   && rm -rf $GOPATH \
 	&& apk del --purge .build-deps
 
