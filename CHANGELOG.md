@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.37.1      2021-03-16
+
+* Docker builds: Increase stack size to 2MB to prevent rare crashes
+  - Alpine has a very small stack size by default (80kb) which is less than
+    the default that Postgres expects (100kb). Since there is no good reason
+    to reduce it to such a small amount, increase to usually common Linux
+    default of 2MB stack size.
+  - This would have surfaced as a hard crash of the Docker container with
+    error code 137 or 139, easily confused with out of memory errors, but
+    clearly distinct from it.
+* Reduce timeout for accessing EC2 instance metadata service
+  - Previously we were re-using our shared HTTP client, which has a rather
+    high timeout (120 seconds) that causes the HTTP client to wait around
+    for a long time. This is generally intentional (since it includes the
+    time spent downloading a request body), but is a bad idea when running
+    into EC2's IDMSv2 service that has a network-hop based limit. If that
+    hop limit is exceeded, the requests just go to nowhere, causing the
+    client to wait for a multiple of 120 seconds (~10 minutes were observed).
+* Don't use pganalyze query marker for "--test-explain" command
+  - The marker means the resulting query gets hidden from the EXPLAIN plan
+    list, which is what we don't want for this test query - its intentional
+    that we can see the EXPLAIN plan we're generating for the test.
+
+
 ## 0.37.0      2021-02-19
 
 * Add support for receiving logs from remote servers over syslog
