@@ -20,7 +20,7 @@
     client to wait for a multiple of 120 seconds (~10 minutes were observed).
 * Don't use pganalyze query marker for "--test-explain" command
   - The marker means the resulting query gets hidden from the EXPLAIN plan
-    list, which is what we don't want for this test query - its intentional
+    list, which is what we don't want for this test query - it's intentional
     that we can see the EXPLAIN plan we're generating for the test.
 
 
