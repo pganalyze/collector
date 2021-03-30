@@ -2,6 +2,7 @@ package transform
 
 import (
 	"bytes"
+	"encoding/binary"
 
 	snapshot "github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
@@ -11,7 +12,7 @@ import (
 type statementKey struct {
 	databaseOid state.Oid
 	userOid     state.Oid
-	fingerprint [21]byte
+	fingerprint uint64
 }
 
 type statementValue struct {
@@ -21,10 +22,12 @@ type statementValue struct {
 }
 
 func upsertQueryReferenceAndInformation(s *snapshot.FullSnapshot, statementTexts state.PostgresStatementTextMap, roleOidToIdx OidToIdx, databaseOidToIdx OidToIdx, key statementKey, value statementValue) int32 {
+	fpBuf := make([]byte, 8)
+	binary.BigEndian.PutUint64(fpBuf, key.fingerprint)
 	newRef := snapshot.QueryReference{
 		DatabaseIdx: databaseOidToIdx[key.databaseOid],
 		RoleIdx:     roleOidToIdx[key.userOid],
-		Fingerprint: key.fingerprint[:],
+		Fingerprint: fpBuf,
 	}
 
 	for idx, ref := range s.QueryReferences {
@@ -61,10 +64,12 @@ func upsertQueryReferenceAndInformation(s *snapshot.FullSnapshot, statementTexts
 func upsertQueryReferenceAndInformationSimple(server *state.Server, refs []*snapshot.QueryReference, infos []*snapshot.QueryInformation, roleIdx int32, databaseIdx int32, originalQuery string, trackActivityQuerySize int) (int32, []*snapshot.QueryReference, []*snapshot.QueryInformation) {
 	fingerprint := util.FingerprintQuery(originalQuery)
 
+	fpBuf := make([]byte, 8)
+	binary.BigEndian.PutUint64(fpBuf, fingerprint)
 	newRef := snapshot.QueryReference{
 		DatabaseIdx: databaseIdx,
 		RoleIdx:     roleIdx,
-		Fingerprint: fingerprint[:],
+		Fingerprint: fpBuf,
 	}
 
 	for idx, ref := range refs {

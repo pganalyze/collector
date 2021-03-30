@@ -1,6 +1,7 @@
 package transform_test
 
 import (
+	"encoding/binary"
 	"encoding/json"
 	"testing"
 
@@ -22,7 +23,11 @@ func TestStatements(t *testing.T) {
 	q1 := "SELECT 1"
 	q2 := "SELECT * FROM test"
 	fp1 := util.FingerprintQuery(q1)
+	fpBuf1 := make([]byte, 8)
+	binary.BigEndian.PutUint64(fpBuf1, fp1)
 	fp2 := util.FingerprintQuery(q2)
+	fpBuf2 := make([]byte, 8)
+	binary.BigEndian.PutUint64(fpBuf2, fp2)
 	transientState.Statements[key1] = state.PostgresStatement{Fingerprint: fp1}
 	transientState.Statements[key2] = state.PostgresStatement{Fingerprint: fp2}
 	transientState.StatementTexts[fp1] = q1
@@ -52,12 +57,12 @@ func TestStatements(t *testing.T) {
 			&pganalyze_collector.QueryReference{
 				DatabaseIdx: 0,
 				RoleIdx:     0,
-				Fingerprint: fp1[:],
+				Fingerprint: fpBuf1,
 			},
 			&pganalyze_collector.QueryReference{
 				DatabaseIdx: 0,
 				RoleIdx:     0,
-				Fingerprint: fp2[:],
+				Fingerprint: fpBuf2,
 			},
 		},
 		QueryInformations: []*pganalyze_collector.QueryInformation{
@@ -105,12 +110,12 @@ func TestStatements(t *testing.T) {
 			&pganalyze_collector.QueryReference{
 				DatabaseIdx: 0,
 				RoleIdx:     0,
-				Fingerprint: fp2[:],
+				Fingerprint: fpBuf2,
 			},
 			&pganalyze_collector.QueryReference{
 				DatabaseIdx: 0,
 				RoleIdx:     0,
-				Fingerprint: fp1[:],
+				Fingerprint: fpBuf1,
 			},
 		},
 		QueryInformations: []*pganalyze_collector.QueryInformation{
