@@ -1,6 +1,7 @@
 package util_test
 
 import (
+	"encoding/binary"
 	"encoding/hex"
 	"reflect"
 	"testing"
@@ -14,54 +15,55 @@ var fingerprintTests = []struct {
 }{
 	{
 		"SELECT 1",
-		"02a281c251c3a43d2fe7457dff01f76c5cc523f8c8",
+		"50fde20626009aba",
 	},
 	{
 		"SELINVALID",
-		"ee5571410c33aa5c2e7a9d424eb44fb3d22fec37be",
+		"8e687e2b4dbec30c",
 	},
 	{
 		"INSERT INTO x (a, b) VALUES (",
-		"ee47d014d69c6f4aae4a597ea1430628396ecce69a",
+		"7a0d78e21e354216",
 	},
 	{
 		"SELECT )",
-		"ee270a7ad0592e369455f1dac995cef3e35556411e",
+		"4f75277b70af299c",
 	},
 	{
 		"DELETE FROM x WHERE \"id\" IN (?)",
-		"02a52764bd41f8f4ca6a399039553faee86d2e8c82",
+		"6b0d33245a74c535",
 	},
 	{
 		"DELETE FROM x WHERE \"id\" IN (12450548, 12450547, 12450546, 124",
-		"02a52764bd41f8f4ca6a399039553faee86d2e8c82",
+		"6b0d33245a74c535",
 	},
 	{
 		"DELETE FROM x WHERE \"id\" IN (15485697, 15485694, 15485693, 154",
-		"02a52764bd41f8f4ca6a399039553faee86d2e8c82",
+		"6b0d33245a74c535",
 	},
 	{
 		"SELECT * FROM x WHERE y = ''",
-		"02000980540197a51fb2e6736a28747cf6dbe52afd",
+		"4ff39426bd074231",
 	},
 	{
 		"SELECT * FROM x WHERE y = '",
-		"02000980540197a51fb2e6736a28747cf6dbe52afd",
+		"4ff39426bd074231",
 	},
 	{
 		"SELECT * FROM x AS \"abc\"",
-		"027a97a97ec7663a04add95792e3e9d71a6411ee31",
+		"4d956249fc96ed55",
 	},
 	{
 		"SELECT * FROM x AS \"a",
-		"027a97a97ec7663a04add95792e3e9d71a6411ee31",
+		"4d956249fc96ed55",
 	},
 }
 
 func TestFingerprint(t *testing.T) {
 	for _, test := range fingerprintTests {
 		fp := util.FingerprintQuery(test.input)
-		actual := fp[:]
+		actual := make([]byte, 8)
+		binary.BigEndian.PutUint64(actual, fp)
 		expected, _ := hex.DecodeString(test.expected)
 
 		if !reflect.DeepEqual(actual, expected) {

@@ -1,34 +1,23 @@
 package util
 
 import (
-	"crypto/sha1"
-	"encoding/hex"
-	"io"
 	"strings"
 
-	pg_query "github.com/lfittl/pg_query_go"
+	pg_query "github.com/pganalyze/pg_query_go/v2"
 )
 
-// FingerprintQuery - Generates a unique SHA-1 fingerprint for the given query
-func FingerprintQuery(query string) (fp [21]byte) {
-	fingerprintHex, err := pg_query.FastFingerprint(query)
+// FingerprintQuery - Generates a unique fingerprint for the given query
+func FingerprintQuery(query string) (fp uint64) {
+	fp, err := pg_query.FingerprintToUInt64(query)
 	if err != nil {
 		fixedQuery := fixTruncatedQuery(query)
 
-		fingerprintHex, err = pg_query.FastFingerprint(fixedQuery)
+		fp, err = pg_query.FingerprintToUInt64(fixedQuery)
 		if err != nil {
 			fp = fingerprintError(query)
 			return
 		}
 	}
-
-	fingerprint, err := hex.DecodeString(fingerprintHex)
-	if err != nil {
-		fp = fingerprintError(query)
-		return
-	}
-
-	copy(fp[:], fingerprint)
 
 	return
 }
@@ -51,10 +40,6 @@ func fixTruncatedQuery(query string) string {
 	return query
 }
 
-func fingerprintError(query string) (fp [21]byte) {
-	fp[0] = 0xee
-	h := sha1.New()
-	io.WriteString(h, query)
-	copy(fp[1:], h.Sum(nil))
-	return
+func fingerprintError(query string) (fp uint64) {
+	return pg_query.HashXXH3_64([]byte(query), 0xee)
 }

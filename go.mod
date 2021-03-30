@@ -26,11 +26,12 @@ require (
 	github.com/juju/syslog v0.0.0-20150205155936-6be94e8b7187
 	github.com/keybase/go-ps v0.0.0-20160809205621-9c11ca40a479
 	github.com/kr/logfmt v0.0.0-20140226030751-b84e30acd515
+	github.com/kr/pretty v0.2.1 // indirect
 	github.com/kylelemons/godebug v0.0.0-20170224010052-a616ab194758
-	github.com/lfittl/pg_query_go v1.0.2
 	github.com/lib/pq v1.3.0
 	github.com/ogier/pflag v0.0.0-20160129220114-45c278ab3607
 	github.com/papertrail/go-tail v0.0.0-20180509224916-973c153b0431
+	github.com/pganalyze/pg_query_go/v2 v2.0.1
 	github.com/pkg/errors v0.9.1
 	github.com/satori/go.uuid v0.0.0-20160713180306-0aa62d5ddceb
 	github.com/shirou/gopsutil v0.0.0-20170222144203-d371ba1293cb

@@ -178,15 +178,12 @@ github.com/keybase/go-ps/darwincgo
 # github.com/kr/logfmt v0.0.0-20140226030751-b84e30acd515
 ## explicit
 github.com/kr/logfmt
+# github.com/kr/pretty v0.2.1
+## explicit
 # github.com/kylelemons/godebug v0.0.0-20170224010052-a616ab194758
 ## explicit
 github.com/kylelemons/godebug/diff
 github.com/kylelemons/godebug/pretty
-# github.com/lfittl/pg_query_go v1.0.2
-## explicit
-github.com/lfittl/pg_query_go
-github.com/lfittl/pg_query_go/nodes
-github.com/lfittl/pg_query_go/parser
 # github.com/lib/pq v1.3.0
 ## explicit
 github.com/lib/pq
@@ -206,6 +203,10 @@ github.com/ogier/pflag
 # github.com/papertrail/go-tail v0.0.0-20180509224916-973c153b0431
 ## explicit
 github.com/papertrail/go-tail/follower
+# github.com/pganalyze/pg_query_go/v2 v2.0.1
+## explicit
+github.com/pganalyze/pg_query_go/v2
+github.com/pganalyze/pg_query_go/v2/parser
 # github.com/pkg/errors v0.9.1
 ## explicit
 github.com/pkg/errors
