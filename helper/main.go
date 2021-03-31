@@ -19,68 +19,82 @@ type helperStatus struct {
 	SystemIdentifier string
 }
 
+func getPostmasterPid() (int, error) {
+	pgPidStr, err := exec.Command("pgrep", "-U", "postgres", "-o", "postgres").Output()
+	if err != nil {
+		// on some systems (e.g., RHEL), the postgres process uses the name "postmaster",
+		// so try that as a fallback
+		pgPidStr, err = exec.Command("pgrep", "-U", "postgres", "-o", "postmaster").Output()
+	}
+	if err != nil {
+		return -1, fmt.Errorf("Failed to find Postgres Postmaster Pid: %s", err)
+	}
+
+	pgPid, err := strconv.Atoi(string(pgPidStr[:len(pgPidStr)-1]))
+	if err != nil {
+		return -1, fmt.Errorf("Postgres Pid is not an integer: %s", err)
+	}
+
+	return pgPid, nil
+}
+
 func getStatus() {
-	var postmasterPidStr, pgControldataOut, xlogUsageBytesStr []byte
+	var pgControldataOut, xlogUsageBytesStr []byte
 	var pgControldataBinary string
 	var status helperStatus
 	var err error
 
-	postmasterPidStr, err = exec.Command("pgrep", "-U", "postgres", "-o", "postgres").Output()
+	status.PostmasterPid, err = getPostmasterPid()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to find Postgres Postmaster Pid: %s\n", err)
+		fmt.Fprintf(os.Stderr, "%s\n", err)
 	} else {
-		status.PostmasterPid, err = strconv.Atoi(string(postmasterPidStr[:len(postmasterPidStr)-1]))
+		status.DataDirectory = os.Getenv("PGDATA")
+		if status.DataDirectory == "" {
+			status.DataDirectory, err = filepath.EvalSymlinks("/proc/" + strconv.Itoa(status.PostmasterPid) + "/cwd")
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Failed to resolve data directory path: %s\n", err)
+			}
+		}
+
+		xlogDirectoryName := "pg_wal"
+		if _, err = os.Stat(status.DataDirectory + "/" + xlogDirectoryName); os.IsNotExist(err) {
+			xlogDirectoryName = "pg_xlog"
+		}
+
+		status.XlogDirectory, err = filepath.EvalSymlinks(status.DataDirectory + "/" + xlogDirectoryName)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Postgres Pid is not an integer: %s\n", err)
+			fmt.Fprintf(os.Stderr, "Failed to resolve xlog path: %s\n", err)
+			if status.DataDirectory != "" {
+				status.XlogDirectory = status.DataDirectory + "/" + xlogDirectoryName
+			}
+		}
+
+		xlogUsageBytesStr, err = exec.Command("du", "-b", "-s", status.XlogDirectory).Output()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to determine xlog disk usage: %s\n", err)
 		} else {
-			status.DataDirectory = os.Getenv("PGDATA")
-			if status.DataDirectory == "" {
-				status.DataDirectory, err = filepath.EvalSymlinks("/proc/" + strconv.Itoa(status.PostmasterPid) + "/cwd")
-				if err != nil {
-					fmt.Fprintf(os.Stderr, "Failed to resolve data directory path: %s\n", err)
-				}
-			}
-
-			xlogDirectoryName := "pg_wal"
-			if _, err = os.Stat(status.DataDirectory + "/" + xlogDirectoryName); os.IsNotExist(err) {
-				xlogDirectoryName = "pg_xlog"
-			}
-
-			status.XlogDirectory, err = filepath.EvalSymlinks(status.DataDirectory + "/" + xlogDirectoryName)
+			status.XlogUsedBytes, err = strconv.ParseUint(strings.Fields(string(xlogUsageBytesStr))[0], 10, 64)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "Failed to resolve xlog path: %s\n", err)
-				if status.DataDirectory != "" {
-					status.XlogDirectory = status.DataDirectory + "/" + xlogDirectoryName
-				}
+				fmt.Fprintf(os.Stderr, "Xlog disk usage is not an integer: %s\n", err)
 			}
+		}
 
-			xlogUsageBytesStr, err = exec.Command("du", "-b", "-s", status.XlogDirectory).Output()
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Failed to determine xlog disk usage: %s\n", err)
-			} else {
-				status.XlogUsedBytes, err = strconv.ParseUint(strings.Fields(string(xlogUsageBytesStr))[0], 10, 64)
-				if err != nil {
-					fmt.Fprintf(os.Stderr, "Xlog disk usage is not an integer: %s\n", err)
-				}
-			}
+		var cmdOut []byte
+		cmdOut, err = exec.Command("locate", "-r", "bin/pg_controldata$").Output()
+		if err != nil {
+			pgControldataBinary = "pg_controldata"
+		} else {
+			pgControldataBinary = string(cmdOut[:len(cmdOut)-1])
+		}
 
-			var cmdOut []byte
-			cmdOut, err = exec.Command("locate", "-r", "bin/pg_controldata$").Output()
-			if err != nil {
-				pgControldataBinary = "pg_controldata"
-			} else {
-				pgControldataBinary = string(cmdOut[:len(cmdOut)-1])
-			}
-
-			pgControldataOut, err = exec.Command(pgControldataBinary, status.DataDirectory).Output()
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Failed to run pg_controldata: %s\n", err)
-			} else {
-				re := regexp.MustCompile("Database system identifier:\\s+(\\d+)")
-				match := re.FindStringSubmatch(string(pgControldataOut))
-				if len(match) > 1 {
-					status.SystemIdentifier = match[1]
-				}
+		pgControldataOut, err = exec.Command(pgControldataBinary, status.DataDirectory).Output()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to run pg_controldata: %s\n", err)
+		} else {
+			re := regexp.MustCompile("Database system identifier:\\s+(\\d+)")
+			match := re.FindStringSubmatch(string(pgControldataOut))
+			if len(match) > 1 {
+				status.SystemIdentifier = match[1]
 			}
 		}
 	}
