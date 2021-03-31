@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.38.0      2021-03-31
+
+* Update to pg_query 2.0 and Postgres 13 parser
+  - This is a major upgrade in terms of supported syntax (Postgres 10 to 13),
+    as well as a major change in the fingerprints, which are now shorter and
+    not compatible with the old format.
+  - When you upgrade to this version of the collector **you will see a break
+    in statistics**, that is, you will see new query entries in pganalyze after
+    adopting this version of the collector.
+* Amazon RDS: Support long log events beyond 2,000 lines
+  - Resolves edge cases where very long EXPLAIN plans would be ignored since
+    they exceeded the previous 2,000 limit
+  - We now ensure that we go back up to 10 MB in the file with each log
+    download that happens, with support for log events that exceed the RDS API
+    page size limit of 10,000 log lines
+* Self-managed: Also check for the process name "postmaster" when looking for
+  Postgres PID (fixes data directory detection for RHEL-based systems)
+
+
 ## 0.37.1      2021-03-16
 
 * Docker builds: Increase stack size to 2MB to prevent rare crashes
