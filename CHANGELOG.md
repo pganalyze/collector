@@ -6,8 +6,8 @@
   - This is a major upgrade in terms of supported syntax (Postgres 10 to 13),
     as well as a major change in the fingerprints, which are now shorter and
     not compatible with the old format.
-  - When you upgrade to this version of the collector you will see a break
-    in statistics, that is, you will see new query entries in pganalyze after
+  - When you upgrade to this version of the collector **you will see a break
+    in statistics**, that is, you will see new query entries in pganalyze after
     adopting this version of the collector.
 * Amazon RDS: Support long log events beyond 2,000 lines
   - Resolves edge cases where very long EXPLAIN plans would be ignored since
