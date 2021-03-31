@@ -92,8 +92,6 @@ func DownloadLogFiles(prevState state.PersistedLogState, config config.ServerCon
 			}
 
 			if len(*resp.LogFileData) > 0 {
-				logger.PrintVerbose("len=%d moredata=%v marker=%s", len(*resp.LogFileData), *resp.AdditionalDataPending, *resp.Marker)
-
 				_, goErr := logFile.TmpFile.WriteString(*resp.LogFileData)
 				if goErr != nil {
 					err = fmt.Errorf("Error writing to tempfile: %s", goErr)
