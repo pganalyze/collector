@@ -20,21 +20,24 @@ import (
 const maxLogParsingSize = 10 * 1024 * 1024
 
 // DownloadLogFiles - Gets log files for an Amazon RDS instance
-func DownloadLogFiles(prevState state.PersistedLogState, config config.ServerConfig, logger *util.Logger) (psl state.PersistedLogState, result []state.LogFile, samples []state.PostgresQuerySample, err error) {
-	psl = prevState
+func DownloadLogFiles(prevState state.PersistedLogState, config config.ServerConfig, logger *util.Logger) (state.PersistedLogState, []state.LogFile, []state.PostgresQuerySample, error) {
+	var err error
+	var psl state.PersistedLogState = prevState
+	var logFiles []state.LogFile
+	var samples []state.PostgresQuerySample
 
-	sess, awsErr := awsutil.GetAwsSession(config)
-	if awsErr != nil {
-		err = fmt.Errorf("Error getting session: %s", awsErr)
-		return
+	sess, err := awsutil.GetAwsSession(config)
+	if err != nil {
+		err = fmt.Errorf("Error getting session: %s", err)
+		return prevState, nil, nil, err
 	}
 
 	rdsSvc := rds.New(sess)
 
-	instance, awsErr := awsutil.FindRdsInstance(config, sess)
-	if awsErr != nil {
-		err = fmt.Errorf("Error finding RDS instance: %s", awsErr)
-		return
+	instance, err := awsutil.FindRdsInstance(config, sess)
+	if err != nil {
+		err = fmt.Errorf("Error finding RDS instance: %s", err)
+		return prevState, nil, nil, err
 	}
 
 	// Retrieve all possibly matching logfiles in the last two minutes, assuming
@@ -47,10 +50,10 @@ func DownloadLogFiles(prevState state.PersistedLogState, config config.ServerCon
 		FileLastWritten:      &lastWritten,
 	}
 
-	resp, awsErr := rdsSvc.DescribeDBLogFiles(params)
-	if awsErr != nil {
-		err = fmt.Errorf("Error listing RDS log files: %s", awsErr)
-		return
+	resp, err := rdsSvc.DescribeDBLogFiles(params)
+	if err != nil {
+		err = fmt.Errorf("Error listing RDS log files: %s", err)
+		return prevState, nil, nil, err
 	}
 
 	var newMarkers = make(map[string]string)
@@ -66,22 +69,22 @@ func DownloadLogFiles(prevState state.PersistedLogState, config config.ServerCon
 
 		var logFile state.LogFile
 		logFile.UUID = uuid.NewV4()
-		logFile.TmpFile, awsErr = ioutil.TempFile("", "")
-		if awsErr != nil {
-			err = fmt.Errorf("Error allocating tempfile for logs: %s", awsErr)
+		logFile.TmpFile, err = ioutil.TempFile("", "")
+		if err != nil {
+			err = fmt.Errorf("Error allocating tempfile for logs: %s", err)
 			goto ErrorCleanup
 		}
 		logFile.OriginalName = *rdsLogFile.LogFileName
 
 		for {
-			resp, awsErr := rdsSvc.DownloadDBLogFilePortion(&rds.DownloadDBLogFilePortionInput{
+			resp, err := rdsSvc.DownloadDBLogFilePortion(&rds.DownloadDBLogFilePortionInput{
 				DBInstanceIdentifier: instance.DBInstanceIdentifier,
 				LogFileName:          rdsLogFile.LogFileName,
 				Marker:               lastMarker, // This is not set for the initial call, so we only get the most recent lines
 			})
 
-			if awsErr != nil {
-				err = fmt.Errorf("Error downloading logs: %s", awsErr)
+			if err != nil {
+				err = fmt.Errorf("Error downloading logs: %s", err)
 				logFile.Cleanup()
 				goto ErrorCleanup
 			}
@@ -92,9 +95,9 @@ func DownloadLogFiles(prevState state.PersistedLogState, config config.ServerCon
 			}
 
 			if len(*resp.LogFileData) > 0 {
-				_, goErr := logFile.TmpFile.WriteString(*resp.LogFileData)
-				if goErr != nil {
-					err = fmt.Errorf("Error writing to tempfile: %s", goErr)
+				_, err := logFile.TmpFile.WriteString(*resp.LogFileData)
+				if err != nil {
+					err = fmt.Errorf("Error writing to tempfile: %s", err)
 					logFile.Cleanup()
 					goto ErrorCleanup
 				}
@@ -115,22 +118,18 @@ func DownloadLogFiles(prevState state.PersistedLogState, config config.ServerCon
 		if readStart < 0 {
 			readStart = 0
 		}
-		_, goErr := logFile.TmpFile.Seek(int64(readStart), io.SeekStart)
-		if goErr != nil {
-			err = fmt.Errorf("Error seeking tempfile: %s", goErr)
+		_, err := logFile.TmpFile.Seek(int64(readStart), io.SeekStart)
+		if err != nil {
+			err = fmt.Errorf("Error seeking tempfile: %s", err)
 			logFile.Cleanup()
 			goto ErrorCleanup
 		}
 
 		buf := make([]byte, bytesWritten - readStart)
-		bytesRead, goErr := logFile.TmpFile.Read(buf)
-		if goErr != nil {
-			err = fmt.Errorf("Error reading %d bytes from tempfile: %s", len(buf), goErr)
-			logFile.Cleanup()
-			goto ErrorCleanup
-		}
-		if bytesRead != len(buf) {
-			err = fmt.Errorf("Mismatch of bytes read (%d) vs bytes expected (%d) from tempfile", bytesRead, len(buf))
+		
+		_, err = io.ReadFull(logFile.TmpFile, buf)
+		if err != nil {
+			err = fmt.Errorf("Error reading %d bytes from tempfile: %s", len(buf), err)
 			logFile.Cleanup()
 			goto ErrorCleanup
 		}
@@ -143,14 +142,14 @@ func DownloadLogFiles(prevState state.PersistedLogState, config config.ServerCon
 			newMarkers[*rdsLogFile.LogFileName] = *lastMarker
 		}
 
-		result = append(result, logFile)
+		logFiles = append(logFiles, logFile)
 	}
 	psl.AwsMarkers = newMarkers
 
-	return
+	return psl, logFiles, samples, err
 
 ErrorCleanup:
-	for _, logFile := range result {
+	for _, logFile := range logFiles {
 		logFile.Cleanup()
 	}
 
