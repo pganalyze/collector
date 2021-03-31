@@ -30,8 +30,11 @@ type TransientLogState struct {
 }
 
 type PersistedLogState struct {
-	AwsFilename string
-	AwsMarker   string
+	// Markers for pagination of RDS log files
+	//
+	// We only remember markers for files that have received recent writes,
+	// all other markers are discarded
+	AwsMarkers map[string]string
 }
 
 // LogFile - Log file that we are uploading for reference in log line metadata

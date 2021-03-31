@@ -1,10 +1,11 @@
 package rds
 
 import (
+	"fmt"
+	"io"
 	"io/ioutil"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/rds"
 	"github.com/pganalyze/collector/config"
 	"github.com/pganalyze/collector/logs"
@@ -14,26 +15,33 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
+// Read at most the trailing 10 megabytes of the temp file, to avoid OOMs on initial start of the collector
+// (where the full RDS log file gets downloaded before the marker gets initialized)
+const maxLogParsingSize = 10 * 1024 * 1024
+
 // DownloadLogFiles - Gets log files for an Amazon RDS instance
-func DownloadLogFiles(prevState state.PersistedLogState, config config.ServerConfig, logger *util.Logger) (psl state.PersistedLogState, result []state.LogFile, samples []state.PostgresQuerySample) {
-	psl = prevState
+func DownloadLogFiles(prevState state.PersistedLogState, config config.ServerConfig, logger *util.Logger) (state.PersistedLogState, []state.LogFile, []state.PostgresQuerySample, error) {
+	var err error
+	var psl state.PersistedLogState = prevState
+	var logFiles []state.LogFile
+	var samples []state.PostgresQuerySample
 
 	sess, err := awsutil.GetAwsSession(config)
 	if err != nil {
-		logger.PrintError("Rds/Logs: Encountered error getting session: %v\n", err)
-		return
+		err = fmt.Errorf("Error getting session: %s", err)
+		return prevState, nil, nil, err
 	}
 
 	rdsSvc := rds.New(sess)
 
 	instance, err := awsutil.FindRdsInstance(config, sess)
 	if err != nil {
-		logger.PrintError("Rds/Logs: Could not find RDS instance: %s", err)
-		return
+		err = fmt.Errorf("Error finding RDS instance: %s", err)
+		return prevState, nil, nil, err
 	}
 
 	// Retrieve all possibly matching logfiles in the last two minutes, assuming
-	// a scheduler that runs more frequently than that
+	// the collector's scheduler that runs more frequently than that
 	linesNewerThan := time.Now().Add(-2 * time.Minute)
 	lastWritten := linesNewerThan.Unix() * 1000
 
@@ -44,48 +52,41 @@ func DownloadLogFiles(prevState state.PersistedLogState, config config.ServerCon
 
 	resp, err := rdsSvc.DescribeDBLogFiles(params)
 	if err != nil {
-		logger.PrintError("Rds/Logs: Could not find RDS log files: %s", err)
-		return
+		err = fmt.Errorf("Error listing RDS log files: %s", err)
+		return prevState, nil, nil, err
 	}
 
-	var newestLogFileTime int64
+	var newMarkers = make(map[string]string)
+	var bytesWritten = 0
 
 	for _, rdsLogFile := range resp.DescribeDBLogFiles {
 		var lastMarker *string
 
-		if *rdsLogFile.LogFileName == prevState.AwsFilename {
-			lastMarker = &prevState.AwsMarker
+		prevMarker, ok := psl.AwsMarkers[*rdsLogFile.LogFileName]
+		if ok {
+			lastMarker = &prevMarker
 		}
 
 		var logFile state.LogFile
 		logFile.UUID = uuid.NewV4()
 		logFile.TmpFile, err = ioutil.TempFile("", "")
 		if err != nil {
-			logger.PrintError("Rds/Logs: Could not allocate tempfile for logs: %s", err)
-			break
+			err = fmt.Errorf("Error allocating tempfile for logs: %s", err)
+			goto ErrorCleanup
 		}
 		logFile.OriginalName = *rdsLogFile.LogFileName
-		currentByteStart := int64(0)
 
-		// Some day this logic needs to be changed so we remember the marker in the
-		// collector state - then we can still pass no marker for the initial call
-		// (as we do now), but then afterwards keep tracking a position in the file
-		// instead of only getting the most recent data (and skipping lines)
 		for {
 			resp, err := rdsSvc.DownloadDBLogFilePortion(&rds.DownloadDBLogFilePortionInput{
 				DBInstanceIdentifier: instance.DBInstanceIdentifier,
 				LogFileName:          rdsLogFile.LogFileName,
-				Marker:               lastMarker,      // This is not set for the initial call, so we only get the most recent lines
-				NumberOfLines:        aws.Int64(2000), // This is the effective maximum lines retrieved per run
+				Marker:               lastMarker, // This is not set for the initial call, so we only get the most recent lines
 			})
 
 			if err != nil {
-				// TODO: Check for unauthorized error:
-				// Error: AccessDenied: User: arn:aws:iam::XXX:user/pganalyze_collector is not authorized to perform: rds:DownloadDBLogFilePortion on resource: arn:aws:rds:us-east-1:XXX:db:XXX
-				// status code: 403, request id: XXX
-				logger.PrintError("%s", err)
+				err = fmt.Errorf("Error downloading logs: %s", err)
 				logFile.Cleanup()
-				return
+				goto ErrorCleanup
 			}
 
 			if resp.LogFileData == nil {
@@ -93,41 +94,64 @@ func DownloadLogFiles(prevState state.PersistedLogState, config config.ServerCon
 				break
 			}
 
-			_, err = logFile.TmpFile.WriteString(*resp.LogFileData)
-			if err != nil {
-				logger.PrintError("Rds/Logs: %s", err)
-				break
+			if len(*resp.LogFileData) > 0 {
+				_, err := logFile.TmpFile.WriteString(*resp.LogFileData)
+				if err != nil {
+					err = fmt.Errorf("Error writing to tempfile: %s", err)
+					logFile.Cleanup()
+					goto ErrorCleanup
+				}
+				bytesWritten += len(*resp.LogFileData)
 			}
-
-			var newLogLines []state.LogLine
-			var newSamples []state.PostgresQuerySample
-			newLogLines, newSamples, currentByteStart = logs.ParseAndAnalyzeBuffer(*resp.LogFileData, currentByteStart, linesNewerThan)
-			logFile.LogLines = append(logFile.LogLines, newLogLines...)
-			samples = append(samples, newSamples...)
 
 			lastMarker = resp.Marker
 
-			// We are unlikely to ever get additional data, as we are tailing the file
-			// - however we may get additional data if the initial load exceeds 1MB
-			// See https://docs.aws.amazon.com/AmazonRDS/latest/APIReference/API_DownloadDBLogFilePortion.html
 			if !*resp.AdditionalDataPending {
 				break
 			}
 		}
 
-		if *rdsLogFile.LastWritten > newestLogFileTime {
-			newestLogFileTime = *rdsLogFile.LastWritten
-			if lastMarker != nil {
-				psl.AwsFilename = *rdsLogFile.LogFileName
-				psl.AwsMarker = *lastMarker
-			} else {
-				psl.AwsFilename = ""
-				psl.AwsMarker = ""
-			}
+		var newLogLines []state.LogLine
+		var newSamples []state.PostgresQuerySample
+
+		readStart := bytesWritten - maxLogParsingSize
+		if readStart < 0 {
+			readStart = 0
+		}
+		_, err := logFile.TmpFile.Seek(int64(readStart), io.SeekStart)
+		if err != nil {
+			err = fmt.Errorf("Error seeking tempfile: %s", err)
+			logFile.Cleanup()
+			goto ErrorCleanup
 		}
 
-		result = append(result, logFile)
+		buf := make([]byte, bytesWritten - readStart)
+		
+		_, err = io.ReadFull(logFile.TmpFile, buf)
+		if err != nil {
+			err = fmt.Errorf("Error reading %d bytes from tempfile: %s", len(buf), err)
+			logFile.Cleanup()
+			goto ErrorCleanup
+		}
+
+		newLogLines, newSamples, _ = logs.ParseAndAnalyzeBuffer(string(buf), 0, linesNewerThan)
+		logFile.LogLines = append(logFile.LogLines, newLogLines...)
+		samples = append(samples, newSamples...)
+
+		if lastMarker != nil {
+			newMarkers[*rdsLogFile.LogFileName] = *lastMarker
+		}
+
+		logFiles = append(logFiles, logFile)
+	}
+	psl.AwsMarkers = newMarkers
+
+	return psl, logFiles, samples, err
+
+ErrorCleanup:
+	for _, logFile := range logFiles {
+		logFile.Cleanup()
 	}
 
-	return
+	return prevState, nil, nil, err
 }
