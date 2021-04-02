@@ -9,7 +9,10 @@ import (
 
 const settingsSQL string = `
 SELECT name,
-			 setting AS current_value,
+			 CASE name
+				 WHEN 'primary_conninfo' THEN regexp_replace(setting, '.', 'X', 'g')
+				 ELSE setting
+			 END AS current_value,
 			 unit,
 			 boot_val AS boot_value,
 			 reset_val AS reset_value,
