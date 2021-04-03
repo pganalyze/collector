@@ -203,7 +203,7 @@ github.com/ogier/pflag
 # github.com/papertrail/go-tail v0.0.0-20180509224916-973c153b0431
 ## explicit
 github.com/papertrail/go-tail/follower
-# github.com/pganalyze/pg_query_go/v2 v2.0.1
+# github.com/pganalyze/pg_query_go/v2 v2.0.2
 ## explicit
 github.com/pganalyze/pg_query_go/v2
 github.com/pganalyze/pg_query_go/v2/parser
