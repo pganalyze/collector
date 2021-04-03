@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.38.1      2021-04-02
+
+* Update to pg_query_go 2.0.2
+  - Normalize: Fix handling of two subsequent DefElems (resolves rare crashes)
+* Redact primary_conninfo setting if present and readable
+  - This can contain sensitive information (full connection string to the
+    primary), and pganalyze does not do anything with it right now. In the
+    future, we may partially redact this and use primary hostname
+    information, but for now, just fully redact it.
+
+
 ## 0.38.0      2021-03-31
 
 * Update to pg_query 2.0 and Postgres 13 parser
