@@ -2,12 +2,17 @@
 
 set -e
 
+CMD_PREFIX=exec
+if [ $(id -u) = 0 ]; then
+  CMD_PREFIX="exec setpriv --reuid=pganalyze --regid=pganalyze --inh-caps=-all --clear-groups"
+fi
+
 if [ "$1" = 'test' ]; then
-  exec /usr/local/bin/gosu pganalyze /home/pganalyze/collector --test --no-log-timestamps
+  eval $CMD_PREFIX /home/pganalyze/collector --test --no-log-timestamps
 fi
 
 if [ "$1" = 'collector' ]; then
-  exec /usr/local/bin/gosu pganalyze /home/pganalyze/collector --statefile=/state/pganalyze-collector.state --no-log-timestamps
+  eval $CMD_PREFIX /home/pganalyze/collector --statefile=/state/pganalyze-collector.state --no-log-timestamps
 fi
 
-exec /usr/local/bin/gosu pganalyze "$@"
+eval $CMD_PREFIX "$@"
