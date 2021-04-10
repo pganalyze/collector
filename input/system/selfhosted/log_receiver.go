@@ -65,8 +65,7 @@ func DiscoverLogLocation(servers []*state.Server, globalCollectionOpts state.Col
 		prefixedLogger := logger.WithPrefix(server.Config.SectionName)
 
 		if server.Config.DbHost != "localhost" && server.Config.DbHost != "127.0.0.1" {
-			prefixedLogger.PrintError("ERROR - Detected remote server - Log Insights requires the collector to run on the database server directly for self-hosted systems")
-			continue
+			prefixedLogger.PrintWarning("WARNING - Database hostname is not localhost - Log Insights requires the collector to run on the database server directly for self-hosted systems")
 		}
 
 		logDestination, err := getPostgresSetting("log_destination", server, globalCollectionOpts, prefixedLogger)
