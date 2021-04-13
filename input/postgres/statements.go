@@ -172,8 +172,7 @@ func GetStatements(server *state.Server, logger *util.Logger, db *sql.DB, global
 	}
 	defer rows.Close()
 
-	statements := make(state.PostgresStatementMap)
-	statementTexts := make(state.PostgresStatementTextMap)
+	statementTexts := make(map[state.PostgresStatementKey]string)
 	statementStats := make(state.PostgresStatementStatsMap)
 
 	for rows.Next() {
@@ -204,21 +203,7 @@ func GetStatements(server *state.Server, logger *util.Logger, db *sql.DB, global
 		}
 
 		if showtext {
-			fp := util.FingerprintQuery(receivedQuery.String)
-			stmt := state.PostgresStatement{Fingerprint: fp}
-			if insufficientPrivilege(receivedQuery.String) {
-				stmt.InsufficientPrivilege = true
-			} else if collectorStatement(receivedQuery.String) {
-				stmt.Collector = true
-				stmt.Fingerprint = util.FingerprintQuery("<pganalyze-collector>")
-			} else {
-				_, ok := statementTexts[fp]
-				if !ok {
-					statementTexts[fp] = receivedQuery.String
-				}
-			}
-
-			statements[key] = stmt
+			statementTexts[key] = receivedQuery.String
 		}
 		if ignoreIOTiming(postgresVersion, receivedQuery) {
 			stats.BlkReadTime = 0
@@ -231,11 +216,35 @@ func GetStatements(server *state.Server, logger *util.Logger, db *sql.DB, global
 		return nil, nil, nil, err
 	}
 
-	for fp, text := range statementTexts {
-		statementTexts[fp] = util.NormalizeQuery(text, server.Config.FilterQueryText, -1)
+	statements := make(state.PostgresStatementMap)
+	statementTextsByFp := make(state.PostgresStatementTextMap)
+	if showtext {
+		collectorQueryFingerprint := util.FingerprintQuery("<pganalyze-collector>")
+		insufficientPrivsQueryFingerprint := util.FingerprintQuery("<insufficient privilege>")
+
+		for key, text := range statementTexts {
+			if insufficientPrivilege(text) {
+				statements[key] = state.PostgresStatement{
+					InsufficientPrivilege: true,
+					Fingerprint: insufficientPrivsQueryFingerprint,
+				}
+			} else if collectorStatement(text) {
+				statements[key] = state.PostgresStatement{
+					Collector: true,
+					Fingerprint: collectorQueryFingerprint,
+				}
+			} else {
+				fp := util.FingerprintQuery(text)
+				statements[key] = state.PostgresStatement{Fingerprint: fp}
+				_, ok := statementTextsByFp[fp]
+				if !ok {
+					statementTextsByFp[fp] = util.NormalizeQuery(text, server.Config.FilterQueryText, -1)
+				}
+			}
+		}
 	}
 
-	return statements, statementTexts, statementStats, nil
+	return statements, statementTextsByFp, statementStats, nil
 }
 
 func ignoreIOTiming(postgresVersion state.PostgresVersion, receivedQuery null.String) bool {
