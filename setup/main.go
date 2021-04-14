@@ -22,6 +22,8 @@ import (
 
 const defaultConfigFile = "/etc/pganalyze-collector.conf"
 
+var SetupPrepErr = errors.New("Failure before beginning guided setup")
+
 func main() {
 	steps := []*s.Step{
 		steps.CheckPlatform,
@@ -142,6 +144,7 @@ func main() {
 
 	id := os.Geteuid()
 	if id > 0 {
+		setupState.ReportStep("__no_root", SetupPrepErr)
 		setupState.Log(`ERROR: The pganalyze collector guided setup must be run as root (or with sudo, if available)
 
 It will provide details on the process and prompt you before making any changes to the
@@ -152,6 +155,7 @@ the manual collector install instructions: https://pganalyze.com/docs/install`)
 
 	err := loadCollectorConfig(&setupState)
 	if err != nil {
+		setupState.ReportStep("__no_config", SetupPrepErr)
 		setupState.Log("ERROR: could not load collector config: %s", err)
 		os.Exit(1)
 	}
@@ -201,6 +205,7 @@ again. We can pick up where you left off.`)
 			setupState.Log("  automated setup failed: %s", err)
 		}
 		if !doSetup {
+			setupState.ReportStep("__no_continue", SetupPrepErr)
 			setupState.Log("Exiting...")
 			os.Exit(0)
 		}
@@ -218,11 +223,11 @@ again. We can pick up where you left off.`)
 
 		err := doStep(&setupState, step)
 		if err != nil {
-			setupState.ReportLastStep(step, err)
+			setupState.ReportStep(step.ID, err)
 			os.Exit(1)
 		}
 	}
-	setupState.ReportLastStep(steps[len(steps)-1], nil)
+	setupState.ReportStep(steps[len(steps)-1].ID, nil)
 	setupState.Log(`
 Collector setup complete!
 

@@ -189,7 +189,7 @@ func (state *SetupState) SaveConfig() error {
 	return state.Config.SaveTo(state.ConfigFilename)
 }
 
-func (state *SetupState) ReportLastStep(step *Step, stepErr error) {
+func (state *SetupState) ReportStep(stepID string, stepErr error) {
 	if !state.Inputs.Settings.APIKey.Valid || state.Inputs.Settings.APIKey.String == "" {
 		return
 	}
@@ -228,7 +228,7 @@ func (state *SetupState) ReportLastStep(step *Step, stepErr error) {
 		usedInputsFile = "false"
 	}
 	data := url.Values{
-		"last_step":        {step.ID},
+		"last_step":        {stepID},
 		"success":          {isSuccess},
 		"used_inputs_file": {usedInputsFile},
 	}
