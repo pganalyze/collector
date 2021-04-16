@@ -16,7 +16,7 @@ RUN gem install git -v 1.7.0 # Last release supporting Ruby 1.9
 RUN gem install fpm -v 1.11.0 # 1.12.0 has a bug https://github.com/jordansissel/fpm/issues/1749 (match RPM to DEB build)
 
 # Golang
-RUN curl -o go.tar.gz -sSL "https://storage.googleapis.com/golang/go${GOVERSION}.linux-amd64.tar.gz"
+RUN curl -o go.tar.gz -sSL "https://golang.org/dl/go${GOVERSION}.linux-amd64.tar.gz"
 RUN tar -C /usr/local -xzf go.tar.gz
 
 # Build arguments
