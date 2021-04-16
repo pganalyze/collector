@@ -8,7 +8,7 @@ ENV PATH $PATH:/usr/local/go/bin
 RUN apt-get update -qq && apt-get install -y -q build-essential git curl
 
 # Golang
-RUN curl -o go.tar.gz -sSL "https://storage.googleapis.com/golang/go${GOVERSION}.linux-amd64.tar.gz"
+RUN curl -o go.tar.gz -sSL "https://golang.org/dl/go${GOVERSION}.linux-amd64.tar.gz"
 RUN tar -C /usr/local -xzf go.tar.gz
 
 # Build the collector
