@@ -65,7 +65,7 @@ func GetAwsSession(cfg config.ServerConfig) (*session.Session, error) {
 
 	creds := credentials.NewChainCredentials(providers)
 
-	if cfg.AwsAssumeRole != "" {
+	if cfg.AwsAssumeRole != "" || (cfg.AwsWebIdentityTokenFile != "" && cfg.AwsRoleArn != "") {
 		sess, err := session.NewSession(&aws.Config{
 			Credentials:                   creds,
 			CredentialsChainVerboseErrors: aws.Bool(true),
@@ -76,7 +76,11 @@ func GetAwsSession(cfg config.ServerConfig) (*session.Session, error) {
 		if err != nil {
 			return nil, err
 		}
-		creds = stscreds.NewCredentials(sess, cfg.AwsAssumeRole)
+		if cfg.AwsAssumeRole != "" {
+			creds = stscreds.NewCredentials(sess, cfg.AwsAssumeRole)
+		} else if cfg.AwsWebIdentityTokenFile != "" && cfg.AwsRoleArn != "" {
+			creds = stscreds.NewWebIdentityCredentials(sess, cfg.AwsRoleArn, "", cfg.AwsWebIdentityTokenFile)
+		}
 	}
 
 	return session.NewSession(&aws.Config{
