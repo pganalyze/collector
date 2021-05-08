@@ -87,6 +87,7 @@ func getCollectorConfig(c config.ServerConfig) state.CollectorConfig {
 		DbURLRedacted:              c.GetDbURLRedacted(),
 		AwsRegion:                  c.AwsRegion,
 		AwsDbInstanceId:            c.AwsDbInstanceID,
+		AwsHasAccountId:            c.AwsAccountID != "",
 		AwsHasAccessKeyId:          c.AwsAccessKeyID != "",
 		AwsHasAssumeRole:           c.AwsAssumeRole != "",
 		AwsHasWebIdentityTokenFile: c.AwsWebIdentityTokenFile != "",

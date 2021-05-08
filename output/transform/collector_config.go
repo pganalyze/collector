@@ -25,6 +25,7 @@ func transformCollectorConfig(s snapshot.FullSnapshot, state state.TransientStat
 		DbUrl:                      c.DbURLRedacted,
 		AwsRegion:                  c.AwsRegion,
 		AwsDbInstanceId:            c.AwsDbInstanceId,
+		AwsHasAccountId:            c.AwsHasAccountId,
 		AwsHasAccessKeyId:          c.AwsHasAccessKeyId,
 		AwsHasAssumeRole:           c.AwsHasAssumeRole,
 		AwsHasWebIdentityTokenFile: c.AwsHasWebIdentityTokenFile,
