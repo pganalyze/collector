@@ -63,12 +63,14 @@ type ServerConfig struct {
 	DbExtraNames []string // Additional databases that should be fetched (determined by additional databases in db_name)
 	DbAllNames   bool     // All databases except template databases should be fetched (determined by * in the db_name list)
 
-	AwsRegion          string `ini:"aws_region"`
-	AwsAccountID       string `ini:"aws_account_id"`
-	AwsDbInstanceID    string `ini:"aws_db_instance_id"`
-	AwsAccessKeyID     string `ini:"aws_access_key_id"`
-	AwsSecretAccessKey string `ini:"aws_secret_access_key"`
-	AwsAssumeRole      string `ini:"aws_assume_role"`
+	AwsRegion               string `ini:"aws_region"`
+	AwsAccountID            string `ini:"aws_account_id"`
+	AwsDbInstanceID         string `ini:"aws_db_instance_id"`
+	AwsAccessKeyID          string `ini:"aws_access_key_id"`
+	AwsSecretAccessKey      string `ini:"aws_secret_access_key"`
+	AwsAssumeRole           string `ini:"aws_assume_role"`
+	AwsWebIdentityTokenFile string `ini:"aws_web_identity_token_file"`
+	AwsRoleArn              string `ini:"aws_role_arn"`
 
 	// Support for custom AWS endpoints
 	// See https://docs.aws.amazon.com/sdk-for-go/api/aws/endpoints/

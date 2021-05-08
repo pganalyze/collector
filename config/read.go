@@ -120,6 +120,12 @@ func getDefaultConfig() *ServerConfig {
 	if awsAssumeRole := os.Getenv("AWS_ASSUME_ROLE"); awsAssumeRole != "" {
 		config.AwsAssumeRole = awsAssumeRole
 	}
+	if awsWebIdentityTokenFile := os.Getenv("AWS_WEB_IDENTITY_TOKEN_FILE"); awsWebIdentityTokenFile != "" {
+		config.AwsWebIdentityTokenFile = awsWebIdentityTokenFile
+	}
+	if awsRoleArn := os.Getenv("AWS_ROLE_ARN"); awsRoleArn != "" {
+		config.AwsRoleArn = awsRoleArn
+	}
 	if awsEndpointSigningRegion := os.Getenv("AWS_ENDPOINT_SIGNING_REGION"); awsEndpointSigningRegion != "" {
 		config.AwsEndpointSigningRegion = awsEndpointSigningRegion
 	}
