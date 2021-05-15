@@ -8,7 +8,8 @@ DOCKER_RUN_CMD = docker run --name pganalyze-collector-test \
   -v `pwd`/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d/ \
   -e POSTGRES_HOST_AUTH_METHOD=trust \
   -d \
-  pganalyze-collector-test
+  pganalyze-collector-test \
+  postgres -c pg_stat_statements.track_utility=off
 
 .PHONY: pg93 pg94 pg95 pg96 pg10 pg11 pg12 pg13 guided-setup installer
 
