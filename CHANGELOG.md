@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.39.0      2021-05-31
+
+* Docker: Use Docker's USER command to set user, to support running as non-root
+  - This enables the collector container to run in environments that require the
+    whole container to run as a non-root user, which previously was not the case.
+  - For compatibility reasons the container can still be run as root explicitly,
+    in which case the setpriv command is used to drop privileges. setpriv replaces
+    gosu since its available for installation in most distributions directly, and
+    fulfills the same purpose here.
+* Selfhosted: Support running log discovery with non-localhost db_host settings
+  - Previously this was prevented by a fixed check against localhost/127.0.0.1,
+    but sometimes one wants to refer to the local server by a non-local IP address
+* AWS: Add support for AssumeRoleWithWebIdentity
+  - This is useful when running the collector inside EKS in order to access
+    AWS resources, as recommended by AWS: https://docs.aws.amazon.com/eks/latest/userguide/specify-service-account-role.html
+* Statement stats retrieval: Get all rows first, before fingerprinting queries
+  - This avoids showing a bogus ClientWrite event on the Postgres server side whilst
+    the collector is running the fingerprint method. There is a trade-off here,
+    because we now need to retrieve all statement texts (for the full snapshot) before
+    doing the fingerprint, leading to a slight increase in memory usage. Nonetheless,
+    this improves debuggability, and avoids bogus statement timeout issues.
+* Track additional meta information about guided setup failures
+* Fix reporting of replication statistics for more than 1 follower
+
+
 ## 0.38.1      2021-04-02
 
 * Update to pg_query_go 2.0.2
