@@ -3,9 +3,9 @@ name: CI
 # N.B.: release.yml should be updated to match as necessary
 on:
   push:
-    branches: [ master ]
+    branches: [ main ]
   pull_request:
-    branches: [ master ]
+    branches: [ main ]
 
 jobs:
   build:
