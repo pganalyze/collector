@@ -211,8 +211,8 @@ github.com/ogier/pflag v0.0.0-20160129220114-45c278ab3607/go.mod h1:zkFki7tvTa0t
 github.com/openzipkin/zipkin-go v0.1.1/go.mod h1:NtoC/o8u3JlF1lSlyPNswIbeQH9bJTmOf0Erfk+hxe8=
 github.com/papertrail/go-tail v0.0.0-20180509224916-973c153b0431 h1:i1egM7gz4bPxLCIwBJOkpk6TqHpjTnL4dE1xdN/4dcs=
 github.com/papertrail/go-tail v0.0.0-20180509224916-973c153b0431/go.mod h1:dMID0RaS2a5rhpOjC4RsAKitU6WGgkFBZnPVffL69b8=
-github.com/pganalyze/pg_query_go/v2 v2.0.2 h1:mDtHaD9YEqADrW17tYcE5blGAWbqqKSPDdnYxQw6XSc=
-github.com/pganalyze/pg_query_go/v2 v2.0.2/go.mod h1:XAxmVqz1tEGqizcQ3YSdN90vCOHBWjJi8URL1er5+cA=
+github.com/pganalyze/pg_query_go/v2 v2.0.3 h1:vozsQbdcZ+vy3KV3fExnOw1ns7DKZOSXcSHLW5Hf8XM=
+github.com/pganalyze/pg_query_go/v2 v2.0.3/go.mod h1:XAxmVqz1tEGqizcQ3YSdN90vCOHBWjJi8URL1er5+cA=
 github.com/pkg/errors v0.8.0/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
 github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
