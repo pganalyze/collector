@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.40.0      2021-06-30
+
+* Update to pg_query_go v2.0.4
+  - Normalize: Don't touch "GROUP BY 1" and "ORDER BY 1" expressions, keep original text
+  - Fingerprint: Cache list item hashes to fingerprint complex queries faster
+    (this change also significantly reduces memory usage for complex queries)
+* Install script: Support CentOS in addition to RHEL
+
+
 ## 0.39.0      2021-05-31
 
 * Docker: Use Docker's USER command to set user, to support running as non-root
