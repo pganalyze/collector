@@ -5,6 +5,23 @@
 * ...
 
 
+## 2.0.4      2021-06-29
+
+* Update libpg_query to 13-2.0.6 ([#47](https://github.com/pganalyze/pg_query_go/pull/47))
+  - Normalize: Don't touch "ORDER BY 1" expressions, keep original text
+
+
+## 2.0.3      2021-06-28
+
+* Update libpg_query to 13-2.0.5 ([#45](https://github.com/pganalyze/pg_query_go/pull/45))
+  - Update to Postgres 13.3 patch release
+  - Normalize: Don't touch "GROUP BY 1" type statements, keep original text
+  - Fingerprint: Cache list item hashes to fingerprint complex queries faster
+  - Deparser: Emit the RangeVar catalogname if present
+  - Fix crash in pg_scan function when encountering backslash escapes
+* Add pg_query.Scan to access Postgres scanner ([#43](https://github.com/pganalyze/pg_query_go/pull/43))
+
+
 ## 2.0.2      2021-04-02
 
 * Update to libpg_query 13-2.0.3

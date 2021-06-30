@@ -31,7 +31,7 @@ require (
 	github.com/lib/pq v1.3.0
 	github.com/ogier/pflag v0.0.0-20160129220114-45c278ab3607
 	github.com/papertrail/go-tail v0.0.0-20180509224916-973c153b0431
-	github.com/pganalyze/pg_query_go/v2 v2.0.2
+	github.com/pganalyze/pg_query_go/v2 v2.0.4
 	github.com/pkg/errors v0.9.1
 	github.com/satori/go.uuid v0.0.0-20160713180306-0aa62d5ddceb
 	github.com/shirou/gopsutil v0.0.0-20170222144203-d371ba1293cb
