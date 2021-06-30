@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.40.0      2021-06-29
+## 0.40.0      2021-06-30
 
 * Update to pg_query_go v2.0.4
   - Normalize: Don't touch "GROUP BY 1" and "ORDER BY 1" expressions, keep original text
