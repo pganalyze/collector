@@ -20,8 +20,6 @@ func RunExplain(server *state.Server, inputs []state.PostgresQuerySample, collec
 			server.Config.DbAllNames || contains(server.Config.DbExtraNames, sample.Database)
 
 		return !monitoredDb ||
-			// EXPLAIN was already collected, e.g. from auto_explain
-			sample.HasExplain ||
 			// Ignore collector queries
 			strings.HasPrefix(sample.Query, QueryMarkerSQL) ||
 			// Ignore backup-related queries (they usually take long but not because of something that can be EXPLAINed)
@@ -30,6 +28,10 @@ func RunExplain(server *state.Server, inputs []state.PostgresQuerySample, collec
 	}
 
 	for _, sample := range inputs {
+		if sample.HasExplain { // EXPLAIN was already collected, e.g. from auto_explain
+			outputs = append(outputs, sample)
+			continue
+		}
 		if skip(sample) {
 			continue
 		}
