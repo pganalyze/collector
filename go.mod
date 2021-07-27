@@ -22,6 +22,7 @@ require (
 	github.com/gopherjs/gopherjs v0.0.0-20181103185306-d547d1d9531e // indirect
 	github.com/gorhill/cronexpr v0.0.0-20160318121724-f0984319b442
 	github.com/guregu/null v0.0.0-20160228005316-41961cea0328
+	github.com/hashicorp/go-retryablehttp v0.7.0
 	github.com/jtolds/gls v4.2.0+incompatible // indirect
 	github.com/juju/syslog v0.0.0-20150205155936-6be94e8b7187
 	github.com/keybase/go-ps v0.0.0-20160809205621-9c11ca40a479

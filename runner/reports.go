@@ -77,7 +77,7 @@ func getRequestedReports(server *state.Server, globalCollectionOpts state.Collec
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Add("Accept", "application/json,text/plain")
 
-	resp, err := server.Config.HTTPClient.Do(req)
+	resp, err := server.Config.HTTPClientWithRetry.Do(req)
 	if err != nil {
 		return
 	}

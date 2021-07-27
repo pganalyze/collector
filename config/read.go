@@ -17,6 +17,8 @@ import (
 	"golang.org/x/net/http/httpproxy"
 
 	"github.com/pganalyze/collector/util"
+
+	"github.com/hashicorp/go-retryablehttp"
 )
 
 const DefaultAPIBaseURL = "https://api.pganalyze.com"
@@ -234,7 +236,7 @@ func getDefaultConfig() *ServerConfig {
 	return config
 }
 
-func CreateHTTPClient(conf ServerConfig) *http.Client {
+func CreateHTTPClient(conf ServerConfig, retry bool) *http.Client {
 	requireSSL := conf.APIBaseURL == DefaultAPIBaseURL
 	proxyConfig := httpproxy.Config{
 		HTTPProxy:  conf.HTTPProxy,
@@ -279,9 +281,18 @@ func CreateHTTPClient(conf ServerConfig) *http.Client {
 		transport.TLSClientConfig = &tls.Config{MinVersion: tls.VersionTLS12}
 	}
 
-	return &http.Client{
-		Timeout:   120 * time.Second,
-		Transport: transport,
+	if retry {
+		client := retryablehttp.NewClient()
+		client.HTTPClient.Timeout = 120 * time.Second
+		client.HTTPClient.Transport = transport
+		return client.StandardClient()
+		// Note: StandardClient() only acts as a passthrough, handing the request to
+		// retryablehttp.Client whose nested HTTP client ends up using our custom transport.
+	} else {
+		return &http.Client{
+			Timeout:   120 * time.Second,
+			Transport: transport,
+		}
 	}
 }
 
