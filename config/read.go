@@ -236,7 +236,7 @@ func getDefaultConfig() *ServerConfig {
 	return config
 }
 
-func CreateHTTPClient(conf ServerConfig, retry bool) *http.Client {
+func CreateHTTPClient(conf ServerConfig, logger *util.Logger, retry bool) *http.Client {
 	requireSSL := conf.APIBaseURL == DefaultAPIBaseURL
 	proxyConfig := httpproxy.Config{
 		HTTPProxy:  conf.HTTPProxy,
@@ -283,7 +283,11 @@ func CreateHTTPClient(conf ServerConfig, retry bool) *http.Client {
 
 	if retry {
 		client := retryablehttp.NewClient()
-		client.HTTPClient.Timeout = 120 * time.Second
+		client.RetryWaitMin = 1 * time.Second
+		client.RetryWaitMax = 30 * time.Second
+		client.RetryMax     = 4
+		client.Logger       = logger
+		client.HTTPClient.Timeout   = 120 * time.Second
 		client.HTTPClient.Transport = transport
 		return client.StandardClient()
 		// Note: StandardClient() only acts as a passthrough, handing the request to

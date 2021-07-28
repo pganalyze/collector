@@ -59,3 +59,23 @@ func (logger *Logger) PrintError(format string, args ...interface{}) {
 
 	logger.print("E", format, args...)
 }
+
+//
+// Compatibility layer for retryablehttp
+//
+
+func (logger *Logger) Info(msg string, keysAndValues ...interface{}) {
+	logger.PrintInfo(msg, keysAndValues...)
+}
+
+func (logger *Logger) Debug(msg string, keysAndValues ...interface{}) {
+	logger.PrintVerbose(msg, keysAndValues...)
+}
+
+func (logger *Logger) Error(msg string, keysAndValues ...interface{}) {
+	logger.PrintError(msg, keysAndValues...)
+}
+
+func (logger *Logger) Warn(msg string, keysAndValues ...interface{}) {
+	logger.PrintWarning(msg, keysAndValues...)
+}
