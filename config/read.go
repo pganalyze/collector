@@ -286,7 +286,7 @@ func CreateHTTPClient(conf ServerConfig, logger *util.Logger, retry bool) *http.
 		client.RetryWaitMin = 1 * time.Second
 		client.RetryWaitMax = 30 * time.Second
 		client.RetryMax     = 4
-		client.Logger       = logger
+		client.Logger       = nil
 		client.HTTPClient.Timeout   = 120 * time.Second
 		client.HTTPClient.Transport = transport
 		return client.StandardClient()

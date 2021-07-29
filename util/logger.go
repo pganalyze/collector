@@ -3,6 +3,7 @@ package util
 import (
 	"fmt"
 	"log"
+	"regexp"
 )
 
 type Logger struct {
@@ -57,25 +58,14 @@ func (logger *Logger) PrintError(format string, args ...interface{}) {
 		logger.ErrorMessages = append(logger.ErrorMessages, fmt.Sprintf(format, args...))
 	}
 
-	logger.print("E", format, args...)
-}
-
-//
-// Compatibility layer for retryablehttp
-//
-
-func (logger *Logger) Info(msg string, keysAndValues ...interface{}) {
-	logger.PrintInfo(msg, keysAndValues...)
-}
-
-func (logger *Logger) Debug(msg string, keysAndValues ...interface{}) {
-	logger.PrintVerbose(msg, keysAndValues...)
-}
-
-func (logger *Logger) Error(msg string, keysAndValues ...interface{}) {
-	logger.PrintError(msg, keysAndValues...)
-}
-
-func (logger *Logger) Warn(msg string, keysAndValues ...interface{}) {
-	logger.PrintWarning(msg, keysAndValues...)
+	// Remove duplicate URLs added by retryablehttp
+	error := fmt.Sprintf("%v", args[0])
+	regex := regexp.MustCompile("(?i): (get|post|patch) ")
+	array := regex.Split(error, -1)
+	if len(array) > 1 {
+		error = fmt.Sprintf("%v: %v", array[0], array[len(array) - 1])
+		logger.print("E", format, error)
+	} else {
+		logger.print("E", format, args...)
+	}
 }
