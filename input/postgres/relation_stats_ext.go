@@ -11,7 +11,7 @@ const citusRelationSizeSQL = `
 SELECT logicalrelid::oid,
        pg_catalog.citus_table_size(logicalrelid)
 	FROM pg_catalog.pg_dist_partition dp
-			 INNER JOIN pg_catalog.pg_class c ON (dp.logicalrelid::oid == c.oid)
+			 INNER JOIN pg_catalog.pg_class c ON (dp.logicalrelid::oid = c.oid)
 			 INNER JOIN pg_catalog.pg_namespace n ON (c.relnamespace = n.oid)
  WHERE ($1 = '' OR (n.nspname || '.' || c.relname) !~* $1)
 `
