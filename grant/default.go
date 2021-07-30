@@ -26,7 +26,7 @@ func GetDefaultGrant(server *state.Server, globalCollectionOpts state.Collection
 
 	resp, err := server.Config.HTTPClientWithRetry.Do(req)
 	if err != nil {
-		return state.Grant{}, err
+		return state.Grant{}, util.CleanHTTPError(err)
 	}
 	defer resp.Body.Close()
 

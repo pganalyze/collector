@@ -26,7 +26,7 @@ func GetLogsGrant(server *state.Server, globalCollectionOpts state.CollectionOpt
 
 	resp, err := server.Config.HTTPClientWithRetry.Do(req)
 	if err != nil {
-		return state.GrantLogs{}, err
+		return state.GrantLogs{}, util.CleanHTTPError(err)
 	}
 	defer resp.Body.Close()
 

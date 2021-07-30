@@ -34,7 +34,7 @@ func submitReportRun(server *state.Server, report reports.Report, logger *util.L
 
 	resp, err := server.Config.HTTPClientWithRetry.Do(req)
 	if err != nil {
-		return err
+		return util.CleanHTTPError(err)
 	}
 	defer resp.Body.Close()
 

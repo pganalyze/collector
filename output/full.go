@@ -133,7 +133,7 @@ func submitSnapshot(server *state.Server, collectionOpts state.CollectionOpts, l
 
 	resp, err := server.Config.HTTPClientWithRetry.Do(req)
 	if err != nil {
-		return err
+		return util.CleanHTTPError(err)
 	}
 
 	msg, serverURL, err := parseSnapshotResponse(resp, collectionOpts)

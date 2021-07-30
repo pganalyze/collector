@@ -116,7 +116,7 @@ func submitCompactSnapshot(server *state.Server, collectionOpts state.Collection
 
 	resp, err := server.Config.HTTPClientWithRetry.Do(req)
 	if err != nil {
-		return err
+		return util.CleanHTTPError(err)
 	}
 
 	msg, serverURL, err := parseSnapshotResponse(resp, collectionOpts)
