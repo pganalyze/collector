@@ -164,8 +164,9 @@ type ServerConfig struct {
 	HTTPSProxy string `ini:"https_proxy"`
 	NoProxy    string `ini:"no_proxy"`
 
-	// HttpClient - Client to be used for API connections
+	// HTTP clients to be used for API connections
 	HTTPClient *http.Client
+	HTTPClientWithRetry *http.Client
 }
 
 // GetPqOpenString - Gets the database configuration as a string that can be passed to lib/pq for connecting

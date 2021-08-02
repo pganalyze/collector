@@ -24,9 +24,9 @@ func GetDefaultGrant(server *state.Server, globalCollectionOpts state.Collection
 	req.Header.Set("User-Agent", util.CollectorNameAndVersion)
 	req.Header.Add("Accept", "application/json")
 
-	resp, err := server.Config.HTTPClient.Do(req)
+	resp, err := server.Config.HTTPClientWithRetry.Do(req)
 	if err != nil {
-		return state.Grant{}, err
+		return state.Grant{}, util.CleanHTTPError(err)
 	}
 	defer resp.Body.Close()
 
