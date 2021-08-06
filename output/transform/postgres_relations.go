@@ -63,15 +63,36 @@ func transformPostgresRelations(s snapshot.FullSnapshot, newState state.Persiste
 			Options:                relation.Options,
 		}
 
+		schemaStats, schemaStatsExist := newState.SchemaStats[relation.DatabaseOid]
+
 		if relation.ViewDefinition != "" {
 			info.ViewDefinition = &snapshot.NullString{Valid: true, Value: relation.ViewDefinition}
 		}
 		for _, column := range relation.Columns {
+			var stats []*snapshot.RelationInformation_ColumnStatistic
+			if schemaStatsExist {
+				for _, s := range schemaStats.ColumnStats {
+					if relation.SchemaName == s.SchemaName && relation.RelationName == s.TableName && column.Name == s.ColumnName {
+						correlation := snapshot.NullDouble{Valid: false}
+						if s.Correlation.Valid {
+							correlation = snapshot.NullDouble{Valid: true, Value: s.Correlation.Float64}
+						}
+						stats = append(stats, &snapshot.RelationInformation_ColumnStatistic{
+							Inherited: s.Inherited,
+							AvgWidth: s.AvgWidth,
+							NDistinct: s.NDistinct,
+							Correlation: &correlation,
+						})
+					}
+				}
+			}
+
 			sColumn := snapshot.RelationInformation_Column{
 				Name:     column.Name,
 				DataType: column.DataType,
 				NotNull:  column.NotNull,
 				Position: column.Position,
+				Statistics: stats,
 			}
 			if column.DefaultValue.Valid {
 				sColumn.DefaultValue = &snapshot.NullString{Valid: true, Value: column.DefaultValue.String}
@@ -101,7 +122,6 @@ func transformPostgresRelations(s snapshot.FullSnapshot, newState state.Persiste
 		s.RelationInformations = append(s.RelationInformations, &info)
 
 		// Statistic
-		schemaStats, schemaStatsExist := diffState.SchemaStats[relation.DatabaseOid]
 		if schemaStatsExist {
 			stats, exists := schemaStats.RelationStats[relation.Oid]
 			if exists {
