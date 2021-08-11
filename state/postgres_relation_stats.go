@@ -56,6 +56,7 @@ type PostgresColumnStats struct {
 
 type PostgresRelationStatsMap map[Oid]PostgresRelationStats
 type PostgresIndexStatsMap map[Oid]PostgresIndexStats
+type PostgresColumnStatsMap map[string][]PostgresColumnStats
 
 type DiffedPostgresRelationStats PostgresRelationStats
 type DiffedPostgresIndexStats PostgresIndexStats

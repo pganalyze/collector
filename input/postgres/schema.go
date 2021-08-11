@@ -63,7 +63,7 @@ func collectOneSchema(server *state.Server, collectionOpts state.CollectionOpts,
 	ps.SchemaStats[databaseOid] = &state.SchemaStats{
 		RelationStats: make(state.PostgresRelationStatsMap),
 		IndexStats:    make(state.PostgresIndexStatsMap),
-		ColumnStats:   make([]state.PostgresColumnStats, 0),
+		ColumnStats:   make(state.PostgresColumnStatsMap),
 	}
 
 	psOut, err = collectSchemaData(collectionOpts, logger, schemaConnection, ps, databaseOid, postgresVersion, server.Config.IgnoreSchemaRegexp, systemType)
@@ -102,7 +102,9 @@ func collectSchemaData(collectionOpts state.CollectionOpts, logger *util.Logger,
 		if err != nil {
 			return ps, fmt.Errorf("error collecting column statistics: %s", err)
 		}
-		ps.SchemaStats[databaseOid].ColumnStats = newColumnStats
+		for k, v := range newColumnStats {
+			ps.SchemaStats[databaseOid].ColumnStats[k] = v
+		}
 	}
 
 	if collectionOpts.CollectPostgresFunctions {

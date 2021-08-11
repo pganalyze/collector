@@ -170,8 +170,7 @@ func GetIndexStats(db *sql.DB, postgresVersion state.PostgresVersion, ignoreRege
 	return
 }
 
-func GetColumnStats(logger *util.Logger, db *sql.DB, globalCollectionOpts state.CollectionOpts, systemType string) ([]state.PostgresColumnStats, error) {
-	var err error
+func GetColumnStats(logger *util.Logger, db *sql.DB, globalCollectionOpts state.CollectionOpts, systemType string) (columnStats state.PostgresColumnStatsMap, err error) {
 	var sourceTable string
 
 	helperExists := false
@@ -201,10 +200,11 @@ func GetColumnStats(logger *util.Logger, db *sql.DB, globalCollectionOpts state.
 	}
 	defer rows.Close()
 
-	var stats []state.PostgresColumnStats
+	var statsMap = make(state.PostgresColumnStatsMap)
 
 	for rows.Next() {
 		var s state.PostgresColumnStats
+		var key string
 
 		err := rows.Scan(
 			&s.SchemaName, &s.TableName, &s.ColumnName, &s.Inherited, &s.NullFrac, &s.AvgWidth, &s.NDistinct, &s.Correlation)
@@ -212,8 +212,9 @@ func GetColumnStats(logger *util.Logger, db *sql.DB, globalCollectionOpts state.
 			return nil, err
 		}
 
-		stats = append(stats, s)
+		key = s.SchemaName + s.TableName + s.ColumnName
+		statsMap[key] = append(statsMap[key], s)
 	}
 
-	return stats, nil
+	return statsMap, nil
 }

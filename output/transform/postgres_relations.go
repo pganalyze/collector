@@ -71,16 +71,17 @@ func transformPostgresRelations(s snapshot.FullSnapshot, newState state.Persiste
 		for _, column := range relation.Columns {
 			var stats []*snapshot.RelationInformation_ColumnStatistic
 			if schemaStatsExist {
-				for _, s := range schemaStats.ColumnStats {
-					if relation.SchemaName == s.SchemaName && relation.RelationName == s.TableName && column.Name == s.ColumnName {
+				columnStats, exist := schemaStats.ColumnStats[relation.SchemaName + relation.RelationName + column.Name]
+				if exist {
+					for _, stat := range columnStats {
 						correlation := snapshot.NullDouble{Valid: false}
-						if s.Correlation.Valid {
-							correlation = snapshot.NullDouble{Valid: true, Value: s.Correlation.Float64}
+						if stat.Correlation.Valid {
+							correlation = snapshot.NullDouble{Valid: true, Value: stat.Correlation.Float64}
 						}
 						stats = append(stats, &snapshot.RelationInformation_ColumnStatistic{
-							Inherited: s.Inherited,
-							AvgWidth: s.AvgWidth,
-							NDistinct: s.NDistinct,
+							Inherited: stat.Inherited,
+							AvgWidth: stat.AvgWidth,
+							NDistinct: stat.NDistinct,
 							Correlation: &correlation,
 						})
 					}
