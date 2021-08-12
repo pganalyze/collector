@@ -212,7 +212,7 @@ func GetColumnStats(logger *util.Logger, db *sql.DB, globalCollectionOpts state.
 			return nil, err
 		}
 
-		key = s.SchemaName + s.TableName + s.ColumnName
+		key = s.SchemaName + "\t" + s.TableName + "\t" + s.ColumnName
 		statsMap[key] = append(statsMap[key], s)
 	}
 

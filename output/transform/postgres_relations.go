@@ -71,7 +71,8 @@ func transformPostgresRelations(s snapshot.FullSnapshot, newState state.Persiste
 		for _, column := range relation.Columns {
 			var stats []*snapshot.RelationInformation_ColumnStatistic
 			if schemaStatsExist {
-				columnStats, exist := schemaStats.ColumnStats[relation.SchemaName + relation.RelationName + column.Name]
+				key := relation.SchemaName + "\t" + relation.RelationName + "\t" + column.Name
+				columnStats, exist := schemaStats.ColumnStats[key]
 				if exist {
 					for _, stat := range columnStats {
 						correlation := snapshot.NullDouble{Valid: false}
