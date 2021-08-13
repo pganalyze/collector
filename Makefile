@@ -46,11 +46,16 @@ docker_latest:
 	docker push quay.io/pganalyze/collector:latest
 
 output/pganalyze_collector/snapshot.pb.go: $(PROTOBUF_FILES)
+ifdef PROTOC_VERSION
 	mkdir -p $(PWD)/bin
 	GOBIN=$(PWD)/bin go install github.com/golang/protobuf/protoc-gen-go
 	protoc --go_out=Mgoogle/protobuf/timestamp.proto=github.com/golang/protobuf/ptypes/timestamp:output/pganalyze_collector -I protobuf $(PROTOBUF_FILES)
+else
+	@echo 'Warning: protoc not found, skipping protocol buffer regeneration (to install protoc check Makefile instructions in install_protoc step)'
+endif
 
 install_protoc:
+ifdef PROTOC_VERSION
 ifeq (,$(findstring $(PROTOC_VERSION_NEEDED), $(PROTOC_VERSION)))
 	@echo "⚠️  protoc version needed: $(PROTOC_VERSION_NEEDED) vs $(PROTOC_VERSION) installed"
 	@echo "ℹ️  Please download the correct protobuf binary for your OS from https://github.com/protocolbuffers/protobuf/releases/tag/v${PROTOC_VERSION_NEEDED}"
@@ -58,4 +63,5 @@ ifeq (,$(findstring $(PROTOC_VERSION_NEEDED), $(PROTOC_VERSION)))
 	@echo "ℹ️  Copy the unzipped folder into this project, and rename it to \"protoc\""
 	@echo "ℹ️  If this is macOS, you will need to try running the binary yourself, then go to Security & Privacy to explicitly allow it."
 	exit 1
+endif
 endif
