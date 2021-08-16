@@ -76,6 +76,7 @@ SELECT s.indexrelid,
 const columnStatsSQL = `
 SELECT schemaname, tablename, attname, inherited, null_frac, avg_width, n_distinct, correlation
   FROM %s
+ WHERE schemaname NOT IN ('pg_catalog', 'information_schema')
 `
 
 const columnStatsHelperSQL = `
@@ -180,10 +181,10 @@ func GetColumnStats(logger *util.Logger, db *sql.DB, globalCollectionOpts state.
 		logger.PrintVerbose("Found pganalyze.get_column_stats() stats helper")
 		sourceTable = "pganalyze.get_column_stats()"
 	} else {
-		if systemType != "heroku" && !connectedAsSuperUser(db, systemType) && !connectedAsMonitoringRole(db) && globalCollectionOpts.TestRun {
-			logger.PrintInfo("Warning: You are not connecting as superuser. Please setup" +
-				" the monitoring helper functions (https://github.com/pganalyze/collector#setting-up-a-restricted-monitoring-user)" +
-				" or connect as superuser, to get table statistics for all roles.")
+		if systemType != "heroku" && !connectedAsSuperUser(db, systemType) && globalCollectionOpts.TestRun {
+			logger.PrintInfo("Warning: Limited access to table column statistics detected. Please setup" +
+				" the monitoring helper function pganalyze.get_column_stats (https://github.com/pganalyze/collector#setting-up-a-restricted-monitoring-user)" +
+				" or connect as superuser, to get column statistics for all tables.")
 		}
 		sourceTable = "pg_catalog.pg_stats"
 	}
@@ -204,7 +205,6 @@ func GetColumnStats(logger *util.Logger, db *sql.DB, globalCollectionOpts state.
 
 	for rows.Next() {
 		var s state.PostgresColumnStats
-		var key string
 
 		err := rows.Scan(
 			&s.SchemaName, &s.TableName, &s.ColumnName, &s.Inherited, &s.NullFrac, &s.AvgWidth, &s.NDistinct, &s.Correlation)
@@ -212,7 +212,7 @@ func GetColumnStats(logger *util.Logger, db *sql.DB, globalCollectionOpts state.
 			return nil, err
 		}
 
-		key = s.SchemaName + "\t" + s.TableName + "\t" + s.ColumnName
+		key := state.PostgresColumnStatsKey{SchemaName: s.SchemaName, TableName: s.TableName, ColumnName: s.ColumnName}
 		statsMap[key] = append(statsMap[key], s)
 	}
 

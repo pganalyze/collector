@@ -54,9 +54,16 @@ type PostgresColumnStats struct {
   Correlation null.Float
 }
 
+// PostgresColumnStatsKey - Information that uniquely identifies column stats
+type PostgresColumnStatsKey struct {
+  SchemaName string
+  TableName  string
+  ColumnName string
+}
+
 type PostgresRelationStatsMap map[Oid]PostgresRelationStats
 type PostgresIndexStatsMap map[Oid]PostgresIndexStats
-type PostgresColumnStatsMap map[string][]PostgresColumnStats
+type PostgresColumnStatsMap map[PostgresColumnStatsKey][]PostgresColumnStats
 
 type DiffedPostgresRelationStats PostgresRelationStats
 type DiffedPostgresIndexStats PostgresIndexStats
