@@ -154,6 +154,11 @@ func transformPostgresRelations(s snapshot.FullSnapshot, newState state.Persiste
 				if stats.NModSinceAnalyze.Valid {
 					statistic.NModSinceAnalyze = stats.NModSinceAnalyze.Int64
 				}
+				if stats.LastAutoanalyze.Valid && (!stats.LastAnalyze.Valid || stats.LastAutoanalyze.Time.After(stats.LastAnalyze.Time)) {
+					statistic.AnalyzedAt = snapshot.NullTimeToNullTimestamp(stats.LastAutoanalyze)
+				} else {
+					statistic.AnalyzedAt = snapshot.NullTimeToNullTimestamp(stats.LastAnalyze)
+				}
 				s.RelationStatistics = append(s.RelationStatistics, &statistic)
 
 				// Events
