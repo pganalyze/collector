@@ -10,6 +10,7 @@ import (
 
 type SchemaStats struct {
 	RelationStats PostgresRelationStatsMap
+	ColumnStats   PostgresColumnStatsMap
 	IndexStats    PostgresIndexStatsMap
 	FunctionStats PostgresFunctionStatsMap
 }

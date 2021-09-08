@@ -43,8 +43,27 @@ type PostgresIndexStats struct {
 	IdxBlksHit  int64 // Number of buffer hits in this index
 }
 
+type PostgresColumnStats struct {
+  SchemaName  string
+  TableName   string
+  ColumnName  string
+  Inherited   bool
+  NullFrac    float64
+  AvgWidth    int32
+  NDistinct   float64
+  Correlation null.Float
+}
+
+// PostgresColumnStatsKey - Information that uniquely identifies column stats
+type PostgresColumnStatsKey struct {
+  SchemaName string
+  TableName  string
+  ColumnName string
+}
+
 type PostgresRelationStatsMap map[Oid]PostgresRelationStats
 type PostgresIndexStatsMap map[Oid]PostgresIndexStats
+type PostgresColumnStatsMap map[PostgresColumnStatsKey][]PostgresColumnStats
 
 type DiffedPostgresRelationStats PostgresRelationStats
 type DiffedPostgresIndexStats PostgresIndexStats

@@ -27,13 +27,13 @@ After building the collector you can find the binary in the repository folder:
 
 To run the unit tests:
 
-```
+```sh
 make test
 ```
 
 To run the integration tests:
 
-```
+```sh
 make integration_test
 ```
 

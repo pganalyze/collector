@@ -48,7 +48,7 @@ By default pg_stat_statements does not allow viewing queries run by other users,
 unless you are a database superuser. Since you probably don't want monitoring
 to run as a superuser, you can setup a separate monitoring user like this:
 
-```
+```sql
 CREATE SCHEMA pganalyze;
 
 CREATE EXTENSION IF NOT EXISTS pg_stat_statements WITH SCHEMA public;
@@ -92,7 +92,7 @@ if they exist in the `pganalyze` schema - otherwise data will be fetched directl
 
 If you are on Postgres 9.6 and use activity snapshots:
 
-```
+```sql
 CREATE OR REPLACE FUNCTION pganalyze.get_stat_progress_vacuum() RETURNS SETOF pg_stat_progress_vacuum AS
 $$
   /* pganalyze-collector */ SELECT * FROM pg_catalog.pg_stat_progress_vacuum;
@@ -101,7 +101,7 @@ $$ LANGUAGE sql VOLATILE SECURITY DEFINER;
 
 If you are using the Buffer Cache report in pganalyze, you will also need to create this additional helper method:
 
-```
+```sql
 CREATE EXTENSION IF NOT EXISTS pg_buffercache WITH SCHEMA public;
 CREATE OR REPLACE FUNCTION pganalyze.get_buffercache() RETURNS SETOF public.pg_buffercache AS
 $$
@@ -111,7 +111,7 @@ $$ LANGUAGE sql VOLATILE SECURITY DEFINER;
 
 If you are using the Sequence report in pganalyze, you will also need these helper methods:
 
-```
+```sql
 CREATE OR REPLACE FUNCTION pganalyze.get_sequence_oid_for_column(table_name text, column_name text) RETURNS oid AS
 $$
   /* pganalyze-collector */ SELECT pg_get_serial_sequence(table_name, column_name)::regclass::oid;
@@ -149,7 +149,7 @@ $$ LANGUAGE plpgsql VOLATILE SECURITY DEFINER;
 
 If you enabled the optional reset mode (usually not required), you will also need this helper method:
 
-```
+```sql
 CREATE OR REPLACE FUNCTION pganalyze.reset_stat_statements() RETURNS SETOF void AS
 $$
   /* pganalyze-collector */ SELECT * FROM public.pg_stat_statements_reset();
@@ -167,7 +167,7 @@ If you use `enable_log_explain`, use a superuser connection to create
 the pganalyze schema and this function on each database where EXPLAIN
 should run:
 
-```
+```sql
 CREATE OR REPLACE FUNCTION pganalyze.explain(query text, params text[]) RETURNS text AS
 $$
 DECLARE
@@ -212,7 +212,7 @@ Example output
 To get a feel for the data that is collected you can run the following command. This will show the data that would be sent (in JSON format), without sending it:
 
 
-```
+```sh
 pganalyze-collector --dry-run
 ```
 
@@ -224,7 +224,7 @@ Docker Container (RDS)
 
 If you are monitoring an RDS database and want to run the collector inside Docker, we recommend the following:
 
-```
+```sh
 docker pull quay.io/pganalyze/collector:stable
 docker run \
   --rm \
@@ -250,7 +250,7 @@ Docker Container (non-RDS)
 
 If the database you want to monitor is running inside a Docker environment you can use the Docker image:
 
-```
+```sh
 docker pull quay.io/pganalyze/collector:stable
 docker run \
   --name my-app-pga-collector \
@@ -261,7 +261,7 @@ docker run \
 
 collector_config.env needs to look like this:
 
-```
+```sh
 PGA_API_KEY=$YOUR_API_KEY
 PGA_ALWAYS_COLLECT_SYSTEM_DATA=1
 DB_NAME=your_database_name

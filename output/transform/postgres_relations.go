@@ -63,15 +63,39 @@ func transformPostgresRelations(s snapshot.FullSnapshot, newState state.Persiste
 			Options:                relation.Options,
 		}
 
+		schemaStats, schemaStatsExist := newState.SchemaStats[relation.DatabaseOid]
+
 		if relation.ViewDefinition != "" {
 			info.ViewDefinition = &snapshot.NullString{Valid: true, Value: relation.ViewDefinition}
 		}
 		for _, column := range relation.Columns {
+			var stats []*snapshot.RelationInformation_ColumnStatistic
+			if schemaStatsExist {
+				key := state.PostgresColumnStatsKey{SchemaName: relation.SchemaName, TableName: relation.RelationName, ColumnName: column.Name}
+				columnStats, exist := schemaStats.ColumnStats[key]
+				if exist {
+					for _, stat := range columnStats {
+						correlation := snapshot.NullDouble{Valid: false}
+						if stat.Correlation.Valid {
+							correlation = snapshot.NullDouble{Valid: true, Value: stat.Correlation.Float64}
+						}
+						stats = append(stats, &snapshot.RelationInformation_ColumnStatistic{
+							Inherited: stat.Inherited,
+							NullFrac: stat.NullFrac,
+							AvgWidth: stat.AvgWidth,
+							NDistinct: stat.NDistinct,
+							Correlation: &correlation,
+						})
+					}
+				}
+			}
+
 			sColumn := snapshot.RelationInformation_Column{
 				Name:     column.Name,
 				DataType: column.DataType,
 				NotNull:  column.NotNull,
 				Position: column.Position,
+				Statistics: stats,
 			}
 			if column.DefaultValue.Valid {
 				sColumn.DefaultValue = &snapshot.NullString{Valid: true, Value: column.DefaultValue.String}
@@ -101,7 +125,6 @@ func transformPostgresRelations(s snapshot.FullSnapshot, newState state.Persiste
 		s.RelationInformations = append(s.RelationInformations, &info)
 
 		// Statistic
-		schemaStats, schemaStatsExist := diffState.SchemaStats[relation.DatabaseOid]
 		if schemaStatsExist {
 			stats, exists := schemaStats.RelationStats[relation.Oid]
 			if exists {
@@ -130,6 +153,11 @@ func transformPostgresRelations(s snapshot.FullSnapshot, newState state.Persiste
 				}
 				if stats.NModSinceAnalyze.Valid {
 					statistic.NModSinceAnalyze = stats.NModSinceAnalyze.Int64
+				}
+				if stats.LastAutoanalyze.Valid && (!stats.LastAnalyze.Valid || stats.LastAutoanalyze.Time.After(stats.LastAnalyze.Time)) {
+					statistic.AnalyzedAt = snapshot.NullTimeToNullTimestamp(stats.LastAutoanalyze)
+				} else {
+					statistic.AnalyzedAt = snapshot.NullTimeToNullTimestamp(stats.LastAnalyze)
 				}
 				s.RelationStatistics = append(s.RelationStatistics, &statistic)
 
