@@ -14,10 +14,10 @@ func transformPostgresTypes(s snapshot.FullSnapshot, transientState state.Transi
       SchemaName: pgType.SchemaName,
       Name: pgType.Name,
       Type: pgType.Type,
-      UnderlyingType: pgType.UnderlyingType,
+      UnderlyingType: pgType.UnderlyingType.String,
       NotNull: pgType.NotNull,
-      Default: pgType.Default,
-      Constraint: pgType.Constraint,
+      Default: pgType.Default.String,
+      Constraint: pgType.Constraint.String,
       EnumValues: pgType.EnumValues,
     }
     for _, attr := range pgType.CompositeAttrs {

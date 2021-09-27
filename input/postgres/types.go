@@ -11,21 +11,21 @@ SELECT t.oid,
        n.nspname AS schema,
        pg_catalog.format_type(t.oid, null) AS name,
        t.typtype AS type,
-       pg_catalog.format_type(t.typbasetype, t.typtypmod) AS underlying_type,
+       CASE WHEN t.typtype = 'd' THEN pg_catalog.format_type(t.typbasetype, t.typtypmod) ELSE null END AS underlying_type,
        t.typnotnull AS not_null,
        t.typdefault AS default,
        (
            SELECT pg_get_constraintdef(oid)
            FROM pg_constraint WHERE contypid = t.oid
-       ) AS constraint,
-       (
-           SELECT array_agg(enumlabel ORDER BY enumsortorder)
-           FROM pg_enum WHERE enumtypid = t.oid
-       ) AS values,
-       (
-           SELECT array_agg(array[attname, pg_catalog.format_type(atttypid, atttypmod)])
-           FROM pg_attribute WHERE attrelid = t.typrelid
-       ) AS attrs
+       ) AS constraint
+      -- (
+      --     SELECT array_agg(enumlabel ORDER BY enumsortorder)
+      --     FROM pg_enum WHERE enumtypid = t.oid
+      -- ) AS values,
+      -- (
+      --     SELECT array_agg(array[attname, pg_catalog.format_type(atttypid, atttypmod)])
+      --     FROM pg_attribute WHERE attrelid = t.typrelid
+      -- ) AS attrs
   FROM pg_catalog.pg_type t
  INNER JOIN pg_catalog.pg_namespace n ON n.oid = t.typnamespace
  WHERE t.typtype <> 'b'
@@ -55,8 +55,10 @@ func GetTypes(db *sql.DB, postgresVersion state.PostgresVersion, currentDatabase
     var t state.PostgresType
     t.DatabaseOid = currentDatabaseOid
 
+    // TODO: unpackPostgresStringArray
+
     err := rows.Scan(
-      &t.Oid, &t.SchemaName, &t.Name, &t.Type, &t.UnderlyingType, &t.NotNull, &t.Default, &t.Constraint, &t.EnumValues, &t.CompositeAttrs)
+      &t.Oid, &t.SchemaName, &t.Name, &t.Type, &t.UnderlyingType, &t.NotNull, &t.Default, &t.Constraint/*, &t.EnumValues, &t.CompositeAttrs*/)
 
     if err != nil {
       return nil, err

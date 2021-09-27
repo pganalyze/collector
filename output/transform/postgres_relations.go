@@ -96,10 +96,13 @@ func transformPostgresRelations(s snapshot.FullSnapshot, newState state.Persiste
 				NotNull:  column.NotNull,
 				Position: column.Position,
 				Statistics: stats,
-				TypeIdx: typeOidToIdx[column.TypeOid],
 			}
 			if column.DefaultValue.Valid {
 				sColumn.DefaultValue = &snapshot.NullString{Valid: true, Value: column.DefaultValue.String}
+			}
+			typeIdx, typeExists := typeOidToIdx[column.TypeOid]
+			if typeExists {
+				sColumn.TypeIdx = &snapshot.NullInt32{Valid: true, Value: typeIdx}
 			}
 			info.Columns = append(info.Columns, &sColumn)
 		}

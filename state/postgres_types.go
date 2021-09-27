@@ -1,5 +1,7 @@
 package state
 
+import "github.com/guregu/null"
+
 type Oid uint64
 type Xid uint32
 
@@ -10,10 +12,10 @@ type PostgresType struct {
 	SchemaName      string
 	Name            string
 	Type            string
-	UnderlyingType  string
+	UnderlyingType  null.String
 	NotNull         bool
-	Default         string
-	Constraint      string
+	Default         null.String
+	Constraint      null.String
 	EnumValues      []string
 	CompositeAttrs  [][2]string
 }
