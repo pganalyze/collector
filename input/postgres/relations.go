@@ -62,7 +62,8 @@ const columnsSQL string = `
 			AND d.adnum = a.attnum
 			AND a.atthasdef) AS default_value,
 				a.attnotnull AS not_null,
-				a.attnum AS position
+				a.attnum AS position,
+				a.atttypid as type_oid
  FROM pg_catalog.pg_class c
  LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
  LEFT JOIN pg_catalog.pg_attribute a ON c.oid = a.attrelid
@@ -226,7 +227,7 @@ func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 		var row state.PostgresColumn
 
 		err = rows.Scan(&row.RelationOid, &row.Name, &row.DataType, &row.DefaultValue,
-			&row.NotNull, &row.Position)
+			&row.NotNull, &row.Position, &row.TypeOid)
 		if err != nil {
 			err = fmt.Errorf("Columns/Scan: %s", err)
 			return nil, err

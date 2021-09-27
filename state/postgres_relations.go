@@ -41,6 +41,7 @@ type PostgresColumn struct {
 	DefaultValue null.String
 	NotNull      bool
 	Position     int32
+	TypeOid      Oid
 }
 
 type PostgresIndex struct {

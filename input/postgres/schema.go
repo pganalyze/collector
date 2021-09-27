@@ -33,7 +33,7 @@ func CollectAllSchemas(server *state.Server, collectionOpts state.CollectionOpts
 			continue
 		}
 		collected[dbName] = true
-		psNext, databaseOid, err := collectOneSchema(server, collectionOpts, logger, ps, dbName, ts.Version, systemType)
+		psNext, databaseOid, err := collectOneSchema(server, collectionOpts, logger, ps, ts, dbName, ts.Version, systemType)
 		if err != nil {
 			logger.PrintVerbose("Failed to collect schema metadata for database %s: %s", dbName, err)
 			continue
@@ -48,7 +48,7 @@ func CollectAllSchemas(server *state.Server, collectionOpts state.CollectionOpts
 	return ps, ts
 }
 
-func collectOneSchema(server *state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, ps state.PersistedState, dbName string, postgresVersion state.PostgresVersion, systemType string) (psOut state.PersistedState, databaseOid state.Oid, err error) {
+func collectOneSchema(server *state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, ps state.PersistedState, ts state.TransientState, dbName string, postgresVersion state.PostgresVersion, systemType string) (psOut state.PersistedState, databaseOid state.Oid, err error) {
 	schemaConnection, err := EstablishConnection(server, logger, collectionOpts, dbName)
 	if err != nil {
 		return ps, 0, fmt.Errorf("error connecting: %s", err)
@@ -66,7 +66,7 @@ func collectOneSchema(server *state.Server, collectionOpts state.CollectionOpts,
 		ColumnStats:   make(state.PostgresColumnStatsMap),
 	}
 
-	psOut, err = collectSchemaData(collectionOpts, logger, schemaConnection, ps, databaseOid, postgresVersion, server.Config.IgnoreSchemaRegexp, systemType)
+	psOut, err = collectSchemaData(collectionOpts, logger, schemaConnection, ps, ts, databaseOid, postgresVersion, server.Config.IgnoreSchemaRegexp, systemType)
 	if err != nil {
 		return ps, 0, err
 	}
@@ -74,7 +74,7 @@ func collectOneSchema(server *state.Server, collectionOpts state.CollectionOpts,
 	return psOut, databaseOid, nil
 }
 
-func collectSchemaData(collectionOpts state.CollectionOpts, logger *util.Logger, db *sql.DB, ps state.PersistedState, databaseOid state.Oid, postgresVersion state.PostgresVersion, ignoreRegexp string, systemType string) (state.PersistedState, error) {
+func collectSchemaData(collectionOpts state.CollectionOpts, logger *util.Logger, db *sql.DB, ps state.PersistedState, ts state.TransientState, databaseOid state.Oid, postgresVersion state.PostgresVersion, ignoreRegexp string, systemType string) (state.PersistedState, error) {
 	if collectionOpts.CollectPostgresRelations {
 		newRelations, err := GetRelations(db, postgresVersion, databaseOid, ignoreRegexp)
 		if err != nil {
@@ -114,6 +114,12 @@ func collectSchemaData(collectionOpts state.CollectionOpts, logger *util.Logger,
 		}
 		ps.Functions = append(ps.Functions, newFunctions...)
 	}
+
+	newTypes, err := GetTypes(db, postgresVersion, databaseOid)
+	if err != nil {
+		return ps, fmt.Errorf("error collecting custom types: %s", err)
+	}
+	ts.Types = append(ts.Types, newTypes...)
 
 	return ps, nil
 }
