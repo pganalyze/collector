@@ -2,6 +2,7 @@ package postgres
 
 import (
   "database/sql"
+  "encoding/json"
 
   "github.com/pganalyze/collector/state"
 )
@@ -17,15 +18,18 @@ SELECT t.oid,
        (
            SELECT pg_get_constraintdef(oid)
            FROM pg_constraint WHERE contypid = t.oid
-       ) AS constraint
-      -- (
-      --     SELECT array_agg(enumlabel ORDER BY enumsortorder)
-      --     FROM pg_enum WHERE enumtypid = t.oid
-      -- ) AS values,
-      -- (
-      --     SELECT array_agg(array[attname, pg_catalog.format_type(atttypid, atttypmod)])
-      --     FROM pg_attribute WHERE attrelid = t.typrelid
-      -- ) AS attrs
+       ) AS constraint,
+       array_to_json(coalesce(
+           (
+               SELECT array_agg(enumlabel ORDER BY enumsortorder)
+               FROM pg_enum WHERE enumtypid = t.oid
+           ),
+           (
+               SELECT array_agg(array[attname, pg_catalog.format_type(atttypid, atttypmod)])
+               FROM pg_attribute WHERE attrelid = t.typrelid
+           ),
+           '{}'::text[]
+       )) AS enum_or_composite_values
   FROM pg_catalog.pg_type t
  INNER JOIN pg_catalog.pg_namespace n ON n.oid = t.typnamespace
  WHERE t.typtype <> 'b'
@@ -53,15 +57,21 @@ func GetTypes(db *sql.DB, postgresVersion state.PostgresVersion, currentDatabase
 
   for rows.Next() {
     var t state.PostgresType
+    var arrayString string
     t.DatabaseOid = currentDatabaseOid
 
-    // TODO: unpackPostgresStringArray
-
     err := rows.Scan(
-      &t.Oid, &t.SchemaName, &t.Name, &t.Type, &t.UnderlyingType, &t.NotNull, &t.Default, &t.Constraint/*, &t.EnumValues, &t.CompositeAttrs*/)
+      &t.Oid, &t.SchemaName, &t.Name, &t.Type, &t.UnderlyingType, &t.NotNull, &t.Default, &t.Constraint, &arrayString)
 
     if err != nil {
       return nil, err
+    }
+
+    if t.Type == "e" {
+      json.Unmarshal([]byte(arrayString), &t.EnumValues)
+    }
+    if t.Type == "c" {
+      json.Unmarshal([]byte(arrayString), &t.CompositeAttrs)
     }
 
     types = append(types, t)
