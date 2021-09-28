@@ -102,7 +102,7 @@ func transformPostgresRelations(s snapshot.FullSnapshot, newState state.Persiste
 			}
 			typeIdx, typeExists := typeOidToIdx[column.TypeOid]
 			if typeExists {
-				sColumn.TypeIdx = &snapshot.NullInt32{Valid: true, Value: typeIdx}
+				sColumn.DataTypeCustomIdx = &snapshot.NullInt32{Valid: true, Value: typeIdx}
 			}
 			info.Columns = append(info.Columns, &sColumn)
 		}

@@ -12,13 +12,13 @@ SELECT t.oid,
        n.nspname AS schema,
        pg_catalog.format_type(t.oid, null) AS name,
        t.typtype AS type,
-       CASE WHEN t.typtype = 'd' THEN pg_catalog.format_type(t.typbasetype, t.typtypmod) ELSE null END AS underlying_type,
-       t.typnotnull AS not_null,
-       t.typdefault AS default,
+       CASE WHEN t.typtype = 'd' THEN pg_catalog.format_type(t.typbasetype, t.typtypmod) ELSE null END AS domain_type,
+       t.typnotnull AS domain_not_null,
+       t.typdefault AS domain_default,
        (
            SELECT pg_get_constraintdef(oid)
            FROM pg_constraint WHERE contypid = t.oid
-       ) AS constraint,
+       ) AS domain_constraint,
        array_to_json(coalesce(
            (
                SELECT array_agg(enumlabel ORDER BY enumsortorder)
@@ -61,7 +61,7 @@ func GetTypes(db *sql.DB, postgresVersion state.PostgresVersion, currentDatabase
     t.DatabaseOid = currentDatabaseOid
 
     err := rows.Scan(
-      &t.Oid, &t.SchemaName, &t.Name, &t.Type, &t.UnderlyingType, &t.NotNull, &t.Default, &t.Constraint, &arrayString)
+      &t.Oid, &t.SchemaName, &t.Name, &t.Type, &t.DomainType, &t.DomainNotNull, &t.DomainDefault, &t.DomainConstraint, &arrayString)
 
     if err != nil {
       return nil, err

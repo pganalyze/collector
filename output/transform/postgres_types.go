@@ -9,23 +9,33 @@ func transformPostgresTypes(s snapshot.FullSnapshot, transientState state.Transi
   typeOidToIdx := make(OidToIdx)
 
   for _, pgType := range transientState.Types {
-    info := snapshot.TypeInformation{
+    var customType snapshot.CustomTypeInformation_Type
+    switch pgType.Type {
+    case "e":
+      customType = snapshot.CustomTypeInformation_ENUM
+    case "d":
+      customType = snapshot.CustomTypeInformation_DOMAIN
+    case "c":
+      customType = snapshot.CustomTypeInformation_COMPOSITE
+    }
+
+    info := snapshot.CustomTypeInformation{
       DatabaseIdx: databaseOidToIdx[pgType.DatabaseOid],
       SchemaName: pgType.SchemaName,
       Name: pgType.Name,
-      Type: pgType.Type,
-      UnderlyingType: pgType.UnderlyingType.String,
-      NotNull: pgType.NotNull,
-      Default: pgType.Default.String,
-      Constraint: pgType.Constraint.String,
+      Type: customType,
+      DomainType: pgType.DomainType.String,
+      DomainNotNull: pgType.DomainNotNull,
+      DomainDefault: pgType.DomainDefault.String,
+      DomainConstraint: pgType.DomainConstraint.String,
       EnumValues: pgType.EnumValues,
     }
     for _, attr := range pgType.CompositeAttrs {
-      info.CompositeAttrs = append(info.CompositeAttrs, &snapshot.TypeInformation_CompositeAttr{Name: attr[0], Type: attr[1]})
+      info.CompositeAttrs = append(info.CompositeAttrs, &snapshot.CustomTypeInformation_CompositeAttr{Name: attr[0], Type: attr[1]})
     }
 
-    idx := int32(len(s.TypeInformations))
-    s.TypeInformations = append(s.TypeInformations, &info)
+    idx := int32(len(s.CustomTypeInformations))
+    s.CustomTypeInformations = append(s.CustomTypeInformations, &info)
     typeOidToIdx[pgType.Oid] = idx
   }
 
