@@ -10,7 +10,7 @@ import (
 const typesSQL string = `
 SELECT t.oid,
        n.nspname AS schema,
-       pg_catalog.format_type(t.oid, null) AS name,
+       t.typname AS name,
        t.typtype AS type,
        CASE WHEN t.typtype = 'd' THEN pg_catalog.format_type(t.typbasetype, t.typtypmod) ELSE null END AS domain_type,
        t.typnotnull AS domain_not_null,
