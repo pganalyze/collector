@@ -12,9 +12,9 @@ import (
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
 
-	"github.com/Azure/azure-amqp-common-go/aad"
-	"github.com/Azure/azure-amqp-common-go/persist"
-	eventhubs "github.com/Azure/azure-event-hubs-go"
+	"github.com/Azure/azure-amqp-common-go/v3/aad"
+	eventhubs "github.com/Azure/azure-event-hubs-go/v3"
+	"github.com/Azure/azure-event-hubs-go/v3/persist"
 	"github.com/Azure/go-autorest/autorest/azure"
 )
 
