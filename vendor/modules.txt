@@ -16,38 +16,59 @@ cloud.google.com/go/pubsub/internal/scheduler
 github.com/AlecAivazis/survey/v2
 github.com/AlecAivazis/survey/v2/core
 github.com/AlecAivazis/survey/v2/terminal
-# github.com/Azure/azure-amqp-common-go v1.1.4
-## explicit
-github.com/Azure/azure-amqp-common-go
-github.com/Azure/azure-amqp-common-go/aad
-github.com/Azure/azure-amqp-common-go/auth
-github.com/Azure/azure-amqp-common-go/cbs
-github.com/Azure/azure-amqp-common-go/conn
-github.com/Azure/azure-amqp-common-go/internal
-github.com/Azure/azure-amqp-common-go/internal/tracing
-github.com/Azure/azure-amqp-common-go/log
-github.com/Azure/azure-amqp-common-go/persist
-github.com/Azure/azure-amqp-common-go/rpc
-github.com/Azure/azure-amqp-common-go/sas
-github.com/Azure/azure-amqp-common-go/uuid
-# github.com/Azure/azure-event-hubs-go v1.3.1
-## explicit
-github.com/Azure/azure-event-hubs-go
-github.com/Azure/azure-event-hubs-go/atom
-# github.com/Azure/azure-sdk-for-go v21.3.0+incompatible
+# github.com/Azure/azure-amqp-common-go/v3 v3.2.1
+## explicit; go 1.12
+github.com/Azure/azure-amqp-common-go/v3
+github.com/Azure/azure-amqp-common-go/v3/aad
+github.com/Azure/azure-amqp-common-go/v3/auth
+github.com/Azure/azure-amqp-common-go/v3/cbs
+github.com/Azure/azure-amqp-common-go/v3/conn
+github.com/Azure/azure-amqp-common-go/v3/internal
+github.com/Azure/azure-amqp-common-go/v3/internal/tracing
+github.com/Azure/azure-amqp-common-go/v3/rpc
+github.com/Azure/azure-amqp-common-go/v3/sas
+github.com/Azure/azure-amqp-common-go/v3/uuid
+# github.com/Azure/azure-event-hubs-go/v3 v3.3.14
+## explicit; go 1.13
+github.com/Azure/azure-event-hubs-go/v3
+github.com/Azure/azure-event-hubs-go/v3/atom
+github.com/Azure/azure-event-hubs-go/v3/persist
+# github.com/Azure/azure-sdk-for-go v58.0.0+incompatible
 ## explicit
 github.com/Azure/azure-sdk-for-go/services/eventhub/mgmt/2017-04-01/eventhub
 github.com/Azure/azure-sdk-for-go/version
-# github.com/Azure/go-autorest v11.1.1+incompatible
+# github.com/Azure/go-amqp v0.16.0
+## explicit; go 1.12
+github.com/Azure/go-amqp
+github.com/Azure/go-amqp/internal/bitmap
+github.com/Azure/go-amqp/internal/buffer
+github.com/Azure/go-amqp/internal/encoding
+github.com/Azure/go-amqp/internal/frames
+# github.com/Azure/go-autorest v14.2.0+incompatible
 ## explicit
+github.com/Azure/go-autorest
+# github.com/Azure/go-autorest/autorest v0.11.21
+## explicit; go 1.15
 github.com/Azure/go-autorest/autorest
-github.com/Azure/go-autorest/autorest/adal
 github.com/Azure/go-autorest/autorest/azure
+# github.com/Azure/go-autorest/autorest/adal v0.9.16
+## explicit; go 1.15
+github.com/Azure/go-autorest/autorest/adal
+# github.com/Azure/go-autorest/autorest/date v0.3.0
+## explicit; go 1.12
 github.com/Azure/go-autorest/autorest/date
+# github.com/Azure/go-autorest/autorest/to v0.4.0
+## explicit; go 1.12
 github.com/Azure/go-autorest/autorest/to
+# github.com/Azure/go-autorest/autorest/validation v0.3.1
+## explicit; go 1.12
 github.com/Azure/go-autorest/autorest/validation
+# github.com/Azure/go-autorest/logger v0.2.1
+## explicit; go 1.12
 github.com/Azure/go-autorest/logger
-github.com/Azure/go-autorest/version
+# github.com/Azure/go-autorest/tracing v0.6.0
+## explicit; go 1.12
+github.com/Azure/go-autorest/tracing
 # github.com/StackExchange/wmi v0.0.0-20150520194626-f3e2bae1e0cb
 ## explicit
 github.com/StackExchange/wmi
@@ -111,9 +132,9 @@ github.com/bmizerany/lpx
 # github.com/certifi/gocertifi v0.0.0-20160926115448-a61bf5eafa3a
 ## explicit
 github.com/certifi/gocertifi
-# github.com/dgrijalva/jwt-go v3.2.0+incompatible
-## explicit
-github.com/dgrijalva/jwt-go
+# github.com/devigned/tab v0.1.1
+## explicit; go 1.12
+github.com/devigned/tab
 # github.com/fsnotify/fsnotify v1.4.9
 ## explicit; go 1.13
 github.com/fsnotify/fsnotify
@@ -130,6 +151,9 @@ github.com/go-ini/ini
 ## explicit
 github.com/go-ole/go-ole
 github.com/go-ole/go-ole/oleutil
+# github.com/golang-jwt/jwt/v4 v4.1.0
+## explicit; go 1.15
+github.com/golang-jwt/jwt/v4
 # github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e
 ## explicit
 github.com/golang/groupcache/lru
@@ -143,7 +167,7 @@ github.com/golang/protobuf/ptypes
 github.com/golang/protobuf/ptypes/any
 github.com/golang/protobuf/ptypes/duration
 github.com/golang/protobuf/ptypes/timestamp
-# github.com/google/go-cmp v0.5.2
+# github.com/google/go-cmp v0.5.3
 ## explicit; go 1.8
 github.com/google/go-cmp/cmp
 github.com/google/go-cmp/cmp/internal/diff
@@ -170,8 +194,8 @@ github.com/hashicorp/go-retryablehttp
 # github.com/jmespath/go-jmespath v0.4.0
 ## explicit; go 1.14
 github.com/jmespath/go-jmespath
-# github.com/jpillora/backoff v0.0.0-20180909062703-3050d21c67d7
-## explicit
+# github.com/jpillora/backoff v1.0.0
+## explicit; go 1.13
 github.com/jpillora/backoff
 # github.com/jstemmer/go-junit-report v0.9.1
 ## explicit; go 1.2
@@ -213,8 +237,8 @@ github.com/mattn/go-isatty
 # github.com/mgutz/ansi v0.0.0-20170206155736-9520e82c474b
 ## explicit
 github.com/mgutz/ansi
-# github.com/mitchellh/mapstructure v1.1.2
-## explicit
+# github.com/mitchellh/mapstructure v1.4.2
+## explicit; go 1.14
 github.com/mitchellh/mapstructure
 # github.com/ogier/pflag v0.0.0-20160129220114-45c278ab3607
 ## explicit
@@ -266,8 +290,8 @@ go.opencensus.io/trace
 go.opencensus.io/trace/internal
 go.opencensus.io/trace/propagation
 go.opencensus.io/trace/tracestate
-# golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
-## explicit; go 1.11
+# golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
+## explicit; go 1.17
 golang.org/x/crypto/pkcs12
 golang.org/x/crypto/pkcs12/internal/rc2
 golang.org/x/crypto/ssh/terminal
@@ -279,8 +303,8 @@ golang.org/x/lint/golint
 ## explicit; go 1.12
 golang.org/x/mod/module
 golang.org/x/mod/semver
-# golang.org/x/net v0.0.0-20201110031124-69a78807bb2b
-## explicit; go 1.11
+# golang.org/x/net v0.0.0-20210929193557-e81a3d93ecf6
+## explicit; go 1.17
 golang.org/x/net/context
 golang.org/x/net/context/ctxhttp
 golang.org/x/net/http/httpguts
@@ -302,12 +326,16 @@ golang.org/x/oauth2/jwt
 ## explicit
 golang.org/x/sync/errgroup
 golang.org/x/sync/semaphore
-# golang.org/x/sys v0.0.0-20200930185726-fdedc70b468f
-## explicit; go 1.12
+# golang.org/x/sys v0.0.0-20210615035016-665e8c7367d1
+## explicit; go 1.17
 golang.org/x/sys/internal/unsafeheader
+golang.org/x/sys/plan9
 golang.org/x/sys/unix
 golang.org/x/sys/windows
-# golang.org/x/text v0.3.3
+# golang.org/x/term v0.0.0-20201126162022-7de9c90e9dd1
+## explicit; go 1.11
+golang.org/x/term
+# golang.org/x/text v0.3.6
 ## explicit; go 1.11
 golang.org/x/text/secure/bidirule
 golang.org/x/text/transform
@@ -464,7 +492,3 @@ gopkg.in/mcuadros/go-syslog.v2/format
 gopkg.in/mcuadros/go-syslog.v2/internal/syslogparser
 gopkg.in/mcuadros/go-syslog.v2/internal/syslogparser/rfc3164
 gopkg.in/mcuadros/go-syslog.v2/internal/syslogparser/rfc5424
-# pack.ag/amqp v0.11.0
-## explicit
-pack.ag/amqp
-pack.ag/amqp/internal/testconn
