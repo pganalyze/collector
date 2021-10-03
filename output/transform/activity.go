@@ -60,13 +60,7 @@ func ActivityStateToCompactActivitySnapshot(server *state.Server, activityState 
 
 		vacuumInfo.DatabaseIdx, r.DatabaseReferences = upsertDatabaseReference(r.DatabaseReferences, vacuum.DatabaseName)
 		if vacuum.RelationName != "" {
-			relationRef := snapshot.RelationReference{
-				DatabaseIdx:  vacuumInfo.DatabaseIdx,
-				SchemaName:   vacuum.SchemaName,
-				RelationName: vacuum.RelationName,
-			}
-			vacuumInfo.RelationIdx = int32(len(r.RelationReferences))
-			r.RelationReferences = append(r.RelationReferences, &relationRef)
+			vacuumInfo.RelationIdx, r.RelationReferences = upsertRelationReference(r.RelationReferences, vacuumInfo.DatabaseIdx, vacuum.SchemaName, vacuum.RelationName)
 		} else {
 			vacuumInfo.RelationIdx = -1
 		}

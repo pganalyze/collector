@@ -17,51 +17,6 @@ func LogStateToLogSnapshot(server *state.Server, logState state.TransientLogStat
 	return s, r
 }
 
-func upsertRoleReference(refs []*snapshot.RoleReference, roleName string) (int32, []*snapshot.RoleReference) {
-	newRef := snapshot.RoleReference{Name: roleName}
-
-	for idx, ref := range refs {
-		if ref.Name == newRef.Name {
-			return int32(idx), refs
-		}
-	}
-
-	idx := int32(len(refs))
-	refs = append(refs, &newRef)
-
-	return idx, refs
-}
-
-func upsertDatabaseReference(refs []*snapshot.DatabaseReference, databaseName string) (int32, []*snapshot.DatabaseReference) {
-	newRef := snapshot.DatabaseReference{Name: databaseName}
-
-	for idx, ref := range refs {
-		if ref.Name == newRef.Name {
-			return int32(idx), refs
-		}
-	}
-
-	idx := int32(len(refs))
-	refs = append(refs, &newRef)
-
-	return idx, refs
-}
-
-func upsertRelationReference(refs []*snapshot.RelationReference, databaseIdx int32, schemaName string, relationName string) (int32, []*snapshot.RelationReference) {
-	newRef := snapshot.RelationReference{DatabaseIdx: databaseIdx, SchemaName: schemaName, RelationName: relationName}
-
-	for idx, ref := range refs {
-		if ref.DatabaseIdx == newRef.DatabaseIdx && ref.SchemaName == newRef.SchemaName && ref.RelationName == newRef.RelationName {
-			return int32(idx), refs
-		}
-	}
-
-	idx := int32(len(refs))
-	refs = append(refs, &newRef)
-
-	return idx, refs
-}
-
 func transformPostgresQuerySamples(server *state.Server, s snapshot.CompactLogSnapshot, r snapshot.CompactSnapshot_BaseRefs, logState state.TransientLogState) (snapshot.CompactLogSnapshot, snapshot.CompactSnapshot_BaseRefs) {
 	for _, sampleIn := range logState.QuerySamples {
 		occurredAt, _ := ptypes.TimestampProto(sampleIn.OccurredAt)
