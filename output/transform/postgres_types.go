@@ -17,6 +17,14 @@ func transformPostgresTypes(s snapshot.FullSnapshot, transientState state.Transi
       customType = snapshot.CustomTypeInformation_DOMAIN
     case "c":
       customType = snapshot.CustomTypeInformation_COMPOSITE
+    case "b":
+      customType = snapshot.CustomTypeInformation_BASE
+    case "p":
+      customType = snapshot.CustomTypeInformation_PSEUDO
+    case "r":
+      customType = snapshot.CustomTypeInformation_RANGE
+    case "m":
+      customType = snapshot.CustomTypeInformation_MULTIRANGE
     }
 
     info := snapshot.CustomTypeInformation{
