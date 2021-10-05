@@ -47,6 +47,7 @@ type TransientState struct {
 
 	Roles     []PostgresRole
 	Databases []PostgresDatabase
+	Types     []PostgresType
 
 	Statements             PostgresStatementMap
 	StatementTexts         PostgresStatementTextMap

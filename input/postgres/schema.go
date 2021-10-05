@@ -33,12 +33,13 @@ func CollectAllSchemas(server *state.Server, collectionOpts state.CollectionOpts
 			continue
 		}
 		collected[dbName] = true
-		psNext, databaseOid, err := collectOneSchema(server, collectionOpts, logger, ps, dbName, ts.Version, systemType)
+		psNext, tsNext, databaseOid, err := collectOneSchema(server, collectionOpts, logger, ps, ts, dbName, ts.Version, systemType)
 		if err != nil {
 			logger.PrintVerbose("Failed to collect schema metadata for database %s: %s", dbName, err)
 			continue
 		}
 		ps = psNext
+		ts = tsNext
 		ts.DatabaseOidsWithLocalCatalog = append(ts.DatabaseOidsWithLocalCatalog, databaseOid)
 	}
 	if relCount := len(ps.Relations); relCount > 5000 {
@@ -48,16 +49,16 @@ func CollectAllSchemas(server *state.Server, collectionOpts state.CollectionOpts
 	return ps, ts
 }
 
-func collectOneSchema(server *state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, ps state.PersistedState, dbName string, postgresVersion state.PostgresVersion, systemType string) (psOut state.PersistedState, databaseOid state.Oid, err error) {
+func collectOneSchema(server *state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, ps state.PersistedState, ts state.TransientState, dbName string, postgresVersion state.PostgresVersion, systemType string) (psOut state.PersistedState, tsOut state.TransientState, databaseOid state.Oid, err error) {
 	schemaConnection, err := EstablishConnection(server, logger, collectionOpts, dbName)
 	if err != nil {
-		return ps, 0, fmt.Errorf("error connecting: %s", err)
+		return ps, ts, 0, fmt.Errorf("error connecting: %s", err)
 	}
 	defer schemaConnection.Close()
 
 	databaseOid, err = CurrentDatabaseOid(schemaConnection)
 	if err != nil {
-		return ps, 0, fmt.Errorf("error getting database OID: %s", err)
+		return ps, ts, 0, fmt.Errorf("error getting database OID: %s", err)
 	}
 
 	ps.SchemaStats[databaseOid] = &state.SchemaStats{
@@ -66,25 +67,25 @@ func collectOneSchema(server *state.Server, collectionOpts state.CollectionOpts,
 		ColumnStats:   make(state.PostgresColumnStatsMap),
 	}
 
-	psOut, err = collectSchemaData(collectionOpts, logger, schemaConnection, ps, databaseOid, postgresVersion, server.Config.IgnoreSchemaRegexp, systemType)
+	psOut, tsOut, err = collectSchemaData(collectionOpts, logger, schemaConnection, ps, ts, databaseOid, postgresVersion, server.Config.IgnoreSchemaRegexp, systemType)
 	if err != nil {
-		return ps, 0, err
+		return ps, ts, 0, err
 	}
 
-	return psOut, databaseOid, nil
+	return psOut, tsOut, databaseOid, nil
 }
 
-func collectSchemaData(collectionOpts state.CollectionOpts, logger *util.Logger, db *sql.DB, ps state.PersistedState, databaseOid state.Oid, postgresVersion state.PostgresVersion, ignoreRegexp string, systemType string) (state.PersistedState, error) {
+func collectSchemaData(collectionOpts state.CollectionOpts, logger *util.Logger, db *sql.DB, ps state.PersistedState, ts state.TransientState, databaseOid state.Oid, postgresVersion state.PostgresVersion, ignoreRegexp string, systemType string) (state.PersistedState, state.TransientState, error) {
 	if collectionOpts.CollectPostgresRelations {
 		newRelations, err := GetRelations(db, postgresVersion, databaseOid, ignoreRegexp)
 		if err != nil {
-			return ps, fmt.Errorf("error collecting table/index metadata: %s", err)
+			return ps, ts, fmt.Errorf("error collecting table/index metadata: %s", err)
 		}
 		ps.Relations = append(ps.Relations, newRelations...)
 
 		newRelationStats, err := GetRelationStats(db, postgresVersion, ignoreRegexp)
 		if err != nil {
-			return ps, fmt.Errorf("error collecting table statistics: %s", err)
+			return ps, ts, fmt.Errorf("error collecting table statistics: %s", err)
 		}
 		for k, v := range newRelationStats {
 			ps.SchemaStats[databaseOid].RelationStats[k] = v
@@ -92,7 +93,7 @@ func collectSchemaData(collectionOpts state.CollectionOpts, logger *util.Logger,
 
 		newIndexStats, err := GetIndexStats(db, postgresVersion, ignoreRegexp)
 		if err != nil {
-			return ps, fmt.Errorf("error collecting index statistics: %s", err)
+			return ps, ts, fmt.Errorf("error collecting index statistics: %s", err)
 		}
 		for k, v := range newIndexStats {
 			ps.SchemaStats[databaseOid].IndexStats[k] = v
@@ -100,7 +101,7 @@ func collectSchemaData(collectionOpts state.CollectionOpts, logger *util.Logger,
 
 		newColumnStats, err := GetColumnStats(logger, db, collectionOpts, systemType)
 		if err != nil {
-			return ps, fmt.Errorf("error collecting column statistics: %s", err)
+			return ps, ts, fmt.Errorf("error collecting column statistics: %s", err)
 		}
 		for k, v := range newColumnStats {
 			ps.SchemaStats[databaseOid].ColumnStats[k] = v
@@ -110,10 +111,16 @@ func collectSchemaData(collectionOpts state.CollectionOpts, logger *util.Logger,
 	if collectionOpts.CollectPostgresFunctions {
 		newFunctions, err := GetFunctions(db, postgresVersion, databaseOid, ignoreRegexp)
 		if err != nil {
-			return ps, fmt.Errorf("error collecting stored procedure metadata: %s", err)
+			return ps, ts, fmt.Errorf("error collecting stored procedure metadata: %s", err)
 		}
 		ps.Functions = append(ps.Functions, newFunctions...)
 	}
 
-	return ps, nil
+	newTypes, err := GetTypes(db, postgresVersion, databaseOid)
+	if err != nil {
+		return ps, ts, fmt.Errorf("error collecting custom types: %s", err)
+	}
+	ts.Types = append(ts.Types, newTypes...)
+
+	return ps, ts, nil
 }

@@ -7,7 +7,7 @@ import (
 	"github.com/pganalyze/collector/state"
 )
 
-func transformPostgresRelations(s snapshot.FullSnapshot, newState state.PersistedState, diffState state.DiffState, roleOidToIdx OidToIdx, databaseOidToIdx OidToIdx) snapshot.FullSnapshot {
+func transformPostgresRelations(s snapshot.FullSnapshot, newState state.PersistedState, diffState state.DiffState, databaseOidToIdx OidToIdx, typeOidToIdx OidToIdx) snapshot.FullSnapshot {
 	relationOidToIdx := state.MakeOidToIdxMap()
 	for _, relation := range newState.Relations {
 		ref := snapshot.RelationReference{
@@ -99,6 +99,10 @@ func transformPostgresRelations(s snapshot.FullSnapshot, newState state.Persiste
 			}
 			if column.DefaultValue.Valid {
 				sColumn.DefaultValue = &snapshot.NullString{Valid: true, Value: column.DefaultValue.String}
+			}
+			typeIdx, typeExists := typeOidToIdx[column.TypeOid]
+			if typeExists {
+				sColumn.DataTypeCustomIdx = &snapshot.NullInt32{Valid: true, Value: typeIdx}
 			}
 			info.Columns = append(info.Columns, &sColumn)
 		}

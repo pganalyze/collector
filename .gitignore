@@ -8,3 +8,4 @@ coverage.out
 bin/
 .idea/
 protoc/
+.DS_Store
