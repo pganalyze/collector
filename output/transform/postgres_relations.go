@@ -129,8 +129,9 @@ func transformPostgresRelations(s snapshot.FullSnapshot, newState state.Persiste
 		s.RelationInformations = append(s.RelationInformations, &info)
 
 		// Statistic
-		if schemaStatsExist {
-			stats, exists := schemaStats.RelationStats[relation.Oid]
+		diffedSchemaStats, diffedSchemaStatsExist := diffState.SchemaStats[relation.DatabaseOid]
+		if diffedSchemaStatsExist {
+			stats, exists := diffedSchemaStats.RelationStats[relation.Oid]
 			if exists {
 				statistic := snapshot.RelationStatistic{
 					RelationIdx:    relationIdx,
