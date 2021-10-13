@@ -8,6 +8,8 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
+const defaultSchemaTableLimit = 5000
+
 func CollectAllSchemas(server *state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, ps state.PersistedState, ts state.TransientState, systemType string) (state.PersistedState, state.TransientState) {
 	schemaDbNames := []string{}
 
@@ -42,8 +44,12 @@ func CollectAllSchemas(server *state.Server, collectionOpts state.CollectionOpts
 		ts = tsNext
 		ts.DatabaseOidsWithLocalCatalog = append(ts.DatabaseOidsWithLocalCatalog, databaseOid)
 	}
-	if relCount := len(ps.Relations); relCount > 5000 {
-		logger.PrintWarning("Too many tables: got %d, but only 5000 can be monitored per server; use ignore_schema_regexp config setting to filter", relCount)
+	schemaTableLimit := server.Grant.Config.SchemaTableLimit
+	if schemaTableLimit == 0 {
+		schemaTableLimit = defaultSchemaTableLimit
+	}
+	if relCount := len(ps.Relations); relCount > schemaTableLimit {
+		logger.PrintWarning("Too many tables: got %d, but only %d can be monitored per server; use ignore_schema_regexp config setting to filter", relCount, schemaTableLimit)
 	}
 
 	return ps, ts

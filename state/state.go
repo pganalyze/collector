@@ -198,6 +198,8 @@ type GrantConfig struct {
 
 	EnableActivity bool `json:"enable_activity"`
 	EnableLogs     bool `json:"enable_logs"`
+
+	SchemaTableLimit int `json:"schema_table_limit"` // Maximum number of tables that can be monitored per server
 }
 
 type GrantFeatures struct {
