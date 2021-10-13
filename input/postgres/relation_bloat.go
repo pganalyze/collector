@@ -148,7 +148,7 @@ index_item_sizes AS (
 		FROM pg_catalog.pg_attribute a
 		JOIN btree_index_atts AS ia ON (a.attrelid = ia.indexrelid AND a.attnum = ia.attnum)
 		JOIN %s s ON (s.schemaname = ia.nspname
-				          AND ((s.tablename = ia.tablename AND s.attname = pg_catalog.pg_get_indexdef(a.attrelid, a.attnum, TRUE))
+				          AND ((s.tablename = ia.tablename AND s.attname = pg_catalog.pg_get_indexdef(a.attrelid, a.attnum, FALSE))
 				               OR (s.tablename = ia.index_name AND s.attname = a.attname)))
 		WHERE a.attnum > 0
 		GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9

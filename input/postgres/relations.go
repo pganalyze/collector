@@ -86,7 +86,7 @@ SELECT c.oid,
 			 i.indisprimary,
 			 i.indisunique,
 			 i.indisvalid,
-			 pg_catalog.pg_get_indexdef(i.indexrelid, 0, TRUE),
+			 pg_catalog.pg_get_indexdef(i.indexrelid, 0, FALSE),
 			 pg_catalog.pg_get_constraintdef(con.oid, TRUE),
 			 c2.reloptions,
 			 (SELECT a.amname FROM pg_catalog.pg_am a JOIN pg_catalog.pg_opclass o ON (a.oid = o.opcmethod) WHERE o.oid = i.indclass[0])
