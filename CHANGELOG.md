@@ -5,6 +5,7 @@
 * Add support for custom data types
 * Track column stats for improved Index Advisor recommendations
 * Vacuum activity: Correctly handle duplicate tables
+* Citus: fix broken relation stats query
 * Retry API requests in case of temporary network issues
 * Update to Go 1.17
 * Update to pg_query_go v2.1.0
