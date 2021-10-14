@@ -28,11 +28,11 @@ func RunExplain(server *state.Server, inputs []state.PostgresQuerySample, collec
 	}
 
 	for _, sample := range inputs {
-		if sample.HasExplain { // EXPLAIN was already collected, e.g. from auto_explain
-			outputs = append(outputs, sample)
+		if skip(sample) {
 			continue
 		}
-		if skip(sample) {
+		if sample.HasExplain { // EXPLAIN was already collected, e.g. from auto_explain
+			outputs = append(outputs, sample)
 			continue
 		}
 		samplesByDb[sample.Database] = append(samplesByDb[sample.Database], sample)
