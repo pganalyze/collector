@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.41.0      2021-10-14
+
+* Add support for custom data types
+* Track column stats for improved Index Advisor recommendations
+* Vacuum activity: Correctly handle duplicate tables
+* Retry API requests in case of temporary network issues
+* Update to Go 1.17
+* Update to pg_query_go v2.1.0
+  - Improve normalization of GROUP BY clauses
+
 ## 0.40.0      2021-06-30
 
 * Update to pg_query_go v2.0.4
