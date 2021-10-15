@@ -8,7 +8,7 @@ printf "key 1\ndelkey\ny\nkey 1\ndelkey\ny\nsave\n" | gpg --batch --command-fd 0
 rpm --addsign /rpm/systemd/$RPM_PACKAGE
 
 # Verify that we've actually correctly signed the packages
-rpm --import https://keybase.io/pganalyze/key.asc
+rpm --import https://packages.pganalyze.com/pganalyze_signing_key.asc
 rpm --checksig /rpm/systemd/$RPM_PACKAGE
 
 mkdir -p /repo/el/7/RPMS
