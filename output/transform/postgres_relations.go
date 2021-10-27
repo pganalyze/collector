@@ -204,8 +204,8 @@ func transformPostgresRelations(s snapshot.FullSnapshot, newState state.Persiste
 			s.IndexInformations = append(s.IndexInformations, &indexInfo)
 
 			// Statistic
-			if schemaStatsExist {
-				indexStats, exists := schemaStats.IndexStats[index.IndexOid]
+			if diffedSchemaStatsExist {
+				indexStats, exists := diffedSchemaStats.IndexStats[index.IndexOid]
 				if exists {
 					statistic := snapshot.IndexStatistic{
 						IndexIdx:    indexIdx,
