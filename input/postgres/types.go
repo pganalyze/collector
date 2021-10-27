@@ -20,9 +20,11 @@ SELECT t.oid,
        END AS domain_constraint,
        CASE t.typtype
        WHEN 'e' THEN
-           (SELECT pg_catalog.json_agg(enumlabel ORDER BY enumsortorder) FROM pg_catalog.pg_enum WHERE enumtypid = t.oid)
+           (SELECT pg_catalog.json_agg(enumlabel ORDER BY enumsortorder) FROM pg_catalog.pg_enum WHERE enumtypid = t.oid)::text
        WHEN 'c' THEN
-           (SELECT pg_catalog.json_agg(ARRAY[attname, pg_catalog.format_type(atttypid, atttypmod)]) FROM pg_catalog.pg_attribute WHERE attrelid = t.typrelid)
+           (SELECT pg_catalog.json_agg(ARRAY[attname, pg_catalog.format_type(atttypid, atttypmod)]) FROM pg_catalog.pg_attribute WHERE attrelid = t.typrelid)::text
+       ELSE
+           ''
        END AS json
   FROM pg_catalog.pg_type t
  INNER JOIN pg_catalog.pg_namespace n ON n.oid = t.typnamespace
