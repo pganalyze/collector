@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.41.1      2021-11-03
+
+* Fix schema stats for databases with some custom data types
+* Fix tracking of index scans over time
+
 ## 0.41.0      2021-10-14
 
 * Add support for custom data types
