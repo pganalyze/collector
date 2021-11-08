@@ -7,9 +7,9 @@ SHELL := env PATH=$(PATH) /bin/sh
 PROTOC_VERSION_NEEDED := 3.14.0
 PROTOC_VERSION := $(shell which protoc && protoc --version)
 
-.PHONY: default build build_dist vendor test docker_latest packages integration_test
+.PHONY: default build build_dist vendor test docker_latest packages integration_test lint
 
-default: build test
+default: build test lint
 
 build: install_protoc output/pganalyze_collector/snapshot.pb.go build_dist
 
@@ -34,6 +34,9 @@ vendor:
 test: build
 	go test -coverprofile=coverage.out ./...
 	# go tool cover -html=coverage.out
+
+lint:
+	if [ "`go fmt ./... | wc -l`" -gt 0 ]; then exit 1; fi
 
 integration_test:
 	make -C integration_test
