@@ -15,16 +15,14 @@ SELECT t.oid,
        CASE WHEN t.typtype = 'd' THEN pg_catalog.format_type(t.typbasetype, t.typtypmod) END AS domain_type,
        t.typnotnull AS domain_not_null,
        t.typdefault AS domain_default,
-       CASE WHEN t.typtype = 'd' THEN
-           (SELECT pg_catalog.pg_get_constraintdef(oid) FROM pg_catalog.pg_constraint WHERE contypid = t.oid)
-       END AS domain_constraint,
        CASE t.typtype
-       WHEN 'e' THEN
+         WHEN 'd' THEN
+           (SELECT pg_catalog.json_agg(pg_catalog.pg_get_constraintdef(oid)) FROM pg_catalog.pg_constraint WHERE contypid = t.oid)::text
+         WHEN 'e' THEN
            (SELECT pg_catalog.json_agg(enumlabel ORDER BY enumsortorder) FROM pg_catalog.pg_enum WHERE enumtypid = t.oid)::text
-       WHEN 'c' THEN
+         WHEN 'c' THEN
            (SELECT pg_catalog.json_agg(ARRAY[attname, pg_catalog.format_type(atttypid, atttypmod)]) FROM pg_catalog.pg_attribute WHERE attrelid = t.typrelid)::text
-       ELSE
-           ''
+         ELSE ''
        END AS json
   FROM pg_catalog.pg_type t
  INNER JOIN pg_catalog.pg_namespace n ON n.oid = t.typnamespace
@@ -57,12 +55,15 @@ func GetTypes(db *sql.DB, postgresVersion state.PostgresVersion, currentDatabase
 		t.DatabaseOid = currentDatabaseOid
 
 		err := rows.Scan(
-			&t.Oid, &t.SchemaName, &t.Name, &t.Type, &t.DomainType, &t.DomainNotNull, &t.DomainDefault, &t.DomainConstraint, &arrayString)
+			&t.Oid, &t.SchemaName, &t.Name, &t.Type, &t.DomainType, &t.DomainNotNull, &t.DomainDefault, &arrayString)
 
 		if err != nil {
 			return nil, err
 		}
 
+		if t.Type == "d" {
+			json.Unmarshal([]byte(arrayString), &t.DomainConstraints)
+		}
 		if t.Type == "e" {
 			json.Unmarshal([]byte(arrayString), &t.EnumValues)
 		}

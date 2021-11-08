@@ -28,15 +28,15 @@ func transformPostgresTypes(s snapshot.FullSnapshot, transientState state.Transi
 		}
 
 		info := snapshot.CustomTypeInformation{
-			DatabaseIdx:      databaseOidToIdx[pgType.DatabaseOid],
-			SchemaName:       pgType.SchemaName,
-			Name:             pgType.Name,
-			Type:             customType,
-			DomainType:       pgType.DomainType.String,
-			DomainNotNull:    pgType.DomainNotNull,
-			DomainDefault:    pgType.DomainDefault.String,
-			DomainConstraint: pgType.DomainConstraint.String,
-			EnumValues:       pgType.EnumValues,
+			DatabaseIdx:       databaseOidToIdx[pgType.DatabaseOid],
+			SchemaName:        pgType.SchemaName,
+			Name:              pgType.Name,
+			Type:              customType,
+			DomainType:        pgType.DomainType.String,
+			DomainNotNull:     pgType.DomainNotNull,
+			DomainDefault:     pgType.DomainDefault.String,
+			DomainConstraints: pgType.DomainConstraints,
+			EnumValues:        pgType.EnumValues,
 		}
 		for _, attr := range pgType.CompositeAttrs {
 			info.CompositeAttrs = append(info.CompositeAttrs, &snapshot.CustomTypeInformation_CompositeAttr{Name: attr[0], Type: attr[1]})
