@@ -77,7 +77,6 @@ func setupPubSubSubscriber(ctx context.Context, wg *sync.WaitGroup, logger *util
 					return
 				}
 
-
 				parts := strings.SplitN(databaseID, ":", 2) // project_id:instance_id
 				t, _ := time.Parse(time.RFC3339Nano, msg.Timestamp)
 

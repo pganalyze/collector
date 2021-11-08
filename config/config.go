@@ -165,7 +165,7 @@ type ServerConfig struct {
 	NoProxy    string `ini:"no_proxy"`
 
 	// HTTP clients to be used for API connections
-	HTTPClient *http.Client
+	HTTPClient          *http.Client
 	HTTPClientWithRetry *http.Client
 }
 

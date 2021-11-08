@@ -61,7 +61,7 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 		prefixedLogger := logger.WithPrefix(server.SectionName)
 		prefixedLogger.PrintVerbose("Identified as api_system_type: %s, api_system_scope: %s, api_system_id: %s", server.SystemType, server.SystemScope, server.SystemID)
 
-		conf.Servers[idx].HTTPClient          = config.CreateHTTPClient(server, prefixedLogger, false)
+		conf.Servers[idx].HTTPClient = config.CreateHTTPClient(server, prefixedLogger, false)
 		conf.Servers[idx].HTTPClientWithRetry = config.CreateHTTPClient(server, prefixedLogger, true)
 	}
 

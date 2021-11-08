@@ -1,10 +1,10 @@
 package postgres
 
 import (
-  "database/sql"
-  "encoding/json"
+	"database/sql"
+	"encoding/json"
 
-  "github.com/pganalyze/collector/state"
+	"github.com/pganalyze/collector/state"
 )
 
 const typesSQL string = `
@@ -37,41 +37,41 @@ SELECT t.oid,
 `
 
 func GetTypes(db *sql.DB, postgresVersion state.PostgresVersion, currentDatabaseOid state.Oid) ([]state.PostgresType, error) {
-  stmt, err := db.Prepare(QueryMarkerSQL + typesSQL)
-  if err != nil {
-    return nil, err
-  }
-  defer stmt.Close()
+	stmt, err := db.Prepare(QueryMarkerSQL + typesSQL)
+	if err != nil {
+		return nil, err
+	}
+	defer stmt.Close()
 
-  rows, err := stmt.Query()
-  if err != nil {
-    return nil, err
-  }
-  defer rows.Close()
+	rows, err := stmt.Query()
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
 
-  var types []state.PostgresType
+	var types []state.PostgresType
 
-  for rows.Next() {
-    var t state.PostgresType
-    var arrayString string
-    t.DatabaseOid = currentDatabaseOid
+	for rows.Next() {
+		var t state.PostgresType
+		var arrayString string
+		t.DatabaseOid = currentDatabaseOid
 
-    err := rows.Scan(
-      &t.Oid, &t.SchemaName, &t.Name, &t.Type, &t.DomainType, &t.DomainNotNull, &t.DomainDefault, &t.DomainConstraint, &arrayString)
+		err := rows.Scan(
+			&t.Oid, &t.SchemaName, &t.Name, &t.Type, &t.DomainType, &t.DomainNotNull, &t.DomainDefault, &t.DomainConstraint, &arrayString)
 
-    if err != nil {
-      return nil, err
-    }
+		if err != nil {
+			return nil, err
+		}
 
-    if t.Type == "e" {
-      json.Unmarshal([]byte(arrayString), &t.EnumValues)
-    }
-    if t.Type == "c" {
-      json.Unmarshal([]byte(arrayString), &t.CompositeAttrs)
-    }
+		if t.Type == "e" {
+			json.Unmarshal([]byte(arrayString), &t.EnumValues)
+		}
+		if t.Type == "c" {
+			json.Unmarshal([]byte(arrayString), &t.CompositeAttrs)
+		}
 
-    types = append(types, t)
-  }
+		types = append(types, t)
+	}
 
-  return types, nil
+	return types, nil
 }

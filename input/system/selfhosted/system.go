@@ -177,7 +177,7 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger) (system sta
 		system.DiskStats = make(state.DiskStatsMap)
 		for _, disk := range disks {
 			system.Disks[disk.Name] = state.Disk{
-			// TODO: DiskType, Scheduler
+				// TODO: DiskType, Scheduler
 			}
 
 			system.DiskStats[disk.Name] = state.DiskStats{

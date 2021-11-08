@@ -80,10 +80,10 @@ func transformPostgresRelations(s snapshot.FullSnapshot, newState state.Persiste
 							correlation = snapshot.NullDouble{Valid: true, Value: stat.Correlation.Float64}
 						}
 						stats = append(stats, &snapshot.RelationInformation_ColumnStatistic{
-							Inherited: stat.Inherited,
-							NullFrac: stat.NullFrac,
-							AvgWidth: stat.AvgWidth,
-							NDistinct: stat.NDistinct,
+							Inherited:   stat.Inherited,
+							NullFrac:    stat.NullFrac,
+							AvgWidth:    stat.AvgWidth,
+							NDistinct:   stat.NDistinct,
 							Correlation: &correlation,
 						})
 					}
@@ -91,10 +91,10 @@ func transformPostgresRelations(s snapshot.FullSnapshot, newState state.Persiste
 			}
 
 			sColumn := snapshot.RelationInformation_Column{
-				Name:     column.Name,
-				DataType: column.DataType,
-				NotNull:  column.NotNull,
-				Position: column.Position,
+				Name:       column.Name,
+				DataType:   column.DataType,
+				NotNull:    column.NotNull,
+				Position:   column.Position,
 				Statistics: stats,
 			}
 			if column.DefaultValue.Valid {
