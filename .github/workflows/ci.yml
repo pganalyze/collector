@@ -38,4 +38,4 @@ jobs:
 
     - name: Lint
       run: |
-        make lint
+        test $(go fmt ./... | wc -l) -eq 0
