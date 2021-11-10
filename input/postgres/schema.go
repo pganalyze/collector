@@ -37,7 +37,12 @@ func CollectAllSchemas(server *state.Server, collectionOpts state.CollectionOpts
 		collected[dbName] = true
 		psNext, tsNext, databaseOid, err := collectOneSchema(server, collectionOpts, logger, ps, ts, dbName, ts.Version, systemType)
 		if err != nil {
-			logger.PrintWarning("Failed to collect schema metadata for database %s: %s", dbName, err)
+			warning := "Failed to collect schema metadata for database %s: %s"
+			if collectionOpts.TestRun {
+				logger.PrintWarning(warning, dbName, err)
+			} else {
+				logger.PrintVerbose(warning, dbName, err)
+			}
 			continue
 		}
 		ps = psNext
