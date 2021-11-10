@@ -27,7 +27,7 @@ build_dist_alpine:
 
 vendor:
 	GO111MODULE=on go mod tidy
-	# You might need to run "go get -u github.com/goware/modvendor"
+	# See CONTRIBUTING.md if modvendor can't be found
 	GO111MODULE=on go mod vendor
 	modvendor -copy="**/*.c **/*.h **/*.proto" -v
 

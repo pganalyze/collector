@@ -9,9 +9,10 @@ package common
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"errors"
+	"fmt"
 	"io/ioutil"
-	"log"
 	"net/url"
 	"os"
 	"os/exec"
@@ -26,24 +27,43 @@ import (
 
 var (
 	Timeout    = 3 * time.Second
-	ErrTimeout = errors.New("Command timed out.")
+	ErrTimeout = errors.New("command timed out")
 )
 
 type Invoker interface {
 	Command(string, ...string) ([]byte, error)
+	CommandWithContext(context.Context, string, ...string) ([]byte, error)
 }
 
 type Invoke struct{}
 
 func (i Invoke) Command(name string, arg ...string) ([]byte, error) {
-	cmd := exec.Command(name, arg...)
-	return CombinedOutputTimeout(cmd, Timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), Timeout)
+	defer cancel()
+	return i.CommandWithContext(ctx, name, arg...)
+}
+
+func (i Invoke) CommandWithContext(ctx context.Context, name string, arg ...string) ([]byte, error) {
+	cmd := exec.CommandContext(ctx, name, arg...)
+
+	var buf bytes.Buffer
+	cmd.Stdout = &buf
+	cmd.Stderr = &buf
+
+	if err := cmd.Start(); err != nil {
+		return buf.Bytes(), err
+	}
+
+	if err := cmd.Wait(); err != nil {
+		return buf.Bytes(), err
+	}
+
+	return buf.Bytes(), nil
 }
 
 type FakeInvoke struct {
-	CommandExpectedDir string // CommandExpectedDir specifies dir which includes expected outputs.
-	Suffix             string // Suffix species expected file name suffix such as "fail"
-	Error              error  // If Error specfied, return the error.
+	Suffix string // Suffix species expected file name suffix such as "fail"
+	Error  error  // If Error specfied, return the error.
 }
 
 // Command in FakeInvoke returns from expected file if exists.
@@ -54,25 +74,36 @@ func (i FakeInvoke) Command(name string, arg ...string) ([]byte, error) {
 
 	arch := runtime.GOOS
 
-	fname := strings.Join(append([]string{name}, arg...), "")
+	commandName := filepath.Base(name)
+
+	fname := strings.Join(append([]string{commandName}, arg...), "")
 	fname = url.QueryEscape(fname)
-	var dir string
-	if i.CommandExpectedDir == "" {
-		dir = "expected"
-	} else {
-		dir = i.CommandExpectedDir
-	}
-	fpath := path.Join(dir, arch, fname)
+	fpath := path.Join("testdata", arch, fname)
 	if i.Suffix != "" {
 		fpath += "_" + i.Suffix
 	}
 	if PathExists(fpath) {
 		return ioutil.ReadFile(fpath)
 	}
-	return exec.Command(name, arg...).Output()
+	return []byte{}, fmt.Errorf("could not find testdata: %s", fpath)
+}
+
+func (i FakeInvoke) CommandWithContext(ctx context.Context, name string, arg ...string) ([]byte, error) {
+	return i.Command(name, arg...)
 }
 
 var ErrNotImplementedError = errors.New("not implemented yet")
+
+// ReadFile reads contents from a file.
+func ReadFile(filename string) (string, error) {
+	content, err := ioutil.ReadFile(filename)
+
+	if err != nil {
+		return "", err
+	}
+
+	return string(content), nil
+}
 
 // ReadLines reads contents from a file and splits them by new lines.
 // A convenience wrapper to ReadLinesOffsetN(filename, 0, -1).
@@ -80,7 +111,7 @@ func ReadLines(filename string) ([]string, error) {
 	return ReadLinesOffsetN(filename, 0, -1)
 }
 
-// ReadLines reads contents from file and splits them by new line.
+// ReadLinesOffsetN reads contents from file and splits them by new line.
 // The offset tells at which line number to start.
 // The count determines the number of lines to read (starting from offset):
 //   n >= 0: at most n lines
@@ -134,7 +165,7 @@ func UintToString(orig []uint8) string {
 			size = i
 			break
 		}
-		ret[i] = byte(o)
+		ret[i] = o
 	}
 	if size == -1 {
 		size = len(orig)
@@ -193,25 +224,31 @@ func ReadInts(filename string) ([]int64, error) {
 	return ret, nil
 }
 
-// Parse to int32 without error
+// HexToUint32 parses Hex to uint32 without error.
+func HexToUint32(hex string) uint32 {
+	vv, _ := strconv.ParseUint(hex, 16, 32)
+	return uint32(vv)
+}
+
+// mustParseInt32 parses to int32 without error.
 func mustParseInt32(val string) int32 {
 	vv, _ := strconv.ParseInt(val, 10, 32)
 	return int32(vv)
 }
 
-// Parse to uint64 without error
+// mustParseUint64 parses to uint64 without error.
 func mustParseUint64(val string) uint64 {
 	vv, _ := strconv.ParseInt(val, 10, 64)
 	return uint64(vv)
 }
 
-// Parse to Float64 without error
+// mustParseFloat64 parses to Float64 without error.
 func mustParseFloat64(val string) float64 {
 	vv, _ := strconv.ParseFloat(val, 64)
 	return vv
 }
 
-// StringsHas checks the target string slice contains src or not
+// StringsHas checks the target string slice contains src or not.
 func StringsHas(target []string, src string) bool {
 	for _, t := range target {
 		if strings.TrimSpace(t) == src {
@@ -221,7 +258,7 @@ func StringsHas(target []string, src string) bool {
 	return false
 }
 
-// StringsContains checks the src in any string of the target string slice
+// StringsContains checks the src in any string of the target string slice.
 func StringsContains(target []string, src string) bool {
 	for _, t := range target {
 		if strings.Contains(t, src) {
@@ -271,7 +308,7 @@ func PathExists(filename string) bool {
 	return false
 }
 
-//GetEnv retrieves the environment variable key. If it does not exist it returns the default.
+// GetEnv retrieves the environment variable key. If it does not exist it returns the default.
 func GetEnv(key string, dfault string, combineWith ...string) string {
 	value := os.Getenv(key)
 	if value == "" {
@@ -289,7 +326,6 @@ func GetEnv(key string, dfault string, combineWith ...string) string {
 		copy(all[1:], combineWith)
 		return filepath.Join(all...)
 	}
-	panic("invalid switch case")
 }
 
 func HostProc(combineWith ...string) string {
@@ -304,83 +340,40 @@ func HostEtc(combineWith ...string) string {
 	return GetEnv("HOST_ETC", "/etc", combineWith...)
 }
 
-// CombinedOutputTimeout runs the given command with the given timeout and
-// returns the combined output of stdout and stderr.
-// If the command times out, it attempts to kill the process.
-// copied from https://github.com/influxdata/telegraf
-func CombinedOutputTimeout(c *exec.Cmd, timeout time.Duration) ([]byte, error) {
-	var b bytes.Buffer
-	c.Stdout = &b
-	c.Stderr = &b
-	if err := c.Start(); err != nil {
-		return nil, err
-	}
-	err := WaitTimeout(c, timeout)
-	return b.Bytes(), err
+func HostVar(combineWith ...string) string {
+	return GetEnv("HOST_VAR", "/var", combineWith...)
 }
 
-// WaitTimeout waits for the given command to finish with a timeout.
-// It assumes the command has already been started.
-// If the command times out, it attempts to kill the process.
-// copied from https://github.com/influxdata/telegraf
-func WaitTimeout(c *exec.Cmd, timeout time.Duration) error {
-	timer := time.NewTimer(timeout)
-	done := make(chan error)
-	go func() { done <- c.Wait() }()
-	select {
-	case err := <-done:
-		timer.Stop()
-		return err
-	case <-timer.C:
-		if err := c.Process.Kill(); err != nil {
-			log.Printf("FATAL error killing process: %s", err)
-			return err
-		}
-		// wait for the command to return after killing it
-		<-done
-		return ErrTimeout
+func HostRun(combineWith ...string) string {
+	return GetEnv("HOST_RUN", "/run", combineWith...)
+}
+
+func HostDev(combineWith ...string) string {
+	return GetEnv("HOST_DEV", "/dev", combineWith...)
+}
+
+// MockEnv set environment variable and return revert function.
+// MockEnv should be used testing only.
+func MockEnv(key string, value string) func() {
+	original := os.Getenv(key)
+	os.Setenv(key, value)
+	return func() {
+		os.Setenv(key, original)
 	}
 }
 
-// https://gist.github.com/kylelemons/1525278
-func Pipeline(cmds ...*exec.Cmd) ([]byte, []byte, error) {
-	// Require at least one command
-	if len(cmds) < 1 {
-		return nil, nil, nil
-	}
-
-	// Collect the output from the command(s)
-	var output bytes.Buffer
-	var stderr bytes.Buffer
-
-	last := len(cmds) - 1
-	for i, cmd := range cmds[:last] {
-		var err error
-		// Connect each command's stdin to the previous command's stdout
-		if cmds[i+1].Stdin, err = cmd.StdoutPipe(); err != nil {
-			return nil, nil, err
-		}
-		// Connect each command's stderr to a buffer
-		cmd.Stderr = &stderr
-	}
-
-	// Connect the output and error for the last command
-	cmds[last].Stdout, cmds[last].Stderr = &output, &stderr
-
-	// Start each command
-	for _, cmd := range cmds {
-		if err := cmd.Start(); err != nil {
-			return output.Bytes(), stderr.Bytes(), err
+// getSysctrlEnv sets LC_ALL=C in a list of env vars for use when running
+// sysctl commands (see DoSysctrl).
+func getSysctrlEnv(env []string) []string {
+	foundLC := false
+	for i, line := range env {
+		if strings.HasPrefix(line, "LC_ALL") {
+			env[i] = "LC_ALL=C"
+			foundLC = true
 		}
 	}
-
-	// Wait for each command to complete
-	for _, cmd := range cmds {
-		if err := cmd.Wait(); err != nil {
-			return output.Bytes(), stderr.Bytes(), err
-		}
+	if !foundLC {
+		env = append(env, "LC_ALL=C")
 	}
-
-	// Return the pipeline output and the collected standard error
-	return output.Bytes(), stderr.Bytes(), nil
+	return env
 }

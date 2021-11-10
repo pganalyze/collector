@@ -4,11 +4,23 @@
 
 The dependencies are stored in the `vendor` folder, so no installation is needed.
 
+#### Setup for updating dependencies
+
+```sh
+go install github.com/goware/modvendor@latest
+```
+
+Then, make sure Go package executables are on your `$PATH`. For Homebrew on macOS that is `~/go/bin`. If it's working, `which modvendor` should return the path that modvendor is installed at.
+
+```sh
+make vendor
+```
+
 ### Updating dependencies
 
 ```sh
-go get -u github.com/goware/modvendor
-make vendor
+go get github.com/shirou/gopsutil@latest # updates the version requirement
+make vendor                              # updates the vendored code
 ```
 
 ### Compiling and running tests

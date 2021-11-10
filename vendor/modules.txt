@@ -256,7 +256,7 @@ github.com/pkg/errors
 # github.com/satori/go.uuid v0.0.0-20160713180306-0aa62d5ddceb
 ## explicit
 github.com/satori/go.uuid
-# github.com/shirou/gopsutil v0.0.0-20170222144203-d371ba1293cb
+# github.com/shirou/gopsutil v3.21.10+incompatible
 ## explicit
 github.com/shirou/gopsutil/cpu
 github.com/shirou/gopsutil/disk
@@ -266,13 +266,16 @@ github.com/shirou/gopsutil/load
 github.com/shirou/gopsutil/mem
 github.com/shirou/gopsutil/net
 github.com/shirou/gopsutil/process
-# github.com/shirou/w32 v0.0.0-20160204003529-3c9377fc6748
-## explicit
-github.com/shirou/w32
 # github.com/smartystreets/assertions v0.0.0-20160707190355-2063fd1cc7c9
 ## explicit
 # github.com/smartystreets/goconvey v0.0.0-20160704134950-4622128e06c7
 ## explicit
+# github.com/tklauser/go-sysconf v0.3.9
+## explicit; go 1.13
+github.com/tklauser/go-sysconf
+# github.com/tklauser/numcpus v0.3.0
+## explicit; go 1.11
+github.com/tklauser/numcpus
 # go.opencensus.io v0.22.4
 ## explicit; go 1.13
 go.opencensus.io
@@ -326,7 +329,7 @@ golang.org/x/oauth2/jwt
 ## explicit
 golang.org/x/sync/errgroup
 golang.org/x/sync/semaphore
-# golang.org/x/sys v0.0.0-20210615035016-665e8c7367d1
+# golang.org/x/sys v0.0.0-20210816074244-15123e1e1f71
 ## explicit; go 1.17
 golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/plan9
