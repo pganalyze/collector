@@ -35,3 +35,7 @@ jobs:
         make test
         make integration_test
         shellcheck contrib/install.sh
+
+    - name: Lint
+      run: |
+        test $(go fmt ./... | wc -l) -eq 0

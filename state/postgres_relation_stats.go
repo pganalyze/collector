@@ -44,21 +44,21 @@ type PostgresIndexStats struct {
 }
 
 type PostgresColumnStats struct {
-  SchemaName  string
-  TableName   string
-  ColumnName  string
-  Inherited   bool
-  NullFrac    float64
-  AvgWidth    int32
-  NDistinct   float64
-  Correlation null.Float
+	SchemaName  string
+	TableName   string
+	ColumnName  string
+	Inherited   bool
+	NullFrac    float64
+	AvgWidth    int32
+	NDistinct   float64
+	Correlation null.Float
 }
 
 // PostgresColumnStatsKey - Information that uniquely identifies column stats
 type PostgresColumnStatsKey struct {
-  SchemaName string
-  TableName  string
-  ColumnName string
+	SchemaName string
+	TableName  string
+	ColumnName string
 }
 
 type PostgresRelationStatsMap map[Oid]PostgresRelationStats

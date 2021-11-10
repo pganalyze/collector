@@ -226,11 +226,11 @@ func GetStatements(server *state.Server, logger *util.Logger, db *sql.DB, global
 			if insufficientPrivilege(text) {
 				statements[key] = state.PostgresStatement{
 					InsufficientPrivilege: true,
-					Fingerprint: insufficientPrivsQueryFingerprint,
+					Fingerprint:           insufficientPrivsQueryFingerprint,
 				}
 			} else if collectorStatement(text) {
 				statements[key] = state.PostgresStatement{
-					Collector: true,
+					Collector:   true,
 					Fingerprint: collectorQueryFingerprint,
 				}
 			} else {

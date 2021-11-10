@@ -285,9 +285,9 @@ func CreateHTTPClient(conf ServerConfig, logger *util.Logger, retry bool) *http.
 		client := retryablehttp.NewClient()
 		client.RetryWaitMin = 1 * time.Second
 		client.RetryWaitMax = 30 * time.Second
-		client.RetryMax     = 4
-		client.Logger       = nil
-		client.HTTPClient.Timeout   = 120 * time.Second
+		client.RetryMax = 4
+		client.Logger = nil
+		client.HTTPClient.Timeout = 120 * time.Second
 		client.HTTPClient.Transport = transport
 		return client.StandardClient()
 		// Note: StandardClient() only acts as a passthrough, handing the request to

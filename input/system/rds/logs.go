@@ -125,8 +125,8 @@ func DownloadLogFiles(prevState state.PersistedLogState, config config.ServerCon
 			goto ErrorCleanup
 		}
 
-		buf := make([]byte, bytesWritten - readStart)
-		
+		buf := make([]byte, bytesWritten-readStart)
+
 		_, err = io.ReadFull(logFile.TmpFile, buf)
 		if err != nil {
 			err = fmt.Errorf("Error reading %d bytes from tempfile: %s", len(buf), err)
