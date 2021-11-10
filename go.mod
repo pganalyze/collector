@@ -40,8 +40,7 @@ require (
 	github.com/pganalyze/pg_query_go/v2 v2.1.0
 	github.com/pkg/errors v0.9.1
 	github.com/satori/go.uuid v0.0.0-20160713180306-0aa62d5ddceb
-	github.com/shirou/gopsutil v0.0.0-20170222144203-d371ba1293cb
-	github.com/shirou/w32 v0.0.0-20160204003529-3c9377fc6748 // indirect
+	github.com/shirou/gopsutil v3.21.10+incompatible
 	github.com/smartystreets/assertions v0.0.0-20160707190355-2063fd1cc7c9 // indirect
 	github.com/smartystreets/goconvey v0.0.0-20160704134950-4622128e06c7 // indirect
 	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519 // indirect
@@ -71,12 +70,14 @@ require (
 	github.com/mattn/go-colorable v0.1.2 // indirect
 	github.com/mattn/go-isatty v0.0.8 // indirect
 	github.com/mgutz/ansi v0.0.0-20170206155736-9520e82c474b // indirect
+	github.com/tklauser/go-sysconf v0.3.9 // indirect
+	github.com/tklauser/numcpus v0.3.0 // indirect
 	go.opencensus.io v0.22.4 // indirect
 	golang.org/x/lint v0.0.0-20200302205851-738671d3881b // indirect
 	golang.org/x/mod v0.3.0 // indirect
 	golang.org/x/oauth2 v0.0.0-20200902213428-5d25da1a8d43 // indirect
 	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208 // indirect
-	golang.org/x/sys v0.0.0-20210615035016-665e8c7367d1 // indirect
+	golang.org/x/sys v0.0.0-20210816074244-15123e1e1f71 // indirect
 	golang.org/x/term v0.0.0-20201126162022-7de9c90e9dd1 // indirect
 	golang.org/x/text v0.3.6 // indirect
 	golang.org/x/tools v0.0.0-20201002184944-ecd9fd270d5d // indirect

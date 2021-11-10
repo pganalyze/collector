@@ -1,21 +1,30 @@
-// +build !darwin,!linux,!freebsd,!openbsd,!windows
+// +build !darwin,!linux,!freebsd,!openbsd,!solaris,!windows,!dragonfly
 
 package cpu
 
 import (
-	"time"
+	"context"
+	"runtime"
 
 	"github.com/shirou/gopsutil/internal/common"
 )
 
 func Times(percpu bool) ([]TimesStat, error) {
+	return TimesWithContext(context.Background(), percpu)
+}
+
+func TimesWithContext(ctx context.Context, percpu bool) ([]TimesStat, error) {
 	return []TimesStat{}, common.ErrNotImplementedError
 }
 
 func Info() ([]InfoStat, error) {
+	return InfoWithContext(context.Background())
+}
+
+func InfoWithContext(ctx context.Context) ([]InfoStat, error) {
 	return []InfoStat{}, common.ErrNotImplementedError
 }
 
-func Percent(interval time.Duration, percpu bool) ([]float64, error) {
-	return []float64{}, common.ErrNotImplementedError
+func CountsWithContext(ctx context.Context, logical bool) (int, error) {
+	return runtime.NumCPU(), nil
 }

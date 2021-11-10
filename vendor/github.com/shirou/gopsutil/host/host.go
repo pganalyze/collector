@@ -1,19 +1,16 @@
 package host
 
 import (
+	"context"
 	"encoding/json"
+	"os"
+	"runtime"
+	"time"
 
 	"github.com/shirou/gopsutil/internal/common"
 )
 
-var (
-	invoke         common.Invoker
-	cachedBootTime = uint64(0)
-)
-
-func init() {
-	invoke = common.Invoke{}
-}
+var invoke common.Invoker = common.Invoke{}
 
 // A HostInfoStat describes the host status.
 // This is not in the psutil but it useful.
@@ -27,6 +24,7 @@ type InfoStat struct {
 	PlatformFamily       string `json:"platformFamily"`  // ex: debian, rhel
 	PlatformVersion      string `json:"platformVersion"` // version of the complete OS
 	KernelVersion        string `json:"kernelVersion"`   // version of the OS kernel (if available)
+	KernelArch           string `json:"kernelArch"`      // native cpu architecture queried at runtime, as returned by `uname -m` or empty string in case of error
 	VirtualizationSystem string `json:"virtualizationSystem"`
 	VirtualizationRole   string `json:"virtualizationRole"` // guest or host
 	HostID               string `json:"hostid"`             // ex: uuid
@@ -39,6 +37,11 @@ type UserStat struct {
 	Started  int    `json:"started"`
 }
 
+type TemperatureStat struct {
+	SensorKey   string  `json:"sensorKey"`
+	Temperature float64 `json:"sensorTemperature"`
+}
+
 func (h InfoStat) String() string {
 	s, _ := json.Marshal(h)
 	return string(s)
@@ -47,4 +50,105 @@ func (h InfoStat) String() string {
 func (u UserStat) String() string {
 	s, _ := json.Marshal(u)
 	return string(s)
+}
+
+func (t TemperatureStat) String() string {
+	s, _ := json.Marshal(t)
+	return string(s)
+}
+
+func Info() (*InfoStat, error) {
+	return InfoWithContext(context.Background())
+}
+
+func InfoWithContext(ctx context.Context) (*InfoStat, error) {
+	var err error
+	ret := &InfoStat{
+		OS: runtime.GOOS,
+	}
+
+	ret.Hostname, err = os.Hostname()
+	if err != nil && err != common.ErrNotImplementedError {
+		return nil, err
+	}
+
+	ret.Platform, ret.PlatformFamily, ret.PlatformVersion, err = PlatformInformationWithContext(ctx)
+	if err != nil && err != common.ErrNotImplementedError {
+		return nil, err
+	}
+
+	ret.KernelVersion, err = KernelVersionWithContext(ctx)
+	if err != nil && err != common.ErrNotImplementedError {
+		return nil, err
+	}
+
+	ret.KernelArch, err = KernelArch()
+	if err != nil && err != common.ErrNotImplementedError {
+		return nil, err
+	}
+
+	ret.VirtualizationSystem, ret.VirtualizationRole, err = VirtualizationWithContext(ctx)
+	if err != nil && err != common.ErrNotImplementedError {
+		return nil, err
+	}
+
+	ret.BootTime, err = BootTimeWithContext(ctx)
+	if err != nil && err != common.ErrNotImplementedError {
+		return nil, err
+	}
+
+	ret.Uptime, err = UptimeWithContext(ctx)
+	if err != nil && err != common.ErrNotImplementedError {
+		return nil, err
+	}
+
+	ret.Procs, err = numProcs(ctx)
+	if err != nil && err != common.ErrNotImplementedError {
+		return nil, err
+	}
+
+	ret.HostID, err = HostIDWithContext(ctx)
+	if err != nil && err != common.ErrNotImplementedError {
+		return nil, err
+	}
+
+	return ret, nil
+}
+
+// BootTime returns the system boot time expressed in seconds since the epoch.
+func BootTime() (uint64, error) {
+	return BootTimeWithContext(context.Background())
+}
+
+func Uptime() (uint64, error) {
+	return UptimeWithContext(context.Background())
+}
+
+func Users() ([]UserStat, error) {
+	return UsersWithContext(context.Background())
+}
+
+func PlatformInformation() (string, string, string, error) {
+	return PlatformInformationWithContext(context.Background())
+}
+
+// HostID returns the unique host ID provided by the OS.
+func HostID() (string, error) {
+	return HostIDWithContext(context.Background())
+}
+
+func Virtualization() (string, string, error) {
+	return VirtualizationWithContext(context.Background())
+}
+
+func KernelVersion() (string, error) {
+	return KernelVersionWithContext(context.Background())
+}
+
+func SensorsTemperatures() ([]TemperatureStat, error) {
+	return SensorsTemperaturesWithContext(context.Background())
+}
+
+func timeSince(ts uint64) uint64 {
+	return uint64(time.Now().Unix()) - ts
 }
