@@ -374,6 +374,45 @@ var parseTests = []parseTestpair{
 		},
 		true,
 	},
+	// Custom 13 format
+	{
+		"",
+		"27-2021-11-17 19:06:14 UTC-619552a6.1b-1----2021-11-17 19:06:14.946 UTC LOG:  database system was shut down at 2021-11-17 19:01:42 UTC",
+		state.LogLine{
+			OccurredAt:    time.Date(2021, time.November, 17, 19, 6, 14, 946*1000*1000, time.UTC),
+			BackendPid:    27,
+			LogLineNumber: 1,
+			LogLevel:      pganalyze_collector.LogLineInformation_LOG,
+			Content:       "database system was shut down at 2021-11-17 19:01:42 UTC",
+		},
+		true,
+	},
+	{
+		"",
+		"51-2021-11-17 19:11:13 UTC-619553d1.33-2-172.20.0.1-pgaweb-pgaweb-2021-11-17 19:11:13.562 UTC LOG:  connection authorized: user=pgaweb database=pgaweb application_name=puma: cluster worker 2: 18544 [pganalyze]",
+		state.LogLine{
+			OccurredAt:    time.Date(2021, time.November, 17, 19, 11, 13, 562*1000*1000, time.UTC),
+			Username:      "pgaweb",
+			Database:      "pgaweb",
+			LogLevel:      pganalyze_collector.LogLineInformation_LOG,
+			BackendPid:    51,
+			LogLineNumber: 2,
+			Content:       "connection authorized: user=pgaweb database=pgaweb application_name=puma: cluster worker 2: 18544 [pganalyze]",
+		},
+		true,
+	},
+	// Custom 14 format
+	{
+		"",
+		"2021-11-17 19:06:53.897 UTC [34][autovacuum worker][3/5][22996] LOG:  automatic analyze of table \"mydb.pg_catalog.pg_class\" system usage: CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.01 s",
+		state.LogLine{
+			OccurredAt: time.Date(2021, time.November, 17, 19, 6, 53, 897*1000*1000, time.UTC),
+			LogLevel:   pganalyze_collector.LogLineInformation_LOG,
+			BackendPid: 34,
+			Content:    "automatic analyze of table \"mydb.pg_catalog.pg_class\" system usage: CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.01 s",
+		},
+		true,
+	},
 	// Simple format
 	{
 		"",
