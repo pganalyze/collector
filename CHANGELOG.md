@@ -1,9 +1,24 @@
 # Changelog
 
+## 0.41.2      2021-11-18
+
+* Add two additional log_line_prefix settings
+  - `%p-%s-%c-%l-%h-%u-%d-%m `
+  - `%m [%p][%b][%v][%x] %q[user=%u,db=%d,app=%a] `
+* Change schema collection message to warning during test run
+  - This helps discover schema collection issues, e.g. due
+    to connection restrictions or pother ermission problems
+* Add support for multiple domain constraints
+* Upgrade gopsutil to v3.21.10
+  - This adds support for M1 Macs, amongst other improvements
+    for OS metris collection
+
+
 ## 0.41.1      2021-11-03
 
 * Fix schema stats for databases with some custom data types
 * Fix tracking of index scans over time
+
 
 ## 0.41.0      2021-10-14
 
@@ -15,6 +30,7 @@
 * Update to Go 1.17
 * Update to pg_query_go v2.1.0
   - Improve normalization of GROUP BY clauses
+
 
 ## 0.40.0      2021-06-30
 
