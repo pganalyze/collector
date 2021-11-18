@@ -7,8 +7,8 @@
   - `%m [%p][%b][%v][%x] %q[user=%u,db=%d,app=%a] `
 * Change schema collection message to warning during test run
   - This helps discover schema collection issues, e.g. due
-    to connection restrictions or pother ermission problems
-* Add support for multiple domain constraints
+    to connection restrictions or other permission problems
+* Fix issue with multiple domain constraints
 * Upgrade gopsutil to v3.21.10
   - This adds support for M1 Macs, amongst other improvements
     for OS metris collection
