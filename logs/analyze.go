@@ -813,7 +813,12 @@ var invalidInputSyntax = analyzeGroup{
 	classification: pganalyze_collector.LogLineInformation_INVALID_INPUT_SYNTAX,
 	primary: match{
 		prefixes: []string{"invalid input syntax for"},
-		regexp:   regexp.MustCompile(`^invalid input syntax for [\w ]+: "([^"]+)"(?: at character \d+)?`),
+		regexp:   regexp.MustCompile(`^invalid input syntax for [\w ]+(?:: "([^"]+)")?(?: at character \d+)?`),
+		secrets:  []state.LogSecretKind{state.TableDataLogSecret},
+	},
+	detail: match{
+		prefixes: []string{"Escape sequence \""},
+		regexp:   regexp.MustCompile(`^Escape sequence "(.+)" is invalid\.`),
 		secrets:  []state.LogSecretKind{state.TableDataLogSecret},
 	},
 }
@@ -1116,6 +1121,11 @@ var otherContextPatterns = []match{
 		prefixes: []string{"while inserting index tuple"},
 		regexp:   regexp.MustCompile(`while inserting index tuple \(\d+,\d+\) in relation "([^"]+)"`),
 		secrets:  []state.LogSecretKind{0},
+	},
+	{
+		prefixes: []string{"JSON data, line "},
+		regexp:   regexp.MustCompile(`^JSON data, line (\d+): (.+)`),
+		secrets:  []state.LogSecretKind{0, state.TableDataLogSecret},
 	},
 }
 

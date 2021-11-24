@@ -2511,6 +2511,51 @@ var tests = []testpair{
 	},
 	{
 		[]state.LogLine{{
+			Content:  "invalid input syntax for type json",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+			UUID:     uuid.UUID{1},
+		}, {
+			Content:  "Escape sequence \"\\1\" is invalid.",
+			LogLevel: pganalyze_collector.LogLineInformation_DETAIL,
+		}, {
+			Content:  "JSON data, line 1: ...',n ''foobar: \\1...",
+			LogLevel: pganalyze_collector.LogLineInformation_CONTEXT,
+		}, {
+			Content:  "SELECT $1::json",
+			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
+		}},
+		[]state.LogLine{{
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_INVALID_INPUT_SYNTAX,
+			UUID:               uuid.UUID{1},
+			Query:              "SELECT $1::json",
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_DETAIL,
+			ParentUUID:         uuid.UUID{1},
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 17,
+				ByteEnd:   19,
+				Kind:      state.TableDataLogSecret,
+			}},
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_CONTEXT,
+			ParentUUID:         uuid.UUID{1},
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 19,
+				ByteEnd:   41,
+				Kind:      state.TableDataLogSecret,
+			}},
+		}, {
+			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
+			ParentUUID: uuid.UUID{1},
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
 			Content:  "value too long for type character varying(3)",
 			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
 			UUID:     uuid.UUID{1},
