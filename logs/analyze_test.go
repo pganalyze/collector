@@ -2602,6 +2602,39 @@ var tests = []testpair{
 	},
 	{
 		[]state.LogLine{{
+			Content:  "malformed array literal: \"{\"{\\\"bad\\\":\\\"data\\\"}\"}\"",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+			UUID:     uuid.UUID{1},
+		}, {
+			Content:  "Unexpected array element.",
+			LogLevel: pganalyze_collector.LogLineInformation_DETAIL,
+		}, {
+			Content:  "SELECT $1::text[]",
+			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
+		}},
+		[]state.LogLine{{
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_MALFORMED_ARRAY_LITERAL,
+			UUID:               uuid.UUID{1},
+			Query:              "SELECT $1::text[]",
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 26,
+				ByteEnd:   48,
+				Kind:      state.TableDataLogSecret,
+			}},
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_DETAIL,
+			ParentUUID:         uuid.UUID{1},
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:   pganalyze_collector.LogLineInformation_STATEMENT,
+			ParentUUID: uuid.UUID{1},
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
 			Content:  "subquery in FROM must have an alias at character 15",
 			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
 			UUID:     uuid.UUID{1},

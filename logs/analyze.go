@@ -840,11 +840,14 @@ var malformedArrayLiteral = analyzeGroup{
 	classification: pganalyze_collector.LogLineInformation_MALFORMED_ARRAY_LITERAL,
 	primary: match{
 		prefixes: []string{"malformed array literal"},
-		regexp:   regexp.MustCompile(`^malformed array literal: "([^"]+)"(?: at character \d+)?`),
+		regexp:   regexp.MustCompile(`^malformed array literal: "(.+)"(?: at character \d+)?`),
 		secrets:  []state.LogSecretKind{state.TableDataLogSecret},
 	},
 	detail: match{
-		prefixes: []string{"Array value must start with \"{\" or dimension information."},
+		prefixes: []string{
+			"Array value must start with \"{\" or dimension information.",
+			"Unexpected array element.",
+		},
 	},
 }
 var subqueryMissingAlias = analyzeGroup{
