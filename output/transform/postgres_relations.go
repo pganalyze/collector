@@ -22,12 +22,14 @@ func transformPostgresRelations(s snapshot.FullSnapshot, newState state.Persiste
 
 	for _, relation := range newState.Relations {
 		relationIdx := relationOidToIdx.Get(relation.DatabaseOid, relation.Oid)
+		if relationIdx == -1 {
+			// This should not happen, but if it does just skip over the bad data
+			continue
+		}
 
-		parentRelationIdx := int32(0)
-		hasParentRelation := false
+		parentRelationIdx := int32(-1)
 		if relation.ParentTableOid != 0 {
 			parentRelationIdx = relationOidToIdx.Get(relation.DatabaseOid, relation.ParentTableOid)
-			hasParentRelation = true
 		}
 
 		var partStrat snapshot.RelationInformation_PartitionStrategy
@@ -54,7 +56,7 @@ func transformPostgresRelations(s snapshot.FullSnapshot, newState state.Persiste
 			FrozenXid:              uint32(relation.FrozenXID),
 			MinimumMultixactXid:    uint32(relation.MinimumMultixactXID),
 			ParentRelationIdx:      parentRelationIdx,
-			HasParentRelation:      hasParentRelation,
+			HasParentRelation:      parentRelationIdx != -1,
 			PartitionBoundary:      relation.PartitionBoundary,
 			PartitionStrategy:      partStrat,
 			PartitionColumns:       relation.PartitionColumns,
