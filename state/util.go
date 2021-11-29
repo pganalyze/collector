@@ -15,7 +15,11 @@ func (m OidToIdxMap) Put(dbOid, objOid Oid, idx int32) {
 
 func (m OidToIdxMap) Get(dbOid, objOid Oid) int32 {
 	if _, ok := m[dbOid]; !ok {
-		return 0
+		return -1
 	}
-	return m[dbOid][objOid]
+	idx, ok := m[dbOid][objOid]
+	if !ok {
+		return -1
+	}
+	return idx
 }
