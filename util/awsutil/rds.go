@@ -11,6 +11,20 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
+var IdentifierMap *util.TTLMap = util.NewTTLMap(5 * 60, 30)
+
+func FindRdsIdentifier(config config.ServerConfig, sess *session.Session) (identifier string, err error) {
+	identifier = IdentifierMap.Get(config.AwsDbInstanceID)
+	if identifier == "" {
+		instance, err := FindRdsInstance(config, sess)
+		if err != nil {
+			identifier = *instance.DBInstanceIdentifier
+			IdentifierMap.Put(config.AwsDbInstanceID, identifier)
+		}
+	}
+	return
+}
+
 func FindRdsInstance(config config.ServerConfig, sess *session.Session) (instance *rds.DBInstance, err error) {
 	var resp *rds.DescribeDBInstancesOutput
 
