@@ -16,12 +16,12 @@ type TTLMap struct {
 }
 
 func NewTTLMap(maxTTL int64, checkFrequency int64) (m *TTLMap) {
-	m = &TTLMap{ m: make(map[string]*item) }
+	m = &TTLMap{m: make(map[string]*item)}
 	go func() {
 		for now := range time.Tick(time.Second * time.Duration(checkFrequency)) {
 			m.l.Lock()
 			for k, v := range m.m {
-				if now.Unix() - v.createdAt > maxTTL {
+				if now.Unix()-v.createdAt > maxTTL {
 					delete(m.m, k)
 				}
 			}
