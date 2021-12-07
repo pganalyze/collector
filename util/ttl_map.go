@@ -20,12 +20,12 @@ func NewTTLMap(maxTTL int64, checkFrequency int64) (m *TTLMap) {
 	go func() {
 		for now := range time.Tick(time.Second * time.Duration(checkFrequency)) {
 			m.l.Lock()
+			defer m.l.Unlock()
 			for k, v := range m.m {
 				if now.Unix()-v.createdAt > maxTTL {
 					delete(m.m, k)
 				}
 			}
-			m.l.Unlock()
 		}
 	}()
 	return
@@ -37,20 +37,20 @@ func (m *TTLMap) Len() int {
 
 func (m *TTLMap) Put(k, v string) {
 	m.l.Lock()
+	defer m.l.Unlock()
 	it, ok := m.m[k]
 	if !ok {
 		it = &item{value: v}
 		m.m[k] = it
 	}
 	it.createdAt = time.Now().Unix()
-	m.l.Unlock()
 }
 
 func (m *TTLMap) Get(k string) (v string) {
 	m.l.Lock()
+	defer m.l.Unlock()
 	if it, ok := m.m[k]; ok {
 		v = it.value
 	}
-	m.l.Unlock()
 	return
 }
