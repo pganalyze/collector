@@ -11,23 +11,13 @@ type item struct {
 }
 
 type TTLMap struct {
-	m map[string]*item
-	l sync.Mutex
+	ttl int64
+	m   map[string]*item
+	l   sync.Mutex
 }
 
-func NewTTLMap(maxTTL int64, checkFrequency int64) (m *TTLMap) {
-	m = &TTLMap{m: make(map[string]*item)}
-	go func() {
-		for now := range time.Tick(time.Second * time.Duration(checkFrequency)) {
-			m.l.Lock()
-			defer m.l.Unlock()
-			for k, v := range m.m {
-				if now.Unix()-v.createdAt > maxTTL {
-					delete(m.m, k)
-				}
-			}
-		}
-	}()
+func NewTTLMap(ttl int64) (m *TTLMap) {
+	m = &TTLMap{ttl: ttl, m: make(map[string]*item)}
 	return
 }
 
@@ -50,7 +40,11 @@ func (m *TTLMap) Get(k string) (v string) {
 	m.l.Lock()
 	defer m.l.Unlock()
 	if it, ok := m.m[k]; ok {
-		v = it.value
+		if time.Now().Unix()-it.createdAt > m.ttl {
+			delete(m.m, k)
+		} else {
+			v = it.value
+		}
 	}
 	return
 }

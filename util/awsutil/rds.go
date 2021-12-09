@@ -11,7 +11,7 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
-var IdentifierMap *util.TTLMap = util.NewTTLMap(5*60, 30)
+var IdentifierMap *util.TTLMap = util.NewTTLMap(5*60)
 
 func FindRdsIdentifier(config config.ServerConfig, sess *session.Session) (identifier string, err error) {
 	identifier = IdentifierMap.Get(config.AwsDbInstanceID)
