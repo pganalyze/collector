@@ -1,6 +1,7 @@
 package awsutil
 
 import (
+	"errors"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -10,6 +11,31 @@ import (
 	"github.com/pganalyze/collector/config"
 	"github.com/pganalyze/collector/util"
 )
+
+var IdentifierMap *util.TTLMap = util.NewTTLMap(5 * 60)
+var ErrorCache *util.TTLMap = util.NewTTLMap(10 * 60)
+
+func FindRdsIdentifier(config config.ServerConfig, sess *session.Session) (identifier string, err error) {
+	identifier = IdentifierMap.Get(config.AwsDbInstanceID)
+	if identifier != "" {
+		return
+	}
+
+	cachedError := ErrorCache.Get(config.AwsDbInstanceID)
+	if cachedError != "" {
+		err = errors.New(cachedError)
+		return
+	}
+
+	instance, err := FindRdsInstance(config, sess)
+	if err == nil {
+		identifier = *instance.DBInstanceIdentifier
+		IdentifierMap.Put(config.AwsDbInstanceID, identifier)
+	} else {
+		ErrorCache.Put(config.AwsDbInstanceID, err.Error())
+	}
+	return
+}
 
 func FindRdsInstance(config config.ServerConfig, sess *session.Session) (instance *rds.DBInstance, err error) {
 	var resp *rds.DescribeDBInstancesOutput

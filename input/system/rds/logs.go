@@ -34,7 +34,7 @@ func DownloadLogFiles(prevState state.PersistedLogState, config config.ServerCon
 
 	rdsSvc := rds.New(sess)
 
-	instance, err := awsutil.FindRdsInstance(config, sess)
+	identifier, err := awsutil.FindRdsIdentifier(config, sess)
 	if err != nil {
 		err = fmt.Errorf("Error finding RDS instance: %s", err)
 		return prevState, nil, nil, err
@@ -46,7 +46,7 @@ func DownloadLogFiles(prevState state.PersistedLogState, config config.ServerCon
 	lastWritten := linesNewerThan.Unix() * 1000
 
 	params := &rds.DescribeDBLogFilesInput{
-		DBInstanceIdentifier: instance.DBInstanceIdentifier,
+		DBInstanceIdentifier: &identifier,
 		FileLastWritten:      &lastWritten,
 	}
 
@@ -78,7 +78,7 @@ func DownloadLogFiles(prevState state.PersistedLogState, config config.ServerCon
 
 		for {
 			resp, err := rdsSvc.DownloadDBLogFilePortion(&rds.DownloadDBLogFilePortionInput{
-				DBInstanceIdentifier: instance.DBInstanceIdentifier,
+				DBInstanceIdentifier: &identifier,
 				LogFileName:          rdsLogFile.LogFileName,
 				Marker:               lastMarker, // This is not set for the initial call, so we only get the most recent lines
 			})
