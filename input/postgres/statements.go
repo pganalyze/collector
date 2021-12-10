@@ -83,7 +83,7 @@ func GetStatements(server *state.Server, logger *util.Logger, db *sql.DB, global
 	var totalTimeField string
 	var optionalFields string
 	var sourceTable string
-	var extVersion float32 // defined in pg_stat_statements.c
+	var extVersion float32               // defined in pg_stat_statements.c
 	var maxKnownExtVersion float32 = 1.8 // keeps the collector from erroring out when new Postgres versions are released
 
 	if postgresVersion.Numeric >= state.PostgresVersion13 {
