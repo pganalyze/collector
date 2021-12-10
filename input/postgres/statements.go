@@ -66,7 +66,7 @@ func ResetStatements(logger *util.Logger, db *sql.DB, systemType string) error {
 		method = "pganalyze.reset_stat_statements()"
 	} else {
 		if !connectedAsSuperUser(db, systemType) && !connectedAsMonitoringRole(db) {
-			logger.PrintInfo("Warning: You are not connecting as superuser. Please setup" +
+			logger.PrintInfo("Warning: You are not connecting as superuser. Please" +
 				" contact support to get advice on setting up stat statements reset")
 		}
 		method = "pg_stat_statements_reset()"
@@ -83,6 +83,8 @@ func GetStatements(server *state.Server, logger *util.Logger, db *sql.DB, global
 	var totalTimeField string
 	var optionalFields string
 	var sourceTable string
+	var extVersion float32 // defined in pg_stat_statements.c
+	var maxKnownExtVersion float32 = 1.8 // keeps the collector from erroring out when new Postgres versions are released
 
 	if postgresVersion.Numeric >= state.PostgresVersion13 {
 		totalTimeField = statementSQLpg13TotalTimeField
@@ -92,12 +94,16 @@ func GetStatements(server *state.Server, logger *util.Logger, db *sql.DB, global
 
 	if postgresVersion.Numeric >= state.PostgresVersion13 {
 		optionalFields = statementSQLpg13OptionalFields
+		extVersion = 1.8
 	} else if postgresVersion.Numeric >= state.PostgresVersion95 {
 		optionalFields = statementSQLpg95OptionalFields
+		extVersion = 1.3
 	} else if postgresVersion.Numeric >= state.PostgresVersion94 {
 		optionalFields = statementSQLpg94OptionalFields
+		extVersion = 1.2
 	} else {
 		optionalFields = statementSQLDefaultOptionalFields
+		extVersion = 1.1
 	}
 
 	usingStatsHelper := false
@@ -131,9 +137,13 @@ func GetStatements(server *state.Server, logger *util.Logger, db *sql.DB, global
 		var e *pq.Error
 		if !usingStatsHelper && errors.As(err, &e) && (e.Code == "42P01" || e.Code == "42883") { // undefined_table / undefined_function
 			var pgssSchema string
-			err = db.QueryRow("SELECT nspname FROM pg_extension pge INNER JOIN pg_namespace pgn ON pge.extnamespace = pgn.oid WHERE pge.extname = 'pg_stat_statements'").Scan(&pgssSchema)
+			var foundExtVersion float32
+			err = db.QueryRow("SELECT nspname, extversion FROM pg_extension pge INNER JOIN pg_namespace pgn ON pge.extnamespace = pgn.oid WHERE pge.extname = 'pg_stat_statements'").Scan(&pgssSchema, &foundExtVersion)
 			if err == nil && pgssSchema != "public" {
 				return nil, nil, nil, fmt.Errorf("pg_stat_statements must be created in schema \"public\"; found in schema \"%s\"", pgssSchema)
+			}
+			if err == nil && extVersion != foundExtVersion && foundExtVersion <= maxKnownExtVersion {
+				return nil, nil, nil, fmt.Errorf("pg_stat_statements version mismatch (found %f but expected %f). Please run `ALTER EXTENSION pg_stat_statements UPDATE`", foundExtVersion, extVersion)
 			}
 			// If we get ErrNoRows, the extension does not exist, which is one of the expected paths
 			if err != nil && err != sql.ErrNoRows {
