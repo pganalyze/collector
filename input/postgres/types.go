@@ -15,15 +15,16 @@ SELECT t.oid,
        CASE WHEN t.typtype = 'd' THEN pg_catalog.format_type(t.typbasetype, t.typtypmod) END AS domain_type,
        t.typnotnull AS domain_not_null,
        t.typdefault AS domain_default,
-       CASE t.typtype
-         WHEN 'd' THEN
-           (SELECT pg_catalog.json_agg(pg_catalog.pg_get_constraintdef(oid)) FROM pg_catalog.pg_constraint WHERE contypid = t.oid)::text
-         WHEN 'e' THEN
-           (SELECT pg_catalog.json_agg(enumlabel ORDER BY enumsortorder) FROM pg_catalog.pg_enum WHERE enumtypid = t.oid)::text
-         WHEN 'c' THEN
-           (SELECT pg_catalog.json_agg(ARRAY[attname, pg_catalog.format_type(atttypid, atttypmod)]) FROM pg_catalog.pg_attribute WHERE attrelid = t.typrelid)::text
-         ELSE ''
-       END AS json
+       COALESCE(
+         CASE t.typtype
+           WHEN 'd' THEN
+             (SELECT pg_catalog.json_agg(pg_catalog.pg_get_constraintdef(oid)) FROM pg_catalog.pg_constraint WHERE contypid = t.oid)::text
+           WHEN 'e' THEN
+             (SELECT pg_catalog.json_agg(enumlabel ORDER BY enumsortorder) FROM pg_catalog.pg_enum WHERE enumtypid = t.oid)::text
+           WHEN 'c' THEN
+             (SELECT pg_catalog.json_agg(ARRAY[attname, pg_catalog.format_type(atttypid, atttypmod)]) FROM pg_catalog.pg_attribute WHERE attrelid = t.typrelid)::text
+         END
+       , '[]') AS json
   FROM pg_catalog.pg_type t
  INNER JOIN pg_catalog.pg_namespace n ON n.oid = t.typnamespace
  WHERE t.typtype <> 'b'
