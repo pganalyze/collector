@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.41.3      2021-12-15
+
+ * Log Insights: Add "invalid input syntax for type json" log event
+   - This is a variant of the existing invalid input syntax log event,
+     with a few additional details.
+ * Log Insights: Improve handling of "malformed array literal" log event
+   - Add support for a double quote inside the array content
+   - Mark the content as a table data log secret
+   - Add the known DETAIL line "Unexpected array element"
+ * Fix incorrect index recorded for unknown parent or foreign key tables
+   - Previously we would sometimes use 0 in these situations, which could
+     cause errors in snapshot processing
+ * Heroku: drop Log Insights instructions after log test
+   - This was intended to ease onboarding, but it contradicts our in-app
+     instructions to wait until real snapshot data comes in to proceed
+     with Log Insights setup
+ * AWS: Cache RDS server IDs and errors to reduce API requests
+   - This can help avoid hitting rate limits when monitoring a large number
+     of servers
+ * Fix issue with domains with no constraints
+
+
 ## 0.41.2      2021-11-18
 
 * Add two additional log_line_prefix settings
