@@ -14,7 +14,7 @@ RUN apk add --no-cache --virtual .build-deps make curl libc-dev gcc go git tar \
   && apk add --no-cache ca-certificates setpriv \
   && make build_dist_alpine OUTFILE=$HOME_DIR/collector \
   && rm -rf $GOPATH \
-	&& apk del --purge .build-deps
+  && apk del --purge .build-deps
 
 RUN chown pganalyze:pganalyze $HOME_DIR/collector
 
@@ -28,6 +28,10 @@ COPY contrib/sslrootcert/rds-ca-2019-root.pem /usr/share/pganalyze-collector/ssl
 COPY contrib/docker-entrypoint.sh $HOME_DIR
 RUN chmod +x $HOME_DIR/docker-entrypoint.sh
 
+FROM alpine as slim
+RUN adduser -D pganalyze pganalyze
+COPY --from=0 --chown=pganalyze:pganalyze $HOME_DIR $HOME_DIR
+COPY --from=0 /usr/share/pganalyze-collector/sslrootcert/ /usr/share/pganalyze-collector/sslrootcert/
 USER pganalyze
 
 ENTRYPOINT ["/home/pganalyze/docker-entrypoint.sh"]
