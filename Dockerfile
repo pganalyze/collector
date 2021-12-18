@@ -25,7 +25,7 @@ RUN adduser -D pganalyze pganalyze \
   && mkdir /state  \
   && chown pganalyze. /state
 
-COPY --from=base --chown=pganalyze:pganalyze /home/pganalyze/docker-entrypoint.sh /home/pganalyze/collector /home/pganalyze/collector
+COPY --from=base --chown=pganalyze:pganalyze /home/pganalyze/docker-entrypoint.sh /home/pganalyze/collector /home/pganalyze
 COPY --from=base /usr/share/pganalyze-collector/sslrootcert/ /usr/share/pganalyze-collector/sslrootcert/
 
 VOLUME ["/state"]
