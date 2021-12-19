@@ -5,7 +5,7 @@ PATH := $(PWD)/protoc/bin:$(PWD)/bin:$(PATH)
 SHELL := env PATH=$(PATH) /bin/sh
 
 PROTOC_VERSION_NEEDED := 3.14.0
-PROTOC_VERSION := $(shell which protoc && protoc --version)
+PROTOC_VERSION := $(shell command -v protoc > /dev/null 2>&1 && protoc --version)
 
 .PHONY: default build build_dist vendor test docker_latest packages integration_test
 
