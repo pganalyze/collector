@@ -1,7 +1,8 @@
 FROM debian:stretch
 
+ARG TARGETARCH
 ENV GOPATH /go
-ENV GOVERSION 1.16
+ENV GOVERSION 1.17
 ENV CODE_DIR $GOPATH/src/github.com/pganalyze/collector
 ENV PATH $PATH:/usr/local/go/bin
 ENV ROOT_DIR /root
@@ -12,12 +13,10 @@ RUN apt-get update -qq \
   && apt-get install -y -q build-essential curl git ruby ruby-dev
 
 # FPM
-RUN gem install ffi -v 1.10.0 # Last release supporting Ruby 1.9
-RUN gem install git -v 1.7.0 # Last release supporting Ruby 1.9
-RUN gem install fpm -v 1.11.0 # 1.12.0 has a bug https://github.com/jordansissel/fpm/issues/1749
+RUN gem install fpm -v 1.14.1
 
 # Golang
-RUN curl -o go.tar.gz -sSL "https://golang.org/dl/go${GOVERSION}.linux-amd64.tar.gz"
+RUN curl -o go.tar.gz -sSL "https://golang.org/dl/go${GOVERSION}.linux-${TARGETARCH}.tar.gz"
 RUN tar -C /usr/local -xzf go.tar.gz
 
 # Build arguments
@@ -55,6 +54,10 @@ RUN fpm \
   --deb-systemd $CODE_DIR/contrib/systemd/pganalyze-collector.service \
   --after-upgrade $CODE_DIR/packages/src/deb-systemd/after-install.sh \
   --after-install $CODE_DIR/packages/src/deb-systemd/after-install.sh \
+  --deb-maintainerscripts-force-errorchecks \
+  --deb-systemd-enable \
+  --deb-systemd-auto-start \
+  --deb-systemd-restart-after-upgrade \
   -m "<team@pganalyze.com>" --url "https://pganalyze.com/" \
   --description "pganalyze statistics collector" \
 	--vendor "pganalyze" --license="BSD" \

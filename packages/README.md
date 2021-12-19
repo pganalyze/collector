@@ -11,7 +11,7 @@ The process is split into three parts, and three corresponding directories:
 3. **repo/**: Sign the deb/rpm packages using the signing key (https://keybase.io/pganalyze) and
    synchronize the S3 hosted package repositories for each distribution
 
-All packages are 64-bit only.
+All packages are built for both 64-bit X86 (amd64) and 64-bit ARMv8 (arm64/aarch64) targets.
 
 Contributions welcome!
 

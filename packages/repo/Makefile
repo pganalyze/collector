@@ -21,22 +21,30 @@ copy_install_script:
 	cp ../../contrib/install.sh $(REPO_DIR)/collector-install.sh
 
 update_rpm:
-	cp $(TMP_DIR)/$(RPM_SYSTEMD_PACKAGE) .
+	cp $(TMP_DIR)/$(RPM_PACKAGE_X86_64) .
+	cp $(TMP_DIR)/$(RPM_PACKAGE_ARM64) .
 	docker build --build-arg VERSION=$(VERSION) -f Dockerfile.repo-rpm -t pga-collector-repo .
-	rm $(RPM_SYSTEMD_PACKAGE)
+	rm $(RPM_PACKAGE_X86_64)
+	rm $(RPM_PACKAGE_ARM64)
 	docker run --name pga-collector-repo -v $(REPO_DIR):/repo -d \
-		-e REPO_GPG_KEY=$(REPO_GPG_KEY) -e RPM_PACKAGE=$(RPM_PACKAGE_OUT) \
+		-e REPO_GPG_KEY=$(REPO_GPG_KEY) \
+		-e RPM_PACKAGE_X86_64=$(RPM_PACKAGE_X86_64) \
+		-e RPM_PACKAGE_ARM64=$(RPM_PACKAGE_ARM64) \
 		pga-collector-repo /sbin/init
 	keybase pgp export --unencrypted -s -q $(REPO_GPG_KEY) | docker exec -i pga-collector-repo gpg --allow-secret-key-import --import
 	docker exec -i pga-collector-repo /root/sync_rpm.sh
 	$(call docker_clean)
 
 update_deb:
-	cp $(TMP_DIR)/$(DEB_SYSTEMD_PACKAGE) .
+	cp $(TMP_DIR)/$(DEB_PACKAGE_X86_64) .
+	cp $(TMP_DIR)/$(DEB_PACKAGE_ARM64) .
 	docker build --build-arg VERSION=$(VERSION) -f Dockerfile.repo-deb -t pga-collector-repo .
-	rm $(DEB_SYSTEMD_PACKAGE)
+	rm $(DEB_PACKAGE_X86_64)
+	rm $(DEB_PACKAGE_ARM64)
 	docker run --name pga-collector-repo -v $(REPO_DIR):/repo -d \
-		-e REPO_GPG_KEY=$(REPO_GPG_KEY) -e DEB_PACKAGE=$(DEB_PACKAGE_OUT) \
+		-e REPO_GPG_KEY=$(REPO_GPG_KEY) \
+		-e DEB_PACKAGE_X86_64=$(DEB_PACKAGE_X86_64) \
+		-e DEB_PACKAGE_ARM64=$(DEB_PACKAGE_ARM64) \
 		pga-collector-repo /sbin/init
 	keybase pgp export --unencrypted -s -q $(REPO_GPG_KEY) | docker exec -i pga-collector-repo gpg --allow-secret-key-import --import
 	docker exec -i pga-collector-repo /root/sync_deb.sh

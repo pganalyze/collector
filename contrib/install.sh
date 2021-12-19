@@ -46,7 +46,7 @@ then
 fi
 
 arch=$(uname -m)
-if [ "$arch" != 'x86_64' ];
+if [ "$arch" != 'x86_64' ] && [ "$arch" != 'arm64' ];
 then
   fail "unsupported architecture: $arch"
 fi
@@ -79,11 +79,11 @@ then
   distribution=fedora
   version=$(grep VERSION_ID /etc/os-release | cut -d= -f2)
 
-  if [ "$version" != 30 ] && [ "$version" != 29 ];
+  if [ "$version" != 35 ] && [ "$version" != 34 ];
   then
-    if confirm "Unsupported Fedora version; try Fedora 30 package?";
+    if confirm "Unsupported Fedora version; try Fedora 35 package?";
     then
-      version=30
+      version=35
     else
       fail "unrecognized Fedora version: ${version}"
     fi
@@ -109,11 +109,11 @@ then
   pkg=deb
   distribution=debian
   version=$(grep VERSION_CODENAME /etc/os-release | cut -d= -f2)
-  if [ "$version" != buster ] && [ "$version" != stretch ];
+  if [ "$version" != bullseye ] && [ "$version" != buster ] && [ "$version" != stretch ];
   then
-    if confirm "Unsupported Debian version; try Debian Buster (10) package?";
+    if confirm "Unsupported Debian version; try Debian Bullseye (11) package?";
     then
-      version=buster
+      version=bullseye
     else
       fail "unrecognized Debian version: ${version}"
     fi
@@ -168,7 +168,12 @@ then
       fail "cannot install without gnupg"
     fi
   fi
-  apt_source="deb [arch=amd64] https://packages.pganalyze.com/${distribution}/${version}/ stable main"
+  if [ "$arch" = 'x86_64' ];
+  then
+    apt_source="deb [arch=amd64] https://packages.pganalyze.com/${distribution}/${version}/ stable main"
+  elif [ "$arch" = 'arm64' ];
+    apt_source="deb [arch=arm64] https://packages.pganalyze.com/${distribution}/${version}/ stable main"
+  fi
   curl -s -L https://packages.pganalyze.com/pganalyze_signing_key.asc | $maybe_sudo apt-key add -
   echo "$apt_source" | $maybe_sudo tee /etc/apt/sources.list.d/pganalyze_collector.list
   $maybe_sudo apt-get $apt_opts update <$user_input
