@@ -19,7 +19,7 @@ COPY contrib/sslrootcert/rds-ca-2019-root.pem contrib/sslrootcert/rds-ca-2015-ro
 COPY contrib/docker-entrypoint.sh $HOME_DIR
 RUN chmod +x $HOME_DIR/docker-entrypoint.sh
 
-FROM alpine as slim
+FROM alpine:3.15 as slim
 
 RUN adduser -D pganalyze pganalyze \ 
   && mkdir /state  \
