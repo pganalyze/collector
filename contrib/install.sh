@@ -172,6 +172,7 @@ then
   then
     apt_source="deb [arch=amd64] https://packages.pganalyze.com/${distribution}/${version}/ stable main"
   elif [ "$arch" = 'arm64' ];
+  then
     apt_source="deb [arch=arm64] https://packages.pganalyze.com/${distribution}/${version}/ stable main"
   fi
   curl -s -L https://packages.pganalyze.com/pganalyze_signing_key.asc | $maybe_sudo apt-key add -
