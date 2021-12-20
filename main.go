@@ -38,7 +38,7 @@ import (
 
 const streamBufferLen = 500
 
-func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *util.Logger, configFilename string) (keepRunning bool, reloadOkay bool) {
+func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *util.Logger, configFilename string) (keepRunning bool, reloadOkay bool, writeStateFile func()) {
 	var servers []*state.Server
 
 	keepRunning = false
@@ -97,6 +97,10 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 	}
 
 	state.ReadStateFile(servers, globalCollectionOpts, logger)
+
+	writeStateFile = func() {
+		state.WriteStateFile(servers, globalCollectionOpts, logger)
+	}
 
 	checkAllInitialCollectionStatus(servers, globalCollectionOpts, logger)
 
@@ -455,7 +459,7 @@ func main() {
 ReadConfigAndRun:
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := sync.WaitGroup{}
-	keepRunning, reloadOkay := run(ctx, &wg, globalCollectionOpts, logger, configFilename)
+	keepRunning, reloadOkay, writeStateFile := run(ctx, &wg, globalCollectionOpts, logger, configFilename)
 
 	if keepRunning {
 		// Block here until we get any of the registered signals
@@ -477,6 +481,7 @@ ReadConfigAndRun:
 			logger.PrintInfo("Reloading configuration...")
 			cancel()
 			wg.Wait()
+			writeStateFile()
 			goto ReadConfigAndRun
 		}
 
