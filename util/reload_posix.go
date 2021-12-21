@@ -10,7 +10,7 @@ import (
 	"os/exec"
 	"strconv"
 
-	"github.com/keybase/go-ps"
+	"github.com/shirou/gopsutil/process"
 )
 
 func reloadPid(pid int) error {
@@ -29,18 +29,22 @@ func reloadPid(pid int) error {
 }
 
 func Reload() (reloadedPid int, err error) {
-	processes, err := ps.Processes()
+	processes, err := process.Processes()
 	if err != nil {
 		return -1, fmt.Errorf("could not read process list: %s", err)
 	}
 	for _, p := range processes {
-		if p.Executable() == "pganalyze-collector" && p.Pid() != os.Getpid() {
-			err := reloadPid(p.Pid())
+		name, err := p.Name()
+		if err != nil {
+			continue
+		}
+		if name == "pganalyze-collector" && int(p.Pid) != os.Getpid() {
+			err := reloadPid(int(p.Pid))
 			if err != nil {
 				return -1, fmt.Errorf("could not send SIGHUP to process: %s", err)
 			}
-			return p.Pid(), nil
+			return int(p.Pid), nil
 		}
 	}
-	return -1, errors.New("could not find collector in process list; try restarting the pganalyze collector process")
+	return -1, errors.New("could not find collector in process list; try restarting the pganalyze-collector process")
 }
