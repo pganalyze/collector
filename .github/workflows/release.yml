@@ -32,7 +32,7 @@ jobs:
       run: |
         make build OUTFILE=pganalyze-collector-linux-amd64
         make test
-        make integration_test
+        DOCKER_BUILDKIT=1 make integration_test
 
     - name: Upload build
       uses: actions/upload-artifact@v2
