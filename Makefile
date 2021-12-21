@@ -7,7 +7,7 @@ SHELL := env PATH=$(PATH) /bin/sh
 PROTOC_VERSION_NEEDED := 3.14.0
 PROTOC_VERSION := $(shell command -v protoc > /dev/null 2>&1 && protoc --version)
 
-.PHONY: default build build_dist vendor test docker_latest packages integration_test
+.PHONY: default build build_dist vendor test docker_release packages integration_test
 
 default: build test
 
@@ -44,6 +44,17 @@ packages:
 docker_latest:
 	docker build -t quay.io/pganalyze/collector:latest .
 	docker push quay.io/pganalyze/collector:latest
+
+DOCKER_RELEASE_TAG := $(shell git describe --tags --exact-match --abbrev=0)
+docker_release:
+	@test -n "$(DOCKER_RELEASE_TAG)" || (echo "ERROR: DOCKER_RELEASE_TAG is not set, make sure you are on a git release tag or override by setting DOCKER_RELEASE_TAG" ; exit 1)
+	docker buildx create --name collector-build --driver docker-container
+	docker buildx build --platform linux/amd64,linux/arm64 --builder collector-build --push \
+	-t quay.io/pganalyze/collector:$(DOCKER_RELEASE_TAG) \
+	-t quay.io/pganalyze/collector:latest \
+	-t quay.io/pganalyze/collector:stable \
+	.
+	docker buildx rm collector-build
 
 output/pganalyze_collector/snapshot.pb.go: $(PROTOBUF_FILES)
 ifdef PROTOC_VERSION
