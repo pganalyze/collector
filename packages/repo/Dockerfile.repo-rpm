@@ -13,6 +13,7 @@ RUN yum install -y -q rpm-sign createrepo
 RUN echo "%_gpg_name team@pganalyze.com" > /root/.rpmmacros
 
 COPY sync_rpm.sh /root
-COPY $NAME-$VERSION-1_systemd.x86_64.rpm $RPM_DIR/systemd/$NAME-$VERSION-1.x86_64.rpm
+COPY $NAME-$VERSION-1.x86_64.rpm $RPM_DIR/systemd/$NAME-$VERSION-1.x86_64.rpm
+COPY $NAME-$VERSION-1.aarch64.rpm $RPM_DIR/systemd/$NAME-$VERSION-1.aarch64.rpm
 
 VOLUME ["/repo"]
