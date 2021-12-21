@@ -45,6 +45,8 @@ update_deb:
 		-e REPO_GPG_KEY=$(REPO_GPG_KEY) \
 		-e DEB_PACKAGE_X86_64=$(DEB_PACKAGE_X86_64) \
 		-e DEB_PACKAGE_ARM64=$(DEB_PACKAGE_ARM64) \
+		-e container=docker \
+		--privileged=true \
 		pga-collector-repo /sbin/init
 	keybase pgp export --unencrypted -s -q $(REPO_GPG_KEY) | docker exec -i pga-collector-repo gpg --allow-secret-key-import --import
 	docker exec -i pga-collector-repo /root/sync_deb.sh

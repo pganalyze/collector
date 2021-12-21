@@ -1,4 +1,4 @@
-FROM debian:jessie
+FROM debian:bullseye
 
 # Build arguments
 ARG VERSION
@@ -8,11 +8,11 @@ ENV DEB_DIR /deb
 RUN mkdir -p $DEB_DIR
 RUN mkdir -p $DEB_DIR/systemd
 
-RUN apt-get update -qq && apt-get install -y -q reprepro
+RUN apt-get update -qq && apt-get install -y -q reprepro systemd-sysv
 
 COPY sync_deb.sh /root
 COPY deb.distributions /root
-COPY ${NAME}_${VERSION}_systemd_amd64.deb $DEB_DIR/systemd/${NAME}_${VERSION}_amd64.deb
-COPY ${NAME}_${VERSION}_systemd_arm64.deb $DEB_DIR/systemd/${NAME}_${VERSION}_arm64.deb
+COPY ${NAME}_${VERSION}_amd64.deb $DEB_DIR/systemd/${NAME}_${VERSION}_amd64.deb
+COPY ${NAME}_${VERSION}_arm64.deb $DEB_DIR/systemd/${NAME}_${VERSION}_arm64.deb
 
 VOLUME ["/repo"]
