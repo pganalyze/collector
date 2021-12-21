@@ -41,10 +41,6 @@ integration_test:
 packages:
 	make -C packages
 
-docker_latest:
-	docker build -t quay.io/pganalyze/collector:latest .
-	docker push quay.io/pganalyze/collector:latest
-
 DOCKER_RELEASE_TAG := $(shell git describe --tags --exact-match --abbrev=0)
 docker_release:
 	@test -n "$(DOCKER_RELEASE_TAG)" || (echo "ERROR: DOCKER_RELEASE_TAG is not set, make sure you are on a git release tag or override by setting DOCKER_RELEASE_TAG" ; exit 1)
