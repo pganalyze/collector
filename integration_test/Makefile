@@ -1,5 +1,5 @@
 DOCKER_BUILD_OPTS = -t pganalyze-collector-test ..
-DOCKER_RUN_CMD = docker run --name pganalyze-collector-test \
+docker_run_cmd = docker run --name pganalyze-collector-test \
   --mount type=bind,source=/sys/fs/cgroup,target=/sys/fs/cgroup \
   --mount type=bind,source=/sys/fs/fuse,target=/sys/fs/fuse \
   --mount type=tmpfs,destination=/tmp \
@@ -7,17 +7,16 @@ DOCKER_RUN_CMD = docker run --name pganalyze-collector-test \
   --mount type=tmpfs,destination=/run/lock \
   -v `pwd`/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d/ \
   -e POSTGRES_HOST_AUTH_METHOD=trust \
-  -d \
-  pganalyze-collector-test \
-  postgres -c pg_stat_statements.track_utility=off
+  -d pganalyze-collector-test $(1)
+docker_run_cmd_postgres = $(call docker_run_cmd,postgres -c pg_stat_statements.track_utility=off)
 
-.PHONY: pg93 pg94 pg95 pg96 pg10 pg11 pg12 pg13 guided-setup installer
+.PHONY: pg93 pg94 pg95 pg96 pg10 pg11 pg12 pg13 reload guided-setup installer
 
-all: pg93 pg94 pg95 pg96 pg10 pg11 pg12 pg13 guided-setup installer
+all: pg93 pg94 pg95 pg96 pg10 pg11 pg12 pg13 reload guided-setup installer
 
 pg93:
 	docker build -f Dockerfile.test-pg93 $(DOCKER_BUILD_OPTS)
-	$(DOCKER_RUN_CMD)
+	$(docker_run_cmd_postgres)
 	sleep 10
 	docker exec pganalyze-collector-test pgbench -U postgres -i
 	docker exec pganalyze-collector-test pgbench -U postgres
@@ -40,7 +39,7 @@ pg93:
 
 pg94:
 	docker build -f Dockerfile.test-pg94 $(DOCKER_BUILD_OPTS)
-	$(DOCKER_RUN_CMD)
+	$(docker_run_cmd_postgres)
 	sleep 10
 	docker exec pganalyze-collector-test pgbench -U postgres -i
 	docker exec pganalyze-collector-test pgbench -U postgres
@@ -63,7 +62,7 @@ pg94:
 
 pg95:
 	docker build -f Dockerfile.test-pg95 $(DOCKER_BUILD_OPTS)
-	$(DOCKER_RUN_CMD)
+	$(docker_run_cmd_postgres)
 	sleep 10
 	docker exec pganalyze-collector-test pgbench -U postgres -i
 	docker exec pganalyze-collector-test pgbench -U postgres
@@ -86,7 +85,7 @@ pg95:
 
 pg96:
 	docker build -f Dockerfile.test-pg96 $(DOCKER_BUILD_OPTS)
-	$(DOCKER_RUN_CMD)
+	$(docker_run_cmd_postgres)
 	sleep 10
 	docker exec pganalyze-collector-test pgbench -U postgres -i
 	docker exec pganalyze-collector-test pgbench -U postgres
@@ -109,7 +108,7 @@ pg96:
 
 pg10:
 	docker build -f Dockerfile.test-pg10 $(DOCKER_BUILD_OPTS)
-	$(DOCKER_RUN_CMD)
+	$(docker_run_cmd_postgres)
 	sleep 10
 	docker exec pganalyze-collector-test pgbench -U postgres -i
 	docker exec pganalyze-collector-test pgbench -U postgres
@@ -132,7 +131,7 @@ pg10:
 
 pg11:
 	docker build -f Dockerfile.test-pg11 $(DOCKER_BUILD_OPTS)
-	$(DOCKER_RUN_CMD)
+	$(docker_run_cmd_postgres)
 	sleep 10
 	docker exec pganalyze-collector-test pgbench -U postgres -i
 	docker exec pganalyze-collector-test pgbench -U postgres
@@ -155,7 +154,7 @@ pg11:
 
 pg12:
 	docker build -f Dockerfile.test-pg12 $(DOCKER_BUILD_OPTS)
-	$(DOCKER_RUN_CMD)
+	$(docker_run_cmd_postgres)
 	sleep 10
 	docker exec pganalyze-collector-test pgbench -U postgres -i
 	docker exec pganalyze-collector-test pgbench -U postgres
@@ -178,7 +177,7 @@ pg12:
 
 pg13:
 	docker build -f Dockerfile.test-pg13 $(DOCKER_BUILD_OPTS)
-	$(DOCKER_RUN_CMD)
+	$(docker_run_cmd_postgres)
 	sleep 10
 	docker exec pganalyze-collector-test pgbench -U postgres -i
 	docker exec pganalyze-collector-test pgbench -U postgres
@@ -199,9 +198,31 @@ pg13:
 	jq '.queryInformations[].normalizedQuery' pg13_2.json | sort --version-sort -f > pg13.out
 	diff -Naur pg13.expected pg13.out && echo 'success'
 
+# Test reload both with an empty config and a server present
+#
+# Note that we reload twice after adding a server to the config, so we can test the
+# "write state file when reload occurs" logic, that requires the server to be there
+# *before* the reload
+reload:
+	docker build -f Dockerfile.test-reload $(DOCKER_BUILD_OPTS)
+	$(call docker_run_cmd,)
+	docker exec --user pganalyze --detach pganalyze-collector-test bash -c "pganalyze-collector 2> /tmp/collector.log"
+	sleep 5
+	docker exec pganalyze-collector-test pganalyze-collector --reload
+	docker exec pganalyze-collector-test cat /tmp/collector.log | grep "Reloading configuration..."
+	docker exec pganalyze-collector-test test \! -f /var/lib/pganalyze-collector/state
+	docker exec pganalyze-collector-test bash -c "echo 'db_url = postgres://127.0.0.1/postgres' >> /etc/pganalyze-collector.conf"
+	docker exec --user pganalyze pganalyze-collector-test bash -c "echo '' > /tmp/collector.log"
+	docker exec pganalyze-collector-test pganalyze-collector --reload
+	docker exec pganalyze-collector-test pganalyze-collector --reload
+	docker exec pganalyze-collector-test cat /tmp/collector.log | grep "Reloading configuration..."
+	docker exec pganalyze-collector-test test -f /var/lib/pganalyze-collector/state
+	docker rm -f pganalyze-collector-test
+	docker rmi pganalyze-collector-test
+
 guided-setup:
 	docker build -f Dockerfile.test-guided-setup $(DOCKER_BUILD_OPTS)
-	$(DOCKER_RUN_CMD)
+	$(docker_run_cmd_postgres)
 	sleep 10
 	docker exec pganalyze-collector-test systemctl start postgresql
 	docker exec --user pganalyze --detach pganalyze-collector-test pganalyze-collector
@@ -234,7 +255,7 @@ guided-setup:
 
 installer:
 	docker build -f Dockerfile.test-guided-setup $(DOCKER_BUILD_OPTS)
-	$(DOCKER_RUN_CMD)
+	$(docker_run_cmd_postgres)
 	sleep 10
 
 	docker exec --privileged pganalyze-collector-test env PGA_INSTALL_NONINTERACTIVE=true PGA_API_KEY=abc123 bash -c '</collector/contrib/install.sh bash' >install.out
