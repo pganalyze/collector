@@ -1,122 +1,182 @@
 # Note: This requires variables that are set in the top-level packages Makefile
 
-docker_build = docker build -f Dockerfile.tmp -t pga-collector-test . && rm Dockerfile.tmp
-docker_run   = docker run --name pga-collector-test --privileged=true -e container=docker -d pga-collector-test /sbin/init && sleep 5
-docker_exec  = docker exec pga-collector-test $(1)
-docker_test  = docker exec pga-collector-test /root/$(1)_test.sh
-docker_clean = docker kill pga-collector-test && docker rm pga-collector-test && docker rmi -f pga-collector-test
+docker_build_and_run = docker build --no-cache --platform linux/$(1) -f Dockerfile.tmp -t pga-collector-test . && \
+  docker run --platform linux/$(1) --name pga-collector-test --privileged=true -e container=docker -d pga-collector-test /sbin/init && \
+  docker exec pga-collector-test bash -c "echo -n 'Waiting for systemd'; while \$$(sleep 1); do echo -n '.'; if (systemctl is-system-running 2> /dev/null || /bin/true) | grep -qE 'running|degraded'; then break; fi; done; echo ''"
+docker_exec = docker exec pga-collector-test $(1)
+docker_test_and_clean = docker exec pga-collector-test /root/systemd_test.sh && \
+  docker kill pga-collector-test && docker rm pga-collector-test && docker rmi -f pga-collector-test
 
-DISTROS=centos7 rhel8 fedora29 fedora30 ubuntu-xenial ubuntu-bionic ubuntu-focal debian-stretch debian-buster
+DISTROS=centos7 rhel8 fedora34 fedora35 amazonlinux2 ubuntu-xenial ubuntu-bionic ubuntu-focal debian-stretch debian-buster debian-bullseye
 
 .PHONY: all $(DISTROS)
 
 all: $(DISTROS) clean
 
-$(RPM_SYSTEMD_PACKAGE):
-	cp $(TMP_DIR)/$(RPM_SYSTEMD_PACKAGE) .
+$(RPM_PACKAGE_X86_64):
+	cp $(TMP_DIR)/$(RPM_PACKAGE_X86_64) .
 
-$(DEB_SYSTEMD_PACKAGE):
-	cp $(TMP_DIR)/$(DEB_SYSTEMD_PACKAGE) .
+$(RPM_PACKAGE_ARM64):
+	cp $(TMP_DIR)/$(RPM_PACKAGE_ARM64) .
 
-clean:
-	rm $(RPM_SYSTEMD_PACKAGE)
-	rm $(DEB_SYSTEMD_PACKAGE)
+$(DEB_PACKAGE_X86_64):
+	cp $(TMP_DIR)/$(DEB_PACKAGE_X86_64) .
 
-centos7: $(RPM_SYSTEMD_PACKAGE)
+$(DEB_PACKAGE_ARM64):
+	cp $(TMP_DIR)/$(DEB_PACKAGE_ARM64) .
+
+clean: $(RPM_PACKAGE_X86_64) $(RPM_PACKAGE_ARM64) $(DEB_PACKAGE_X86_64) $(DEB_PACKAGE_ARM64)
+	rm $(RPM_PACKAGE_X86_64)
+	rm $(RPM_PACKAGE_ARM64)
+	rm $(DEB_PACKAGE_X86_64)
+	rm $(DEB_PACKAGE_ARM64)
+
+centos7: $(RPM_PACKAGE_X86_64) $(RPM_PACKAGE_ARM64)
 	echo "FROM centos:7" > Dockerfile.tmp
 	echo "COPY . /root" >> Dockerfile.tmp
-	$(call docker_build)
-	$(call docker_run)
-	$(call docker_exec,yum install -y --nogpgcheck /root/$(RPM_SYSTEMD_PACKAGE))
-	$(call docker_test,systemd)
-	$(call docker_clean)
+	$(call docker_build_and_run,amd64)
+	$(call docker_exec,/bin/bash -c "yum install -y --nogpgcheck /root/$(RPM_PACKAGE_X86_64)")
+	$(call docker_test_and_clean)
+	$(call docker_build_and_run,arm64)
+	$(call docker_exec,/bin/bash -c "yum install -y --nogpgcheck /root/$(RPM_PACKAGE_ARM64)")
+	$(call docker_test_and_clean)
+	rm Dockerfile.tmp
 
-rhel8: $(RPM_SYSTEMD_PACKAGE)
+rhel8: $(RPM_PACKAGE_X86_64) $(RPM_PACKAGE_ARM64)
 	echo "FROM registry.access.redhat.com/ubi8/ubi:8.0-154" > Dockerfile.tmp
 	echo "RUN dnf install -y procps" >> Dockerfile.tmp
 	echo "COPY . /root" >> Dockerfile.tmp
-	$(call docker_build)
-	$(call docker_run)
-	$(call docker_exec,yum install -y --nogpgcheck /root/$(RPM_SYSTEMD_PACKAGE))
-	$(call docker_test,systemd)
-	$(call docker_clean)
+	$(call docker_build_and_run,amd64)
+	$(call docker_exec,yum install -y --nogpgcheck /root/$(RPM_PACKAGE_X86_64))
+	$(call docker_test_and_clean)
+	$(call docker_build_and_run,arm64)
+	$(call docker_exec,yum install -y --nogpgcheck /root/$(RPM_PACKAGE_ARM64))
+	$(call docker_test_and_clean)
+	rm Dockerfile.tmp
 
-fedora29: $(RPM_SYSTEMD_PACKAGE)
-	echo "FROM fedora:29" > Dockerfile.tmp
-	echo "RUN dnf install -y procps" >> Dockerfile.tmp
+fedora34: $(RPM_PACKAGE_X86_64) $(RPM_PACKAGE_ARM64)
+	echo "FROM fedora:34" > Dockerfile.tmp
+	echo "RUN dnf install -y procps systemd" >> Dockerfile.tmp
 	echo "COPY . /root" >> Dockerfile.tmp
-	$(call docker_build)
-	$(call docker_run)
-	$(call docker_exec,dnf install -y --nogpgcheck /root/$(RPM_SYSTEMD_PACKAGE))
-	$(call docker_test,systemd)
-	$(call docker_clean)
+	$(call docker_build_and_run,amd64)
+	$(call docker_exec,dnf install -y --nogpgcheck /root/$(RPM_PACKAGE_X86_64))
+	$(call docker_test_and_clean)
+	$(call docker_build_and_run,arm64)
+	$(call docker_exec,dnf install -y --nogpgcheck /root/$(RPM_PACKAGE_ARM64))
+	$(call docker_test_and_clean)
+	rm Dockerfile.tmp
 
-fedora30: $(RPM_SYSTEMD_PACKAGE)
-	echo "FROM fedora:30" > Dockerfile.tmp
-	echo "RUN dnf install -y procps" >> Dockerfile.tmp
+fedora35: $(RPM_PACKAGE_X86_64) $(RPM_PACKAGE_ARM64)
+	echo "FROM fedora:35" > Dockerfile.tmp
+	echo "RUN dnf install -y procps systemd" >> Dockerfile.tmp
 	echo "COPY . /root" >> Dockerfile.tmp
-	$(call docker_build)
-	$(call docker_run)
-	$(call docker_exec,dnf install -y --nogpgcheck /root/$(RPM_SYSTEMD_PACKAGE))
-	$(call docker_test,systemd)
-	$(call docker_clean)
+	$(call docker_build_and_run,amd64)
+	$(call docker_exec,dnf install -y --nogpgcheck /root/$(RPM_PACKAGE_X86_64))
+	$(call docker_test_and_clean)
+	$(call docker_build_and_run,arm64)
+	$(call docker_exec,dnf install -y --nogpgcheck /root/$(RPM_PACKAGE_ARM64))
+	$(call docker_test_and_clean)
+	rm Dockerfile.tmp
 
-ubuntu-xenial: $(DEB_SYSTEMD_PACKAGE)
+amazonlinux2: $(RPM_PACKAGE_X86_64) $(RPM_PACKAGE_ARM64)
+	echo "FROM amazonlinux:2" > Dockerfile.tmp
+	echo "RUN yum install -y procps" >> Dockerfile.tmp
+	echo "COPY . /root" >> Dockerfile.tmp
+	$(call docker_build_and_run,amd64)
+	$(call docker_exec,yum install -y --nogpgcheck /root/$(RPM_PACKAGE_X86_64))
+	$(call docker_test_and_clean)
+	$(call docker_build_and_run,arm64)
+	$(call docker_exec,yum install -y --nogpgcheck /root/$(RPM_PACKAGE_ARM64))
+	$(call docker_test_and_clean)
+	rm Dockerfile.tmp
+
+ubuntu-xenial: $(DEB_PACKAGE_X86_64) $(DEB_PACKAGE_ARM64)
 	echo "FROM ubuntu:xenial" > Dockerfile.tmp
 	echo "COPY . /root" >> Dockerfile.tmp
-	$(call docker_build)
-	$(call docker_run)
-	$(call docker_exec,dpkg -i /root/$(DEB_SYSTEMD_PACKAGE))
-	$(call docker_test,systemd)
-	$(call docker_clean)
+	echo "RUN rm /usr/sbin/policy-rc.d" >> Dockerfile.tmp
+	$(call docker_build_and_run,amd64)
+	$(call docker_exec,dpkg -i /root/$(DEB_PACKAGE_X86_64))
+	$(call docker_test_and_clean)
+	$(call docker_build_and_run,arm64)
+	$(call docker_exec,dpkg -i /root/$(DEB_PACKAGE_ARM64))
+	$(call docker_test_and_clean)
+	rm Dockerfile.tmp
 
-ubuntu-bionic: $(DEB_SYSTEMD_PACKAGE)
+ubuntu-bionic: $(DEB_PACKAGE_X86_64) $(DEB_PACKAGE_ARM64)
 	echo "FROM ubuntu:bionic" > Dockerfile.tmp
 	echo "COPY . /root" >> Dockerfile.tmp
 	echo "RUN apt-get update" >> Dockerfile.tmp
 	echo "RUN apt-get install systemd-sysv -y" >> Dockerfile.tmp
-	$(call docker_build)
-	$(call docker_run)
-	$(call docker_exec,dpkg -i /root/$(DEB_SYSTEMD_PACKAGE))
-	$(call docker_test,systemd)
-	$(call docker_clean)
+	echo "RUN rm /usr/sbin/policy-rc.d" >> Dockerfile.tmp
+	$(call docker_build_and_run,amd64)
+	$(call docker_exec,dpkg -i /root/$(DEB_PACKAGE_X86_64))
+	$(call docker_test_and_clean)
+	$(call docker_build_and_run,arm64)
+	$(call docker_exec,dpkg -i /root/$(DEB_PACKAGE_ARM64))
+	$(call docker_test_and_clean)
+	rm Dockerfile.tmp
 
-ubuntu-focal: $(DEB_SYSTEMD_PACKAGE)
+ubuntu-focal: $(DEB_PACKAGE_X86_64) $(DEB_PACKAGE_ARM64)
 	echo "FROM ubuntu:focal" > Dockerfile.tmp
 	echo "COPY . /root" >> Dockerfile.tmp
 	echo "RUN apt-get update" >> Dockerfile.tmp
 	echo "RUN apt-get install systemd-sysv -y" >> Dockerfile.tmp
-	$(call docker_build)
-	$(call docker_run)
-	$(call docker_exec,dpkg -i /root/$(DEB_SYSTEMD_PACKAGE))
-	$(call docker_test,systemd)
-	$(call docker_clean)
+	echo "RUN rm /usr/sbin/policy-rc.d" >> Dockerfile.tmp
+	$(call docker_build_and_run,amd64)
+	$(call docker_exec,dpkg -i /root/$(DEB_PACKAGE_X86_64))
+	$(call docker_test_and_clean)
+	$(call docker_build_and_run,arm64)
+	$(call docker_exec,dpkg -i /root/$(DEB_PACKAGE_ARM64))
+	$(call docker_test_and_clean)
+	rm Dockerfile.tmp
 
-debian-jessie: $(DEB_SYSTEMD_PACKAGE)
+debian-jessie: $(DEB_PACKAGE_X86_64) $(DEB_PACKAGE_ARM64)
 	echo "FROM debian:jessie" > Dockerfile.tmp
 	echo "COPY . /root" >> Dockerfile.tmp
-	$(call docker_build)
-	$(call docker_run)
-	$(call docker_exec,dpkg -i /root/$(DEB_SYSTEMD_PACKAGE))
-	$(call docker_test,systemd)
-	$(call docker_clean)
+	echo "RUN rm /usr/sbin/policy-rc.d" >> Dockerfile.tmp
+	$(call docker_build_and_run,amd64)
+	$(call docker_exec,dpkg -i /root/$(DEB_PACKAGE_X86_64))
+	$(call docker_test_and_clean)
+	$(call docker_build_and_run,arm64)
+	$(call docker_exec,dpkg -i /root/$(DEB_PACKAGE_ARM64))
+	$(call docker_test_and_clean)
+	rm Dockerfile.tmp
 
-debian-stretch: $(DEB_SYSTEMD_PACKAGE)
+debian-stretch: $(DEB_PACKAGE_X86_64) $(DEB_PACKAGE_ARM64)
 	echo "FROM debian:stretch" > Dockerfile.tmp
 	echo "RUN apt-get update -qq && apt-get install -y -q systemd-sysv procps" >> Dockerfile.tmp
 	echo "COPY . /root" >> Dockerfile.tmp
-	$(call docker_build)
-	$(call docker_run)
-	$(call docker_exec,dpkg -i /root/$(DEB_SYSTEMD_PACKAGE))
-	$(call docker_test,systemd)
-	$(call docker_clean)
+	echo "RUN rm /usr/sbin/policy-rc.d" >> Dockerfile.tmp
+	$(call docker_build_and_run,amd64)
+	$(call docker_exec,dpkg -i /root/$(DEB_PACKAGE_X86_64))
+	$(call docker_test_and_clean)
+	$(call docker_build_and_run,arm64)
+	$(call docker_exec,dpkg -i /root/$(DEB_PACKAGE_ARM64))
+	$(call docker_test_and_clean)
+	rm Dockerfile.tmp
 
-debian-buster: $(DEB_SYSTEMD_PACKAGE)
+debian-buster: $(DEB_PACKAGE_X86_64) $(DEB_PACKAGE_ARM64)
 	echo "FROM debian:buster" > Dockerfile.tmp
 	echo "RUN apt-get update -qq && apt-get install -y -q systemd-sysv procps" >> Dockerfile.tmp
 	echo "COPY . /root" >> Dockerfile.tmp
-	$(call docker_build)
-	$(call docker_run)
-	$(call docker_exec,dpkg -i /root/$(DEB_SYSTEMD_PACKAGE))
-	$(call docker_test,systemd)
-	$(call docker_clean)
+	echo "RUN rm /usr/sbin/policy-rc.d" >> Dockerfile.tmp
+	$(call docker_build_and_run,amd64)
+	$(call docker_exec,dpkg -i /root/$(DEB_PACKAGE_X86_64))
+	$(call docker_test_and_clean)
+	$(call docker_build_and_run,arm64)
+	$(call docker_exec,dpkg -i /root/$(DEB_PACKAGE_ARM64))
+	$(call docker_test_and_clean)
+	rm Dockerfile.tmp
+
+debian-bullseye: $(DEB_PACKAGE_X86_64) $(DEB_PACKAGE_ARM64)
+	echo "FROM debian:bullseye" > Dockerfile.tmp
+	echo "RUN apt-get update -qq && apt-get install -y -q systemd-sysv procps" >> Dockerfile.tmp
+	echo "COPY . /root" >> Dockerfile.tmp
+	echo "RUN rm /usr/sbin/policy-rc.d" >> Dockerfile.tmp
+	$(call docker_build_and_run,amd64)
+	$(call docker_exec,dpkg -i /root/$(DEB_PACKAGE_X86_64))
+	$(call docker_test_and_clean)
+	$(call docker_build_and_run,arm64)
+	$(call docker_exec,dpkg -i /root/$(DEB_PACKAGE_ARM64))
+	$(call docker_test_and_clean)
+	rm Dockerfile.tmp

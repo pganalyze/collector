@@ -1,22 +1,21 @@
 FROM centos:7
 
+ARG TARGETARCH
 ENV GOPATH /go
-ENV GOVERSION 1.16
+ENV GOVERSION 1.17
 ENV CODE_DIR $GOPATH/src/github.com/pganalyze/collector
 ENV PATH $PATH:/usr/local/go/bin
 ENV ROOT_DIR /root
 ENV SOURCE_DIR /source
 
 # Packages required for both building and packaging
-RUN yum install -y -q tar make git rpmdevtools ruby ruby-devel gcc
+RUN yum install -y centos-release-scl scl-utils tar make git rpmdevtools gcc && yum install -y rh-ruby27 rh-ruby27-ruby-devel
 
-# Install FPM
-RUN gem install ffi -v 1.10.0 # Last release supporting Ruby 1.9
-RUN gem install git -v 1.7.0 # Last release supporting Ruby 1.9
-RUN gem install fpm -v 1.11.0 # 1.12.0 has a bug https://github.com/jordansissel/fpm/issues/1749 (match RPM to DEB build)
+# FPM
+RUN source scl_source enable rh-ruby27 && gem install fpm -v 1.14.1
 
 # Golang
-RUN curl -o go.tar.gz -sSL "https://golang.org/dl/go${GOVERSION}.linux-amd64.tar.gz"
+RUN curl -o go.tar.gz -sSL "https://golang.org/dl/go${GOVERSION}.linux-${TARGETARCH}.tar.gz"
 RUN tar -C /usr/local -xzf go.tar.gz
 
 # Build arguments
@@ -49,7 +48,7 @@ RUN cp $CODE_DIR/contrib/sslrootcert/* $SOURCE_DIR/usr/share/pganalyze-collector
 
 # Build the package
 WORKDIR $ROOT_DIR
-RUN fpm \
+RUN scl enable rh-ruby27 -- fpm \
   -n $NAME -v ${VERSION} -t rpm --rpm-os linux \
   --config-files /etc/pganalyze-collector.conf \
   --after-install $CODE_DIR/packages/src/rpm-systemd/post.sh \

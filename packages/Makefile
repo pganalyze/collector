@@ -5,10 +5,10 @@ export GIT_VERSION=v0.41.3
 #export GIT_VERSION=618e85ce5ed5365bc7d9d9da866fdeb73bac5a55
 #export VERSION=$(shell git show -s --format=%ct.%h HEAD)
 
-export RPM_PACKAGE_OUT=$(NAME)-$(VERSION)-1.x86_64.rpm
-export RPM_SYSTEMD_PACKAGE=$(NAME)-$(VERSION)-1_systemd.x86_64.rpm
-export DEB_PACKAGE_OUT=$(NAME)_$(VERSION)_amd64.deb
-export DEB_SYSTEMD_PACKAGE=$(NAME)_$(VERSION)_systemd_amd64.deb
+export RPM_PACKAGE_X86_64=$(NAME)-$(VERSION)-1.x86_64.rpm
+export RPM_PACKAGE_ARM64=$(NAME)-$(VERSION)-1.aarch64.rpm
+export DEB_PACKAGE_X86_64=$(NAME)_$(VERSION)_amd64.deb
+export DEB_PACKAGE_ARM64=$(NAME)_$(VERSION)_arm64.deb
 
 export TMP_DIR=$(shell pwd)/tmp
 
