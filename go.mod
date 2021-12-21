@@ -29,7 +29,6 @@ require (
 	github.com/jpillora/backoff v1.0.0 // indirect
 	github.com/jtolds/gls v4.2.0+incompatible // indirect
 	github.com/juju/syslog v0.0.0-20150205155936-6be94e8b7187
-	github.com/keybase/go-ps v0.0.0-20160809205621-9c11ca40a479
 	github.com/kr/logfmt v0.0.0-20140226030751-b84e30acd515
 	github.com/kr/pretty v0.2.1 // indirect
 	github.com/kylelemons/godebug v0.0.0-20170224010052-a616ab194758
