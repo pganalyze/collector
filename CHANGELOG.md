@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.42.0      2021-12-20
+
+* Provide both x86/amd64 and ARM64 packages and Docker image
+  - This means you can now run the collector more easily on modern
+    ARM-based platforms such as Graviton-based AWS instances
+* Bugfix: Write state file before reloading collector
+  - This avoids lost statistics when the collector is reloaded mid-cycle
+    between the full snapshot runs
+* Reduce Docker image build time and use slim image for 18x size reduction
+  - With thanks to [Chris](https://github.com/dullyouth) at Kandji for this contribution
+
+
 ## 0.41.3      2021-12-15
 
  * Log Insights: Add "invalid input syntax for type json" log event
