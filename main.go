@@ -43,6 +43,7 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 
 	keepRunning = false
 	reloadOkay = false
+	writeStateFile = func() {}
 
 	schedulerGroups, err := scheduler.GetSchedulerGroups()
 	if err != nil {
