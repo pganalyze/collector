@@ -46,7 +46,7 @@ then
 fi
 
 arch=$(uname -m)
-if [ "$arch" != 'x86_64' ] && [ "$arch" != 'arm64' ];
+if [ "$arch" != 'x86_64' ] && [ "$arch" != 'arm64' ] && [ "$arch" != 'aarch64' ];
 then
   fail "unsupported architecture: $arch"
 fi
