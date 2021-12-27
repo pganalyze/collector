@@ -277,6 +277,7 @@ func main() {
 	var dryRun bool
 	var dryRunLogs bool
 	var analyzeLogfile string
+	var analyzeGcpLogfile string
 	var filterLogFile string
 	var filterLogSecret string
 	var debugLogs bool
@@ -312,6 +313,7 @@ func main() {
 	flag.BoolVar(&dryRun, "dry-run", false, "Print JSON data that would get sent to web service (without actually sending) and exit afterwards")
 	flag.BoolVar(&dryRunLogs, "dry-run-logs", false, "Print JSON data for log snapshot (without actually sending) and exit afterwards")
 	flag.StringVar(&analyzeLogfile, "analyze-logfile", "", "Analyzes the content of the given log file and returns debug output about it")
+	flag.StringVar(&analyzeGcpLogfile, "analyze-gcp-logfile", "", "Analyzes the content of the given GCP log file and returns debug output about it")
 	flag.StringVar(&filterLogFile, "filter-logfile", "", "Test command that filters all known secrets in the logfile according to the filter-log-secret option")
 	flag.StringVar(&filterLogSecret, "filter-log-secret", "all", "Sets the type of secrets filtered by the filter-logfile test command (default: all)")
 	flag.BoolVar(&debugLogs, "debug-logs", false, "Outputs all log analysis that would be sent, doesn't send any other data (use for debugging only)")
@@ -415,6 +417,15 @@ func main() {
 			return
 		}
 		logLines, samples := logs.DebugParseAndAnalyzeBuffer(string(content))
+		logs.PrintDebugInfo(string(content), logLines, samples)
+		return
+	} else if analyzeGcpLogfile != "" {
+		content, err := ioutil.ReadFile(analyzeGcpLogfile)
+		if err != nil {
+			fmt.Printf("ERROR: %s\n", err)
+			return
+		}
+		logLines, samples := logs.DebugParseAndAnalyzeBufferGcp(string(content))
 		logs.PrintDebugInfo(string(content), logLines, samples)
 		return
 	}

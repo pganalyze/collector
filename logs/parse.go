@@ -2,6 +2,7 @@ package logs
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"io"
 	"regexp"
@@ -486,6 +487,43 @@ func ParseAndAnalyzeBuffer(buffer string, initialByteStart int64, linesNewerThan
 
 	newLogLines, newSamples := AnalyzeLogLines(logLines)
 	return newLogLines, newSamples, currentByteStart
+}
+
+type GcpLogStreamItem struct {
+	TextPayload string `json:"textPayload"`
+	Timestamp   string `json:"timestamp"`
+}
+
+func DebugParseAndAnalyzeBufferGcp(buffer string) ([]state.LogLine, []state.PostgresQuerySample) {
+	var lines []GcpLogStreamItem
+	err := json.Unmarshal([]byte(buffer), &lines)
+	if err != nil {
+		fmt.Printf("ERROR: Log file is not valid JSON: %s", err)
+	}
+
+	var logLines []state.LogLine
+	for i, line := range lines {
+		content := line.TextPayload
+		logLine, ok := ParseLogLineWithPrefix("", content)
+		if !ok {
+			fmt.Printf("WARNING: could not parse item %d at %s: %s", i, line.Timestamp, content)
+			continue
+		}
+		logLine.CollectedAt = time.Now()
+		ts, err := time.Parse(time.RFC3339Nano, line.Timestamp)
+		if err != nil {
+			fmt.Printf("WARNING: could not parse item %d timestamp: %s", i, line.Timestamp)
+			continue
+		}
+
+		logLine.OccurredAt = ts
+		logLine.UUID = uuid.NewV4()
+
+		logLines = append(logLines, logLine)
+	}
+
+	newLogLines, newSamples := AnalyzeLogLines(logLines)
+	return newLogLines, newSamples
 }
 
 func DebugParseAndAnalyzeBuffer(buffer string) ([]state.LogLine, []state.PostgresQuerySample) {

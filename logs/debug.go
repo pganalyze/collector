@@ -2,6 +2,7 @@ package logs
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
@@ -30,10 +31,18 @@ func PrintDebugInfo(logFileContents string, logLines []state.LogLine, samples []
 
 	if len(unclassifiedLogLines) > 0 {
 		fmt.Printf("\nUnclassified log lines:\n")
-		for _, logLine := range unclassifiedLogLines {
-			fmt.Printf("%s\n", logFileContents[logLine.ByteStart:logLine.ByteEnd])
+		for i, logLine := range unclassifiedLogLines {
+			fullLine := logFileContents[logLine.ByteStart:logLine.ByteEnd]
+			if fullLine == "" {
+				fullLine = fmt.Sprintf("line #%d at %s", i, logLine.OccurredAt.Format(time.RFC3339Nano))
+			}
+			lineContent := logFileContents[logLine.ByteContentStart:logLine.ByteEnd]
+			if lineContent == "" {
+				lineContent = logLine.Content
+			}
+			fmt.Printf("%s\n", fullLine)
 			fmt.Printf("  Level: %s\n", logLine.LogLevel)
-			fmt.Printf("  Content: %#v\n", logFileContents[logLine.ByteContentStart:logLine.ByteEnd])
+			fmt.Printf("  Content: %#v\n", lineContent)
 			fmt.Printf("---\n")
 		}
 	}
