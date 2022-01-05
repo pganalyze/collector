@@ -895,7 +895,7 @@ var permissionDenied = analyzeGroup{
 	classification: pganalyze_collector.LogLineInformation_PERMISSION_DENIED,
 	primary: match{
 		prefixes: []string{"permission denied"},
-		regexp:   regexp.MustCompile(`^permission denied for (?:column|relation|sequence|database|function|operator|type|language|large object|schema|operator class|operator family|collation|conversion|tablespace|text search dictionary|text search configuration|foreign-data wrapper|foreign server|event trigger|extension) ([\w_-]+)(?: at character \d+)?`),
+		regexp:   regexp.MustCompile(`^permission denied for (?:column|relation|table|sequence|database|function|operator|type|language|large object|schema|operator class|operator family|collation|conversion|tablespace|text search dictionary|text search configuration|foreign-data wrapper|foreign server|event trigger|extension) ([\w_-]+)(?: at character \d+)?`),
 		secrets:  []state.LogSecretKind{0},
 		// FIXME: Store relation name when this is "permission denied for relation [relation name]"
 	},
