@@ -425,8 +425,13 @@ func main() {
 			fmt.Printf("ERROR: %s\n", err)
 			return
 		}
-		logLines, samples := logs.DebugParseAndAnalyzeBufferGcp(string(content))
-		logs.PrintDebugInfo(string(content), logLines, samples)
+		logFile, samples := google_cloudsql.DebugParseAndAnalyzeBufferGcp(string(content))
+		fileContent, err := ioutil.ReadFile(logFile.TmpFile.Name())
+		if err != nil {
+			fmt.Printf("ERROR: %s\n", err)
+			return
+		}
+		logs.PrintDebugInfo(string(fileContent), logFile.LogLines, samples)
 		return
 	}
 
