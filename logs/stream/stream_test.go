@@ -13,7 +13,7 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
-type testpair struct {
+type streamTestpair struct {
 	logLines          []state.LogLine
 	TransientLogState state.TransientLogState
 	logFile           state.LogFile
@@ -24,7 +24,7 @@ type testpair struct {
 
 var now = time.Now()
 
-var tests = []testpair{
+var streamTests = []streamTestpair{
 	// Simple case
 	{
 		[]state.LogLine{{
@@ -215,8 +215,8 @@ var tests = []testpair{
 				Content:     "second\n",
 			},
 			{
-				CollectedAt: now.Add(-3 * time.Second),
-				OccurredAt:  now.Add(-3 * time.Second),
+				CollectedAt: now.Add(-4 * time.Second),
+				OccurredAt:  now.Add(-4 * time.Second),
 				LogLevel:    pganalyze_collector.LogLineInformation_ERROR,
 				BackendPid:  77,
 				Content:     "third\n",
@@ -242,8 +242,8 @@ var tests = []testpair{
 					BackendPid:       42,
 				},
 				{
-					CollectedAt:      now.Add(-3 * time.Second),
-					OccurredAt:       now.Add(-3 * time.Second),
+					CollectedAt:      now.Add(-4 * time.Second),
+					OccurredAt:       now.Add(-4 * time.Second),
 					LogLevel:         pganalyze_collector.LogLineInformation_ERROR,
 					ByteStart:        18,
 					ByteContentStart: 18,
@@ -324,8 +324,8 @@ var tests = []testpair{
 }
 
 func TestAnalyzeStreamInGroups(t *testing.T) {
-	for _, pair := range tests {
-		TransientLogState, logFile, tooFreshLogLines, err := stream.AnalyzeStreamInGroups(pair.logLines)
+	for _, pair := range streamTests {
+		TransientLogState, logFile, tooFreshLogLines, err := stream.AnalyzeStreamInGroups(pair.logLines, now)
 		logFileContent := ""
 		if logFile.TmpFile != nil {
 			dat, err := ioutil.ReadFile(logFile.TmpFile.Name())
