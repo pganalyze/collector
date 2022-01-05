@@ -14,13 +14,13 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/papertrail/go-tail/follower"
 	"github.com/pganalyze/collector/input/postgres"
 	"github.com/pganalyze/collector/logs"
-	"github.com/pganalyze/collector/logs/stream"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
 	uuid "github.com/satori/go.uuid"
@@ -125,19 +125,23 @@ func DiscoverLogLocation(servers []*state.Server, globalCollectionOpts state.Col
 	}
 }
 
+func SetupLogTailForServer(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *util.Logger, server *state.Server, parsedLogStream chan state.ParsedLogStreamItem) error {
+	if globalCollectionOpts.DebugLogs || globalCollectionOpts.TestRun {
+		logger.PrintInfo("Setting up log tail for %s", server.Config.LogLocation)
+	}
+
+	logStream := setupLogTransformer(ctx, wg, server, globalCollectionOpts, logger, parsedLogStream)
+	return setupLogLocationTail(ctx, server.Config.LogLocation, logStream, logger)
+}
+
 // SetupLogTails - Sets up continuously running log tails for all servers with a
 // local log directory or file specified
-func SetupLogTails(ctx context.Context, servers []*state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
+func SetupLogTails(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *util.Logger, servers []*state.Server, parsedLogStream chan state.ParsedLogStreamItem) {
 	for _, server := range servers {
 		prefixedLogger := logger.WithPrefix(server.Config.SectionName)
 
 		if server.Config.LogLocation != "" {
-			if globalCollectionOpts.DebugLogs || globalCollectionOpts.TestRun {
-				prefixedLogger.PrintInfo("Setting up log tail for %s", server.Config.LogLocation)
-			}
-
-			logStream := logReceiver(ctx, server, globalCollectionOpts, prefixedLogger, nil)
-			err := setupLogLocationTail(ctx, server.Config.LogLocation, logStream, prefixedLogger)
+			err := SetupLogTailForServer(ctx, wg, globalCollectionOpts, logger, server, parsedLogStream)
 			if err != nil {
 				prefixedLogger.PrintError("ERROR - %s", err)
 			}
@@ -146,13 +150,13 @@ func SetupLogTails(ctx context.Context, servers []*state.Server, globalCollectio
 				prefixedLogger.PrintInfo("Setting up docker logs tail for %s", server.Config.LogDockerTail)
 			}
 
-			logStream := logReceiver(ctx, server, globalCollectionOpts, prefixedLogger, nil)
+			logStream := setupLogTransformer(ctx, wg, server, globalCollectionOpts, prefixedLogger, parsedLogStream)
 			err := setupDockerTail(ctx, server.Config.LogDockerTail, logStream, prefixedLogger)
 			if err != nil {
 				prefixedLogger.PrintError("ERROR - %s", err)
 			}
 		} else if server.Config.LogSyslogServer != "" {
-			logStream := logReceiver(ctx, server, globalCollectionOpts, prefixedLogger, nil)
+			logStream := setupLogTransformer(ctx, wg, server, globalCollectionOpts, prefixedLogger, parsedLogStream)
 			err := setupSyslogHandler(ctx, server.Config.LogSyslogServer, logStream, prefixedLogger)
 			if err != nil {
 				prefixedLogger.PrintError("ERROR - %s", err)
@@ -258,6 +262,7 @@ func setupLogLocationTail(ctx context.Context, logLocation string, out chan<- Se
 			tailCtx, tailCancel := context.WithCancel(ctx)
 			err = tailFile(tailCtx, fileName, out, prefixedLogger)
 			if err != nil {
+				tailCancel()
 				prefixedLogger.PrintError("ERROR - %s", err)
 			} else {
 				openFiles[fileName] = tailCancel
@@ -367,24 +372,17 @@ func setupDockerTail(ctx context.Context, containerName string, out chan<- SelfH
 	return nil
 }
 
-func logReceiver(ctx context.Context, server *state.Server, globalCollectionOpts state.CollectionOpts, prefixedLogger *util.Logger, logTestSucceeded chan<- bool) chan<- SelfHostedLogStreamItem {
+func setupLogTransformer(ctx context.Context, wg *sync.WaitGroup, server *state.Server, globalCollectionOpts state.CollectionOpts, prefixedLogger *util.Logger, parsedLogStream chan state.ParsedLogStreamItem) chan<- SelfHostedLogStreamItem {
 	logStream := make(chan SelfHostedLogStreamItem)
 
+	wg.Add(1)
 	go func() {
-		var logLines []state.LogLine
+		defer wg.Done()
 
 		// Only ingest log lines that were written in the last minute before startup,
 		// or later, so we avoid resending full large files on collector restarts
 		// TODO: Use prevState here instead to get the last logline we saw
 		linesNewerThan := time.Now().Add(-1 * time.Minute)
-
-		// Use a timeout to clear out loglines that don't have any follow-on lines
-		// (the threshold used in logs.ProcessLogStream is 3 seconds)
-		timeout := make(chan bool, 1)
-		go func() {
-			time.Sleep(3 * time.Second)
-			timeout <- true
-		}()
 
 		for {
 			select {
@@ -416,22 +414,11 @@ func logReceiver(ctx context.Context, server *state.Server, globalCollectionOpts
 				}
 
 				// Ignore loglines which are outside our time window
-				nullTime := time.Time{}
-				if logLine.OccurredAt != nullTime && logLine.OccurredAt.Before(linesNewerThan) {
+				if !logLine.OccurredAt.IsZero() && logLine.OccurredAt.Before(linesNewerThan) {
 					continue
 				}
 
-				logLines = append(logLines, logLine)
-			case <-timeout:
-				if len(logLines) > 0 {
-					logLines = stream.ProcessLogStream(server, logLines, globalCollectionOpts, prefixedLogger, logTestSucceeded, stream.LogTestCollectorIdentify)
-				}
-				go func() {
-					time.Sleep(3 * time.Second)
-					timeout <- true
-				}()
-			case <-ctx.Done():
-				return
+				parsedLogStream <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: logLine}
 			}
 		}
 	}()
