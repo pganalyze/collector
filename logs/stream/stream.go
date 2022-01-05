@@ -41,12 +41,10 @@ import (
 // - Multi-line messages only have the PID and line number in the first message
 
 // findReadyLogLines - Splits log lines into those that are ready, and those that aren't
-func findReadyLogLines(logLines []state.LogLine, threshold time.Duration) ([]state.LogLine, []state.LogLine) {
+func findReadyLogLines(logLines []state.LogLine, now time.Time, threshold time.Duration) ([]state.LogLine, []state.LogLine) {
 	var readyLogLines []state.LogLine
 	var tooFreshLogLines []state.LogLine
 	var lastPrimaryLogLine *state.LogLine
-
-	now := time.Now()
 
 	for _, logLine := range logLines {
 		if logLine.LogLevel == pganalyze_collector.LogLineInformation_UNKNOWN {
@@ -166,16 +164,18 @@ func stitchLogLines(readyLogLines []state.LogLine) (analyzableLogLines []state.L
 	return
 }
 
+const StreamReadyThreshold time.Duration = 3 * time.Second
+
 // AnalyzeStreamInGroups - Takes in a set of parsed log lines and analyses the
 // lines that are ready, and returns the rest
 //
 // The caller is expected to keep a repository of "tooFreshLogLines" that they
 // can send back in again in the next call, combined with new lines received
-func AnalyzeStreamInGroups(logLines []state.LogLine) (state.TransientLogState, state.LogFile, []state.LogLine, error) {
+func AnalyzeStreamInGroups(logLines []state.LogLine, now time.Time) (state.TransientLogState, state.LogFile, []state.LogLine, error) {
 	// Pre-Sort by PID, log line number and occurred at timestamp
 	//
 	// Its important we do this early, to support out-of-order receipt of log lines,
-	// up to the freshness threshold used in the next function call (3 seconds)
+	// up to the freshness threshold used for findReadyLogLines (3 seconds)
 	allLinesHaveBackendPid := true
 	allLinesHaveLogLineNumber := true
 	allLinesHaveLogLineNumberChunk := true
@@ -210,7 +210,7 @@ func AnalyzeStreamInGroups(logLines []state.LogLine) (state.TransientLogState, s
 		return false // Keep initial order
 	})
 
-	readyLogLines, tooFreshLogLines := findReadyLogLines(logLines, 3*time.Second)
+	readyLogLines, tooFreshLogLines := findReadyLogLines(logLines, now, StreamReadyThreshold)
 	if len(readyLogLines) == 0 {
 		return state.TransientLogState{}, state.LogFile{}, tooFreshLogLines, nil
 	}
@@ -226,7 +226,7 @@ func AnalyzeStreamInGroups(logLines []state.LogLine) (state.TransientLogState, s
 		return state.TransientLogState{}, state.LogFile{}, logLines, err
 	}
 
-	logState := state.TransientLogState{CollectedAt: time.Now()}
+	logState := state.TransientLogState{CollectedAt: now}
 	logFile.LogLines, logState.QuerySamples = handleLogAnalysis(analyzableLogLines)
 
 	return logState, logFile, tooFreshLogLines, nil
@@ -272,7 +272,7 @@ func ProcessLogStream(server *state.Server, logLines []state.LogLine, globalColl
 	}
 	server.CollectionStatusMutex.Unlock()
 
-	logState, logFile, tooFreshLogLines, err := AnalyzeStreamInGroups(logLines)
+	logState, logFile, tooFreshLogLines, err := AnalyzeStreamInGroups(logLines, time.Now())
 	if err != nil {
 		prefixedLogger.PrintError("%s", err)
 		return tooFreshLogLines
