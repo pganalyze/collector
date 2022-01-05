@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pganalyze/collector/config"
 	"github.com/pganalyze/collector/output/pganalyze_collector"
 	uuid "github.com/satori/go.uuid"
 )
@@ -20,6 +21,13 @@ type GrantLogsEncryptionKey struct {
 	CiphertextBlob string `json:"ciphertext_blob"`
 	KeyId          string `json:"key_id"`
 	Plaintext      string `json:"plaintext"`
+}
+
+const LogStreamBufferLen = 500
+
+type ParsedLogStreamItem struct {
+	Identifier config.ServerIdentifier
+	LogLine    LogLine
 }
 
 type TransientLogState struct {

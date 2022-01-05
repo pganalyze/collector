@@ -23,8 +23,6 @@ import (
 
 	"github.com/pganalyze/collector/config"
 	"github.com/pganalyze/collector/input/postgres"
-	"github.com/pganalyze/collector/input/system/azure"
-	"github.com/pganalyze/collector/input/system/google_cloudsql"
 	"github.com/pganalyze/collector/input/system/heroku"
 	"github.com/pganalyze/collector/input/system/selfhosted"
 	"github.com/pganalyze/collector/logs"
@@ -35,8 +33,6 @@ import (
 
 	_ "github.com/lib/pq" // Enable database package to use Postgres
 )
-
-const streamBufferLen = 500
 
 func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *util.Logger, configFilename string) (keepRunning bool, reloadOkay bool, writeStateFile func()) {
 	var servers []*state.Server
@@ -167,17 +163,7 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 	}
 
 	if globalCollectionOpts.DebugLogs {
-		selfhosted.SetupLogTails(ctx, servers, globalCollectionOpts, logger)
-		if hasAnyGoogleCloudSQL {
-			gcpLogStream := make(chan google_cloudsql.LogStreamItem, streamBufferLen)
-			google_cloudsql.SetupLogSubscriber(ctx, wg, globalCollectionOpts, logger, servers, gcpLogStream)
-			google_cloudsql.SetupLogReceiver(ctx, servers, globalCollectionOpts, logger, gcpLogStream)
-		}
-		if hasAnyAzureDatabase {
-			azureLogStream := make(chan azure.AzurePostgresLogRecord, streamBufferLen)
-			azure.SetupLogSubscriber(ctx, wg, globalCollectionOpts, logger, servers, azureLogStream)
-			azure.SetupLogReceiver(ctx, servers, globalCollectionOpts, logger, azureLogStream)
-		}
+		runner.SetupLogCollection(ctx, wg, servers, globalCollectionOpts, logger, hasAnyHeroku, hasAnyGoogleCloudSQL, hasAnyAzureDatabase)
 
 		// Keep running but only running log processing
 		keepRunning = true
@@ -204,48 +190,7 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 	}
 
 	if hasAnyLogsEnabled {
-		var hasAnyLogDownloads bool
-		var hasAnyLogTails bool
-
-		for _, server := range servers {
-			if server.Config.DisableLogs {
-				continue
-			}
-			if server.Config.LogLocation != "" || server.Config.LogDockerTail != "" || server.Config.LogSyslogServer != "" {
-				hasAnyLogTails = true
-			} else if server.Config.AwsDbInstanceID != "" {
-				hasAnyLogDownloads = true
-			}
-		}
-
-		if hasAnyLogTails {
-			selfhosted.SetupLogTails(ctx, servers, globalCollectionOpts, logger)
-		}
-
-		if hasAnyHeroku && os.Getenv("DYNO") != "" && os.Getenv("PORT") != "" {
-			herokuLogStream := make(chan heroku.HerokuLogStreamItem, streamBufferLen)
-			heroku.SetupHttpHandlerLogs(herokuLogStream)
-			heroku.SetupLogReceiver(servers, globalCollectionOpts, logger, herokuLogStream)
-		}
-
-		if hasAnyGoogleCloudSQL {
-			gcpLogStream := make(chan google_cloudsql.LogStreamItem, streamBufferLen)
-			google_cloudsql.SetupLogSubscriber(ctx, wg, globalCollectionOpts, logger, servers, gcpLogStream)
-			google_cloudsql.SetupLogReceiver(ctx, servers, globalCollectionOpts, logger, gcpLogStream)
-		}
-		if hasAnyAzureDatabase {
-			azureLogStream := make(chan azure.AzurePostgresLogRecord, streamBufferLen)
-			azure.SetupLogSubscriber(ctx, wg, globalCollectionOpts, logger, servers, azureLogStream)
-			azure.SetupLogReceiver(ctx, servers, globalCollectionOpts, logger, azureLogStream)
-		}
-
-		if hasAnyLogDownloads {
-			schedulerGroups["logs"].Schedule(ctx, func() {
-				wg.Add(1)
-				runner.DownloadLogsFromAllServers(servers, globalCollectionOpts, logger)
-				wg.Done()
-			}, logger, "log snapshot of all servers")
-		}
+		runner.SetupLogCollection(ctx, wg, servers, globalCollectionOpts, logger, hasAnyHeroku, hasAnyGoogleCloudSQL, hasAnyAzureDatabase)
 	} else if os.Getenv("DYNO") != "" && os.Getenv("PORT") != "" {
 		// Even if logs are deactivated, Heroku still requires us to have a functioning web server
 		heroku.SetupHttpHandlerDummy()

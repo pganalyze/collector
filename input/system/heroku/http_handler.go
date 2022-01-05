@@ -2,12 +2,17 @@ package heroku
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/bmizerany/lpx"
+	"github.com/pganalyze/collector/logs"
+	"github.com/pganalyze/collector/state"
+	"github.com/pganalyze/collector/util"
 )
 
 func SetupHttpHandlerDummy() {
@@ -17,22 +22,23 @@ func SetupHttpHandlerDummy() {
 	}()
 }
 
-func SetupHttpHandlerLogs(herokuLogStream chan<- HerokuLogStreamItem) {
+func dummyHandler(w http.ResponseWriter, r *http.Request) {
+	http.Redirect(w, r, "https://app.pganalyze.com/", http.StatusFound)
+}
+
+func SetupHttpHandlerLogs(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *util.Logger, servers []*state.Server, parsedLogStream chan state.ParsedLogStreamItem) {
+	herokuLogStream := make(chan HerokuLogStreamItem, state.LogStreamBufferLen)
+	setupLogTransformer(ctx, wg, servers, herokuLogStream, parsedLogStream, globalCollectionOpts, logger)
+
 	go func() {
 		http.HandleFunc("/", dummyHandler)
 		http.HandleFunc("/logs/", func(w http.ResponseWriter, r *http.Request) {
-			var namespace string
-			if strings.HasPrefix(r.URL.Path, "/logs/") {
-				namespace = strings.Replace(r.URL.Path, "/logs/", "", 1)
-			} else {
-				namespace = "default"
-			}
 			lp := lpx.NewReader(bufio.NewReader(r.Body))
 			for lp.Next() {
 				procID := string(lp.Header().Procid)
 				if procID == "heroku-postgres" || strings.HasPrefix(procID, "postgres.") {
 					select {
-					case herokuLogStream <- HerokuLogStreamItem{Header: *lp.Header(), Content: lp.Bytes(), Namespace: namespace}:
+					case herokuLogStream <- HerokuLogStreamItem{Header: *lp.Header(), Content: lp.Bytes(), Path: r.URL.Path}:
 						// Handed over successfully
 					default:
 						fmt.Printf("WARNING: Channel buffer exceeded, skipping message\n")
@@ -42,8 +48,8 @@ func SetupHttpHandlerLogs(herokuLogStream chan<- HerokuLogStreamItem) {
 		})
 		http.ListenAndServe(":"+os.Getenv("PORT"), nil)
 	}()
-}
 
-func dummyHandler(w http.ResponseWriter, r *http.Request) {
-	http.Redirect(w, r, "https://app.pganalyze.com/", http.StatusFound)
+	for _, server := range servers {
+		logs.EmitTestLogMsg(server, globalCollectionOpts, logger)
+	}
 }

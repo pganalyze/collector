@@ -12,6 +12,7 @@ import (
 	"google.golang.org/api/option"
 
 	"github.com/pganalyze/collector/config"
+	"github.com/pganalyze/collector/logs"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
 )
@@ -29,6 +30,13 @@ type googleLogMessage struct {
 	Severity         string            `json:"severity"`
 	TextPayload      string            `json:"textPayload"`
 	Timestamp        string            `json:"timestamp"`
+}
+
+type LogStreamItem struct {
+	GcpProjectID          string
+	GcpCloudSQLInstanceID string
+	OccurredAt            time.Time
+	Content               string
 }
 
 func setupPubSubSubscriber(ctx context.Context, wg *sync.WaitGroup, logger *util.Logger, config config.ServerConfig, gcpLogStream chan LogStreamItem) error {
@@ -100,7 +108,10 @@ func setupPubSubSubscriber(ctx context.Context, wg *sync.WaitGroup, logger *util
 	return nil
 }
 
-func SetupLogSubscriber(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *util.Logger, servers []*state.Server, gcpLogStream chan LogStreamItem) error {
+func SetupLogSubscriber(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *util.Logger, servers []*state.Server, parsedLogStream chan state.ParsedLogStreamItem) error {
+	gcpLogStream := make(chan LogStreamItem, state.LogStreamBufferLen)
+	setupLogTransformer(ctx, wg, servers, gcpLogStream, parsedLogStream, logger)
+
 	// This map is used to avoid duplicate receivers to the same subscriber
 	gcpPubSubHandlers := make(map[string]bool)
 
@@ -126,4 +137,46 @@ func SetupLogSubscriber(ctx context.Context, wg *sync.WaitGroup, globalCollectio
 	}
 
 	return nil
+}
+
+func setupLogTransformer(ctx context.Context, wg *sync.WaitGroup, servers []*state.Server, in <-chan LogStreamItem, out chan state.ParsedLogStreamItem, logger *util.Logger) {
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		// Only ingest log lines that were written in the last minute before startup
+		linesNewerThan := time.Now().Add(-1 * time.Minute)
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case in, ok := <-in:
+				if !ok {
+					return
+				}
+
+				// Note that we need to restore the original trailing newlines since
+				// ProcessLogStream below expects them and they are not present in the GCP
+				// log stream.
+				logLine, ok := logs.ParseLogLineWithPrefix("", in.Content+"\n")
+				if !ok {
+					logger.PrintError("Can't parse log line: \"%s\"", in.Content)
+					continue
+				}
+				logLine.OccurredAt = in.OccurredAt
+
+				// Ignore loglines which are outside our time window
+				if !logLine.OccurredAt.IsZero() && logLine.OccurredAt.Before(linesNewerThan) {
+					continue
+				}
+
+				for _, server := range servers {
+					if in.GcpProjectID == server.Config.GcpProjectID && in.GcpCloudSQLInstanceID == server.Config.GcpCloudSQLInstanceID {
+						out <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: logLine}
+					}
+				}
+			}
+		}
+	}()
 }

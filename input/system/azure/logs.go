@@ -7,16 +7,46 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/pganalyze/collector/config"
+	"github.com/pganalyze/collector/logs"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
+	uuid "github.com/satori/go.uuid"
 
 	"github.com/Azure/azure-amqp-common-go/v3/aad"
 	eventhubs "github.com/Azure/azure-event-hubs-go/v3"
 	"github.com/Azure/azure-event-hubs-go/v3/persist"
 	"github.com/Azure/go-autorest/autorest/azure"
 )
+
+type AzurePostgresLogMessage struct {
+	Prefix       string `json:"prefix"`
+	Message      string `json:"message"`
+	Detail       string `json:"detail"`
+	ErrorLevel   string `json:"errorLevel"`
+	Domain       string `json:"domain"`
+	SchemaName   string `json:"schemaName"`
+	TableName    string `json:"tableName"`
+	ColumnName   string `json:"columnName"`
+	DatatypeName string `json:"datatypeName"`
+}
+
+type AzurePostgresLogRecord struct {
+	LogicalServerName string                  `json:"LogicalServerName"`
+	SubscriptionID    string                  `json:"SubscriptionId"`
+	ResourceGroup     string                  `json:"ResourceGroup"`
+	Time              string                  `json:"time"`
+	ResourceID        string                  `json:"resourceId"`
+	Category          string                  `json:"category"`
+	OperationName     string                  `json:"operationName"`
+	Properties        AzurePostgresLogMessage `json:"properties"`
+}
+
+type AzureEventHubData struct {
+	Records []AzurePostgresLogRecord `json:"records"`
+}
 
 var connectionReceivedRegexp = regexp.MustCompile(`^(connection received: host=[^ ]+( port=\w+)?) pid=\d+`)
 var connectionAuthorizedRegexp = regexp.MustCompile(`^(connection authorized: user=\w+)(database=\w+)`)
@@ -114,7 +144,10 @@ func setupEventHubReceiver(ctx context.Context, wg *sync.WaitGroup, logger *util
 	return nil
 }
 
-func SetupLogSubscriber(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *util.Logger, servers []*state.Server, azureLogStream chan AzurePostgresLogRecord) error {
+func SetupLogSubscriber(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *util.Logger, servers []*state.Server, parsedLogStream chan state.ParsedLogStreamItem) error {
+	azureLogStream := make(chan AzurePostgresLogRecord, state.LogStreamBufferLen)
+	setupLogTransformer(ctx, wg, servers, azureLogStream, parsedLogStream, globalCollectionOpts, logger)
+
 	// This map is used to avoid duplicate receivers to the same Azure Event Hub
 	eventHubReceivers := make(map[string]bool)
 
@@ -139,4 +172,47 @@ func SetupLogSubscriber(ctx context.Context, wg *sync.WaitGroup, globalCollectio
 	}
 
 	return nil
+}
+
+func setupLogTransformer(ctx context.Context, wg *sync.WaitGroup, servers []*state.Server, in <-chan AzurePostgresLogRecord, out chan state.ParsedLogStreamItem, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		// Only ingest log lines that were written in the last minute before startup
+		// (Azure Event Hub will return older log lines as well)
+		linesNewerThan := time.Now().Add(-1 * time.Minute)
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case in, ok := <-in:
+				if !ok {
+					return
+				}
+
+				logLineContent := fmt.Sprintf("%s%s:  %s", in.Properties.Prefix, in.Properties.ErrorLevel, in.Properties.Message)
+				logLine, ok := logs.ParseLogLineWithPrefix("", logLineContent)
+				if !ok {
+					logger.PrintError("Can't parse log line: \"%s\"", logLineContent)
+					continue
+				}
+				logLine.CollectedAt = time.Now()
+				logLine.UUID = uuid.NewV4()
+
+				// Ignore loglines which are outside our time window (except in test runs)
+				if !logLine.OccurredAt.IsZero() && logLine.OccurredAt.Before(linesNewerThan) && !globalCollectionOpts.TestRun {
+					continue
+				}
+
+				for _, server := range servers {
+					if in.LogicalServerName == server.Config.AzureDbServerName {
+						out <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: logLine}
+					}
+				}
+
+			}
+		}
+	}()
 }

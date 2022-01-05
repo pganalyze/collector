@@ -1,17 +1,17 @@
 package heroku
 
 import (
+	"context"
 	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/bmizerany/lpx"
 	"github.com/kr/logfmt"
 	"github.com/pganalyze/collector/grant"
-	"github.com/pganalyze/collector/logs"
-	"github.com/pganalyze/collector/logs/stream"
 	"github.com/pganalyze/collector/output"
 	"github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
@@ -20,9 +20,9 @@ import (
 )
 
 type HerokuLogStreamItem struct {
-	Header    lpx.Header
-	Content   []byte
-	Namespace string
+	Header  lpx.Header
+	Content []byte
+	Path    string
 }
 
 type SystemSample struct {
@@ -39,28 +39,20 @@ type SystemSample struct {
 	WriteIops         float64 `logfmt:"sample#write-iops"`
 }
 
-func SetupLogReceiver(servers []*state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger, herokuLogStream <-chan HerokuLogStreamItem) {
-	go logReceiver(servers, herokuLogStream, globalCollectionOpts, logger)
-
-	for _, server := range servers {
-		logs.EmitTestLogMsg(server, globalCollectionOpts, logger)
-	}
-}
-
-func catchIdentifyServerLine(sourceName string, content string, nameToServer map[string]*state.Server, servers []*state.Server) map[string]*state.Server {
+func catchIdentifyServerLine(sourceName string, content string, sourceToServer map[string]*state.Server, servers []*state.Server) map[string]*state.Server {
 	identifyParts := regexp.MustCompile(`^pganalyze-collector-identify: ([\w_]+)`).FindStringSubmatch(content)
 	if len(identifyParts) == 2 {
 		for _, server := range servers {
 			if server.Config.SectionName == identifyParts[1] {
-				nameToServer[sourceName] = server
+				sourceToServer[sourceName] = server
 			}
 		}
 	}
 
-	return nameToServer
+	return sourceToServer
 }
 
-func processSystemMetrics(timestamp time.Time, content []byte, nameToServer map[string]*state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger, namespace string) {
+func processSystemMetrics(timestamp time.Time, content []byte, sourceToServer map[string]*state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger, namespace string) {
 	var sample SystemSample
 	err := logfmt.Unmarshal(content, &sample)
 	if err != nil {
@@ -71,7 +63,7 @@ func processSystemMetrics(timestamp time.Time, content []byte, nameToServer map[
 	if !strings.HasPrefix(sourceName, "HEROKU_POSTGRESQL_") {
 		sourceName = "HEROKU_POSTGRESQL_" + sourceName
 	}
-	server, exists := nameToServer[namespace+" / "+sourceName]
+	server, exists := sourceToServer[namespace+" / "+sourceName]
 	if !exists {
 		logger.PrintInfo("Ignoring system data since server can't be matched yet - if this keeps showing up you have a configuration error for %s", namespace+" / "+sourceName)
 		return
@@ -137,10 +129,10 @@ func processSystemMetrics(timestamp time.Time, content []byte, nameToServer map[
 	return
 }
 
-func makeLogLine(timestamp time.Time, backendPid int64, logLineNumber int64, logLineNumberChunk int64, logLevel string, content string, nameToServer map[string]*state.Server) *state.LogLine {
+func makeLogLine(timestamp time.Time, backendPid int64, logLineNumber int64, logLineNumberChunk int64, logLevel string, content string, now time.Time) *state.LogLine {
 	var logLine state.LogLine
 
-	logLine.CollectedAt = time.Now()
+	logLine.CollectedAt = now
 	logLine.OccurredAt = timestamp
 	logLine.BackendPid = int32(backendPid)
 	logLine.LogLineNumber = int32(logLineNumber)
@@ -155,86 +147,96 @@ func makeLogLine(timestamp time.Time, backendPid int64, logLineNumber int64, log
 	return &logLine
 }
 
-func logStreamItemToLogLine(item HerokuLogStreamItem, servers []*state.Server, nameToServer map[string]*state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (map[string]*state.Server, *state.LogLine, string) {
+func logStreamItemToLogLine(item HerokuLogStreamItem, servers []*state.Server, sourceToServer map[string]*state.Server, now time.Time, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (map[string]*state.Server, *state.LogLine, string) {
 	timestamp, err := time.Parse(time.RFC3339, string(item.Header.Time))
 	if err != nil {
-		return nameToServer, nil, ""
+		return sourceToServer, nil, ""
 	}
 
 	if string(item.Header.Name) != "app" {
-		return nameToServer, nil, ""
+		return sourceToServer, nil, ""
+	}
+
+	namespace := "default"
+	if strings.HasPrefix(item.Path, "/logs/") {
+		namespace = strings.Replace(item.Path, "/logs/", "", 1)
 	}
 
 	if string(item.Header.Procid) == "heroku-postgres" {
-		processSystemMetrics(timestamp, item.Content, nameToServer, globalCollectionOpts, logger, item.Namespace)
-		return nameToServer, nil, ""
+		processSystemMetrics(timestamp, item.Content, sourceToServer, globalCollectionOpts, logger, namespace)
+		return sourceToServer, nil, ""
 	}
 
 	parts := regexp.MustCompile(`^postgres.(\d+)`).FindStringSubmatch(string(item.Header.Procid))
 	if len(parts) != 2 {
-		return nameToServer, nil, ""
+		return sourceToServer, nil, ""
 	}
 	backendPid, _ := strconv.ParseInt(parts[1], 10, 32)
 
 	contentParts := regexp.MustCompile(`^\[(\w+)\] \[(\d+)-(\d+)\] ( sql_error_code = \w+ (\w+):  )?(.+)`).FindStringSubmatch(string(item.Content))
 	if len(contentParts) != 7 {
 		fmt.Printf("ERR: %s\n", string(item.Content))
-		return nameToServer, nil, ""
+		return sourceToServer, nil, ""
 	}
 
 	sourceName := contentParts[1]
 	if !strings.HasPrefix(sourceName, "HEROKU_POSTGRESQL_") {
 		sourceName = "HEROKU_POSTGRESQL_" + sourceName
 	}
-	sourceName = item.Namespace + " / " + sourceName
+	sourceName = namespace + " / " + sourceName
 	logLineNumber, _ := strconv.ParseInt(contentParts[2], 10, 32)
 	logLineNumberChunk, _ := strconv.ParseInt(contentParts[3], 10, 32)
 	logLevel := contentParts[5]
 	content := contentParts[6]
 
-	nameToServer = catchIdentifyServerLine(sourceName, content, nameToServer, servers)
+	sourceToServer = catchIdentifyServerLine(sourceName, content, sourceToServer, servers)
 
-	newLogLine := makeLogLine(timestamp, backendPid, logLineNumber, logLineNumberChunk, logLevel, content, nameToServer)
+	newLogLine := makeLogLine(timestamp, backendPid, logLineNumber, logLineNumberChunk, logLevel, content, now)
 
-	return nameToServer, newLogLine, sourceName
+	return sourceToServer, newLogLine, sourceName
 }
 
-func logReceiver(servers []*state.Server, in <-chan HerokuLogStreamItem, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
-	var logLinesByName map[string][]state.LogLine
-	var nameToServer map[string]*state.Server
+func setupLogTransformer(ctx context.Context, wg *sync.WaitGroup, servers []*state.Server, in <-chan HerokuLogStreamItem, out chan state.ParsedLogStreamItem, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
 
-	logLinesByName = make(map[string][]state.LogLine)
-	nameToServer = make(map[string]*state.Server)
+		logLinesBySource := make(map[string][]state.LogLine)
+		sourceToServer := make(map[string]*state.Server)
 
-	for {
-		item, ok := <-in
-		if !ok {
-			return
-		}
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case item, ok := <-in:
+				if !ok {
+					return
+				}
 
-		var newLogLine *state.LogLine
-		var sourceName string
-		nameToServer, newLogLine, sourceName = logStreamItemToLogLine(item, servers, nameToServer, globalCollectionOpts, logger)
-		if newLogLine != nil && sourceName != "" {
-			logLinesByName[sourceName] = append(logLinesByName[sourceName], *newLogLine)
-		}
+				now := time.Now()
 
-		for sourceName, logLines := range logLinesByName {
-			server, exists := nameToServer[sourceName]
-			if !exists {
-				logger.PrintInfo("Ignoring log line since server can't be matched yet - if this keeps showing up you have a configuration error for %s", sourceName)
-				logLinesByName[sourceName] = []state.LogLine{}
-				continue
+				var newLogLine *state.LogLine
+				var sourceName string
+				sourceToServer, newLogLine, sourceName = logStreamItemToLogLine(item, servers, sourceToServer, now, globalCollectionOpts, logger)
+				if newLogLine != nil && sourceName != "" {
+					logLinesBySource[sourceName] = append(logLinesBySource[sourceName], *newLogLine)
+				}
+
+				for sourceName, logLines := range logLinesBySource {
+					server, exists := sourceToServer[sourceName]
+					if !exists {
+						logger.PrintInfo("Ignoring log line since server can't be matched yet - if this keeps showing up you have a configuration error for %s", sourceName)
+						logLinesBySource[sourceName] = []state.LogLine{}
+						continue
+					}
+
+					for _, logLine := range logLines {
+						logLine.Username = server.Config.GetDbUsername()
+						logLine.Database = server.Config.GetDbName()
+						out <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: logLine}
+					}
+				}
 			}
-
-			for idx, logLine := range logLines {
-				logLine.Username = server.Config.GetDbUsername()
-				logLine.Database = server.Config.GetDbName()
-				logLines[idx] = logLine
-			}
-
-			prefixedLogger := logger.WithPrefix(server.Config.SectionName)
-			logLinesByName[sourceName] = stream.ProcessLogStream(server, logLines, globalCollectionOpts, prefixedLogger, nil, stream.LogTestNone)
 		}
-	}
+	}()
 }
