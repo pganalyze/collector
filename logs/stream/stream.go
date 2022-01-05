@@ -44,39 +44,79 @@ import (
 func findReadyLogLines(logLines []state.LogLine, threshold time.Duration) ([]state.LogLine, []state.LogLine) {
 	var readyLogLines []state.LogLine
 	var tooFreshLogLines []state.LogLine
-	var lastPrimaryLogLine *state.LogLine
+	var lastLogLineWithPrefixPid int32 = -1
+	var lastMainLogLinePid int32 = -1
 
 	now := time.Now()
 
 	for _, logLine := range logLines {
+		ready := false
 		if logLine.LogLevel == pganalyze_collector.LogLineInformation_UNKNOWN {
 			if logLine.BackendPid != 0 {
 				// Heroku case (Unknown log lines have PIDs assigned)
-				if lastPrimaryLogLine != nil && logLine.BackendPid == lastPrimaryLogLine.BackendPid {
-					readyLogLines = append(readyLogLines, logLine)
-				} else {
-					tooFreshLogLines = append(tooFreshLogLines, logLine)
-				}
+				ready = lastLogLineWithPrefixPid != -1 && logLine.BackendPid == lastLogLineWithPrefixPid
 			} else {
-				if lastPrimaryLogLine != nil {
-					// Self-managed and Google Cloud SQL case - we always stitch unknown log levels to the prior line
-					readyLogLines = append(readyLogLines, logLine)
-				} else if now.Sub(logLine.CollectedAt) <= threshold {
-					tooFreshLogLines = append(tooFreshLogLines, logLine)
+				// Self-managed case (subsequent multi-line lines do not have PIDs)
+				if lastLogLineWithPrefixPid != -1 {
+					// We always stitch unknown log levels to the prior line
+					ready = true
+				} else if now.Sub(logLine.CollectedAt) > threshold {
+					// This is ready, but we can't associate it to anything within the threshold - throw it away
+					continue
 				}
 			}
 		} else {
 			if now.Sub(logLine.CollectedAt) > threshold {
-				readyLogLines = append(readyLogLines, logLine)
-				lastPrimaryLogLine = &logLine
+				ready = true
+				lastLogLineWithPrefixPid = logLine.BackendPid
+				if isPostgresErrorLevel(logLine.LogLevel) {
+					lastMainLogLinePid = logLine.BackendPid
+				} else {
+					lastMainLogLinePid = -1
+				}
+			} else if isAdditionalLineLevel(logLine.LogLevel) && logLine.BackendPid != 0 && lastMainLogLinePid != -1 && logLine.BackendPid == lastMainLogLinePid {
+				ready = true
+				lastLogLineWithPrefixPid = logLine.BackendPid
 			} else {
-				tooFreshLogLines = append(tooFreshLogLines, logLine)
-				lastPrimaryLogLine = nil
+				lastLogLineWithPrefixPid = -1
+				lastMainLogLinePid = -1
 			}
+		}
+		if ready {
+			readyLogLines = append(readyLogLines, logLine)
+		} else {
+			tooFreshLogLines = append(tooFreshLogLines, logLine)
 		}
 	}
 
 	return readyLogLines, tooFreshLogLines
+}
+
+/* Level lists current as of Postgres 14.1 */
+func isPostgresErrorLevel(str pganalyze_collector.LogLineInformation_LogLevel) bool {
+	switch str {
+	case pganalyze_collector.LogLineInformation_DEBUG,
+		pganalyze_collector.LogLineInformation_INFO,
+		pganalyze_collector.LogLineInformation_NOTICE,
+		pganalyze_collector.LogLineInformation_WARNING,
+		pganalyze_collector.LogLineInformation_ERROR,
+		pganalyze_collector.LogLineInformation_LOG,
+		pganalyze_collector.LogLineInformation_FATAL,
+		pganalyze_collector.LogLineInformation_PANIC:
+		return true
+	}
+	return false
+}
+func isAdditionalLineLevel(str pganalyze_collector.LogLineInformation_LogLevel) bool {
+	switch str {
+	case pganalyze_collector.LogLineInformation_DETAIL,
+		pganalyze_collector.LogLineInformation_HINT,
+		pganalyze_collector.LogLineInformation_CONTEXT,
+		pganalyze_collector.LogLineInformation_STATEMENT,
+		pganalyze_collector.LogLineInformation_QUERY:
+		return true
+	}
+	return false
 }
 
 // writeTmpLogFile - Setup temporary file that will be used for encryption
