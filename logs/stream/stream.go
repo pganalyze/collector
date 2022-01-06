@@ -39,7 +39,8 @@ import (
 // - Not correctly ordered (lines from Pub/Sub may arrive in any order)
 // - All lines have a timestamp
 // - Always has the log line number, allowing association of related log lines
-// - Multi-line messages are already combined together (as of Sept 14, 2021)
+// - Multi-line messages are already combined together
+//   (as of Sept 14, 2021 - see https://cloud.google.com/sql/docs/release-notes#September_14_2021)
 
 const InvalidPid int32 = -1
 
