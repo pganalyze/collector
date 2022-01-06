@@ -25,9 +25,10 @@ import (
 //
 // Self-managed VM log data looks like this:
 // - Correctly ordered (we never have to sort the line for a specific PID earlier than another line)
-// - Subsequent lines will be missing PID data (since the log_line_prefix doesn't get output again)
-// - Subsequent lines will be missing timestamp data (only lines with log_line_prefix have a timestamp)
 // - Data from different PIDs might be mixed, so we need to split data up by PID before analysis
+// - Additionally, for log tails (but not syslog receiver):
+//   - Subsequent lines will be missing PID data (since the log_line_prefix doesn't get output again)
+//   - Subsequent lines will be missing timestamp data (only lines with log_line_prefix have a timestamp)
 //
 // Heroku log data looks like this:
 // - Not correctly ordered (lines from logplex may arrive in any order)
@@ -37,55 +38,97 @@ import (
 // Google Cloud SQL log data looks like this:
 // - Not correctly ordered (lines from Pub/Sub may arrive in any order)
 // - All lines have a timestamp
-// - First line of a message always has log line number (due to fixed log_line_prefix)
-// - Multi-line messages only have the PID and line number in the first message
+// - Always has the log line number, allowing association of related log lines
+// - Multi-line messages are already combined together (as of Sept 14, 2021)
+
+const InvalidPid int32 = -1
+
+type LogLineReadiness int
+
+const (
+	LogLineNoAction LogLineReadiness = iota
+	LogLineReady
+	LogLineDiscard
+)
+
+func determineLogLineReadiness(logLine state.LogLine, threshold time.Duration, now time.Time, lastReadyMainLogLinePid int32, lastReadyLogLineWithPrefixPid int32) LogLineReadiness {
+	// The easy case: We have a log line with a log_line_prefix, and only need
+	// to check if we are ready to send or whether there could still be
+	// subsequent lines that will show up within the threshold
+	if logLine.LogLevel != pganalyze_collector.LogLineInformation_UNKNOWN {
+		if now.Sub(logLine.CollectedAt) > threshold || (isAdditionalLineLevel(logLine.LogLevel) && logLine.BackendPid == lastReadyMainLogLinePid) {
+			return LogLineReady
+		}
+
+		return LogLineNoAction
+	}
+
+	// Part of a multi-line log line, where we don't have a log_line_prefix,
+	// but we have a PID, and so can make some assumptions of where this
+	// log line might fit. This is the case for Heroku and syslog receivers.
+	if logLine.BackendPid != 0 {
+		if logLine.BackendPid == lastReadyLogLineWithPrefixPid {
+			return LogLineReady
+		}
+
+		return LogLineNoAction
+	}
+
+	// Part of a multi-line log line, where we don't have a log_line_prefix,
+	// or any other contextual information!
+	//
+	// This is the case for self-managed servers where we tail a log file,
+	// and so we can reasonably assume that subsequent unidentifyable lines
+	// directly belong to the line we saw right before.
+	//
+	// There are edge cases where we discard lines here, since we want to avoid
+	// keeping lines forever that we could never associate to anything.
+	if lastReadyLogLineWithPrefixPid != InvalidPid {
+		return LogLineReady
+	}
+	if now.Sub(logLine.CollectedAt) > threshold {
+		return LogLineDiscard
+	}
+	return LogLineNoAction
+}
 
 // findReadyLogLines - Splits log lines into those that are ready, and those that aren't
 func findReadyLogLines(logLines []state.LogLine, threshold time.Duration) ([]state.LogLine, []state.LogLine) {
 	var readyLogLines []state.LogLine
 	var tooFreshLogLines []state.LogLine
-	var lastLogLineWithPrefixPid int32 = -1
-	var lastMainLogLinePid int32 = -1
+	var lastReadyMainLogLinePid int32 = InvalidPid
+	var lastReadyLogLineWithPrefixPid int32 = InvalidPid
 
 	now := time.Now()
 
 	for _, logLine := range logLines {
-		ready := false
-		if logLine.LogLevel == pganalyze_collector.LogLineInformation_UNKNOWN {
-			if logLine.BackendPid != 0 {
-				// Heroku case (Unknown log lines have PIDs assigned)
-				ready = lastLogLineWithPrefixPid != -1 && logLine.BackendPid == lastLogLineWithPrefixPid
-			} else {
-				// Self-managed case (subsequent multi-line lines do not have PIDs)
-				if lastLogLineWithPrefixPid != -1 {
-					// We always stitch unknown log levels to the prior line
-					ready = true
-				} else if now.Sub(logLine.CollectedAt) > threshold {
-					// This is ready, but we can't associate it to anything within the threshold - throw it away
-					continue
-				}
-			}
-		} else {
-			if now.Sub(logLine.CollectedAt) > threshold {
-				ready = true
-				lastLogLineWithPrefixPid = logLine.BackendPid
-				if isPostgresErrorLevel(logLine.LogLevel) {
-					lastMainLogLinePid = logLine.BackendPid
-				} else {
-					lastMainLogLinePid = -1
-				}
-			} else if isAdditionalLineLevel(logLine.LogLevel) && logLine.BackendPid != 0 && lastMainLogLinePid != -1 && logLine.BackendPid == lastMainLogLinePid {
-				ready = true
-				lastLogLineWithPrefixPid = logLine.BackendPid
-			} else {
-				lastLogLineWithPrefixPid = -1
-				lastMainLogLinePid = -1
-			}
-		}
-		if ready {
-			readyLogLines = append(readyLogLines, logLine)
-		} else {
+		action := determineLogLineReadiness(logLine, threshold, now, lastReadyMainLogLinePid, lastReadyLogLineWithPrefixPid)
+
+		switch action {
+		case LogLineNoAction:
+			// Keep for next run
 			tooFreshLogLines = append(tooFreshLogLines, logLine)
+		case LogLineReady:
+			// Send to pganalyze for processing
+			readyLogLines = append(readyLogLines, logLine)
+		case LogLineDiscard:
+			// Throw away this line
+		}
+
+		if logLine.LogLevel != pganalyze_collector.LogLineInformation_UNKNOWN {
+			if action == LogLineReady && isMainLogLevel(logLine.LogLevel) {
+				lastReadyMainLogLinePid = logLine.BackendPid
+			} else if action == LogLineReady && isAdditionalLineLevel(logLine.LogLevel) {
+				// Keep prior main log line PID
+			} else {
+				lastReadyMainLogLinePid = InvalidPid
+			}
+
+			if action == LogLineReady {
+				lastReadyLogLineWithPrefixPid = logLine.BackendPid
+			} else {
+				lastReadyLogLineWithPrefixPid = InvalidPid
+			}
 		}
 	}
 
@@ -93,7 +136,7 @@ func findReadyLogLines(logLines []state.LogLine, threshold time.Duration) ([]sta
 }
 
 /* Level lists current as of Postgres 14.1 */
-func isPostgresErrorLevel(str pganalyze_collector.LogLineInformation_LogLevel) bool {
+func isMainLogLevel(str pganalyze_collector.LogLineInformation_LogLevel) bool {
 	switch str {
 	case pganalyze_collector.LogLineInformation_DEBUG,
 		pganalyze_collector.LogLineInformation_INFO,
