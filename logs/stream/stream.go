@@ -79,7 +79,7 @@ func determineLogLineReadiness(logLine state.LogLine, threshold time.Duration, n
 	// or any other contextual information!
 	//
 	// This is the case for self-managed servers where we tail a log file,
-	// and so we can reasonably assume that subsequent unidentifyable lines
+	// and so we can reasonably assume that subsequent unidentifiable lines
 	// directly belong to the line we saw right before.
 	//
 	// There are edge cases where we discard lines here, since we want to avoid
