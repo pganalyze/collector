@@ -401,10 +401,28 @@ func ParseLogLineWithPrefix(prefix string, line string) (logLine state.LogLine, 
 		logLine.OccurredAt, err = time.Parse(timeFormat, timePart)
 		if err != nil {
 			if timeFormatAlt != "" {
-				logLine.OccurredAt, err = time.Parse(timeFormatAlt, timePart)
+				// Ensure we have the correct format remembered for ParseInLocation call that may happen later
+				timeFormat = timeFormatAlt
+				logLine.OccurredAt, err = time.Parse(timeFormat, timePart)
 			}
 			if err != nil {
-				ok = false
+				return
+			}
+		}
+		// Handle non-UTC timezones in systems that have log_timezone set to a different
+		// timezone value than their system timezone. This is necessary because Go otherwise
+		// only reads the timezone name but does not set the timezone offset, see
+		// https://pkg.go.dev/time#Parse
+		zone, offset := logLine.OccurredAt.Zone()
+		if offset == 0 && zone != "UTC" && zone != "" {
+			zoneLocation, err := time.LoadLocation(zone)
+			if err != nil {
+				// We don't know which timezone this is (and a timezone name is present), so we can't process this log line
+				return
+			}
+			logLine.OccurredAt, err = time.ParseInLocation(timeFormat, timePart, zoneLocation)
+			if err != nil {
+				// Technically this should not occur (as we should have already failed previously in time.Parse)
 				return
 			}
 		}

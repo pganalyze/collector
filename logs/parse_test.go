@@ -105,6 +105,20 @@ var parseTests = []parseTestpair{
 		},
 		true,
 	},
+	// Custom 1 format
+	{
+		"",
+		"2018-09-27 06:57:01.030 EST [20194][] : [1-1] [app=pganalyze_collector] LOG:  connection received: host=[local]",
+		state.LogLine{
+			OccurredAt:    time.Date(2018, time.September, 27, 6, 57, 1, 30*1000*1000, time.FixedZone("EST", -5*3600)),
+			LogLevel:      pganalyze_collector.LogLineInformation_LOG,
+			BackendPid:    20194,
+			LogLineNumber: 1,
+			Application:   "pganalyze_collector",
+			Content:       "connection received: host=[local]",
+		},
+		true,
+	},
 	// Custom 3 format
 	{
 		"",
