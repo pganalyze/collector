@@ -104,7 +104,7 @@ func processSystemMetrics(timestamp time.Time, content []byte, nameToServer map[
 
 	system.Memory = state.Memory{
 		ApplicationBytes: uint64(memoryPostgresKb * 1024),
-		TotalBytes:       uint64(memoryFreeKb*1024) + uint64(memoryTotalUsedKb*1024),
+		TotalBytes:       uint64(memoryTotalUsedKb * 1024),
 		FreeBytes:        uint64(memoryFreeKb * 1024),
 		CachedBytes:      uint64(memoryCachedKb * 1024),
 	}
