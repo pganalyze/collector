@@ -62,7 +62,7 @@ func upsertQueryReferenceAndInformation(s *snapshot.FullSnapshot, statementTexts
 }
 
 func upsertQueryReferenceAndInformationSimple(server *state.Server, refs []*snapshot.QueryReference, infos []*snapshot.QueryInformation, roleIdx int32, databaseIdx int32, originalQuery string, trackActivityQuerySize int) (int32, []*snapshot.QueryReference, []*snapshot.QueryInformation) {
-	fingerprint := util.FingerprintQuery(originalQuery)
+	fingerprint := util.FingerprintQuery(originalQuery, server.Config.FilterQueryText, trackActivityQuerySize)
 
 	fpBuf := make([]byte, 8)
 	binary.BigEndian.PutUint64(fpBuf, fingerprint)

@@ -22,10 +22,10 @@ func TestStatements(t *testing.T) {
 
 	q1 := "SELECT 1"
 	q2 := "SELECT * FROM test"
-	fp1 := util.FingerprintQuery(q1)
+	fp1 := util.FingerprintQuery(q1, "none", -1)
 	fpBuf1 := make([]byte, 8)
 	binary.BigEndian.PutUint64(fpBuf1, fp1)
-	fp2 := util.FingerprintQuery(q2)
+	fp2 := util.FingerprintQuery(q2, "none", -1)
 	fpBuf2 := make([]byte, 8)
 	binary.BigEndian.PutUint64(fpBuf2, fp2)
 	transientState.Statements[key1] = state.PostgresStatement{Fingerprint: fp1}

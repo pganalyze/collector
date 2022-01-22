@@ -219,8 +219,8 @@ func GetStatements(server *state.Server, logger *util.Logger, db *sql.DB, global
 	statements := make(state.PostgresStatementMap)
 	statementTextsByFp := make(state.PostgresStatementTextMap)
 	if showtext {
-		collectorQueryFingerprint := util.FingerprintQuery("<pganalyze-collector>")
-		insufficientPrivsQueryFingerprint := util.FingerprintQuery("<insufficient privilege>")
+		collectorQueryFingerprint := util.FingerprintText(util.QueryTextCollector)
+		insufficientPrivsQueryFingerprint := util.FingerprintText(util.QueryTextInsufficientPrivs)
 
 		for key, text := range statementTexts {
 			if insufficientPrivilege(text) {
@@ -234,7 +234,7 @@ func GetStatements(server *state.Server, logger *util.Logger, db *sql.DB, global
 					Fingerprint: collectorQueryFingerprint,
 				}
 			} else {
-				fp := util.FingerprintQuery(text)
+				fp := util.FingerprintQuery(text, server.Config.FilterQueryText, -1)
 				statements[key] = state.PostgresStatement{Fingerprint: fp}
 				_, ok := statementTextsByFp[fp]
 				if !ok {
