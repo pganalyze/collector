@@ -61,7 +61,7 @@ var fingerprintTests = []struct {
 
 func TestFingerprint(t *testing.T) {
 	for _, test := range fingerprintTests {
-		fp := util.FingerprintQuery(test.input)
+		fp := util.FingerprintQuery(test.input, "none", -1)
 		actual := make([]byte, 8)
 		binary.BigEndian.PutUint64(actual, fp)
 		expected, _ := hex.DecodeString(test.expected)
