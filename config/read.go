@@ -23,6 +23,14 @@ import (
 
 const DefaultAPIBaseURL = "https://api.pganalyze.com"
 
+func parseConfigBool(value string) bool {
+	if value == "" || value == "0" || value == "off" || value == "false" || value == "no" || value == "f" || value == "n" {
+		return false
+	}
+
+	return true
+}
+
 func getDefaultConfig() *ServerConfig {
 	config := &ServerConfig{
 		APIBaseURL:              DefaultAPIBaseURL,
@@ -50,17 +58,17 @@ func getDefaultConfig() *ServerConfig {
 	if systemScopeFallback := os.Getenv("PGA_API_SYSTEM_SCOPE_FALLBACK"); systemScopeFallback != "" {
 		config.SystemScopeFallback = systemScopeFallback
 	}
-	if enableReports := os.Getenv("PGA_ENABLE_REPORTS"); enableReports != "" && enableReports != "0" {
-		config.EnableReports = true
+	if enableReports := os.Getenv("PGA_ENABLE_REPORTS"); enableReports != "" {
+		config.EnableReports = parseConfigBool(enableReports)
 	}
-	if disableLogs := os.Getenv("PGA_DISABLE_LOGS"); disableLogs != "" && disableLogs != "0" {
-		config.DisableLogs = true
+	if disableLogs := os.Getenv("PGA_DISABLE_LOGS"); disableLogs != "" {
+		config.DisableLogs = parseConfigBool(disableLogs)
 	}
-	if disableActivity := os.Getenv("PGA_DISABLE_ACTIVITY"); disableActivity != "" && disableActivity != "0" {
-		config.DisableActivity = true
+	if disableActivity := os.Getenv("PGA_DISABLE_ACTIVITY"); disableActivity != "" {
+		config.DisableActivity = parseConfigBool(disableActivity)
 	}
-	if enableLogExplain := os.Getenv("PGA_ENABLE_LOG_EXPLAIN"); enableLogExplain != "" && enableLogExplain != "0" {
-		config.EnableLogExplain = true
+	if enableLogExplain := os.Getenv("PGA_ENABLE_LOG_EXPLAIN"); enableLogExplain != "" {
+		config.EnableLogExplain = parseConfigBool(enableLogExplain)
 	}
 	if dbURL := os.Getenv("DB_URL"); dbURL != "" {
 		config.DbURL = dbURL
@@ -68,8 +76,8 @@ func getDefaultConfig() *ServerConfig {
 	if dbName := os.Getenv("DB_NAME"); dbName != "" {
 		config.DbName = dbName
 	}
-	if dbAllNames := os.Getenv("DB_ALL_NAMES"); dbAllNames == "1" {
-		config.DbAllNames = true
+	if dbAllNames := os.Getenv("DB_ALL_NAMES"); dbAllNames != "" {
+		config.DbAllNames = parseConfigBool(dbAllNames)
 	}
 	if dbUsername := os.Getenv("DB_USERNAME"); dbUsername != "" {
 		config.DbUsername = dbUsername
@@ -202,8 +210,8 @@ func getDefaultConfig() *ServerConfig {
 	if maxCollectorConnections := os.Getenv("MAX_COLLECTOR_CONNECTION"); maxCollectorConnections != "" {
 		config.MaxCollectorConnections, _ = strconv.Atoi(maxCollectorConnections)
 	}
-	if skipIfReplica := os.Getenv("SKIP_IF_REPLICA"); skipIfReplica != "" && skipIfReplica != "0" {
-		config.SkipIfReplica = true
+	if skipIfReplica := os.Getenv("SKIP_IF_REPLICA"); skipIfReplica != "" {
+		config.SkipIfReplica = parseConfigBool(skipIfReplica)
 	}
 	if filterLogSecret := os.Getenv("FILTER_LOG_SECRET"); filterLogSecret != "" {
 		config.FilterLogSecret = filterLogSecret
