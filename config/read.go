@@ -24,7 +24,8 @@ import (
 const DefaultAPIBaseURL = "https://api.pganalyze.com"
 
 func parseConfigBool(value string) bool {
-	if value == "" || value == "0" || value == "off" || value == "false" || value == "no" || value == "f" || value == "n" {
+	var val = strings.ToLower(value)
+	if val == "0" || val == "off" || val == "false" || val == "no" || val == "f" || val == "n" {
 		return false
 	}
 
