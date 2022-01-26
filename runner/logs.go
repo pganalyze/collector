@@ -173,6 +173,9 @@ func setupLogStreamer(ctx context.Context, wg *sync.WaitGroup, globalCollectionO
 		logLinesByServer := make(map[config.ServerIdentifier][]state.LogLine)
 
 		ticker := time.NewTicker(LogStreamingInterval)
+		if globalCollectionOpts.TestRun {
+			ticker = time.NewTicker(1 * time.Second)
+		}
 
 		for {
 			select {
