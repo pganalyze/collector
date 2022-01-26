@@ -256,6 +256,63 @@ var tests = []testpair{
 		[]state.LogLine{},
 		nil,
 	},
+	{
+		[]state.LogLine{
+			{
+				CollectedAt: now.Add(-4 * time.Second),
+				OccurredAt:  now.Add(-4 * time.Second),
+				LogLevel:    pganalyze_collector.LogLineInformation_LOG,
+				BackendPid:  80,
+				Content:     "main\n",
+			},
+			{
+				CollectedAt: now.Add(-2 * time.Second),
+				OccurredAt:  now.Add(-2 * time.Second),
+				LogLevel:    pganalyze_collector.LogLineInformation_DETAIL,
+				BackendPid:  92,
+				Content:     "other-detail\n",
+			},
+			{
+				CollectedAt: now.Add(-2 * time.Second),
+				OccurredAt:  now.Add(-4 * time.Second),
+				LogLevel:    pganalyze_collector.LogLineInformation_DETAIL,
+				BackendPid:  80,
+				Content:     "detail\n",
+			},
+		},
+		state.TransientLogState{},
+		state.LogFile{
+			LogLines: []state.LogLine{
+				{
+					CollectedAt: now.Add(-4 * time.Second),
+					OccurredAt:  now.Add(-4 * time.Second),
+					LogLevel:    pganalyze_collector.LogLineInformation_LOG,
+					ByteEnd:     5,
+					BackendPid:  80,
+				},
+				{
+					CollectedAt:      now.Add(-2 * time.Second),
+					OccurredAt:       now.Add(-4 * time.Second),
+					LogLevel:         pganalyze_collector.LogLineInformation_DETAIL,
+					ByteStart:        5,
+					ByteContentStart: 5,
+					ByteEnd:          12,
+					BackendPid:       80,
+				},
+			},
+		},
+		"main\ndetail\n",
+		[]state.LogLine{
+			{
+				CollectedAt: now.Add(-2 * time.Second),
+				OccurredAt:  now.Add(-2 * time.Second),
+				LogLevel:    pganalyze_collector.LogLineInformation_DETAIL,
+				BackendPid:  92,
+				Content:     "other-detail\n",
+			},
+		},
+		nil,
+	},
 	//{
 	// There should be a test for this method
 	// - Pass in two logLines, one at X, one at X + 2, and assume the time is x + 3

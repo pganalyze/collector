@@ -25,9 +25,10 @@ import (
 //
 // Self-managed VM log data looks like this:
 // - Correctly ordered (we never have to sort the line for a specific PID earlier than another line)
-// - Subsequent lines will be missing PID data (since the log_line_prefix doesn't get output again)
-// - Subsequent lines will be missing timestamp data (only lines with log_line_prefix have a timestamp)
 // - Data from different PIDs might be mixed, so we need to split data up by PID before analysis
+// - Additionally, for log tails (but not syslog receiver):
+//   - Subsequent lines will be missing PID data (since the log_line_prefix doesn't get output again)
+//   - Subsequent lines will be missing timestamp data (only lines with log_line_prefix have a timestamp)
 //
 // Heroku log data looks like this:
 // - Not correctly ordered (lines from logplex may arrive in any order)
@@ -37,46 +38,130 @@ import (
 // Google Cloud SQL log data looks like this:
 // - Not correctly ordered (lines from Pub/Sub may arrive in any order)
 // - All lines have a timestamp
-// - First line of a message always has log line number (due to fixed log_line_prefix)
-// - Multi-line messages only have the PID and line number in the first message
+// - Always has the log line number, allowing association of related log lines
+// - Multi-line messages are already combined together
+//   (as of Sept 14, 2021 - see https://cloud.google.com/sql/docs/release-notes#September_14_2021)
+
+const InvalidPid int32 = -1
+const UnknownPid int32 = 0
+
+type LogLineReadiness int
+
+const (
+	LogLineDefer LogLineReadiness = iota
+	LogLineReady
+	LogLineDiscard
+)
+
+func determineLogLineReadiness(logLine state.LogLine, threshold time.Duration, now time.Time, lastReadyMainLogLinePid int32, lastReadyLogLineWithPrefixPid int32) LogLineReadiness {
+	// The easy case: We have a log line with a log_line_prefix, and only need
+	// to check if we are ready to send or whether there could still be
+	// subsequent lines that will show up within the threshold
+	if logLine.LogLevel != pganalyze_collector.LogLineInformation_UNKNOWN {
+		if now.Sub(logLine.CollectedAt) > threshold || (isAdditionalLineLevel(logLine.LogLevel) && logLine.BackendPid == lastReadyMainLogLinePid) {
+			return LogLineReady
+		}
+
+		return LogLineDefer
+	}
+
+	// Part of a multi-line log line, where we don't have a log_line_prefix,
+	// but we have a PID, and so can make some assumptions of where this
+	// log line might fit. This is the case for Heroku and syslog receivers.
+	if logLine.BackendPid != UnknownPid {
+		if logLine.BackendPid == lastReadyLogLineWithPrefixPid {
+			return LogLineReady
+		}
+
+		return LogLineDefer
+	}
+
+	// Part of a multi-line log line, where we don't have a log_line_prefix,
+	// or any other contextual information!
+	//
+	// This is the case for self-managed servers where we tail a log file,
+	// and so we can reasonably assume that subsequent unidentifiable lines
+	// directly belong to the line we saw right before.
+	//
+	// There are edge cases where we discard lines here, since we want to avoid
+	// keeping lines forever that we could never associate to anything.
+	if lastReadyLogLineWithPrefixPid != InvalidPid {
+		return LogLineReady
+	}
+	if now.Sub(logLine.CollectedAt) > threshold {
+		return LogLineDiscard
+	}
+	return LogLineDefer
+}
 
 // findReadyLogLines - Splits log lines into those that are ready, and those that aren't
 func findReadyLogLines(logLines []state.LogLine, threshold time.Duration) ([]state.LogLine, []state.LogLine) {
 	var readyLogLines []state.LogLine
 	var tooFreshLogLines []state.LogLine
-	var lastPrimaryLogLine *state.LogLine
+	var lastReadyMainLogLinePid int32 = InvalidPid
+	var lastReadyLogLineWithPrefixPid int32 = InvalidPid
 
 	now := time.Now()
 
 	for _, logLine := range logLines {
-		if logLine.LogLevel == pganalyze_collector.LogLineInformation_UNKNOWN {
-			if logLine.BackendPid != 0 {
-				// Heroku case (Unknown log lines have PIDs assigned)
-				if lastPrimaryLogLine != nil && logLine.BackendPid == lastPrimaryLogLine.BackendPid {
-					readyLogLines = append(readyLogLines, logLine)
-				} else {
-					tooFreshLogLines = append(tooFreshLogLines, logLine)
-				}
+		action := determineLogLineReadiness(logLine, threshold, now, lastReadyMainLogLinePid, lastReadyLogLineWithPrefixPid)
+
+		switch action {
+		case LogLineDefer:
+			// Keep for next run
+			tooFreshLogLines = append(tooFreshLogLines, logLine)
+		case LogLineReady:
+			// Send to pganalyze for processing
+			readyLogLines = append(readyLogLines, logLine)
+		case LogLineDiscard:
+			// Throw away this line
+		}
+
+		if logLine.LogLevel != pganalyze_collector.LogLineInformation_UNKNOWN {
+			if action == LogLineReady && isMainLogLevel(logLine.LogLevel) {
+				lastReadyMainLogLinePid = logLine.BackendPid
+			} else if action == LogLineReady && isAdditionalLineLevel(logLine.LogLevel) {
+				// Keep prior main log line PID
 			} else {
-				if lastPrimaryLogLine != nil {
-					// Self-managed and Google Cloud SQL case - we always stitch unknown log levels to the prior line
-					readyLogLines = append(readyLogLines, logLine)
-				} else if now.Sub(logLine.CollectedAt) <= threshold {
-					tooFreshLogLines = append(tooFreshLogLines, logLine)
-				}
+				lastReadyMainLogLinePid = InvalidPid
 			}
-		} else {
-			if now.Sub(logLine.CollectedAt) > threshold {
-				readyLogLines = append(readyLogLines, logLine)
-				lastPrimaryLogLine = &logLine
+
+			if action == LogLineReady {
+				lastReadyLogLineWithPrefixPid = logLine.BackendPid
 			} else {
-				tooFreshLogLines = append(tooFreshLogLines, logLine)
-				lastPrimaryLogLine = nil
+				lastReadyLogLineWithPrefixPid = InvalidPid
 			}
 		}
 	}
 
 	return readyLogLines, tooFreshLogLines
+}
+
+/* Level lists current as of Postgres 14.1 */
+func isMainLogLevel(str pganalyze_collector.LogLineInformation_LogLevel) bool {
+	switch str {
+	case pganalyze_collector.LogLineInformation_DEBUG,
+		pganalyze_collector.LogLineInformation_INFO,
+		pganalyze_collector.LogLineInformation_NOTICE,
+		pganalyze_collector.LogLineInformation_WARNING,
+		pganalyze_collector.LogLineInformation_ERROR,
+		pganalyze_collector.LogLineInformation_LOG,
+		pganalyze_collector.LogLineInformation_FATAL,
+		pganalyze_collector.LogLineInformation_PANIC:
+		return true
+	}
+	return false
+}
+func isAdditionalLineLevel(str pganalyze_collector.LogLineInformation_LogLevel) bool {
+	switch str {
+	case pganalyze_collector.LogLineInformation_DETAIL,
+		pganalyze_collector.LogLineInformation_HINT,
+		pganalyze_collector.LogLineInformation_CONTEXT,
+		pganalyze_collector.LogLineInformation_STATEMENT,
+		pganalyze_collector.LogLineInformation_QUERY:
+		return true
+	}
+	return false
 }
 
 // writeTmpLogFile - Setup temporary file that will be used for encryption
@@ -181,7 +266,7 @@ func AnalyzeStreamInGroups(logLines []state.LogLine) (state.TransientLogState, s
 	allLinesHaveLogLineNumberChunk := true
 	allLinesHaveOccurredAt := true
 	for _, logLine := range logLines {
-		if logLine.BackendPid == 0 {
+		if logLine.BackendPid == UnknownPid {
 			allLinesHaveBackendPid = false
 		}
 		if logLine.LogLineNumber == 0 {
