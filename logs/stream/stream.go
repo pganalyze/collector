@@ -43,11 +43,12 @@ import (
 //   (as of Sept 14, 2021 - see https://cloud.google.com/sql/docs/release-notes#September_14_2021)
 
 const InvalidPid int32 = -1
+const UnknownPid int32 = 0
 
 type LogLineReadiness int
 
 const (
-	LogLineNoAction LogLineReadiness = iota
+	LogLineDefer LogLineReadiness = iota
 	LogLineReady
 	LogLineDiscard
 )
@@ -61,18 +62,18 @@ func determineLogLineReadiness(logLine state.LogLine, threshold time.Duration, n
 			return LogLineReady
 		}
 
-		return LogLineNoAction
+		return LogLineDefer
 	}
 
 	// Part of a multi-line log line, where we don't have a log_line_prefix,
 	// but we have a PID, and so can make some assumptions of where this
 	// log line might fit. This is the case for Heroku and syslog receivers.
-	if logLine.BackendPid != 0 {
+	if logLine.BackendPid != UnknownPid {
 		if logLine.BackendPid == lastReadyLogLineWithPrefixPid {
 			return LogLineReady
 		}
 
-		return LogLineNoAction
+		return LogLineDefer
 	}
 
 	// Part of a multi-line log line, where we don't have a log_line_prefix,
@@ -90,7 +91,7 @@ func determineLogLineReadiness(logLine state.LogLine, threshold time.Duration, n
 	if now.Sub(logLine.CollectedAt) > threshold {
 		return LogLineDiscard
 	}
-	return LogLineNoAction
+	return LogLineDefer
 }
 
 // findReadyLogLines - Splits log lines into those that are ready, and those that aren't
@@ -106,7 +107,7 @@ func findReadyLogLines(logLines []state.LogLine, threshold time.Duration) ([]sta
 		action := determineLogLineReadiness(logLine, threshold, now, lastReadyMainLogLinePid, lastReadyLogLineWithPrefixPid)
 
 		switch action {
-		case LogLineNoAction:
+		case LogLineDefer:
 			// Keep for next run
 			tooFreshLogLines = append(tooFreshLogLines, logLine)
 		case LogLineReady:
@@ -265,7 +266,7 @@ func AnalyzeStreamInGroups(logLines []state.LogLine) (state.TransientLogState, s
 	allLinesHaveLogLineNumberChunk := true
 	allLinesHaveOccurredAt := true
 	for _, logLine := range logLines {
-		if logLine.BackendPid == 0 {
+		if logLine.BackendPid == UnknownPid {
 			allLinesHaveBackendPid = false
 		}
 		if logLine.LogLineNumber == 0 {
