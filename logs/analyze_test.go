@@ -252,6 +252,13 @@ var tests = []testpair{
 			Content:  "Connection matched pg_hba.conf line 4: \"hostssl postgres        postgres        0.0.0.0/0               md5\"",
 			LogLevel: pganalyze_collector.LogLineInformation_DETAIL,
 		}, {
+			Content:  "password authentication failed for user \"special\"",
+			LogLevel: pganalyze_collector.LogLineInformation_FATAL,
+			UUID:     uuid.UUID{2},
+		}, {
+			Content:  "Role \"special\" does not exist. Connection matched pg_hba.conf line 67: \"hostnossl all all all md5\"",
+			LogLevel: pganalyze_collector.LogLineInformation_DETAIL,
+		}, {
 			Content:  "database \"template0\" is not currently accepting connections",
 			LogLevel: pganalyze_collector.LogLineInformation_FATAL,
 		}, {
@@ -314,7 +321,21 @@ var tests = []testpair{
 			SecretMarkers: []state.LogSecretMarker{{
 				ByteStart: 40,
 				ByteEnd:   107,
-				Kind:      state.UnidentifiedLogSecret,
+				Kind:      state.OpsLogSecret,
+			}},
+		}, {
+			Classification:     pganalyze_collector.LogLineInformation_CONNECTION_REJECTED,
+			LogLevel:           pganalyze_collector.LogLineInformation_FATAL,
+			UUID:               uuid.UUID{2},
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_DETAIL,
+			ParentUUID:         uuid.UUID{2},
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 72,
+				ByteEnd:   97,
+				Kind:      state.OpsLogSecret,
 			}},
 		}, {
 			Classification:     pganalyze_collector.LogLineInformation_CONNECTION_REJECTED,
