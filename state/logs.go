@@ -83,7 +83,7 @@ const (
 	// TableDataLogSecret - Table data contained in constraint violations and COPY errors
 	TableDataLogSecret
 
-	// OpsLogSecret - System, network errors, file locations and configured commands (e.g. archive command)
+	// OpsLogSecret - System, network errors, file locations, pg_hba.conf contents, and configured commands (e.g. archive command)
 	OpsLogSecret
 
 	// UnidentifiedLogSecret - Text that could not be identified and might contain secrets

@@ -165,8 +165,8 @@ var authenticationFailed = analyzeGroup{
 		secrets:  []state.LogSecretKind{0, 0, 0},
 	},
 	detail: match{
-		regexp:  regexp.MustCompile(`^Connection matched pg_hba.conf line \d+: "([^"]+)"`),
-		secrets: []state.LogSecretKind{state.UnidentifiedLogSecret},
+		regexp:  regexp.MustCompile(`^(?:(?:Role|User|Password does not match for user|Password of user) "([^"]+)" ?(?:does not have a valid SCRAM secret|does not exist|has no password assigned|has an expired password|has a password that cannot be used with MD5 authentication|is in unrecognized format)?\.\s+)?Connection matched pg_hba.conf line \d+: "([^"]+)"`),
+		secrets: []state.LogSecretKind{0, state.OpsLogSecret},
 	},
 }
 var roleNotAllowedLogin = analyzeGroup{
