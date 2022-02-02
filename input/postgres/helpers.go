@@ -17,7 +17,7 @@ func unpackPostgresInt32Array(input null.String) (result []int32) {
 	}
 
 	for _, cstr := range strings.Split(strings.Trim(input.String, "{}"), ",") {
-		cint, _ := strconv.Atoi(cstr)
+		cint, _ := strconv.ParseInt(cstr, 10, 32)
 		result = append(result, int32(cint))
 	}
 
@@ -30,7 +30,7 @@ func unpackPostgresOidArray(input null.String) (result []state.Oid) {
 	}
 
 	for _, cstr := range strings.Split(strings.Trim(input.String, "{}"), ",") {
-		cint, _ := strconv.Atoi(cstr)
+		cint, _ := strconv.ParseInt(cstr, 10, 32)
 		result = append(result, state.Oid(cint))
 	}
 

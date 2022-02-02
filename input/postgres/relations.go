@@ -204,7 +204,7 @@ func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 
 		if partCols.Valid {
 			for _, cstr := range strings.Split(partCols.String, " ") {
-				cint, _ := strconv.Atoi(cstr)
+				cint, _ := strconv.ParseInt(cstr, 10, 32)
 				row.PartitionColumns = append(row.PartitionColumns, int32(cint))
 			}
 		}
@@ -260,7 +260,7 @@ func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 		}
 
 		for _, cstr := range strings.Split(columns, " ") {
-			cint, _ := strconv.Atoi(cstr)
+			cint, _ := strconv.ParseInt(cstr, 10, 32)
 			row.Columns = append(row.Columns, int32(cint))
 		}
 
@@ -310,13 +310,13 @@ func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 		}
 		if columns.Valid {
 			for _, cstr := range strings.Split(strings.Trim(columns.String, "{}"), ",") {
-				cint, _ := strconv.Atoi(cstr)
+				cint, _ := strconv.ParseInt(cstr, 10, 32)
 				row.Columns = append(row.Columns, int32(cint))
 			}
 		}
 		if foreignColumns.Valid {
 			for _, cstr := range strings.Split(strings.Trim(foreignColumns.String, "{}"), ",") {
-				cint, _ := strconv.Atoi(cstr)
+				cint, _ := strconv.ParseInt(cstr, 10, 32)
 				row.ForeignColumns = append(row.ForeignColumns, int32(cint))
 			}
 		}

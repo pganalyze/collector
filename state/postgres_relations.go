@@ -75,8 +75,10 @@ type PostgresConstraint struct {
 func (r PostgresRelation) Fillfactor() int32 {
 	fstr, exists := r.Options["fillfactor"]
 	if exists {
-		f, _ := strconv.Atoi(fstr)
-		return int32(f)
+		f, err := strconv.ParseInt(fstr, 10, 32)
+		if err == nil {
+			return int32(f)
+		}
 	}
 	return 100
 }
@@ -85,8 +87,10 @@ func (r PostgresRelation) Fillfactor() int32 {
 func (i PostgresIndex) Fillfactor() int32 {
 	fstr, exists := i.Options["fillfactor"]
 	if exists {
-		f, _ := strconv.Atoi(fstr)
-		return int32(f)
+		f, err := strconv.ParseInt(fstr, 10, 32)
+		if err == nil {
+			return int32(f)
+		}
 	}
 	if i.IndexType == "btree" {
 		return 90

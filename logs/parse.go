@@ -438,11 +438,11 @@ func ParseLogLineWithPrefix(prefix string, line string) (logLine state.LogLine, 
 		logLine.Application = appPart
 	}
 	if logLineNumberPart != "" {
-		logLineNumber, _ := strconv.Atoi(logLineNumberPart)
+		logLineNumber, _ := strconv.ParseInt(logLineNumberPart, 10, 32)
 		logLine.LogLineNumber = int32(logLineNumber)
 	}
 
-	backendPid, _ := strconv.Atoi(pidPart)
+	backendPid, _ := strconv.ParseInt(pidPart, 10, 32)
 	logLine.BackendPid = int32(backendPid)
 	logLine.Content = contentPart
 
