@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.42.1      2022-02-01
+
+* Log Insights
+  - Handle non-UTC/non-local log_timezone values correctly
+  - Use consistent 10s interval for streamed logs (instead of shorter intervals)
+  - Log streams: Support processing primary and secondary lines out of order
+    - This resolves issues on GCP when log lines are received out of order
+  - C22 Auth failed event: Detect additional DETAIL information
+  - Add regexp match for "permission denied for table" event
+* Normalization: Attempt auto-fixing truncated queries
+* Heroku: Do not count free memory in total memory
+* Config file handling: Handle boolean values more consistently
+  - Treat case-insensitive false, off, no, 'f', and 'n' as false in addition
+    to zero
+
+
 ## 0.42.0      2021-12-20
 
 * Provide both x86/amd64 and ARM64 packages and Docker image
