@@ -1436,16 +1436,16 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 				detailLine, parts = matchLogLine(detailLine, lockWait.detail)
 				if len(parts) == 3 {
 					logLine.RelatedPids = []int32{}
-					lockHolders := []int64{}
+					lockHolders := []int32{}
 					for _, s := range strings.Split(parts[1], ", ") {
-						i, _ := strconv.ParseInt(s, 10, 64)
-						lockHolders = append(lockHolders, i)
+						i, _ := strconv.ParseInt(s, 10, 32)
+						lockHolders = append(lockHolders, int32(i))
 						logLine.RelatedPids = append(logLine.RelatedPids, int32(i))
 					}
-					lockWaiters := []int64{}
+					lockWaiters := []int32{}
 					for _, s := range strings.Split(parts[2], ", ") {
-						i, _ := strconv.ParseInt(s, 10, 64)
-						lockWaiters = append(lockWaiters, i)
+						i, _ := strconv.ParseInt(s, 10, 32)
+						lockWaiters = append(lockWaiters, int32(i))
 						logLine.RelatedPids = append(logLine.RelatedPids, int32(i))
 					}
 					logLine.Details["lock_holders"] = lockHolders

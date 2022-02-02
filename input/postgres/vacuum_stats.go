@@ -52,16 +52,16 @@ func GetVacuumStats(logger *util.Logger, db *sql.DB, ignoreRegexp string) (repor
 		case "autovacuum":
 			report.AutovacuumEnabled = value == "on"
 		case "autovacuum_max_workers":
-			val, _ := strconv.Atoi(value)
+			val, _ := strconv.ParseInt(value, 10, 32)
 			report.AutovacuumMaxWorkers = int32(val)
 		case "autovacuum_naptime":
-			val, _ := strconv.Atoi(value)
+			val, _ := strconv.ParseInt(value, 10, 32)
 			report.AutovacuumNaptimeSeconds = int32(val)
 		case "autovacuum_vacuum_threshold":
-			val, _ := strconv.Atoi(value)
+			val, _ := strconv.ParseInt(value, 10, 32)
 			report.AutovacuumVacuumThreshold = int32(val)
 		case "autovacuum_analyze_threshold":
-			val, _ := strconv.Atoi(value)
+			val, _ := strconv.ParseInt(value, 10, 32)
 			report.AutovacuumAnalyzeThreshold = int32(val)
 		case "autovacuum_vacuum_scale_factor":
 			val, _ := strconv.ParseFloat(value, 64)
@@ -70,16 +70,16 @@ func GetVacuumStats(logger *util.Logger, db *sql.DB, ignoreRegexp string) (repor
 			val, _ := strconv.ParseFloat(value, 64)
 			report.AutovacuumAnalyzeScaleFactor = val
 		case "autovacuum_freeze_max_age":
-			val, _ := strconv.Atoi(value)
+			val, _ := strconv.ParseInt(value, 10, 32)
 			report.AutovacuumFreezeMaxAge = int32(val)
 		case "autovacuum_multixact_freeze_max_age":
-			val, _ := strconv.Atoi(value)
+			val, _ := strconv.ParseInt(value, 10, 32)
 			report.AutovacuumMultixactFreezeMaxAge = int32(val)
 		case "autovacuum_vacuum_cost_delay":
-			val, _ := strconv.Atoi(value)
+			val, _ := strconv.ParseInt(value, 10, 32)
 			report.AutovacuumVacuumCostDelay = int32(val)
 		case "autovacuum_vacuum_cost_limit":
-			val, _ := strconv.Atoi(value)
+			val, _ := strconv.ParseInt(value, 10, 32)
 			report.AutovacuumVacuumCostLimit = int32(val)
 		}
 	}
@@ -117,10 +117,10 @@ func GetVacuumStats(logger *util.Logger, db *sql.DB, ignoreRegexp string) (repor
 				case "autovacuum_enabled":
 					entry.AutovacuumEnabled = parts[1] == "on"
 				case "autovacuum_vacuum_threshold":
-					val, _ := strconv.Atoi(parts[1])
+					val, _ := strconv.ParseInt(parts[1], 10, 32)
 					entry.AutovacuumVacuumThreshold = int32(val)
 				case "autovacuum_analyze_threshold":
-					val, _ := strconv.Atoi(parts[1])
+					val, _ := strconv.ParseInt(parts[1], 10, 32)
 					entry.AutovacuumAnalyzeThreshold = int32(val)
 				case "autovacuum_vacuum_scale_factor":
 					val, _ := strconv.ParseFloat(parts[1], 64)
@@ -129,19 +129,19 @@ func GetVacuumStats(logger *util.Logger, db *sql.DB, ignoreRegexp string) (repor
 					val, _ := strconv.ParseFloat(parts[1], 64)
 					entry.AutovacuumAnalyzeScaleFactor = val
 				case "autovacuum_freeze_max_age":
-					val, _ := strconv.Atoi(parts[1])
+					val, _ := strconv.ParseInt(parts[1], 10, 32)
 					entry.AutovacuumFreezeMaxAge = int32(val)
 				case "autovacuum_multixact_freeze_max_age":
-					val, _ := strconv.Atoi(parts[1])
+					val, _ := strconv.ParseInt(parts[1], 10, 32)
 					entry.AutovacuumMultixactFreezeMaxAge = int32(val)
 				case "autovacuum_vacuum_cost_delay":
-					val, _ := strconv.Atoi(parts[1])
+					val, _ := strconv.ParseInt(parts[1], 10, 32)
 					entry.AutovacuumVacuumCostDelay = int32(val)
 				case "autovacuum_vacuum_cost_limit":
-					val, _ := strconv.Atoi(parts[1])
+					val, _ := strconv.ParseInt(parts[1], 10, 32)
 					entry.AutovacuumVacuumCostLimit = int32(val)
 				case "fillfactor":
-					val, _ := strconv.Atoi(parts[1])
+					val, _ := strconv.ParseInt(parts[1], 10, 32)
 					entry.Fillfactor = int32(val)
 				}
 			}
