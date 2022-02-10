@@ -140,7 +140,9 @@ func downloadLogsForServer(server *state.Server, globalCollectionOpts state.Coll
 	}
 
 	transientLogState := state.TransientLogState{CollectedAt: time.Now()}
-	defer transientLogState.Cleanup()
+	defer func() {
+		transientLogState.Cleanup()
+	}()
 
 	var newLogState state.PersistedLogState
 	newLogState, transientLogState.LogFiles, transientLogState.QuerySamples, err = system.DownloadLogFiles(server.LogPrevState, server.Config, logger)
