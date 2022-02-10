@@ -228,7 +228,9 @@ func processLogStream(server *state.Server, logLines []state.LogLine, now time.T
 		logger.PrintError("%s", err)
 		return tooFreshLogLines
 	}
-	defer transientLogState.Cleanup()
+	defer func() {
+		transientLogState.Cleanup()
+	}()
 
 	transientLogState.LogFiles = []state.LogFile{logFile}
 
