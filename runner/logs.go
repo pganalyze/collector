@@ -292,7 +292,6 @@ func postprocessAndSendLogs(server *state.Server, globalCollectionOpts state.Col
 
 	err = output.UploadAndSendLogs(server, grant, globalCollectionOpts, logger, transientLogState)
 	if err != nil {
-		transientLogState.Cleanup()
 		return errors.Wrap(err, "failed to upload/send logs")
 	}
 
