@@ -176,14 +176,14 @@ type LogLine struct {
 	SecretMarkers      []LogSecretMarker
 }
 
-func (logFile LogFile) Cleanup() {
+func (logFile *LogFile) Cleanup() {
 	if logFile.TmpFile != nil {
 		logFile.TmpFile.Close()
 		os.Remove(logFile.TmpFile.Name())
 	}
 }
 
-func (ls TransientLogState) Cleanup() {
+func (ls *TransientLogState) Cleanup() {
 	for _, logFile := range ls.LogFiles {
 		logFile.Cleanup()
 	}
