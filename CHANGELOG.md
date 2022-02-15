@@ -3,6 +3,12 @@
 ## 0.42.2      2022-02-15
 
 * Fix cleanup of temporary files used when processing logs
+  - Previous collectors may have left temp files in your system's [temp directory](https://pkg.go.dev/os#TempDir)
+  - To manually clean up stray temp files:
+    - Shut down the collector
+    - Install the new package
+    - Delete any files owned by the user running the collector (pganalyze by default) in the temp directory
+    - Start the collector
 
 
 ## 0.42.1      2022-02-01
