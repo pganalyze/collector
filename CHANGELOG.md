@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.42.2      2022-02-15
+
+* Fix cleanup of temporary files used when processing logs
+
+
 ## 0.42.1      2022-02-01
 
 * Log Insights
