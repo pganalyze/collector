@@ -94,6 +94,8 @@ func transformSystem(systemState state.SystemState, diffState state.DiffState) *
 		system.SystemInformation.Type = snapshot.SystemInformation_GOOGLE_CLOUD_SQL_SYSTEM
 	} else if systemState.Info.Type == state.AzureDatabaseSystem {
 		system.SystemInformation.Type = snapshot.SystemInformation_AZURE_DATABASE_SYSTEM
+	} else if systemState.Info.Type == state.CrunchyBridgeSystem {
+		system.SystemInformation.Type = snapshot.SystemInformation_CRUNCHY_BRIDGE_SYSTEM
 	}
 
 	system.SystemId = systemState.Info.SystemID

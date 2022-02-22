@@ -41,6 +41,11 @@ func identifySystem(config ServerConfig) (systemType string, systemScope string,
 		if systemID == "" {
 			systemID = config.GcpCloudSQLInstanceID
 		}
+	} else if (config.CrunchyBridgeClusterID != "") || systemType == "crunchy_bridge" {
+		systemType = "crunchy_bridge"
+		if systemID == "" {
+			systemID = config.CrunchyBridgeClusterID
+		}
 	} else {
 		systemType = "self_hosted"
 		if systemID == "" {

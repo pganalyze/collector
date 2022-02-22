@@ -37,7 +37,7 @@ func SetupLogCollection(ctx context.Context, wg *sync.WaitGroup, servers []*stat
 		}
 		if server.Config.LogLocation != "" || server.Config.LogDockerTail != "" || server.Config.LogSyslogServer != "" {
 			hasAnyLogTails = true
-		} else if server.Config.AwsDbInstanceID != "" {
+		} else if server.Config.SupportsLogDownload() {
 			hasAnyLogDownloads = true
 		}
 	}
@@ -88,7 +88,7 @@ func setupLogDownloadForAllServers(ctx context.Context, wg *sync.WaitGroup, glob
 						continue
 					}
 
-					if server.Config.AwsDbInstanceID == "" {
+					if !server.Config.SupportsLogDownload() {
 						continue
 					}
 
@@ -143,7 +143,7 @@ func downloadLogsForServer(server *state.Server, globalCollectionOpts state.Coll
 	defer transientLogState.Cleanup()
 
 	var newLogState state.PersistedLogState
-	newLogState, transientLogState.LogFiles, transientLogState.QuerySamples, err = system.DownloadLogFiles(server.LogPrevState, server.Config, logger)
+	newLogState, transientLogState.LogFiles, transientLogState.QuerySamples, err = system.DownloadLogFiles(server, globalCollectionOpts, logger)
 	if err != nil {
 		return newLogState, false, errors.Wrap(err, "could not collect logs")
 	}
@@ -343,8 +343,8 @@ func TestLogsForAllServers(servers []*state.Server, globalCollectionOpts state.C
 			} else {
 				success = false
 			}
-		} else if server.Config.AwsDbInstanceID != "" {
-			success = testRdsLogDownload(ctx, &wg, server, globalCollectionOpts, prefixedLogger)
+		} else if server.Config.SupportsLogDownload() {
+			success = testLogDownload(ctx, &wg, server, globalCollectionOpts, prefixedLogger)
 		} else if server.Config.AzureDbServerName != "" && server.Config.AzureEventhubNamespace != "" && server.Config.AzureEventhubName != "" {
 			success = testAzureLogStream(ctx, &wg, server, globalCollectionOpts, prefixedLogger)
 		} else if server.Config.GcpCloudSQLInstanceID != "" && server.Config.GcpPubsubSubscription != "" {
@@ -387,11 +387,11 @@ func testLocalLogTail(ctx context.Context, wg *sync.WaitGroup, server *state.Ser
 	return true
 }
 
-func testRdsLogDownload(ctx context.Context, wg *sync.WaitGroup, server *state.Server, globalCollectionOpts state.CollectionOpts, prefixedLogger *util.Logger) bool {
-	prefixedLogger.PrintInfo("Testing log collection (Amazon RDS)...")
+func testLogDownload(ctx context.Context, wg *sync.WaitGroup, server *state.Server, globalCollectionOpts state.CollectionOpts, prefixedLogger *util.Logger) bool {
+	prefixedLogger.PrintInfo("Testing log download...")
 	_, _, err := downloadLogsForServer(server, globalCollectionOpts, prefixedLogger)
 	if err != nil {
-		prefixedLogger.PrintError("ERROR - Could not get Amazon RDS logs: %s", err)
+		prefixedLogger.PrintError("ERROR - Could not download logs: %s", err)
 		return false
 	}
 

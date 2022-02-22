@@ -43,6 +43,9 @@ type PersistedLogState struct {
 	// We only remember markers for files that have received recent writes,
 	// all other markers are discarded
 	AwsMarkers map[string]string
+
+	// Markers for pg_read_file-based access
+	ReadFileMarkers map[string]int64
 }
 
 // LogFile - Log file that we are uploading for reference in log line metadata
