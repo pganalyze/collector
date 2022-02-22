@@ -20,7 +20,7 @@ RUN chmod +x $HOME_DIR/docker-entrypoint.sh
 
 FROM alpine:3.15 as slim
 
-RUN apk add --no-cache ca-certificates
+RUN apk add --no-cache ca-certificates tzdata
 
 RUN adduser -D pganalyze pganalyze \ 
   && mkdir /state  \
