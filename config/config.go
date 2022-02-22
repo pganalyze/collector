@@ -97,6 +97,8 @@ type ServerConfig struct {
 	// Optional, we recommend passing the full "Connection name" as GCP CloudSQL instance ID
 	GcpProjectID string `ini:"gcp_project_id"`
 
+	CrunchyBridgeClusterID string `ini:"crunchy_bridge_cluster_id"`
+
 	SectionName string
 	Identifier  ServerIdentifier
 
@@ -167,6 +169,11 @@ type ServerConfig struct {
 	// HTTP clients to be used for API connections
 	HTTPClient          *http.Client
 	HTTPClientWithRetry *http.Client
+}
+
+// SupportsLogDownload - Determines whether the specified config can download logs
+func (config ServerConfig) SupportsLogDownload() bool {
+	return config.AwsDbInstanceID != "" || config.CrunchyBridgeClusterID != ""
 }
 
 // GetPqOpenString - Gets the database configuration as a string that can be passed to lib/pq for connecting

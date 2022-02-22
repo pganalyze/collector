@@ -357,6 +357,13 @@ func preprocessConfig(config *ServerConfig) (*ServerConfig, error) {
 				config.AzureDbServerName = parts[0]
 			}
 		}
+	} else if strings.HasSuffix(host, ".postgresbridge.com") {
+		parts := strings.SplitN(host, ".", 3)
+		if len(parts) == 3 && parts[0] == "p" && (parts[2] == "db.postgresbridge.com") { // Safety check for any escaping issues
+			if config.CrunchyBridgeClusterID == "" {
+				config.CrunchyBridgeClusterID = parts[1]
+			}
+		}
 	}
 
 	// This is primarily for backwards compatibility when using the IP address of an instance

@@ -102,6 +102,7 @@ func getCollectorConfig(c config.ServerConfig) state.CollectorConfig {
 		GcpPubsubSubscription:      c.GcpPubsubSubscription,
 		GcpHasCredentialsFile:      c.GcpCredentialsFile != "",
 		GcpProjectId:               c.GcpProjectID,
+		CrunchyBridgeClusterId:     c.CrunchyBridgeClusterID,
 		ApiSystemId:                c.SystemID,
 		ApiSystemType:              c.SystemType,
 		ApiSystemScope:             c.SystemScope,

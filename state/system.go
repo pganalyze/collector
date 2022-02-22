@@ -30,6 +30,7 @@ const (
 	HerokuSystem
 	GoogleCloudSQLSystem
 	AzureDatabaseSystem
+	CrunchyBridgeSystem
 )
 
 type SystemInfo struct {

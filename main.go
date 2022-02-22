@@ -23,7 +23,6 @@ import (
 
 	"github.com/pganalyze/collector/config"
 	"github.com/pganalyze/collector/input/postgres"
-	"github.com/pganalyze/collector/input/system/heroku"
 	"github.com/pganalyze/collector/input/system/selfhosted"
 	"github.com/pganalyze/collector/logs"
 	"github.com/pganalyze/collector/runner"
@@ -193,7 +192,7 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 		runner.SetupLogCollection(ctx, wg, servers, globalCollectionOpts, logger, hasAnyHeroku, hasAnyGoogleCloudSQL, hasAnyAzureDatabase)
 	} else if os.Getenv("DYNO") != "" && os.Getenv("PORT") != "" {
 		// Even if logs are deactivated, Heroku still requires us to have a functioning web server
-		heroku.SetupHttpHandlerDummy()
+		util.SetupHttpHandlerDummy()
 	}
 
 	if hasAnyActivityEnabled {
