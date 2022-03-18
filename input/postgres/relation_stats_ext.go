@@ -9,7 +9,11 @@ import (
 
 const citusRelationSizeSQL = `
 SELECT logicalrelid::oid,
-       pg_catalog.citus_table_size(logicalrelid)
+			 CASE
+			   WHEN coalesce(current_setting('citus.shard_replication_factor')::integer, 1) = 1
+				 THEN pg_catalog.citus_table_size(logicalrelid)
+				 ELSE 0
+			 END AS citus_table_size
 	FROM pg_catalog.pg_dist_partition dp
 			 INNER JOIN pg_catalog.pg_class c ON (dp.logicalrelid::oid = c.oid)
 			 INNER JOIN pg_catalog.pg_namespace n ON (c.relnamespace = n.oid)
