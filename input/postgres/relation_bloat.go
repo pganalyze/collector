@@ -246,7 +246,7 @@ func GetIndexBloat(logger *util.Logger, db *sql.DB, columnStatsSourceTable, igno
 func GetBloatStats(logger *util.Logger, db *sql.DB, systemType, ignoreRegexp string) (report state.PostgresBloatStats, err error) {
 	var columnStatsSourceTable string
 
-	if statsHelperExists(db, "get_column_stats") {
+	if StatsHelperExists(db, "get_column_stats") {
 		logger.PrintVerbose("Found pganalyze.get_column_stats() stats helper")
 		columnStatsSourceTable = "(SELECT * FROM pganalyze.get_column_stats()) pg_stats"
 	} else {

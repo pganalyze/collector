@@ -11,6 +11,10 @@ if [ "$1" = 'test' ]; then
   eval $CMD_PREFIX /home/pganalyze/collector --test --no-log-timestamps
 fi
 
+if [ "$1" = 'test-explain' ]; then
+  eval $CMD_PREFIX /home/pganalyze/collector --test-explain --no-log-timestamps
+fi
+
 if [ "$1" = 'collector' ]; then
   eval $CMD_PREFIX /home/pganalyze/collector --statefile=/state/pganalyze-collector.state --no-log-timestamps
 fi

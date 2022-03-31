@@ -87,7 +87,7 @@ func GetVacuumProgress(logger *util.Logger, db *sql.DB, postgresVersion state.Po
 	var activitySourceTable string
 	var sql string
 
-	if statsHelperExists(db, "get_stat_activity") {
+	if StatsHelperExists(db, "get_stat_activity") {
 		activitySourceTable = "pganalyze.get_stat_activity()"
 	} else {
 		activitySourceTable = "pg_catalog.pg_stat_activity"
@@ -97,7 +97,7 @@ func GetVacuumProgress(logger *util.Logger, db *sql.DB, postgresVersion state.Po
 		sql = fmt.Sprintf(vacuumProgressSQLpg95, activitySourceTable)
 	} else {
 		var vacuumSourceTable string
-		if statsHelperExists(db, "get_stat_progress_vacuum") {
+		if StatsHelperExists(db, "get_stat_progress_vacuum") {
 			vacuumSourceTable = "pganalyze.get_stat_progress_vacuum()"
 		} else {
 			vacuumSourceTable = "pg_catalog.pg_stat_progress_vacuum"

@@ -72,7 +72,7 @@ func getSharedBufferBytes(db *sql.DB) int64 {
 func GetBuffercache(logger *util.Logger, db *sql.DB, systemType, ignoreRegexp string) (report state.PostgresBuffercache, err error) {
 	var sourceTable string
 
-	if statsHelperExists(db, "get_buffercache") {
+	if StatsHelperExists(db, "get_buffercache") {
 		logger.PrintVerbose("Found pganalyze.get_buffercache() stats helper")
 		sourceTable = "pganalyze.get_buffercache()"
 	} else {
