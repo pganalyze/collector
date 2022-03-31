@@ -12,17 +12,25 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
-const LogFileSql = "SELECT name FROM pg_ls_logdir() WHERE modification > now() - '2 minute'::interval"
+const LogFileSql = "SELECT name FROM pg_catalog.pg_ls_logdir() WHERE modification > pg_catalog.now() - '2 minute'::interval"
 
 // Read at most the trailing 10 megabytes of each file
-const LogReadSql = `
-SELECT (SELECT size FROM pg_ls_logdir() WHERE name = $1),
-  pg_read_file(
-	current_setting('data_directory') || '/' || current_setting('log_directory') || '/' || $1,
-	(SELECT GREATEST(size - 1024 * 1024 * 10, $2) FROM pg_ls_logdir() WHERE name = $1),
+const SuperUserReadLogFileSql = `
+SELECT (SELECT size FROM pg_catalog.pg_ls_logdir() WHERE name = $1),
+  pg_catalog.pg_read_file(
+	pg_catalog.current_setting('data_directory') || '/' || pg_catalog.current_setting('log_directory') || '/' || $1,
+	(SELECT GREATEST(size - 1024 * 1024 * 10, $2) FROM pg_catalog.pg_ls_logdir() WHERE name = $1),
 	1024 * 1024 * 10
   )
 ;`
+const HelperReadLogFile = `
+SELECT (SELECT size FROM pg_catalog.pg_ls_logdir() WHERE name = $1),
+  pganalyze.read_log_file(
+	$1,
+	(SELECT GREATEST(size - 1024 * 1024 * 10, $2) FROM pg_catalog.pg_ls_logdir() WHERE name = $1),
+	1024 * 1024 * 10
+  )
+`
 
 // DownloadLogFiles - Gets log files for a Crunchy Bridge server
 func DownloadLogFiles(server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.PersistedLogState, []state.LogFile, []state.PostgresQuerySample, error) {
@@ -54,6 +62,13 @@ func DownloadLogFiles(server *state.Server, globalCollectionOpts state.Collectio
 	}
 	rows.Close()
 
+	useHelper := postgres.StatsHelperExists(db, "read_log_file")
+	var logReadSql = SuperUserReadLogFileSql
+	if useHelper {
+		logger.PrintVerbose("Found pganalyze.read_log_file() stats helper")
+		logReadSql = HelperReadLogFile
+	}
+
 	var newMarkers = make(map[string]int64)
 	for _, fileName := range fileNames {
 		if err != nil {
@@ -63,7 +78,7 @@ func DownloadLogFiles(server *state.Server, globalCollectionOpts state.Collectio
 		var logData string
 		var newOffset int64
 		prevOffset, _ := psl.ReadFileMarkers[fileName]
-		err = db.QueryRow(postgres.QueryMarkerSQL+LogReadSql, fileName, prevOffset).Scan(&newOffset, &logData)
+		err = db.QueryRow(postgres.QueryMarkerSQL+logReadSql, fileName, prevOffset).Scan(&newOffset, &logData)
 		if err != nil {
 			err = fmt.Errorf("LogReadSql/QueryRow: %s", err)
 			goto ErrorCleanup

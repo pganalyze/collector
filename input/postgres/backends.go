@@ -34,7 +34,7 @@ func GetBackends(logger *util.Logger, db *sql.DB, postgresVersion state.Postgres
 		optionalFields = activitySQLDefaultOptionalFields
 	}
 
-	if statsHelperExists(db, "get_stat_activity") {
+	if StatsHelperExists(db, "get_stat_activity") {
 		sourceTable = "pganalyze.get_stat_activity()"
 	} else {
 		sourceTable = "pg_catalog.pg_stat_activity"

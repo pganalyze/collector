@@ -88,7 +88,7 @@ func GetReplication(logger *util.Logger, db *sql.DB, postgresVersion state.Postg
 		return repl, nil
 	}
 
-	if statsHelperExists(db, "get_stat_replication") {
+	if StatsHelperExists(db, "get_stat_replication") {
 		logger.PrintVerbose("Found pganalyze.get_stat_replication() stats helper")
 		sourceTable = "pganalyze.get_stat_replication()"
 	} else {

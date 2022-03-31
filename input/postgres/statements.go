@@ -61,7 +61,7 @@ func insufficientPrivilege(query string) bool {
 
 func ResetStatements(logger *util.Logger, db *sql.DB, systemType string) error {
 	var method string
-	if statsHelperExists(db, "reset_stat_statements") {
+	if StatsHelperExists(db, "reset_stat_statements") {
 		logger.PrintVerbose("Found pganalyze.reset_stat_statements() stats helper")
 		method = "pganalyze.reset_stat_statements()"
 	} else {

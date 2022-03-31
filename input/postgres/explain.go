@@ -45,7 +45,7 @@ func RunExplain(server *state.Server, inputs []state.PostgresQuerySample, collec
 			logger.PrintVerbose("Could not connect to %s to run explain: %s; skipping", dbName, err)
 			continue
 		}
-		useHelper := statsHelperExists(db, "explain")
+		useHelper := StatsHelperExists(db, "explain")
 		if useHelper {
 			logger.PrintVerbose("Found pganalyze.explain() stats helper in database \"%s\"", dbName)
 		}

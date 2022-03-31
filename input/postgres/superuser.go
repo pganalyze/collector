@@ -89,7 +89,7 @@ SELECT 1 AS enabled
  WHERE n.nspname = 'pganalyze' AND p.proname = '%s'
 `
 
-func statsHelperExists(db *sql.DB, statsHelper string) bool {
+func StatsHelperExists(db *sql.DB, statsHelper string) bool {
 	var enabled bool
 
 	err := db.QueryRow(QueryMarkerSQL + fmt.Sprintf(statsHelperSQL, statsHelper)).Scan(&enabled)
