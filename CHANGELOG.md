@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.43.0      2022-03-30
+
+* Add integration for Crunchy Bridge provider
+* Check citus.shard_replication_factor before querying citus_table_size
+  - This fixes support for citus.shard_replication_factor > 1
+* Filter out vacuum records we cannot match to a table name
+  - This can occur when a manual vacuum is run in a database other than the
+    primary database that is being monitored, previously leading to
+    processing errors in the backend
+* Docker image: Add tzdata package
+  - This is required to allow timezone parsing during log line handling
+
+
 ## 0.42.2      2022-02-15
 
 * Fix cleanup of temporary files used when processing logs
