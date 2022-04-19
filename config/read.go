@@ -488,7 +488,7 @@ func Read(logger *util.Logger, filename string) (Config, error) {
 	} else {
 		if os.Getenv("DYNO") != "" && os.Getenv("PORT") != "" {
 			for _, kv := range os.Environ() {
-				parts := strings.Split(kv, "=")
+				parts := strings.SplitN(kv, "=", 2)
 				if strings.HasSuffix(parts[0], "_URL") {
 					config := getDefaultConfig()
 					config, err = preprocessConfig(config)
