@@ -238,6 +238,7 @@ func main() {
 	var writeHeapProfile bool
 	var testRunAndTrace bool
 	var logToSyslog bool
+	var logToJSON bool
 	var logNoTimestamps bool
 	var reloadRun bool
 
@@ -252,6 +253,7 @@ func main() {
 	flag.BoolVar(&reloadRun, "reload", false, "Reloads the collector daemon thats running on the host")
 	flag.BoolVarP(&logger.Verbose, "verbose", "v", false, "Outputs additional debugging information, use this if you're encoutering errors or other problems")
 	flag.BoolVar(&logToSyslog, "syslog", false, "Write all log output to syslog instead of stderr (disabled by default)")
+	flag.BoolVar(&logToJSON, "json-logs", false, "Write all log output to stderr as newline delimited json (disabled by default, ignored if --syslog is set)")
 	flag.BoolVar(&logNoTimestamps, "no-log-timestamps", false, "Disable timestamps in the log output (automatically done when syslog is enabled)")
 	flag.BoolVar(&dryRun, "dry-run", false, "Print JSON data that would get sent to web service (without actually sending) and exit afterwards")
 	flag.BoolVar(&dryRunLogs, "dry-run-logs", false, "Print JSON data for log snapshot (without actually sending) and exit afterwards")
@@ -293,6 +295,7 @@ func main() {
 			panic(fmt.Errorf("Could not setup syslog as requested: %s", err))
 		}
 	} else {
+		logger.UseJSON = logToJSON
 		logger.Destination = log.New(os.Stderr, "", logFlags)
 	}
 
