@@ -182,9 +182,11 @@ func GetColumnStats(logger *util.Logger, db *sql.DB, globalCollectionOpts state.
 		sourceTable = "pganalyze.get_column_stats()"
 	} else {
 		if systemType != "heroku" && !connectedAsSuperUser(db, systemType) && globalCollectionOpts.TestRun {
-			logger.PrintInfo("Warning: Limited access to table column statistics detected. Please setup" +
-				" the monitoring helper function pganalyze.get_column_stats (https://github.com/pganalyze/collector#setting-up-a-restricted-monitoring-user)" +
-				" or connect as superuser, to get column statistics for all tables.")
+			var currentDb string
+			db.QueryRow(QueryMarkerSQL + "SELECT current_database()").Scan(&currentDb)
+			logger.PrintInfo("Warning: Limited access to table column statistics detected in database %s. Please set up"+
+				" the monitoring helper function pganalyze.get_column_stats (https://github.com/pganalyze/collector#setting-up-a-restricted-monitoring-user)"+
+				" or connect as superuser, to get column statistics for all tables.", currentDb)
 		}
 		sourceTable = "pg_catalog.pg_stats"
 	}
