@@ -3,6 +3,7 @@ package runner
 import (
 	"context"
 	"io/ioutil"
+	"strings"
 	"sync"
 	"time"
 
@@ -408,6 +409,9 @@ func testAzureLogStream(ctx context.Context, wg *sync.WaitGroup, server *state.S
 	err := azure.SetupLogSubscriber(ctx, wg, globalCollectionOpts, logger, []*state.Server{server}, parsedLogStream)
 	if err != nil {
 		logger.PrintError("ERROR - Could not get logs through Azure Event Hub: %s", err)
+		if strings.HasPrefix(err.Error(), "failed to configure Azure AD JWT provider: failed to refersh token") { // Note that "refersh" is a typo in the Azure SDK logic
+			logger.PrintInfo("HINT - This may occur when you have multiple user-assigned managed identities set for your virtual machine. Try removing any unrelated managed identities, or explicitly set the azure_ad_client_id setting to the managed identity's Client ID.")
+		}
 		return false
 	}
 
