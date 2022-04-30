@@ -84,7 +84,7 @@ func setupEventHubReceiver(ctx context.Context, wg *sync.WaitGroup, logger *util
 		}
 		for _, record := range eventData.Records {
 			if record.Category == "PostgreSQLLogs" && record.OperationName == "LogEvent" {
-				// Adjust Azure-modified log messages to be standard Postgres log messages
+				// For Single Server, adjust Azure-modified log messages to be standard Postgres log messages
 				if strings.HasPrefix(record.Properties.Message, "connection received:") {
 					record.Properties.Message = connectionReceivedRegexp.ReplaceAllString(record.Properties.Message, "$1")
 				}
@@ -93,6 +93,12 @@ func setupEventHubReceiver(ctx context.Context, wg *sync.WaitGroup, logger *util
 				}
 				if strings.HasPrefix(record.Properties.Message, "checkpoint complete") {
 					record.Properties.Message = checkpointCompleteRegexp.ReplaceAllString(record.Properties.Message, "$1$2")
+				}
+
+				// For Flexible Server, logical server name is not set, so instead determine it based on the resource ID
+				if record.LogicalServerName == "" {
+					resourceParts := strings.Split(record.ResourceID, "/")
+					record.LogicalServerName = strings.ToLower(resourceParts[len(resourceParts)-1])
 				}
 
 				azureLogStream <- record
@@ -192,11 +198,16 @@ func setupLogTransformer(ctx context.Context, wg *sync.WaitGroup, servers []*sta
 					return
 				}
 
-				logLineContent := fmt.Sprintf("%s%s:  %s", in.Properties.Prefix, in.Properties.ErrorLevel, in.Properties.Message)
-				logLine, ok := logs.ParseLogLineWithPrefix("", logLineContent)
+				// For Flexible Server, attempt direct parsing first (without modifying the message)
+				logLine, ok := logs.ParseLogLineWithPrefix("", in.Properties.Message)
 				if !ok {
-					logger.PrintError("Can't parse log line: \"%s\"", logLineContent)
-					continue
+					// For Single Server, the actual Event Hub messages are missing the log_line_prefix and error level, so add them
+					logLineContent := fmt.Sprintf("%s%s:  %s", in.Properties.Prefix, in.Properties.ErrorLevel, in.Properties.Message)
+					logLine, ok = logs.ParseLogLineWithPrefix("", logLineContent)
+					if !ok {
+						logger.PrintError("Can't parse log line: \"%s\"", logLineContent)
+						continue
+					}
 				}
 				logLine.CollectedAt = time.Now()
 				logLine.UUID = uuid.NewV4()
@@ -206,12 +217,17 @@ func setupLogTransformer(ctx context.Context, wg *sync.WaitGroup, servers []*sta
 					continue
 				}
 
+				foundServer := false
 				for _, server := range servers {
 					if in.LogicalServerName == server.Config.AzureDbServerName {
 						out <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: logLine}
+						foundServer = true
 					}
 				}
 
+				if !foundServer && globalCollectionOpts.TestRun {
+					logger.PrintError("Discarding log line because of unknown server (did you set the correct azure_db_server_name?): %s", in.LogicalServerName)
+				}
 			}
 		}
 	}()
