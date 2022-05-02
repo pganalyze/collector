@@ -1488,12 +1488,12 @@ var tests = []testpair{
 			Content: "automatic aggressive vacuum to prevent wraparound of table \"mydb.myschema.mytable\": index scans: 0\n" +
 				"	pages: 0 removed, 241245 remain, 0 skipped due to pins, 241244 skipped frozen\n" +
 				"	tuples: 0 removed, 17418745 remain, 0 are dead but not yet removable, oldest xmin: 538040633\n" +
-				"	index scan not needed: 0 pages from table (0.00% of total) had 0 dead item identifiers removed\n" +
+				"	index scan not needed: 3 pages from table (0.01% of total) had 0 dead item identifiers removed\n" +
 				"	I/O timings: read: 10.540 ms, write: 0.000 ms\n" +
 				"	avg read rate: 38.748 MB/s, avg write rate: 0.538 MB/s\n" +
 				"	buffer usage: 50 hits, 72 misses, 1 dirtied\n" +
 				"	WAL usage: 1 records, 1 full page images, 2147 bytes\n" +
-				"	system usage: CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.01 s",
+				"	system usage: CPU: user: 1.23 s, system: 4.56 s, elapsed: 0.01 s",
 			LogLevel: pganalyze_collector.LogLineInformation_LOG,
 		}},
 		[]state.LogLine{{
@@ -1515,8 +1515,8 @@ var tests = []testpair{
 				"new_dead_tuples":          0,
 				"oldest_xmin":              538040633,
 				"lpdead_index_scan":        "not needed",
-				"lpdead_item_pages":        0,
-				"lpdead_item_page_percent": 0,
+				"lpdead_item_pages":        3,
+				"lpdead_item_page_percent": 0.01,
 				"lpdead_items":             0,
 				"blk_read_time":            10.54,
 				"blk_write_time":           0,
@@ -1528,8 +1528,8 @@ var tests = []testpair{
 				"wal_records":              1,
 				"wal_fpi":                  1,
 				"wal_bytes":                2147,
-				"rusage_kernel":            0.00,
-				"rusage_user":              0.00,
+				"rusage_user":              1.23,
+				"rusage_kernel":            4.56,
 				"elapsed_secs":             0.01,
 			},
 			ReviewedForSecrets: true,
