@@ -74,14 +74,18 @@ var skippingVacuum = analyzeGroup{
 var autoVacuum = analyzeGroup{
 	classification: pganalyze_collector.LogLineInformation_AUTOVACUUM_COMPLETED,
 	primary: match{
-		prefixes: []string{"automatic vacuum of table", "automatic aggressive vacuum of table"},
-		regexp: regexp.MustCompile(`^automatic (aggressive )?vacuum of table "(.+?)": index scans: (\d+)\s*` +
+		prefixes: []string{"automatic vacuum of table", "automatic aggressive vacuum of table", "automatic aggressive vacuum to prevent wraparound of table"},
+		regexp: regexp.MustCompile(`^automatic (aggressive )?vacuum (to prevent wraparound )?of table "(.+?)": index scans: (\d+)\s*` +
 			`pages: (\d+) removed, (\d+) remain(?:, (\d+) skipped due to pins)?(?:, (\d+) skipped frozen)?\s*` +
 			`tuples: (\d+) removed, (\d+) remain, (\d+) are dead but not yet removable(?:, oldest xmin: (\d+))?\s*` +
+			`(?:index scan (not needed|needed|bypassed|bypassed by failsafe): (\d+) pages from table \(([\d.]+)% of total\) (?:have|had) (\d+) dead item identifiers(?: removed)?)?\s*` + // Postgres 14+
+			`(?:I/O timings: read: ([\d.]+) ms, write: ([\d.]+) ms)?\s*` + // Postgres 14+
+			`(?:avg read rate: ([\d.]+) MB/s, avg write rate: ([\d.]+) MB/s)?\s*` + // Postgres 14+
 			`buffer usage: (\d+) hits, (\d+) misses, (\d+) dirtied\s*` +
-			`avg read rate: ([\d.]+) MB/s, avg write rate: ([\d.]+) MB/s\s*` +
+			`(?:avg read rate: ([\d.]+) MB/s, avg write rate: ([\d.]+) MB/s)?\s*` + // Postgres 13 and older
+			`(?:WAL usage: (\d+) records, (\d+) full page images, (\d+) bytes)?\s*` + // Postgres 14+
 			`system usage: CPU(?:(?: ([\d.]+)s/([\d.]+)u sec elapsed ([\d.]+) sec)|(?:: user: ([\d.]+) s, system: ([\d.]+) s, elapsed: ([\d.]+) s))`),
-		secrets: []state.LogSecretKind{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+		secrets: []state.LogSecretKind{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 	},
 }
 var autoAnalyze = analyzeGroup{
@@ -1658,11 +1662,15 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 	}
 	if matchesPrefix(logLine, autoVacuum.primary.prefixes) {
 		logLine, parts = matchLogLine(logLine, autoVacuum.primary)
-		if len(parts) == 23 {
-			var kernelPart, userPart, elapsedPart string
+		if len(parts) == 35 {
+			var readRatePart, writeRatePart, kernelPart, userPart, elapsedPart string
+
+			aggressiveVacuum := parts[1] == "aggressive "
+
+			// Part 2 (anti-wraparound) is only present on Postgres 12+, and dealt with at the end
 
 			logLine.Classification = autoVacuum.classification
-			subParts := strings.SplitN(parts[2], ".", 3)
+			subParts := strings.SplitN(parts[3], ".", 3)
 			logLine.Database = subParts[0]
 			if len(subParts) >= 2 {
 				logLine.SchemaName = subParts[1]
@@ -1671,27 +1679,42 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 				logLine.RelationName = subParts[2]
 			}
 
-			aggressiveVacuum := parts[1] == "aggressive "
-			numIndexScans, _ := strconv.ParseInt(parts[3], 10, 64)
-			pagesRemoved, _ := strconv.ParseInt(parts[4], 10, 64)
-			relPages, _ := strconv.ParseInt(parts[5], 10, 64)
-			tuplesDeleted, _ := strconv.ParseInt(parts[8], 10, 64)
-			newRelTuples, _ := strconv.ParseInt(parts[9], 10, 64)
-			newDeadTuples, _ := strconv.ParseInt(parts[10], 10, 64)
-			vacuumPageHit, _ := strconv.ParseInt(parts[12], 10, 64)
-			vacuumPageMiss, _ := strconv.ParseInt(parts[13], 10, 64)
-			vacuumPageDirty, _ := strconv.ParseInt(parts[14], 10, 64)
-			readRateMb, _ := strconv.ParseFloat(parts[15], 64)
-			writeRateMb, _ := strconv.ParseFloat(parts[16], 64)
+			numIndexScans, _ := strconv.ParseInt(parts[4], 10, 64)
+			pagesRemoved, _ := strconv.ParseInt(parts[5], 10, 64)
+			relPages, _ := strconv.ParseInt(parts[6], 10, 64)
 
-			if parts[17] != "" {
-				kernelPart = parts[17]
-				userPart = parts[18]
-				elapsedPart = parts[19]
+			// Parts 7 and 8 (Pinskipped/Frozenskipped pages) are only present on Postgres 9.5/9.6+ and dealt with at the end
+
+			tuplesDeleted, _ := strconv.ParseInt(parts[9], 10, 64)
+			newRelTuples, _ := strconv.ParseInt(parts[10], 10, 64)
+			newDeadTuples, _ := strconv.ParseInt(parts[11], 10, 64)
+
+			// Parts 12 to 18 (Index scan info, I/O read/write timings) are only present on Postgres 14+ and dealt with at the end
+
+			if parts[19] != "" { // Postgres 14+, with I/O information before buffers
+				readRatePart = parts[19]
+				writeRatePart = parts[20]
+			} else { // Postgres 13 and older
+				readRatePart = parts[24]
+				writeRatePart = parts[25]
+			}
+			readRateMb, _ := strconv.ParseFloat(readRatePart, 64)
+			writeRateMb, _ := strconv.ParseFloat(writeRatePart, 64)
+
+			vacuumPageHit, _ := strconv.ParseInt(parts[21], 10, 64)
+			vacuumPageMiss, _ := strconv.ParseInt(parts[22], 10, 64)
+			vacuumPageDirty, _ := strconv.ParseInt(parts[23], 10, 64)
+
+			// Parts 26 to 28 (WAL Usage) are only present on Postgres 13+ and dealt with at the end
+
+			if parts[29] != "" {
+				kernelPart = parts[29]
+				userPart = parts[30]
+				elapsedPart = parts[31]
 			} else {
-				userPart = parts[20]
-				kernelPart = parts[21]
-				elapsedPart = parts[22]
+				userPart = parts[32]
+				kernelPart = parts[33]
+				elapsedPart = parts[34]
 			}
 			rusageKernelMode, _ := strconv.ParseFloat(kernelPart, 64)
 			rusageUserMode, _ := strconv.ParseFloat(userPart, 64)
@@ -1707,17 +1730,52 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 				"write_rate_mb": writeRateMb, "rusage_kernel": rusageKernelMode,
 				"rusage_user": rusageUserMode, "elapsed_secs": rusageElapsed,
 			}
-			if parts[6] != "" {
-				pinskippedPages, _ := strconv.ParseInt(parts[6], 10, 64)
-				logLine.Details["pinskipped_pages"] = pinskippedPages
+			// List anti-wraparound status either if the message indicates that it is, or if
+			// our Postgres version is new enough (13+) as determined by the presence of WAL
+			// record information (parts[26])
+			//
+			// Note that Postgres 12 is the odd one out, because it already had anti-wraparound
+			// status displayed, but we have no way to distinguish it from versions that didn't
+			// have it - there, only include the case when the vacuum indeed is a anti-wraparound
+			// vacuum.
+			if parts[2] != "" || parts[26] != "" {
+				antiWraparound := parts[2] == "to prevent wraparound "
+				logLine.Details["anti_wraparound"] = antiWraparound
 			}
 			if parts[7] != "" {
-				frozenskippedPages, _ := strconv.ParseInt(parts[7], 10, 64)
+				pinskippedPages, _ := strconv.ParseInt(parts[7], 10, 64)
+				logLine.Details["pinskipped_pages"] = pinskippedPages
+			}
+			if parts[8] != "" {
+				frozenskippedPages, _ := strconv.ParseInt(parts[8], 10, 64)
 				logLine.Details["frozenskipped_pages"] = frozenskippedPages
 			}
-			if parts[11] != "" {
-				oldestXmin, _ := strconv.ParseInt(parts[11], 10, 64)
+			if parts[12] != "" {
+				oldestXmin, _ := strconv.ParseInt(parts[12], 10, 64)
 				logLine.Details["oldest_xmin"] = oldestXmin
+			}
+			if parts[13] != "" {
+				lpdeadItemPages, _ := strconv.ParseInt(parts[14], 10, 64)
+				lpdeadItemPagePercent, _ := strconv.ParseFloat(parts[15], 64)
+				lpdeadItems, _ := strconv.ParseInt(parts[16], 10, 64)
+				logLine.Details["lpdead_index_scan"] = parts[13] // not needed / needed / bypassed / bypassed by failsafe
+				logLine.Details["lpdead_item_pages"] = lpdeadItemPages
+				logLine.Details["lpdead_item_page_percent"] = lpdeadItemPagePercent
+				logLine.Details["lpdead_items"] = lpdeadItems
+			}
+			if parts[17] != "" {
+				blkReadTime, _ := strconv.ParseFloat(parts[17], 64)
+				blkWriteTime, _ := strconv.ParseFloat(parts[18], 64)
+				logLine.Details["blk_read_time"] = blkReadTime
+				logLine.Details["blk_write_time"] = blkWriteTime
+			}
+			if parts[26] != "" {
+				walRecords, _ := strconv.ParseInt(parts[26], 10, 64)
+				walFpi, _ := strconv.ParseInt(parts[27], 10, 64)
+				walBytes, _ := strconv.ParseInt(parts[28], 10, 64)
+				logLine.Details["wal_records"] = walRecords
+				logLine.Details["wal_fpi"] = walFpi
+				logLine.Details["wal_bytes"] = walBytes
 			}
 			contextLine = matchOtherContextLogLine(contextLine)
 			return logLine, statementLine, detailLine, contextLine, hintLine, samples
