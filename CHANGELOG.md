@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.43.1      2022-05-02
+
+* Add option for emitting collector logs as structured JSON logs ([@jschaf](https://github.com/jschaf))
+  - Example output:
+    ```
+    {"severity":"INFO","message":"Running collector test with pganalyze-collector ...","time":"2022-04-19T12:31:05.100489-07:00"}
+    ```
+  - Enable this option by passing the "--json-logs" option to the collector binary
+* Log Insights: Add support for Postgres 14 autovacuum and autoanalyze log events
+* Column stats helper: Indicate which database is missing the helper in error message
+* Azure Database for PostgreSQL
+  - Add log monitoring support for Flexible Server deployment option
+* Heroku Postgres
+  - Fix environment parsing to support parsing of equals signs in variables
+  - Log test: Don't count Heroku Postgres free tier as hard failure (emit warning instead)
+
+
 ## 0.43.0      2022-03-30
 
 * Add integration for Crunchy Bridge provider
