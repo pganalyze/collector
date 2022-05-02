@@ -1615,6 +1615,37 @@ var tests = []testpair{
 			ReviewedForSecrets: true,
 		}},
 		nil,
+	},
+	{
+		[]state.LogLine{{
+			Content: "automatic analyze of table \"mydb.myschema.mytable\"\n" +
+				"	I/O timings: read: 1.027 ms, write: 0.000 ms\n" +
+				"	avg read rate: 1.339 MB/s, avg write rate: 8.705 MB/s\n" +
+				"	buffer usage: 1369 hits, 6 misses, 39 dirtied\n" +
+				"	system usage: CPU: user: 0.02 s, system: 0.00 s, elapsed: 0.03 s",
+			LogLevel: pganalyze_collector.LogLineInformation_LOG,
+		}},
+		[]state.LogLine{{
+			Classification: pganalyze_collector.LogLineInformation_AUTOANALYZE_COMPLETED,
+			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
+			Database:       "mydb",
+			SchemaName:     "myschema",
+			RelationName:   "mytable",
+			Details: map[string]interface{}{
+				"blk_read_time":      1.027,
+				"blk_write_time":     0.000,
+				"read_rate_mb":       1.339,
+				"write_rate_mb":      8.705,
+				"analyze_page_hit":   1369,
+				"analyze_page_miss":  6,
+				"analyze_page_dirty": 39,
+				"rusage_user":        0.02,
+				"rusage_kernel":      0.00,
+				"elapsed_secs":       0.03,
+			},
+			ReviewedForSecrets: true,
+		}},
+		nil,
 	}, {
 		[]state.LogLine{{
 			Content:  "skipping vacuum of \"mytable\" --- lock not available",

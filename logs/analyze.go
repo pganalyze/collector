@@ -92,8 +92,12 @@ var autoAnalyze = analyzeGroup{
 	classification: pganalyze_collector.LogLineInformation_AUTOANALYZE_COMPLETED,
 	primary: match{
 		prefixes: []string{"automatic analyze of table"},
-		regexp:   regexp.MustCompile(`^automatic analyze of table "(.+?)" system usage: CPU(?:(?: ([\d.]+)s/([\d.]+)u sec elapsed ([\d.]+) sec)|(?:: user: ([\d.]+) s, system: ([\d.]+) s, elapsed: ([\d.]+) s))`),
-		secrets:  []state.LogSecretKind{0, 0, 0, 0, 0, 0, 0},
+		regexp: regexp.MustCompile(`^automatic analyze of table "(.+?)"\s*` +
+			`(?:I/O timings: read: ([\d.]+) ms, write: ([\d.]+) ms)?\s*` + // Postgres 14+
+			`(?:avg read rate: ([\d.]+) MB/s, avg write rate: ([\d.]+) MB/s)?\s*` + // Postgres 14+
+			`(?:buffer usage: (\d+) hits, (\d+) misses, (\d+) dirtied)?\s*` + // Postgres 14+
+			`system usage: CPU(?:(?: ([\d.]+)s/([\d.]+)u sec elapsed ([\d.]+) sec)|(?:: user: ([\d.]+) s, system: ([\d.]+) s, elapsed: ([\d.]+) s))`),
+		secrets: []state.LogSecretKind{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 	},
 }
 var checkpointStarting = analyzeGroup{
@@ -1783,7 +1787,7 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 	}
 	if matchesPrefix(logLine, autoAnalyze.primary.prefixes) {
 		logLine, parts = matchLogLine(logLine, autoAnalyze.primary)
-		if len(parts) == 8 {
+		if len(parts) == 15 {
 			var kernelPart, userPart, elapsedPart string
 			logLine.Classification = autoAnalyze.classification
 			subParts := strings.SplitN(parts[1], ".", 3)
@@ -1794,14 +1798,17 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 			if len(subParts) >= 3 {
 				logLine.RelationName = subParts[2]
 			}
-			if parts[2] != "" {
-				kernelPart = parts[2]
-				userPart = parts[3]
-				elapsedPart = parts[4]
+
+			// Parts 2 to 8 (I/O and buffers information) are only present on Postgres 14+ and dealt with at the end
+
+			if parts[9] != "" {
+				kernelPart = parts[9]
+				userPart = parts[10]
+				elapsedPart = parts[11]
 			} else {
-				userPart = parts[5]
-				kernelPart = parts[6]
-				elapsedPart = parts[7]
+				userPart = parts[12]
+				kernelPart = parts[13]
+				elapsedPart = parts[14]
 			}
 			rusageKernelMode, _ := strconv.ParseFloat(kernelPart, 64)
 			rusageUserMode, _ := strconv.ParseFloat(userPart, 64)
@@ -1809,6 +1816,22 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 			logLine.Details = map[string]interface{}{
 				"rusage_kernel": rusageKernelMode, "rusage_user": rusageUserMode,
 				"elapsed_secs": rusageElapsed,
+			}
+			if parts[2] != "" {
+				blkReadTime, _ := strconv.ParseFloat(parts[2], 64)
+				blkWriteTime, _ := strconv.ParseFloat(parts[3], 64)
+				readRateMb, _ := strconv.ParseFloat(parts[4], 64)
+				writeRateMb, _ := strconv.ParseFloat(parts[5], 64)
+				analyzePageHit, _ := strconv.ParseInt(parts[6], 10, 64)
+				analyzePageMiss, _ := strconv.ParseInt(parts[7], 10, 64)
+				analyzePageDirty, _ := strconv.ParseInt(parts[8], 10, 64)
+				logLine.Details["blk_read_time"] = blkReadTime
+				logLine.Details["blk_write_time"] = blkWriteTime
+				logLine.Details["read_rate_mb"] = readRateMb
+				logLine.Details["write_rate_mb"] = writeRateMb
+				logLine.Details["analyze_page_hit"] = analyzePageHit
+				logLine.Details["analyze_page_miss"] = analyzePageMiss
+				logLine.Details["analyze_page_dirty"] = analyzePageDirty
 			}
 			contextLine = matchOtherContextLogLine(contextLine)
 			return logLine, statementLine, detailLine, contextLine, hintLine, samples
