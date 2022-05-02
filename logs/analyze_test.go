@@ -1432,6 +1432,112 @@ var tests = []testpair{
 	},
 	{
 		[]state.LogLine{{
+			Content: "automatic vacuum of table \"mydb.myschema.mytable\": index scans: 0\n" +
+				"	pages: 0 removed, 14761 remain, 0 skipped due to pins, 12461 skipped frozen\n" +
+				"	tuples: 0 removed, 122038 remain, 14433 are dead but not yet removable, oldest xmin: 538040633\n" +
+				"	index scan bypassed: 255 pages from table (1.73% of total) have 661 dead item identifiers\n" +
+				"	I/O timings: read: 0.000 ms, write: 0.000 ms\n" +
+				"	avg read rate: 0.000 MB/s, avg write rate: 0.000 MB/s\n" +
+				"	buffer usage: 4420 hits, 0 misses, 0 dirtied\n" +
+				"	WAL usage: 1 records, 0 full page images, 245 bytes\n" +
+				"	system usage: CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.01 s",
+			LogLevel: pganalyze_collector.LogLineInformation_LOG,
+		}},
+		[]state.LogLine{{
+			Classification: pganalyze_collector.LogLineInformation_AUTOVACUUM_COMPLETED,
+			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
+			Database:       "mydb",
+			SchemaName:     "myschema",
+			RelationName:   "mytable",
+			Details: map[string]interface{}{
+				"aggressive":               false,
+				"anti_wraparound":          false,
+				"num_index_scans":          0,
+				"pages_removed":            0,
+				"rel_pages":                14761,
+				"pinskipped_pages":         0,
+				"frozenskipped_pages":      12461,
+				"tuples_deleted":           0,
+				"new_rel_tuples":           122038,
+				"new_dead_tuples":          14433,
+				"oldest_xmin":              538040633,
+				"lpdead_index_scan":        "bypassed",
+				"lpdead_item_pages":        255,
+				"lpdead_item_page_percent": 1.73,
+				"lpdead_items":             661,
+				"blk_read_time":            0,
+				"blk_write_time":           0,
+				"read_rate_mb":             0,
+				"write_rate_mb":            0,
+				"vacuum_page_hit":          4420,
+				"vacuum_page_miss":         0,
+				"vacuum_page_dirty":        0,
+				"wal_records":              1,
+				"wal_fpi":                  0,
+				"wal_bytes":                245,
+				"rusage_kernel":            0.00,
+				"rusage_user":              0.00,
+				"elapsed_secs":             0.01,
+			},
+			ReviewedForSecrets: true,
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
+			Content: "automatic aggressive vacuum to prevent wraparound of table \"mydb.myschema.mytable\": index scans: 0\n" +
+				"	pages: 0 removed, 241245 remain, 0 skipped due to pins, 241244 skipped frozen\n" +
+				"	tuples: 0 removed, 17418745 remain, 0 are dead but not yet removable, oldest xmin: 538040633\n" +
+				"	index scan not needed: 0 pages from table (0.00% of total) had 0 dead item identifiers removed\n" +
+				"	I/O timings: read: 10.540 ms, write: 0.000 ms\n" +
+				"	avg read rate: 38.748 MB/s, avg write rate: 0.538 MB/s\n" +
+				"	buffer usage: 50 hits, 72 misses, 1 dirtied\n" +
+				"	WAL usage: 1 records, 1 full page images, 2147 bytes\n" +
+				"	system usage: CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.01 s",
+			LogLevel: pganalyze_collector.LogLineInformation_LOG,
+		}},
+		[]state.LogLine{{
+			Classification: pganalyze_collector.LogLineInformation_AUTOVACUUM_COMPLETED,
+			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
+			Database:       "mydb",
+			SchemaName:     "myschema",
+			RelationName:   "mytable",
+			Details: map[string]interface{}{
+				"aggressive":               true,
+				"anti_wraparound":          true,
+				"num_index_scans":          0,
+				"pages_removed":            0,
+				"rel_pages":                241245,
+				"pinskipped_pages":         0,
+				"frozenskipped_pages":      241244,
+				"tuples_deleted":           0,
+				"new_rel_tuples":           17418745,
+				"new_dead_tuples":          0,
+				"oldest_xmin":              538040633,
+				"lpdead_index_scan":        "not needed",
+				"lpdead_item_pages":        0,
+				"lpdead_item_page_percent": 0,
+				"lpdead_items":             0,
+				"blk_read_time":            10.54,
+				"blk_write_time":           0,
+				"read_rate_mb":             38.748,
+				"write_rate_mb":            0.538,
+				"vacuum_page_hit":          50,
+				"vacuum_page_miss":         72,
+				"vacuum_page_dirty":        1,
+				"wal_records":              1,
+				"wal_fpi":                  1,
+				"wal_bytes":                2147,
+				"rusage_kernel":            0.00,
+				"rusage_user":              0.00,
+				"elapsed_secs":             0.01,
+			},
+			ReviewedForSecrets: true,
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
 			Content: "automatic aggressive vacuum of table \"demo_pgbench.public.pgbench_tellers\": index scans: 0" +
 				" pages: 0 removed, 839 remain, 0 skipped due to pins, 705 skipped frozen" +
 				"	tuples: 1849 removed, 2556 remain, 5 are dead but not yet removable, oldest xmin: 448424944" +
