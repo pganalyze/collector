@@ -171,7 +171,7 @@ func GetIndexStats(db *sql.DB, postgresVersion state.PostgresVersion, ignoreRege
 	return
 }
 
-func GetColumnStats(logger *util.Logger, db *sql.DB, globalCollectionOpts state.CollectionOpts, systemType string) (columnStats state.PostgresColumnStatsMap, err error) {
+func GetColumnStats(logger *util.Logger, db *sql.DB, globalCollectionOpts state.CollectionOpts, systemType string, dbName string) (columnStats state.PostgresColumnStatsMap, err error) {
 	var sourceTable string
 
 	helperExists := false
@@ -182,9 +182,9 @@ func GetColumnStats(logger *util.Logger, db *sql.DB, globalCollectionOpts state.
 		sourceTable = "pganalyze.get_column_stats()"
 	} else {
 		if systemType != "heroku" && !connectedAsSuperUser(db, systemType) && globalCollectionOpts.TestRun {
-			logger.PrintInfo("Warning: Limited access to table column statistics detected. Please setup" +
-				" the monitoring helper function pganalyze.get_column_stats (https://github.com/pganalyze/collector#setting-up-a-restricted-monitoring-user)" +
-				" or connect as superuser, to get column statistics for all tables.")
+			logger.PrintInfo("Warning: Limited access to table column statistics detected in database %s. Please set up"+
+				" the monitoring helper function pganalyze.get_column_stats (https://github.com/pganalyze/collector#setting-up-a-restricted-monitoring-user)"+
+				" or connect as superuser, to get column statistics for all tables.", dbName)
 		}
 		sourceTable = "pg_catalog.pg_stats"
 	}
