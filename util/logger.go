@@ -19,11 +19,11 @@ type Logger struct {
 }
 
 func (logger *Logger) WithPrefix(prefix string) *Logger {
-	return &Logger{Verbose: logger.Verbose, Quiet: logger.Quiet, Destination: logger.Destination, Prefix: &prefix}
+	return &Logger{Verbose: logger.Verbose, Quiet: logger.Quiet, Destination: logger.Destination, Prefix: &prefix, UseJSON: logger.UseJSON}
 }
 
 func (logger *Logger) WithPrefixAndRememberErrors(prefix string) *Logger {
-	return &Logger{Verbose: logger.Verbose, Quiet: logger.Quiet, Destination: logger.Destination, Prefix: &prefix, RememberErrors: true}
+	return &Logger{Verbose: logger.Verbose, Quiet: logger.Quiet, Destination: logger.Destination, Prefix: &prefix, RememberErrors: true, UseJSON: logger.UseJSON}
 }
 
 func (logger *Logger) print(logLevel string, format string, args ...interface{}) {
