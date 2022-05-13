@@ -323,6 +323,7 @@ func TestLogsForAllServers(servers []*state.Server, globalCollectionOpts state.C
 			continue
 		} else if !logs.IsSupportedPrefix(logLinePrefix) && !(server.Config.SystemType == "heroku" && logLinePrefix == logs.HerokuLogLinePrefix) {
 			prefixedLogger.PrintError("ERROR - Unsupported log_line_prefix setting: '%s'", logLinePrefix)
+			prefixedLogger.PrintInfo("HINT - You can find a list of supported settings in the pganalyze documentation: https://pganalyze.com/docs/log-insights/setup/self-managed/troubleshooting")
 			hasFailedServers = true
 			continue
 		}
