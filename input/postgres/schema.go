@@ -54,7 +54,7 @@ func CollectAllSchemas(server *state.Server, collectionOpts state.CollectionOpts
 		schemaTableLimit = defaultSchemaTableLimit
 	}
 	if relCount := len(ps.Relations); relCount > schemaTableLimit {
-		logger.PrintWarning("Too many tables: got %d, but only %d can be monitored per server; schema information will be lost; learn more at https://pganalyze.com/docs/collector/settings#schema-filter-settings", relCount, schemaTableLimit)
+		logger.PrintWarning("Too many tables: got %d, but only %d can be monitored per server; schema information will not be sent; learn more at https://pganalyze.com/docs/collector/settings#schema-filter-settings", relCount, schemaTableLimit)
 	}
 
 	return ps, ts
