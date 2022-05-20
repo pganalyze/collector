@@ -1,0 +1,12 @@
+{{- if .Values.configMap.create }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "pganalyze-collector.configMapName" . }}
+  labels:
+    {{- include "pganalyze-collector.labels" . | nindent 4 }}
+data:
+{{- range $key, $value := .Values.configMap.values }}
+  {{ $key }}: {{ $value | quote }}
+{{- end }}
+{{- end }}

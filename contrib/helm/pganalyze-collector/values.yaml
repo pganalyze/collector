@@ -1,0 +1,88 @@
+# Default values for pganalyze-collector.
+
+replicaCount: 1
+
+image:
+  repository: quay.io/pganalyze/collector
+  # -- Overrides the image pull policy.
+  # Note that the default tag is "stable" and you may want to use a
+  # pull policy of `Always` to ensure pganalyze is upgraded on restarts
+  pullPolicy: IfNotPresent
+  # -- Overrides the image tag whose default is the chart appVersion.
+  tag: ""
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+# -- Environment variables to be passed to the container
+extraEnv: {}
+#   DB_NAME: your_database_name
+#   DB_ALL_NAMES: 1
+
+configMap:
+  # -- Specifies whether a config map should be created.
+  # The config map can be used to set runtime environment variables
+  create: false
+  # -- The name of the config map to load environment variables from.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+  # -- Values to initialize the ConfigMap with.
+  # Only applicable if create is true
+  values: {}
+  #   DB_NAME: your_database_name
+  #   DB_ALL_NAMES: 1
+
+secret:
+  # -- Specifies whether a secret should be created.
+  # The secret can be used to set sensitive runtime environment variables
+  create: false
+  # -- The name of the secret to load environment variables from.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+  # -- Values to initialize the Secret with.
+  # Only applicable if create is true
+  values: {}
+  #   PGA_API_KEY: your_pganalyze_api_key
+  #   DB_PASSWORD: your_database_password
+
+serviceAccount:
+  # -- Specifies whether a service account should be created
+  create: true
+  # -- Annotations to add to the service account
+  annotations: {}
+  # -- The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext: {}
+
+securityContext:
+  capabilities:
+    drop:
+    - ALL
+  runAsNonRoot: true
+  runAsUser: 1000
+  allowPrivilegeEscalation: false
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 256Mi
+  requests:
+    cpu: 500m
+    memory: 256Mi
+
+# -- List of volumes to attach to the pod
+volumes: []
+
+# -- List of volume mounts to attach to the container
+volumeMounts: []
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

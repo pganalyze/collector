@@ -1,0 +1,9 @@
+apiVersion: v2
+name: pganalyze-collector
+version: 0.1.0
+appVersion: "stable"
+type: application
+description: pganalyze statistics collector
+home: https://pganalyze.com/
+sources:
+  - https://github.com/pganalyze/collector
