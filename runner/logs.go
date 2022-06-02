@@ -322,7 +322,7 @@ func TestLogsForAllServers(servers []*state.Server, globalCollectionOpts state.C
 			prefixedLogger.PrintError("ERROR - Could not check log_line_prefix for server: %s", err)
 			hasFailedServers = true
 			continue
-		} else if server.Config.SystemType == "heroku" && logLinePrefix == logs.HerokuLogLinePrefix {
+		} else if server.Config.SystemType == "heroku" && (logLinePrefix == logs.HerokuLogLinePrefix || logLinePrefix == logs.HerokuLogLinePrefixNew) {
 			// Special cased in the Heroku log handling (but not a supported log_line_prefix otherwise)
 		} else if server.Config.SystemType == "heroku" && logLinePrefix == logs.HerokuLogLinePrefixFreeTier {
 			prefixedLogger.PrintWarning("WARNING - Detected log_line_prefix indicates Heroku Postgres Free Tier, which has no log output support")

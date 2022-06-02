@@ -93,6 +93,7 @@ var RsyslogRegexp = regexp.MustCompile(`^` + RsyslogTimeRegexp + ` ` + RsyslogHo
 
 // The Heroku log_line_prefix is handled directly in the Heroku log receiver, included here for reference only
 var HerokuLogLinePrefix = " sql_error_code = %e "
+var HerokuLogLinePrefixNew = ` sql_error_code = %e time_ms = "%m" pid="%p" proc_start_time="%s" session_id="%c" vtid="%v" tid="%x" log_line="%l" %qdatabase="%d" connection_source="%r" user="%u" application_name="%a" `
 var HerokuLogLinePrefixFreeTier = " database = %d connection_source = %r sql_error_code = %e " // Used only to allow log_line_prefix checks to pass
 var HerokuPostgresDebugRegexp = regexp.MustCompile(`^(\w+ \d+ \d+:\d+:\d+ \w+ app\[postgres\] \w+ )?\[(\w+)\] \[\d+-\d+\] ( sql_error_code = ` + SqlstateRegexp + ` (\w+):  )?(.+)`)
 

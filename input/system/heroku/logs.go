@@ -173,7 +173,7 @@ func logStreamItemToLogLine(item HerokuLogStreamItem, servers []*state.Server, s
 	}
 	backendPid, _ := strconv.ParseInt(parts[1], 10, 32)
 
-	contentParts := regexp.MustCompile(`^\[(\w+)\] \[(\d+)-(\d+)\] ( sql_error_code = \w+ (\w+):  )?(.+)`).FindStringSubmatch(string(item.Content))
+	contentParts := regexp.MustCompile(`^\[(\w+)\] \[(\d+)-(\d+)\] (?:( sql_error_code = \w+ (\w+):  )|( sql_error_code = \w+ time_ms = ".+?" pid=".+?" proc_start_time=".+?" session_id=".+?" vtid=".+?" tid=".+?" log_line=".+?" .+?database=".+?" connection_source=".+?" user=".+?" application_name=".+?" ))?(.+)`).FindStringSubmatch(string(item.Content))
 	if len(contentParts) != 7 {
 		fmt.Printf("ERR: %s\n", string(item.Content))
 		return sourceToServer, nil, ""
