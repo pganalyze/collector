@@ -39,3 +39,13 @@ mkdir -p /repo/debian/bullseye/conf
 cp /root/deb.distributions /repo/debian/bullseye/conf/distributions
 reprepro --basedir /repo/debian/bullseye includedeb stable /deb/systemd/$DEB_PACKAGE_X86_64
 reprepro --basedir /repo/debian/bullseye includedeb stable /deb/systemd/$DEB_PACKAGE_ARM64
+
+# Verify signatures
+apt-key add /repo/pganalyze_signing_key.asc
+gpgv --keyring /etc/apt/trusted.gpg /repo/ubuntu/xenial/dists/stable/InRelease
+gpgv --keyring /etc/apt/trusted.gpg /repo/ubuntu/bionic/dists/stable/InRelease
+gpgv --keyring /etc/apt/trusted.gpg /repo/ubuntu/focal/dists/stable/InRelease
+gpgv --keyring /etc/apt/trusted.gpg /repo/debian/jessie/dists/stable/InRelease
+gpgv --keyring /etc/apt/trusted.gpg /repo/debian/stretch/dists/stable/InRelease
+gpgv --keyring /etc/apt/trusted.gpg /repo/debian/buster/dists/stable/InRelease
+gpgv --keyring /etc/apt/trusted.gpg /repo/debian/bullseye/dists/stable/InRelease
