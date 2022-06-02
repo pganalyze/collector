@@ -201,7 +201,6 @@ func setupLogTransformer(ctx context.Context, wg *sync.WaitGroup, servers []*sta
 	go func() {
 		defer wg.Done()
 
-		logLinesBySource := make(map[string][]state.LogLine)
 		sourceToServer := make(map[string]*state.Server)
 
 		for {
@@ -215,27 +214,22 @@ func setupLogTransformer(ctx context.Context, wg *sync.WaitGroup, servers []*sta
 
 				now := time.Now()
 
-				var newLogLine *state.LogLine
+				var logLine *state.LogLine
 				var sourceName string
-				sourceToServer, newLogLine, sourceName = logStreamItemToLogLine(item, servers, sourceToServer, now, globalCollectionOpts, logger)
-				if newLogLine != nil && sourceName != "" {
-					logLinesBySource[sourceName] = append(logLinesBySource[sourceName], *newLogLine)
+				sourceToServer, logLine, sourceName = logStreamItemToLogLine(item, servers, sourceToServer, now, globalCollectionOpts, logger)
+				if logLine == nil || sourceName == "" {
+					continue
 				}
 
-				for sourceName, logLines := range logLinesBySource {
-					server, exists := sourceToServer[sourceName]
-					if !exists {
-						logger.PrintInfo("Ignoring log line since server can't be matched yet - if this keeps showing up you have a configuration error for %s", sourceName)
-						logLinesBySource[sourceName] = []state.LogLine{}
-						continue
-					}
-
-					for _, logLine := range logLines {
-						logLine.Username = server.Config.GetDbUsername()
-						logLine.Database = server.Config.GetDbName()
-						out <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: logLine}
-					}
+				server, exists := sourceToServer[sourceName]
+				if !exists {
+					logger.PrintInfo("Ignoring log line since server can't be matched yet - if this keeps showing up you have a configuration error for %s", sourceName)
+					continue
 				}
+
+				logLine.Username = server.Config.GetDbUsername()
+				logLine.Database = server.Config.GetDbName()
+				out <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: *logLine}
 			}
 		}
 	}()
