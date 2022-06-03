@@ -154,24 +154,24 @@ func logStreamItemToLogLine(item HerokuLogStreamItem, servers []*state.Server, s
 	}
 	backendPid, _ := strconv.ParseInt(parts[1], 10, 32)
 
-	contentParts := regexp.MustCompile(`^\[(\w+)\] \[(\d+)-(\d+)\] (.+)`).FindStringSubmatch(string(item.Content))
-	if len(contentParts) != 5 {
+	lineParts := regexp.MustCompile(`^\[(\w+)\] \[(\d+)-(\d+)\] (.+)`).FindStringSubmatch(string(item.Content))
+	if len(lineParts) != 5 {
 		fmt.Printf("ERR: %s\n", string(item.Content))
 		return sourceToServer, nil, ""
 	}
 
-	sourceName := contentParts[1]
+	sourceName := lineParts[1]
 	if !strings.HasPrefix(sourceName, "HEROKU_POSTGRESQL_") {
 		sourceName = "HEROKU_POSTGRESQL_" + sourceName
 	}
 	sourceName = namespace + " / " + sourceName
-	logLineNumber, _ := strconv.ParseInt(contentParts[2], 10, 32)
-	logLineNumberChunk, _ := strconv.ParseInt(contentParts[3], 10, 32)
-	content := contentParts[4]
+	logLineNumber, _ := strconv.ParseInt(lineParts[2], 10, 32)
+	logLineNumberChunk, _ := strconv.ParseInt(lineParts[3], 10, 32)
+	prefixedContent := lineParts[4]
 
-	sourceToServer = catchIdentifyServerLine(sourceName, content, sourceToServer, servers)
+	logLine, _ := logs.ParseLogLineWithPrefix("", prefixedContent+"\n")
 
-	logLine, _ := logs.ParseLogLineWithPrefix("", content+"\n")
+	sourceToServer = catchIdentifyServerLine(sourceName, logLine.Content, sourceToServer, servers)
 
 	logLine.OccurredAt = timestamp
 	logLine.BackendPid = int32(backendPid)
