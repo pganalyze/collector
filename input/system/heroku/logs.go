@@ -12,11 +12,10 @@ import (
 	"github.com/bmizerany/lpx"
 	"github.com/kr/logfmt"
 	"github.com/pganalyze/collector/grant"
+	"github.com/pganalyze/collector/logs"
 	"github.com/pganalyze/collector/output"
-	"github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
-	uuid "github.com/satori/go.uuid"
 )
 
 type HerokuLogStreamItem struct {
@@ -129,24 +128,6 @@ func processSystemMetrics(timestamp time.Time, content []byte, sourceToServer ma
 	return
 }
 
-func makeLogLine(timestamp time.Time, backendPid int64, logLineNumber int64, logLineNumberChunk int64, logLevel string, content string, now time.Time) *state.LogLine {
-	var logLine state.LogLine
-
-	logLine.CollectedAt = now
-	logLine.OccurredAt = timestamp
-	logLine.BackendPid = int32(backendPid)
-	logLine.LogLineNumber = int32(logLineNumber)
-	logLine.LogLineNumberChunk = int32(logLineNumberChunk)
-	logLine.Content = content
-	logLine.UUID = uuid.NewV4()
-
-	if logLevel != "" { // Append-lines don't have a log level
-		logLine.LogLevel = pganalyze_collector.LogLineInformation_LogLevel(pganalyze_collector.LogLineInformation_LogLevel_value[logLevel])
-	}
-
-	return &logLine
-}
-
 func logStreamItemToLogLine(item HerokuLogStreamItem, servers []*state.Server, sourceToServer map[string]*state.Server, now time.Time, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (map[string]*state.Server, *state.LogLine, string) {
 	timestamp, err := time.Parse(time.RFC3339, string(item.Header.Time))
 	if err != nil {
@@ -173,27 +154,31 @@ func logStreamItemToLogLine(item HerokuLogStreamItem, servers []*state.Server, s
 	}
 	backendPid, _ := strconv.ParseInt(parts[1], 10, 32)
 
-	contentParts := regexp.MustCompile(`^\[(\w+)\] \[(\d+)-(\d+)\] ( sql_error_code = \w+ (\w+):  )?(.+)`).FindStringSubmatch(string(item.Content))
-	if len(contentParts) != 7 {
+	lineParts := regexp.MustCompile(`^\[(\w+)\] \[(\d+)-(\d+)\] (.+)`).FindStringSubmatch(string(item.Content))
+	if len(lineParts) != 5 {
 		fmt.Printf("ERR: %s\n", string(item.Content))
 		return sourceToServer, nil, ""
 	}
 
-	sourceName := contentParts[1]
+	sourceName := lineParts[1]
 	if !strings.HasPrefix(sourceName, "HEROKU_POSTGRESQL_") {
 		sourceName = "HEROKU_POSTGRESQL_" + sourceName
 	}
 	sourceName = namespace + " / " + sourceName
-	logLineNumber, _ := strconv.ParseInt(contentParts[2], 10, 32)
-	logLineNumberChunk, _ := strconv.ParseInt(contentParts[3], 10, 32)
-	logLevel := contentParts[5]
-	content := contentParts[6]
+	logLineNumber, _ := strconv.ParseInt(lineParts[2], 10, 32)
+	logLineNumberChunk, _ := strconv.ParseInt(lineParts[3], 10, 32)
+	prefixedContent := lineParts[4]
 
-	sourceToServer = catchIdentifyServerLine(sourceName, content, sourceToServer, servers)
+	logLine, _ := logs.ParseLogLineWithPrefix("", prefixedContent+"\n")
 
-	newLogLine := makeLogLine(timestamp, backendPid, logLineNumber, logLineNumberChunk, logLevel, content, now)
+	sourceToServer = catchIdentifyServerLine(sourceName, logLine.Content, sourceToServer, servers)
 
-	return sourceToServer, newLogLine, sourceName
+	logLine.OccurredAt = timestamp
+	logLine.BackendPid = int32(backendPid)
+	logLine.LogLineNumber = int32(logLineNumber)
+	logLine.LogLineNumberChunk = int32(logLineNumberChunk)
+
+	return sourceToServer, &logLine, sourceName
 }
 
 func setupLogTransformer(ctx context.Context, wg *sync.WaitGroup, servers []*state.Server, in <-chan HerokuLogStreamItem, out chan state.ParsedLogStreamItem, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {

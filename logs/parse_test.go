@@ -450,6 +450,29 @@ var parseTests = []parseTestpair{
 		},
 		true,
 	},
+	{
+		"",
+		` sql_error_code = 28000 FATAL:  no pg_hba.conf entry for host "127.0.0.1", user "postgres", database "postgres", SSL off`,
+		state.LogLine{
+			LogLevel: pganalyze_collector.LogLineInformation_FATAL,
+			Content:  "no pg_hba.conf entry for host \"127.0.0.1\", user \"postgres\", database \"postgres\", SSL off",
+		},
+		true,
+	},
+	{
+		"",
+		` sql_error_code = 28000 time_ms = "2022-06-02 22:48:20.807 UTC" pid="11666" proc_start_time="2022-06-02 22:48:20 UTC" session_id="62993e34.2d92" vtid="6/17007" tid="0" log_line="1" database="postgres" connection_source="127.0.0.1(36532)" user="postgres" application_name="[unknown]" FATAL:  no pg_hba.conf entry for host "127.0.0.1", user "postgres", database "postgres", SSL off`,
+		state.LogLine{
+			OccurredAt:    time.Date(2022, time.June, 2, 22, 48, 20, 807*1000*1000, time.UTC),
+			Username:      "postgres",
+			Database:      "postgres",
+			LogLevel:      pganalyze_collector.LogLineInformation_FATAL,
+			BackendPid:    11666,
+			LogLineNumber: 1,
+			Content:       "no pg_hba.conf entry for host \"127.0.0.1\", user \"postgres\", database \"postgres\", SSL off",
+		},
+		true,
+	},
 }
 
 func TestParseLogLineWithPrefix(t *testing.T) {
