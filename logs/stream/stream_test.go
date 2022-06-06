@@ -260,16 +260,16 @@ var streamTests = []streamTestpair{
 	{
 		[]state.LogLine{{
 			CollectedAt: now.Add(-5 * time.Second),
-			OccurredAt: now.Add(-4 * time.Second),
+			OccurredAt:  now.Add(-4 * time.Second),
 			Content:     " );\n",
 		},
 			{
-				CollectedAt: now.Add(-4 * time.Second),
-				OccurredAt: now.Add(-5 * time.Second),
-				LogLevel:    pganalyze_collector.LogLineInformation_LOG,
+				CollectedAt:   now.Add(-4 * time.Second),
+				OccurredAt:    now.Add(-5 * time.Second),
+				LogLevel:      pganalyze_collector.LogLineInformation_LOG,
 				LogLineNumber: 2,
 				BackendPid:    42,
-				Content:     "LOG:  duration: 10010.397 ms  statement: SELECT pg_sleep(10\n",
+				Content:       "LOG:  duration: 10010.397 ms  statement: SELECT pg_sleep(10\n",
 			}},
 		state.TransientLogState{},
 		state.LogFile{
