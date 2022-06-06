@@ -156,14 +156,12 @@ func setupLogTransformer(ctx context.Context, wg *sync.WaitGroup, servers []*sta
 					return
 				}
 
+				// We ignore failures here since we want the per-backend stitching logic
+				// that runs later on (and any other parsing errors will just be ignored).
 				// Note that we need to restore the original trailing newlines since
 				// ProcessLogStream below expects them and they are not present in the GCP
 				// log stream.
-				logLine, ok := logs.ParseLogLineWithPrefix("", in.Content+"\n")
-				if !ok {
-					logger.PrintError("Can't parse log line: \"%s\"", in.Content)
-					continue
-				}
+				logLine, _ := logs.ParseLogLineWithPrefix("", in.Content+"\n")
 				logLine.OccurredAt = in.OccurredAt
 
 				// Ignore loglines which are outside our time window

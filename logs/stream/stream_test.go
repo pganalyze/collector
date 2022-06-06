@@ -193,7 +193,7 @@ var streamTests = []streamTestpair{
 		[]state.LogLine{},
 		nil,
 	},
-	// Multiple lines not concatenated yet (use case for self-managed systems)
+	// Multiple lines not concatenated yet (use case for self-managed systems and long texts on GCP)
 	{
 		[]state.LogLine{
 			{
@@ -253,6 +253,36 @@ var streamTests = []streamTestpair{
 			},
 		},
 		"zero\nfirst\nsecond\nthird\n",
+		[]state.LogLine{},
+		nil,
+	},
+	// Multiple lines not concatenated yet (out of order messages, can occur for long texts on GCP)
+	{
+		[]state.LogLine{{
+			CollectedAt: now.Add(-5 * time.Second),
+			OccurredAt:  now.Add(-4 * time.Second),
+			Content:     " );\n",
+		},
+			{
+				CollectedAt:   now.Add(-4 * time.Second),
+				OccurredAt:    now.Add(-5 * time.Second),
+				LogLevel:      pganalyze_collector.LogLineInformation_LOG,
+				LogLineNumber: 2,
+				BackendPid:    42,
+				Content:       "LOG:  duration: 10010.397 ms  statement: SELECT pg_sleep(10\n",
+			}},
+		state.TransientLogState{},
+		state.LogFile{
+			LogLines: []state.LogLine{{
+				CollectedAt:   now.Add(-4 * time.Second),
+				OccurredAt:    now.Add(-5 * time.Second),
+				LogLevel:      pganalyze_collector.LogLineInformation_LOG,
+				ByteEnd:       64,
+				LogLineNumber: 2,
+				BackendPid:    42,
+			}},
+		},
+		"LOG:  duration: 10010.397 ms  statement: SELECT pg_sleep(10\n );\n",
 		[]state.LogLine{},
 		nil,
 	},

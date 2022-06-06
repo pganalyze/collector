@@ -37,10 +37,12 @@ import (
 //
 // Google Cloud SQL log data looks like this:
 // - Not correctly ordered (lines from Pub/Sub may arrive in any order)
-// - All lines have a timestamp
-// - Always has the log line number, allowing association of related log lines
-// - Multi-line messages are already combined together
-//   (as of Sept 14, 2021 - see https://cloud.google.com/sql/docs/release-notes#September_14_2021)
+// - All lines have a timestamp (taken from the Timestamp field in the original Cloud Logging message)
+// - First line of a message always has log line number (due to fixed log_line_prefix)
+// - Log events split across multiple log messages only have the PID and line number in the first message,
+//   may arrive out of order, but have a timestamp that is correctly ordering each part of the log event
+// - Split log events are rare (as of Sept 14, 2021 - see https://cloud.google.com/sql/docs/release-notes#September_14_2021),
+//   but can still happen if the log data is too big (cutoff appears to be around 1000-2000 lines, or ~100kb of data)
 
 const InvalidPid int32 = -1
 const UnknownPid int32 = 0
