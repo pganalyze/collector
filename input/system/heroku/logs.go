@@ -198,6 +198,7 @@ func setupLogTransformer(ctx context.Context, wg *sync.WaitGroup, servers []*sta
 				}
 
 				fmt.Printf("log drain received: %s\n", string(item.Content))
+				fmt.Printf("server mapping: %#v\n", sourceToServer)
 
 				now := time.Now()
 
