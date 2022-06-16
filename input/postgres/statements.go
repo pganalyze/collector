@@ -104,7 +104,7 @@ func GetStatements(server *state.Server, logger *util.Logger, db *sql.DB, global
 
 		var extSchema string
 		var foundExtVersion float32
-		err = db.QueryRow("SELECT nspname, extversion FROM pg_extension pge INNER JOIN pg_namespace pgn ON pge.extnamespace = pgn.oid WHERE pge.extname = 'pg_stat_statements'").Scan(&extSchema, &foundExtVersion)
+		err = db.QueryRow(QueryMarkerSQL+"SELECT nspname, extversion FROM pg_extension pge INNER JOIN pg_namespace pgn ON pge.extnamespace = pgn.oid WHERE pge.extname = 'pg_stat_statements'").Scan(&extSchema, &foundExtVersion)
 		if err != nil && err != sql.ErrNoRows {
 			return nil, nil, nil, err
 		}
