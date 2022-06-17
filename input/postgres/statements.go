@@ -83,9 +83,56 @@ func GetStatements(server *state.Server, logger *util.Logger, db *sql.DB, global
 	var totalTimeField string
 	var optionalFields string
 	var sourceTable string
+	var extSchema string
+	var extVersion float32 // defined in pg_stat_statements.c
+	var foundExtVersion float32
+
+	if postgresVersion.Numeric >= state.PostgresVersion13 {
+		extVersion = 1.8
+	} else if postgresVersion.Numeric >= state.PostgresVersion95 {
+		extVersion = 1.3
+	} else if postgresVersion.Numeric >= state.PostgresVersion94 {
+		extVersion = 1.2
+	} else {
+		extVersion = 1.1
+	}
+
+	err = db.QueryRow(QueryMarkerSQL+"SELECT nspname, extversion FROM pg_extension pge INNER JOIN pg_namespace pgn ON pge.extnamespace = pgn.oid WHERE pge.extname = 'pg_stat_statements'").Scan(&extSchema, &foundExtVersion)
+	if err != nil && err != sql.ErrNoRows {
+		return nil, nil, nil, err
+	}
+
+	if err == sql.ErrNoRows {
+		logger.PrintInfo("pg_stat_statements does not exist, trying to create extension...")
+		_, err = db.Exec(QueryMarkerSQL + "CREATE EXTENSION IF NOT EXISTS pg_stat_statements SCHEMA public")
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		extSchema = "public"
+		foundExtVersion = extVersion
+	}
+
+	if foundExtVersion >= 1.8 {
+		optionalFields = statementSQLpg13OptionalFields
+	} else if foundExtVersion >= 1.3 {
+		optionalFields = statementSQLpg95OptionalFields
+	} else if foundExtVersion >= 1.2 {
+		optionalFields = statementSQLpg94OptionalFields
+	} else {
+		optionalFields = statementSQLDefaultOptionalFields
+	}
+
+	if foundExtVersion >= 1.8 {
+		totalTimeField = statementSQLpg13TotalTimeField
+	} else {
+		totalTimeField = statementSQLDefaultTotalTimeField
+	}
+
+	if foundExtVersion < extVersion {
+		logger.PrintInfo("pg_stat_statements extension outdated (%.1f installed, %.1f available). To update run `ALTER EXTENSION pg_stat_statements UPDATE`", foundExtVersion, extVersion)
+	}
 
 	usingStatsHelper := false
-
 	if statementStatsHelperExists(db, showtext) {
 		usingStatsHelper = true
 		if !showtext {
@@ -101,55 +148,6 @@ func GetStatements(server *state.Server, logger *util.Logger, db *sql.DB, global
 				" the monitoring helper functions (https://github.com/pganalyze/collector#setting-up-a-restricted-monitoring-user)" +
 				" or connect as superuser, to get query statistics for all roles.")
 		}
-
-		var extSchema string
-		var foundExtVersion float32
-		err = db.QueryRow(QueryMarkerSQL+"SELECT nspname, extversion FROM pg_extension pge INNER JOIN pg_namespace pgn ON pge.extnamespace = pgn.oid WHERE pge.extname = 'pg_stat_statements'").Scan(&extSchema, &foundExtVersion)
-		if err != nil && err != sql.ErrNoRows {
-			return nil, nil, nil, err
-		}
-
-		var extVersion float32 // defined in pg_stat_statements.c
-		if postgresVersion.Numeric >= state.PostgresVersion13 {
-			extVersion = 1.8
-		} else if postgresVersion.Numeric >= state.PostgresVersion95 {
-			extVersion = 1.3
-		} else if postgresVersion.Numeric >= state.PostgresVersion94 {
-			extVersion = 1.2
-		} else {
-			extVersion = 1.1
-		}
-
-		if err == sql.ErrNoRows {
-			logger.PrintInfo("pg_stat_statements does not exist, trying to create extension...")
-			_, err = db.Exec(QueryMarkerSQL + "CREATE EXTENSION IF NOT EXISTS pg_stat_statements SCHEMA public")
-			if err != nil {
-				return nil, nil, nil, err
-			}
-			extSchema = "public"
-			foundExtVersion = extVersion
-		}
-
-		if foundExtVersion >= 1.8 {
-			optionalFields = statementSQLpg13OptionalFields
-		} else if foundExtVersion >= 1.3 {
-			optionalFields = statementSQLpg95OptionalFields
-		} else if foundExtVersion >= 1.2 {
-			optionalFields = statementSQLpg94OptionalFields
-		} else {
-			optionalFields = statementSQLDefaultOptionalFields
-		}
-
-		if foundExtVersion >= 1.8 {
-			totalTimeField = statementSQLpg13TotalTimeField
-		} else {
-			totalTimeField = statementSQLDefaultTotalTimeField
-		}
-
-		if foundExtVersion < extVersion {
-			logger.PrintInfo("pg_stat_statements extension outdated (%.1f installed, %.1f available). To update run `ALTER EXTENSION pg_stat_statements UPDATE`", foundExtVersion, extVersion)
-		}
-
 		if !showtext {
 			sourceTable = extSchema + ".pg_stat_statements(false)"
 		} else {
