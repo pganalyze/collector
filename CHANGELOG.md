@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.44.0      2022-06-17
+
+* Be more accepting with outdated pg_stat_statements versions
+  - With this change, its no longer required to run
+    "ALTER EXTENSION pg_stat_statements UPDATE" in order to use
+    the collector after a Postgres upgrade
+  - The collector will output an info message in case an outdated
+    pg_stat_statements schema is in use
+* Improve the "too many tables" error message to clarify possible solutions
+* Fix bug related to new structured JSON logs feature (see prior release)
+* AWS
+  - Fix rare bug with duplicate pg_settings values on Aurora Postgres
+* Heroku
+  - Add support for new log_line_prefix
+  - Log processing: Avoid repeating the same line over and over again
+* Google Cloud SQL: Re-enable log stitching for messages
+  - Whilst the GCP release notes mention that this is no longer a problem as of
+    Sept 2021, log events can still be split up into multiple messages if they
+    exceed a threshold around 1000-2000 lines, or ~100kb.
+
+
 ## 0.43.1      2022-05-02
 
 * Add option for emitting collector logs as structured JSON logs ([@jschaf](https://github.com/jschaf))
