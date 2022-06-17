@@ -7,19 +7,27 @@ import (
 	"github.com/pganalyze/collector/state"
 )
 
+// Retrieve config settings, with at most one row per setting name.
+//
+// Some variants of Postgres, most notably Aurora, seem to sometimes output
+// duplicate values in pg_settings (listing the default and the config file),
+// confusing later logic. Thus we ensure that we get at most one row per name
+// here, and sort by sourceline (putting defaults which don't have it set last).
 const settingsSQL string = `
-SELECT name,
-			 CASE name
-				 WHEN 'primary_conninfo' THEN regexp_replace(setting, '.', 'X', 'g')
-				 ELSE setting
-			 END AS current_value,
-			 unit,
-			 boot_val AS boot_value,
-			 reset_val AS reset_value,
-			 source,
-			 sourcefile,
-			 sourceline
-	FROM pg_catalog.pg_settings`
+SELECT DISTINCT ON (name)
+	   name,
+	   CASE name
+		 WHEN 'primary_conninfo' THEN regexp_replace(setting, '.', 'X', 'g')
+		 ELSE setting
+	   END AS current_value,
+	   unit,
+	   boot_val AS boot_value,
+	   reset_val AS reset_value,
+	   source,
+	   sourcefile,
+	   sourceline
+  FROM pg_catalog.pg_settings
+ ORDER BY name, sourceline DESC NULLS LAST`
 
 func GetSettings(db *sql.DB) ([]state.PostgresSetting, error) {
 	stmt, err := db.Prepare(QueryMarkerSQL + settingsSQL)
