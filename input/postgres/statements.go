@@ -128,7 +128,7 @@ func GetStatements(server *state.Server, logger *util.Logger, db *sql.DB, global
 		totalTimeField = statementSQLDefaultTotalTimeField
 	}
 
-	if foundExtVersion < extVersion {
+	if globalCollectionOpts.TestRun && foundExtVersion < extVersion {
 		logger.PrintInfo("pg_stat_statements extension outdated (%.1f installed, %.1f available). To update run `ALTER EXTENSION pg_stat_statements UPDATE`", foundExtVersion, extVersion)
 	}
 
