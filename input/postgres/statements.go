@@ -66,7 +66,7 @@ func ResetStatements(logger *util.Logger, db *sql.DB, systemType string) error {
 		method = "pganalyze.reset_stat_statements()"
 	} else {
 		if !connectedAsSuperUser(db, systemType) && !connectedAsMonitoringRole(db) {
-			logger.PrintInfo("Warning: You are not connecting as superuser. Please setup" +
+			logger.PrintInfo("Warning: You are not connecting as superuser. Please" +
 				" contact support to get advice on setting up stat statements reset")
 		}
 		method = "pg_stat_statements_reset()"
@@ -83,25 +83,56 @@ func GetStatements(server *state.Server, logger *util.Logger, db *sql.DB, global
 	var totalTimeField string
 	var optionalFields string
 	var sourceTable string
+	var extSchema string
+	var extVersion float32 // defined in pg_stat_statements.c
+	var foundExtVersion float32
 
 	if postgresVersion.Numeric >= state.PostgresVersion13 {
-		totalTimeField = statementSQLpg13TotalTimeField
+		extVersion = 1.8
+	} else if postgresVersion.Numeric >= state.PostgresVersion95 {
+		extVersion = 1.3
+	} else if postgresVersion.Numeric >= state.PostgresVersion94 {
+		extVersion = 1.2
 	} else {
-		totalTimeField = statementSQLDefaultTotalTimeField
+		extVersion = 1.1
 	}
 
-	if postgresVersion.Numeric >= state.PostgresVersion13 {
+	err = db.QueryRow(QueryMarkerSQL+"SELECT nspname, extversion FROM pg_extension pge INNER JOIN pg_namespace pgn ON pge.extnamespace = pgn.oid WHERE pge.extname = 'pg_stat_statements'").Scan(&extSchema, &foundExtVersion)
+	if err != nil && err != sql.ErrNoRows {
+		return nil, nil, nil, err
+	}
+
+	if err == sql.ErrNoRows {
+		logger.PrintInfo("pg_stat_statements does not exist, trying to create extension...")
+		_, err = db.Exec(QueryMarkerSQL + "CREATE EXTENSION IF NOT EXISTS pg_stat_statements SCHEMA public")
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		extSchema = "public"
+		foundExtVersion = extVersion
+	}
+
+	if foundExtVersion >= 1.8 {
 		optionalFields = statementSQLpg13OptionalFields
-	} else if postgresVersion.Numeric >= state.PostgresVersion95 {
+	} else if foundExtVersion >= 1.3 {
 		optionalFields = statementSQLpg95OptionalFields
-	} else if postgresVersion.Numeric >= state.PostgresVersion94 {
+	} else if foundExtVersion >= 1.2 {
 		optionalFields = statementSQLpg94OptionalFields
 	} else {
 		optionalFields = statementSQLDefaultOptionalFields
 	}
 
-	usingStatsHelper := false
+	if foundExtVersion >= 1.8 {
+		totalTimeField = statementSQLpg13TotalTimeField
+	} else {
+		totalTimeField = statementSQLDefaultTotalTimeField
+	}
 
+	if globalCollectionOpts.TestRun && foundExtVersion < extVersion {
+		logger.PrintInfo("pg_stat_statements extension outdated (%.1f installed, %.1f available). To update run `ALTER EXTENSION pg_stat_statements UPDATE`", foundExtVersion, extVersion)
+	}
+
+	usingStatsHelper := false
 	if statementStatsHelperExists(db, showtext) {
 		usingStatsHelper = true
 		if !showtext {
@@ -118,9 +149,9 @@ func GetStatements(server *state.Server, logger *util.Logger, db *sql.DB, global
 				" or connect as superuser, to get query statistics for all roles.")
 		}
 		if !showtext {
-			sourceTable = "public.pg_stat_statements(false)"
+			sourceTable = extSchema + ".pg_stat_statements(false)"
 		} else {
-			sourceTable = "public.pg_stat_statements"
+			sourceTable = extSchema + ".pg_stat_statements"
 		}
 	}
 
@@ -129,25 +160,9 @@ func GetStatements(server *state.Server, logger *util.Logger, db *sql.DB, global
 	stmt, err := db.Prepare(querySql)
 	if err != nil {
 		var e *pq.Error
-		if !usingStatsHelper && errors.As(err, &e) && (e.Code == "42P01" || e.Code == "42883") { // undefined_table / undefined_function
-			var pgssSchema string
-			err = db.QueryRow("SELECT nspname FROM pg_extension pge INNER JOIN pg_namespace pgn ON pge.extnamespace = pgn.oid WHERE pge.extname = 'pg_stat_statements'").Scan(&pgssSchema)
-			if err == nil && pgssSchema != "public" {
-				return nil, nil, nil, fmt.Errorf("pg_stat_statements must be created in schema \"public\"; found in schema \"%s\"", pgssSchema)
-			}
+		if !usingStatsHelper && errors.As(err, &e) {
 			// If we get ErrNoRows, the extension does not exist, which is one of the expected paths
 			if err != nil && err != sql.ErrNoRows {
-				return nil, nil, nil, err
-			}
-
-			logger.PrintInfo("pg_stat_statements does not exist, trying to create extension...")
-			_, err = db.Exec(QueryMarkerSQL + "CREATE EXTENSION IF NOT EXISTS pg_stat_statements SCHEMA public")
-			if err != nil {
-				return nil, nil, nil, err
-			}
-
-			stmt, err = db.Prepare(querySql)
-			if err != nil {
 				return nil, nil, nil, err
 			}
 		} else {
