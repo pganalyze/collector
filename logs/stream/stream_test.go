@@ -40,14 +40,11 @@ var streamTests = []streamTestpair{
 		},
 		state.LogFile{
 			LogLines: []state.LogLine{{
-				CollectedAt:    now.Add(-5 * time.Second),
-				LogLevel:       pganalyze_collector.LogLineInformation_LOG,
-				ByteEnd:        56,
-				Query:          "SELECT pg_sleep(10);",
-				Classification: 80,
-				Details: map[string]interface{}{
-					"duration_ms": 10003.847,
-				},
+				CollectedAt:        now.Add(-5 * time.Second),
+				LogLevel:           pganalyze_collector.LogLineInformation_LOG,
+				ByteEnd:            56,
+				Query:              "SELECT pg_sleep(10);",
+				Classification:     80,
 				ReviewedForSecrets: true,
 				SecretMarkers: []state.LogSecretMarker{{
 					ByteStart: 35,

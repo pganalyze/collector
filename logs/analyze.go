@@ -1485,20 +1485,19 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 		if len(parts) == 2 {
 			logLine.Classification = autoExplain.classification
 			runtime, _ := strconv.ParseFloat(parts[1], 64)
-			logLine.Details = map[string]interface{}{"duration_ms": runtime}
 
 			explainText := strings.TrimSpace(logLine.Content[len(parts[0]):len(logLine.Content)])
 			if strings.HasPrefix(explainText, "{") { // json format
 				var planDetails autoExplainJSONPlanDetails
 				if strings.HasSuffix(explainText, "[Your log message was truncated]") {
-					logLine.Details["truncated"] = true
+					logLine.Details = map[string]interface{}{"unparsed_explain_text": explainText}
 				} else if err := json.Unmarshal([]byte(explainText), &planDetails); err != nil {
-					logLine.Details["unparsed_explain_text"] = explainText
+					logLine.Details = map[string]interface{}{"unparsed_explain_text": explainText}
 				} else {
 					logLine.Query = strings.TrimSpace(planDetails.QueryText)
 					explainJSON, err := json.Marshal(planDetails.Plan)
 					if err != nil {
-						logLine.Details["unparsed_explain_text"] = explainText
+						logLine.Details = map[string]interface{}{"unparsed_explain_text": explainText}
 					} else {
 						sample := state.PostgresQuerySample{
 							OccurredAt:    logLine.OccurredAt,
@@ -1553,7 +1552,6 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 
 			if logLine.Query != "" && parts[2] != "bind" && parts[2] != "parse" {
 				runtime, _ := strconv.ParseFloat(parts[1], 64)
-				logLine.Details = map[string]interface{}{"duration_ms": runtime}
 				sample := state.PostgresQuerySample{
 					OccurredAt:  logLine.OccurredAt,
 					Username:    logLine.Username,

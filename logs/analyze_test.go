@@ -28,7 +28,6 @@ var tests = []testpair{
 			Query:              "SELECT \"servers\".* FROM \"servers\" WHERE \"servers\".\"id\" = 1 LIMIT 2",
 			LogLevel:           pganalyze_collector.LogLineInformation_LOG,
 			Classification:     pganalyze_collector.LogLineInformation_STATEMENT_DURATION,
-			Details:            map[string]interface{}{"duration_ms": 3205.8},
 			ReviewedForSecrets: true,
 			SecretMarkers: []state.LogSecretMarker{{
 				ByteStart: 35,
@@ -53,7 +52,6 @@ var tests = []testpair{
 			Query:              "SELECT * FROM x WHERE y = $1 LIMIT $2",
 			Classification:     pganalyze_collector.LogLineInformation_STATEMENT_DURATION,
 			LogLevel:           pganalyze_collector.LogLineInformation_LOG,
-			Details:            map[string]interface{}{"duration_ms": 4079.697},
 			ReviewedForSecrets: true,
 			SecretMarkers: []state.LogSecretMarker{{
 				ByteStart: 43,
@@ -94,7 +92,6 @@ var tests = []testpair{
 			Query:              "SELECT * FROM x WHERE y = $1 AND z = $2 LIMIT $3",
 			Classification:     pganalyze_collector.LogLineInformation_STATEMENT_DURATION,
 			LogLevel:           pganalyze_collector.LogLineInformation_LOG,
-			Details:            map[string]interface{}{"duration_ms": 4079.697},
 			ReviewedForSecrets: true,
 			SecretMarkers: []state.LogSecretMarker{{
 				ByteStart: 43,
@@ -3514,7 +3511,6 @@ var tests = []testpair{
 		[]state.LogLine{{
 			Query:              "SELECT abalance FROM pgbench_accounts WHERE aid = 2262632;",
 			Classification:     pganalyze_collector.LogLineInformation_STATEMENT_AUTO_EXPLAIN,
-			Details:            map[string]interface{}{"duration_ms": 2334.085},
 			ReviewedForSecrets: true,
 			SecretMarkers: []state.LogSecretMarker{{
 				ByteStart: 30,
@@ -3539,7 +3535,7 @@ var tests = []testpair{
 		}},
 		[]state.LogLine{{
 			Classification:     pganalyze_collector.LogLineInformation_STATEMENT_AUTO_EXPLAIN,
-			Details:            map[string]interface{}{"duration_ms": 2334.085, "truncated": true},
+			Details:            map[string]interface{}{"unparsed_explain_text": "{\n\t  \"Query Text\": \"SELECT abalance FROM pgbench_accounts WHERE aid = [Your log message was truncated]"},
 			ReviewedForSecrets: true,
 			SecretMarkers: []state.LogSecretMarker{{
 				ByteStart: 30,
@@ -3562,7 +3558,6 @@ var tests = []testpair{
 		[]state.LogLine{{
 			Query:              "UPDATE pgbench_branches SET bbalance = bbalance + 2656 WHERE bid = 59;",
 			Classification:     pganalyze_collector.LogLineInformation_STATEMENT_AUTO_EXPLAIN,
-			Details:            map[string]interface{}{"duration_ms": 1681.452},
 			ReviewedForSecrets: true,
 			SecretMarkers: []state.LogSecretMarker{{
 				ByteStart: 31,
