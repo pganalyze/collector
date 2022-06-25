@@ -1,13 +1,12 @@
 package logs
 
 import (
-	"encoding/json"
 	"math"
 	"regexp"
 	"strconv"
 	"strings"
 
-	"github.com/guregu/null"
+	"github.com/pganalyze/collector/logs/querysample"
 	"github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
 )
@@ -1140,13 +1139,6 @@ var otherContextPatterns = []match{
 	},
 }
 
-type autoExplainJSONPlanDetails struct {
-	QueryText string                 `json:"Query Text"`
-	Plan      map[string]interface{} `json:"Plan"`
-}
-
-var autoExplainTextPlanDetailsRegexp = regexp.MustCompile(`^Query Text: (.+)\s+([\s\S]+)`)
-
 var parallelWorkerProcessTextRegexp = regexp.MustCompile(`^parallel worker for PID (\d+)`)
 
 func AnalyzeLogLines(logLinesIn []state.LogLine) (logLinesOut []state.LogLine, samples []state.PostgresQuerySample) {
@@ -1484,58 +1476,14 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 		logLine, parts = matchLogLine(logLine, autoExplain.primary)
 		if len(parts) == 2 {
 			logLine.Classification = autoExplain.classification
-			runtime, _ := strconv.ParseFloat(parts[1], 64)
 
 			explainText := strings.TrimSpace(logLine.Content[len(parts[0]):len(logLine.Content)])
-			if strings.HasPrefix(explainText, "{") { // json format
-				var planDetails autoExplainJSONPlanDetails
-				if strings.HasSuffix(explainText, "[Your log message was truncated]") {
-					logLine.Details = map[string]interface{}{"unparsed_explain_text": explainText}
-				} else if err := json.Unmarshal([]byte(explainText), &planDetails); err != nil {
-					logLine.Details = map[string]interface{}{"unparsed_explain_text": explainText}
-				} else {
-					logLine.Query = strings.TrimSpace(planDetails.QueryText)
-					explainJSON, err := json.Marshal(planDetails.Plan)
-					if err != nil {
-						logLine.Details = map[string]interface{}{"unparsed_explain_text": explainText}
-					} else {
-						sample := state.PostgresQuerySample{
-							OccurredAt:    logLine.OccurredAt,
-							Username:      logLine.Username,
-							Database:      logLine.Database,
-							Query:         logLine.Query,
-							LogLineUUID:   logLine.UUID,
-							RuntimeMs:     runtime,
-							HasExplain:    true,
-							ExplainSource: pganalyze_collector.QuerySample_AUTO_EXPLAIN_EXPLAIN_SOURCE,
-							ExplainFormat: pganalyze_collector.QuerySample_JSON_EXPLAIN_FORMAT,
-							// Reformat JSON so its the same as when using EXPLAIN (FORMAT JSON)
-							ExplainOutput: "[{\"Plan\":" + string(explainJSON) + "}]",
-						}
-						samples = append(samples, sample)
-					}
-				}
-			} else if strings.HasPrefix(explainText, "Query Text:") { // text format
-				explainParts := autoExplainTextPlanDetailsRegexp.FindStringSubmatch(explainText)
-
-				if len(explainParts) == 3 {
-					logLine.Query = strings.TrimSpace(explainParts[1])
-					sample := state.PostgresQuerySample{
-						OccurredAt:    logLine.OccurredAt,
-						Username:      logLine.Username,
-						Database:      logLine.Database,
-						Query:         logLine.Query,
-						LogLineUUID:   logLine.UUID,
-						RuntimeMs:     runtime,
-						HasExplain:    true,
-						ExplainSource: pganalyze_collector.QuerySample_AUTO_EXPLAIN_EXPLAIN_SOURCE,
-						ExplainFormat: pganalyze_collector.QuerySample_TEXT_EXPLAIN_FORMAT,
-						ExplainOutput: explainParts[2],
-					}
-					samples = append(samples, sample)
-				} else {
-					logLine.Details["unparsed_explain_text"] = explainText
-				}
+			sample, err := querysample.TransformAutoExplainToQuerySample(logLine, explainText, parts[1])
+			if err != nil {
+				logLine.Details = map[string]interface{}{"unparsed_explain_text": explainText}
+			} else {
+				samples = append(samples, sample)
+				logLine.Query = sample.Query
 			}
 
 			contextLine = matchOtherContextLogLine(contextLine)
@@ -1548,32 +1496,16 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 		if strings.HasSuffix(strings.TrimSpace(logLine.Content), "[Your log message was truncated]") {
 			logLine.Details = map[string]interface{}{"truncated": true}
 		} else if len(parts) == 5 {
-			logLine.Query = strings.TrimSpace(logLine.Content[len(parts[0]):len(logLine.Content)])
+			var parameterParts [][]string
+			if strings.HasPrefix(detailLine.Content, "parameters: ") {
+				detailLine, parameterParts = matchLogLineAll(detailLine, duration.detail)
+			}
+			queryText := logLine.Content[len(parts[0]):len(logLine.Content)]
 
-			if logLine.Query != "" && parts[2] != "bind" && parts[2] != "parse" {
-				runtime, _ := strconv.ParseFloat(parts[1], 64)
-				sample := state.PostgresQuerySample{
-					OccurredAt:  logLine.OccurredAt,
-					Username:    logLine.Username,
-					Database:    logLine.Database,
-					Query:       logLine.Query,
-					LogLineUUID: logLine.UUID,
-					RuntimeMs:   runtime,
-				}
-				if strings.HasPrefix(detailLine.Content, "parameters: ") {
-					var parameterParts [][]string
-					detailLine, parameterParts = matchLogLineAll(detailLine, duration.detail)
-					for _, part := range parameterParts {
-						if len(part) == 3 {
-							if part[1] == "NULL" {
-								sample.Parameters = append(sample.Parameters, null.NewString("", false))
-							} else {
-								sample.Parameters = append(sample.Parameters, null.StringFrom(part[2]))
-							}
-						}
-					}
-				}
+			sample, ok := querysample.TransformLogMinDurationStatementToQuerySample(logLine, queryText, parts[1], parts[2], parameterParts)
+			if ok {
 				samples = append(samples, sample)
+				logLine.Query = sample.Query
 			}
 		}
 
