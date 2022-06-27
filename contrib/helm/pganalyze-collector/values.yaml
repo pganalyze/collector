@@ -5,8 +5,6 @@ replicaCount: 1
 image:
   repository: quay.io/pganalyze/collector
   # -- Overrides the image pull policy.
-  # Note that the default tag is "stable" and you may want to use a
-  # pull policy of `Always` to ensure pganalyze is upgraded on restarts
   pullPolicy: IfNotPresent
   # -- Overrides the image tag whose default is the chart appVersion.
   tag: ""
@@ -69,11 +67,11 @@ securityContext:
 
 resources:
   limits:
-    cpu: 500m
-    memory: 256Mi
+    cpu: 1000m
+    memory: 1024Mi
   requests:
-    cpu: 500m
-    memory: 256Mi
+    cpu: 1000m
+    memory: 1024Mi
 
 # -- List of volumes to attach to the pod
 volumes: []

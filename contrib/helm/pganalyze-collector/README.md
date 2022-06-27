@@ -1,6 +1,6 @@
 # pganalyze-collector
 
-![Version: 0.1.0](https://img.shields.io/badge/Version-0.1.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: stable](https://img.shields.io/badge/AppVersion-stable-informational?style=flat-square)
+![Version: 0.1.0](https://img.shields.io/badge/Version-0.1.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: v0.43.1](https://img.shields.io/badge/AppVersion-v0.43.1-informational?style=flat-square)
 
 pganalyze statistics collector
 
@@ -20,7 +20,7 @@ pganalyze statistics collector
 | configMap.values | object | `{}` | Values to initialize the ConfigMap with. Only applicable if create is true |
 | extraEnv | object | `{}` | Environment variables to be passed to the container |
 | fullnameOverride | string | `""` |  |
-| image.pullPolicy | string | `"IfNotPresent"` | Overrides the image pull policy. Note that the default tag is "stable" and you may want to use a pull policy of `Always` to ensure pganalyze is upgraded on restarts |
+| image.pullPolicy | string | `"IfNotPresent"` | Overrides the image pull policy. |
 | image.repository | string | `"quay.io/pganalyze/collector"` |  |
 | image.tag | string | `""` | Overrides the image tag whose default is the chart appVersion. |
 | imagePullSecrets | list | `[]` |  |
@@ -29,10 +29,10 @@ pganalyze statistics collector
 | podAnnotations | object | `{}` |  |
 | podSecurityContext | object | `{}` |  |
 | replicaCount | int | `1` |  |
-| resources.limits.cpu | string | `"500m"` |  |
-| resources.limits.memory | string | `"256Mi"` |  |
-| resources.requests.cpu | string | `"500m"` |  |
-| resources.requests.memory | string | `"256Mi"` |  |
+| resources.limits.cpu | string | `"1000m"` |  |
+| resources.limits.memory | string | `"1024Mi"` |  |
+| resources.requests.cpu | string | `"1000m"` |  |
+| resources.requests.memory | string | `"1024Mi"` |  |
 | secret.create | bool | `false` | Specifies whether a secret should be created. The secret can be used to set sensitive runtime environment variables |
 | secret.name | string | `""` | The name of the secret to load environment variables from. If not set and create is true, a name is generated using the fullname template |
 | secret.values | object | `{}` | Values to initialize the Secret with. Only applicable if create is true |
