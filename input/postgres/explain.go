@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -77,12 +78,14 @@ func runDbExplain(db *sql.DB, inputs []state.PostgresQuerySample, useHelper bool
 		// or multiple statements in one (leading to accidental execution)
 		isUtil, err := util.IsUtilityStmt(sample.Query)
 		if err == nil && len(isUtil) == 1 && !isUtil[0] {
+			var explainOutput []byte
+
 			sample.HasExplain = true
 			sample.ExplainSource = pganalyze_collector.QuerySample_STATEMENT_LOG_EXPLAIN_SOURCE
 			sample.ExplainFormat = pganalyze_collector.QuerySample_JSON_EXPLAIN_FORMAT
 
 			if useHelper {
-				err = db.QueryRow(QueryMarkerSQL+"SELECT pganalyze.explain($1, $2)", sample.Query, pq.Array(sample.Parameters)).Scan(&sample.ExplainOutput)
+				err = db.QueryRow(QueryMarkerSQL+"SELECT pganalyze.explain($1, $2)", sample.Query, pq.Array(sample.Parameters)).Scan(&explainOutput)
 				if err != nil {
 					sample.ExplainError = fmt.Sprintf("%s", err)
 				}
@@ -91,21 +94,31 @@ func runDbExplain(db *sql.DB, inputs []state.PostgresQuerySample, useHelper bool
 					_, err = db.Exec(QueryMarkerSQL + "PREPARE pganalyze_explain AS " + sample.Query)
 					if err != nil {
 						sample.ExplainError = fmt.Sprintf("%s", err)
-						continue
-					}
+					} else {
+						paramStr := getQuotedParamsStr(sample.Parameters)
+						err = db.QueryRow(QueryMarkerSQL + "EXPLAIN (VERBOSE, FORMAT JSON) EXECUTE pganalyze_explain(" + paramStr + ")").Scan(&explainOutput)
+						if err != nil {
+							sample.ExplainError = fmt.Sprintf("%s", err)
+						}
 
-					paramStr := getQuotedParamsStr(sample.Parameters)
-					err = db.QueryRow(QueryMarkerSQL + "EXPLAIN (VERBOSE, FORMAT JSON) EXECUTE pganalyze_explain(" + paramStr + ")").Scan(&sample.ExplainOutput)
-					if err != nil {
-						sample.ExplainError = fmt.Sprintf("%s", err)
+						db.Exec(QueryMarkerSQL + "DEALLOCATE pganalyze_explain")
 					}
-
-					db.Exec(QueryMarkerSQL + "DEALLOCATE pganalyze_explain")
 				} else {
-					err = db.QueryRow(QueryMarkerSQL + "EXPLAIN (VERBOSE, FORMAT JSON) " + sample.Query).Scan(&sample.ExplainOutput)
+					err = db.QueryRow(QueryMarkerSQL + "EXPLAIN (VERBOSE, FORMAT JSON) " + sample.Query).Scan(&explainOutput)
 					if err != nil {
 						sample.ExplainError = fmt.Sprintf("%s", err)
 					}
+				}
+			}
+
+			if len(explainOutput) > 0 {
+				var explainOutputJSON []state.ExplainPlanContainer
+				if err := json.Unmarshal(explainOutput, &explainOutputJSON); err != nil {
+					sample.ExplainError = fmt.Sprintf("%s", err)
+				} else if len(explainOutputJSON) != 1 {
+					sample.ExplainError = fmt.Sprintf("Unexpected plan size: %d (expected 1)", len(explainOutputJSON))
+				} else {
+					sample.ExplainOutputJSON = &explainOutputJSON[0]
 				}
 			}
 		}

@@ -27,35 +27,28 @@ func TransformAutoExplainToQuerySample(logLine state.LogLine, explainText string
 	}
 }
 
-type autoExplainJSONPlanDetails struct {
-	QueryText string                 `json:"Query Text"`
-	Plan      map[string]interface{} `json:"Plan"`
-}
-
 func transformExplainJSONToQuerySample(logLine state.LogLine, explainText string, queryRuntimeMs float64) (state.PostgresQuerySample, error) {
-	var planDetails autoExplainJSONPlanDetails
+	var explainJSONOutput state.ExplainPlanContainer
 
-	if err := json.Unmarshal([]byte(explainText), &planDetails); err != nil {
+	if err := json.Unmarshal([]byte(explainText), &explainJSONOutput); err != nil {
 		return state.PostgresQuerySample{}, err
 	}
 
-	explainJSON, err := json.Marshal(planDetails.Plan)
-	if err != nil {
-		return state.PostgresQuerySample{}, err
-	}
+	// Remove query text from EXPLAIN itself, to avoid duplication and match EXPLAIN (FORMAT JSON)
+	sampleQueryText := strings.TrimSpace(explainJSONOutput.QueryText)
+	explainJSONOutput.QueryText = ""
 
 	return state.PostgresQuerySample{
-		Query:         strings.TrimSpace(planDetails.QueryText),
-		RuntimeMs:     queryRuntimeMs,
-		OccurredAt:    logLine.OccurredAt,
-		Username:      logLine.Username,
-		Database:      logLine.Database,
-		LogLineUUID:   logLine.UUID,
-		HasExplain:    true,
-		ExplainSource: pganalyze_collector.QuerySample_AUTO_EXPLAIN_EXPLAIN_SOURCE,
-		ExplainFormat: pganalyze_collector.QuerySample_JSON_EXPLAIN_FORMAT,
-		// Reformat JSON so its the same as when using EXPLAIN (FORMAT JSON)
-		ExplainOutput: "[{\"Plan\":" + string(explainJSON) + "}]",
+		Query:             sampleQueryText,
+		RuntimeMs:         queryRuntimeMs,
+		OccurredAt:        logLine.OccurredAt,
+		Username:          logLine.Username,
+		Database:          logLine.Database,
+		LogLineUUID:       logLine.UUID,
+		HasExplain:        true,
+		ExplainSource:     pganalyze_collector.QuerySample_AUTO_EXPLAIN_EXPLAIN_SOURCE,
+		ExplainFormat:     pganalyze_collector.QuerySample_JSON_EXPLAIN_FORMAT,
+		ExplainOutputJSON: &explainJSONOutput,
 	}, nil
 }
 
@@ -67,16 +60,16 @@ func transformExplainTextToQuerySample(logLine state.LogLine, explainText string
 		return state.PostgresQuerySample{}, fmt.Errorf("auto_explain output doesn't match expected format")
 	}
 	return state.PostgresQuerySample{
-		Query:         strings.TrimSpace(explainParts[1]),
-		RuntimeMs:     queryRuntimeMs,
-		OccurredAt:    logLine.OccurredAt,
-		Username:      logLine.Username,
-		Database:      logLine.Database,
-		LogLineUUID:   logLine.UUID,
-		HasExplain:    true,
-		ExplainSource: pganalyze_collector.QuerySample_AUTO_EXPLAIN_EXPLAIN_SOURCE,
-		ExplainFormat: pganalyze_collector.QuerySample_TEXT_EXPLAIN_FORMAT,
-		ExplainOutput: explainParts[2],
+		Query:             strings.TrimSpace(explainParts[1]),
+		RuntimeMs:         queryRuntimeMs,
+		OccurredAt:        logLine.OccurredAt,
+		Username:          logLine.Username,
+		Database:          logLine.Database,
+		LogLineUUID:       logLine.UUID,
+		HasExplain:        true,
+		ExplainSource:     pganalyze_collector.QuerySample_AUTO_EXPLAIN_EXPLAIN_SOURCE,
+		ExplainFormat:     pganalyze_collector.QuerySample_TEXT_EXPLAIN_FORMAT,
+		ExplainOutputText: explainParts[2],
 	}, nil
 }
 

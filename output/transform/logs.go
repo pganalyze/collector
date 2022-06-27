@@ -2,6 +2,7 @@ package transform
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/golang/protobuf/ptypes"
 	snapshot "github.com/pganalyze/collector/output/pganalyze_collector"
@@ -60,6 +61,19 @@ func transformPostgresQuerySamples(server *state.Server, s snapshot.CompactLogSn
 			}
 		}
 
+		var explainOutput string
+		if sampleIn.ExplainFormat == snapshot.QuerySample_JSON_EXPLAIN_FORMAT && sampleIn.ExplainOutputJSON != nil {
+			explainJSON, err := json.Marshal(sampleIn.ExplainOutputJSON)
+			if err != nil {
+				sampleIn.ExplainError = fmt.Sprintf("failed to marshal EXPLAIN JSON during collector output phase: %s", err)
+			} else {
+				// Reformat JSON so its the same as when using EXPLAIN (FORMAT JSON)
+				explainOutput = "[" + string(explainJSON) + "]"
+			}
+		} else if sampleIn.ExplainFormat == snapshot.QuerySample_TEXT_EXPLAIN_FORMAT && sampleIn.ExplainOutputText != "" {
+			explainOutput = sampleIn.ExplainOutputText
+		}
+
 		sample := snapshot.QuerySample{
 			QueryIdx:         queryIdx,
 			OccurredAt:       occurredAt,
@@ -72,7 +86,7 @@ func transformPostgresQuerySamples(server *state.Server, s snapshot.CompactLogSn
 			HasExplain:    sampleIn.HasExplain,
 			ExplainSource: sampleIn.ExplainSource,
 			ExplainFormat: sampleIn.ExplainFormat,
-			ExplainOutput: sampleIn.ExplainOutput,
+			ExplainOutput: explainOutput,
 			ExplainError:  sampleIn.ExplainError,
 		}
 		s.QuerySamples = append(s.QuerySamples, &sample)
