@@ -3524,7 +3524,39 @@ var tests = []testpair{
 			HasExplain:    true,
 			ExplainSource: pganalyze_collector.QuerySample_AUTO_EXPLAIN_EXPLAIN_SOURCE,
 			ExplainFormat: pganalyze_collector.QuerySample_JSON_EXPLAIN_FORMAT,
-			ExplainOutput: "[{\"Plan\":{\"Actual Loops\":1,\"Actual Rows\":1,\"Alias\":\"pgbench_accounts\",\"I/O Read Time\":0,\"I/O Write Time\":0,\"Index Cond\":\"(pgbench_accounts.aid = 2262632)\",\"Index Name\":\"pgbench_accounts_pkey\",\"Local Dirtied Blocks\":0,\"Local Hit Blocks\":0,\"Local Read Blocks\":0,\"Local Written Blocks\":0,\"Node Type\":\"Index Scan\",\"Output\":[\"abalance\"],\"Parallel Aware\":false,\"Plan Rows\":1,\"Plan Width\":4,\"Relation Name\":\"pgbench_accounts\",\"Rows Removed by Index Recheck\":0,\"Scan Direction\":\"Forward\",\"Schema\":\"public\",\"Shared Dirtied Blocks\":0,\"Shared Hit Blocks\":4,\"Shared Read Blocks\":0,\"Shared Written Blocks\":0,\"Startup Cost\":0.43,\"Temp Read Blocks\":0,\"Temp Written Blocks\":0,\"Total Cost\":8.45}}]",
+			ExplainOutputJSON: &state.ExplainPlanContainer{
+				Plan: []byte("{\n" +
+					"	    \"Node Type\": \"Index Scan\",\n" +
+					"	    \"Parallel Aware\": false,\n" +
+					"	    \"Scan Direction\": \"Forward\",\n" +
+					"	    \"Index Name\": \"pgbench_accounts_pkey\",\n" +
+					"	    \"Relation Name\": \"pgbench_accounts\",\n" +
+					"	    \"Schema\": \"public\",\n" +
+					"	    \"Alias\": \"pgbench_accounts\",\n" +
+					"	    \"Startup Cost\": 0.43,\n" +
+					"	    \"Total Cost\": 8.45,\n" +
+					"	    \"Plan Rows\": 1,\n" +
+					"	    \"Plan Width\": 4,\n" +
+					"	    \"Actual Rows\": 1,\n" +
+					"	    \"Actual Loops\": 1,\n" +
+					"	    \"Output\": [\"abalance\"],\n" +
+					"	    \"Index Cond\": \"(pgbench_accounts.aid = 2262632)\",\n" +
+					"	    \"Rows Removed by Index Recheck\": 0,\n" +
+					"	    \"Shared Hit Blocks\": 4,\n" +
+					"	    \"Shared Read Blocks\": 0,\n" +
+					"	    \"Shared Dirtied Blocks\": 0,\n" +
+					"	    \"Shared Written Blocks\": 0,\n" +
+					"	    \"Local Hit Blocks\": 0,\n" +
+					"	    \"Local Read Blocks\": 0,\n" +
+					"	    \"Local Dirtied Blocks\": 0,\n" +
+					"	    \"Local Written Blocks\": 0,\n" +
+					"	    \"Temp Read Blocks\": 0,\n" +
+					"	    \"Temp Written Blocks\": 0,\n" +
+					"	    \"I/O Read Time\": 0.000,\n" +
+					"	    \"I/O Write Time\": 0.000\n" +
+					"	  }"),
+				Triggers: &([]state.ExplainPlanTrigger{}),
+			},
 		}},
 	},
 	{
@@ -3571,7 +3603,7 @@ var tests = []testpair{
 			HasExplain:    true,
 			ExplainSource: pganalyze_collector.QuerySample_AUTO_EXPLAIN_EXPLAIN_SOURCE,
 			ExplainFormat: pganalyze_collector.QuerySample_TEXT_EXPLAIN_FORMAT,
-			ExplainOutput: "Update on public.pgbench_branches  (cost=0.27..8.29 rows=1 width=370) (actual rows=0 loops=1)\n" +
+			ExplainOutputText: "Update on public.pgbench_branches  (cost=0.27..8.29 rows=1 width=370) (actual rows=0 loops=1)\n" +
 				"    Buffers: shared hit=7\n" +
 				"    ->  Index Scan using pgbench_branches_pkey on public.pgbench_branches  (cost=0.27..8.29 rows=1 width=370) (actual rows=1 loops=1)\n" +
 				"          Output: bid, (bbalance + 2656), filler, ctid\n" +

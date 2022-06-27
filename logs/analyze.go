@@ -1,6 +1,7 @@
 package logs
 
 import (
+	"fmt"
 	"math"
 	"regexp"
 	"strconv"
