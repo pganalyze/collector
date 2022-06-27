@@ -27,7 +27,7 @@ SELECT DISTINCT ON (name)
 	   sourcefile,
 	   sourceline
   FROM pg_catalog.pg_settings
- ORDER BY name, sourceline DESC NULLS LAST`
+ ORDER BY name, CASE source WHEN 'default' THEN 1 ELSE 0 END`
 
 func GetSettings(db *sql.DB) ([]state.PostgresSetting, error) {
 	stmt, err := db.Prepare(QueryMarkerSQL + settingsSQL)
