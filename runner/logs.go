@@ -124,7 +124,7 @@ func downloadLogsForServerWithLocksAndCallbacks(wg *sync.WaitGroup, server *stat
 		prefixedLogger.PrintError("Could not collect logs for server: %s", err)
 		msg := err.Error()
 		if server.Config.SystemType == "amazon_rds" && strings.Contains(msg, "NoCredentialProviders") {
-			prefixedLogger.PrintInfo("HINT - This may occur if you have not assigned an IAM role to the collector instance")
+			prefixedLogger.PrintInfo("HINT - This may occur if you have not assigned an IAM role to the collector EC2 instance, and have not provided AWS credentials through another method")
 		}
 		if server.Config.ErrorCallback != "" {
 			go runCompletionCallback("error", server.Config.ErrorCallback, server.Config.SectionName, "logs", err, prefixedLogger)
