@@ -7,13 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pganalyze/collector/grant"
-	"github.com/pganalyze/collector/input/postgres"
 	"github.com/pganalyze/collector/logs"
-	"github.com/pganalyze/collector/output"
 	"github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
-	"github.com/pganalyze/collector/util"
 	uuid "github.com/satori/go.uuid"
 )
 
@@ -340,77 +336,4 @@ func LogTestAnyEvent(server *state.Server, logFile state.LogFile, logTestSucceed
 
 // LogTestNone - Don't confirm the log test
 func LogTestNone(server *state.Server, logFile state.LogFile, logTestSucceeded chan<- bool) {
-}
-
-// ProcessLogStream - Accepts one or more log lines to be analyzed and processed
-//
-// Note that input log lines are expected to preserve their trailing newlines.
-//
-// Note that this returns the lines that were not processed, based on the
-// time-based buffering logic. These lines should be passed in again with
-// the next call.
-//
-// The caller is not expected to do any special time-based buffering themselves.
-func ProcessLogStream(server *state.Server, logLines []state.LogLine, globalCollectionOpts state.CollectionOpts, prefixedLogger *util.Logger, logTestSucceeded chan<- bool, logTestFunc func(s *state.Server, lf state.LogFile, lt chan<- bool)) []state.LogLine {
-	server.CollectionStatusMutex.Lock()
-	if server.CollectionStatus.LogSnapshotDisabled {
-		server.CollectionStatusMutex.Unlock()
-		return []state.LogLine{}
-	}
-	server.CollectionStatusMutex.Unlock()
-
-	logState, logFile, tooFreshLogLines, err := AnalyzeStreamInGroups(logLines, time.Now())
-	if err != nil {
-		prefixedLogger.PrintError("%s", err)
-		return tooFreshLogLines
-	}
-
-	logState.LogFiles = []state.LogFile{logFile}
-
-	// Nothing to send, so just skip getting the grant and other work
-	if len(logFile.LogLines) == 0 && len(logState.QuerySamples) == 0 {
-		logState.Cleanup()
-		return tooFreshLogLines
-	}
-
-	if server.Config.EnableLogExplain && len(logState.QuerySamples) != 0 {
-		logState.QuerySamples = postgres.RunExplain(server, logState.QuerySamples, globalCollectionOpts, prefixedLogger)
-	}
-
-	if globalCollectionOpts.DebugLogs {
-		prefixedLogger.PrintInfo("Would have sent log state:\n")
-		content, _ := ioutil.ReadFile(logFile.TmpFile.Name())
-		logs.PrintDebugInfo(string(content), logFile.LogLines, logState.QuerySamples)
-		logState.Cleanup()
-		return tooFreshLogLines
-	}
-
-	if globalCollectionOpts.TestRun {
-		logTestFunc(server, logFile, logTestSucceeded)
-		logState.Cleanup()
-		return tooFreshLogLines
-	}
-
-	grant, err := grant.GetLogsGrant(server, globalCollectionOpts, prefixedLogger)
-	if err != nil {
-		prefixedLogger.PrintError("Could not get log grant: %s", err)
-		logState.Cleanup()
-		return logLines // Retry
-	}
-
-	if !grant.Valid {
-		prefixedLogger.PrintVerbose("Skipping log data: Feature not available on this pganalyze plan, or log data limit exceeded")
-		logState.Cleanup()
-		return tooFreshLogLines
-	}
-
-	err = output.UploadAndSendLogs(server, grant, globalCollectionOpts, prefixedLogger, logState)
-	if err != nil {
-		prefixedLogger.PrintError("Failed to upload/send logs: %s", err)
-		logState.Cleanup()
-		return logLines // Retry
-	}
-
-	logState.Cleanup()
-	return tooFreshLogLines
 }

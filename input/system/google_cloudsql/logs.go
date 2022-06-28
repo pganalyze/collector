@@ -159,7 +159,7 @@ func setupLogTransformer(ctx context.Context, wg *sync.WaitGroup, servers []*sta
 				// We ignore failures here since we want the per-backend stitching logic
 				// that runs later on (and any other parsing errors will just be ignored).
 				// Note that we need to restore the original trailing newlines since
-				// ProcessLogStream below expects them and they are not present in the GCP
+				// AnalyzeStreamInGroups expects them and they are not present in the GCP
 				// log stream.
 				logLine, _ := logs.ParseLogLineWithPrefix("", in.Content+"\n")
 				logLine.OccurredAt = in.OccurredAt
