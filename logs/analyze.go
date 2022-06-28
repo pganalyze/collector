@@ -1481,7 +1481,7 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 			explainText := strings.TrimSpace(logLine.Content[len(parts[0]):len(logLine.Content)])
 			sample, err := querysample.TransformAutoExplainToQuerySample(logLine, explainText, parts[1])
 			if err != nil {
-				logLine.Details = map[string]interface{}{"unparsed_explain_text": explainText}
+				logLine.Details = map[string]interface{}{"query_sample_error": fmt.Sprintf("%s", err)}
 			} else {
 				samples = append(samples, sample)
 				logLine.Query = sample.Query
