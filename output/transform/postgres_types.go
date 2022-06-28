@@ -45,6 +45,9 @@ func transformPostgresTypes(s snapshot.FullSnapshot, transientState state.Transi
 		idx := int32(len(s.CustomTypeInformations))
 		s.CustomTypeInformations = append(s.CustomTypeInformations, &info)
 		typeOidToIdx[pgType.Oid] = idx
+		if pgType.ArrayOid != 0 {
+			typeOidToIdx[pgType.ArrayOid] = idx
+		}
 	}
 
 	return s, typeOidToIdx

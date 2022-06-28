@@ -8,6 +8,7 @@ type Xid uint32
 // PostgresType - User-defined custom data types
 type PostgresType struct {
 	Oid               Oid
+	ArrayOid          Oid
 	DatabaseOid       Oid
 	SchemaName        string
 	Name              string

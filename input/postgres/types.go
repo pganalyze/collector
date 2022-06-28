@@ -9,6 +9,7 @@ import (
 
 const typesSQL string = `
 SELECT t.oid,
+       t.typarray AS arrayoid,
        n.nspname AS schema,
        t.typname AS name,
        t.typtype AS type,
@@ -56,7 +57,7 @@ func GetTypes(db *sql.DB, postgresVersion state.PostgresVersion, currentDatabase
 		t.DatabaseOid = currentDatabaseOid
 
 		err := rows.Scan(
-			&t.Oid, &t.SchemaName, &t.Name, &t.Type, &t.DomainType, &t.DomainNotNull, &t.DomainDefault, &arrayString)
+			&t.Oid, &t.ArrayOid, &t.SchemaName, &t.Name, &t.Type, &t.DomainType, &t.DomainNotNull, &t.DomainDefault, &arrayString)
 
 		if err != nil {
 			return nil, err
