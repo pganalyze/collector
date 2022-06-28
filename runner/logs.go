@@ -286,6 +286,18 @@ func postprocessAndSendLogs(server *state.Server, globalCollectionOpts state.Col
 		transientLogState.QuerySamples = postgres.RunExplain(server, transientLogState.QuerySamples, globalCollectionOpts, logger)
 	}
 
+	if server.Config.FilterQuerySample == "all" {
+		transientLogState.QuerySamples = []state.PostgresQuerySample{}
+	} else {
+		// Do nothing if filter_query_sample = none (we just take the query samples as they are generated)
+	}
+
+	for idx := range transientLogState.LogFiles {
+		// The actual filtering (aka masking of secrets) is done later in
+		// EncryptAndUploadLogfiles, based on this setting
+		transientLogState.LogFiles[idx].FilterLogSecret = state.ParseFilterLogSecret(server.Config.FilterLogSecret)
+	}
+
 	if globalCollectionOpts.DebugLogs {
 		logger.PrintInfo("Would have sent log state:\n")
 		for _, logFile := range transientLogState.LogFiles {
