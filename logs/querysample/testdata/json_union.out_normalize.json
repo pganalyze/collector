@@ -1,0 +1,129 @@
+[
+    {
+        "Execution Time": 0.074,
+        "Plan": {
+            "Actual Loops": 1,
+            "Actual Rows": 2,
+            "Actual Startup Time": 0.031,
+            "Actual Total Time": 0.032,
+            "Async Capable": false,
+            "Node Type": "Sort",
+            "Parallel Aware": false,
+            "Plan Rows": 5,
+            "Plan Width": 12,
+            "Plans": [
+                {
+                    "Actual Loops": 1,
+                    "Actual Rows": 2,
+                    "Actual Startup Time": 0.018,
+                    "Actual Total Time": 0.02,
+                    "Async Capable": false,
+                    "Command": "Intersect",
+                    "Node Type": "SetOp",
+                    "Parallel Aware": false,
+                    "Parent Relationship": "Outer",
+                    "Plan Rows": 5,
+                    "Plan Width": 12,
+                    "Plans": [
+                        {
+                            "Actual Loops": 1,
+                            "Actual Rows": 10,
+                            "Actual Startup Time": 0.008,
+                            "Actual Total Time": 0.015,
+                            "Async Capable": false,
+                            "Node Type": "Append",
+                            "Parallel Aware": false,
+                            "Parent Relationship": "Outer",
+                            "Plan Rows": 10,
+                            "Plan Width": 12,
+                            "Plans": [
+                                {
+                                    "Actual Loops": 1,
+                                    "Actual Rows": 5,
+                                    "Actual Startup Time": 0.008,
+                                    "Actual Total Time": 0.01,
+                                    "Alias": "*SELECT* 1",
+                                    "Async Capable": false,
+                                    "Node Type": "Subquery Scan",
+                                    "Parallel Aware": false,
+                                    "Parent Relationship": "Member",
+                                    "Plan Rows": 5,
+                                    "Plan Width": 12,
+                                    "Plans": [
+                                        {
+                                            "Actual Loops": 1,
+                                            "Actual Rows": 5,
+                                            "Actual Startup Time": 0.006,
+                                            "Actual Total Time": 0.008,
+                                            "Alias": "int8_tbl",
+                                            "Async Capable": false,
+                                            "Node Type": "Seq Scan",
+                                            "Parallel Aware": false,
+                                            "Parent Relationship": "Subquery",
+                                            "Plan Rows": 5,
+                                            "Plan Width": 8,
+                                            "Relation Name": "int8_tbl",
+                                            "Startup Cost": 0,
+                                            "Total Cost": 1.05
+                                        }
+                                    ],
+                                    "Startup Cost": 0,
+                                    "Total Cost": 1.1
+                                },
+                                {
+                                    "Actual Loops": 1,
+                                    "Actual Rows": 5,
+                                    "Actual Startup Time": 0.002,
+                                    "Actual Total Time": 0.004,
+                                    "Alias": "*SELECT* 2",
+                                    "Async Capable": false,
+                                    "Node Type": "Subquery Scan",
+                                    "Parallel Aware": false,
+                                    "Parent Relationship": "Member",
+                                    "Plan Rows": 5,
+                                    "Plan Width": 12,
+                                    "Plans": [
+                                        {
+                                            "Actual Loops": 1,
+                                            "Actual Rows": 5,
+                                            "Actual Startup Time": 0.002,
+                                            "Actual Total Time": 0.002,
+                                            "Alias": "int8_tbl_1",
+                                            "Async Capable": false,
+                                            "Node Type": "Seq Scan",
+                                            "Parallel Aware": false,
+                                            "Parent Relationship": "Subquery",
+                                            "Plan Rows": 5,
+                                            "Plan Width": 8,
+                                            "Relation Name": "int8_tbl",
+                                            "Startup Cost": 0,
+                                            "Total Cost": 1.05
+                                        }
+                                    ],
+                                    "Startup Cost": 0,
+                                    "Total Cost": 1.1
+                                }
+                            ],
+                            "Startup Cost": 0,
+                            "Subplans Removed": 0,
+                            "Total Cost": 2.25
+                        }
+                    ],
+                    "Startup Cost": 0,
+                    "Strategy": "Hashed",
+                    "Total Cost": 2.27
+                }
+            ],
+            "Sort Key": [
+                "\"*SELECT* 1\".q2"
+            ],
+            "Sort Method": "quicksort",
+            "Sort Space Type": "Memory",
+            "Sort Space Used": 25,
+            "Startup Cost": 2.33,
+            "Total Cost": 2.35
+        },
+        "Planning Time": 0.134,
+        "Triggers": []
+    }
+]

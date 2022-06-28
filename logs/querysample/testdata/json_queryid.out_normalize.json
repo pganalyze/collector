@@ -1,0 +1,28 @@
+[
+    {
+        "Execution Time": 0.01,
+        "Plan": {
+            "Actual Loops": 1,
+            "Actual Rows": 5,
+            "Actual Startup Time": 0.004,
+            "Actual Total Time": 0.005,
+            "Alias": "i8",
+            "Async Capable": false,
+            "Node Type": "Seq Scan",
+            "Output": [
+                "q1",
+                "q2"
+            ],
+            "Parallel Aware": false,
+            "Plan Rows": 5,
+            "Plan Width": 16,
+            "Relation Name": "int8_tbl",
+            "Schema": "public",
+            "Startup Cost": 0,
+            "Total Cost": 1.05
+        },
+        "Planning Time": 0.016,
+        "Query Identifier": 4617670033822514000,
+        "Triggers": []
+    }
+]

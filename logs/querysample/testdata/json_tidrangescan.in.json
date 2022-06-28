@@ -1,0 +1,22 @@
+{
+    "Query Text": "SELECT ctid FROM tidrangescan WHERE ctid < '(1, 0)'; /* query from tidrangescan regression test, slightly modified output to model auto_explain */",
+    "Plan": {
+        "Node Type": "Tid Range Scan",
+        "Parallel Aware": false,
+        "Async Capable": false,
+        "Relation Name": "tidrangescan",
+        "Alias": "tidrangescan",
+        "Startup Cost": 0.00,
+        "Total Cost": 6.33,
+        "Plan Rows": 133,
+        "Plan Width": 6,
+        "Actual Startup Time": 0.006,
+        "Actual Total Time": 0.007,
+        "Actual Rows": 0,
+        "Actual Loops": 1,
+        "TID Cond": "(ctid < '(1,0)'::tid)"
+    },
+    "Planning Time": 0.225,
+    "Triggers": [],
+    "Execution Time": 0.058
+}

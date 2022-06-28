@@ -1,0 +1,48 @@
+{
+    "Query Text": "SELECT pg_sleep(2);",
+    "Plan": {
+        "Node Type": "Result",
+        "Parallel Aware": false,
+        "Async Capable": false,
+        "Startup Cost": 0.00,
+        "Total Cost": 0.01,
+        "Plan Rows": 1,
+        "Plan Width": 4,
+        "Actual Startup Time": 2007.488,
+        "Actual Total Time": 2007.489,
+        "Actual Rows": 1,
+        "Actual Loops": 1,
+        "Output": [
+            "pg_sleep('2'::double precision)"
+        ],
+        "Shared Hit Blocks": 0,
+        "Shared Read Blocks": 0,
+        "Shared Dirtied Blocks": 0,
+        "Shared Written Blocks": 0,
+        "Local Hit Blocks": 0,
+        "Local Read Blocks": 0,
+        "Local Dirtied Blocks": 0,
+        "Local Written Blocks": 0,
+        "Temp Read Blocks": 0,
+        "Temp Written Blocks": 0,
+        "I/O Read Time": 0.000,
+        "I/O Write Time": 0.000
+    },
+    "Triggers": [],
+    "JIT": {
+        "Functions": 1,
+        "Options": {
+            "Inlining": false,
+            "Optimization": false,
+            "Expressions": true,
+            "Deforming": true
+        },
+        "Timing": {
+            "Generation": 0.177,
+            "Inlining": 0.000,
+            "Optimization": 0.097,
+            "Emission": 1.016,
+            "Total": 1.291
+        }
+    }
+}

@@ -1,0 +1,37 @@
+[
+    {
+        "Plan": {
+            "Actual Loops": 1,
+            "Actual Rows": 1,
+            "Alias": "pgbench_accounts",
+            "I/O Read Time": 0,
+            "I/O Write Time": 0,
+            "Index Cond": "(pgbench_accounts.aid = $1)",
+            "Index Name": "pgbench_accounts_pkey",
+            "Local Dirtied Blocks": 0,
+            "Local Hit Blocks": 0,
+            "Local Read Blocks": 0,
+            "Local Written Blocks": 0,
+            "Node Type": "Index Scan",
+            "Output": [
+                "abalance"
+            ],
+            "Parallel Aware": false,
+            "Plan Rows": 1,
+            "Plan Width": 4,
+            "Relation Name": "pgbench_accounts",
+            "Rows Removed by Index Recheck": 0,
+            "Scan Direction": "Forward",
+            "Schema": "public",
+            "Shared Dirtied Blocks": 0,
+            "Shared Hit Blocks": 4,
+            "Shared Read Blocks": 0,
+            "Shared Written Blocks": 0,
+            "Startup Cost": 0.43,
+            "Temp Read Blocks": 0,
+            "Temp Written Blocks": 0,
+            "Total Cost": 8.45
+        },
+        "Triggers": []
+    }
+]

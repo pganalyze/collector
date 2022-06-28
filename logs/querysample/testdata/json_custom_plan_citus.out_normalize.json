@@ -1,0 +1,30 @@
+[
+    {
+        "Plan": {
+            "Node Type": "Sort",
+            "Parallel Aware": false,
+            "Plans": [
+                {
+                    "Group Key": [
+                        "remote_scan.l_quantity"
+                    ],
+                    "Node Type": "Aggregate",
+                    "Parallel Aware": false,
+                    "Partial Mode": "Simple",
+                    "Plans": [
+                        {
+                            "Custom Plan Provider": "Citus Adaptive",
+                            "Node Type": "Custom Scan",
+                            "Parallel Aware": false
+                        }
+                    ],
+                    "Strategy": "Hashed"
+                }
+            ],
+            "Sort Key": [
+                "(COALESCE((pg_catalog.sum(remote_scan.count_quantity))::bigint, $1::bigint))",
+                "remote_scan.l_quantity"
+            ]
+        }
+    }
+]

@@ -1,0 +1,188 @@
+[
+    {
+        "Execution Time": 29.398,
+        "Plan": {
+            "Actual Loops": 1,
+            "Actual Rows": 70,
+            "Actual Startup Time": 14.624,
+            "Actual Total Time": 28.933,
+            "Async Capable": false,
+            "Local Dirtied Blocks": 0,
+            "Local Hit Blocks": 0,
+            "Local Read Blocks": 0,
+            "Local Written Blocks": 0,
+            "Node Type": "Limit",
+            "Output": [
+                "t.a",
+                "t.b"
+            ],
+            "Parallel Aware": false,
+            "Plan Rows": 70,
+            "Plan Width": 8,
+            "Plans": [
+                {
+                    "Actual Loops": 1,
+                    "Actual Rows": 70,
+                    "Actual Startup Time": 14.544,
+                    "Actual Total Time": 28.001,
+                    "Async Capable": false,
+                    "Full-sort Groups": {
+                        "Group Count": 1,
+                        "Sort Methods Used": [
+                            "quicksort"
+                        ],
+                        "Sort Space Memory": {
+                            "Average Sort Space Used": 28,
+                            "Peak Sort Space Used": 28
+                        }
+                    },
+                    "Local Dirtied Blocks": 0,
+                    "Local Hit Blocks": 0,
+                    "Local Read Blocks": 0,
+                    "Local Written Blocks": 0,
+                    "Node Type": "Incremental Sort",
+                    "Output": [
+                        "t.a",
+                        "t.b"
+                    ],
+                    "Parallel Aware": false,
+                    "Parent Relationship": "Outer",
+                    "Plan Rows": 1000,
+                    "Plan Width": 8,
+                    "Plans": [
+                        {
+                            "Actual Loops": 1,
+                            "Actual Rows": 1000,
+                            "Actual Startup Time": 13.725,
+                            "Actual Total Time": 20.474,
+                            "Async Capable": false,
+                            "Local Dirtied Blocks": 0,
+                            "Local Hit Blocks": 0,
+                            "Local Read Blocks": 0,
+                            "Local Written Blocks": 0,
+                            "Node Type": "Sort",
+                            "Output": [
+                                "t.a",
+                                "t.b"
+                            ],
+                            "Parallel Aware": false,
+                            "Parent Relationship": "Outer",
+                            "Plan Rows": 1000,
+                            "Plan Width": 8,
+                            "Plans": [
+                                {
+                                    "Actual Loops": 1,
+                                    "Actual Rows": 1000,
+                                    "Actual Startup Time": 0.016,
+                                    "Actual Total Time": 6.9,
+                                    "Alias": "t",
+                                    "Async Capable": false,
+                                    "Local Dirtied Blocks": 0,
+                                    "Local Hit Blocks": 0,
+                                    "Local Read Blocks": 0,
+                                    "Local Written Blocks": 0,
+                                    "Node Type": "Seq Scan",
+                                    "Output": [
+                                        "t.a",
+                                        "t.b"
+                                    ],
+                                    "Parallel Aware": false,
+                                    "Parent Relationship": "Outer",
+                                    "Plan Rows": 1000,
+                                    "Plan Width": 8,
+                                    "Relation Name": "t",
+                                    "Schema": "public",
+                                    "Shared Dirtied Blocks": 0,
+                                    "Shared Hit Blocks": 5,
+                                    "Shared Read Blocks": 0,
+                                    "Shared Written Blocks": 0,
+                                    "Startup Cost": 0,
+                                    "Temp Read Blocks": 0,
+                                    "Temp Written Blocks": 0,
+                                    "Total Cost": 15,
+                                    "WAL Bytes": 0,
+                                    "WAL FPI": 0,
+                                    "WAL Records": 0
+                                }
+                            ],
+                            "Shared Dirtied Blocks": 0,
+                            "Shared Hit Blocks": 5,
+                            "Shared Read Blocks": 0,
+                            "Shared Written Blocks": 0,
+                            "Sort Key": [
+                                "t.a"
+                            ],
+                            "Sort Method": "quicksort",
+                            "Sort Space Type": "Memory",
+                            "Sort Space Used": 71,
+                            "Startup Cost": 64.83,
+                            "Temp Read Blocks": 0,
+                            "Temp Written Blocks": 0,
+                            "Total Cost": 67.33,
+                            "WAL Bytes": 0,
+                            "WAL FPI": 0,
+                            "WAL Records": 0
+                        }
+                    ],
+                    "Pre-sorted Groups": {
+                        "Group Count": 5,
+                        "Sort Methods Used": [
+                            "top-N heapsort",
+                            "quicksort"
+                        ],
+                        "Sort Space Memory": {
+                            "Average Sort Space Used": 25,
+                            "Peak Sort Space Used": 25
+                        }
+                    },
+                    "Presorted Key": [
+                        "t.a"
+                    ],
+                    "Shared Dirtied Blocks": 0,
+                    "Shared Hit Blocks": 5,
+                    "Shared Read Blocks": 0,
+                    "Shared Written Blocks": 0,
+                    "Sort Key": [
+                        "t.a",
+                        "t.b"
+                    ],
+                    "Startup Cost": 78.02,
+                    "Temp Read Blocks": 0,
+                    "Temp Written Blocks": 0,
+                    "Total Cost": 144.65,
+                    "WAL Bytes": 0,
+                    "WAL FPI": 0,
+                    "WAL Records": 0
+                }
+            ],
+            "Shared Dirtied Blocks": 0,
+            "Shared Hit Blocks": 5,
+            "Shared Read Blocks": 0,
+            "Shared Written Blocks": 0,
+            "Startup Cost": 78.02,
+            "Temp Read Blocks": 0,
+            "Temp Written Blocks": 0,
+            "Total Cost": 82.69,
+            "WAL Bytes": 0,
+            "WAL FPI": 0,
+            "WAL Records": 0
+        },
+        "Planning": {
+            "Local Dirtied Blocks": 0,
+            "Local Hit Blocks": 0,
+            "Local Read Blocks": 0,
+            "Local Written Blocks": 0,
+            "Shared Dirtied Blocks": 0,
+            "Shared Hit Blocks": 0,
+            "Shared Read Blocks": 0,
+            "Shared Written Blocks": 0,
+            "Temp Read Blocks": 0,
+            "Temp Written Blocks": 0
+        },
+        "Planning Time": 0.063,
+        "Settings": {
+            "work_mem": "2MB"
+        },
+        "Triggers": []
+    }
+]

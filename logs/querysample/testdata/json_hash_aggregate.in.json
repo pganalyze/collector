@@ -1,0 +1,100 @@
+{
+    "Query Text": "select * from t1 inner join t2 on t1.a = t2.x and t1.b = t2.y group by t1.a,t1.b,t1.c,t1.d,t2.x,t2.y,t2.z; /* query from aggregates regression test, slightly modified output to model auto_explain */",
+    "Plan": {
+        "Node Type": "Aggregate",
+        "Strategy": "Hashed",
+        "Partial Mode": "Simple",
+        "Parallel Aware": false,
+        "Async Capable": false,
+        "Startup Cost": 98.30,
+        "Total Cost": 99.24,
+        "Plan Rows": 94,
+        "Plan Width": 28,
+        "Actual Startup Time": 0.009,
+        "Actual Total Time": 0.012,
+        "Actual Rows": 0,
+        "Actual Loops": 1,
+        "Group Key": [
+            "t1.a",
+            "t1.b",
+            "t2.x",
+            "t2.y"
+        ],
+        "Planned Partitions": 0,
+        "HashAgg Batches": 1,
+        "Peak Memory Usage": 32,
+        "Disk Usage": 0,
+        "Plans": [
+            {
+                "Node Type": "Hash Join",
+                "Parent Relationship": "Outer",
+                "Parallel Aware": false,
+                "Async Capable": false,
+                "Join Type": "Inner",
+                "Startup Cost": 56.25,
+                "Total Cost": 97.36,
+                "Plan Rows": 94,
+                "Plan Width": 28,
+                "Actual Startup Time": 0.008,
+                "Actual Total Time": 0.010,
+                "Actual Rows": 0,
+                "Actual Loops": 1,
+                "Inner Unique": true,
+                "Hash Cond": "((t2.x = t1.a) AND (t2.y = t1.b))",
+                "Plans": [
+                    {
+                        "Node Type": "Seq Scan",
+                        "Parent Relationship": "Outer",
+                        "Parallel Aware": false,
+                        "Async Capable": false,
+                        "Relation Name": "t2",
+                        "Alias": "t2",
+                        "Startup Cost": 0.00,
+                        "Total Cost": 30.40,
+                        "Plan Rows": 2040,
+                        "Plan Width": 12,
+                        "Actual Startup Time": 0.005,
+                        "Actual Total Time": 0.005,
+                        "Actual Rows": 0,
+                        "Actual Loops": 1
+                    },
+                    {
+                        "Node Type": "Hash",
+                        "Parent Relationship": "Inner",
+                        "Parallel Aware": false,
+                        "Async Capable": false,
+                        "Startup Cost": 28.50,
+                        "Total Cost": 28.50,
+                        "Plan Rows": 1850,
+                        "Plan Width": 16,
+                        "Actual Startup Time": 0.000,
+                        "Actual Total Time": 0.000,
+                        "Actual Rows": 0,
+                        "Actual Loops": 0,
+                        "Plans": [
+                            {
+                                "Node Type": "Seq Scan",
+                                "Parent Relationship": "Outer",
+                                "Parallel Aware": false,
+                                "Async Capable": false,
+                                "Relation Name": "t1",
+                                "Alias": "t1",
+                                "Startup Cost": 0.00,
+                                "Total Cost": 28.50,
+                                "Plan Rows": 1850,
+                                "Plan Width": 16,
+                                "Actual Startup Time": 0.000,
+                                "Actual Total Time": 0.000,
+                                "Actual Rows": 0,
+                                "Actual Loops": 0
+                            }
+                        ]
+                    }
+                ]
+            }
+        ]
+    },
+    "Planning Time": 0.296,
+    "Triggers": [],
+    "Execution Time": 0.049
+}

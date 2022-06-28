@@ -1,0 +1,101 @@
+[
+    {
+        "Execution Time": 0.049,
+        "Plan": {
+            "Actual Loops": 1,
+            "Actual Rows": 0,
+            "Actual Startup Time": 0.009,
+            "Actual Total Time": 0.012,
+            "Async Capable": false,
+            "Disk Usage": 0,
+            "Group Key": [
+                "t1.a",
+                "t1.b",
+                "t2.x",
+                "t2.y"
+            ],
+            "HashAgg Batches": 1,
+            "Node Type": "Aggregate",
+            "Parallel Aware": false,
+            "Partial Mode": "Simple",
+            "Peak Memory Usage": 32,
+            "Plan Rows": 94,
+            "Plan Width": 28,
+            "Planned Partitions": 0,
+            "Plans": [
+                {
+                    "Actual Loops": 1,
+                    "Actual Rows": 0,
+                    "Actual Startup Time": 0.008,
+                    "Actual Total Time": 0.01,
+                    "Async Capable": false,
+                    "Hash Cond": "((t2.x = t1.a) AND (t2.y = t1.b))",
+                    "Inner Unique": true,
+                    "Join Type": "Inner",
+                    "Node Type": "Hash Join",
+                    "Parallel Aware": false,
+                    "Parent Relationship": "Outer",
+                    "Plan Rows": 94,
+                    "Plan Width": 28,
+                    "Plans": [
+                        {
+                            "Actual Loops": 1,
+                            "Actual Rows": 0,
+                            "Actual Startup Time": 0.005,
+                            "Actual Total Time": 0.005,
+                            "Alias": "t2",
+                            "Async Capable": false,
+                            "Node Type": "Seq Scan",
+                            "Parallel Aware": false,
+                            "Parent Relationship": "Outer",
+                            "Plan Rows": 2040,
+                            "Plan Width": 12,
+                            "Relation Name": "t2",
+                            "Startup Cost": 0,
+                            "Total Cost": 30.4
+                        },
+                        {
+                            "Actual Loops": 0,
+                            "Actual Rows": 0,
+                            "Actual Startup Time": 0,
+                            "Actual Total Time": 0,
+                            "Async Capable": false,
+                            "Node Type": "Hash",
+                            "Parallel Aware": false,
+                            "Parent Relationship": "Inner",
+                            "Plan Rows": 1850,
+                            "Plan Width": 16,
+                            "Plans": [
+                                {
+                                    "Actual Loops": 0,
+                                    "Actual Rows": 0,
+                                    "Actual Startup Time": 0,
+                                    "Actual Total Time": 0,
+                                    "Alias": "t1",
+                                    "Async Capable": false,
+                                    "Node Type": "Seq Scan",
+                                    "Parallel Aware": false,
+                                    "Parent Relationship": "Outer",
+                                    "Plan Rows": 1850,
+                                    "Plan Width": 16,
+                                    "Relation Name": "t1",
+                                    "Startup Cost": 0,
+                                    "Total Cost": 28.5
+                                }
+                            ],
+                            "Startup Cost": 28.5,
+                            "Total Cost": 28.5
+                        }
+                    ],
+                    "Startup Cost": 56.25,
+                    "Total Cost": 97.36
+                }
+            ],
+            "Startup Cost": 98.3,
+            "Strategy": "Hashed",
+            "Total Cost": 99.24
+        },
+        "Planning Time": 0.296,
+        "Triggers": []
+    }
+]

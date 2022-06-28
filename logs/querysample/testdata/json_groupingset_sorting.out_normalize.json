@@ -1,0 +1,113 @@
+[
+    {
+        "Execution Time": 52.691,
+        "Plan": {
+            "Actual Loops": 1,
+            "Actual Rows": 4211,
+            "Actual Startup Time": 1.539,
+            "Actual Total Time": 51.494,
+            "Async Capable": false,
+            "Grouping Sets": [
+                {
+                    "Group Keys": [
+                        [
+                            "g1000",
+                            "g100",
+                            "g10"
+                        ],
+                        [
+                            "g1000",
+                            "g100"
+                        ],
+                        [
+                            "g1000"
+                        ],
+                        []
+                    ]
+                },
+                {
+                    "Group Keys": [
+                        [
+                            "g100",
+                            "g10"
+                        ],
+                        [
+                            "g100"
+                        ]
+                    ],
+                    "Sort Key": [
+                        "g100",
+                        "g10"
+                    ]
+                },
+                {
+                    "Group Keys": [
+                        [
+                            "g10",
+                            "g1000"
+                        ],
+                        [
+                            "g10"
+                        ]
+                    ],
+                    "Sort Key": [
+                        "g10",
+                        "g1000"
+                    ]
+                }
+            ],
+            "Node Type": "Aggregate",
+            "Parallel Aware": false,
+            "Partial Mode": "Simple",
+            "Plan Rows": 66,
+            "Plan Width": 84,
+            "Plans": [
+                {
+                    "Actual Loops": 1,
+                    "Actual Rows": 2000,
+                    "Actual Startup Time": 1.489,
+                    "Actual Total Time": 1.881,
+                    "Async Capable": false,
+                    "Node Type": "Sort",
+                    "Parallel Aware": false,
+                    "Parent Relationship": "Outer",
+                    "Plan Rows": 10,
+                    "Plan Width": 16,
+                    "Plans": [
+                        {
+                            "Actual Loops": 1,
+                            "Actual Rows": 2000,
+                            "Actual Startup Time": 0.012,
+                            "Actual Total Time": 0.428,
+                            "Alias": "gs_data_1",
+                            "Async Capable": false,
+                            "Node Type": "Seq Scan",
+                            "Parallel Aware": false,
+                            "Parent Relationship": "Outer",
+                            "Plan Rows": 10,
+                            "Plan Width": 16,
+                            "Relation Name": "gs_data_1",
+                            "Startup Cost": 0,
+                            "Total Cost": 11.1
+                        }
+                    ],
+                    "Sort Key": [
+                        "g1000",
+                        "g100",
+                        "g10"
+                    ],
+                    "Sort Method": "external merge",
+                    "Sort Space Type": "Disk",
+                    "Sort Space Used": 56,
+                    "Startup Cost": 11.27,
+                    "Total Cost": 11.29
+                }
+            ],
+            "Startup Cost": 11.27,
+            "Strategy": "Sorted",
+            "Total Cost": 13.12
+        },
+        "Planning Time": 0.172,
+        "Triggers": []
+    }
+]

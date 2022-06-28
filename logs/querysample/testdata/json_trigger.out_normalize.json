@@ -1,0 +1,52 @@
+[
+    {
+        "Execution Time": 0.392,
+        "Plan": {
+            "Actual Loops": 1,
+            "Actual Rows": 0,
+            "Actual Startup Time": 0.198,
+            "Actual Total Time": 0.199,
+            "Alias": "parted_constr",
+            "Async Capable": false,
+            "Node Type": "ModifyTable",
+            "Operation": "Insert",
+            "Parallel Aware": false,
+            "Plan Rows": 0,
+            "Plan Width": 0,
+            "Plans": [
+                {
+                    "Actual Loops": 1,
+                    "Actual Rows": 1,
+                    "Actual Startup Time": 0.002,
+                    "Actual Total Time": 0.002,
+                    "Async Capable": false,
+                    "Node Type": "Result",
+                    "Output": [
+                        "$1",
+                        "$1::text"
+                    ],
+                    "Parallel Aware": false,
+                    "Parent Relationship": "Outer",
+                    "Plan Rows": 1,
+                    "Plan Width": 36,
+                    "Startup Cost": 0,
+                    "Total Cost": 0.01
+                }
+            ],
+            "Relation Name": "parted_constr",
+            "Schema": "public",
+            "Startup Cost": 0,
+            "Total Cost": 0.01
+        },
+        "Planning Time": 0.014,
+        "Triggers": [
+            {
+                "Calls": 1,
+                "Constraint Name": "parted_trig",
+                "Relation": "parted1_constr",
+                "Time": 0.157,
+                "Trigger Name": "parted_trig"
+            }
+        ]
+    }
+]

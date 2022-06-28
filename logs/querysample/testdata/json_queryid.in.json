@@ -1,0 +1,27 @@
+{
+    "Query Text": "select * from int8_tbl i8 /* query from explain regression test, slightly modified output to model auto_explain, and ensuring the Query Identifier can pass as a float64 (as our test logic unmarshals into an interface) */",
+    "Plan": {
+        "Node Type": "Seq Scan",
+        "Parallel Aware": false,
+        "Async Capable": false,
+        "Relation Name": "int8_tbl",
+        "Schema": "public",
+        "Alias": "i8",
+        "Startup Cost": 0.00,
+        "Total Cost": 1.05,
+        "Plan Rows": 5,
+        "Plan Width": 16,
+        "Actual Startup Time": 0.004,
+        "Actual Total Time": 0.005,
+        "Actual Rows": 5,
+        "Actual Loops": 1,
+        "Output": [
+            "q1",
+            "q2"
+        ]
+    },
+    "Query Identifier": 4617670033822514000,
+    "Planning Time": 0.016,
+    "Triggers": [],
+    "Execution Time": 0.010
+}

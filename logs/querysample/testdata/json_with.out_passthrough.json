@@ -1,0 +1,172 @@
+[
+    {
+        "Execution Time": 0.175,
+        "Plan": {
+            "Node Type": "Sort",
+            "Parallel Aware": false,
+            "Async Capable": false,
+            "Startup Cost": 182231.08,
+            "Total Cost": 184034.08,
+            "Plan Rows": 721200,
+            "Plan Width": 72,
+            "Actual Startup Time": 0.135,
+            "Actual Total Time": 0.137,
+            "Actual Rows": 7,
+            "Actual Loops": 1,
+            "Sort Key": [
+                "search_graph.seq"
+            ],
+            "Sort Method": "quicksort",
+            "Sort Space Used": 25,
+            "Sort Space Type": "Memory",
+            "Plans": [
+                {
+                    "Node Type": "Recursive Union",
+                    "Parent Relationship": "InitPlan",
+                    "Subplan Name": "CTE search_graph",
+                    "Parallel Aware": false,
+                    "Async Capable": false,
+                    "Startup Cost": 0.00,
+                    "Total Cost": 38470.18,
+                    "Plan Rows": 721200,
+                    "Plan Width": 72,
+                    "Actual Startup Time": 0.009,
+                    "Actual Total Time": 0.083,
+                    "Actual Rows": 7,
+                    "Actual Loops": 1,
+                    "Plans": [
+                        {
+                            "Node Type": "Seq Scan",
+                            "Parent Relationship": "Outer",
+                            "Parallel Aware": false,
+                            "Async Capable": false,
+                            "Relation Name": "graph0",
+                            "Alias": "g",
+                            "Startup Cost": 0.00,
+                            "Total Cost": 22.00,
+                            "Plan Rows": 1200,
+                            "Plan Width": 72,
+                            "Actual Startup Time": 0.008,
+                            "Actual Total Time": 0.010,
+                            "Actual Rows": 5,
+                            "Actual Loops": 1
+                        },
+                        {
+                            "Node Type": "Merge Join",
+                            "Parent Relationship": "Inner",
+                            "Parallel Aware": false,
+                            "Async Capable": false,
+                            "Join Type": "Inner",
+                            "Startup Cost": 1136.42,
+                            "Total Cost": 2402.42,
+                            "Plan Rows": 72000,
+                            "Plan Width": 72,
+                            "Actual Startup Time": 0.031,
+                            "Actual Total Time": 0.032,
+                            "Actual Rows": 1,
+                            "Actual Loops": 2,
+                            "Inner Unique": false,
+                            "Merge Cond": "(g_1.f = sg.t)",
+                            "Plans": [
+                                {
+                                    "Node Type": "Sort",
+                                    "Parent Relationship": "Outer",
+                                    "Parallel Aware": false,
+                                    "Async Capable": false,
+                                    "Startup Cost": 83.37,
+                                    "Total Cost": 86.37,
+                                    "Plan Rows": 1200,
+                                    "Plan Width": 40,
+                                    "Actual Startup Time": 0.021,
+                                    "Actual Total Time": 0.021,
+                                    "Actual Rows": 5,
+                                    "Actual Loops": 2,
+                                    "Sort Key": [
+                                        "g_1.f"
+                                    ],
+                                    "Sort Method": "quicksort",
+                                    "Sort Space Used": 25,
+                                    "Sort Space Type": "Memory",
+                                    "Plans": [
+                                        {
+                                            "Node Type": "Seq Scan",
+                                            "Parent Relationship": "Outer",
+                                            "Parallel Aware": false,
+                                            "Async Capable": false,
+                                            "Relation Name": "graph0",
+                                            "Alias": "g_1",
+                                            "Startup Cost": 0.00,
+                                            "Total Cost": 22.00,
+                                            "Plan Rows": 1200,
+                                            "Plan Width": 40,
+                                            "Actual Startup Time": 0.003,
+                                            "Actual Total Time": 0.004,
+                                            "Actual Rows": 5,
+                                            "Actual Loops": 2
+                                        }
+                                    ]
+                                },
+                                {
+                                    "Node Type": "Sort",
+                                    "Parent Relationship": "Inner",
+                                    "Parallel Aware": false,
+                                    "Async Capable": false,
+                                    "Startup Cost": 1053.04,
+                                    "Total Cost": 1083.04,
+                                    "Plan Rows": 12000,
+                                    "Plan Width": 36,
+                                    "Actual Startup Time": 0.005,
+                                    "Actual Total Time": 0.006,
+                                    "Actual Rows": 4,
+                                    "Actual Loops": 2,
+                                    "Sort Key": [
+                                        "sg.t"
+                                    ],
+                                    "Sort Method": "quicksort",
+                                    "Sort Space Used": 25,
+                                    "Sort Space Type": "Memory",
+                                    "Plans": [
+                                        {
+                                            "Node Type": "WorkTable Scan",
+                                            "Parent Relationship": "Outer",
+                                            "Parallel Aware": false,
+                                            "Async Capable": false,
+                                            "CTE Name": "search_graph",
+                                            "Alias": "sg",
+                                            "Startup Cost": 0.00,
+                                            "Total Cost": 240.00,
+                                            "Plan Rows": 12000,
+                                            "Plan Width": 36,
+                                            "Actual Startup Time": 0.002,
+                                            "Actual Total Time": 0.002,
+                                            "Actual Rows": 4,
+                                            "Actual Loops": 2
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "Node Type": "CTE Scan",
+                    "Parent Relationship": "Outer",
+                    "Parallel Aware": false,
+                    "Async Capable": false,
+                    "CTE Name": "search_graph",
+                    "Alias": "search_graph",
+                    "Startup Cost": 0.00,
+                    "Total Cost": 14424.00,
+                    "Plan Rows": 721200,
+                    "Plan Width": 72,
+                    "Actual Startup Time": 0.010,
+                    "Actual Total Time": 0.086,
+                    "Actual Rows": 7,
+                    "Actual Loops": 1
+                }
+            ]
+        },
+        "Planning Time": 0.256,
+        "Triggers": []
+    }
+]

@@ -1,0 +1,28 @@
+[
+    {
+        "Execution Time": 0.034,
+        "Plan": {
+            "Actual Loops": 1,
+            "Actual Rows": 3,
+            "Actual Startup Time": 0.006,
+            "Actual Total Time": 0.008,
+            "Alias": "agg_csv",
+            "Async Capable": false,
+            "Node Type": "Foreign Scan",
+            "Operation": "Select",
+            "Output": [
+                "a",
+                "b"
+            ],
+            "Parallel Aware": false,
+            "Plan Rows": 1,
+            "Plan Width": 6,
+            "Relation Name": "agg_csv",
+            "Schema": "public",
+            "Startup Cost": 0,
+            "Total Cost": 1.1
+        },
+        "Planning Time": 0.02,
+        "Triggers": []
+    }
+]

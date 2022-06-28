@@ -1,0 +1,163 @@
+[
+    {
+        "Execution Time": 1.455,
+        "Plan": {
+            "Node Type": "Nested Loop",
+            "Parallel Aware": false,
+            "Async Capable": false,
+            "Join Type": "Left",
+            "Startup Cost": 320.01,
+            "Total Cost": 445.02,
+            "Plan Rows": 1,
+            "Plan Width": 33,
+            "Actual Startup Time": 0.964,
+            "Actual Total Time": 1.140,
+            "Actual Rows": 1,
+            "Actual Loops": 1,
+            "Inner Unique": false,
+            "Join Filter": "(t1.a = async_pt.a)",
+            "Rows Removed by Join Filter": 399,
+            "Plans": [
+                {
+                    "Node Type": "Aggregate",
+                    "Strategy": "Plain",
+                    "Partial Mode": "Simple",
+                    "Parent Relationship": "InitPlan",
+                    "Subplan Name": "InitPlan 1 (returns $0)",
+                    "Parallel Aware": false,
+                    "Async Capable": false,
+                    "Startup Cost": 220.00,
+                    "Total Cost": 220.01,
+                    "Plan Rows": 1,
+                    "Plan Width": 8,
+                    "Actual Startup Time": 0.586,
+                    "Actual Total Time": 0.587,
+                    "Actual Rows": 1,
+                    "Actual Loops": 1,
+                    "Plans": [
+                        {
+                            "Node Type": "Append",
+                            "Parent Relationship": "Outer",
+                            "Parallel Aware": false,
+                            "Async Capable": false,
+                            "Startup Cost": 100.00,
+                            "Total Cost": 219.00,
+                            "Plan Rows": 400,
+                            "Plan Width": 0,
+                            "Actual Startup Time": 0.165,
+                            "Actual Total Time": 0.559,
+                            "Actual Rows": 400,
+                            "Actual Loops": 1,
+                            "Subplans Removed": 0,
+                            "Plans": [
+                                {
+                                    "Node Type": "Foreign Scan",
+                                    "Operation": "Select",
+                                    "Parent Relationship": "Member",
+                                    "Parallel Aware": false,
+                                    "Async Capable": true,
+                                    "Relation Name": "async_p1",
+                                    "Alias": "async_pt_4",
+                                    "Startup Cost": 100.00,
+                                    "Total Cost": 108.50,
+                                    "Plan Rows": 200,
+                                    "Plan Width": 0,
+                                    "Actual Startup Time": 0.114,
+                                    "Actual Total Time": 0.157,
+                                    "Actual Rows": 200,
+                                    "Actual Loops": 1
+                                },
+                                {
+                                    "Node Type": "Foreign Scan",
+                                    "Operation": "Select",
+                                    "Parent Relationship": "Member",
+                                    "Parallel Aware": false,
+                                    "Async Capable": true,
+                                    "Relation Name": "async_p2",
+                                    "Alias": "async_pt_5",
+                                    "Startup Cost": 100.00,
+                                    "Total Cost": 108.50,
+                                    "Plan Rows": 200,
+                                    "Plan Width": 0,
+                                    "Actual Startup Time": 0.125,
+                                    "Actual Total Time": 0.164,
+                                    "Actual Rows": 200,
+                                    "Actual Loops": 1
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "Node Type": "Seq Scan",
+                    "Parent Relationship": "Outer",
+                    "Parallel Aware": false,
+                    "Async Capable": false,
+                    "Relation Name": "local_tbl",
+                    "Alias": "t1",
+                    "Startup Cost": 0.00,
+                    "Total Cost": 1.01,
+                    "Plan Rows": 1,
+                    "Plan Width": 12,
+                    "Actual Startup Time": 0.005,
+                    "Actual Total Time": 0.006,
+                    "Actual Rows": 1,
+                    "Actual Loops": 1
+                },
+                {
+                    "Node Type": "Append",
+                    "Parent Relationship": "Inner",
+                    "Parallel Aware": false,
+                    "Async Capable": false,
+                    "Startup Cost": 100.00,
+                    "Total Cost": 219.00,
+                    "Plan Rows": 400,
+                    "Plan Width": 21,
+                    "Actual Startup Time": 0.854,
+                    "Actual Total Time": 1.104,
+                    "Actual Rows": 400,
+                    "Actual Loops": 1,
+                    "Subplans Removed": 0,
+                    "Plans": [
+                        {
+                            "Node Type": "Foreign Scan",
+                            "Operation": "Select",
+                            "Parent Relationship": "Member",
+                            "Parallel Aware": false,
+                            "Async Capable": true,
+                            "Relation Name": "async_p1",
+                            "Alias": "async_pt_1",
+                            "Startup Cost": 100.00,
+                            "Total Cost": 108.50,
+                            "Plan Rows": 200,
+                            "Plan Width": 21,
+                            "Actual Startup Time": 0.734,
+                            "Actual Total Time": 0.795,
+                            "Actual Rows": 200,
+                            "Actual Loops": 1
+                        },
+                        {
+                            "Node Type": "Foreign Scan",
+                            "Operation": "Select",
+                            "Parent Relationship": "Member",
+                            "Parallel Aware": false,
+                            "Async Capable": true,
+                            "Relation Name": "async_p2",
+                            "Alias": "async_pt_2",
+                            "Startup Cost": 100.00,
+                            "Total Cost": 108.50,
+                            "Plan Rows": 200,
+                            "Plan Width": 21,
+                            "Actual Startup Time": 0.111,
+                            "Actual Total Time": 0.169,
+                            "Actual Rows": 200,
+                            "Actual Loops": 1
+                        }
+                    ]
+                }
+            ]
+        },
+        "Planning Time": 0.144,
+        "Triggers": []
+    }
+]

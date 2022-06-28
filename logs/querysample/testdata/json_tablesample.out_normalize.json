@@ -1,0 +1,45 @@
+[
+    {
+        "Execution Time": 0.14,
+        "Plan": {
+            "Actual Loops": 1,
+            "Actual Rows": 1,
+            "Actual Startup Time": 0.013,
+            "Actual Total Time": 0.014,
+            "Async Capable": false,
+            "Node Type": "Aggregate",
+            "Parallel Aware": false,
+            "Partial Mode": "Simple",
+            "Plan Rows": 1,
+            "Plan Width": 8,
+            "Plans": [
+                {
+                    "Actual Loops": 1,
+                    "Actual Rows": 10,
+                    "Actual Startup Time": 0.007,
+                    "Actual Total Time": 0.01,
+                    "Alias": "test_tablesample",
+                    "Async Capable": false,
+                    "Node Type": "Sample Scan",
+                    "Parallel Aware": false,
+                    "Parent Relationship": "Outer",
+                    "Plan Rows": 1270,
+                    "Plan Width": 0,
+                    "Relation Name": "test_tablesample",
+                    "Repeatable Seed": "$1::double precision",
+                    "Sampling Method": "system",
+                    "Sampling Parameters": [
+                        "$1::real"
+                    ],
+                    "Startup Cost": 0,
+                    "Total Cost": 52.7
+                }
+            ],
+            "Startup Cost": 55.88,
+            "Strategy": "Plain",
+            "Total Cost": 55.88
+        },
+        "Planning Time": 0.026,
+        "Triggers": []
+    }
+]
