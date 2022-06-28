@@ -3567,7 +3567,7 @@ var tests = []testpair{
 		}},
 		[]state.LogLine{{
 			Classification:     pganalyze_collector.LogLineInformation_STATEMENT_AUTO_EXPLAIN,
-			Details:            map[string]interface{}{"unparsed_explain_text": "{\n\t  \"Query Text\": \"SELECT abalance FROM pgbench_accounts WHERE aid = [Your log message was truncated]"},
+			Details:            map[string]interface{}{"query_sample_error": "auto_explain output was truncated and can't be parsed as JSON"},
 			ReviewedForSecrets: true,
 			SecretMarkers: []state.LogSecretMarker{{
 				ByteStart: 30,
