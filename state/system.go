@@ -31,6 +31,7 @@ const (
 	GoogleCloudSQLSystem
 	AzureDatabaseSystem
 	CrunchyBridgeSystem
+	AivenSystem
 )
 
 type SystemInfo struct {

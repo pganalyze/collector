@@ -364,6 +364,13 @@ func preprocessConfig(config *ServerConfig) (*ServerConfig, error) {
 				config.CrunchyBridgeClusterID = parts[1]
 			}
 		}
+	} else if strings.HasSuffix(host, ".aivencloud.com") {
+		parts := strings.SplitN(host, ".", 2)
+		if len(parts) == 2 && (parts[1] == "aivencloud.com") { // Safety check for any escaping issues
+			if config.AivenServiceID == "" {
+				config.AivenServiceID = parts[0]
+			}
+		}
 	}
 
 	// This is primarily for backwards compatibility when using the IP address of an instance

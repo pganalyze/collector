@@ -46,6 +46,11 @@ func identifySystem(config ServerConfig) (systemType string, systemScope string,
 		if systemID == "" {
 			systemID = config.CrunchyBridgeClusterID
 		}
+	} else if (config.AivenServiceID != "") || systemType == "aiven" {
+		systemType = "aiven"
+		if systemID == "" {
+			systemID = config.AivenServiceID
+		}
 	} else {
 		systemType = "self_hosted"
 		if systemID == "" {

@@ -104,6 +104,7 @@ type CollectorConfig struct {
 	GcpHasCredentialsFile      bool
 	GcpProjectId               string
 	CrunchyBridgeClusterId     string
+	AivenServiceId             string
 	ApiSystemId                string
 	ApiSystemType              string
 	ApiSystemScope             string
