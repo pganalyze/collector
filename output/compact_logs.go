@@ -9,14 +9,6 @@ import (
 
 // UploadAndSendLogs - Filters the log file, then uploads it to the storage and sends the metadata to the API
 func UploadAndSendLogs(server *state.Server, grant state.GrantLogs, collectionOpts state.CollectionOpts, logger *util.Logger, logState state.TransientLogState) error {
-	for idx := range logState.LogFiles {
-		logState.LogFiles[idx].FilterLogSecret = state.ParseFilterLogSecret(server.Config.FilterLogSecret)
-	}
-
-	if server.Config.FilterQuerySample == "all" {
-		logState.QuerySamples = []state.PostgresQuerySample{}
-	}
-
 	if collectionOpts.SubmitCollectedData && grant.EncryptionKey.CiphertextBlob != "" {
 		logState.LogFiles = EncryptAndUploadLogfiles(server.Config.HTTPClientWithRetry, grant.Logdata, grant.EncryptionKey, logger, logState.LogFiles)
 	}
