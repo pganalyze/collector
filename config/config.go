@@ -158,7 +158,7 @@ type ServerConfig struct {
 
 	// Configuration for PII filtering
 	FilterLogSecret   string `ini:"filter_log_secret"`   // none/all/credential/parsing_error/statement_text/statement_parameter/table_data/ops/unidentified (comma separated)
-	FilterQuerySample string `ini:"filter_query_sample"` // none/all (defaults to "none")
+	FilterQuerySample string `ini:"filter_query_sample"` // none/normalize/all (defaults to "none")
 	FilterQueryText   string `ini:"filter_query_text"`   // none/unparsable (defaults to "unparsable")
 
 	// HTTP proxy overrides

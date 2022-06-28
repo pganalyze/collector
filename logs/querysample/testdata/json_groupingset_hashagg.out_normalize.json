@@ -1,0 +1,105 @@
+[
+    {
+        "Execution Time": 102.135,
+        "Plan": {
+            "Actual Loops": 1,
+            "Actual Rows": 4211,
+            "Actual Startup Time": 17.522,
+            "Actual Total Time": 100.74,
+            "Async Capable": false,
+            "Disk Usage": 1680,
+            "Grouping Sets": [
+                {
+                    "Hash Keys": [
+                        [
+                            "g1000",
+                            "g100",
+                            "g10"
+                        ]
+                    ]
+                },
+                {
+                    "Hash Keys": [
+                        [
+                            "g1000",
+                            "g100"
+                        ]
+                    ]
+                },
+                {
+                    "Hash Keys": [
+                        [
+                            "g1000"
+                        ]
+                    ]
+                },
+                {
+                    "Hash Keys": [
+                        [
+                            "g100",
+                            "g10"
+                        ]
+                    ]
+                },
+                {
+                    "Hash Keys": [
+                        [
+                            "g100"
+                        ]
+                    ]
+                },
+                {
+                    "Hash Keys": [
+                        [
+                            "g10",
+                            "g1000"
+                        ]
+                    ]
+                },
+                {
+                    "Hash Keys": [
+                        [
+                            "g10"
+                        ]
+                    ]
+                },
+                {
+                    "Group Keys": [
+                        []
+                    ]
+                }
+            ],
+            "HashAgg Batches": 4210,
+            "Node Type": "Aggregate",
+            "Parallel Aware": false,
+            "Partial Mode": "Simple",
+            "Peak Memory Usage": 320,
+            "Plan Rows": 66,
+            "Plan Width": 84,
+            "Planned Partitions": 0,
+            "Plans": [
+                {
+                    "Actual Loops": 1,
+                    "Actual Rows": 2000,
+                    "Actual Startup Time": 0.011,
+                    "Actual Total Time": 0.356,
+                    "Alias": "gs_data_1",
+                    "Async Capable": false,
+                    "Node Type": "Seq Scan",
+                    "Parallel Aware": false,
+                    "Parent Relationship": "Outer",
+                    "Plan Rows": 10,
+                    "Plan Width": 16,
+                    "Relation Name": "gs_data_1",
+                    "Startup Cost": 0,
+                    "Total Cost": 11.1
+                }
+            ],
+            "Startup Cost": 0,
+            "Strategy": "Mixed",
+            "Total Cost": 13.42
+        },
+        "Planning Time": 0.082,
+        "Triggers": []
+    }
+]

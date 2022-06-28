@@ -1,0 +1,153 @@
+[
+    {
+        "Execution Time": 0.1,
+        "Plan": {
+            "Actual Loops": 1,
+            "Actual Rows": 8,
+            "Actual Startup Time": 0.06,
+            "Actual Total Time": 0.062,
+            "Async Capable": false,
+            "Node Type": "Sort",
+            "Parallel Aware": false,
+            "Plan Rows": 1,
+            "Plan Width": 28,
+            "Plans": [
+                {
+                    "Actual Loops": 1,
+                    "Actual Rows": 8,
+                    "Actual Startup Time": 0.031,
+                    "Actual Total Time": 0.053,
+                    "Async Capable": false,
+                    "Filter": "\u003cunparsable query\u003e",
+                    "Hash Cond": "(t1.q2 = t2.q1)",
+                    "Inner Unique": false,
+                    "Join Type": "Left",
+                    "Node Type": "Hash Join",
+                    "Parallel Aware": false,
+                    "Parent Relationship": "Outer",
+                    "Plan Rows": 1,
+                    "Plan Width": 28,
+                    "Plans": [
+                        {
+                            "Actual Loops": 1,
+                            "Actual Rows": 5,
+                            "Actual Startup Time": 0.004,
+                            "Actual Total Time": 0.005,
+                            "Alias": "t1",
+                            "Async Capable": false,
+                            "Node Type": "Seq Scan",
+                            "Parallel Aware": false,
+                            "Parent Relationship": "Outer",
+                            "Plan Rows": 5,
+                            "Plan Width": 16,
+                            "Relation Name": "int8_tbl",
+                            "Startup Cost": 0,
+                            "Total Cost": 1.05
+                        },
+                        {
+                            "Actual Loops": 1,
+                            "Actual Rows": 5,
+                            "Actual Startup Time": 0.01,
+                            "Actual Total Time": 0.01,
+                            "Async Capable": false,
+                            "Hash Batches": 1,
+                            "Hash Buckets": 1024,
+                            "Node Type": "Hash",
+                            "Original Hash Batches": 1,
+                            "Original Hash Buckets": 1024,
+                            "Parallel Aware": false,
+                            "Parent Relationship": "Inner",
+                            "Peak Memory Usage": 9,
+                            "Plan Rows": 5,
+                            "Plan Width": 12,
+                            "Plans": [
+                                {
+                                    "Actual Loops": 1,
+                                    "Actual Rows": 5,
+                                    "Actual Startup Time": 0.002,
+                                    "Actual Total Time": 0.004,
+                                    "Alias": "t2",
+                                    "Async Capable": false,
+                                    "Node Type": "Seq Scan",
+                                    "Parallel Aware": false,
+                                    "Parent Relationship": "Outer",
+                                    "Plan Rows": 5,
+                                    "Plan Width": 12,
+                                    "Relation Name": "int8_tbl",
+                                    "Startup Cost": 0,
+                                    "Total Cost": 1.05
+                                }
+                            ],
+                            "Startup Cost": 1.05,
+                            "Total Cost": 1.05
+                        },
+                        {
+                            "Actual Loops": 10,
+                            "Actual Rows": 1,
+                            "Actual Startup Time": 0.002,
+                            "Actual Total Time": 0.002,
+                            "Async Capable": false,
+                            "Node Type": "Limit",
+                            "Parallel Aware": false,
+                            "Parent Relationship": "SubPlan",
+                            "Plan Rows": 1,
+                            "Plan Width": 4,
+                            "Plans": [
+                                {
+                                    "Actual Loops": 10,
+                                    "Actual Rows": 1,
+                                    "Actual Startup Time": 0.001,
+                                    "Actual Total Time": 0.001,
+                                    "Async Capable": false,
+                                    "Node Type": "Result",
+                                    "One-Time Filter": "(($1) IS NOT NULL)",
+                                    "Parallel Aware": false,
+                                    "Parent Relationship": "Outer",
+                                    "Plan Rows": 5,
+                                    "Plan Width": 4,
+                                    "Plans": [
+                                        {
+                                            "Actual Loops": 8,
+                                            "Actual Rows": 1,
+                                            "Actual Startup Time": 0.001,
+                                            "Actual Total Time": 0.001,
+                                            "Alias": "t3",
+                                            "Async Capable": false,
+                                            "Node Type": "Seq Scan",
+                                            "Parallel Aware": false,
+                                            "Parent Relationship": "Outer",
+                                            "Plan Rows": 5,
+                                            "Plan Width": 0,
+                                            "Relation Name": "int8_tbl",
+                                            "Startup Cost": 0,
+                                            "Total Cost": 1.05
+                                        }
+                                    ],
+                                    "Startup Cost": 0,
+                                    "Total Cost": 1.05
+                                }
+                            ],
+                            "Startup Cost": 0,
+                            "Subplan Name": "SubPlan 1",
+                            "Total Cost": 0.21
+                        }
+                    ],
+                    "Rows Removed by Filter": 2,
+                    "Startup Cost": 1.11,
+                    "Total Cost": 3.29
+                }
+            ],
+            "Sort Key": [
+                "t1.q1",
+                "t1.q2"
+            ],
+            "Sort Method": "quicksort",
+            "Sort Space Type": "Memory",
+            "Sort Space Used": 25,
+            "Startup Cost": 3.3,
+            "Total Cost": 3.31
+        },
+        "Planning Time": 0.078,
+        "Triggers": []
+    }
+]

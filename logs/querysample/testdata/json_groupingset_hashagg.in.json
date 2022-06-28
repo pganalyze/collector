@@ -1,0 +1,104 @@
+{
+    "Query Text": "select g100, g10, sum(g::numeric), count(*), max(g::text) from gs_data_1 group by cube (g1000, g100,g10); /* query from groupingsets regression test, slightly modified output to model auto_explain */",
+    "Plan": {
+        "Node Type": "Aggregate",
+        "Strategy": "Mixed",
+        "Partial Mode": "Simple",
+        "Parallel Aware": false,
+        "Async Capable": false,
+        "Startup Cost": 0.00,
+        "Total Cost": 13.42,
+        "Plan Rows": 66,
+        "Plan Width": 84,
+        "Actual Startup Time": 17.522,
+        "Actual Total Time": 100.740,
+        "Actual Rows": 4211,
+        "Actual Loops": 1,
+        "Grouping Sets": [
+            {
+                "Hash Keys": [
+                    [
+                        "g1000",
+                        "g100",
+                        "g10"
+                    ]
+                ]
+            },
+            {
+                "Hash Keys": [
+                    [
+                        "g1000",
+                        "g100"
+                    ]
+                ]
+            },
+            {
+                "Hash Keys": [
+                    [
+                        "g1000"
+                    ]
+                ]
+            },
+            {
+                "Hash Keys": [
+                    [
+                        "g100",
+                        "g10"
+                    ]
+                ]
+            },
+            {
+                "Hash Keys": [
+                    [
+                        "g100"
+                    ]
+                ]
+            },
+            {
+                "Hash Keys": [
+                    [
+                        "g10",
+                        "g1000"
+                    ]
+                ]
+            },
+            {
+                "Hash Keys": [
+                    [
+                        "g10"
+                    ]
+                ]
+            },
+            {
+                "Group Keys": [
+                    []
+                ]
+            }
+        ],
+        "Planned Partitions": 0,
+        "HashAgg Batches": 4210,
+        "Peak Memory Usage": 320,
+        "Disk Usage": 1680,
+        "Plans": [
+            {
+                "Node Type": "Seq Scan",
+                "Parent Relationship": "Outer",
+                "Parallel Aware": false,
+                "Async Capable": false,
+                "Relation Name": "gs_data_1",
+                "Alias": "gs_data_1",
+                "Startup Cost": 0.00,
+                "Total Cost": 11.10,
+                "Plan Rows": 10,
+                "Plan Width": 16,
+                "Actual Startup Time": 0.011,
+                "Actual Total Time": 0.356,
+                "Actual Rows": 2000,
+                "Actual Loops": 1
+            }
+        ]
+    },
+    "Planning Time": 0.082,
+    "Triggers": [],
+    "Execution Time": 102.135
+}

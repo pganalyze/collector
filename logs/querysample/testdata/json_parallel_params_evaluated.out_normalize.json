@@ -1,0 +1,237 @@
+[
+    {
+        "Execution Time": 14.455,
+        "Plan": {
+            "Actual Loops": 1,
+            "Actual Rows": 4,
+            "Actual Startup Time": 9.346,
+            "Actual Total Time": 14.424,
+            "Async Capable": false,
+            "Node Type": "Sort",
+            "Parallel Aware": false,
+            "Plan Rows": 4,
+            "Plan Width": 4,
+            "Plans": [
+                {
+                    "Actual Loops": 1,
+                    "Actual Rows": 4,
+                    "Actual Startup Time": 0.892,
+                    "Actual Total Time": 14.416,
+                    "Async Capable": false,
+                    "Node Type": "Append",
+                    "Parallel Aware": false,
+                    "Parent Relationship": "Outer",
+                    "Plan Rows": 4,
+                    "Plan Width": 4,
+                    "Plans": [
+                        {
+                            "Actual Loops": 1,
+                            "Actual Rows": 2,
+                            "Actual Startup Time": 0.892,
+                            "Actual Total Time": 7.405,
+                            "Async Capable": false,
+                            "Node Type": "Gather",
+                            "Parallel Aware": false,
+                            "Params Evaluated": [
+                                "$1"
+                            ],
+                            "Parent Relationship": "Member",
+                            "Plan Rows": 2,
+                            "Plan Width": 4,
+                            "Plans": [
+                                {
+                                    "Actual Loops": 1,
+                                    "Actual Rows": 1,
+                                    "Actual Startup Time": 0.466,
+                                    "Actual Total Time": 0.491,
+                                    "Async Capable": false,
+                                    "Node Type": "Limit",
+                                    "Parallel Aware": false,
+                                    "Parent Relationship": "InitPlan",
+                                    "Plan Rows": 1,
+                                    "Plan Width": 4,
+                                    "Plans": [
+                                        {
+                                            "Actual Loops": 1,
+                                            "Actual Rows": 1,
+                                            "Actual Startup Time": 0.465,
+                                            "Actual Total Time": 0.49,
+                                            "Async Capable": false,
+                                            "Node Type": "Gather",
+                                            "Parallel Aware": false,
+                                            "Parent Relationship": "Outer",
+                                            "Plan Rows": 2,
+                                            "Plan Width": 4,
+                                            "Plans": [
+                                                {
+                                                    "Actual Loops": 5,
+                                                    "Actual Rows": 0,
+                                                    "Actual Startup Time": 0.593,
+                                                    "Actual Total Time": 0.593,
+                                                    "Alias": "tenk1_2",
+                                                    "Async Capable": false,
+                                                    "Filter": "(fivethous = $1)",
+                                                    "Node Type": "Seq Scan",
+                                                    "Parallel Aware": true,
+                                                    "Parent Relationship": "Outer",
+                                                    "Plan Rows": 1,
+                                                    "Plan Width": 4,
+                                                    "Relation Name": "tenk1",
+                                                    "Rows Removed by Filter": 1994,
+                                                    "Startup Cost": 0,
+                                                    "Total Cost": 376.23,
+                                                    "Workers": []
+                                                }
+                                            ],
+                                            "Single Copy": false,
+                                            "Startup Cost": 0,
+                                            "Total Cost": 376.23,
+                                            "Workers Launched": 4,
+                                            "Workers Planned": 4
+                                        }
+                                    ],
+                                    "Startup Cost": 0,
+                                    "Subplan Name": "InitPlan 1 (returns $1)",
+                                    "Total Cost": 188.12
+                                },
+                                {
+                                    "Actual Loops": 4,
+                                    "Actual Rows": 0,
+                                    "Actual Startup Time": 0.076,
+                                    "Actual Total Time": 0.305,
+                                    "Alias": "tenk1",
+                                    "Async Capable": false,
+                                    "Filter": "(fivethous = $1)",
+                                    "Node Type": "Seq Scan",
+                                    "Parallel Aware": true,
+                                    "Parent Relationship": "Outer",
+                                    "Plan Rows": 1,
+                                    "Plan Width": 4,
+                                    "Relation Name": "tenk1",
+                                    "Rows Removed by Filter": 2500,
+                                    "Startup Cost": 0,
+                                    "Total Cost": 376.23,
+                                    "Workers": []
+                                }
+                            ],
+                            "Single Copy": false,
+                            "Startup Cost": 188.12,
+                            "Total Cost": 564.35,
+                            "Workers Launched": 3,
+                            "Workers Planned": 4
+                        },
+                        {
+                            "Actual Loops": 1,
+                            "Actual Rows": 2,
+                            "Actual Startup Time": 1.536,
+                            "Actual Total Time": 7.007,
+                            "Async Capable": false,
+                            "Node Type": "Gather",
+                            "Parallel Aware": false,
+                            "Params Evaluated": [
+                                "$3"
+                            ],
+                            "Parent Relationship": "Member",
+                            "Plan Rows": 2,
+                            "Plan Width": 4,
+                            "Plans": [
+                                {
+                                    "Actual Loops": 1,
+                                    "Actual Rows": 1,
+                                    "Actual Startup Time": 0.651,
+                                    "Actual Total Time": 5.641,
+                                    "Async Capable": false,
+                                    "Node Type": "Limit",
+                                    "Parallel Aware": false,
+                                    "Parent Relationship": "InitPlan",
+                                    "Plan Rows": 1,
+                                    "Plan Width": 4,
+                                    "Plans": [
+                                        {
+                                            "Actual Loops": 1,
+                                            "Actual Rows": 1,
+                                            "Actual Startup Time": 0.649,
+                                            "Actual Total Time": 5.637,
+                                            "Async Capable": false,
+                                            "Node Type": "Gather",
+                                            "Parallel Aware": false,
+                                            "Parent Relationship": "Outer",
+                                            "Plan Rows": 2,
+                                            "Plan Width": 4,
+                                            "Plans": [
+                                                {
+                                                    "Actual Loops": 3,
+                                                    "Actual Rows": 1,
+                                                    "Actual Startup Time": 0.767,
+                                                    "Actual Total Time": 0.767,
+                                                    "Alias": "tenk1_3",
+                                                    "Async Capable": false,
+                                                    "Filter": "(fivethous = $1)",
+                                                    "Node Type": "Seq Scan",
+                                                    "Parallel Aware": true,
+                                                    "Parent Relationship": "Outer",
+                                                    "Plan Rows": 1,
+                                                    "Plan Width": 4,
+                                                    "Relation Name": "tenk1",
+                                                    "Rows Removed by Filter": 3324,
+                                                    "Startup Cost": 0,
+                                                    "Total Cost": 376.23,
+                                                    "Workers": []
+                                                }
+                                            ],
+                                            "Single Copy": false,
+                                            "Startup Cost": 0,
+                                            "Total Cost": 376.23,
+                                            "Workers Launched": 2,
+                                            "Workers Planned": 4
+                                        }
+                                    ],
+                                    "Startup Cost": 0,
+                                    "Subplan Name": "InitPlan 2 (returns $3)",
+                                    "Total Cost": 188.12
+                                },
+                                {
+                                    "Actual Loops": 1,
+                                    "Actual Rows": 2,
+                                    "Actual Startup Time": 0.733,
+                                    "Actual Total Time": 1.173,
+                                    "Alias": "tenk1_1",
+                                    "Async Capable": false,
+                                    "Filter": "(fivethous = $3)",
+                                    "Node Type": "Seq Scan",
+                                    "Parallel Aware": true,
+                                    "Parent Relationship": "Outer",
+                                    "Plan Rows": 1,
+                                    "Plan Width": 4,
+                                    "Relation Name": "tenk1",
+                                    "Rows Removed by Filter": 9998,
+                                    "Startup Cost": 0,
+                                    "Total Cost": 376.23,
+                                    "Workers": []
+                                }
+                            ],
+                            "Single Copy": false,
+                            "Startup Cost": 188.12,
+                            "Total Cost": 564.35,
+                            "Workers Launched": 0,
+                            "Workers Planned": 4
+                        }
+                    ],
+                    "Startup Cost": 188.12,
+                    "Subplans Removed": 0,
+                    "Total Cost": 1128.76
+                }
+            ],
+            "Sort Key": [
+                "tenk1.unique1"
+            ],
+            "Sort Method": "quicksort",
+            "Sort Space Type": "Memory",
+            "Sort Space Used": 25,
+            "Startup Cost": 1128.8,
+            "Total Cost": 1128.81
+        },
+        "Planning Time": 0.1,
+        "Triggers": []
+    }
+]

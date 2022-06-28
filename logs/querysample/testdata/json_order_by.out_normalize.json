@@ -1,0 +1,41 @@
+[
+    {
+        "Execution Time": 20.516,
+        "Plan": {
+            "Actual Loops": 1,
+            "Actual Rows": 11005,
+            "Actual Startup Time": 0.037,
+            "Actual Total Time": 19.909,
+            "Async Capable": false,
+            "Node Type": "WindowAgg",
+            "Parallel Aware": false,
+            "Plan Rows": 11005,
+            "Plan Width": 20,
+            "Plans": [
+                {
+                    "Actual Loops": 1,
+                    "Actual Rows": 11005,
+                    "Actual Startup Time": 0.015,
+                    "Actual Total Time": 13.356,
+                    "Alias": "quad_box_tbl",
+                    "Async Capable": false,
+                    "Index Name": "quad_box_tbl_idx",
+                    "Node Type": "Index Scan",
+                    "Order By": "(b \u003c-\u003e $1::point)",
+                    "Parallel Aware": false,
+                    "Parent Relationship": "Outer",
+                    "Plan Rows": 11005,
+                    "Plan Width": 12,
+                    "Relation Name": "quad_box_tbl",
+                    "Scan Direction": "NoMovement",
+                    "Startup Cost": 0.28,
+                    "Total Cost": 1040.38
+                }
+            ],
+            "Startup Cost": 0.28,
+            "Total Cost": 1232.96
+        },
+        "Planning Time": 0.031,
+        "Triggers": []
+    }
+]

@@ -2,11 +2,13 @@ package runner
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/guregu/null"
 	"github.com/pganalyze/collector/config"
 	"github.com/pganalyze/collector/grant"
 	"github.com/pganalyze/collector/input/postgres"
@@ -16,6 +18,7 @@ import (
 	"github.com/pganalyze/collector/input/system/heroku"
 	"github.com/pganalyze/collector/input/system/selfhosted"
 	"github.com/pganalyze/collector/logs"
+	"github.com/pganalyze/collector/logs/querysample"
 	"github.com/pganalyze/collector/logs/stream"
 	"github.com/pganalyze/collector/output"
 	"github.com/pganalyze/collector/state"
@@ -284,6 +287,26 @@ func postprocessAndSendLogs(server *state.Server, globalCollectionOpts state.Col
 
 	if server.Config.FilterQuerySample == "all" {
 		transientLogState.QuerySamples = []state.PostgresQuerySample{}
+	} else if server.Config.FilterQuerySample == "normalize" {
+		for idx, sample := range transientLogState.QuerySamples {
+			// Ensure we always normalize the query text (when sample normalization is on), even if EXPLAIN errors out
+			sample.Query = util.NormalizeQuery(sample.Query, "unparseable", -1)
+			for pIdx, _ := range sample.Parameters {
+				sample.Parameters[pIdx] = null.StringFrom("<removed>")
+			}
+			if sample.ExplainOutputText != "" {
+				sample.ExplainOutputText = ""
+				sample.ExplainError = "EXPLAIN normalize failed: auto_explain format is not JSON - not supported (discarding EXPLAIN)"
+			}
+			if sample.ExplainOutputJSON != nil {
+				sample.ExplainOutputJSON, err = querysample.NormalizeExplainJSON(sample.ExplainOutputJSON)
+				if err != nil {
+					sample.ExplainOutputJSON = nil
+					sample.ExplainError = fmt.Sprintf("EXPLAIN normalize failed: %s", err)
+				}
+			}
+			transientLogState.QuerySamples[idx] = sample
+		}
 	} else {
 		// Do nothing if filter_query_sample = none (we just take the query samples as they are generated)
 	}

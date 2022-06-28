@@ -1,0 +1,51 @@
+{
+    "Query Text": "insert into parted_constr values (1, 'aardvark'); /* query from triggers regression test, slightly modified output to model auto_explain */",
+    "Plan": {
+        "Node Type": "ModifyTable",
+        "Operation": "Insert",
+        "Parallel Aware": false,
+        "Async Capable": false,
+        "Relation Name": "parted_constr",
+        "Schema": "public",
+        "Alias": "parted_constr",
+        "Startup Cost": 0.00,
+        "Total Cost": 0.01,
+        "Plan Rows": 0,
+        "Plan Width": 0,
+        "Actual Startup Time": 0.198,
+        "Actual Total Time": 0.199,
+        "Actual Rows": 0,
+        "Actual Loops": 1,
+        "Plans": [
+            {
+                "Node Type": "Result",
+                "Parent Relationship": "Outer",
+                "Parallel Aware": false,
+                "Async Capable": false,
+                "Startup Cost": 0.00,
+                "Total Cost": 0.01,
+                "Plan Rows": 1,
+                "Plan Width": 36,
+                "Actual Startup Time": 0.002,
+                "Actual Total Time": 0.002,
+                "Actual Rows": 1,
+                "Actual Loops": 1,
+                "Output": [
+                    "1",
+                    "'aardvark'::text"
+                ]
+            }
+        ]
+    },
+    "Planning Time": 0.014,
+    "Triggers": [
+        {
+            "Trigger Name": "parted_trig",
+            "Constraint Name": "parted_trig",
+            "Relation": "parted1_constr",
+            "Time": 0.157,
+            "Calls": 1
+        }
+    ],
+    "Execution Time": 0.392
+}

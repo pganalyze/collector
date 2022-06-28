@@ -1,0 +1,46 @@
+{
+    "Query Text": "insert into insertconflicttest values (0, 'Bilberry') on conflict (key) do update set fruit = excluded.fruit where insertconflicttest.fruit != 'Lime' returning *; /* query from insert_conflict regression test, slightly modified output to model auto_explain */",
+    "Plan": {
+        "Node Type": "ModifyTable",
+        "Operation": "Insert",
+        "Parallel Aware": false,
+        "Async Capable": false,
+        "Relation Name": "insertconflicttest",
+        "Alias": "insertconflicttest",
+        "Startup Cost": 0.00,
+        "Total Cost": 0.01,
+        "Plan Rows": 1,
+        "Plan Width": 36,
+        "Actual Startup Time": 0.251,
+        "Actual Total Time": 0.252,
+        "Actual Rows": 1,
+        "Actual Loops": 1,
+        "Conflict Resolution": "UPDATE",
+        "Conflict Arbiter Indexes": [
+            "key_index"
+        ],
+        "Conflict Filter": "(insertconflicttest.fruit <> 'Lime'::text)",
+        "Rows Removed by Conflict Filter": 0,
+        "Tuples Inserted": 1,
+        "Conflicting Tuples": 0,
+        "Plans": [
+            {
+                "Node Type": "Result",
+                "Parent Relationship": "Outer",
+                "Parallel Aware": false,
+                "Async Capable": false,
+                "Startup Cost": 0.00,
+                "Total Cost": 0.01,
+                "Plan Rows": 1,
+                "Plan Width": 36,
+                "Actual Startup Time": 0.005,
+                "Actual Total Time": 0.006,
+                "Actual Rows": 1,
+                "Actual Loops": 1
+            }
+        ]
+    },
+    "Planning Time": 0.011,
+    "Triggers": [],
+    "Execution Time": 0.267
+}

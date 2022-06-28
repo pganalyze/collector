@@ -1,0 +1,80 @@
+{
+    "Query Text": "SELECT * FROM xmltableview1; /* query from xml regression test, slightly modified output to model auto_explain */",
+    "Plan": {
+        "Node Type": "Nested Loop",
+        "Parallel Aware": false,
+        "Async Capable": false,
+        "Join Type": "Inner",
+        "Startup Cost": 0.00,
+        "Total Cost": 2743.60,
+        "Plan Rows": 136000,
+        "Plan Width": 148,
+        "Actual Startup Time": 0.232,
+        "Actual Total Time": 0.236,
+        "Actual Rows": 6,
+        "Actual Loops": 1,
+        "Output": [
+            "\"xmltable\".id",
+            "\"xmltable\"._id",
+            "\"xmltable\".country_name",
+            "\"xmltable\".country_id",
+            "\"xmltable\".region_id",
+            "\"xmltable\".size",
+            "\"xmltable\".unit",
+            "\"xmltable\".premier_name"
+        ],
+        "Inner Unique": false,
+        "Plans": [
+            {
+                "Node Type": "Seq Scan",
+                "Parent Relationship": "Outer",
+                "Parallel Aware": false,
+                "Async Capable": false,
+                "Relation Name": "xmldata",
+                "Schema": "public",
+                "Alias": "xmldata",
+                "Startup Cost": 0.00,
+                "Total Cost": 23.60,
+                "Plan Rows": 1360,
+                "Plan Width": 32,
+                "Actual Startup Time": 0.004,
+                "Actual Total Time": 0.005,
+                "Actual Rows": 1,
+                "Actual Loops": 1,
+                "Output": [
+                    "xmldata.data"
+                ]
+            },
+            {
+                "Node Type": "Table Function Scan",
+                "Parent Relationship": "Inner",
+                "Parallel Aware": false,
+                "Async Capable": false,
+                "Table Function Name": "xmltable",
+                "Alias": "xmltable",
+                "Startup Cost": 0.00,
+                "Total Cost": 1.00,
+                "Plan Rows": 100,
+                "Plan Width": 148,
+                "Actual Startup Time": 0.222,
+                "Actual Total Time": 0.223,
+                "Actual Rows": 6,
+                "Actual Loops": 1,
+                "Output": [
+                    "\"xmltable\".id",
+                    "\"xmltable\"._id",
+                    "\"xmltable\".country_name",
+                    "\"xmltable\".country_id",
+                    "\"xmltable\".region_id",
+                    "\"xmltable\".size",
+                    "\"xmltable\".unit",
+                    "\"xmltable\".premier_name"
+                ],
+                "Table Function Call": "XMLTABLE(('/ROWS/ROW'::text) PASSING (xmldata.data) COLUMNS id integer PATH ('@id'::text), _id FOR ORDINALITY, country_name text PATH ('COUNTRY_NAME/text()'::text) NOT NULL, country_id text PATH ('COUNTRY_ID'::text), region_id integer PATH ('REGION_ID'::text), size double precision PATH ('SIZE'::text), unit text PATH ('SIZE/@unit'::text), premier_name text DEFAULT ('not specified'::text) PATH ('PREMIER_NAME'::text))"
+            }
+        ]
+    },
+    "Planning Time": 0.075,
+    "Triggers": [],
+    "Execution Time": 0.265
+}

@@ -1,0 +1,81 @@
+[
+    {
+        "Execution Time": 0.265,
+        "Plan": {
+            "Actual Loops": 1,
+            "Actual Rows": 6,
+            "Actual Startup Time": 0.232,
+            "Actual Total Time": 0.236,
+            "Async Capable": false,
+            "Inner Unique": false,
+            "Join Type": "Inner",
+            "Node Type": "Nested Loop",
+            "Output": [
+                "\"xmltable\".id",
+                "\"xmltable\"._id",
+                "\"xmltable\".country_name",
+                "\"xmltable\".country_id",
+                "\"xmltable\".region_id",
+                "\"xmltable\".size",
+                "\"xmltable\".unit",
+                "\"xmltable\".premier_name"
+            ],
+            "Parallel Aware": false,
+            "Plan Rows": 136000,
+            "Plan Width": 148,
+            "Plans": [
+                {
+                    "Actual Loops": 1,
+                    "Actual Rows": 1,
+                    "Actual Startup Time": 0.004,
+                    "Actual Total Time": 0.005,
+                    "Alias": "xmldata",
+                    "Async Capable": false,
+                    "Node Type": "Seq Scan",
+                    "Output": [
+                        "xmldata.data"
+                    ],
+                    "Parallel Aware": false,
+                    "Parent Relationship": "Outer",
+                    "Plan Rows": 1360,
+                    "Plan Width": 32,
+                    "Relation Name": "xmldata",
+                    "Schema": "public",
+                    "Startup Cost": 0,
+                    "Total Cost": 23.6
+                },
+                {
+                    "Actual Loops": 1,
+                    "Actual Rows": 6,
+                    "Actual Startup Time": 0.222,
+                    "Actual Total Time": 0.223,
+                    "Alias": "xmltable",
+                    "Async Capable": false,
+                    "Node Type": "Table Function Scan",
+                    "Output": [
+                        "\"xmltable\".id",
+                        "\"xmltable\"._id",
+                        "\"xmltable\".country_name",
+                        "\"xmltable\".country_id",
+                        "\"xmltable\".region_id",
+                        "\"xmltable\".size",
+                        "\"xmltable\".unit",
+                        "\"xmltable\".premier_name"
+                    ],
+                    "Parallel Aware": false,
+                    "Parent Relationship": "Inner",
+                    "Plan Rows": 100,
+                    "Plan Width": 148,
+                    "Startup Cost": 0,
+                    "Table Function Call": "\u003cunparsable query\u003e",
+                    "Table Function Name": "xmltable",
+                    "Total Cost": 1
+                }
+            ],
+            "Startup Cost": 0,
+            "Total Cost": 2743.6
+        },
+        "Planning Time": 0.075,
+        "Triggers": []
+    }
+]
