@@ -18,7 +18,10 @@
     "ALTER EXTENSION pg_stat_statements UPDATE" in order to use
     the collector after a Postgres upgrade
   - The collector will output an info message in case an outdated
-    pg_stat_statements schema is in use
+    pg_stat_statements version is in use
+* Allow pg_stat_statements to be installed in schemas other than "public"
+  - This is automatically detected based on information in `pg_extension`
+    and does not require any extra configuration when using a special schema
 * Log Insights
   - Remove unnecessary "duration_ms" and "unparsed_explain_text" metadata
     fields, they are already contained within the query sample data
