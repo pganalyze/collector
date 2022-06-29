@@ -1258,7 +1258,6 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 				logLine.Classification = m.classification
 				detailLine, _ = matchLogLine(detailLine, m.detail)
 				hintLine, _ = matchLogLine(hintLine, m.hint)
-				//statementLine = markLineAsSecret(statementLine, state.StatementTextLogSecret)
 				contextLine = matchOtherContextLogLine(contextLine)
 				return logLine, statementLine, detailLine, contextLine, hintLine, samples
 			}
@@ -1881,7 +1880,6 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 		if len(parts) == 2 {
 			logLine.Classification = uniqueConstraintViolation.classification
 			detailLine, _ = matchLogLine(detailLine, uniqueConstraintViolation.detail)
-			statementLine = markLineAsSecret(statementLine, state.StatementTextLogSecret)
 			contextLine = matchOtherContextLogLine(contextLine)
 			// FIXME: Store constraint name
 			return logLine, statementLine, detailLine, contextLine, hintLine, samples
@@ -1892,7 +1890,6 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 		if len(parts) == 3 {
 			logLine.Classification = foreignKeyConstraintViolation1.classification
 			detailLine, _ = matchLogLine(detailLine, foreignKeyConstraintViolation1.detail)
-			statementLine = markLineAsSecret(statementLine, state.StatementTextLogSecret)
 			contextLine = matchOtherContextLogLine(contextLine)
 			// FIXME: Store constraint name and relation name
 			return logLine, statementLine, detailLine, contextLine, hintLine, samples
@@ -1903,7 +1900,6 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 		if len(parts) == 4 {
 			logLine.Classification = foreignKeyConstraintViolation2.classification
 			detailLine, _ = matchLogLine(detailLine, foreignKeyConstraintViolation2.detail)
-			statementLine = markLineAsSecret(statementLine, state.StatementTextLogSecret)
 			contextLine = matchOtherContextLogLine(contextLine)
 			// FIXME: Store constraint name and both relation names
 			return logLine, statementLine, detailLine, contextLine, hintLine, samples
@@ -1914,7 +1910,6 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 		if len(parts) == 2 {
 			logLine.Classification = nullConstraintViolation.classification
 			detailLine, _ = matchLogLine(detailLine, nullConstraintViolation.detail)
-			statementLine = markLineAsSecret(statementLine, state.StatementTextLogSecret)
 			contextLine = matchOtherContextLogLine(contextLine)
 			return logLine, statementLine, detailLine, contextLine, hintLine, samples
 		}
@@ -2127,6 +2122,8 @@ func AnalyzeBackendLogLines(logLines []state.LogLine) (logLinesOut []state.LogLi
 					statementLine = futureLine
 					statementLine.ParentUUID = logLine.UUID
 					statementLineIdx = lowerBound + idx
+					// Ensure STATEMENT line is consistently marked as statement text log secret
+					statementLine = markLineAsSecret(statementLine, state.StatementTextLogSecret)
 				} else if futureLine.LogLevel == pganalyze_collector.LogLineInformation_DETAIL {
 					detailLine = futureLine
 					detailLine.ParentUUID = logLine.UUID
@@ -2139,6 +2136,10 @@ func AnalyzeBackendLogLines(logLines []state.LogLine) (logLinesOut []state.LogLi
 					hintLine = futureLine
 					hintLine.ParentUUID = logLine.UUID
 					hintLineIdx = lowerBound + idx
+				} else if futureLine.LogLevel == pganalyze_collector.LogLineInformation_QUERY {
+					logLines[lowerBound+idx].ParentUUID = logLine.UUID
+					// Ensure QUERY line is consistently marked as statement text log secret
+					logLines[lowerBound+idx] = markLineAsSecret(logLines[lowerBound+idx], state.StatementTextLogSecret)
 				} else {
 					logLines[lowerBound+idx].ParentUUID = logLine.UUID
 				}
