@@ -31,9 +31,10 @@ var utcTimestampRegexp = `(\d+-\d+-\d+ \d+:\d+:\d+(?:\.\d+)?(?:[\d:+-]+| \w+))`
 var autoExplain = analyzeGroup{
 	classification: pganalyze_collector.LogLineInformation_STATEMENT_AUTO_EXPLAIN,
 	primary: match{
-		prefixes: []string{"duration: "},
-		regexp:   regexp.MustCompile(`^duration: ([\d\.]+) ms\s+ plan:\s+`),
-		secrets:  []state.LogSecretKind{0},
+		prefixes:      []string{"duration: "},
+		regexp:        regexp.MustCompile(`^duration: ([\d\.]+) ms\s+ plan:\s+`),
+		secrets:       []state.LogSecretKind{0},
+		remainderKind: state.StatementTextLogSecret,
 	},
 }
 var duration = analyzeGroup{
