@@ -1,5 +1,55 @@
 # Changelog
 
+## 0.44.0      2022-06-29
+
+* Add optional normalization of sensitive fields in EXPLAIN plans
+  - Introduces new "filter_query_sample = normalize" setting that normalizes
+    expression fields in the EXPLAIN plan ("Filter", "Index Cond", etc) using
+    the pg_query normalization logic. Unknown EXPLAIN fields are discarded when
+    this option is active.
+  - Turning on this setting will also cause all query samples (whether they
+    have an EXPLAIN attached or not) to have their query text normalized
+    and their parameters marked as `<removed>`.
+  - This setting is recommended when EXPLAIN plans may contain sensitive
+    data that should not be stored. Please verify that the logic works
+    as expected with your workload and log output.
+  - In order to mask EXPLAIN output in the actual log stream as well (not just
+    the query samples / EXPLAIN plans), make sure to use a `filter_log_secret`
+    setting that includes the `statement_text` value
+* Be more accepting with outdated pg_stat_statements versions
+  - With this change, its no longer required to run
+    "ALTER EXTENSION pg_stat_statements UPDATE" in order to use
+    the collector after a Postgres upgrade
+  - The collector will output an info message in case an outdated
+    pg_stat_statements version is in use
+* Allow pg_stat_statements to be installed in schemas other than "public"
+  - This is automatically detected based on information in `pg_extension`
+    and does not require any extra configuration when using a special schema
+* Log Insights
+  - Remove unnecessary "duration_ms" and "unparsed_explain_text" metadata
+    fields, they are already contained within the query sample data
+  - Always mark STATEMENT/QUERY log lines as "statement_text" log secret,
+    instead of "unidentified" log secret in some cases
+* Amazon RDS / Amazon Aurora
+  - Fix rare bug with duplicate pg_settings values on Aurora Postgres
+  - Add RDS instance role hint when NoCredentialProviders error is hit
+* Heroku Postgres
+  - Add support for new log_line_prefix
+  - Log processing: Avoid repeating the same line over and over again
+  - Fix log handling when consuming logs for multiple databases
+* Google Cloud SQL
+  - Re-enable log stitching for messages - whilst the GCP release notes mention
+    that this is no longer a problem as of Sept 2021, log events can still be
+    split up into multiple messages if they exceed a threshold around 1000-2000
+    lines, or ~100kb
+* Custom types: Correctly track custom type reference for array types
+* Improve the "too many tables" error message to clarify possible solutions
+* Fix bug related to new structured JSON logs feature (see prior release)
+* Update pg_query_go to v2.1.2
+  - Fixes memory leak in pg_query_fingerprint error handling
+  - Fix parsing some operators with ? character (ltree / promscale extensions)
+
+
 ## 0.43.1      2022-05-02
 
 * Add option for emitting collector logs as structured JSON logs ([@jschaf](https://github.com/jschaf))
