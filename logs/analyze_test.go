@@ -3515,7 +3515,7 @@ var tests = []testpair{
 			SecretMarkers: []state.LogSecretMarker{{
 				ByteStart: 30,
 				ByteEnd:   1025,
-				Kind:      state.UnidentifiedLogSecret,
+				Kind:      state.StatementTextLogSecret,
 			}},
 		}},
 		[]state.PostgresQuerySample{{
@@ -3572,7 +3572,7 @@ var tests = []testpair{
 			SecretMarkers: []state.LogSecretMarker{{
 				ByteStart: 30,
 				ByteEnd:   132,
-				Kind:      state.UnidentifiedLogSecret,
+				Kind:      state.StatementTextLogSecret,
 			}},
 		}},
 		nil,
@@ -3594,7 +3594,7 @@ var tests = []testpair{
 			SecretMarkers: []state.LogSecretMarker{{
 				ByteStart: 31,
 				ByteEnd:   474,
-				Kind:      state.UnidentifiedLogSecret,
+				Kind:      state.StatementTextLogSecret,
 			}},
 		}},
 		[]state.PostgresQuerySample{{
