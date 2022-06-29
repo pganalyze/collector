@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.44.0      2022-06-28
+## 0.44.0      2022-06-29
 
 * Add optional normalization of sensitive fields in EXPLAIN plans
   - Introduces new "filter_query_sample = normalize" setting that normalizes
@@ -28,16 +28,20 @@
 * Log Insights
   - Remove unnecessary "duration_ms" and "unparsed_explain_text" metadata
     fields, they are already contained within the query sample data
-* AWS
+  - Always mark STATEMENT/QUERY log lines as "statement_text" log secret,
+    instead of "unidentified" log secret in some cases
+* Amazon RDS / Amazon Aurora
   - Fix rare bug with duplicate pg_settings values on Aurora Postgres
   - Add RDS instance role hint when NoCredentialProviders error is hit
-* Heroku
+* Heroku Postgres
   - Add support for new log_line_prefix
   - Log processing: Avoid repeating the same line over and over again
-* Google Cloud SQL: Re-enable log stitching for messages
-  - Whilst the GCP release notes mention that this is no longer a problem as of
-    Sept 2021, log events can still be split up into multiple messages if they
-    exceed a threshold around 1000-2000 lines, or ~100kb.
+  - Fix log handling when consuming logs for multiple databases
+* Google Cloud SQL
+  - Re-enable log stitching for messages - whilst the GCP release notes mention
+    that this is no longer a problem as of Sept 2021, log events can still be
+    split up into multiple messages if they exceed a threshold around 1000-2000
+    lines, or ~100kb
 * Custom types: Correctly track custom type reference for array types
 * Improve the "too many tables" error message to clarify possible solutions
 * Fix bug related to new structured JSON logs feature (see prior release)
