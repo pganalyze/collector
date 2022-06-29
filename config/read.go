@@ -499,6 +499,13 @@ func Read(logger *util.Logger, filename string) (Config, error) {
 					config.SystemID = strings.Replace(parts[0], "_URL", "", 1)
 					config.SystemType = "heroku"
 					config.DbURL = parts[1]
+					config.Identifier = ServerIdentifier{
+						APIKey:      config.APIKey,
+						APIBaseURL:  config.APIBaseURL,
+						SystemID:    config.SystemID,
+						SystemType:  config.SystemType,
+						SystemScope: config.SystemScope,
+					}
 					conf.Servers = append(conf.Servers, *config)
 				}
 			}
