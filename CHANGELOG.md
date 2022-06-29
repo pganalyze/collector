@@ -13,6 +13,9 @@
   - This setting is recommended when EXPLAIN plans may contain sensitive
     data that should not be stored. Please verify that the logic works
     as expected with your workload and log output.
+  - In order to mask EXPLAIN output in the actual log stream as well (not just
+    the query samples / EXPLAIN plans), make sure to use a `filter_log_secret`
+    setting that includes the `statement_text` value
 * Be more accepting with outdated pg_stat_statements versions
   - With this change, its no longer required to run
     "ALTER EXTENSION pg_stat_statements UPDATE" in order to use
