@@ -99,6 +99,7 @@ type ServerConfig struct {
 
 	CrunchyBridgeClusterID string `ini:"crunchy_bridge_cluster_id"`
 
+	AivenProjectID string `ini:"aiven_project_id"`
 	AivenServiceID string `ini:"aiven_service_id"`
 
 	SectionName string

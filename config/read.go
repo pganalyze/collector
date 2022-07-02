@@ -367,8 +367,12 @@ func preprocessConfig(config *ServerConfig) (*ServerConfig, error) {
 	} else if strings.HasSuffix(host, ".aivencloud.com") {
 		parts := strings.SplitN(host, ".", 2)
 		if len(parts) == 2 && (parts[1] == "aivencloud.com") { // Safety check for any escaping issues
+			projSvcParts := strings.SplitN(parts[0], "-", 3)
 			if config.AivenServiceID == "" {
-				config.AivenServiceID = parts[0]
+				config.AivenServiceID = strings.Join(projSvcParts[0:2], "-")
+			}
+			if config.AivenProjectID == "" {
+				config.AivenProjectID = projSvcParts[2]
 			}
 		}
 	}

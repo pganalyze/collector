@@ -49,7 +49,7 @@ func identifySystem(config ServerConfig) (systemType string, systemScope string,
 	} else if (config.AivenServiceID != "") || systemType == "aiven" {
 		systemType = "aiven"
 		if systemID == "" {
-			systemID = config.AivenServiceID
+			systemID = config.AivenProjectID + "-" + config.AivenServiceID
 		}
 	} else {
 		systemType = "self_hosted"
