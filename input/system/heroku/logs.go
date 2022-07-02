@@ -154,7 +154,7 @@ func logStreamItemToLogLine(item HerokuLogStreamItem, servers []*state.Server, s
 	}
 	backendPid, _ := strconv.ParseInt(parts[1], 10, 32)
 
-	lineParts := regexp.MustCompile(`^\[(\w+)\] \[(\d+)-(\d+)\] (.+)`).FindStringSubmatch(string(item.Content))
+	lineParts := regexp.MustCompile(`^\[(\w+)\] \[(\d+)-(\d+)\](?: (.+))?`).FindStringSubmatch(string(item.Content))
 	if len(lineParts) != 5 {
 		fmt.Printf("ERR: %s\n", string(item.Content))
 		return sourceToServer, nil, ""
