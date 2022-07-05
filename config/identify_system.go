@@ -6,12 +6,14 @@ import (
 )
 
 // Figure out if we're self-hosted or on RDS, as well as what ID we can use - Heroku is treated separately
-func identifySystem(config ServerConfig) (systemType string, systemScope string, systemScopeFallback string, systemID string) {
+func identifySystem(config ServerConfig) (systemID string, systemType string, systemScope string, systemIDFallback string, systemTypeFallback string, systemScopeFallback string) {
 	// Allow overrides from config or env variables
+	systemID = config.SystemID
 	systemType = config.SystemType
 	systemScope = config.SystemScope
+	systemIDFallback = config.SystemIDFallback
+	systemTypeFallback = config.SystemTypeFallback
 	systemScopeFallback = config.SystemScopeFallback
-	systemID = config.SystemID
 
 	if config.AwsDbInstanceID != "" || systemType == "amazon_rds" {
 		systemType = "amazon_rds"
@@ -46,10 +48,15 @@ func identifySystem(config ServerConfig) (systemType string, systemScope string,
 		if systemID == "" {
 			systemID = config.CrunchyBridgeClusterID
 		}
-	} else if (config.AivenServiceID != "") || systemType == "aiven" {
-		systemType = "aiven"
+	} else if (config.AivenProjectID != "" && config.AivenServiceID != "") || systemType == "aiven" {
+		systemTypeFallback = "aiven"
+		if systemType == "" {
+			systemType = "aiven"
+		}
+		aivenSystemID := config.AivenProjectID + "-" + config.AivenServiceID
+		systemIDFallback = aivenSystemID
 		if systemID == "" {
-			systemID = config.AivenProjectID + "-" + config.AivenServiceID
+			systemID = aivenSystemID
 		}
 	} else {
 		systemType = "self_hosted"

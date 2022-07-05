@@ -109,6 +109,8 @@ type CollectorConfig struct {
 	ApiSystemId                string
 	ApiSystemType              string
 	ApiSystemScope             string
+	ApiSystemIdFallback        string
+	ApiSystemTypeFallback      string
 	ApiSystemScopeFallback     string
 	DbLogLocation              string
 	DbLogDockerTail            string

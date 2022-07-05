@@ -459,7 +459,7 @@ func Read(logger *util.Logger, filename string) (Config, error) {
 				return conf, err
 			}
 			config.SectionName = section.Name()
-			config.SystemType, config.SystemScope, config.SystemScopeFallback, config.SystemID = identifySystem(*config)
+			config.SystemID, config.SystemType, config.SystemScope, config.SystemIDFallback, config.SystemTypeFallback, config.SystemScopeFallback = identifySystem(*config)
 
 			config.Identifier = ServerIdentifier{
 				APIKey:      config.APIKey,
@@ -526,7 +526,7 @@ func Read(logger *util.Logger, filename string) (Config, error) {
 			if err != nil {
 				return conf, err
 			}
-			config.SystemType, config.SystemScope, config.SystemScopeFallback, config.SystemID = identifySystem(*config)
+			config.SystemID, config.SystemType, config.SystemScope, config.SystemIDFallback, config.SystemTypeFallback, config.SystemScopeFallback = identifySystem(*config)
 			conf.Servers = append(conf.Servers, *config)
 		} else {
 			return conf, fmt.Errorf("No configuration file found at %s, and no environment variables set", filename)

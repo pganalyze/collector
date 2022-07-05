@@ -15,8 +15,9 @@ type Config struct {
 // ServerIdentifier -
 //   Unique identity of each configured server, for deduplication inside the collector.
 //
-//   Note we intentionally don't include SystemScopeFallback in the identifier, since that is mostly intended
-//   to help transition different scope values on the API side - in the collector we rely on system scope only.
+//   Note we intentionally don't include the Fallback variables in the identifier, since that is mostly intended
+//   to help transition systems when their "identity" is altered due to collector changes - in the collector we rely
+//   on the non-Fallback values only.
 type ServerIdentifier struct {
 	APIKey      string
 	APIBaseURL  string
@@ -108,6 +109,8 @@ type ServerConfig struct {
 	SystemID            string `ini:"api_system_id"`
 	SystemType          string `ini:"api_system_type"`
 	SystemScope         string `ini:"api_system_scope"`
+	SystemIDFallback    string `ini:"api_system_id_fallback"`
+	SystemTypeFallback  string `ini:"api_system_type_fallback"`
 	SystemScopeFallback string `ini:"api_system_scope_fallback"`
 
 	// Configures the location where logfiles are - this can either be a directory,
