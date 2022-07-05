@@ -49,30 +49,47 @@ func identifySystem(config ServerConfig) (systemID string, systemType string, sy
 			systemID = config.CrunchyBridgeClusterID
 		}
 	} else if (config.AivenProjectID != "" && config.AivenServiceID != "") || systemType == "aiven" {
-		systemTypeFallback = "aiven"
-		if systemType == "" {
-			systemType = "aiven"
-		}
-		aivenSystemID := config.AivenProjectID + "-" + config.AivenServiceID
-		systemIDFallback = aivenSystemID
+		systemType = "aiven"
 		if systemID == "" {
-			systemID = aivenSystemID
+			systemID = config.AivenServiceID
+		}
+		if systemScope == "" {
+			systemScope = config.AivenProjectID
+		}
+
+		if systemTypeFallback == "" {
+			systemTypeFallback = "self_hosted"
+		}
+		if systemIDFallback == "" {
+			systemIDFallback = selfManagedSystemID(config)
+		}
+		if systemScopeFallback == "" {
+			systemScopeFallback = selfManagedSystemScope(config)
 		}
 	} else {
 		systemType = "self_hosted"
 		if systemID == "" {
-			hostname := config.GetDbHost()
-			if hostname == "" || hostname == "localhost" || hostname == "127.0.0.1" {
-				hostname, _ = os.Hostname()
-			}
-			systemID = hostname
+			systemID = selfManagedSystemID(config)
 			if systemScope == "" {
-				systemScope = fmt.Sprintf("%d/%s", config.GetDbPort(), config.GetDbName())
-				if config.DbAllNames {
-					systemScope += "*"
-				}
+				systemScope = selfManagedSystemScope(config)
 			}
 		}
 	}
 	return
+}
+
+func selfManagedSystemID(config ServerConfig) string {
+	hostname := config.GetDbHost()
+	if hostname == "" || hostname == "localhost" || hostname == "127.0.0.1" {
+		hostname, _ = os.Hostname()
+	}
+	return hostname
+}
+
+func selfManagedSystemScope(config ServerConfig) string {
+	scope := fmt.Sprintf("%d/%s", config.GetDbPort(), config.GetDbName())
+	if config.DbAllNames {
+		scope += "*"
+	}
+	return scope
 }
