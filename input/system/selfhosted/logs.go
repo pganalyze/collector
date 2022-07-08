@@ -386,6 +386,8 @@ func setupLogTransformer(ctx context.Context, wg *sync.WaitGroup, server *state.
 
 		for {
 			select {
+			case <-ctx.Done():
+				return
 			case item, ok := <-logStream:
 				if !ok {
 					return
