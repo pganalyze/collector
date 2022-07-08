@@ -127,6 +127,12 @@ func collectSchemaData(collectionOpts state.CollectionOpts, logger *util.Logger,
 		ps.Functions = append(ps.Functions, newFunctions...)
 	}
 
+	newExtensions, err := GetExtensions(db, databaseOid)
+	if err != nil {
+		return ps, ts, fmt.Errorf("error collecting extension information: %s", err)
+	}
+	ts.Extensions = append(ts.Extensions, newExtensions...)
+
 	newTypes, err := GetTypes(db, postgresVersion, databaseOid)
 	if err != nil {
 		return ps, ts, fmt.Errorf("error collecting custom types: %s", err)
