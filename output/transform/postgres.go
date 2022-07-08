@@ -19,6 +19,7 @@ func transformPostgres(s snapshot.FullSnapshot, newState state.PersistedState, d
 	s = transformPostgresRelations(s, newState, diffState, databaseOidToIdx, typeOidToIdx)
 	s = transformPostgresFunctions(s, newState, diffState, roleOidToIdx, databaseOidToIdx)
 	s = transformPostgresBackendCounts(s, transientState, roleOidToIdx, databaseOidToIdx)
+	s = transformPostgresExtensions(s, transientState, databaseOidToIdx)
 
 	return s
 }
@@ -134,6 +135,20 @@ func transformPostgresVersion(s snapshot.FullSnapshot, transientState state.Tran
 		Full:    transientState.Version.Full,
 		Short:   transientState.Version.Short,
 		Numeric: int64(transientState.Version.Numeric),
+	}
+	return s
+}
+
+func transformPostgresExtensions(s snapshot.FullSnapshot, transientState state.TransientState, databaseOidToIdx OidToIdx) snapshot.FullSnapshot {
+	for _, extension := range transientState.Extensions {
+		info := snapshot.Extension{
+			DatabaseIdx:   databaseOidToIdx[extension.DatabaseOid],
+			ExtensionName: extension.ExtensionName,
+			Version:       extension.Version,
+			SchemaName:    extension.SchemaName,
+		}
+
+		s.Extensions = append(s.Extensions, &info)
 	}
 	return s
 }

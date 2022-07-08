@@ -60,6 +60,7 @@ type TransientState struct {
 	Replication   PostgresReplication
 	Settings      []PostgresSetting
 	BackendCounts []PostgresBackendCount
+	Extensions    []PostgresExtension
 
 	Version PostgresVersion
 
