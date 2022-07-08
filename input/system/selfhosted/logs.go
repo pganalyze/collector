@@ -182,11 +182,11 @@ func tailFile(ctx context.Context, path string, out chan<- SelfHostedLogStreamIt
 	TailLoop:
 		for {
 			select {
+			case line := <-t.Lines():
+				out <- SelfHostedLogStreamItem{Line: line.String()}
 			case <-ctx.Done():
 				prefixedLogger.PrintVerbose("Stopping log tail for %s (stop requested)", path)
 				break TailLoop
-			case line := <-t.Lines():
-				out <- SelfHostedLogStreamItem{Line: line.String()}
 			}
 		}
 		if t.Err() != nil {
