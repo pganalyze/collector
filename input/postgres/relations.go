@@ -47,7 +47,7 @@ const relationsSQL string = `
 	 LEFT JOIN locked_relids ON (c.oid = locked_relids.relid)
 	WHERE c.relkind IN ('r','v','m','p')
 				AND c.relpersistence <> 't'
-				AND c.relname NOT IN ('pg_stat_statements')
+				AND c.oid NOT IN (SELECT pd.objid FROM pg_catalog.pg_depend pd WHERE pd.deptype = 'e' AND pd.classid = 'pg_catalog.pg_class'::regclass)
 				AND n.nspname NOT IN ('pg_catalog','pg_toast','information_schema')
 				AND ($1 = '' OR (n.nspname || '.' || c.relname) !~* $1)`
 
@@ -69,7 +69,7 @@ const columnsSQL string = `
  LEFT JOIN pg_catalog.pg_attribute a ON c.oid = a.attrelid
  WHERE c.relkind IN ('r','v','m','p')
 			 AND c.relpersistence <> 't'
-			 AND c.relname NOT IN ('pg_stat_statements')
+			 AND c.oid NOT IN (SELECT pd.objid FROM pg_catalog.pg_depend pd WHERE pd.deptype = 'e' AND pd.classid = 'pg_catalog.pg_class'::regclass)
 			 AND n.nspname NOT IN ('pg_catalog','pg_toast','information_schema')
 			 AND a.attnum > 0
 			 AND NOT a.attisdropped
@@ -99,6 +99,7 @@ SELECT c.oid,
 																						 AND contype IN ('p', 'u', 'x'))
  WHERE c.relkind IN ('r','v','m','p')
 			 AND c.relpersistence <> 't'
+			 AND c.oid NOT IN (SELECT pd.objid FROM pg_catalog.pg_depend pd WHERE pd.deptype = 'e' AND pd.classid = 'pg_catalog.pg_class'::regclass)
 			 AND n.nspname NOT IN ('pg_catalog','pg_toast','information_schema')
 			 AND c.oid NOT IN (SELECT relid FROM locked_relids)
 			 AND c2.oid NOT IN (SELECT relid FROM locked_relids)
@@ -120,6 +121,7 @@ SELECT c.oid,
 			 JOIN pg_catalog.pg_class c ON (r.conrelid = c.oid)
 			 JOIN pg_catalog.pg_namespace n ON (n.oid = c.relnamespace)
 WHERE n.nspname NOT IN ('pg_catalog','pg_toast','information_schema')
+			AND c.oid NOT IN (SELECT pd.objid FROM pg_catalog.pg_depend pd WHERE pd.deptype = 'e' AND pd.classid = 'pg_catalog.pg_class'::regclass)
 			AND c.oid NOT IN (SELECT relid FROM locked_relids)
 			AND ($1 = '' OR (n.nspname || '.' || c.relname) !~* $1)`
 
@@ -131,7 +133,7 @@ SELECT c.oid,
 	LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
 	WHERE c.relkind IN ('v','m')
 			 AND c.relpersistence <> 't'
-			 AND c.relname NOT IN ('pg_stat_statements')
+			 AND c.oid NOT IN (SELECT pd.objid FROM pg_catalog.pg_depend pd WHERE pd.deptype = 'e' AND pd.classid = 'pg_catalog.pg_class'::regclass)
 			 AND n.nspname NOT IN ('pg_catalog','pg_toast','information_schema')
 			 AND c.oid NOT IN (SELECT relid FROM locked_relids)
 			 AND ($1 = '' OR (n.nspname || '.' || c.relname) !~* $1)`
