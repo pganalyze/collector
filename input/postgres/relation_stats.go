@@ -53,7 +53,7 @@ SELECT c.oid,
  WHERE c.oid NOT IN (SELECT relid FROM locked_relids)
        AND c.relkind IN ('r','v','m','p')
 			 AND c.relpersistence <> 't'
-			 AND c.relname NOT IN ('pg_stat_statements')
+			 AND c.oid NOT IN (SELECT pd.objid FROM pg_catalog.pg_depend pd WHERE pd.deptype = 'e' AND pd.classid = 'pg_catalog.pg_class'::regclass)
 			 AND n.nspname NOT IN ('pg_catalog','pg_toast','information_schema')
 			 AND ($1 = '' OR (n.nspname || '.' || c.relname) !~* $1)
 `
