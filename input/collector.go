@@ -104,6 +104,7 @@ func getCollectorConfig(c config.ServerConfig) state.CollectorConfig {
 		GcpProjectId:               c.GcpProjectID,
 		CrunchyBridgeClusterId:     c.CrunchyBridgeClusterID,
 		AivenServiceId:             c.AivenServiceID,
+		AivenProjectId:             c.AivenProjectID,
 		ApiSystemId:                c.SystemID,
 		ApiSystemType:              c.SystemType,
 		ApiSystemScope:             c.SystemScope,
