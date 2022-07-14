@@ -364,6 +364,17 @@ func preprocessConfig(config *ServerConfig) (*ServerConfig, error) {
 				config.CrunchyBridgeClusterID = parts[1]
 			}
 		}
+	} else if strings.HasSuffix(host, ".aivencloud.com") {
+		parts := strings.SplitN(host, ".", 2)
+		if len(parts) == 2 && (parts[1] == "aivencloud.com") { // Safety check for any escaping issues
+			projSvcParts := strings.SplitN(parts[0], "-", 3)
+			if config.AivenServiceID == "" {
+				config.AivenServiceID = strings.Join(projSvcParts[0:2], "-")
+			}
+			if config.AivenProjectID == "" {
+				config.AivenProjectID = projSvcParts[2]
+			}
+		}
 	}
 
 	// This is primarily for backwards compatibility when using the IP address of an instance
@@ -448,7 +459,7 @@ func Read(logger *util.Logger, filename string) (Config, error) {
 				return conf, err
 			}
 			config.SectionName = section.Name()
-			config.SystemType, config.SystemScope, config.SystemScopeFallback, config.SystemID = identifySystem(*config)
+			config.SystemID, config.SystemType, config.SystemScope, config.SystemIDFallback, config.SystemTypeFallback, config.SystemScopeFallback = identifySystem(*config)
 
 			config.Identifier = ServerIdentifier{
 				APIKey:      config.APIKey,
@@ -515,7 +526,7 @@ func Read(logger *util.Logger, filename string) (Config, error) {
 			if err != nil {
 				return conf, err
 			}
-			config.SystemType, config.SystemScope, config.SystemScopeFallback, config.SystemID = identifySystem(*config)
+			config.SystemID, config.SystemType, config.SystemScope, config.SystemIDFallback, config.SystemTypeFallback, config.SystemScopeFallback = identifySystem(*config)
 			conf.Servers = append(conf.Servers, *config)
 		} else {
 			return conf, fmt.Errorf("No configuration file found at %s, and no environment variables set", filename)
