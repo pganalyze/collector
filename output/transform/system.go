@@ -224,6 +224,34 @@ func transformSystem(systemState state.SystemState, diffState state.DiffState) *
 				AvgQueueSize:             diskStats.AvgQueueSize,
 				UtilizationPercent:       diskStats.UtilizationPercent,
 			})
+		} else if len(disk.ComponentDisks) > 0 {
+			summaryStats := &snapshot.DiskStatistic{DiskIdx: idx}
+			summaryStatsCount := 0
+			for _, componentDisk := range disk.ComponentDisks {
+				componentDiskStats, exists := diffState.SystemDiskStats[componentDisk]
+				if exists {
+					summaryStats.ReadOperationsPerSecond += componentDiskStats.ReadOperationsPerSecond
+					summaryStats.ReadsMergedPerSecond += componentDiskStats.ReadsMergedPerSecond
+					summaryStats.BytesReadPerSecond += componentDiskStats.BytesReadPerSecond
+					summaryStats.WriteOperationsPerSecond += componentDiskStats.WriteOperationsPerSecond
+					summaryStats.WritesMergedPerSecond += componentDiskStats.WritesMergedPerSecond
+					summaryStats.BytesWrittenPerSecond += componentDiskStats.BytesWrittenPerSecond
+
+					// These averages will be divided by the total count at the end
+					summaryStats.AvgReadLatency += componentDiskStats.AvgReadLatency
+					summaryStats.AvgWriteLatency += componentDiskStats.AvgWriteLatency
+					summaryStats.AvgQueueSize += componentDiskStats.AvgQueueSize
+					summaryStats.UtilizationPercent += componentDiskStats.UtilizationPercent
+					summaryStatsCount += 1
+				}
+			}
+			if summaryStatsCount > 0 {
+				summaryStats.AvgReadLatency = summaryStats.AvgReadLatency / float64(summaryStatsCount)
+				summaryStats.AvgWriteLatency = summaryStats.AvgWriteLatency / float64(summaryStatsCount)
+				summaryStats.AvgQueueSize = summaryStats.AvgQueueSize / int32(summaryStatsCount)
+				summaryStats.UtilizationPercent = summaryStats.UtilizationPercent / float64(summaryStatsCount)
+			}
+			system.DiskStatistics = append(system.DiskStatistics, summaryStats)
 		}
 	}
 
