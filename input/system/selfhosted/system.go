@@ -10,6 +10,7 @@ import (
 	"github.com/pganalyze/collector/config"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
+	"github.com/prometheus/procfs"
 	"github.com/shirou/gopsutil/cpu"
 	"github.com/shirou/gopsutil/disk"
 	"github.com/shirou/gopsutil/host"
@@ -191,6 +192,29 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger) (system sta
 				WriteTimeMs:     disk.WriteTime,
 				AvgQueueSize:    int32(disk.IopsInProgress),
 				IoTime:          disk.IoTime,
+			}
+		}
+	}
+
+	// Remember disk components for software RAID
+	fs, err := procfs.NewFS("/proc")
+	if err != nil {
+		logger.PrintVerbose("Selfhosted/System: Could not access /proc: %s", err)
+	} else {
+		mdstats, err := fs.MDStat()
+		if err != nil {
+			logger.PrintVerbose("Selfhosted/System: Failed to get mdstat: %s", err)
+		} else {
+			for _, mdstat := range mdstats {
+				mdDisk, exists := system.Disks[mdstat.Name]
+				if exists {
+					mdDisk.ComponentDisks = mdstat.Devices
+					system.Disks[mdstat.Name] = mdDisk
+				} else {
+					system.Disks[mdstat.Name] = state.Disk{
+						ComponentDisks: mdstat.Devices,
+					}
+				}
 			}
 		}
 	}
