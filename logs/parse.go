@@ -30,6 +30,8 @@ const LogPrefixCustom11 string = "pid=%p,user=%u,db=%d,app=%a,client=%h "
 const LogPrefixCustom12 string = "user=%u,db=%d,app=%a,client=%h "
 const LogPrefixCustom13 string = "%p-%s-%c-%l-%h-%u-%d-%m "
 const LogPrefixCustom14 string = "%m [%p][%b][%v][%x] %q[user=%u,db=%d,app=%a] "
+const LogPrefixCustom15 string = "%m [%p] %q%u@%d "
+const LogPrefixCustom16 string = "%t [%p] %q%u@%d %h "
 const LogPrefixSimple string = "%m [%p] "
 const LogPrefixHeroku1 string = " sql_error_code = %e "
 const LogPrefixHeroku2 string = ` sql_error_code = %e time_ms = "%m" pid="%p" proc_start_time="%s" session_id="%c" vtid="%v" tid="%x" log_line="%l" %qdatabase="%d" connection_source="%r" user="%u" application_name="%a" `
@@ -46,6 +48,7 @@ var SupportedPrefixes = []string{
 	LogPrefixCustom3, LogPrefixCustom4, LogPrefixCustom5, LogPrefixCustom6,
 	LogPrefixCustom7, LogPrefixCustom8, LogPrefixCustom9, LogPrefixCustom10,
 	LogPrefixCustom11, LogPrefixCustom12, LogPrefixCustom13, LogPrefixCustom14,
+	LogPrefixCustom15, LogPrefixCustom16,
 	LogPrefixSimple, LogPrefixHeroku1, LogPrefixHeroku2, LogPrefixEmpty,
 }
 
@@ -87,6 +90,8 @@ var LogPrefixCustom11Regexp = regexp.MustCompile(`(?s)^pid=` + PidRegexp + `,use
 var LogPrefixCustom12Regexp = regexp.MustCompile(`(?s)^user=` + UserRegexp + `,db=` + DbRegexp + `,app=` + AppBeforeCommaRegexp + `,client=` + HostRegexp + ` ` + LevelAndContentRegexp)
 var LogPrefixCustom13Regexp = regexp.MustCompile(`(?s)^` + PidRegexp + `-` + TimeRegexp + `-` + SessionIdRegexp + `-` + LogLineCounterRegexp + `-` + HostRegexp + `-` + UserRegexp + `-` + DbRegexp + `-` + TimeRegexp + ` ` + LevelAndContentRegexp)
 var LogPrefixCustom14Regexp = regexp.MustCompile(`(?s)^` + TimeRegexp + ` \[` + PidRegexp + `\]\[` + BackendTypeRegexp + `\]\[` + VirtualTxRegexp + `\]\[` + TransactionIdRegexp + `\] (?:\[user=` + UserRegexp + `,db=` + DbRegexp + `,app=` + AppInsideBracketsRegexp + `\] )?` + LevelAndContentRegexp)
+var LogPrefixCustom15Regexp = regexp.MustCompile(`(?s)^` + TimeRegexp + ` \[` + PidRegexp + `\] ` + `(?:` + UserRegexp + `@` + DbRegexp + ` )?` + LevelAndContentRegexp)
+var LogPrefixCustom16Regexp = regexp.MustCompile(`(?s)^` + TimeRegexp + ` \[` + PidRegexp + `\] ` + `(?:` + UserRegexp + `@` + DbRegexp + ` ` + HostRegexp + ` )?` + LevelAndContentRegexp)
 var LogPrefixSimpleRegexp = regexp.MustCompile(`(?s)^` + TimeRegexp + ` \[` + PidRegexp + `\] ` + LevelAndContentRegexp)
 var LogPrefixNoTimestampUserDatabaseAppRegexp = regexp.MustCompile(`(?s)^\[user=` + UserRegexp + `,db=` + DbRegexp + `,app=` + AppInsideBracketsRegexp + `\] ` + LevelAndContentRegexp)
 var LogPrefixHeroku1Regexp = regexp.MustCompile(`^ sql_error_code = ` + SqlstateRegexp + " " + LevelAndContentRegexp)
@@ -153,6 +158,10 @@ func ParseLogLineWithPrefix(prefix string, line string) (logLine state.LogLine, 
 			prefix = LogPrefixCustom13
 		} else if LogPrefixCustom14Regexp.MatchString(line) {
 			prefix = LogPrefixCustom14
+		} else if LogPrefixCustom15Regexp.MatchString(line) {
+			prefix = LogPrefixCustom15
+		} else if LogPrefixCustom16Regexp.MatchString(line) {
+			prefix = LogPrefixCustom16
 		} else if LogPrefixSimpleRegexp.MatchString(line) {
 			prefix = LogPrefixSimple
 		} else if LogPrefixHeroku2Regexp.MatchString(line) {
@@ -392,6 +401,29 @@ func ParseLogLineWithPrefix(prefix string, line string) (logLine state.LogLine, 
 			appPart = parts[8]
 			levelPart = parts[9]
 			contentPart = parts[10]
+		case LogPrefixCustom15: // "%m [%p] %q%u@%d "
+			parts := LogPrefixCustom15Regexp.FindStringSubmatch(line)
+			if len(parts) == 0 {
+				return
+			}
+			timePart = parts[1]
+			pidPart = parts[2]
+			userPart = parts[3]
+			dbPart = parts[4]
+			levelPart = parts[5]
+			contentPart = parts[6]
+		case LogPrefixCustom16: // "%t [%p] %q%u@%d %h "
+			parts := LogPrefixCustom16Regexp.FindStringSubmatch(line)
+			if len(parts) == 0 {
+				return
+			}
+			timePart = parts[1]
+			pidPart = parts[2]
+			userPart = parts[3]
+			dbPart = parts[4]
+			// skip %h (host)
+			levelPart = parts[6]
+			contentPart = parts[7]
 		case LogPrefixSimple: // "%t [%p] "
 			parts := LogPrefixSimpleRegexp.FindStringSubmatch(line)
 			if len(parts) == 0 {
