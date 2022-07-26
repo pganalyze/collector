@@ -19,7 +19,7 @@ SELECT t.oid,
        COALESCE(
          CASE t.typtype
            WHEN 'd' THEN
-             (SELECT pg_catalog.json_agg(pg_catalog.pg_get_constraintdef(oid)) FROM pg_catalog.pg_constraint WHERE contypid = t.oid)::text
+             (SELECT pg_catalog.json_agg(pg_catalog.pg_get_constraintdef(oid, FALSE)) FROM pg_catalog.pg_constraint WHERE contypid = t.oid)::text
            WHEN 'e' THEN
              (SELECT pg_catalog.json_agg(enumlabel ORDER BY enumsortorder) FROM pg_catalog.pg_enum WHERE enumtypid = t.oid)::text
            WHEN 'c' THEN

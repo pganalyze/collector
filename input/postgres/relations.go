@@ -87,7 +87,7 @@ SELECT c.oid,
 			 i.indisunique,
 			 i.indisvalid,
 			 pg_catalog.pg_get_indexdef(i.indexrelid, 0, FALSE),
-			 pg_catalog.pg_get_constraintdef(con.oid, TRUE),
+			 pg_catalog.pg_get_constraintdef(con.oid, FALSE),
 			 c2.reloptions,
 			 (SELECT a.amname FROM pg_catalog.pg_am a JOIN pg_catalog.pg_opclass o ON (a.oid = o.opcmethod) WHERE o.oid = i.indclass[0])
 	FROM pg_catalog.pg_class c
@@ -110,7 +110,7 @@ const constraintsSQL string = `
 SELECT c.oid,
 			 conname,
 			 contype,
-			 pg_catalog.pg_get_constraintdef(r.oid, TRUE),
+			 pg_catalog.pg_get_constraintdef(r.oid, FALSE),
 			 conkey,
 			 confrelid,
 			 confkey,
