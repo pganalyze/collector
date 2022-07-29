@@ -10,12 +10,15 @@ import (
 
 const MinSupportedLogMinDurationStatement = 10
 
-func ValidateLogCollectionConfig(server *state.Server, settings []state.PostgresSetting) (bool, string) {
+func ValidateLogCollectionConfig(server *state.Server, settings []state.PostgresSetting) (bool, bool, bool, string) {
 	var disabled = false
-	var disabledReasons []string
+	var ignoreLogStatement = false
+	var ignoreLogDuration = false
+	var reasons []string
+
 	if server.Config.DisableLogs {
 		disabled = true
-		disabledReasons = append(disabledReasons, "the collector setting disable_logs or environment variable PGA_DISABLE_LOGS is set")
+		reasons = append(reasons, "the collector setting disable_logs or environment variable PGA_DISABLE_LOGS is set")
 	}
 
 	if !disabled {
@@ -26,29 +29,29 @@ func ValidateLogCollectionConfig(server *state.Server, settings []state.Postgres
 					continue
 				}
 				if numVal != -1 && numVal < MinSupportedLogMinDurationStatement {
-					disabled = true
-					disabledReasons = append(disabledReasons,
+					ignoreLogDuration = true
+					reasons = append(reasons,
 						fmt.Sprintf("log_min_duration_statement is set to '%d', below minimum supported threshold '%d'", numVal, MinSupportedLogMinDurationStatement),
 					)
 				}
 			} else if setting.Name == "log_duration" && setting.CurrentValue.Valid {
 				if setting.CurrentValue.String == "on" {
-					disabled = true
-					disabledReasons = append(disabledReasons, "log_duration is set to unsupported value 'on'")
+					ignoreLogDuration = true
+					reasons = append(reasons, "log_duration is set to unsupported value 'on'")
 				}
 			} else if setting.Name == "log_statement" && setting.CurrentValue.Valid {
 				if setting.CurrentValue.String == "all" {
-					disabled = true
-					disabledReasons = append(disabledReasons, "log_statement is set to unsupported value 'all'")
+					ignoreLogStatement = true
+					reasons = append(reasons, "log_statement is set to unsupported value 'all'")
 				}
 			} else if setting.Name == "log_error_verbosity" && setting.CurrentValue.Valid {
 				if setting.CurrentValue.String == "verbose" {
 					disabled = true
-					disabledReasons = append(disabledReasons, "log_error_verbosity is set to unsupported value 'verbose'")
+					reasons = append(reasons, "log_error_verbosity is set to unsupported value 'verbose'")
 				}
 			}
 		}
 	}
 
-	return disabled, strings.Join(disabledReasons, "; ")
+	return disabled, ignoreLogStatement, ignoreLogDuration, strings.Join(reasons, "; ")
 }

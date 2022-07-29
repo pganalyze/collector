@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/service/rds"
-	"github.com/pganalyze/collector/config"
 	"github.com/pganalyze/collector/logs"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
@@ -20,24 +19,24 @@ import (
 const maxLogParsingSize = 10 * 1024 * 1024
 
 // DownloadLogFiles - Gets log files for an Amazon RDS instance
-func DownloadLogFiles(prevState state.PersistedLogState, config config.ServerConfig, logger *util.Logger) (state.PersistedLogState, []state.LogFile, []state.PostgresQuerySample, error) {
+func DownloadLogFiles(server *state.Server, logger *util.Logger) (state.PersistedLogState, []state.LogFile, []state.PostgresQuerySample, error) {
 	var err error
-	var psl state.PersistedLogState = prevState
+	var psl state.PersistedLogState = server.LogPrevState
 	var logFiles []state.LogFile
 	var samples []state.PostgresQuerySample
 
-	sess, err := awsutil.GetAwsSession(config)
+	sess, err := awsutil.GetAwsSession(server.Config)
 	if err != nil {
 		err = fmt.Errorf("Error getting session: %s", err)
-		return prevState, nil, nil, err
+		return server.LogPrevState, nil, nil, err
 	}
 
 	rdsSvc := rds.New(sess)
 
-	identifier, err := awsutil.FindRdsIdentifier(config, sess)
+	identifier, err := awsutil.FindRdsIdentifier(server.Config, sess)
 	if err != nil {
 		err = fmt.Errorf("Error finding RDS instance: %s", err)
-		return prevState, nil, nil, err
+		return server.LogPrevState, nil, nil, err
 	}
 
 	// Retrieve all possibly matching logfiles in the last two minutes, assuming
@@ -53,7 +52,7 @@ func DownloadLogFiles(prevState state.PersistedLogState, config config.ServerCon
 	resp, err := rdsSvc.DescribeDBLogFiles(params)
 	if err != nil {
 		err = fmt.Errorf("Error listing RDS log files: %s", err)
-		return prevState, nil, nil, err
+		return server.LogPrevState, nil, nil, err
 	}
 
 	var newMarkers = make(map[string]string)
@@ -134,7 +133,7 @@ func DownloadLogFiles(prevState state.PersistedLogState, config config.ServerCon
 			goto ErrorCleanup
 		}
 
-		newLogLines, newSamples, _ = logs.ParseAndAnalyzeBuffer(string(buf), 0, linesNewerThan)
+		newLogLines, newSamples, _ = logs.ParseAndAnalyzeBuffer(string(buf), 0, linesNewerThan, server)
 		logFile.LogLines = append(logFile.LogLines, newLogLines...)
 		samples = append(samples, newSamples...)
 
@@ -153,5 +152,5 @@ ErrorCleanup:
 		logFile.Cleanup()
 	}
 
-	return prevState, nil, nil, err
+	return server.LogPrevState, nil, nil, err
 }

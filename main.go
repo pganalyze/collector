@@ -482,7 +482,7 @@ func checkOneInitialCollectionStatus(server *state.Server, opts state.Collection
 	if err != nil {
 		return err
 	}
-	logsDisabled, logsDisabledReason := logs.ValidateLogCollectionConfig(server, settings)
+	logsDisabled, logsIgnoreStatement, logsIgnoreDuration, logsDisabledReason := logs.ValidateLogCollectionConfig(server, settings)
 
 	var isIgnoredReplica bool
 	var collectionDisabledReason string
@@ -509,6 +509,7 @@ func checkOneInitialCollectionStatus(server *state.Server, opts state.Collection
 		CollectionDisabled:        isIgnoredReplica,
 		CollectionDisabledReason:  collectionDisabledReason,
 	}
+	server.SetLogIgnoreFlags(logsIgnoreStatement, logsIgnoreDuration)
 
 	return nil
 }

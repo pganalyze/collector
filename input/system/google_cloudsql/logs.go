@@ -171,6 +171,9 @@ func setupLogTransformer(ctx context.Context, wg *sync.WaitGroup, servers []*sta
 
 				for _, server := range servers {
 					if in.GcpProjectID == server.Config.GcpProjectID && in.GcpCloudSQLInstanceID == server.Config.GcpCloudSQLInstanceID {
+						if server.IgnoreLogLine(logLine.Content) {
+							continue
+						}
 						out <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: logLine}
 					}
 				}
