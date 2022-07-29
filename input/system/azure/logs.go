@@ -220,9 +220,8 @@ func setupLogTransformer(ctx context.Context, wg *sync.WaitGroup, servers []*sta
 				foundServer := false
 				for _, server := range servers {
 					if in.LogicalServerName == server.Config.AzureDbServerName {
-						foundServer = true
-
 						out <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: logLine}
+						foundServer = true
 					}
 				}
 
