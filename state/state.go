@@ -282,6 +282,7 @@ func (s *Server) SetLogIgnoreFlags(ignoreStatement bool, ignoreDuration bool) {
 	if ignoreDuration {
 		newFlags |= LOG_IGNORE_DURATION
 	}
+	atomic.StoreUint32(&s.LogIgnoreFlags, newFlags)
 }
 
 // IgnoreLogLine - helper function that lets callers determine whether a log
