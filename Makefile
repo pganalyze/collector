@@ -41,7 +41,7 @@ integration_test:
 packages:
 	make -C packages
 
-DOCKER_RELEASE_TAG := $(shell git describe --tags --exact-match --abbrev=0)
+DOCKER_RELEASE_TAG := $(shell git describe --tags --exact-match --abbrev=0 2> /dev/null)
 docker_release:
 	@test -n "$(DOCKER_RELEASE_TAG)" || (echo "ERROR: DOCKER_RELEASE_TAG is not set, make sure you are on a git release tag or override by setting DOCKER_RELEASE_TAG" ; exit 1)
 	docker buildx create --name collector-build --driver docker-container
