@@ -1,11 +1,10 @@
-package crunchy_bridge
+package postgres
 
 import (
 	"fmt"
 	"io/ioutil"
 	"time"
 
-	"github.com/pganalyze/collector/input/postgres"
 	"github.com/pganalyze/collector/logs"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
@@ -32,8 +31,8 @@ SELECT (SELECT size FROM pg_catalog.pg_ls_logdir() WHERE name = $1),
   )
 `
 
-// DownloadLogFiles - Gets log files for a Crunchy Bridge server
-func DownloadLogFiles(server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.PersistedLogState, []state.LogFile, []state.PostgresQuerySample, error) {
+// LogPgReadFile - Gets log files using the pg_read_file function
+func LogPgReadFile(server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.PersistedLogState, []state.LogFile, []state.PostgresQuerySample, error) {
 	var err error
 	var psl state.PersistedLogState = server.LogPrevState
 	var logFiles []state.LogFile
@@ -41,14 +40,14 @@ func DownloadLogFiles(server *state.Server, globalCollectionOpts state.Collectio
 
 	linesNewerThan := time.Now().Add(-2 * time.Minute)
 
-	db, err := postgres.EstablishConnection(server, logger, globalCollectionOpts, "")
+	db, err := EstablishConnection(server, logger, globalCollectionOpts, "")
 	if err != nil {
 		logger.PrintWarning("Could not connect to fetch logs: %s", err)
 		return server.LogPrevState, nil, nil, err
 	}
 	defer db.Close()
 
-	rows, err := db.Query(postgres.QueryMarkerSQL + LogFileSql)
+	rows, err := db.Query(QueryMarkerSQL + LogFileSql)
 	if err != nil {
 		err = fmt.Errorf("LogFileSql/Query: %s", err)
 		return server.LogPrevState, nil, nil, err
@@ -62,7 +61,7 @@ func DownloadLogFiles(server *state.Server, globalCollectionOpts state.Collectio
 	}
 	rows.Close()
 
-	useHelper := postgres.StatsHelperExists(db, "read_log_file")
+	useHelper := StatsHelperExists(db, "read_log_file")
 	var logReadSql = SuperUserReadLogFileSql
 	if useHelper {
 		logger.PrintVerbose("Found pganalyze.read_log_file() stats helper")
@@ -78,7 +77,7 @@ func DownloadLogFiles(server *state.Server, globalCollectionOpts state.Collectio
 		var logData string
 		var newOffset int64
 		prevOffset, _ := psl.ReadFileMarkers[fileName]
-		err = db.QueryRow(postgres.QueryMarkerSQL+logReadSql, fileName, prevOffset).Scan(&newOffset, &logData)
+		err = db.QueryRow(QueryMarkerSQL+logReadSql, fileName, prevOffset).Scan(&newOffset, &logData)
 		if err != nil {
 			err = fmt.Errorf("LogReadSql/QueryRow: %s", err)
 			goto ErrorCleanup

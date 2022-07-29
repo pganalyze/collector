@@ -4,7 +4,7 @@ import (
 	"os"
 
 	"github.com/pganalyze/collector/config"
-	"github.com/pganalyze/collector/input/system/crunchy_bridge"
+	"github.com/pganalyze/collector/input/postgres"
 	"github.com/pganalyze/collector/input/system/rds"
 	"github.com/pganalyze/collector/input/system/selfhosted"
 	"github.com/pganalyze/collector/state"
@@ -18,8 +18,8 @@ func DownloadLogFiles(server *state.Server, globalCollectionOpts state.Collectio
 		if err != nil {
 			return
 		}
-	} else if server.Config.SystemType == "crunchy_bridge" {
-		psl, files, querySamples, err = crunchy_bridge.DownloadLogFiles(server, globalCollectionOpts, logger)
+	} else if server.Config.LogPgReadFile {
+		psl, files, querySamples, err = postgres.LogPgReadFile(server, globalCollectionOpts, logger)
 		if err != nil {
 			return
 		}

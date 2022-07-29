@@ -194,6 +194,9 @@ func getDefaultConfig() *ServerConfig {
 	if logSyslogServer := os.Getenv("LOG_SYSLOG_SERVER"); logSyslogServer != "" {
 		config.LogSyslogServer = logSyslogServer
 	}
+	if logPgReadFile := os.Getenv("LOG_PG_READ_FILE"); logPgReadFile != "" {
+		config.LogPgReadFile = parseConfigBool(logPgReadFile)
+	}
 	// Note: We don't support LogDockerTail here since it would require the "docker"
 	// binary inside the pganalyze container (as well as full Docker access), instead
 	// the approach for using pganalyze as a sidecar container alongside Postgres
@@ -417,6 +420,10 @@ func preprocessConfig(config *ServerConfig) (*ServerConfig, error) {
 
 	if config.AwsEndpointSigningRegionLegacy != "" && config.AwsEndpointSigningRegion == "" {
 		config.AwsEndpointSigningRegion = config.AwsEndpointSigningRegionLegacy
+	}
+
+	if config.CrunchyBridgeClusterID != "" {
+		config.LogPgReadFile = true
 	}
 
 	return config, nil

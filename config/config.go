@@ -126,6 +126,13 @@ type ServerConfig struct {
 	// on the specifed "hostname:port" for Postgres log messages
 	LogSyslogServer string `ini:"db_log_syslog_server"`
 
+	// Configures the collector to use the "pg_read_file" (superuser) or
+	// "pganalyze.read_log_file" (helper) function to retrieve log data
+	// directly over the Postgres connection. This only works when superuser
+	// access to the server is possible, either directly, or via the helper
+	// function. Used by default for Crunchy Bridge.
+	LogPgReadFile bool `ini:"db_log_pg_read_file"`
+
 	// Specifies a table pattern to ignore - no statistics will be collected for
 	// tables that match the name. This uses Golang's filepath.Match function for
 	// comparison, so you can e.g. use "*" for wildcard matching.
@@ -179,7 +186,7 @@ type ServerConfig struct {
 
 // SupportsLogDownload - Determines whether the specified config can download logs
 func (config ServerConfig) SupportsLogDownload() bool {
-	return config.AwsDbInstanceID != "" || config.CrunchyBridgeClusterID != ""
+	return config.AwsDbInstanceID != "" || config.LogPgReadFile
 }
 
 // GetPqOpenString - Gets the database configuration as a string that can be passed to lib/pq for connecting
