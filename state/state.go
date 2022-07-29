@@ -188,6 +188,7 @@ type CollectionOpts struct {
 	TestReport          string
 	TestRunLogs         bool
 	TestExplain         bool
+	TestSection         string
 	DebugLogs           bool
 	DiscoverLogLocation bool
 

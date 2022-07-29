@@ -71,6 +71,9 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 
 	serverConfigs := conf.Servers
 	for _, config := range serverConfigs {
+		if globalCollectionOpts.TestRun && globalCollectionOpts.TestSection != "" && globalCollectionOpts.TestSection != config.SectionName {
+			continue
+		}
 		servers = append(servers, &state.Server{Config: config, StateMutex: &sync.Mutex{}, LogStateMutex: &sync.Mutex{}, ActivityStateMutex: &sync.Mutex{}, CollectionStatusMutex: &sync.Mutex{}})
 		if config.EnableReports {
 			hasAnyReportsEnabled = true
@@ -229,6 +232,7 @@ func main() {
 	var testReport string
 	var testRunLogs bool
 	var testExplain bool
+	var testSection string
 	var forceStateUpdate bool
 	var configFilename string
 	var stateFilename string
@@ -250,6 +254,7 @@ func main() {
 	flag.StringVar(&testReport, "test-report", "", "Tests a particular report and returns its output as JSON")
 	flag.BoolVar(&testRunLogs, "test-logs", false, "Tests whether log collection works (does not test privilege dropping for local log collection, use --test for that)")
 	flag.BoolVar(&testExplain, "test-explain", false, "Tests whether EXPLAIN collection works by issuing a dummy query (ensure log collection works first)")
+	flag.StringVar(&testSection, "test-section", "", "Tests a particular section of the config file, i.e. a specific server, and ignores all other config sections")
 	flag.BoolVar(&reloadRun, "reload", false, "Reloads the collector daemon thats running on the host")
 	flag.BoolVarP(&logger.Verbose, "verbose", "v", false, "Outputs additional debugging information, use this if you're encoutering errors or other problems")
 	flag.BoolVar(&logToSyslog, "syslog", false, "Write all log output to syslog instead of stderr (disabled by default)")
@@ -321,6 +326,7 @@ func main() {
 		TestReport:               testReport,
 		TestRunLogs:              testRunLogs || dryRunLogs,
 		TestExplain:              testExplain,
+		TestSection:              testSection,
 		DebugLogs:                debugLogs,
 		DiscoverLogLocation:      discoverLogLocation,
 		CollectPostgresRelations: !noPostgresRelations,
