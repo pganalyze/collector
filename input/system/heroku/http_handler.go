@@ -10,7 +10,6 @@ import (
 	"sync"
 
 	"github.com/bmizerany/lpx"
-	"github.com/pganalyze/collector/logs"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
 )
@@ -37,8 +36,4 @@ func SetupHttpHandlerLogs(ctx context.Context, wg *sync.WaitGroup, globalCollect
 		})
 		http.ListenAndServe(":"+os.Getenv("PORT"), nil)
 	}()
-
-	for _, server := range servers {
-		logs.EmitTestLogMsg(server, globalCollectionOpts, logger)
-	}
 }

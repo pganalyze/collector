@@ -55,6 +55,9 @@ func SetupLogCollection(ctx context.Context, wg *sync.WaitGroup, servers []*stat
 	}
 	if hasAnyHeroku {
 		heroku.SetupHttpHandlerLogs(ctx, wg, globalCollectionOpts, logger, servers, parsedLogStream)
+		for _, server := range servers {
+			EmitTestLogMsg(server, globalCollectionOpts, logger)
+		}
 	}
 	if hasAnyGoogleCloudSQL {
 		google_cloudsql.SetupLogSubscriber(ctx, wg, globalCollectionOpts, logger, servers, parsedLogStream)
@@ -417,7 +420,7 @@ func testLocalLogTail(ctx context.Context, wg *sync.WaitGroup, server *state.Ser
 		return false
 	}
 
-	logs.EmitTestLogMsg(server, globalCollectionOpts, logger)
+	EmitTestLogMsg(server, globalCollectionOpts, logger)
 
 	select {
 	case <-logTestSucceeded:
@@ -458,7 +461,7 @@ func testAzureLogStream(ctx context.Context, wg *sync.WaitGroup, server *state.S
 		return false
 	}
 
-	logs.EmitTestLogMsg(server, globalCollectionOpts, logger)
+	EmitTestLogMsg(server, globalCollectionOpts, logger)
 
 	select {
 	case <-logTestSucceeded:
@@ -485,7 +488,7 @@ func testGoogleCloudsqlLogStream(ctx context.Context, wg *sync.WaitGroup, server
 		return false
 	}
 
-	logs.EmitTestLogMsg(server, globalCollectionOpts, logger)
+	EmitTestLogMsg(server, globalCollectionOpts, logger)
 
 	select {
 	case <-logTestSucceeded:
