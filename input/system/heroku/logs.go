@@ -212,10 +212,6 @@ func setupLogTransformer(ctx context.Context, wg *sync.WaitGroup, servers []*sta
 					continue
 				}
 
-				if server.IgnoreLogLine(logLine.Content) {
-					continue
-				}
-
 				logLine.Username = server.Config.GetDbUsername()
 				logLine.Database = server.Config.GetDbName()
 				out <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: *logLine}

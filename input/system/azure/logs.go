@@ -222,10 +222,6 @@ func setupLogTransformer(ctx context.Context, wg *sync.WaitGroup, servers []*sta
 					if in.LogicalServerName == server.Config.AzureDbServerName {
 						foundServer = true
 
-						if server.IgnoreLogLine(logLine.Content) {
-							continue
-						}
-
 						out <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: logLine}
 					}
 				}

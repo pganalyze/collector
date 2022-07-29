@@ -357,7 +357,7 @@ var streamTests = []streamTestpair{
 
 func TestAnalyzeStreamInGroups(t *testing.T) {
 	for _, pair := range streamTests {
-		TransientLogState, logFile, tooFreshLogLines, err := stream.AnalyzeStreamInGroups(pair.logLines, now)
+		TransientLogState, logFile, tooFreshLogLines, err := stream.AnalyzeStreamInGroups(pair.logLines, now, &state.Server{})
 		logFileContent := ""
 		if logFile.TmpFile != nil {
 			dat, err := ioutil.ReadFile(logFile.TmpFile.Name())

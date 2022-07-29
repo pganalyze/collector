@@ -420,10 +420,6 @@ func setupLogTransformer(ctx context.Context, wg *sync.WaitGroup, server *state.
 					continue
 				}
 
-				if server.IgnoreLogLine(logLine.Content) {
-					continue
-				}
-
 				parsedLogStream <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: logLine}
 			}
 		}

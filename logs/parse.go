@@ -563,6 +563,9 @@ func ParseAndAnalyzeBuffer(buffer string, initialByteStart int64, linesNewerThan
 			continue
 		}
 
+		// Ignore loglines that are ignored server-wide (e.g. because they are
+		// log_statement=all/log_duration=on lines). Note this intentionally
+		// runs after multi-line log lines have been stitched together.
 		if server.IgnoreLogLine(logLine.Content) {
 			continue
 		}

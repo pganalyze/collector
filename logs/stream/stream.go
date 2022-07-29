@@ -254,7 +254,7 @@ const StreamReadyThreshold time.Duration = 3 * time.Second
 //
 // The caller is expected to keep a repository of "tooFreshLogLines" that they
 // can send back in again in the next call, combined with new lines received
-func AnalyzeStreamInGroups(logLines []state.LogLine, now time.Time) (state.TransientLogState, state.LogFile, []state.LogLine, error) {
+func AnalyzeStreamInGroups(logLines []state.LogLine, now time.Time, server *state.Server) (state.TransientLogState, state.LogFile, []state.LogLine, error) {
 	// Pre-Sort by PID, log line number and occurred at timestamp
 	//
 	// Its important we do this early, to support out-of-order receipt of log lines,
@@ -302,7 +302,14 @@ func AnalyzeStreamInGroups(logLines []state.LogLine, now time.Time) (state.Trans
 	//
 	// Since we already sorted by PID earlier, it is safe for us to concatenate lines before grouping. In fact,
 	// this is required for cases where unknown log lines don't have PIDs associated
-	analyzableLogLines := stitchLogLines(readyLogLines)
+	stitchedLogLines := stitchLogLines(readyLogLines)
+
+	var analyzableLogLines []state.LogLine
+	for _, logLine := range stitchedLogLines {
+		if !server.IgnoreLogLine(logLine.Content) {
+			analyzableLogLines = append(analyzableLogLines, logLine)
+		}
+	}
 
 	logFile, err := writeTmpLogFile(analyzableLogLines)
 	if err != nil {
