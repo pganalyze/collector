@@ -110,7 +110,7 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 		} else if globalCollectionOpts.TestExplain {
 			for _, server := range servers {
 				prefixedLogger := logger.WithPrefix(server.Config.SectionName)
-				err := logs.EmitTestExplain(server, globalCollectionOpts, prefixedLogger)
+				err := runner.EmitTestExplain(server, globalCollectionOpts, prefixedLogger)
 				if err != nil {
 					prefixedLogger.PrintError("Failed to run test explain: %s", err)
 				}
