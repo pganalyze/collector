@@ -91,12 +91,12 @@ type ServerConfig struct {
 	AzureADCertificatePath     string `ini:"azure_ad_certificate_path"`
 	AzureADCertificatePassword string `ini:"azure_ad_certificate_password"`
 
+	GcpProjectID          string `ini:"gcp_project_id"` // Optional for CloudSQL (you can pass the full "Connection name" as the instance ID)
 	GcpCloudSQLInstanceID string `ini:"gcp_cloudsql_instance_id"`
+	GcpAlloyDBClusterID   string `ini:"gcp_alloydb_cluster_id"`
+	GcpAlloyDBInstanceID  string `ini:"gcp_alloydb_instance_id"`
 	GcpPubsubSubscription string `ini:"gcp_pubsub_subscription"`
 	GcpCredentialsFile    string `ini:"gcp_credentials_file"`
-
-	// Optional, we recommend passing the full "Connection name" as GCP CloudSQL instance ID
-	GcpProjectID string `ini:"gcp_project_id"`
 
 	CrunchyBridgeClusterID string `ini:"crunchy_bridge_cluster_id"`
 

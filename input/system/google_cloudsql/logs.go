@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -30,11 +31,14 @@ type googleLogMessage struct {
 	Severity         string            `json:"severity"`
 	TextPayload      string            `json:"textPayload"`
 	Timestamp        string            `json:"timestamp"`
+	Labels           map[string]string `json:"labels"`
 }
 
 type LogStreamItem struct {
 	GcpProjectID          string
 	GcpCloudSQLInstanceID string
+	GcpAlloyDBClusterID   string
+	GcpAlloyDBInstanceID  string
 	OccurredAt            time.Time
 	Content               string
 }
@@ -74,25 +78,52 @@ func setupPubSubSubscriber(ctx context.Context, wg *sync.WaitGroup, logger *util
 					return
 				}
 
-				if msg.Resource.ResourceType != "cloudsql_database" {
-					return
-				}
-				if !strings.HasSuffix(msg.LogName, "postgres.log") {
-					return
-				}
-				databaseID, ok := msg.Resource.Labels["database_id"]
-				if !ok || strings.Count(databaseID, ":") != 1 {
-					return
-				}
+				if msg.Resource.ResourceType == "cloudsql_database" {
+					if !strings.HasSuffix(msg.LogName, "postgres.log") {
+						return
+					}
+					databaseID, ok := msg.Resource.Labels["database_id"]
+					if !ok || strings.Count(databaseID, ":") != 1 {
+						return
+					}
 
-				parts := strings.SplitN(databaseID, ":", 2) // project_id:instance_id
-				t, _ := time.Parse(time.RFC3339Nano, msg.Timestamp)
+					parts := strings.SplitN(databaseID, ":", 2) // project_id:instance_id
+					t, _ := time.Parse(time.RFC3339Nano, msg.Timestamp)
 
-				gcpLogStream <- LogStreamItem{
-					GcpProjectID:          parts[0],
-					GcpCloudSQLInstanceID: parts[1],
-					Content:               msg.TextPayload,
-					OccurredAt:            t,
+					gcpLogStream <- LogStreamItem{
+						GcpProjectID:          parts[0],
+						GcpCloudSQLInstanceID: parts[1],
+						Content:               msg.TextPayload,
+						OccurredAt:            t,
+					}
+					return
+				} else if msg.Resource.ResourceType == "alloydb.googleapis.com/Instance" {
+					if !strings.HasSuffix(msg.LogName, "postgres.log") {
+						return
+					}
+					clusterID, ok := msg.Resource.Labels["cluster_id"]
+					if !ok {
+						return
+					}
+					instanceID, ok := msg.Resource.Labels["instance_id"]
+					if !ok {
+						return
+					}
+					projectID, ok := msg.Labels["CONSUMER_PROJECT"]
+					if !ok {
+						return
+					}
+
+					t, _ := time.Parse(time.RFC3339Nano, msg.Timestamp)
+
+					gcpLogStream <- LogStreamItem{
+						GcpProjectID:         projectID,
+						GcpAlloyDBClusterID:  clusterID,
+						GcpAlloyDBInstanceID: instanceID,
+						Content:              msg.TextPayload,
+						OccurredAt:           t,
+					}
+					return
 				}
 			})
 			if err == nil || err == context.Canceled {
@@ -170,7 +201,15 @@ func setupLogTransformer(ctx context.Context, wg *sync.WaitGroup, servers []*sta
 				}
 
 				for _, server := range servers {
-					if in.GcpProjectID == server.Config.GcpProjectID && in.GcpCloudSQLInstanceID == server.Config.GcpCloudSQLInstanceID {
+					if in.GcpProjectID == server.Config.GcpProjectID && in.GcpCloudSQLInstanceID != "" && in.GcpCloudSQLInstanceID == server.Config.GcpCloudSQLInstanceID {
+						out <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: logLine}
+					}
+					if in.GcpProjectID == server.Config.GcpProjectID && in.GcpAlloyDBClusterID != "" && in.GcpAlloyDBClusterID == server.Config.GcpAlloyDBClusterID && in.GcpAlloyDBInstanceID != "" && in.GcpAlloyDBInstanceID == server.Config.GcpAlloyDBInstanceID {
+						// AlloyDB adds a special [filename:lineno] prefix to all log lines (not part of log_line_prefix)
+						parts := regexp.MustCompile(`^\[[\w.-]+:\d+\]  (.*)`).FindStringSubmatch(string(logLine.Content))
+						if len(parts) == 2 {
+							logLine.Content = parts[1]
+						}
 						out <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: logLine}
 					}
 				}
