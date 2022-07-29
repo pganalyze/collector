@@ -1570,6 +1570,59 @@ var tests = []testpair{
 	},
 	{
 		[]state.LogLine{{
+			Content: "automatic vacuum of table \"alloydbadmin.public.heartbeat\": index scans: 0, elapsed time: 0 s, index vacuum time: 0 ms," +
+				" pages: 0 removed, 1 remain, 0 skipped due to pins, 0 skipped frozen 0 skipped using mintxid," +
+				" tuples: 60 removed, 1 remain, 0 are dead but not yet removable, oldest xmin: 1782," +
+				" index scan not needed: 0 pages from table (0.00% of total) had 0 dead item identifiers removed," +
+				" I/O timings: read: 0.000 ms, write: 0.000 ms," +
+				" avg read rate: 0.000 MB/s, avg write rate: 0.000 MB/s," +
+				" buffer usage: 42 hits, 0 misses, 0 dirtied," +
+				" WAL usage: 3 records, 0 full page images, 286 bytes," +
+				" system usage: CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.01 s",
+			LogLevel: pganalyze_collector.LogLineInformation_LOG,
+		}},
+		[]state.LogLine{{
+			Classification: pganalyze_collector.LogLineInformation_AUTOVACUUM_COMPLETED,
+			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
+			Database:       "alloydbadmin",
+			SchemaName:     "public",
+			RelationName:   "heartbeat",
+			Details: map[string]interface{}{
+				"aggressive":               false,
+				"anti_wraparound":          false,
+				"num_index_scans":          0,
+				"pages_removed":            0,
+				"rel_pages":                1,
+				"pinskipped_pages":         0,
+				"frozenskipped_pages":      0,
+				"tuples_deleted":           60,
+				"new_rel_tuples":           1,
+				"new_dead_tuples":          0,
+				"oldest_xmin":              1782,
+				"lpdead_index_scan":        "not needed",
+				"lpdead_item_pages":        0,
+				"lpdead_item_page_percent": 0,
+				"lpdead_items":             0,
+				"blk_read_time":            0,
+				"blk_write_time":           0,
+				"read_rate_mb":             0,
+				"write_rate_mb":            0,
+				"vacuum_page_hit":          42,
+				"vacuum_page_miss":         0,
+				"vacuum_page_dirty":        0,
+				"wal_records":              3,
+				"wal_fpi":                  0,
+				"wal_bytes":                286,
+				"rusage_user":              0.00,
+				"rusage_kernel":            0.00,
+				"elapsed_secs":             0.01,
+			},
+			ReviewedForSecrets: true,
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
 			Content: "automatic aggressive vacuum of table \"demo_pgbench.public.pgbench_tellers\": index scans: 0" +
 				" pages: 0 removed, 839 remain, 0 skipped due to pins, 705 skipped frozen" +
 				"	tuples: 1849 removed, 2556 remain, 5 are dead but not yet removable, oldest xmin: 448424944" +

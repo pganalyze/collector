@@ -35,13 +35,17 @@ func identifySystem(config ServerConfig) (systemID string, systemType string, sy
 		if systemID == "" {
 			systemID = config.AzureDbServerName
 		}
-	} else if (config.GcpProjectID != "" && config.GcpCloudSQLInstanceID != "") || systemType == "google_cloudsql" {
+	} else if (config.GcpProjectID != "" && config.GcpCloudSQLInstanceID != "") || (config.GcpProjectID != "" && config.GcpAlloyDBClusterID != "" && config.GcpAlloyDBInstanceID != "") || systemType == "google_cloudsql" {
 		systemType = "google_cloudsql"
 		if systemScope == "" {
 			systemScope = config.GcpProjectID
 		}
 		if systemID == "" {
-			systemID = config.GcpCloudSQLInstanceID
+			if config.GcpCloudSQLInstanceID != "" {
+				systemID = config.GcpCloudSQLInstanceID
+			} else if config.GcpAlloyDBClusterID != "" && config.GcpAlloyDBInstanceID != "" {
+				systemID = config.GcpAlloyDBClusterID + ":" + config.GcpAlloyDBInstanceID
+			}
 		}
 	} else if (config.CrunchyBridgeClusterID != "") || systemType == "crunchy_bridge" {
 		systemType = "crunchy_bridge"

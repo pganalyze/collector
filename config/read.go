@@ -179,6 +179,12 @@ func getDefaultConfig() *ServerConfig {
 	if gcpCloudSQLInstanceID := os.Getenv("GCP_CLOUDSQL_INSTANCE_ID"); gcpCloudSQLInstanceID != "" {
 		config.GcpCloudSQLInstanceID = gcpCloudSQLInstanceID
 	}
+	if gcpAlloyDBClusterID := os.Getenv("GCP_ALLOYDB_CLUSTER_ID"); gcpAlloyDBClusterID != "" {
+		config.GcpAlloyDBClusterID = gcpAlloyDBClusterID
+	}
+	if gcpAlloyDBInstanceID := os.Getenv("GCP_ALLOYDB_INSTANCE_ID"); gcpAlloyDBInstanceID != "" {
+		config.GcpAlloyDBInstanceID = gcpAlloyDBInstanceID
+	}
 	if gcpPubsubSubscription := os.Getenv("GCP_PUBSUB_SUBSCRIPTION"); gcpPubsubSubscription != "" {
 		config.GcpPubsubSubscription = gcpPubsubSubscription
 	}
