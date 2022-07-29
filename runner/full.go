@@ -40,11 +40,12 @@ func collectDiffAndSubmit(server *state.Server, globalCollectionOpts state.Colle
 	// This is the easiest way to avoid opening multiple connections to different databases on the same instance
 	connection.Close()
 
-	logsDisabled, logsDisabledReason := logs.ValidateLogCollectionConfig(server, transientState.Settings)
+	logsDisabled, logsIgnoreStatement, logsIgnoreDuration, logsDisabledReason := logs.ValidateLogCollectionConfig(server, transientState.Settings)
 	collectionStatus := state.CollectionStatus{
 		LogSnapshotDisabled:       logsDisabled,
 		LogSnapshotDisabledReason: logsDisabledReason,
 	}
+	server.SetLogIgnoreFlags(logsIgnoreStatement, logsIgnoreDuration)
 
 	collectedIntervalSecs := uint32(newState.CollectedAt.Sub(server.PrevState.CollectedAt) / time.Second)
 	if collectedIntervalSecs == 0 {

@@ -528,7 +528,7 @@ func ParseLogLineWithPrefix(prefix string, line string) (logLine state.LogLine, 
 	return
 }
 
-func ParseAndAnalyzeBuffer(buffer string, initialByteStart int64, linesNewerThan time.Time) ([]state.LogLine, []state.PostgresQuerySample, int64) {
+func ParseAndAnalyzeBuffer(buffer string, initialByteStart int64, linesNewerThan time.Time, server *state.Server) ([]state.LogLine, []state.PostgresQuerySample, int64) {
 	var logLines []state.LogLine
 	currentByteStart := initialByteStart
 	reader := bufio.NewReader(strings.NewReader(buffer))
@@ -560,6 +560,13 @@ func ParseAndAnalyzeBuffer(buffer string, initialByteStart int64, linesNewerThan
 
 		// Ignore loglines which are outside our time window
 		if logLine.OccurredAt.Before(linesNewerThan) {
+			continue
+		}
+
+		// Ignore loglines that are ignored server-wide (e.g. because they are
+		// log_statement=all/log_duration=on lines). Note this intentionally
+		// runs after multi-line log lines have been stitched together.
+		if server.IgnoreLogLine(logLine.Content) {
 			continue
 		}
 

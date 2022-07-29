@@ -232,7 +232,7 @@ func processLogStream(server *state.Server, logLines []state.LogLine, now time.T
 	}
 	server.CollectionStatusMutex.Unlock()
 
-	transientLogState, logFile, tooFreshLogLines, err := stream.AnalyzeStreamInGroups(logLines, now)
+	transientLogState, logFile, tooFreshLogLines, err := stream.AnalyzeStreamInGroups(logLines, now, server)
 	if err != nil {
 		logger.PrintError("%s", err)
 		return tooFreshLogLines
