@@ -1,5 +1,51 @@
 # Changelog
 
+## 0.45.0      2022-07-29
+
+* Log Insights: Filter out `log_statement=all` and `log_duration=on` log lines
+  - This replaces the previous behaviour that prevented all log collection for
+    servers that had either `log_statement=all` or `log_duration=on` enabled.
+  - With the new logic, we continue ignoring these high-frequency events
+    (which would cause downstream problems), but accept all other log events,
+    including threshold-based auto_explain events.
+* Track extensions that are installed on each database
+  - This is helpful to ensure that the necessary schema definitions are
+    loaded by pganalyze, e.g. for use by the Index Advisor.
+  - Ignore objects that are provided by extensions, as determined by pg_depend
+    (e.g. function definitions, etc)
+* Add support for Google AlloyDB for PostgreSQL
+  - This adds new options to specify the AlloyDB cluster ID and instance ID
+  - Special cases the log parsing to support AlloyDB's `[filename:line]` prefix
+  - Supports AlloyDB's modified autovacuum log output
+* Add explicit support for Aiven Postgres databases
+  - Support was previously available via the self-managed instructions, but
+    this adds explicit support and improved setup instructions
+  - Existing Aiven servers that were detected as self-managed will be
+    automatically updated to be recognized as Aiven servers
+* Self-managed servers
+  - Support disk statistics for software RAID devices
+    - These statistics are summarized across all component disk devices and
+      then tracked for the parent software RAID device as one. Note that this
+      is only done in case these statistics are not yet set (which is the case
+      for the typical Linux software RAID setup).
+  - Allow using `pg_read_file` to read log files (instead of log tail / syslog)
+    - This relies on the built-in Postgres function `pg_read_file` to read log
+      files and return the log data over the Postgres connection.
+    - This requires superuser (either directly or through a helper) and thus
+      does not work on managed database providers, with the exception of
+      Crunchy Bridge, for which this is already the mechanism to fetch logs.
+    - Additionally, this carries higher overhead than directly tailing log
+      files, or using syslog, and thus should only be used when necessary.
+    - Set `db_log_pg_read_file = 1` / `LOG_PG_READ_FILE=1` to enable the logic
+* Crunchy Bridge
+  - Fix collection of system metrics
+* Heroku Postgres
+  - Fix blank log line parsing
+* Add `--test-section` parameter to set a specific config section to test
+* Fully qualify constraint definitions, to support non-standard schemas
+* Add support for log_line_prefix `%m [%p] %q%u@%d ` and `%t [%p] %q%u@%d %h `
+
+
 ## 0.44.0      2022-06-29
 
 * Add optional normalization of sensitive fields in EXPLAIN plans
