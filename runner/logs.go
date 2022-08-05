@@ -439,6 +439,10 @@ func testLogDownload(ctx context.Context, wg *sync.WaitGroup, server *state.Serv
 	_, _, err := downloadLogsForServer(server, globalCollectionOpts, prefixedLogger)
 	if err != nil {
 		prefixedLogger.PrintError("ERROR - Could not download logs: %s", err)
+		msg := err.Error()
+		if server.Config.SystemType == "amazon_rds" && strings.Contains(msg, "NoCredentialProviders") {
+			prefixedLogger.PrintInfo("HINT - This may occur if you have not assigned an IAM role to the collector EC2 instance, and have not provided AWS credentials through another method")
+		}
 		return false
 	}
 
