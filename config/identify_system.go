@@ -15,20 +15,38 @@ func identifySystem(config ServerConfig) (systemID string, systemType string, sy
 	systemTypeFallback = config.SystemTypeFallback
 	systemScopeFallback = config.SystemScopeFallback
 
-	if config.AwsDbInstanceID != "" || systemType == "amazon_rds" {
+	if (config.AwsDbInstanceID != "" || config.AwsDbClusterID != "") || systemType == "amazon_rds" {
 		systemType = "amazon_rds"
-		if systemScope == "" {
-			if config.AwsAccountID != "" {
-				systemScope = config.AwsRegion + "/" + config.AwsAccountID
-				if systemScopeFallback == "" {
-					systemScopeFallback = config.AwsRegion
+		if config.AwsDbClusterID != "" {
+			if systemScope == "" {
+				// TODO: If we drop the cluster- prefix out of the account id field, we may want to keep it here (for backwards compatibility)
+				// If we do that, also think about the cluster-ro- prefix (less likely to have been used, but should we support specifying that as a hostname?)
+				if config.AwsAccountID != "" {
+					systemScope = config.AwsRegion + "/" + config.AwsAccountID
+					if systemScopeFallback == "" {
+						systemScopeFallback = config.AwsRegion
+					}
+				} else {
+					systemScope = config.AwsRegion
 				}
-			} else {
-				systemScope = config.AwsRegion
 			}
-		}
-		if systemID == "" {
-			systemID = config.AwsDbInstanceID
+			if systemID == "" {
+				systemID = config.AwsDbClusterID
+			}
+		} else {
+			if systemScope == "" {
+				if config.AwsAccountID != "" {
+					systemScope = config.AwsRegion + "/" + config.AwsAccountID
+					if systemScopeFallback == "" {
+						systemScopeFallback = config.AwsRegion
+					}
+				} else {
+					systemScope = config.AwsRegion
+				}
+			}
+			if systemID == "" {
+				systemID = config.AwsDbInstanceID
+			}
 		}
 	} else if config.AzureDbServerName != "" || systemType == "azure_database" {
 		systemType = "azure_database"

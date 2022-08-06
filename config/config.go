@@ -67,6 +67,7 @@ type ServerConfig struct {
 	AwsRegion               string `ini:"aws_region"`
 	AwsAccountID            string `ini:"aws_account_id"`
 	AwsDbInstanceID         string `ini:"aws_db_instance_id"`
+	AwsDbClusterID          string `ini:"aws_db_cluster_id"`
 	AwsAccessKeyID          string `ini:"aws_access_key_id"`
 	AwsSecretAccessKey      string `ini:"aws_secret_access_key"`
 	AwsAssumeRole           string `ini:"aws_assume_role"`
@@ -186,7 +187,7 @@ type ServerConfig struct {
 
 // SupportsLogDownload - Determines whether the specified config can download logs
 func (config ServerConfig) SupportsLogDownload() bool {
-	return config.AwsDbInstanceID != "" || config.LogPgReadFile
+	return (config.AwsDbInstanceID != "" || config.AwsDbClusterID != "") || config.LogPgReadFile
 }
 
 // GetPqOpenString - Gets the database configuration as a string that can be passed to lib/pq for connecting
