@@ -35,9 +35,13 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger) (system sta
 		logger.PrintError("Rds/System: Encountered error when looking for instance: %v\n", err)
 		return
 	}
-
 	if instance == nil {
-		logger.PrintWarning("Could not find RDS instance in AWS, skipping system data")
+		if config.AwsDbInstanceID != "" {
+			logger.PrintError("ERROR - Could not find RDS instance \"%s\" in AWS, skipping system data", config.AwsDbInstanceID)
+			logger.PrintInfo("HINT - If you are using AWS Aurora you may need to specify this as the AWS cluster ID instead, or pick a specific cluster instances to monitor")
+		} else {
+			logger.PrintWarning("Could not find RDS instance in AWS (missing configuration setting?), skipping system data")
+		}
 		return
 	}
 

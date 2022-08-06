@@ -122,6 +122,9 @@ func getDefaultConfig() *ServerConfig {
 	if awsInstanceID := os.Getenv("AWS_INSTANCE_ID"); awsInstanceID != "" {
 		config.AwsDbInstanceID = awsInstanceID
 	}
+	if awsClusterID := os.Getenv("AWS_CLUSTER_ID"); awsClusterID != "" {
+		config.AwsDbClusterID = awsClusterID
+	}
 	if awsAccessKeyID := os.Getenv("AWS_ACCESS_KEY_ID"); awsAccessKeyID != "" {
 		config.AwsAccessKeyID = awsAccessKeyID
 	}
@@ -349,10 +352,17 @@ func preprocessConfig(config *ServerConfig) (*ServerConfig, error) {
 	if strings.HasSuffix(host, ".rds.amazonaws.com") {
 		parts := strings.SplitN(host, ".", 4)
 		if len(parts) == 4 && parts[3] == "rds.amazonaws.com" { // Safety check for any escaping issues
-			if config.AwsDbInstanceID == "" {
-				config.AwsDbInstanceID = parts[0]
+			if strings.HasPrefix(parts[1], "cluster-") {
+				if config.AwsDbClusterID == "" {
+					config.AwsDbClusterID = parts[0]
+				}
+			} else {
+				if config.AwsDbInstanceID == "" {
+					config.AwsDbInstanceID = parts[0]
+				}
 			}
 			if config.AwsAccountID == "" {
+				// TODO: Remove cluster- or cluster-ro- prefix from account ID here?
 				config.AwsAccountID = parts[1]
 			}
 			if config.AwsRegion == "" {
@@ -388,7 +398,7 @@ func preprocessConfig(config *ServerConfig) (*ServerConfig, error) {
 
 	// This is primarily for backwards compatibility when using the IP address of an instance
 	// combined with only specifying its name, but not its region.
-	if config.AwsDbInstanceID != "" && config.AwsRegion == "" {
+	if (config.AwsDbClusterID != "" || config.AwsDbInstanceID != "") && config.AwsRegion == "" {
 		config.AwsRegion = "us-east-1"
 	}
 

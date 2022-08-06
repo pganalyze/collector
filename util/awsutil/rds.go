@@ -2,6 +2,7 @@ package awsutil
 
 import (
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -28,7 +29,9 @@ func FindRdsIdentifier(config config.ServerConfig, sess *session.Session) (ident
 	}
 
 	instance, err := FindRdsInstance(config, sess)
-	if err == nil {
+	if instance == nil {
+		// Do nothing and return empty identifier (should we cache this?)
+	} else if err == nil {
 		identifier = *instance.DBInstanceIdentifier
 		IdentifierMap.Put(config.AwsDbInstanceID, identifier)
 	} else {
@@ -39,18 +42,51 @@ func FindRdsIdentifier(config config.ServerConfig, sess *session.Session) (ident
 
 func FindRdsInstance(config config.ServerConfig, sess *session.Session) (instance *rds.DBInstance, err error) {
 	var resp *rds.DescribeDBInstancesOutput
+	var respCluster *rds.DescribeDBClustersOutput
 
 	svc := rds.New(sess)
 
+	var instanceID string
 	if config.AwsDbInstanceID != "" {
+		instanceID = config.AwsDbInstanceID
+	}
+
+	if instanceID == "" && config.AwsDbClusterID != "" {
+		params := &rds.DescribeDBClustersInput{
+			DBClusterIdentifier: aws.String(config.AwsDbClusterID),
+		}
+
+		respCluster, err = svc.DescribeDBClusters(params)
+		if err != nil {
+			return
+		}
+
+		if err == nil && len(respCluster.DBClusters) >= 1 {
+			for _, clusterMember := range respCluster.DBClusters[0].DBClusterMembers {
+				if *clusterMember.IsClusterWriter {
+					instanceID = *clusterMember.DBInstanceIdentifier
+				}
+			}
+		}
+	}
+
+	if instanceID != "" {
 		params := &rds.DescribeDBInstancesInput{
-			DBInstanceIdentifier: aws.String(config.AwsDbInstanceID),
+			DBInstanceIdentifier: aws.String(instanceID),
 		}
 
 		resp, err = svc.DescribeDBInstances(params)
 
 		if err == nil && len(resp.DBInstances) >= 1 {
 			instance = resp.DBInstances[0]
+		}
+
+		if err != nil {
+			msg := err.Error()
+			if strings.Contains(msg, "DBInstanceNotFound") {
+				instance = nil
+				err = nil
+			}
 		}
 
 		return
