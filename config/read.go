@@ -119,11 +119,18 @@ func getDefaultConfig() *ServerConfig {
 	if awsAccountID := os.Getenv("AWS_ACCOUNT_ID"); awsAccountID != "" {
 		config.AwsAccountID = awsAccountID
 	}
+	// Legacy name (recommended to use AWS_DB_INSTANCE_ID going forward)
 	if awsInstanceID := os.Getenv("AWS_INSTANCE_ID"); awsInstanceID != "" {
 		config.AwsDbInstanceID = awsInstanceID
 	}
-	if awsClusterID := os.Getenv("AWS_CLUSTER_ID"); awsClusterID != "" {
-		config.AwsDbClusterID = awsClusterID
+	if awsDbInstanceID := os.Getenv("AWS_DB_INSTANCE_ID"); awsDbInstanceID != "" {
+		config.AwsDbInstanceID = awsDbInstanceID
+	}
+	if awsDbClusterID := os.Getenv("AWS_DB_CLUSTER_ID"); awsDbClusterID != "" {
+		config.AwsDbClusterID = awsDbClusterID
+	}
+	if awsDbClusterReadonly := os.Getenv("AWS_DB_CLUSTER_READONLY"); awsDbClusterReadonly != "" {
+		config.AwsDbClusterReadonly = parseConfigBool(awsDbClusterReadonly)
 	}
 	if awsAccessKeyID := os.Getenv("AWS_ACCESS_KEY_ID"); awsAccessKeyID != "" {
 		config.AwsAccessKeyID = awsAccessKeyID
@@ -355,6 +362,9 @@ func preprocessConfig(config *ServerConfig) (*ServerConfig, error) {
 			if strings.HasPrefix(parts[1], "cluster-") {
 				if config.AwsDbClusterID == "" {
 					config.AwsDbClusterID = parts[0]
+					if strings.HasPrefix(parts[1], "cluster-ro-") {
+						config.AwsDbClusterReadonly = true
+					}
 				}
 			} else {
 				if config.AwsDbInstanceID == "" {
@@ -362,8 +372,7 @@ func preprocessConfig(config *ServerConfig) (*ServerConfig, error) {
 				}
 			}
 			if config.AwsAccountID == "" {
-				// TODO: Remove cluster- or cluster-ro- prefix from account ID here?
-				config.AwsAccountID = parts[1]
+				config.AwsAccountID = strings.TrimPrefix(strings.TrimPrefix(parts[1], "cluster-ro-"), "cluster-")
 			}
 			if config.AwsRegion == "" {
 				config.AwsRegion = parts[2]

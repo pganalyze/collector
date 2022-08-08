@@ -2,7 +2,7 @@ package awsutil
 
 import (
 	"errors"
-	"strings"
+	"fmt"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -29,9 +29,7 @@ func FindRdsIdentifier(config config.ServerConfig, sess *session.Session) (ident
 	}
 
 	instance, err := FindRdsInstance(config, sess)
-	if instance == nil {
-		// Do nothing and return empty identifier (should we cache this?)
-	} else if err == nil {
+	if err == nil {
 		identifier = *instance.DBInstanceIdentifier
 		IdentifierMap.Put(config.AwsDbInstanceID, identifier)
 	} else {
@@ -40,77 +38,99 @@ func FindRdsIdentifier(config config.ServerConfig, sess *session.Session) (ident
 	return
 }
 
-func FindRdsInstance(config config.ServerConfig, sess *session.Session) (instance *rds.DBInstance, err error) {
-	var resp *rds.DescribeDBInstancesOutput
-	var respCluster *rds.DescribeDBClustersOutput
-
-	svc := rds.New(sess)
-
-	var instanceID string
-	if config.AwsDbInstanceID != "" {
-		instanceID = config.AwsDbInstanceID
+func findRdsClusterByIdentifier(clusterIdentifier string, svc *rds.RDS) (*rds.DBCluster, error) {
+	params := &rds.DescribeDBClustersInput{
+		DBClusterIdentifier: aws.String(clusterIdentifier),
 	}
 
-	if instanceID == "" && config.AwsDbClusterID != "" {
-		params := &rds.DescribeDBClustersInput{
-			DBClusterIdentifier: aws.String(config.AwsDbClusterID),
-		}
-
-		respCluster, err = svc.DescribeDBClusters(params)
-		if err != nil {
-			return
-		}
-
-		if err == nil && len(respCluster.DBClusters) >= 1 {
-			for _, clusterMember := range respCluster.DBClusters[0].DBClusterMembers {
-				if *clusterMember.IsClusterWriter {
-					instanceID = *clusterMember.DBInstanceIdentifier
-				}
-			}
-		}
+	resp, err := svc.DescribeDBClusters(params)
+	if err != nil {
+		return nil, err
+	}
+	if len(resp.DBClusters) == 0 {
+		return nil, fmt.Errorf("Unexpected empty result set for DescribeDBClusters with DBClusterIdentifier = \"%s\"", clusterIdentifier)
 	}
 
-	if instanceID != "" {
-		params := &rds.DescribeDBInstancesInput{
-			DBInstanceIdentifier: aws.String(instanceID),
-		}
+	return resp.DBClusters[0], nil
+}
 
-		resp, err = svc.DescribeDBInstances(params)
-
-		if err == nil && len(resp.DBInstances) >= 1 {
-			instance = resp.DBInstances[0]
-		}
-
-		if err != nil {
-			msg := err.Error()
-			if strings.Contains(msg, "DBInstanceNotFound") {
-				instance = nil
-				err = nil
-			}
-		}
-
-		return
+func findRdsInstanceByIdentifier(instanceIdentifier string, svc *rds.RDS) (*rds.DBInstance, error) {
+	params := &rds.DescribeDBInstancesInput{
+		DBInstanceIdentifier: aws.String(instanceIdentifier),
 	}
 
+	resp, err := svc.DescribeDBInstances(params)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(resp.DBInstances) == 0 {
+		return nil, fmt.Errorf("Unexpected empty result set for DescribeDBInstances with DBInstanceIdentifier = \"%s\"", instanceIdentifier)
+	}
+
+	return resp.DBInstances[0], nil
+}
+
+func findRdsInstanceByHostAndPort(host string, port int64, svc *rds.RDS) (*rds.DBInstance, error) {
 	params := &rds.DescribeDBInstancesInput{
 		MaxRecords: aws.Int64(100),
 	}
 
-	resp, err = svc.DescribeDBInstances(params)
+	resp, err := svc.DescribeDBInstances(params)
 	if err != nil {
-		return
+		return nil, err
 	}
 
-	for _, instance = range resp.DBInstances {
-		host := instance.Endpoint.Address
-		port := instance.Endpoint.Port
-		if host != nil && port != nil && *host == config.GetDbHost() && *port == int64(config.GetDbPort()) {
-			return
+	for _, instance := range resp.DBInstances {
+		instanceHost := instance.Endpoint.Address
+		instancePort := instance.Endpoint.Port
+		if instanceHost != nil && instancePort != nil && *instanceHost == host && *instancePort == port {
+			return instance, nil
 		}
 	}
 
-	instance = nil
-	return
+	return nil, fmt.Errorf("Failed to find RDS instance using endpoint-based search for host \"%s\" and port %d", host, port)
+}
+
+func FindRdsInstance(config config.ServerConfig, sess *session.Session) (*rds.DBInstance, error) {
+	svc := rds.New(sess)
+
+	if config.AwsDbInstanceID != "" {
+		return findRdsInstanceByIdentifier(config.AwsDbInstanceID, svc)
+	}
+
+	if config.AwsDbClusterID != "" {
+		cluster, err := findRdsClusterByIdentifier(config.AwsDbClusterID, svc)
+		if err != nil {
+			return nil, err
+		}
+
+		instanceID := ""
+		for _, clusterMember := range cluster.DBClusterMembers {
+			if (config.AwsDbClusterReadonly && *clusterMember.IsClusterWriter) ||
+				(!config.AwsDbClusterReadonly && !*clusterMember.IsClusterWriter) {
+				continue
+			}
+			if instanceID == "" {
+				instanceID = *clusterMember.DBInstanceIdentifier
+			} else if config.AwsDbClusterReadonly {
+				return nil, fmt.Errorf("Found more than one reader to monitor for read-only cluster \"%s\" (HINT: use specific instance IDs instead)", config.AwsDbClusterID)
+			} else {
+				return nil, fmt.Errorf("Unexpected multiple writers for cluster \"%s\"", config.AwsDbClusterID)
+			}
+		}
+
+		if instanceID == "" {
+			return nil, fmt.Errorf("Could not locate usable instance ID for cluster \"%s\" (readonly = %t)", config.AwsDbClusterID, config.AwsDbClusterReadonly)
+		}
+
+		return findRdsInstanceByIdentifier(instanceID, svc)
+	}
+
+	// If neither instance ID or cluster ID were specified, but we still have
+	// an RDS system type, attempt to find the instance based on the hostname
+	// (this is a long shot, but there are some cases where this helps)
+	return findRdsInstanceByHostAndPort(config.GetDbHost(), int64(config.GetDbPort()), svc)
 }
 
 func GetRdsParameter(group *rds.DBParameterGroupStatus, name string, svc *rds.RDS) (parameter *rds.Parameter, err error) {
