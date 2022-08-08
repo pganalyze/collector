@@ -90,6 +90,8 @@ type CollectorConfig struct {
 	DbURLRedacted              string
 	AwsRegion                  string
 	AwsDbInstanceId            string
+	AwsDbClusterID             string
+	AwsDbClusterReadonly       bool
 	AwsHasAccessKeyId          bool
 	AwsHasAssumeRole           bool
 	AwsHasAccountId            bool
@@ -102,6 +104,8 @@ type CollectorConfig struct {
 	AzureAdClientId            string
 	AzureHasAdCertificate      bool
 	GcpCloudsqlInstanceId      string
+	GcpAlloyDBClusterID        string
+	GcpAlloyDBInstanceID       string
 	GcpPubsubSubscription      string
 	GcpHasCredentialsFile      bool
 	GcpProjectId               string
@@ -116,6 +120,8 @@ type CollectorConfig struct {
 	ApiSystemScopeFallback     string
 	DbLogLocation              string
 	DbLogDockerTail            string
+	DbLogSyslogServer          string
+	DbLogPgReadFile            bool
 	IgnoreTablePattern         string
 	IgnoreSchemaRegexp         string
 	QueryStatsInterval         int32
