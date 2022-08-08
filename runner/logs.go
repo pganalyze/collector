@@ -127,11 +127,7 @@ func downloadLogsForServerWithLocksAndCallbacks(wg *sync.WaitGroup, server *stat
 	newLogState, success, err := downloadLogsForServer(server, globalCollectionOpts, prefixedLogger)
 	if err != nil {
 		server.LogStateMutex.Unlock()
-		prefixedLogger.PrintError("Could not collect logs for server: %s", err)
-		msg := err.Error()
-		if server.Config.SystemType == "amazon_rds" && strings.Contains(msg, "NoCredentialProviders") {
-			prefixedLogger.PrintInfo("HINT - This may occur if you have not assigned an IAM role to the collector EC2 instance, and have not provided AWS credentials through another method")
-		}
+		printLogDownloadError(server, err, prefixedLogger)
 		if server.Config.ErrorCallback != "" {
 			go runCompletionCallback("error", server.Config.ErrorCallback, server.Config.SectionName, "logs", err, prefixedLogger)
 		}
@@ -438,11 +434,7 @@ func testLogDownload(ctx context.Context, wg *sync.WaitGroup, server *state.Serv
 	prefixedLogger.PrintInfo("Testing log download...")
 	_, _, err := downloadLogsForServer(server, globalCollectionOpts, prefixedLogger)
 	if err != nil {
-		prefixedLogger.PrintError("ERROR - Could not download logs: %s", err)
-		msg := err.Error()
-		if server.Config.SystemType == "amazon_rds" && strings.Contains(msg, "NoCredentialProviders") {
-			prefixedLogger.PrintInfo("HINT - This may occur if you have not assigned an IAM role to the collector EC2 instance, and have not provided AWS credentials through another method")
-		}
+		printLogDownloadError(server, err, prefixedLogger)
 		return false
 	}
 
@@ -505,4 +497,12 @@ func testGoogleCloudsqlLogStream(ctx context.Context, wg *sync.WaitGroup, server
 
 	logger.PrintInfo("  Log test successful")
 	return true
+}
+
+func printLogDownloadError(server *state.Server, err error, prefixedLogger *util.Logger) {
+	prefixedLogger.PrintError("ERROR - Could not download logs: %s", err)
+	msg := err.Error()
+	if server.Config.SystemType == "amazon_rds" && strings.Contains(msg, "NoCredentialProviders") {
+		prefixedLogger.PrintInfo("HINT - This may occur if you have not assigned an IAM role to the collector EC2 instance, and have not provided AWS credentials through another method")
+	}
 }
