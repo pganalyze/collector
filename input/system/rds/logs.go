@@ -38,10 +38,6 @@ func DownloadLogFiles(server *state.Server, logger *util.Logger) (state.Persiste
 		err = fmt.Errorf("Error finding RDS instance: %s", err)
 		return server.LogPrevState, nil, nil, err
 	}
-	if identifier == "" {
-		err = fmt.Errorf("Could not find RDS instance \"%s\" or cluster \"%s\"", server.Config.AwsDbInstanceID, server.Config.AwsDbClusterID)
-		return server.LogPrevState, nil, nil, err
-	}
 
 	// Retrieve all possibly matching logfiles in the last two minutes, assuming
 	// the collector's scheduler that runs more frequently than that
