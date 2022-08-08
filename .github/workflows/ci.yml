@@ -1,6 +1,8 @@
 name: CI
 
 # N.B.: release.yml should be updated to match as necessary
+permissions: {}
+
 on:
   push:
     branches: [ main ]
@@ -20,9 +22,10 @@ jobs:
       id: go
 
     - name: Set up protoc
-      uses: arduino/setup-protoc@v1.1.2
+      uses: pganalyze/setup-protoc@v1.1.2
       with:
         version: 3.14.0
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Check out code
       uses: actions/checkout@v2
