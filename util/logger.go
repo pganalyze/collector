@@ -80,6 +80,10 @@ func (logger *Logger) PrintInfo(format string, args ...interface{}) {
 }
 
 func (logger *Logger) PrintWarning(format string, args ...interface{}) {
+	if logger.Quiet {
+		return
+	}
+
 	logger.print("W", format, args...)
 }
 
