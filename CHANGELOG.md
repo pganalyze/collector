@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.45.1      2022-08-12
+
+* Amazon Aurora and Amazon RDS
+  - Auto-detect Aurora writer instance, as well as reader on two-node clusters
+    - Previously it was required to specify the individual instance to support
+      log downloads and system metrics, but this now happens automatically
+    - The cluster name is auto-detected from the hostname, but to override the
+      new "aws_db_cluster_id" and "aws_db_cluster_readonly" settings can be used
+    - This requires giving the IAM policy for the collector the
+      "DescribeDBClusters" permission
+    - In case more than one reader instance is used, each reader instance must
+      be specified individually instead of using the readonly cluster hostname
+  - Show RDS instance role hint when running collector test
+  - Ensure permission errors during log download are shown
+* Add "-q" / "--quiet" flag for hiding everything except errors in the logs
+
+
 ## 0.45.0      2022-07-29
 
 * Log Insights: Filter out `log_statement=all` and `log_duration=on` log lines
