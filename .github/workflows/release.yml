@@ -1,7 +1,6 @@
 name: Release
 
 # N.B.: build steps should match the tests we run in ci.yml
-permissions: {}
 
 on:
   create
@@ -9,6 +8,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions: {}
     # ensure we don't release on create events for branches (only tags)
     if: ${{ startsWith( github.ref, 'refs/tags' ) }}
 
