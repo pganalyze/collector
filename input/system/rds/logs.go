@@ -76,7 +76,8 @@ func DownloadLogFiles(server *state.Server, logger *util.Logger) (state.Persiste
 		logFile.OriginalName = *rdsLogFile.LogFileName
 
 		for {
-			resp, err := rdsSvc.DownloadDBLogFilePortion(&rds.DownloadDBLogFilePortionInput{
+			var resp *rds.DownloadDBLogFilePortionOutput
+			resp, err = rdsSvc.DownloadDBLogFilePortion(&rds.DownloadDBLogFilePortionInput{
 				DBInstanceIdentifier: &identifier,
 				LogFileName:          rdsLogFile.LogFileName,
 				Marker:               lastMarker, // This is not set for the initial call, so we only get the most recent lines
@@ -94,7 +95,7 @@ func DownloadLogFiles(server *state.Server, logger *util.Logger) (state.Persiste
 			}
 
 			if len(*resp.LogFileData) > 0 {
-				_, err := logFile.TmpFile.WriteString(*resp.LogFileData)
+				_, err = logFile.TmpFile.WriteString(*resp.LogFileData)
 				if err != nil {
 					err = fmt.Errorf("Error writing to tempfile: %s", err)
 					logFile.Cleanup()
@@ -117,7 +118,7 @@ func DownloadLogFiles(server *state.Server, logger *util.Logger) (state.Persiste
 		if readStart < 0 {
 			readStart = 0
 		}
-		_, err := logFile.TmpFile.Seek(int64(readStart), io.SeekStart)
+		_, err = logFile.TmpFile.Seek(int64(readStart), io.SeekStart)
 		if err != nil {
 			err = fmt.Errorf("Error seeking tempfile: %s", err)
 			logFile.Cleanup()
