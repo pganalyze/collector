@@ -56,10 +56,10 @@ func DownloadLogFiles(server *state.Server, logger *util.Logger) (state.Persiste
 	}
 
 	var newMarkers = make(map[string]string)
-	var bytesWritten = 0
 
 	for _, rdsLogFile := range resp.DescribeDBLogFiles {
 		var lastMarker *string
+		var bytesWritten = 0
 
 		prevMarker, ok := psl.AwsMarkers[*rdsLogFile.LogFileName]
 		if ok {
