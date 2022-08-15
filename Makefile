@@ -2,7 +2,7 @@ OUTFILE := pganalyze-collector
 PROTOBUF_FILES := $(wildcard protobuf/*.proto) $(wildcard protobuf/reports/*.proto)
 
 PATH := $(PWD)/protoc/bin:$(PWD)/bin:$(PATH)
-SHELL := env PATH=$(PATH) /bin/sh
+SHELL := env PATH="$(PATH)" /bin/sh
 
 PROTOC_VERSION_NEEDED := 3.14.0
 PROTOC_VERSION := $(shell command -v protoc > /dev/null 2>&1 && protoc --version)
