@@ -39,8 +39,9 @@ type SystemInfo struct {
 	SystemScope string
 	SystemID    string
 
-	SelfHosted *SystemInfoSelfHosted
-	AmazonRds  *SystemInfoAmazonRds
+	SelfHosted   *SystemInfoSelfHosted
+	AmazonRds    *SystemInfoAmazonRds
+	ResourceTags map[string]string
 
 	BootTime time.Time
 }

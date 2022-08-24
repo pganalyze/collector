@@ -62,6 +62,13 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger) (system sta
 		IsAuroraPostgres:           isAurora,
 	}
 
+	tags := make(map[string]string)
+	for _, tag := range instance.TagList {
+		tags[util.StringPtrToString(tag.Key)] = util.StringPtrToString(tag.Value)
+	}
+
+	system.Info.ResourceTags = tags
+
 	for _, exportName := range instance.EnabledCloudwatchLogsExports {
 		if util.StringPtrToString(exportName) == "postgresql" {
 			system.Info.AmazonRds.PostgresLogExport = true
