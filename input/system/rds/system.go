@@ -64,7 +64,7 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger) (system sta
 
 	tags := make(map[string]string)
 	for _, tag := range instance.TagList {
-		tags[util.StringPtrToString(tag.Key)] = util.StringPtrToString(tag.Value)
+		tags[*tag.Key] = util.StringPtrToString(tag.Value)
 	}
 
 	system.Info.ResourceTags = tags
