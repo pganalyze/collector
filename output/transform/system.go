@@ -100,6 +100,8 @@ func transformSystem(systemState state.SystemState, diffState state.DiffState) *
 		system.SystemInformation.Type = snapshot.SystemInformation_AIVEN_SYSTEM
 	}
 
+	system.SystemInformation.ResourceTags = systemState.Info.ResourceTags
+
 	system.SystemId = systemState.Info.SystemID
 	system.SystemScope = systemState.Info.SystemScope
 	system.XlogUsedBytes = systemState.XlogUsedBytes

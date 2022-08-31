@@ -39,6 +39,7 @@ type CompactSnapshot struct {
 	CollectedAt          *timestamp.Timestamp      `protobuf:"bytes,5,opt,name=collected_at,json=collectedAt,proto3" json:"collected_at,omitempty"`
 	BaseRefs             *CompactSnapshot_BaseRefs `protobuf:"bytes,6,opt,name=base_refs,json=baseRefs,proto3" json:"base_refs,omitempty"`
 	// Types that are assignable to Data:
+	//
 	//	*CompactSnapshot_LogSnapshot
 	//	*CompactSnapshot_SystemSnapshot
 	//	*CompactSnapshot_ActivitySnapshot

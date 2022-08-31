@@ -35,6 +35,7 @@ type Report struct {
 	ReportType  string               `protobuf:"bytes,2,opt,name=report_type,json=reportType,proto3" json:"report_type,omitempty"`
 	CollectedAt *timestamp.Timestamp `protobuf:"bytes,3,opt,name=collected_at,json=collectedAt,proto3" json:"collected_at,omitempty"`
 	// Types that are assignable to Data:
+	//
 	//	*Report_BloatReportData
 	//	*Report_BuffercacheReportData
 	//	*Report_VacuumReportData
