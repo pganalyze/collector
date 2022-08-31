@@ -2,6 +2,10 @@
 
 set -e
 
+if [ -n "$CONFIG_CONTENTS" ]; then
+  echo "$CONFIG_CONTENTS" > /home/pganalyze/.pganalyze_collector.conf
+fi
+
 CMD_PREFIX=exec
 if [ $(id -u) = 0 ]; then
   CMD_PREFIX="exec setpriv --reuid=pganalyze --regid=pganalyze --inh-caps=-all --clear-groups"
