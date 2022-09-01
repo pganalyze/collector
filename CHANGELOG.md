@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.45.2      2022-08-31
+
+* Amazon RDS/Aurora
+  - Log download: Fix edge case that caused errors on hourly log boundaries
+    - Resolves errors like "Error reading 65817 bytes from tempfile: unexpected EOF"
+  - Collect tags assigned to instance as system metadata
+* Docker: Allow setting CONFIG_CONTENTS to pass ini-style configuration
+  - This allows easier configuration of multiple servers to be monitored by
+    the same Docker container. Previously this required use of a volume
+    mount, which can be harder to make work successfully.
+  - CONFIG_CONTENTS needs to match the regular configuration file format that
+    uses separate sections for each server.
+  - This can be combined with environment-variable style configuration for
+    settings that apply to all servers (e.g. PGA_API_KEY) but all
+    server-specific configuration should only be passed in through the
+    CONFIG_CONTENTS variable.
+
+
 ## 0.45.1      2022-08-12
 
 * Amazon Aurora and Amazon RDS
