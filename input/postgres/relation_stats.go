@@ -12,7 +12,13 @@ const relationStatsSQLDefaultOptionalFields = "NULL"
 const relationStatsSQLpg94OptionalFields = "s.n_mod_since_analyze"
 
 const relationStatsSQL = `
-WITH locked_relids AS (SELECT DISTINCT relation relid FROM pg_catalog.pg_locks WHERE mode = 'AccessExclusiveLock' AND relation IS NOT NULL)
+WITH locked_relids AS (
+	SELECT DISTINCT relation relid FROM pg_catalog.pg_locks WHERE mode = 'AccessExclusiveLock' AND relation IS NOT NULL
+),
+locked_relids_with_parents AS (
+	SELECT DISTINCT inhparent relid FROM pg_catalog.pg_inherits WHERE inhrelid IN (SELECT relid FROM locked_relids)
+	UNION SELECT relid FROM locked_relids
+)
 SELECT c.oid,
 			 COALESCE(pg_catalog.pg_table_size(c.oid), 0) +
 			 COALESCE((SELECT pg_catalog.sum(pg_catalog.pg_table_size(inhrelid))
@@ -50,7 +56,7 @@ SELECT c.oid,
 	LEFT JOIN pg_catalog.pg_namespace n ON (n.oid = c.relnamespace)
 	LEFT JOIN pg_catalog.pg_stat_user_tables s ON (s.relid = c.oid)
 	LEFT JOIN pg_catalog.pg_statio_user_tables sio USING (relid)
- WHERE c.oid NOT IN (SELECT relid FROM locked_relids)
+ WHERE c.oid NOT IN (SELECT relid FROM locked_relids_with_parents)
        AND c.relkind IN ('r','v','m','p')
 			 AND c.relpersistence <> 't'
 			 AND c.oid NOT IN (SELECT pd.objid FROM pg_catalog.pg_depend pd WHERE pd.deptype = 'e' AND pd.classid = 'pg_catalog.pg_class'::regclass)
