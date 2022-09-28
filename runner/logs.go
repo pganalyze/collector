@@ -249,8 +249,12 @@ func processLogStream(server *state.Server, logLines []state.LogLine, now time.T
 
 	grant, err := getLogsGrant(server, globalCollectionOpts, logger)
 	if err != nil {
-		logger.PrintError("Log sending error: %s", err)
-		return logLines // Retry
+		// Note we intentionally discard log lines here (and in the other
+		// error case below), because the HTTP client already retries to work
+		// around temporary failues, and otherwise we would keep processing
+		// more and more lines in error scenarios
+		logger.PrintError("Log sending error (discarding lines): %s", err)
+		return tooFreshLogLines
 	}
 	if !grant.Valid {
 		return tooFreshLogLines // Don't retry (e.g. because this feature is not available)
@@ -258,8 +262,8 @@ func processLogStream(server *state.Server, logLines []state.LogLine, now time.T
 
 	err = postprocessAndSendLogs(server, globalCollectionOpts, logger, transientLogState, grant)
 	if err != nil {
-		logger.PrintError("Log sending error: %s", err)
-		return logLines // Retry
+		logger.PrintError("Log sending error (discarding lines): %s", err)
+		return tooFreshLogLines
 	}
 
 	return tooFreshLogLines
