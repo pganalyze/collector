@@ -94,7 +94,7 @@ func processActivityForServer(server *state.Server, globalCollectionOpts state.C
 	}
 
 	// Only collect lock info with 9.6 or newer (has pg_blocking_pids function)
-	if activity.Version.Numeric >= state.PostgresVersion96 {
+	if globalCollectionOpts.CollectPostgresLocks && activity.Version.Numeric >= state.PostgresVersion96 {
 		locks, err := postgres.GetLocks(logger, connection, activity.Backends)
 		if err != nil {
 			return newState, false, errors.Wrap(err, "error collecting locks information")
