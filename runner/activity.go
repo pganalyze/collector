@@ -93,6 +93,22 @@ func processActivityForServer(server *state.Server, globalCollectionOpts state.C
 		return newState, false, errors.Wrap(err, "error collecting pg_stat_vacuum_progress")
 	}
 
+	// Only collect lock info with 9.6 or newer (has pg_blocking_pids function)
+	if activity.Version.Numeric >= state.PostgresVersion96 {
+		locks, err := postgres.GetLocks(logger, connection, activity.Backends)
+		if err != nil {
+			return newState, false, errors.Wrap(err, "error collecting locks information")
+		}
+		logger.PrintInfo("===Lock Information===\n%v\n", locks)
+
+		locksFull, err := postgres.GetLocksFull(logger, connection, activity.Backends)
+		if err != nil {
+			return newState, false, errors.Wrap(err, "error collecting locks information")
+		}
+		logger.PrintInfo("===Lock (full) Information===\n%v\n", locksFull)
+
+	}
+
 	activity.CollectedAt = time.Now()
 
 	err = output.SubmitCompactActivitySnapshot(server, newGrant, globalCollectionOpts, logger, activity)
