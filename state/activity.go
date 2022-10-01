@@ -11,6 +11,9 @@ type TransientActivityState struct {
 	Backends []PostgresBackend
 
 	Vacuums []PostgresVacuumProgress
+
+	Locks     []PostgresLock
+	LocksFull []PostgresLockFull
 }
 
 type PersistedActivityState struct {

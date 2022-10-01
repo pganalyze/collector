@@ -20,6 +20,7 @@ FROM unnest(array[%s]::int[]) as pid`
 func GetLocks(logger *util.Logger, db *sql.DB, backends []state.PostgresBackend) ([]state.PostgresLock, error) {
 	var blockedPids []string
 	for _, backend := range backends {
+		// potential TODO: only use the ones that are waiting for more than the certain time
 		if backend.Waiting.Bool {
 			blockedPids = append(blockedPids, strconv.Itoa(int(backend.Pid)))
 		}
