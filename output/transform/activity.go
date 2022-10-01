@@ -2,6 +2,7 @@ package transform
 
 import (
 	"github.com/golang/protobuf/ptypes"
+	"github.com/guregu/null"
 	snapshot "github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
 )
@@ -101,5 +102,49 @@ func ActivityStateToCompactActivitySnapshot(server *state.Server, activityState 
 		}
 	}
 
+	for _, lock := range activityState.Locks {
+		lockInfo := snapshot.LockInformation{
+			BlockedPid:   lock.BlockedPid,
+			BlockingPids: lock.BlockingPids,
+		}
+		s.LockInformations = append(s.LockInformations, &lockInfo)
+	}
+
+	for _, lock := range activityState.LocksFull {
+		lockInfo := snapshot.LockFullInformation{
+			BlockedPid:      lock.BlockedPid,
+			BlockedLockType: lock.BlockedLockType.String,
+			BlockingPid:     lock.BlockingPid,
+		}
+		lockModeMapping(lock.BlockedMode, &lockInfo.BlockedMode)
+		lockModeMapping(lock.BlockingMode, &lockInfo.BlockingMode)
+		s.LockFullInformations = append(s.LockFullInformations, &lockInfo)
+	}
+
 	return s, r
+}
+
+func lockModeMapping(lockMode null.String, field *snapshot.LockFullInformation_LockMode) {
+	if !lockMode.Valid {
+		return
+	}
+
+	switch lockMode.String {
+	case "AccessShareLock":
+		*field = snapshot.LockFullInformation_ACCESS_SHARE
+	case "RowShareLock":
+		*field = snapshot.LockFullInformation_ROW_SHARE
+	case "RowExclusiveLock":
+		*field = snapshot.LockFullInformation_ROW_EXCLUSIVE
+	case "ShareUpdateExclusiveLock":
+		*field = snapshot.LockFullInformation_SHARE_UPDATE_EXCLUSIVE
+	case "ShareLock":
+		*field = snapshot.LockFullInformation_SHARE
+	case "ShareRowExclusiveLock":
+		*field = snapshot.LockFullInformation_SHARE_ROW_EXCLUSIVE
+	case "ExclusiveLock":
+		*field = snapshot.LockFullInformation_EXCLUSIVE
+	case "AccessExclusiveLock":
+		*field = snapshot.LockFullInformation_ACCESS_EXCLUSIVE
+	}
 }
