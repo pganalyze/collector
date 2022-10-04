@@ -9,7 +9,7 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
-func groupStatements(statements state.PostgresStatementMap, statementTexts state.PostgresStatementTextMap, statsMap state.DiffedPostgresStatementStatsMap) map[statementKey]statementValue {
+func groupStatements(statements state.PostgresStatementMap, statsMap state.DiffedPostgresStatementStatsMap) map[statementKey]statementValue {
 	groupedStatements := make(map[statementKey]statementValue)
 
 	for sKey, stats := range statsMap {
@@ -67,7 +67,7 @@ func transformQueryStatistic(stats state.DiffedPostgresStatementStats, idx int32
 
 func transformPostgresStatements(s snapshot.FullSnapshot, newState state.PersistedState, diffState state.DiffState, transientState state.TransientState, roleOidToIdx OidToIdx, databaseOidToIdx OidToIdx) snapshot.FullSnapshot {
 	// Statement stats from this snapshot
-	groupedStatements := groupStatements(transientState.Statements, transientState.StatementTexts, diffState.StatementStats)
+	groupedStatements := groupStatements(transientState.Statements, diffState.StatementStats)
 	for key, value := range groupedStatements {
 		idx := upsertQueryReferenceAndInformation(&s, transientState.StatementTexts, roleOidToIdx, databaseOidToIdx, key, value)
 
@@ -87,7 +87,7 @@ func transformPostgresStatements(s snapshot.FullSnapshot, newState state.Persist
 		h.CollectedAt, _ = ptypes.TimestampProto(timeKey.CollectedAt)
 		h.CollectedIntervalSecs = timeKey.CollectedIntervalSecs
 
-		groupedStatements = groupStatements(transientState.Statements, transientState.StatementTexts, diffedStats)
+		groupedStatements = groupStatements(transientState.Statements, diffedStats)
 		for key, value := range groupedStatements {
 			idx := upsertQueryReferenceAndInformation(&s, transientState.StatementTexts, roleOidToIdx, databaseOidToIdx, key, value)
 			statistic := transformQueryStatistic(value.statementStats, idx)
