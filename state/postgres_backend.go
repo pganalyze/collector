@@ -39,6 +39,9 @@ type PostgresBackend struct {
 	// - fastpath function call: The backend is executing a fast-path function.
 	// - disabled: This state is reported if track_activities is disabled in this backend.
 	State null.String
+
+	BlockedByPids []int64 // The list of PIDs this backend is blocked by
+	BlockingPids  []int64 // The list of PIDs this backend is blocking
 }
 
 type PostgresBackendCount struct {

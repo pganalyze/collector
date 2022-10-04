@@ -11,6 +11,8 @@ func transformBackendWithoutRefs(backend state.PostgresBackend) snapshot.Backend
 
 	b.Identity = backend.Identity
 	b.Pid = backend.Pid
+	b.BlockedByPids = backend.BlockedByPids
+	b.BlockingPids = backend.BlockingPids
 
 	if backend.ApplicationName.Valid {
 		b.ApplicationName = backend.ApplicationName.String
