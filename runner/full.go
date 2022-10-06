@@ -191,6 +191,17 @@ func CollectAllServers(servers []*state.Server, globalCollectionOpts state.Colle
 				prefixedLogger.PrintInfo("Testing statistics collection...")
 			}
 
+			server.CollectionStatusMutex.Lock()
+			if server.CollectionStatus.FullSnapshotInProgress {
+				prefixedLogger.PrintError("Could not collect full snapshot for server because the last one is still in progress")
+				allSuccessful = false
+				server.CollectionStatusMutex.Unlock()
+				return
+			} else {
+				server.CollectionStatus.FullSnapshotInProgress = true
+				server.CollectionStatusMutex.Unlock()
+			}
+
 			server.StateMutex.Lock()
 			newState, grant, newCollectionStatus, err := processServer(server, globalCollectionOpts, prefixedLogger)
 			if err != nil {
@@ -242,6 +253,9 @@ func CollectAllServers(servers []*state.Server, globalCollectionOpts state.Colle
 					go runCompletionCallback("success", server.Config.SuccessCallback, server.Config.SectionName, "full", nil, prefixedLogger)
 				}
 			}
+			server.CollectionStatusMutex.Lock()
+			server.CollectionStatus.FullSnapshotInProgress = false
+			server.CollectionStatusMutex.Unlock()
 			wg.Done()
 		}(servers[idx])
 	}

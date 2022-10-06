@@ -247,6 +247,7 @@ type CollectionStatus struct {
 	CollectionDisabledReason  string
 	LogSnapshotDisabled       bool
 	LogSnapshotDisabledReason string
+	FullSnapshotInProgress    bool
 }
 
 type Server struct {
