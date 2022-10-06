@@ -40,8 +40,10 @@ type PostgresBackend struct {
 	// - disabled: This state is reported if track_activities is disabled in this backend.
 	State null.String
 
-	BlockedByPids []int64 // The list of PIDs this backend is blocked by
-	BlockingPids  []int64 // The list of PIDs this backend is blocking
+	BlockedByPids           []int64 // The list of PIDs this backend is blocked by
+	BlockingPids            []int64 // The list of PIDs this backend is blocking
+	IndirectlyBlockedByPids []int64 // The list of PIDs this backend is blocked by, indirectly
+	IndirectlyBlockingPids  []int64 // The list of PIDs this backend is blocking, indirectly
 }
 
 type PostgresBackendCount struct {
