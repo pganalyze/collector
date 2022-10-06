@@ -29,6 +29,11 @@ SELECT (extract(epoch from COALESCE(backend_start, pg_catalog.pg_postmaster_star
 FROM %s
 WHERE pid IS NOT NULL`
 
+type Edge struct {
+	from int64
+	to   int64
+}
+
 func GetBackends(logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion, systemType string, collectPostgresLocks bool) ([]state.PostgresBackend, error) {
 	var optionalFields string
 	var blockingPidsField string
@@ -72,7 +77,7 @@ func GetBackends(logger *util.Logger, db *sql.DB, postgresVersion state.Postgres
 
 	var activities []state.PostgresBackend
 
-	blockingInfo := make(map[int64][]int64)
+	var blockingGraph []Edge
 	for rows.Next() {
 		var row state.PostgresBackend
 
@@ -90,16 +95,72 @@ func GetBackends(logger *util.Logger, db *sql.DB, postgresVersion state.Postgres
 		if systemType == "azure_database" && row.BackendType.Valid {
 			row.BackendType.String = strings.ToValidUTF8(row.BackendType.String, "")
 		}
+
+		// Store blocking graph to calculate blocking info later on
 		for _, i := range row.BlockedByPids {
-			blockingInfo[i] = append(blockingInfo[i], int64(row.Pid))
+			// "from" is blocking "to"
+			blockingEdge := Edge{from: i, to: int64(row.Pid)}
+			blockingGraph = append(blockingGraph, blockingEdge)
 		}
 
 		activities = append(activities, row)
 	}
 
 	for i, activity := range activities {
-		activities[i].BlockingPids = blockingInfo[int64(activity.Pid)]
+		pid := int64(activity.Pid)
+		activities[i].BlockingPids = findBlocking(blockingGraph, pid)
+		activities[i].IndirectlyBlockingPids = findIndirectlyBlocking(blockingGraph, activities[i].BlockingPids)
+		activities[i].IndirectlyBlockedByPids = findIndirectlyBlockedBy(blockingGraph, activities[i].BlockedByPids)
 	}
 
 	return activities, nil
+}
+
+func findBlocking(graph []Edge, pid int64) []int64 {
+	list := []int64{}
+	for _, edge := range graph {
+		if edge.from == pid {
+			list = append(list, edge.to)
+		}
+	}
+	return list
+}
+
+func findIndirectlyBlocking(graph []Edge, blockingPids []int64) []int64 {
+	list := []int64{}
+	for _, pid := range blockingPids {
+		for _, edge := range graph {
+			if edge.from == pid {
+				list = append(list, edge.to)
+				list = append(list, findIndirectlyBlocking(graph, []int64{edge.to})...)
+			}
+		}
+	}
+	return uniqSliceInt64(list)
+}
+
+func findIndirectlyBlockedBy(graph []Edge, blockedByPids []int64) []int64 {
+	list := []int64{}
+	for _, pid := range blockedByPids {
+		for _, edge := range graph {
+			if edge.to == pid {
+				list = append(list, edge.from)
+				list = append(list, findIndirectlyBlockedBy(graph, []int64{edge.from})...)
+			}
+		}
+	}
+	return uniqSliceInt64(list)
+}
+
+// uniqSliceInt64 removes duplicate and/or nil values from the slice
+func uniqSliceInt64(slice []int64) []int64 {
+	allKeys := make(map[int64]bool)
+	list := []int64{}
+	for _, item := range slice {
+		if _, value := allKeys[item]; !value {
+			allKeys[item] = true
+			list = append(list, item)
+		}
+	}
+	return list
 }
