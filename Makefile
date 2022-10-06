@@ -33,6 +33,7 @@ vendor:
 
 test: build
 	go test -coverprofile=coverage.out ./...
+	go vet ./...
 	# go tool cover -html=coverage.out
 
 integration_test:
