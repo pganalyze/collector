@@ -32,7 +32,7 @@ require (
 	github.com/kr/logfmt v0.0.0-20140226030751-b84e30acd515
 	github.com/kr/pretty v0.2.1 // indirect
 	github.com/kylelemons/godebug v0.0.0-20170224010052-a616ab194758
-	github.com/lib/pq v1.3.0
+	github.com/lib/pq v1.10.7
 	github.com/mitchellh/mapstructure v1.4.2 // indirect
 	github.com/ogier/pflag v0.0.0-20160129220114-45c278ab3607
 	github.com/papertrail/go-tail v0.0.0-20180509224916-973c153b0431
