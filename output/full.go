@@ -63,6 +63,8 @@ func submitFull(s snapshot.FullSnapshot, server *state.Server, collectionOpts st
 	if !collectionOpts.SubmitCollectedData {
 		if collectionOpts.OutputAsJson {
 			debugOutputAsJSON(logger, compressedData)
+		} else if !quiet {
+			logger.PrintInfo("Collected snapshot successfully")
 		}
 		return nil
 	}
