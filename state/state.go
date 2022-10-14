@@ -203,6 +203,8 @@ type CollectionOpts struct {
 	StateFilename    string
 	WriteStateUpdate bool
 	ForceEmptyGrant  bool
+
+	OutputAsJson bool
 }
 
 type GrantConfig struct {

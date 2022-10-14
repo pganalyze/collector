@@ -44,7 +44,9 @@ func uploadAndSubmitCompactSnapshot(s pganalyze_collector.CompactSnapshot, grant
 	w.Close()
 
 	if !collectionOpts.SubmitCollectedData {
-		debugCompactOutputAsJSON(logger, compressedData)
+		if collectionOpts.OutputAsJson {
+			debugCompactOutputAsJSON(logger, compressedData)
+		}
 		return nil
 	}
 
