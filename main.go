@@ -284,7 +284,7 @@ func main() {
 	flag.StringVar(&configFilename, "config", defaultConfigFile, "Specify alternative path for config file")
 	flag.StringVar(&stateFilename, "statefile", defaultStateFile, "Specify alternative path for state file")
 	flag.StringVar(&pidFilename, "pidfile", "", "Specifies a path that a pidfile should be written to (default is no pidfile being written)")
-	flag.BoolVar(&benchmark, "benchmark", false, "Runs as a benchmark mode (skip submitting the statistics to the server)")
+	flag.BoolVar(&benchmark, "benchmark", false, "Runs collector in benchmark mode (skip submitting the statistics to the server)")
 	flag.Parse()
 
 	if showVersion {
