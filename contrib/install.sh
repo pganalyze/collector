@@ -94,11 +94,11 @@ then
   pkg=deb
   distribution=ubuntu
   version=$(grep VERSION_CODENAME /etc/os-release | cut -d= -f2)
-  if [ "$version" != focal ] && [ "$version" != bionic ] && [ "$version" != xenial ];
+  if [ "$version" != jammy ] && [ "$version" != focal ] && [ "$version" != bionic ] && [ "$version" != xenial ];
   then
     if confirm "Unsupported Ubuntu version; try Ubuntu Focal (20.04) package?";
     then
-      version=focal
+      version=jammy
     else
       fail "unrecognized Ubuntu version: ${version}"
     fi

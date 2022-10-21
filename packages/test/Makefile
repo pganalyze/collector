@@ -7,7 +7,7 @@ docker_exec = docker exec pga-collector-test $(1)
 docker_test_and_clean = docker exec pga-collector-test /root/systemd_test.sh && \
   docker kill pga-collector-test && docker rm pga-collector-test && docker rmi -f pga-collector-test
 
-DISTROS=centos7 rhel8 fedora34 fedora35 amazonlinux2 ubuntu-xenial ubuntu-bionic ubuntu-focal debian-stretch debian-buster debian-bullseye
+DISTROS=centos7 rhel8 fedora34 fedora35 amazonlinux2 ubuntu-xenial ubuntu-bionic ubuntu-focal ubuntu-jammy debian-stretch debian-buster debian-bullseye
 
 .PHONY: all $(DISTROS)
 
@@ -118,6 +118,20 @@ ubuntu-bionic: $(DEB_PACKAGE_X86_64) $(DEB_PACKAGE_ARM64)
 
 ubuntu-focal: $(DEB_PACKAGE_X86_64) $(DEB_PACKAGE_ARM64)
 	echo "FROM ubuntu:focal" > Dockerfile.tmp
+	echo "COPY . /root" >> Dockerfile.tmp
+	echo "RUN apt-get update" >> Dockerfile.tmp
+	echo "RUN apt-get install systemd-sysv -y" >> Dockerfile.tmp
+	echo "RUN rm /usr/sbin/policy-rc.d" >> Dockerfile.tmp
+	$(call docker_build_and_run,amd64)
+	$(call docker_exec,dpkg -i /root/$(DEB_PACKAGE_X86_64))
+	$(call docker_test_and_clean)
+	$(call docker_build_and_run,arm64)
+	$(call docker_exec,dpkg -i /root/$(DEB_PACKAGE_ARM64))
+	$(call docker_test_and_clean)
+	rm Dockerfile.tmp
+
+ubuntu-jammy: $(DEB_PACKAGE_X86_64) $(DEB_PACKAGE_ARM64)
+	echo "FROM ubuntu:jammy" > Dockerfile.tmp
 	echo "COPY . /root" >> Dockerfile.tmp
 	echo "RUN apt-get update" >> Dockerfile.tmp
 	echo "RUN apt-get install systemd-sysv -y" >> Dockerfile.tmp
