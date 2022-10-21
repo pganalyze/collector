@@ -2,12 +2,13 @@
 
 ## 0.46.0      2022-10-21
 
-* Fix bug collecting the relation stats with child tables with locks
+* Relation stats: Skip statistics collection on child tables when parent is locked
 * Add new wait events from Postgres 13 and 14
 * Log streaming: Discard logs after consistent failures to upload
-* Add blocking PIDs collection
+* Collect blocking PIDs for lock monitoring
   - Collect blocking PIDs for the backends in waiting for locks state
   - Disable this option by passing the "--no-postgres-locks" option to the collector binary
+* Add "--benchmark" flag for running collector in benchmark mode
 
 
 ## 0.45.2      2022-08-31
