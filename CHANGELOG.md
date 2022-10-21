@@ -8,7 +8,7 @@
 * Collect blocking PIDs for lock monitoring
   - Collect blocking PIDs for the backends in waiting for locks state
   - Disable this option by passing the "--no-postgres-locks" option to the collector binary
-* Add "--benchmark" flag for running collector in benchmark mode
+* Add "--benchmark" flag for running collector in benchmark mode (does not send data to pganalyze service)
 
 
 ## 0.45.2      2022-08-31
