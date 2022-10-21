@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.46.1      2022-10-21
+
+* Fix Postgres 15 compatibility due to version check bug
+  - This fixes an issue with Postgres 15 only that caused the collector to reject
+    the newer pg_stat_statements version (1.10) by accident
+* Add packages for Ubuntu 22.04, RHEL9-based distributions and Fedora 36
+
+
 ## 0.46.0      2022-10-21
 
 * Relation stats: Skip statistics collection on child tables when parent is locked
