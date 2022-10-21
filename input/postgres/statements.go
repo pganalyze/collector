@@ -13,12 +13,18 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
-const statementSQLDefaultOptionalFields = "NULL, NULL, NULL, NULL, NULL"
-const statementSQLpg94OptionalFields = "queryid, NULL, NULL, NULL, NULL"
-const statementSQLpg95OptionalFields = "queryid, min_time, max_time, mean_time, stddev_time"
-const statementSQLpg13OptionalFields = "queryid, min_exec_time, max_exec_time, mean_exec_time, stddev_exec_time"
-const statementSQLDefaultTotalTimeField = "total_time"
-const statementSQLpg13TotalTimeField = "total_exec_time"
+const statementSQLOptionalFieldsDefault = "NULL, NULL, NULL, NULL, NULL"
+const statementSQLTotalTimeFieldDefault = "total_time"
+
+// pg_stat_statements 1.2+ (Postgres 9.4+)
+const statementSQLOptionalFieldsMinorVersion2 = "queryid, NULL, NULL, NULL, NULL"
+
+// pg_stat_statements 1.3+ (Postgres 9.5+)
+const statementSQLOptionalFieldsMinorVersion3 = "queryid, min_time, max_time, mean_time, stddev_time"
+
+// pg_stat_statements 1.8+ (Postgres 13+)
+const statementSQLOptionalFieldsMinorVersion8 = "queryid, min_exec_time, max_exec_time, mean_exec_time, stddev_exec_time"
+const statementSQLTotalTimeFieldMinorVersion8 = "total_exec_time"
 
 const statementSQL string = `
 SELECT dbid, userid, query, calls, %s, rows, shared_blks_hit, shared_blks_read,
@@ -33,6 +39,14 @@ SELECT 1 AS enabled
 	JOIN pg_catalog.pg_namespace n ON (p.pronamespace = n.oid)
  WHERE n.nspname = 'pganalyze' AND p.proname = 'get_stat_statements'
 			 %s
+`
+
+const statementExtensionVersionSQL string = `
+SELECT nspname,
+       split_part(extversion, '.', 2)
+  FROM pg_extension pge
+ INNER JOIN pg_namespace pgn ON pge.extnamespace = pgn.oid
+ WHERE pge.extname = 'pg_stat_statements'
 `
 
 func statementStatsHelperExists(db *sql.DB, showtext bool) bool {
@@ -84,20 +98,20 @@ func GetStatements(server *state.Server, logger *util.Logger, db *sql.DB, global
 	var optionalFields string
 	var sourceTable string
 	var extSchema string
-	var extVersion float32 // defined in pg_stat_statements.c
-	var foundExtVersion float32
+	var extMinorVersion int16
+	var foundExtMinorVersion int16
 
 	if postgresVersion.Numeric >= state.PostgresVersion13 {
-		extVersion = 1.8
+		extMinorVersion = 8
 	} else if postgresVersion.Numeric >= state.PostgresVersion95 {
-		extVersion = 1.3
+		extMinorVersion = 3
 	} else if postgresVersion.Numeric >= state.PostgresVersion94 {
-		extVersion = 1.2
+		extMinorVersion = 2
 	} else {
-		extVersion = 1.1
+		extMinorVersion = 1
 	}
 
-	err = db.QueryRow(QueryMarkerSQL+"SELECT nspname, extversion FROM pg_extension pge INNER JOIN pg_namespace pgn ON pge.extnamespace = pgn.oid WHERE pge.extname = 'pg_stat_statements'").Scan(&extSchema, &foundExtVersion)
+	err = db.QueryRow(QueryMarkerSQL+statementExtensionVersionSQL).Scan(&extSchema, &foundExtMinorVersion)
 	if err != nil && err != sql.ErrNoRows {
 		return nil, nil, nil, err
 	}
@@ -109,27 +123,27 @@ func GetStatements(server *state.Server, logger *util.Logger, db *sql.DB, global
 			return nil, nil, nil, err
 		}
 		extSchema = "public"
-		foundExtVersion = extVersion
+		foundExtMinorVersion = extMinorVersion
 	}
 
-	if foundExtVersion >= 1.8 {
-		optionalFields = statementSQLpg13OptionalFields
-	} else if foundExtVersion >= 1.3 {
-		optionalFields = statementSQLpg95OptionalFields
-	} else if foundExtVersion >= 1.2 {
-		optionalFields = statementSQLpg94OptionalFields
+	if foundExtMinorVersion >= 8 {
+		optionalFields = statementSQLOptionalFieldsMinorVersion8
+	} else if foundExtMinorVersion >= 3 {
+		optionalFields = statementSQLOptionalFieldsMinorVersion3
+	} else if foundExtMinorVersion >= 2 {
+		optionalFields = statementSQLOptionalFieldsMinorVersion2
 	} else {
-		optionalFields = statementSQLDefaultOptionalFields
+		optionalFields = statementSQLOptionalFieldsDefault
 	}
 
-	if foundExtVersion >= 1.8 {
-		totalTimeField = statementSQLpg13TotalTimeField
+	if foundExtMinorVersion >= 8 {
+		totalTimeField = statementSQLTotalTimeFieldMinorVersion8
 	} else {
-		totalTimeField = statementSQLDefaultTotalTimeField
+		totalTimeField = statementSQLTotalTimeFieldDefault
 	}
 
-	if globalCollectionOpts.TestRun && foundExtVersion < extVersion {
-		logger.PrintInfo("pg_stat_statements extension outdated (%.1f installed, %.1f available). To update run `ALTER EXTENSION pg_stat_statements UPDATE`", foundExtVersion, extVersion)
+	if globalCollectionOpts.TestRun && foundExtMinorVersion < extMinorVersion {
+		logger.PrintInfo("pg_stat_statements extension outdated (1.%d installed, 1.%d available). To update run `ALTER EXTENSION pg_stat_statements UPDATE`", foundExtMinorVersion, extMinorVersion)
 	}
 
 	usingStatsHelper := false
