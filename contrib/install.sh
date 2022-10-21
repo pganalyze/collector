@@ -96,7 +96,7 @@ then
   version=$(grep VERSION_CODENAME /etc/os-release | cut -d= -f2)
   if [ "$version" != jammy ] && [ "$version" != focal ] && [ "$version" != bionic ] && [ "$version" != xenial ];
   then
-    if confirm "Unsupported Ubuntu version; try Ubuntu Focal (20.04) package?";
+    if confirm "Unsupported Ubuntu version; try Ubuntu Jammy (22.04) package?";
     then
       version=jammy
     else
