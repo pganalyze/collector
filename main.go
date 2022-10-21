@@ -245,6 +245,7 @@ func main() {
 	var logToJSON bool
 	var logNoTimestamps bool
 	var reloadRun bool
+	var benchmark bool
 
 	logFlags := log.LstdFlags
 	logger := &util.Logger{}
@@ -283,6 +284,7 @@ func main() {
 	flag.StringVar(&configFilename, "config", defaultConfigFile, "Specify alternative path for config file")
 	flag.StringVar(&stateFilename, "statefile", defaultStateFile, "Specify alternative path for state file")
 	flag.StringVar(&pidFilename, "pidfile", "", "Specifies a path that a pidfile should be written to (default is no pidfile being written)")
+	flag.BoolVar(&benchmark, "benchmark", false, "Runs as a benchmark mode (skip submitting the statistics to the server)")
 	flag.Parse()
 
 	if showVersion {
@@ -322,7 +324,7 @@ func main() {
 
 	globalCollectionOpts := state.CollectionOpts{
 		StartedAt:                time.Now(),
-		SubmitCollectedData:      true,
+		SubmitCollectedData:      !benchmark && true,
 		TestRun:                  testRun,
 		TestReport:               testReport,
 		TestRunLogs:              testRunLogs || dryRunLogs,
@@ -341,7 +343,8 @@ func main() {
 		CollectSystemInformation: !noSystemInformation,
 		StateFilename:            stateFilename,
 		WriteStateUpdate:         (!dryRun && !dryRunLogs && !testRun) || forceStateUpdate,
-		ForceEmptyGrant:          dryRun || dryRunLogs,
+		ForceEmptyGrant:          dryRun || dryRunLogs || benchmark,
+		OutputAsJson:             !benchmark,
 	}
 
 	if reloadRun && !testRun {
