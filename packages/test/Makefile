@@ -7,7 +7,7 @@ docker_exec = docker exec pga-collector-test $(1)
 docker_test_and_clean = docker exec pga-collector-test /root/systemd_test.sh && \
   docker kill pga-collector-test && docker rm pga-collector-test && docker rmi -f pga-collector-test
 
-DISTROS=centos7 rhel8 fedora34 fedora35 amazonlinux2 ubuntu-xenial ubuntu-bionic ubuntu-focal ubuntu-jammy debian-stretch debian-buster debian-bullseye
+DISTROS=centos7 rhel8 rockylinux8 rhel9 rockylinux9 fedora34 fedora35 fedora36 amazonlinux2 ubuntu-xenial ubuntu-bionic ubuntu-focal ubuntu-jammy debian-stretch debian-buster debian-bullseye
 
 .PHONY: all $(DISTROS)
 
@@ -43,7 +43,43 @@ centos7: $(RPM_PACKAGE_X86_64) $(RPM_PACKAGE_ARM64)
 	rm Dockerfile.tmp
 
 rhel8: $(RPM_PACKAGE_X86_64) $(RPM_PACKAGE_ARM64)
-	echo "FROM registry.access.redhat.com/ubi8/ubi:8.0-154" > Dockerfile.tmp
+	echo "FROM redhat/ubi8:latest" > Dockerfile.tmp
+	echo "RUN dnf install -y procps" >> Dockerfile.tmp
+	echo "COPY . /root" >> Dockerfile.tmp
+	$(call docker_build_and_run,amd64)
+	$(call docker_exec,yum install -y --nogpgcheck /root/$(RPM_PACKAGE_X86_64))
+	$(call docker_test_and_clean)
+	$(call docker_build_and_run,arm64)
+	$(call docker_exec,yum install -y --nogpgcheck /root/$(RPM_PACKAGE_ARM64))
+	$(call docker_test_and_clean)
+	rm Dockerfile.tmp
+
+rockylinux8: $(RPM_PACKAGE_X86_64) $(RPM_PACKAGE_ARM64)
+	echo "FROM rockylinux:8" > Dockerfile.tmp
+	echo "RUN dnf install -y procps" >> Dockerfile.tmp
+	echo "COPY . /root" >> Dockerfile.tmp
+	$(call docker_build_and_run,amd64)
+	$(call docker_exec,yum install -y --nogpgcheck /root/$(RPM_PACKAGE_X86_64))
+	$(call docker_test_and_clean)
+	$(call docker_build_and_run,arm64)
+	$(call docker_exec,yum install -y --nogpgcheck /root/$(RPM_PACKAGE_ARM64))
+	$(call docker_test_and_clean)
+	rm Dockerfile.tmp
+
+rhel9: $(RPM_PACKAGE_X86_64) $(RPM_PACKAGE_ARM64)
+	echo "FROM redhat/ubi9:latest" > Dockerfile.tmp
+	echo "RUN dnf install -y procps" >> Dockerfile.tmp
+	echo "COPY . /root" >> Dockerfile.tmp
+	$(call docker_build_and_run,amd64)
+	$(call docker_exec,yum install -y --nogpgcheck /root/$(RPM_PACKAGE_X86_64))
+	$(call docker_test_and_clean)
+	$(call docker_build_and_run,arm64)
+	$(call docker_exec,yum install -y --nogpgcheck /root/$(RPM_PACKAGE_ARM64))
+	$(call docker_test_and_clean)
+	rm Dockerfile.tmp
+
+rockylinux9: $(RPM_PACKAGE_X86_64) $(RPM_PACKAGE_ARM64)
+	echo "FROM rockylinux:9" > Dockerfile.tmp
 	echo "RUN dnf install -y procps" >> Dockerfile.tmp
 	echo "COPY . /root" >> Dockerfile.tmp
 	$(call docker_build_and_run,amd64)
@@ -68,6 +104,18 @@ fedora34: $(RPM_PACKAGE_X86_64) $(RPM_PACKAGE_ARM64)
 
 fedora35: $(RPM_PACKAGE_X86_64) $(RPM_PACKAGE_ARM64)
 	echo "FROM fedora:35" > Dockerfile.tmp
+	echo "RUN dnf install -y procps systemd" >> Dockerfile.tmp
+	echo "COPY . /root" >> Dockerfile.tmp
+	$(call docker_build_and_run,amd64)
+	$(call docker_exec,dnf install -y --nogpgcheck /root/$(RPM_PACKAGE_X86_64))
+	$(call docker_test_and_clean)
+	$(call docker_build_and_run,arm64)
+	$(call docker_exec,dnf install -y --nogpgcheck /root/$(RPM_PACKAGE_ARM64))
+	$(call docker_test_and_clean)
+	rm Dockerfile.tmp
+
+fedora36: $(RPM_PACKAGE_X86_64) $(RPM_PACKAGE_ARM64)
+	echo "FROM fedora:36" > Dockerfile.tmp
 	echo "RUN dnf install -y procps systemd" >> Dockerfile.tmp
 	echo "COPY . /root" >> Dockerfile.tmp
 	$(call docker_build_and_run,amd64)
