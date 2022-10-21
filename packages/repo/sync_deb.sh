@@ -20,6 +20,11 @@ cp /root/deb.distributions /repo/ubuntu/focal/conf/distributions
 reprepro --basedir /repo/ubuntu/focal includedeb stable /deb/systemd/$DEB_PACKAGE_X86_64
 reprepro --basedir /repo/ubuntu/focal includedeb stable /deb/systemd/$DEB_PACKAGE_ARM64
 
+mkdir -p /repo/ubuntu/jammy/conf
+cp /root/deb.distributions /repo/ubuntu/jammy/conf/distributions
+reprepro --basedir /repo/ubuntu/jammy includedeb stable /deb/systemd/$DEB_PACKAGE_X86_64
+reprepro --basedir /repo/ubuntu/jammy includedeb stable /deb/systemd/$DEB_PACKAGE_ARM64
+
 mkdir -p /repo/debian/jessie/conf
 cp /root/deb.distributions /repo/debian/jessie/conf/distributions
 reprepro --basedir /repo/debian/jessie includedeb stable /deb/systemd/$DEB_PACKAGE_X86_64
@@ -45,6 +50,7 @@ apt-key add /repo/pganalyze_signing_key.asc
 gpgv --keyring /etc/apt/trusted.gpg /repo/ubuntu/xenial/dists/stable/InRelease
 gpgv --keyring /etc/apt/trusted.gpg /repo/ubuntu/bionic/dists/stable/InRelease
 gpgv --keyring /etc/apt/trusted.gpg /repo/ubuntu/focal/dists/stable/InRelease
+gpgv --keyring /etc/apt/trusted.gpg /repo/ubuntu/jammy/dists/stable/InRelease
 gpgv --keyring /etc/apt/trusted.gpg /repo/debian/jessie/dists/stable/InRelease
 gpgv --keyring /etc/apt/trusted.gpg /repo/debian/stretch/dists/stable/InRelease
 gpgv --keyring /etc/apt/trusted.gpg /repo/debian/buster/dists/stable/InRelease
