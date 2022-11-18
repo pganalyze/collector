@@ -21,4 +21,30 @@ type PostgresDatabase struct {
 	// This is used to track whether the database needs to be vacuumed in order to prevent multixact ID wraparound or to
 	// allow pg_multixact to be shrunk. It is the minimum of the per-table pg_class.relminmxid values.
 	MinimumMultixactXID Xid
+
+	XIDAge  uint32 // Age of FrozenXID
+	MXIDAge uint32 // Age of MinimumMultixactXID
+}
+
+// PostgresDatabaseStats - Database statistics for a single database
+type PostgresDatabaseStats struct {
+	TransactionCount uint64 // Transaction count of this database
+}
+
+// PostgresDatabaseStatsMap - Map of database statistics (key = database Oid)
+type PostgresDatabaseStatsMap map[Oid]PostgresDatabaseStats
+
+// DiffedPostgresDatabaseStat - Database statistics for a single database as a diff
+type DiffedPostgresDatabaseStats struct {
+	TransactionsPerSecond uint64
+}
+
+// DiffedDatabaseStats - Map of diffed database statistics (key = database Oid)
+type DiffedPostgresDatabaseStatsMap map[Oid]DiffedPostgresDatabaseStats
+
+// DiffSince - Calculate the diff between two stats runs
+func (curr PostgresDatabaseStats) DiffSince(prev PostgresDatabaseStats, collectedIntervalSecs uint32) DiffedPostgresDatabaseStats {
+	return DiffedPostgresDatabaseStats{
+		TransactionsPerSecond: (curr.TransactionCount - prev.TransactionCount) / uint64(collectedIntervalSecs),
+	}
 }

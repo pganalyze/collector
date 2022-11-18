@@ -10,8 +10,10 @@ import (
 	"github.com/pganalyze/collector/state"
 )
 
-const relationsSQLDefaultOptionalFields = "0"
-const relationsSQLpg93OptionalFields = "c.relminmxid"
+const relationsSQLDefaultMxidFields = "0"
+const relationsSQLpg93MxidFields = "c.relminmxid"
+const relationsSQLDefaultMxidAgeFields = "0"
+const relationsSQLpg93MxidAgeFields = "mxid_age(c.relminmxid) AS relation_mxid_age"
 const relationsSQLOidField = "c.relhasoids AS relation_has_oids"
 const relationsSQLpg12OidField = "false AS relation_has_oids"
 const relationsSQLpartBoundField = "''"
@@ -35,6 +37,8 @@ const relationsSQL string = `
 				c.relhassubclass AS relation_has_inheritance_children,
 				c.reltoastrelid IS NOT NULL AS relation_has_toast,
 				c.relfrozenxid AS relation_frozen_xid,
+				%s,
+				age(c.relfrozenxid) AS relation_xid_age,
 				%s,
 				COALESCE((SELECT inhparent FROM pg_inherits WHERE inhrelid = c.oid ORDER BY inhseqno LIMIT 1), 0) AS parent_relid,
 				%s,
@@ -142,7 +146,8 @@ func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 	relations := make(map[state.Oid]state.PostgresRelation, 0)
 
 	// Relations
-	var optionalFields string
+	var mxidFields string
+	var mxidAgeFields string
 	var oidField string
 	var partBoundField string
 	var partStratField string
@@ -150,9 +155,11 @@ func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 	var partExprField string
 
 	if postgresVersion.Numeric >= state.PostgresVersion93 {
-		optionalFields = relationsSQLpg93OptionalFields
+		mxidFields = relationsSQLpg93MxidFields
+		mxidAgeFields = relationsSQLpg93MxidAgeFields
 	} else {
-		optionalFields = relationsSQLDefaultOptionalFields
+		mxidFields = relationsSQLDefaultMxidFields
+		mxidAgeFields = relationsSQLDefaultMxidAgeFields
 	}
 
 	if postgresVersion.Numeric >= state.PostgresVersion10 {
@@ -174,7 +181,8 @@ func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 	}
 
 	rows, err := db.Query(QueryMarkerSQL+fmt.Sprintf(relationsSQL, oidField,
-		optionalFields, partBoundField, partStratField, partColsField, partExprField), ignoreRegexp)
+		mxidFields, mxidAgeFields, partBoundField, partStratField, partColsField,
+		partExprField), ignoreRegexp)
 	if err != nil {
 		err = fmt.Errorf("Relations/Query: %s", err)
 		return nil, err
@@ -188,9 +196,9 @@ func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 
 		err = rows.Scan(&row.Oid, &row.SchemaName, &row.RelationName, &row.RelationType,
 			&options, &row.HasOids, &row.PersistenceType, &row.HasInheritanceChildren,
-			&row.HasToast, &row.FrozenXID, &row.MinimumMultixactXID, &row.ParentTableOid,
-			&row.PartitionBoundary, &row.PartitionStrategy, &partCols, &row.PartitionedBy,
-			&row.ExclusivelyLocked)
+			&row.HasToast, &row.FrozenXID, &row.MinimumMultixactXID, &row.XIDAge, &row.MXIDAge,
+			&row.ParentTableOid, &row.PartitionBoundary, &row.PartitionStrategy, &partCols,
+			&row.PartitionedBy, &row.ExclusivelyLocked)
 		if err != nil {
 			err = fmt.Errorf("Relations/Scan: %s", err)
 			return nil, err

@@ -21,6 +21,7 @@ type SchemaStats struct {
 type PersistedState struct {
 	CollectedAt time.Time
 
+	DatabaseStats  PostgresDatabaseStatsMap
 	StatementStats PostgresStatementStatsMap
 	SchemaStats    map[Oid]*SchemaStats
 
@@ -162,6 +163,8 @@ type DiffState struct {
 	SystemDiskStats    DiffedDiskStatsMap
 
 	CollectorStats DiffedCollectorStats
+
+	DatabaseStats DiffedPostgresDatabaseStatsMap
 }
 
 // StateOnDiskFormatVersion - Increment this when an old state preserved to disk should be ignored

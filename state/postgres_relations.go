@@ -23,6 +23,8 @@ type PostgresRelation struct {
 	HasToast               bool
 	FrozenXID              Xid
 	MinimumMultixactXID    Xid
+	XIDAge                 uint32
+	MXIDAge                uint32
 	ParentTableOid         Oid
 	PartitionBoundary      string
 	PartitionStrategy      string
