@@ -174,6 +174,8 @@ func GetIndexStats(db *sql.DB, postgresVersion state.PostgresVersion, ignoreRege
 		indexStats[oid] = stats
 	}
 
+	indexStats, err = handleIndexStatsExt(db, indexStats, postgresVersion, ignoreRegexp)
+
 	return
 }
 
