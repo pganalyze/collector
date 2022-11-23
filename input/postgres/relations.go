@@ -13,7 +13,7 @@ import (
 const relationsSQLDefaultMxidFields = "0"
 const relationsSQLpg93MxidFields = "c.relminmxid"
 const relationsSQLDefaultMxidAgeFields = "0"
-const relationsSQLpg93MxidAgeFields = "mxid_age(c.relminmxid) AS relation_mxid_age"
+const relationsSQLpg93MxidAgeFields = "CASE WHEN c.relminmxid > 0 THEN mxid_age(c.relminmxid) ELSE 0 END AS relation_mxid_age"
 const relationsSQLOidField = "c.relhasoids AS relation_has_oids"
 const relationsSQLpg12OidField = "false AS relation_has_oids"
 const relationsSQLpartBoundField = "''"
@@ -38,7 +38,7 @@ const relationsSQL string = `
 				c.reltoastrelid IS NOT NULL AS relation_has_toast,
 				c.relfrozenxid AS relation_frozen_xid,
 				%s,
-				age(c.relfrozenxid) AS relation_xid_age,
+				CASE WHEN c.relfrozenxid > 0 THEN age(c.relfrozenxid) ELSE 0 END AS relation_xid_age,
 				%s,
 				COALESCE((SELECT inhparent FROM pg_inherits WHERE inhrelid = c.oid ORDER BY inhseqno LIMIT 1), 0) AS parent_relid,
 				%s,

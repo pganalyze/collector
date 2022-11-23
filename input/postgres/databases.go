@@ -8,10 +8,10 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
-const databasesSQLDefaultMxidFields = "1"
+const databasesSQLDefaultMxidFields = "0"
 const databasesSQLpg93MxidFields = "d.datminmxid"
 const databasesSQLDefaultMxidAgeFields = "0"
-const databasesSQLpg93MxidAgeFields = "mxid_age(d.datminmxid)"
+const databasesSQLpg93MxidAgeFields = "CASE WHEN d.datminmxid > 0 THEN mxid_age(d.datminmxid) ELSE 0 END"
 
 // See also https://www.postgresql.org/docs/9.5/static/catalog-pg-database.html
 const databasesSQL string = `
@@ -27,7 +27,7 @@ SELECT
 	d.datconnlimit,
 	d.datfrozenxid,
 	%s,
-	age(d.datfrozenxid),
+	CASE WHEN d.datfrozenxid > 0 THEN age(d.datfrozenxid) ELSE 0 END,
 	%s,
 	(sd.xact_commit + sd.xact_rollback) AS transaction_count
 FROM pg_catalog.pg_database d
