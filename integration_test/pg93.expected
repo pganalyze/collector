@@ -1,7 +1,0 @@
-"INSERT INTO pgbench_history (tid, bid, aid, delta, mtime) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP);"
-"SELECT abalance FROM pgbench_accounts WHERE aid = ?;"
-"select count(*) from pgbench_branches"
-"UPDATE pgbench_accounts SET abalance = abalance + ? WHERE aid = ?;"
-"UPDATE pgbench_branches SET bbalance = bbalance + ? WHERE bid = ?;"
-"UPDATE pgbench_tellers SET tbalance = tbalance + ? WHERE tid = ?;"
-"<pganalyze-collector>"

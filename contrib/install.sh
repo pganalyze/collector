@@ -109,7 +109,7 @@ then
   pkg=deb
   distribution=debian
   version=$(grep VERSION_CODENAME /etc/os-release | cut -d= -f2)
-  if [ "$version" != bullseye ] && [ "$version" != buster ] && [ "$version" != stretch ];
+  if [ "$version" != bullseye ] && [ "$version" != buster ];
   then
     if confirm "Unsupported Debian version; try Debian Bullseye (11) package?";
     then
