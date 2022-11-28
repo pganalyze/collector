@@ -8,7 +8,7 @@ RUN apt-get update -qq && apt-get install -y -q systemd
 COPY integration_test/container.target /etc/systemd/system/container.target
 RUN ln -sf /etc/systemd/system/container.target /etc/systemd/system/default.target
 STOPSIGNAL SIGRTMIN+3
-ENTRYPOINT ["/sbin/init"]
+ENTRYPOINT ["/lib/systemd/systemd"]
 CMD ["--log-level=info"]
 
 ENV GOVERSION 1.17
