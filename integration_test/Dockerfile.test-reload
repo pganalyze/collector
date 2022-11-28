@@ -3,13 +3,19 @@ FROM ubuntu:20.04
 ARG TARGETARCH
 
 # Systemd-based container setup
-ENV container=docker
-RUN apt-get update -qq && apt-get install -y -q systemd
-COPY integration_test/container.target /etc/systemd/system/container.target
-RUN ln -sf /etc/systemd/system/container.target /etc/systemd/system/default.target
-STOPSIGNAL SIGRTMIN+3
-ENTRYPOINT ["/lib/systemd/systemd"]
-CMD ["--log-level=info"]
+ENV container docker
+RUN apt-get update -qq && apt-get install -y -q systemd systemd-sysv
+#COPY integration_test/container.target /etc/systemd/system/container.target
+#RUN ln -sf /etc/systemd/system/container.target /etc/systemd/system/default.target
+RUN rm -f /lib/systemd/system/multi-user.target.wants/* \
+    /etc/systemd/system/*.wants/* \
+    /lib/systemd/system/local-fs.target.wants/* \
+    /lib/systemd/system/sockets.target.wants/*udev* \
+    /lib/systemd/system/sockets.target.wants/*initctl* \
+    /lib/systemd/system/sysinit.target.wants/systemd-tmpfiles-setup* \
+    /lib/systemd/system/systemd-update-utmp*
+RUN systemctl set-default multi-user.target
+#STOPSIGNAL SIGRTMIN+3
 
 ENV GOVERSION 1.17
 ENV CODE_DIR /collector

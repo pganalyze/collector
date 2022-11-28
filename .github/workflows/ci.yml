@@ -11,7 +11,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
 
     steps:
 
@@ -35,8 +35,8 @@ jobs:
     - name: Runs tests
       run: |
         make build OUTFILE=pganalyze-collector-linux-amd64
-        make test
         DOCKER_BUILDKIT=1 make integration_test
+        #make test
         shellcheck contrib/install.sh
 
     - name: Lint
