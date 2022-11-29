@@ -188,6 +188,8 @@ pg15:
 reload:
 	docker build -f Dockerfile.test-reload $(DOCKER_BUILD_OPTS)
 	$(call docker_run_cmd,)
+	sleep 10
+	docker top pganalyze-collector-test
 	docker exec pganalyze-collector-test systemctl start pganalyze-collector
 	sleep 5
 	docker exec pganalyze-collector-test pganalyze-collector --reload
