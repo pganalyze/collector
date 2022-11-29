@@ -181,7 +181,6 @@ pg15:
 # *before* the reload
 reload:
 	docker build -f Dockerfile.test-reload $(DOCKER_BUILD_OPTS)
-	$(call docker_run_cmd_base,pganalyze-collector-test ls -lisa /sys/fs/cgroup)
 	docker rm -f pganalyze-collector-test
 	$(call docker_run_cmd,)
 	docker exec --user pganalyze --detach pganalyze-collector-test bash -c "pganalyze-collector 2> /tmp/collector.log"
