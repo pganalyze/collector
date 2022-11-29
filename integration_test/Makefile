@@ -1,11 +1,10 @@
 DOCKER_BUILD_OPTS = -t pganalyze-collector-test ..
-docker_run_cmd_base = docker run --name pganalyze-collector-test \
+docker_run_cmd = docker run --name pganalyze-collector-test \
   --mount type=bind,source=/sys/fs/cgroup,target=/sys/fs/cgroup,readonly \
   -v `pwd`/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d/ \
   -e POSTGRES_HOST_AUTH_METHOD=trust \
   --privileged \
-  $(1)
-docker_run_cmd = $(call docker_run_cmd_base,-d pganalyze-collector-test $(1))
+  -d pganalyze-collector-test $(1)
 docker_run_cmd_postgres = $(call docker_run_cmd,postgres -c pg_stat_statements.track_utility=off)
 
 .PHONY: pg96 pg10 pg11 pg12 pg13 pg14 pg15 reload guided-setup installer
@@ -181,7 +180,6 @@ pg15:
 # *before* the reload
 reload:
 	docker build -f Dockerfile.test-reload $(DOCKER_BUILD_OPTS)
-	docker rm -f pganalyze-collector-test
 	$(call docker_run_cmd,)
 	docker exec --user pganalyze --detach pganalyze-collector-test bash -c "pganalyze-collector 2> /tmp/collector.log"
 	sleep 5
