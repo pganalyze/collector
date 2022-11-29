@@ -33,5 +33,7 @@ RUN cp $CODE_DIR/pganalyze-collector /usr/bin/
 RUN cp $CODE_DIR/pganalyze-collector-helper /usr/bin/
 RUN cp $CODE_DIR/pganalyze-collector-setup /usr/bin/
 RUN cp $CODE_DIR/contrib/pganalyze-collector.conf /etc/pganalyze-collector.conf
+RUN mkdir -p /etc/systemd/system/
+RUN cp $CODE_DIR/contrib/systemd/pganalyze-collector.service /etc/systemd/system/pganalyze-collector.service
 
 RUN sh $CODE_DIR/packages/src/deb-systemd/after-install.sh

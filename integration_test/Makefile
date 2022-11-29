@@ -188,17 +188,15 @@ pg15:
 reload:
 	docker build -f Dockerfile.test-reload $(DOCKER_BUILD_OPTS)
 	$(call docker_run_cmd,)
-	docker exec --user pganalyze --detach pganalyze-collector-test bash -c "pganalyze-collector -v > /tmp/collector.log 2>&1"
+	docker exec pganalyze-collector-test systemctl start pganalyze-collector
 	sleep 5
 	docker exec pganalyze-collector-test pganalyze-collector --reload
-	sleep 1
-	docker exec pganalyze-collector-test cat /tmp/collector.log | grep "Reloading configuration..."
+	docker exec pganalyze-collector-test journalctl -u pganalyze-collector | grep "Reloading configuration..."
 	docker exec pganalyze-collector-test test \! -f /var/lib/pganalyze-collector/state
 	docker exec pganalyze-collector-test bash -c "echo 'db_url = postgres://127.0.0.1/postgres' >> /etc/pganalyze-collector.conf"
 	docker exec --user pganalyze pganalyze-collector-test bash -c "echo '' > /tmp/collector.log"
 	docker exec pganalyze-collector-test pganalyze-collector --reload
 	docker exec pganalyze-collector-test pganalyze-collector --reload
-	docker exec pganalyze-collector-test cat /tmp/collector.log | grep "Reloading configuration..."
 	docker exec pganalyze-collector-test test -f /var/lib/pganalyze-collector/state
 	docker rm -f pganalyze-collector-test
 	docker rmi pganalyze-collector-test
