@@ -16,6 +16,8 @@ RUN rm -f /lib/systemd/system/multi-user.target.wants/* \
     /lib/systemd/system/systemd-update-utmp*
 RUN systemctl set-default multi-user.target
 #STOPSIGNAL SIGRTMIN+3
+ENTRYPOINT ["/lib/systemd/systemd"]
+CMD ["--log-level=info", "--unit=sysinit.target"]
 
 ENV GOVERSION 1.17
 ENV CODE_DIR /collector
