@@ -8,6 +8,21 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
+const replicationSQLPg13 string = `
+SELECT in_recovery,
+			 CASE WHEN in_recovery THEN NULL ELSE pg_catalog.pg_current_wal_lsn() END AS current_xlog_location,
+			 COALESCE(receive_location, '0/0') >= replay_location AS is_streaming,
+			 receive_location,
+			 replay_location,
+			 pg_catalog.pg_wal_lsn_diff(receive_location, replay_location) AS apply_byte_lag,
+			 replay_ts,
+			 EXTRACT(epoch FROM pg_catalog.now() - pg_catalog.pg_last_xact_replay_timestamp())::int AS replay_ts_age,
+			 pg_current_xact_id()
+	FROM (SELECT pg_catalog.pg_is_in_recovery() AS in_recovery,
+							 pg_catalog.pg_last_wal_receive_lsn() AS receive_location,
+							 pg_catalog.pg_last_wal_replay_lsn() AS replay_location,
+							 pg_catalog.pg_last_xact_replay_timestamp() AS replay_ts) r`
+
 const replicationSQLPg10 string = `
 SELECT in_recovery,
 			 CASE WHEN in_recovery THEN NULL ELSE pg_catalog.pg_current_wal_lsn() END AS current_xlog_location,
@@ -16,7 +31,8 @@ SELECT in_recovery,
 			 replay_location,
 			 pg_catalog.pg_wal_lsn_diff(receive_location, replay_location) AS apply_byte_lag,
 			 replay_ts,
-			 EXTRACT(epoch FROM pg_catalog.now() - pg_catalog.pg_last_xact_replay_timestamp())::int AS replay_ts_age
+			 EXTRACT(epoch FROM pg_catalog.now() - pg_catalog.pg_last_xact_replay_timestamp())::int AS replay_ts_age,
+			 txid_current()
 	FROM (SELECT pg_catalog.pg_is_in_recovery() AS in_recovery,
 							 pg_catalog.pg_last_wal_receive_lsn() AS receive_location,
 							 pg_catalog.pg_last_wal_replay_lsn() AS replay_location,
@@ -30,7 +46,8 @@ SELECT in_recovery,
 			 replay_location,
 			 pg_catalog.pg_xlog_location_diff(receive_location, replay_location) AS apply_byte_lag,
 			 replay_ts,
-			 EXTRACT(epoch FROM pg_catalog.now() - pg_catalog.pg_last_xact_replay_timestamp())::int AS replay_ts_age
+			 EXTRACT(epoch FROM pg_catalog.now() - pg_catalog.pg_last_xact_replay_timestamp())::int AS replay_ts_age,
+			 txid_current
 	FROM (SELECT pg_catalog.pg_is_in_recovery() AS in_recovery,
 							 pg_catalog.pg_last_xlog_receive_location() AS receive_location,
 							 pg_catalog.pg_last_xlog_replay_location() AS replay_location,
@@ -100,7 +117,10 @@ func GetReplication(logger *util.Logger, db *sql.DB, postgresVersion state.Postg
 		sourceTable = "pg_stat_replication"
 	}
 
-	if postgresVersion.Numeric >= state.PostgresVersion10 {
+	if postgresVersion.Numeric >= state.PostgresVersion13 {
+		replicationStandbySQL = replicationStandbySQLPg10
+		replicationSQL = replicationSQLPg13
+	} else if postgresVersion.Numeric >= state.PostgresVersion10 {
 		replicationStandbySQL = replicationStandbySQLPg10
 		replicationSQL = replicationSQLPg10
 	} else {
@@ -111,7 +131,7 @@ func GetReplication(logger *util.Logger, db *sql.DB, postgresVersion state.Postg
 	err = db.QueryRow(QueryMarkerSQL+replicationSQL).Scan(
 		&repl.InRecovery, &repl.CurrentXlogLocation, &repl.IsStreaming,
 		&repl.ReceiveLocation, &repl.ReplayLocation, &repl.ApplyByteLag,
-		&repl.ReplayTimestamp, &repl.ReplayTimestampAge,
+		&repl.ReplayTimestamp, &repl.ReplayTimestampAge, &repl.CurrentXactId,
 	)
 	if err != nil {
 		return repl, err
