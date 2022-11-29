@@ -191,6 +191,7 @@ reload:
 	docker exec --user pganalyze --detach pganalyze-collector-test bash -c "pganalyze-collector 2> /tmp/collector.log"
 	sleep 5
 	docker exec pganalyze-collector-test pganalyze-collector --reload
+	sleep 1
 	docker exec pganalyze-collector-test cat /tmp/collector.log | grep "Reloading configuration..."
 	docker exec pganalyze-collector-test test \! -f /var/lib/pganalyze-collector/state
 	docker exec pganalyze-collector-test bash -c "echo 'db_url = postgres://127.0.0.1/postgres' >> /etc/pganalyze-collector.conf"
