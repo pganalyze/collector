@@ -17,7 +17,7 @@ docker_run_cmd_postgres = $(call docker_run_cmd,postgres -c pg_stat_statements.t
 .PHONY: pg96 pg10 pg11 pg12 pg13 pg14 pg15 reload guided-setup installer
 
 #all: pg96 pg10 pg11 pg12 pg13 pg14 pg15 reload guided-setup installer
-all: reload
+all: pg15 reload guided-setup installer
 
 pg96:
 	docker build -f Dockerfile.test-pg96 $(DOCKER_BUILD_OPTS)
@@ -188,10 +188,8 @@ pg15:
 reload:
 	docker build -f Dockerfile.test-reload $(DOCKER_BUILD_OPTS)
 	$(call docker_run_cmd,)
-	sleep 10
-	docker top pganalyze-collector-test
-	docker exec pganalyze-collector-test systemctl start pganalyze-collector
 	sleep 5
+	docker exec pganalyze-collector-test systemctl start pganalyze-collector
 	docker exec pganalyze-collector-test pganalyze-collector --reload
 	docker exec pganalyze-collector-test journalctl -u pganalyze-collector | grep "Reloading configuration..."
 	docker exec pganalyze-collector-test test \! -f /var/lib/pganalyze-collector/state
@@ -205,8 +203,8 @@ reload:
 
 guided-setup:
 	docker build -f Dockerfile.test-guided-setup $(DOCKER_BUILD_OPTS)
-	$(docker_run_cmd_postgres)
-	sleep 10
+	$(call docker_run_cmd,)
+	sleep 5
 	docker exec pganalyze-collector-test systemctl start postgresql
 	docker exec --user pganalyze --detach pganalyze-collector-test pganalyze-collector
 
@@ -220,7 +218,7 @@ guided-setup:
 	docker exec --user pganalyze pganalyze-collector-test cat /etc/pganalyze-collector.conf > guided-setup.collector-config.out
 	docker exec pganalyze-collector-test sh -c "PGA_DISABLE_ACTIVITY=1 pganalyze-collector --dry-run --force-state-update -v" > guided-setup.snapshot.json.out 2>guided-setup-snapshot.log.out
 
-	docker exec --user postgres pganalyze-collector-test pg_ctl --pgdata /var/lib/postgresql/10/main --wait stop --mode fast
+	docker exec --user postgres pganalyze-collector-test pg_ctl --pgdata /var/lib/postgresql/12/main --wait stop --mode fast
 	docker rm -f pganalyze-collector-test
 	docker rmi pganalyze-collector-test
 
@@ -238,8 +236,9 @@ guided-setup:
 
 installer:
 	docker build -f Dockerfile.test-guided-setup $(DOCKER_BUILD_OPTS)
-	$(docker_run_cmd_postgres)
-	sleep 10
+	$(call docker_run_cmd,)
+	sleep 5
+	docker exec pganalyze-collector-test systemctl start postgresql
 
 	docker exec --privileged pganalyze-collector-test env PGA_INSTALL_NONINTERACTIVE=true PGA_API_KEY=abc123 bash -c '</collector/contrib/install.sh bash' >install.out
 	docker rm -f pganalyze-collector-test
