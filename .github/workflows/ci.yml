@@ -11,9 +11,8 @@ on:
 
 jobs:
   build:
-    # Pin Ubuntu to 20.04 to avoid failures with /sys/fs/cgroup not being compatible
-    # with integration tests running systemd in a container on an older Ubuntu version.
-    runs-on: ubuntu-20.04
+    # Use new enough OS that has CGroupsv2 enabled (required by the integration tests)
+    runs-on: ubuntu-22.04
 
     steps:
 

@@ -1,7 +1,13 @@
 DOCKER_BUILD_OPTS = -t pganalyze-collector-test ..
+
+# See this on running systemd inside containers with CgroupsV2:
+# - https://systemd.io/CONTAINER_INTERFACE/
+# - https://serverfault.com/questions/1053187/systemd-fails-to-run-in-a-docker-container-when-using-cgroupv2-cgroupns-priva
+# - Check if your system supports Cgroupsv2 by testing presence of /sys/fs/cgroup/cgroup.controllers
 docker_run_cmd = docker run --name pganalyze-collector-test \
   --cgroup-parent=docker.slice --cgroupns private \
   --privileged --cap-add SYS_ADMIN --security-opt seccomp=unconfined \
+  --userns=host \
   --tmpfs /tmp --tmpfs /run --tmpfs /run/lock \
   -v `pwd`/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d/ \
   -e POSTGRES_HOST_AUTH_METHOD=trust \
