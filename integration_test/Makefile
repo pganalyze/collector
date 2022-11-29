@@ -188,7 +188,7 @@ pg15:
 reload:
 	docker build -f Dockerfile.test-reload $(DOCKER_BUILD_OPTS)
 	$(call docker_run_cmd,)
-	docker exec --user pganalyze --detach pganalyze-collector-test bash -c "pganalyze-collector 2> /tmp/collector.log"
+	docker exec --user pganalyze --detach pganalyze-collector-test bash -c "pganalyze-collector > /tmp/collector.log 2>&1"
 	sleep 5
 	docker exec pganalyze-collector-test pganalyze-collector --reload
 	sleep 1
