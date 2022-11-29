@@ -171,7 +171,7 @@ then
   if [ "$arch" = 'x86_64' ];
   then
     apt_source="deb [arch=amd64] https://packages.pganalyze.com/${distribution}/${version}/ stable main"
-  elif [ "$arch" = 'arm64' ];
+  elif [ "$arch" = 'arm64' ] || [ "$arch" = 'aarch64' ];
   then
     apt_source="deb [arch=arm64] https://packages.pganalyze.com/${distribution}/${version}/ stable main"
   fi
