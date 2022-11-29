@@ -11,6 +11,8 @@ on:
 
 jobs:
   build:
+    # Pin Ubuntu to 20.04 to avoid failures with our integration tests failing with CGroupsv2
+    # (because of our use of a RW bind mount of /sys/fs/cgroup to run systemd in a container)
     runs-on: ubuntu-20.04
 
     steps:
