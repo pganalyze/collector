@@ -1,10 +1,8 @@
 DOCKER_BUILD_OPTS = -t pganalyze-collector-test ..
 docker_run_cmd = docker run --name pganalyze-collector-test \
-  --mount type=bind,source=/sys/fs/cgroup,target=/sys/fs/cgroup \
-  --mount type=bind,source=/sys/fs/fuse,target=/sys/fs/fuse \
-  --mount type=tmpfs,destination=/tmp \
-  --mount type=tmpfs,destination=/run \
-  --mount type=tmpfs,destination=/run/lock \
+  --cgroup-parent=docker.slice --cgroupns private \
+  --privileged --cap-add SYS_ADMIN --security-opt seccomp=unconfined \
+  --tmpfs /tmp --tmpfs /run --tmpfs /run/lock \
   -v `pwd`/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d/ \
   -e POSTGRES_HOST_AUTH_METHOD=trust \
   -d pganalyze-collector-test $(1)
@@ -12,7 +10,8 @@ docker_run_cmd_postgres = $(call docker_run_cmd,postgres -c pg_stat_statements.t
 
 .PHONY: pg96 pg10 pg11 pg12 pg13 pg14 pg15 reload guided-setup installer
 
-all: pg96 pg10 pg11 pg12 pg13 pg14 pg15 reload guided-setup installer
+#all: pg96 pg10 pg11 pg12 pg13 pg14 pg15 reload guided-setup installer
+all: reload
 
 pg96:
 	docker build -f Dockerfile.test-pg96 $(DOCKER_BUILD_OPTS)
