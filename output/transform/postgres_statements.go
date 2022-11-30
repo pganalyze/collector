@@ -9,13 +9,17 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
-func groupStatements(statements state.PostgresStatementMap, statsMap state.DiffedPostgresStatementStatsMap) map[statementKey]statementValue {
+func groupStatements(statements state.PostgresStatementMap, statsMap state.DiffedPostgresStatementStatsMap, queryIdentities state.QueryIdentityMap) map[statementKey]statementValue {
 	groupedStatements := make(map[statementKey]statementValue)
 
 	for sKey, stats := range statsMap {
 		statement, exist := statements[sKey]
 		if !exist {
-			statement = state.PostgresStatement{QueryTextUnavailable: true, Fingerprint: util.FingerprintText(util.QueryTextUnavailable)}
+			if identity, ok := queryIdentities[sKey.QueryID]; ok {
+				statement = state.PostgresStatement{QueryTextUnavailable: false, Fingerprint: identity.Fingerprint}
+			} else {
+				statement = state.PostgresStatement{QueryTextUnavailable: true, Fingerprint: util.FingerprintText(util.QueryTextUnavailable)}
+			}
 		}
 
 		key := statementKey{
@@ -67,7 +71,7 @@ func transformQueryStatistic(stats state.DiffedPostgresStatementStats, idx int32
 
 func transformPostgresStatements(s snapshot.FullSnapshot, newState state.PersistedState, diffState state.DiffState, transientState state.TransientState, roleOidToIdx OidToIdx, databaseOidToIdx OidToIdx) snapshot.FullSnapshot {
 	// Statement stats from this snapshot
-	groupedStatements := groupStatements(transientState.Statements, diffState.StatementStats)
+	groupedStatements := groupStatements(transientState.Statements, diffState.StatementStats, newState.QueryIdentities)
 	for key, value := range groupedStatements {
 		idx := upsertQueryReferenceAndInformation(&s, transientState.StatementTexts, roleOidToIdx, databaseOidToIdx, key, value)
 
@@ -87,7 +91,7 @@ func transformPostgresStatements(s snapshot.FullSnapshot, newState state.Persist
 		h.CollectedAt, _ = ptypes.TimestampProto(timeKey.CollectedAt)
 		h.CollectedIntervalSecs = timeKey.CollectedIntervalSecs
 
-		groupedStatements = groupStatements(transientState.Statements, diffedStats)
+		groupedStatements = groupStatements(transientState.Statements, diffedStats, newState.QueryIdentities)
 		for key, value := range groupedStatements {
 			idx := upsertQueryReferenceAndInformation(&s, transientState.StatementTexts, roleOidToIdx, databaseOidToIdx, key, value)
 			statistic := transformQueryStatistic(value.statementStats, idx)

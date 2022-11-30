@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os/exec"
 	"runtime/debug"
+	"sort"
 	"sync"
 	"time"
 
@@ -66,6 +67,8 @@ func collectDiffAndSubmit(server *state.Server, globalCollectionOpts state.Colle
 	if transientState.ResetStatementStats != nil {
 		newState.StatementStats = transientState.ResetStatementStats
 	}
+
+	newState.QueryIdentities = pruneQueryIdentities(newState.QueryIdentities)
 
 	return newState, collectionStatus, nil
 }
@@ -253,4 +256,28 @@ func CollectAllServers(servers []*state.Server, globalCollectionOpts state.Colle
 	}
 
 	return
+}
+
+func pruneQueryIdentities(oldMap state.QueryIdentityMap) (newMap state.QueryIdentityMap) {
+	if len(oldMap) < 100000 {
+		return oldMap
+	}
+	slice := make([]state.QueryIdentity, 0, len(oldMap))
+	for _, identity := range oldMap {
+		slice = append(slice, identity)
+	}
+	sort.Slice(slice, func(i, j int) bool {
+		return slice[i].LastSeen.Before(slice[j].LastSeen)
+	})
+	for _, identity := range slice[:min(len(oldMap), 100000)] {
+		newMap[identity.QueryID] = identity
+	}
+	return
+}
+
+func min(x, y int) int {
+	if x < y {
+		return x
+	}
+	return y
 }

@@ -104,3 +104,11 @@ func (stmt DiffedPostgresStatementStats) Add(other DiffedPostgresStatementStats)
 		BlkWriteTime:      stmt.BlkWriteTime + other.BlkWriteTime,
 	}
 }
+
+type QueryIdentity struct {
+	QueryID int64
+	Fingerprint uint64
+	LastSeen time.Time
+}
+
+type QueryIdentityMap map[int64]QueryIdentity

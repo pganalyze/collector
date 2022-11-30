@@ -17,7 +17,7 @@ type SchemaStats struct {
 	FunctionStats PostgresFunctionStatsMap
 }
 
-// PersistedState - State thats kept across collector runs to be used for diffs
+// PersistedState - State that's kept across collector runs
 type PersistedState struct {
 	CollectedAt time.Time
 
@@ -40,6 +40,9 @@ type PersistedState struct {
 
 	// All statement stats that have not been identified (will be cleared by the next full snapshot)
 	UnidentifiedStatementStats HistoricStatementStatsMap
+
+	// Keeps track of queryid -> fingerprint pairs in case a query is no longer in pg_stat_statements
+	QueryIdentities QueryIdentityMap
 }
 
 // TransientState - State thats only used within a collector run (and not needed for diffs)

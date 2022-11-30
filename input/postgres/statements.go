@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"hash/fnv"
 	"strings"
+	"time"
 
 	"github.com/guregu/null"
 	"github.com/lib/pq"
@@ -233,6 +234,17 @@ func GetStatements(server *state.Server, logger *util.Logger, db *sql.DB, global
 
 		if showtext {
 			statementTexts[key] = receivedQuery.String
+		}
+		if queryID.Valid && showtext {
+			if identity, ok := server.PrevState.QueryIdentities[queryID.Int64]; ok {
+				identity.LastSeen = time.Now()
+			} else {
+				server.PrevState.QueryIdentities[queryID.Int64] = state.QueryIdentity{
+					QueryID: queryID.Int64,
+					Fingerprint: util.FingerprintQuery(receivedQuery.String, server.Config.FilterQueryText, -1),
+					LastSeen: time.Now(),
+				}
+			}
 		}
 		if ignoreIOTiming(postgresVersion, receivedQuery) {
 			stats.BlkReadTime = 0
