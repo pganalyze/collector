@@ -1,4 +1,4 @@
-FROM postgres:9.6
+FROM postgres:9.6-bullseye
 
 ARG TARGETARCH
 

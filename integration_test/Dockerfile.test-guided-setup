@@ -1,4 +1,4 @@
-FROM ubuntu:18.04
+FROM ubuntu:20.04
 
 ARG TARGETARCH
 
@@ -8,7 +8,7 @@ RUN apt-get update -qq && apt-get install -y -q systemd
 COPY integration_test/container.target /etc/systemd/system/container.target
 RUN ln -sf /etc/systemd/system/container.target /etc/systemd/system/default.target
 STOPSIGNAL SIGRTMIN+3
-ENTRYPOINT ["/sbin/init"]
+ENTRYPOINT ["/lib/systemd/systemd"]
 CMD ["--log-level=info"]
 
 ENV GOVERSION 1.17
@@ -39,8 +39,8 @@ RUN sh $CODE_DIR/packages/src/deb-systemd/after-install.sh
 
 # install postgres
 RUN DEBIAN_FRONTEND=noninteractive apt-get install --yes --quiet postgresql
-ENV PATH $PATH:/usr/lib/postgresql/10/bin
+ENV PATH $PATH:/usr/lib/postgresql/12/bin
 
 # fake some shared_preload_libraries so we can verify we do not clobber them
-RUN echo 'shared_preload_libraries = sepgsql' >> /etc/postgresql/10/main/postgresql.conf
-RUN echo 'shared_preload_libraries = auth_delay' >> /etc/postgresql/10/main/postgresql.conf
+RUN echo 'shared_preload_libraries = sepgsql' >> /etc/postgresql/12/main/postgresql.conf
+RUN echo 'shared_preload_libraries = auth_delay' >> /etc/postgresql/12/main/postgresql.conf
