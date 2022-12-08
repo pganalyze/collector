@@ -71,6 +71,9 @@ func getDefaultConfig() *ServerConfig {
 	if enableLogExplain := os.Getenv("PGA_ENABLE_LOG_EXPLAIN"); enableLogExplain != "" {
 		config.EnableLogExplain = parseConfigBool(enableLogExplain)
 	}
+	if alwaysCollectSystemData := os.Getenv("PGA_ALWAYS_COLLECT_SYSTEM_DATA"); alwaysCollectSystemData != "" {
+		config.AlwaysCollectSystemData = parseConfigBool(alwaysCollectSystemData)
+	}
 	if dbURL := os.Getenv("DB_URL"); dbURL != "" {
 		config.DbURL = dbURL
 	}

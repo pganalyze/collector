@@ -1,8 +1,6 @@
 package system
 
 import (
-	"os"
-
 	"github.com/pganalyze/collector/config"
 	"github.com/pganalyze/collector/input/postgres"
 	"github.com/pganalyze/collector/input/system/rds"
@@ -46,7 +44,7 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger) (system sta
 		// runs on the database server itself and can gather local statistics
 		system = selfhosted.GetSystemState(config, logger)
 		system.Info.Type = state.CrunchyBridgeSystem
-	} else if dbHost == "" || dbHost == "localhost" || dbHost == "127.0.0.1" || os.Getenv("PGA_ALWAYS_COLLECT_SYSTEM_DATA") != "" {
+	} else if dbHost == "" || dbHost == "localhost" || dbHost == "127.0.0.1" || config.AlwaysCollectSystemData {
 		system = selfhosted.GetSystemState(config, logger)
 	}
 
