@@ -243,9 +243,9 @@ func GetStatements(server *state.Server, logger *util.Logger, db *sql.DB, global
 				identity.LastSeen = time.Now()
 			} else {
 				server.PrevState.QueryIdentities[queryID.Int64] = state.QueryIdentity{
-					QueryID: queryID.Int64,
+					QueryID:     queryID.Int64,
 					Fingerprint: util.FingerprintQuery(receivedQuery.String, server.Config.FilterQueryText, -1),
-					LastSeen: time.Now(),
+					LastSeen:    time.Now(),
 				}
 			}
 		}
