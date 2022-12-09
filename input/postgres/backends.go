@@ -10,10 +10,11 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
-const activitySQLDefaultOptionalFields = "waiting, NULL, NULL, NULL, NULL, NULL"
-const activitySQLpg94OptionalFields = "waiting, backend_xid, backend_xmin, NULL, NULL, NULL"
-const activitySQLpg96OptionalFields = `COALESCE(wait_event_type, '') = 'Lock' as waiting, backend_xid, backend_xmin, wait_event_type, wait_event, NULL`
-const activitySQLpg10OptionalFields = `COALESCE(wait_event_type, '') = 'Lock' as waiting, backend_xid, backend_xmin, wait_event_type, wait_event, backend_type`
+const activitySQLDefaultOptionalFields = "waiting, NULL, NULL, NULL, NULL, NULL, NULL"
+const activitySQLpg94OptionalFields = "waiting, backend_xid, backend_xmin, NULL, NULL, NULL, NULL"
+const activitySQLpg96OptionalFields = `COALESCE(wait_event_type, '') = 'Lock' as waiting, backend_xid, backend_xmin, wait_event_type, wait_event, NULL, NULL`
+const activitySQLpg10OptionalFields = `COALESCE(wait_event_type, '') = 'Lock' as waiting, backend_xid, backend_xmin, wait_event_type, wait_event, backend_type, NULL`
+const activitySQLpg14OptionalFields = `COALESCE(wait_event_type, '') = 'Lock' as waiting, backend_xid, backend_xmin, wait_event_type, wait_event, backend_type, query_id`
 
 const pgBlockingPidsField = `
 CASE
@@ -33,7 +34,9 @@ func GetBackends(logger *util.Logger, db *sql.DB, postgresVersion state.Postgres
 	var blockingPidsField string
 	var sourceTable string
 
-	if postgresVersion.Numeric >= state.PostgresVersion10 {
+	if postgresVersion.Numeric >= state.PostgresVersion14 {
+		optionalFields = activitySQLpg14OptionalFields
+	} else if postgresVersion.Numeric >= state.PostgresVersion10 {
 		optionalFields = activitySQLpg10OptionalFields
 	} else if postgresVersion.Numeric >= state.PostgresVersion96 {
 		optionalFields = activitySQLpg96OptionalFields
@@ -78,7 +81,7 @@ func GetBackends(logger *util.Logger, db *sql.DB, postgresVersion state.Postgres
 			&row.ClientPort, &row.BackendStart, &row.XactStart, &row.QueryStart,
 			&row.StateChange, &row.Waiting, &row.BackendXid, &row.BackendXmin,
 			&row.WaitEventType, &row.WaitEvent, &row.BackendType, pq.Array(&row.BlockedByPids),
-			&row.State, &row.Query)
+			&row.QueryID, &row.State, &row.Query)
 		if err != nil {
 			return nil, err
 		}

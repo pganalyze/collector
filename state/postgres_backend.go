@@ -29,6 +29,8 @@ type PostgresBackend struct {
 
 	BackendType null.String // 10+ The process type of this backend
 
+	QueryID null.Int // 14+ The internal query ID which is also available in pg_stat_statements
+
 	Query null.String // Text of this backend's most recent query
 
 	// Current overall state of this backend. Possible values are:

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 
+	"github.com/guregu/null"
 	snapshot "github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
@@ -61,8 +62,16 @@ func upsertQueryReferenceAndInformation(s *snapshot.FullSnapshot, statementTexts
 	return idx
 }
 
-func upsertQueryReferenceAndInformationSimple(server *state.Server, refs []*snapshot.QueryReference, infos []*snapshot.QueryInformation, roleIdx int32, databaseIdx int32, originalQuery string, trackActivityQuerySize int) (int32, []*snapshot.QueryReference, []*snapshot.QueryInformation) {
-	fingerprint := util.FingerprintQuery(originalQuery, server.Config.FilterQueryText, trackActivityQuerySize)
+func upsertQueryReferenceAndInformationSimple(server *state.Server, refs []*snapshot.QueryReference, infos []*snapshot.QueryInformation, roleIdx int32, databaseIdx int32, queryID null.Int, originalQuery string, trackActivityQuerySize int) (int32, []*snapshot.QueryReference, []*snapshot.QueryInformation) {
+	var fingerprint uint64
+	if server.PrevState.QueryIdentities != nil && queryID.Valid {
+		if identity, ok := server.PrevState.QueryIdentities[queryID.Int64]; ok {
+			fingerprint = identity.Fingerprint
+		}
+	}
+	if fingerprint == 0 {
+		fingerprint = util.FingerprintQuery(originalQuery, server.Config.FilterQueryText, trackActivityQuerySize)
+	}
 
 	fpBuf := make([]byte, 8)
 	binary.BigEndian.PutUint64(fpBuf, fingerprint)
@@ -82,10 +91,15 @@ func upsertQueryReferenceAndInformationSimple(server *state.Server, refs []*snap
 	idx := int32(len(refs))
 	refs = append(refs, &newRef)
 
+	normalizedQuery := util.NormalizeQuery(originalQuery, server.Config.FilterQueryText, trackActivityQuerySize)
+	if normalizedQuery == util.QueryTextTruncated {
+		normalizedQuery = ""
+	}
+
 	// Information
 	queryInformation := snapshot.QueryInformation{
 		QueryIdx:        idx,
-		NormalizedQuery: util.NormalizeQuery(originalQuery, server.Config.FilterQueryText, trackActivityQuerySize),
+		NormalizedQuery: normalizedQuery,
 	}
 	infos = append(infos, &queryInformation)
 

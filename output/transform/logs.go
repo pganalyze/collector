@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/golang/protobuf/ptypes"
+	"github.com/guregu/null"
 	snapshot "github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
 	uuid "github.com/satori/go.uuid"
@@ -45,6 +46,7 @@ func transformPostgresQuerySamples(server *state.Server, s snapshot.CompactLogSn
 			r.QueryInformations,
 			roleIdx,
 			databaseIdx,
+			null.NewInt(0, false),
 			sampleIn.Query,
 			-1,
 		)
@@ -182,6 +184,7 @@ func transformSystemLogLine(server *state.Server, r *snapshot.CompactSnapshot_Ba
 			r.QueryInformations,
 			logLine.RoleIdx,
 			logLine.DatabaseIdx,
+			null.NewInt(0, false),
 			logLineIn.Query,
 			-1,
 		)
