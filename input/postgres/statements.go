@@ -236,6 +236,9 @@ func GetStatements(server *state.Server, logger *util.Logger, db *sql.DB, global
 			statementTexts[key] = receivedQuery.String
 		}
 		if queryID.Valid && showtext {
+			if server.PrevState.QueryIdentities == nil {
+				server.PrevState.QueryIdentities = make(state.QueryIdentityMap)
+			}
 			if identity, ok := server.PrevState.QueryIdentities[queryID.Int64]; ok {
 				identity.LastSeen = time.Now()
 			} else {
