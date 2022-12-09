@@ -41,7 +41,6 @@ type ServerConfig struct {
 	DisableLogs             bool `ini:"disable_logs"`
 	DisableActivity         bool `ini:"disable_activity"`
 	EnableLogExplain        bool `ini:"enable_log_explain"`
-	AlwaysCollectSystemData bool `ini:"always_collect_system_data"`
 
 	DbURL                 string `ini:"db_url"`
 	DbName                string `ini:"db_name"`
@@ -115,6 +114,8 @@ type ServerConfig struct {
 	SystemIDFallback    string `ini:"api_system_id_fallback"`
 	SystemTypeFallback  string `ini:"api_system_type_fallback"`
 	SystemScopeFallback string `ini:"api_system_scope_fallback"`
+
+	AlwaysCollectSystemData bool `ini:"always_collect_system_data"`
 
 	// Configures the location where logfiles are - this can either be a directory,
 	// or a file - needs to readable by the regular pganalyze user
