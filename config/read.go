@@ -210,6 +210,9 @@ func getDefaultConfig() *ServerConfig {
 	if logSyslogServer := os.Getenv("LOG_SYSLOG_SERVER"); logSyslogServer != "" {
 		config.LogSyslogServer = logSyslogServer
 	}
+	if alwaysCollectSystemData := os.Getenv("PGA_ALWAYS_COLLECT_SYSTEM_DATA"); alwaysCollectSystemData != "" {
+		config.AlwaysCollectSystemData = parseConfigBool(alwaysCollectSystemData)
+	}
 	if logPgReadFile := os.Getenv("LOG_PG_READ_FILE"); logPgReadFile != "" {
 		config.LogPgReadFile = parseConfigBool(logPgReadFile)
 	}
