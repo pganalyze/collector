@@ -39,6 +39,7 @@ func transformPostgresReplication(s snapshot.FullSnapshot, transientState state.
 	}
 
 	s.Replication.CurrentXactId = int64(r.CurrentXactId)
+	s.Replication.NextMultiXactId = int64(r.NextMultiXactId)
 
 	for _, standby := range r.Standbys {
 		idx := int32(len(s.Replication.StandbyReferences))
