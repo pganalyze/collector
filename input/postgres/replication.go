@@ -104,20 +104,22 @@ func GetReplication(logger *util.Logger, db *sql.DB, postgresVersion state.Postg
 	var replicationSQL string
 	var transactionIdSQL string
 
-	// Get Postgres Server stats first
-	if postgresVersion.Numeric >= state.PostgresVersion13 {
-		transactionIdSQL = transactionIdSQLPg13
-	} else if postgresVersion.Numeric >= state.PostgresVersion96 {
-		transactionIdSQL = transactionIdSQLPg96
-	} else {
-		transactionIdSQL = transactionIdSQLDefault
-	}
+	// Get Postgres Server stats first (even with Aurora, as long as it's not a replica)
+	if isReplica, err := getIsReplica(db); err == nil && !isReplica {
+		if postgresVersion.Numeric >= state.PostgresVersion13 {
+			transactionIdSQL = transactionIdSQLPg13
+		} else if postgresVersion.Numeric >= state.PostgresVersion96 {
+			transactionIdSQL = transactionIdSQLPg96
+		} else {
+			transactionIdSQL = transactionIdSQLDefault
+		}
 
-	err = db.QueryRow(QueryMarkerSQL+transactionIdSQL).Scan(
-		&repl.CurrentXactId, &repl.NextMultiXactId,
-	)
-	if err != nil {
-		return repl, err
+		err = db.QueryRow(QueryMarkerSQL+transactionIdSQL).Scan(
+			&repl.CurrentXactId, &repl.NextMultiXactId,
+		)
+		if err != nil {
+			return repl, err
+		}
 	}
 
 	if postgresVersion.IsAwsAurora {
@@ -190,7 +192,11 @@ func GetIsReplica(logger *util.Logger, db *sql.DB) (bool, error) {
 		return false, nil
 	}
 
+	return getIsReplica(db)
+}
+
+func getIsReplica(db *sql.DB) (bool, error) {
 	var isReplica bool
-	err = db.QueryRow(QueryMarkerSQL + "SELECT pg_catalog.pg_is_in_recovery()").Scan(&isReplica)
+	err := db.QueryRow(QueryMarkerSQL + "SELECT pg_catalog.pg_is_in_recovery()").Scan(&isReplica)
 	return isReplica, err
 }
