@@ -8,7 +8,7 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
-const databasesSQLDefaultMxidFields = "0"
+const databasesSQLDefaultMxidFields = "1"
 const databasesSQLpg93MxidFields = "d.datminmxid"
 const databasesSQLDefaultMxidAgeFields = "0"
 const databasesSQLpg93MxidAgeFields = "CASE WHEN d.datminmxid <> '0' THEN mxid_age(d.datminmxid) ELSE 0 END"

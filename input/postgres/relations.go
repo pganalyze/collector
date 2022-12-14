@@ -10,7 +10,7 @@ import (
 	"github.com/pganalyze/collector/state"
 )
 
-const relationsSQLDefaultMxidFields = "0"
+const relationsSQLDefaultMxidFields = "1"
 const relationsSQLpg93MxidFields = "c.relminmxid"
 const relationsSQLDefaultMxidAgeFields = "0"
 const relationsSQLpg93MxidAgeFields = "CASE WHEN c.relminmxid <> '0' THEN mxid_age(c.relminmxid) ELSE 0 END AS relation_mxid_age"
