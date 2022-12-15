@@ -91,15 +91,10 @@ func upsertQueryReferenceAndInformationSimple(server *state.Server, refs []*snap
 	idx := int32(len(refs))
 	refs = append(refs, &newRef)
 
-	normalizedQuery := util.NormalizeQuery(originalQuery, server.Config.FilterQueryText, trackActivityQuerySize)
-	if normalizedQuery == util.QueryTextTruncated {
-		normalizedQuery = ""
-	}
-
 	// Information
 	queryInformation := snapshot.QueryInformation{
 		QueryIdx:        idx,
-		NormalizedQuery: normalizedQuery,
+		NormalizedQuery: util.NormalizeQuery(originalQuery, server.Config.FilterQueryText, trackActivityQuerySize),
 	}
 	infos = append(infos, &queryInformation)
 

@@ -259,7 +259,8 @@ func CollectAllServers(servers []*state.Server, globalCollectionOpts state.Colle
 }
 
 func pruneQueryIdentities(oldMap state.QueryIdentityMap) (newMap state.QueryIdentityMap) {
-	if len(oldMap) < 100000 {
+	max := 100000
+	if len(oldMap) < max {
 		return oldMap
 	}
 	slice := make([]state.QueryIdentity, 0, len(oldMap))
@@ -269,7 +270,7 @@ func pruneQueryIdentities(oldMap state.QueryIdentityMap) (newMap state.QueryIden
 	sort.Slice(slice, func(i, j int) bool {
 		return slice[i].LastSeen.Before(slice[j].LastSeen)
 	})
-	for _, identity := range slice[:min(len(oldMap), 100000)] {
+	for _, identity := range slice[:max - 1] {
 		newMap[identity.QueryID] = identity
 	}
 	return
