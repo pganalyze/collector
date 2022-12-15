@@ -11,9 +11,7 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
-const activitySQLDefaultOptionalFields = "waiting, NULL, NULL, NULL, NULL, NULL"
-const activitySQLpg94OptionalFields = "waiting, backend_xid, backend_xmin, NULL, NULL, NULL"
-const activitySQLpg96OptionalFields = `COALESCE(wait_event_type, '') = 'Lock' as waiting, backend_xid, backend_xmin, wait_event_type, wait_event, NULL`
+const activitySQLDefaultOptionalFields = `COALESCE(wait_event_type, '') = 'Lock' as waiting, backend_xid, backend_xmin, wait_event_type, wait_event, NULL`
 const activitySQLpg10OptionalFields = `COALESCE(wait_event_type, '') = 'Lock' as waiting, backend_xid, backend_xmin, wait_event_type, wait_event, backend_type`
 
 const pgBlockingPidsField = `
@@ -36,10 +34,6 @@ func GetBackends(ctx context.Context, logger *util.Logger, db *sql.DB, postgresV
 
 	if postgresVersion.Numeric >= state.PostgresVersion10 {
 		optionalFields = activitySQLpg10OptionalFields
-	} else if postgresVersion.Numeric >= state.PostgresVersion96 {
-		optionalFields = activitySQLpg96OptionalFields
-	} else if postgresVersion.Numeric >= state.PostgresVersion94 {
-		optionalFields = activitySQLpg94OptionalFields
 	} else {
 		optionalFields = activitySQLDefaultOptionalFields
 	}

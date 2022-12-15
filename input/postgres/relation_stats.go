@@ -9,9 +9,6 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
-const relationStatsSQLDefaultOptionalFields = "NULL"
-const relationStatsSQLpg94OptionalFields = "s.n_mod_since_analyze"
-
 const relationStatsSQL = `
 WITH locked_relids AS (
 	SELECT DISTINCT relation relid FROM pg_catalog.pg_locks WHERE mode = 'AccessExclusiveLock' AND relation IS NOT NULL
@@ -36,7 +33,7 @@ SELECT c.oid,
 			 COALESCE(s.n_tup_hot_upd, 0),
 			 COALESCE(s.n_live_tup, 0),
 			 COALESCE(s.n_dead_tup, 0),
-			 %s,
+			 s.n_mod_since_analyze,
 			 s.last_vacuum,
 			 s.last_autovacuum,
 			 s.last_analyze,
@@ -99,15 +96,7 @@ SELECT 1 AS enabled
 `
 
 func GetRelationStats(ctx context.Context, db *sql.DB, postgresVersion state.PostgresVersion, ignoreRegexp string) (relStats state.PostgresRelationStatsMap, err error) {
-	var optionalFields string
-
-	if postgresVersion.Numeric >= state.PostgresVersion94 {
-		optionalFields = relationStatsSQLpg94OptionalFields
-	} else {
-		optionalFields = relationStatsSQLDefaultOptionalFields
-	}
-
-	stmt, err := db.PrepareContext(ctx, QueryMarkerSQL+fmt.Sprintf(relationStatsSQL, optionalFields))
+	stmt, err := db.PrepareContext(ctx, QueryMarkerSQL+relationStatsSQL)
 	if err != nil {
 		err = fmt.Errorf("RelationStats/Prepare: %s", err)
 		return

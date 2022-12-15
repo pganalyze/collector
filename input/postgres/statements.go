@@ -104,12 +104,8 @@ func GetStatements(ctx context.Context, server *state.Server, logger *util.Logge
 
 	if postgresVersion.Numeric >= state.PostgresVersion13 {
 		extMinorVersion = 8
-	} else if postgresVersion.Numeric >= state.PostgresVersion95 {
-		extMinorVersion = 3
-	} else if postgresVersion.Numeric >= state.PostgresVersion94 {
-		extMinorVersion = 2
 	} else {
-		extMinorVersion = 1
+		extMinorVersion = 3
 	}
 
 	err = db.QueryRowContext(ctx, QueryMarkerSQL+statementExtensionVersionSQL).Scan(&extSchema, &foundExtMinorVersion)
