@@ -20,10 +20,6 @@ type PostgresReplication struct {
 	ApplyByteLag       null.Int
 	ReplayTimestamp    null.Time
 	ReplayTimestampAge null.Int
-
-	// Piggyback data of txid
-	CurrentXactId   Xid
-	NextMultiXactId Xid
 }
 
 // PostgresReplicationStandby - Standby information as seen from the primary

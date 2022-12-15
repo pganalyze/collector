@@ -81,6 +81,12 @@ func CollectFull(server *state.Server, connection *sql.DB, globalCollectionOpts 
 		err = nil
 	}
 
+	ts.ServerStats, err = postgres.GetServerStats(logger, connection, ts.Version, systemType)
+	if err != nil {
+		logger.PrintWarning("Error collecting Postgres server statistics: %s", err)
+		return
+	}
+
 	ts.BackendCounts, err = postgres.GetBackendCounts(logger, connection, ts.Version, server.Config.SystemType)
 	if err != nil {
 		logger.PrintError("Error collecting backend counts: %s", err)

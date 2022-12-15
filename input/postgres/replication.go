@@ -76,51 +76,12 @@ SELECT client_addr,
 	FROM %s
  WHERE client_addr IS NOT NULL`
 
-const transactionIdSQLPg13 string = `
-SELECT
-	pg_current_xact_id(),
-	next_multixact_id
-FROM pg_catalog.pg_control_checkpoint()
-`
-
-const transactionIdSQLPg96 string = `
-SELECT
-	txid_current(),
-	next_multixact_id
-FROM pg_catalog.pg_control_checkpoint()
-`
-
-const transactionIdSQLDefault string = `
-SELECT
-	txid_current(),
-	1
-`
-
 func GetReplication(logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion, systemType string) (state.PostgresReplication, error) {
 	var err error
 	var repl state.PostgresReplication
 	var sourceTable string
 	var replicationStandbySQL string
 	var replicationSQL string
-	var transactionIdSQL string
-
-	// Get Postgres Server stats first (even with Aurora, as long as it's not a replica)
-	if isReplica, err := getIsReplica(db); err == nil && !isReplica {
-		if postgresVersion.Numeric >= state.PostgresVersion13 {
-			transactionIdSQL = transactionIdSQLPg13
-		} else if postgresVersion.Numeric >= state.PostgresVersion96 {
-			transactionIdSQL = transactionIdSQLPg96
-		} else {
-			transactionIdSQL = transactionIdSQLDefault
-		}
-
-		err = db.QueryRow(QueryMarkerSQL+transactionIdSQL).Scan(
-			&repl.CurrentXactId, &repl.NextMultiXactId,
-		)
-		if err != nil {
-			return repl, err
-		}
-	}
 
 	if postgresVersion.IsAwsAurora {
 		// Most replication functions are not supported on AWS Aurora Postgres

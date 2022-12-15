@@ -14,6 +14,7 @@ func transformPostgres(s snapshot.FullSnapshot, newState state.PersistedState, d
 
 	s = transformPostgresVersion(s, transientState)
 	s = transformPostgresConfig(s, transientState)
+	s = transformPostgresServerStats(s, transientState)
 	s = transformPostgresReplication(s, transientState, roleOidToIdx)
 	s = transformPostgresStatements(s, newState, diffState, transientState, roleOidToIdx, databaseOidToIdx)
 	s = transformPostgresRelations(s, newState, diffState, databaseOidToIdx, typeOidToIdx)
@@ -149,6 +150,15 @@ func transformPostgresVersion(s snapshot.FullSnapshot, transientState state.Tran
 		Short:   transientState.Version.Short,
 		Numeric: int64(transientState.Version.Numeric),
 	}
+	return s
+}
+
+func transformPostgresServerStats(s snapshot.FullSnapshot, transientState state.TransientState) snapshot.FullSnapshot {
+	s.ServerStatistic = &snapshot.ServerStatistic{
+		CurrentXactId:   int64(transientState.ServerStats.CurrentXactId),
+		NextMultiXactId: int64(transientState.ServerStats.NextMultiXactId),
+	}
+
 	return s
 }
 
