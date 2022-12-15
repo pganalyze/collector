@@ -196,7 +196,7 @@ func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 
 		err = rows.Scan(&row.Oid, &row.SchemaName, &row.RelationName, &row.RelationType,
 			&options, &row.HasOids, &row.PersistenceType, &row.HasInheritanceChildren,
-			&row.HasToast, &row.FrozenXID, &row.MinimumMultixactXID, &row.XIDAge, &row.MXIDAge,
+			&row.HasToast, &row.FrozenXID, &row.MinimumMultixactXID, &row.FrozenXIDAge, &row.MinMXIDAge,
 			&row.ParentTableOid, &row.PartitionBoundary, &row.PartitionStrategy, &partCols,
 			&row.PartitionedBy, &row.ExclusivelyLocked)
 		if err != nil {

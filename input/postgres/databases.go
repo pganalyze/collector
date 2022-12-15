@@ -29,6 +29,8 @@ SELECT
 	%s,
 	CASE WHEN d.datfrozenxid <> '0' THEN age(d.datfrozenxid) ELSE 0 END,
 	%s,
+	sd.xact_commit,
+	sd.xact_rollback,
 	(sd.xact_commit + sd.xact_rollback) AS transaction_count
 FROM pg_catalog.pg_database d
 	LEFT JOIN pg_catalog.pg_stat_database sd
@@ -69,7 +71,7 @@ func GetDatabases(logger *util.Logger, db *sql.DB, postgresVersion state.Postgre
 
 		err := rows.Scan(&d.Oid, &d.Name, &d.OwnerRoleOid, &d.Encoding, &d.Collate, &d.CType,
 			&d.IsTemplate, &d.AllowConnections, &d.ConnectionLimit, &d.FrozenXID, &d.MinimumMultixactXID,
-			&d.XIDAge, &d.MXIDAge, &ds.TransactionCount)
+			&d.FrozenXIDAge, &d.MinMXIDAge, &d.XactCommit, &d.XactRollback, &ds.TransactionCount)
 		if err != nil {
 			return nil, nil, err
 		}

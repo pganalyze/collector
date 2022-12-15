@@ -22,8 +22,11 @@ type PostgresDatabase struct {
 	// allow pg_multixact to be shrunk. It is the minimum of the per-table pg_class.relminmxid values.
 	MinimumMultixactXID Xid
 
-	XIDAge  uint32 // Age of FrozenXID
-	MXIDAge uint32 // Age of MinimumMultixactXID
+	FrozenXIDAge uint32 // Age of FrozenXID
+	MinMXIDAge   uint32 // Age of MinimumMultixactXID
+
+	XactCommit   int64 // Number of transactions in this database that have been committed
+	XactRollback int64 // Number of transactions in this database that have been rolled back
 }
 
 // PostgresDatabaseStats - Database statistics for a single database

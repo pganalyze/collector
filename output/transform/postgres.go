@@ -99,10 +99,10 @@ func transformPostgresDatabases(s snapshot.FullSnapshot, newState state.Persiste
 		if exist {
 			stat := snapshot.DatabaseStatistic{
 				DatabaseIdx:        databaseOidToIdx[database.Oid],
-				MinXid:             uint32(database.FrozenXID),
-				MinMxid:            uint32(database.MinimumMultixactXID),
-				XidAge:             database.XIDAge,
-				MxidAge:            database.MXIDAge,
+				FrozenXidAge:       database.FrozenXIDAge,
+				MinMxidAge:         database.MinMXIDAge,
+				XactCommit:         database.XactCommit,
+				XactRollback:       database.XactRollback,
 				TransactionsPerSec: uint32(diff.TransactionsPerSecond),
 			}
 			s.DatabaseStatictics = append(s.DatabaseStatictics, &stat)
