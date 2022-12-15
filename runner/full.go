@@ -270,7 +270,7 @@ func pruneQueryIdentities(oldMap state.QueryIdentityMap) (newMap state.QueryIden
 	sort.Slice(slice, func(i, j int) bool {
 		return slice[i].LastSeen.Before(slice[j].LastSeen)
 	})
-	for _, identity := range slice[:max - 1] {
+	for _, identity := range slice[:max-1] {
 		newMap[identity.QueryID] = identity
 	}
 	return
