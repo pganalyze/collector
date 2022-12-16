@@ -204,6 +204,7 @@ func GetStatements(server *state.Server, logger *util.Logger, db *sql.DB, global
 
 	statementTexts := make(map[state.PostgresStatementKey]string)
 	statementStats := make(state.PostgresStatementStatsMap)
+	statementFingerprints := make(map[state.PostgresStatementKey]uint64)
 
 	for rows.Next() {
 		var key state.PostgresStatementKey
@@ -235,13 +236,14 @@ func GetStatements(server *state.Server, logger *util.Logger, db *sql.DB, global
 		if showtext {
 			statementTexts[key] = receivedQuery.String
 		}
-		if queryID.Valid && showtext {
+		if queryID.Valid {
 			if server.PrevState.QueryIdentities == nil {
 				server.PrevState.QueryIdentities = make(state.QueryIdentityMap)
 			}
 			if identity, ok := server.PrevState.QueryIdentities[queryID.Int64]; ok {
 				identity.LastSeen = time.Now()
-			} else {
+				statementFingerprints[key] = identity.Fingerprint
+			} else if showtext {
 				server.PrevState.QueryIdentities[queryID.Int64] = state.QueryIdentity{
 					QueryID:     queryID.Int64,
 					Fingerprint: util.FingerprintQuery(receivedQuery.String, server.Config.FilterQueryText, -1),
@@ -278,7 +280,12 @@ func GetStatements(server *state.Server, logger *util.Logger, db *sql.DB, global
 					Fingerprint: collectorQueryFingerprint,
 				}
 			} else {
-				fp := util.FingerprintQuery(text, server.Config.FilterQueryText, -1)
+				var fp uint64
+				if f, ok := statementFingerprints[key]; ok {
+					fp = f
+				} else {
+					fp = util.FingerprintQuery(text, server.Config.FilterQueryText, -1)
+				}
 				statements[key] = state.PostgresStatement{Fingerprint: fp}
 				_, ok := statementTextsByFp[fp]
 				if !ok {
