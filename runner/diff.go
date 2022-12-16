@@ -30,7 +30,7 @@ func diffState(logger *util.Logger, prevState state.PersistedState, newState sta
 	diffState.SystemDiskStats = diffSystemDiskStats(newState.System.DiskStats, prevState.System.DiskStats, collectedIntervalSecs)
 	diffState.CollectorStats = diffCollectorStats(newState.CollectorStats, prevState.CollectorStats)
 
-	diffState.DatabaseStats = diffDatabaseStats(newState.DatabaseStats, prevState.DatabaseStats, collectedIntervalSecs)
+	diffState.DatabaseStats = diffDatabaseStats(newState.DatabaseStats, prevState.DatabaseStats)
 
 	return
 }
@@ -164,12 +164,12 @@ func diffCollectorStats(new state.CollectorStats, prev state.CollectorStats) (di
 	return
 }
 
-func diffDatabaseStats(new state.PostgresDatabaseStatsMap, prev state.PostgresDatabaseStatsMap, collectedIntervalSecs uint32) (diff state.DiffedPostgresDatabaseStatsMap) {
+func diffDatabaseStats(new state.PostgresDatabaseStatsMap, prev state.PostgresDatabaseStatsMap) (diff state.DiffedPostgresDatabaseStatsMap) {
 	diff = make(state.DiffedPostgresDatabaseStatsMap)
 	for databaseOid, stats := range new {
 		prevStats, exists := prev[databaseOid]
 		if exists {
-			diff[databaseOid] = stats.DiffSince(prevStats, collectedIntervalSecs)
+			diff[databaseOid] = stats.DiffSince(prevStats)
 		}
 	}
 	return

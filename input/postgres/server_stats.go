@@ -14,17 +14,11 @@ SELECT
 FROM pg_catalog.pg_control_checkpoint()
 `
 
-const transactionIdSQLPg96 string = `
+const transactionIdSQLDefault string = `
 SELECT
 	txid_current(),
 	next_multixact_id
 FROM pg_catalog.pg_control_checkpoint()
-`
-
-const transactionIdSQLDefault string = `
-SELECT
-	txid_current(),
-	1
 `
 
 func GetServerStats(logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion, systemType string) (state.PostgresServerStats, error) {
@@ -35,8 +29,6 @@ func GetServerStats(logger *util.Logger, db *sql.DB, postgresVersion state.Postg
 	if isReplica, err := getIsReplica(db); err == nil && !isReplica {
 		if postgresVersion.Numeric >= state.PostgresVersion13 {
 			transactionIdSQL = transactionIdSQLPg13
-		} else if postgresVersion.Numeric >= state.PostgresVersion96 {
-			transactionIdSQL = transactionIdSQLPg96
 		} else {
 			transactionIdSQL = transactionIdSQLDefault
 		}

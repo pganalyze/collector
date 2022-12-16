@@ -8,11 +8,6 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
-const databasesSQLDefaultMxidFields = "1"
-const databasesSQLpg93MxidFields = "d.datminmxid"
-const databasesSQLDefaultMxidAgeFields = "0"
-const databasesSQLpg93MxidAgeFields = "CASE WHEN d.datminmxid <> '0' THEN mxid_age(d.datminmxid) ELSE 0 END"
-
 // See also https://www.postgresql.org/docs/9.5/static/catalog-pg-database.html
 const databasesSQL string = `
 SELECT
@@ -26,29 +21,17 @@ SELECT
 	d.datallowconn,
 	d.datconnlimit,
 	d.datfrozenxid,
-	%s,
+	d.datminmxid,
 	CASE WHEN d.datfrozenxid <> '0' THEN age(d.datfrozenxid) ELSE 0 END,
-	%s,
+	CASE WHEN d.datminmxid <> '0' THEN mxid_age(d.datminmxid) ELSE 0 END,
 	sd.xact_commit,
-	sd.xact_rollback,
-	(sd.xact_commit + sd.xact_rollback) AS transaction_count
+	sd.xact_rollback
 FROM pg_catalog.pg_database d
 	LEFT JOIN pg_catalog.pg_stat_database sd
 	ON d.oid = sd.datid`
 
 func GetDatabases(logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion) ([]state.PostgresDatabase, state.PostgresDatabaseStatsMap, error) {
-	var mxidFields string
-	var mxidAgeFields string
-
-	if postgresVersion.Numeric >= state.PostgresVersion93 {
-		mxidFields = databasesSQLpg93MxidFields
-		mxidAgeFields = databasesSQLpg93MxidAgeFields
-	} else {
-		mxidFields = databasesSQLDefaultMxidFields
-		mxidAgeFields = databasesSQLDefaultMxidAgeFields
-	}
-
-	stmt, err := db.Prepare(QueryMarkerSQL + fmt.Sprintf(databasesSQL, mxidFields, mxidAgeFields))
+	stmt, err := db.Prepare(QueryMarkerSQL + fmt.Sprintf(databasesSQL))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -71,7 +54,7 @@ func GetDatabases(logger *util.Logger, db *sql.DB, postgresVersion state.Postgre
 
 		err := rows.Scan(&d.Oid, &d.Name, &d.OwnerRoleOid, &d.Encoding, &d.Collate, &d.CType,
 			&d.IsTemplate, &d.AllowConnections, &d.ConnectionLimit, &d.FrozenXID, &d.MinimumMultixactXID,
-			&d.FrozenXIDAge, &d.MinMXIDAge, &d.XactCommit, &d.XactRollback, &ds.TransactionCount)
+			&ds.FrozenXIDAge, &ds.MinMXIDAge, &ds.XactCommit, &ds.XactRollback)
 		if err != nil {
 			return nil, nil, err
 		}
