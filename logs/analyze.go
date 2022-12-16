@@ -78,7 +78,7 @@ var autoVacuum = analyzeGroup{
 		prefixes: []string{"automatic vacuum of table", "automatic aggressive vacuum of table", "automatic aggressive vacuum to prevent wraparound of table"},
 		regexp: regexp.MustCompile(`^automatic (aggressive )?vacuum (to prevent wraparound )?of table "(.+?)": index scans: (\d+),?\s*` +
 			`(?:elapsed time: \d+ \w+, index vacuum time: \d+ \w+,)?\s*` + // Google AlloyDB for PostgreSQL
-			`pages: (\d+) removed, (\d+) remain(?:, (\d+) skipped due to pins)?(?:, (\d+) skipped frozen)?,?\s*` +
+			`pages: (\d+) removed, (\d+) remain, (\d+) skipped due to pins, (\d+) skipped frozen,?\s*` +
 			`(?:\d+ skipped using mintxid)?,?\s*` + // Google AlloyDB for PostgreSQL
 			`tuples: (\d+) removed, (\d+) remain, (\d+) are dead but not yet removable(?:, oldest xmin: (\d+))?,?\s*` +
 			`(?:index scan (not needed|needed|bypassed|bypassed by failsafe): (\d+) pages from table \(([\d.]+)% of total\) (?:have|had) (\d+) dead item identifiers(?: removed)?)?,?\s*` + // Postgres 14+
@@ -116,7 +116,7 @@ var checkpointComplete = analyzeGroup{
 			`(\d+) (?:transaction log|WAL) file\(s\) added, (\d+) removed, (\d+) recycled; ` +
 			`write=([\d\.]+) s, sync=([\d\.]+) s, total=([\d\.]+) s; ` +
 			`sync files=(\d+), longest=([\d\.]+) s, average=([\d\.]+) s` +
-			`(; distance=(\d+) kB, estimate=(\d+) kB)?`),
+			`; distance=(\d+) kB, estimate=(\d+) kB`),
 		secrets: []state.LogSecretKind{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 	},
 }
@@ -1314,7 +1314,7 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 		}
 
 		logLine, parts = matchLogLine(logLine, checkpointComplete.primary)
-		if len(parts) == 16 {
+		if len(parts) == 15 {
 			if parts[1] == "checkpoint" {
 				logLine.Classification = pganalyze_collector.LogLineInformation_CHECKPOINT_COMPLETE
 			} else if parts[1] == "restartpoint" {
@@ -1332,6 +1332,8 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 			syncRels, _ := strconv.ParseInt(parts[10], 10, 64)
 			longestSecs, _ := strconv.ParseFloat(parts[11], 64)
 			averageSecs, _ := strconv.ParseFloat(parts[12], 64)
+			distanceKb, _ := strconv.ParseInt(parts[13], 10, 64)
+			estimateKb, _ := strconv.ParseInt(parts[14], 10, 64)
 			logLine.Details = map[string]interface{}{
 				"bufs_written": bufsWritten, "segs_added": segsAdded,
 				"segs_removed": segsRemoved, "segs_recycled": segsRecycled,
@@ -1339,17 +1341,10 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 				"bufs_written_pct": bufsWrittenPct, "write_secs": writeSecs,
 				"sync_secs": syncSecs, "total_secs": totalSecs,
 				"longest_secs": longestSecs, "average_secs": averageSecs,
+				"distance_kb": distanceKb,
+				"estimate_kb": estimateKb,
 			}
 
-			// Postgres 9.5 and newer
-			if parts[14] != "" {
-				distanceKb, _ := strconv.ParseInt(parts[14], 10, 64)
-				logLine.Details["distance_kb"] = distanceKb
-			}
-			if parts[15] != "" {
-				estimateKb, _ := strconv.ParseInt(parts[15], 10, 64)
-				logLine.Details["estimate_kb"] = estimateKb
-			}
 			contextLine = matchOtherContextLogLine(contextLine)
 			return logLine, statementLine, detailLine, contextLine, hintLine, samples
 		}
@@ -1619,9 +1614,8 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 			numIndexScans, _ := strconv.ParseInt(parts[4], 10, 64)
 			pagesRemoved, _ := strconv.ParseInt(parts[5], 10, 64)
 			relPages, _ := strconv.ParseInt(parts[6], 10, 64)
-
-			// Parts 7 and 8 (Pinskipped/Frozenskipped pages) are only present on Postgres 9.5/9.6+ and dealt with at the end
-
+			pinskippedPages, _ := strconv.ParseInt(parts[7], 10, 64)
+			frozenskippedPages, _ := strconv.ParseInt(parts[8], 10, 64)
 			tuplesDeleted, _ := strconv.ParseInt(parts[9], 10, 64)
 			newRelTuples, _ := strconv.ParseInt(parts[10], 10, 64)
 			newDeadTuples, _ := strconv.ParseInt(parts[11], 10, 64)
@@ -1666,6 +1660,7 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 				"vacuum_page_dirty": vacuumPageDirty, "read_rate_mb": readRateMb,
 				"write_rate_mb": writeRateMb, "rusage_kernel": rusageKernelMode,
 				"rusage_user": rusageUserMode, "elapsed_secs": rusageElapsed,
+				"pinskipped_pages": pinskippedPages, "frozenskipped_pages": frozenskippedPages,
 			}
 			// List anti-wraparound status either if the message indicates that it is, or if
 			// our Postgres version is new enough (13+) as determined by the presence of WAL
