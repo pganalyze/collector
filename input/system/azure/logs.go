@@ -25,6 +25,7 @@ type AzurePostgresLogMessage struct {
 	Prefix       string `json:"prefix"`
 	Message      string `json:"message"`
 	Detail       string `json:"detail"`
+	DetailS      string `json:"detail_s"`
 	ErrorLevel   string `json:"errorLevel"`
 	Domain       string `json:"domain"`
 	SchemaName   string `json:"schemaName"`
@@ -106,7 +107,12 @@ func setupEventHubReceiver(ctx context.Context, wg *sync.WaitGroup, logger *util
 				// DETAIL messages are handled a bit weird here - for now we'll just fake a separate log message
 				// to get them through. Note that other secondary log lines (CONTEXT, STATEMENT, etc) are missing
 				// from the log stream.
-				if record.Properties.Detail != "" {
+				detailMessage := record.Properties.Detail
+				if detailMessage == "" && record.Properties.DetailS != "" {
+					// Based on field reports, Flexible Server uses "detail_s" instead of "detail" in some cases
+					detailMessage = record.Properties.DetailS
+				}
+				if detailMessage != "" {
 					azureLogStream <- AzurePostgresLogRecord{
 						LogicalServerName: record.LogicalServerName,
 						SubscriptionID:    record.SubscriptionID,
@@ -117,8 +123,9 @@ func setupEventHubReceiver(ctx context.Context, wg *sync.WaitGroup, logger *util
 						OperationName:     record.OperationName,
 						Properties: AzurePostgresLogMessage{
 							Prefix:       record.Properties.Prefix,
-							Message:      record.Properties.Detail, // This is the important difference from the main message
+							Message:      detailMessage, // This is the important difference from the main message
 							Detail:       "",
+							DetailS:      "",
 							ErrorLevel:   "DETAIL",
 							Domain:       record.Properties.Domain,
 							SchemaName:   record.Properties.SchemaName,
