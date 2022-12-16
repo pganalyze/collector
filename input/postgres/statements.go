@@ -204,7 +204,6 @@ func GetStatements(server *state.Server, logger *util.Logger, db *sql.DB, global
 
 	statementTexts := make(map[state.PostgresStatementKey]string)
 	statementStats := make(state.PostgresStatementStatsMap)
-	statementFingerprints := make(map[state.PostgresStatementKey]uint64)
 
 	for rows.Next() {
 		var key state.PostgresStatementKey
@@ -242,7 +241,6 @@ func GetStatements(server *state.Server, logger *util.Logger, db *sql.DB, global
 			}
 			if identity, ok := server.PrevState.QueryIdentities[queryID.Int64]; ok {
 				identity.LastSeen = time.Now()
-				statementFingerprints[key] = identity.Fingerprint
 			} else {
 				server.PrevState.QueryIdentities[queryID.Int64] = state.QueryIdentity{
 					QueryID:     queryID.Int64,
@@ -281,8 +279,8 @@ func GetStatements(server *state.Server, logger *util.Logger, db *sql.DB, global
 				}
 			} else {
 				var fp uint64
-				if f, ok := statementFingerprints[key]; ok {
-					fp = f
+				if identity, ok := server.PrevState.QueryIdentities[key.QueryID]; ok {
+					fp = identity.Fingerprint
 				} else {
 					fp = util.FingerprintQuery(text, server.Config.FilterQueryText, -1)
 				}
