@@ -236,14 +236,14 @@ func GetStatements(server *state.Server, logger *util.Logger, db *sql.DB, global
 		if showtext {
 			statementTexts[key] = receivedQuery.String
 		}
-		if queryID.Valid {
+		if queryID.Valid && showtext {
 			if server.PrevState.QueryIdentities == nil {
 				server.PrevState.QueryIdentities = make(state.QueryIdentityMap)
 			}
 			if identity, ok := server.PrevState.QueryIdentities[queryID.Int64]; ok {
 				identity.LastSeen = time.Now()
 				statementFingerprints[key] = identity.Fingerprint
-			} else if showtext {
+			} else {
 				server.PrevState.QueryIdentities[queryID.Int64] = state.QueryIdentity{
 					QueryID:     queryID.Int64,
 					Fingerprint: util.FingerprintQuery(receivedQuery.String, server.Config.FilterQueryText, -1),
