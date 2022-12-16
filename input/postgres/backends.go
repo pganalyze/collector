@@ -80,8 +80,8 @@ func GetBackends(logger *util.Logger, db *sql.DB, postgresVersion state.Postgres
 			&row.RoleOid, &row.RoleName, &row.Pid, &row.ApplicationName, &row.ClientAddr,
 			&row.ClientPort, &row.BackendStart, &row.XactStart, &row.QueryStart,
 			&row.StateChange, &row.Waiting, &row.BackendXid, &row.BackendXmin,
-			&row.WaitEventType, &row.WaitEvent, &row.BackendType, pq.Array(&row.BlockedByPids),
-			&row.QueryID, &row.State, &row.Query)
+			&row.WaitEventType, &row.WaitEvent, &row.BackendType, &row.QueryID,
+			pq.Array(&row.BlockedByPids), &row.State, &row.Query)
 		if err != nil {
 			return nil, err
 		}
