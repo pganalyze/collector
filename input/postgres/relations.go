@@ -12,8 +12,6 @@ import (
 
 const relationsSQLDefaultMxidFields = "1"
 const relationsSQLpg93MxidFields = "c.relminmxid"
-const relationsSQLDefaultMxidAgeFields = "0"
-const relationsSQLpg93MxidAgeFields = "CASE WHEN c.relminmxid <> '0' THEN mxid_age(c.relminmxid) ELSE 0 END AS relation_mxid_age"
 const relationsSQLOidField = "c.relhasoids AS relation_has_oids"
 const relationsSQLpg12OidField = "false AS relation_has_oids"
 const relationsSQLpartBoundField = "''"
@@ -37,8 +35,6 @@ const relationsSQL string = `
 				c.relhassubclass AS relation_has_inheritance_children,
 				c.reltoastrelid IS NOT NULL AS relation_has_toast,
 				c.relfrozenxid AS relation_frozen_xid,
-				%s,
-				CASE WHEN c.relfrozenxid <> '0' THEN age(c.relfrozenxid) ELSE 0 END AS relation_xid_age,
 				%s,
 				COALESCE((SELECT inhparent FROM pg_inherits WHERE inhrelid = c.oid ORDER BY inhseqno LIMIT 1), 0) AS parent_relid,
 				%s,
@@ -147,7 +143,6 @@ func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 
 	// Relations
 	var mxidFields string
-	var mxidAgeFields string
 	var oidField string
 	var partBoundField string
 	var partStratField string
@@ -156,10 +151,8 @@ func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 
 	if postgresVersion.Numeric >= state.PostgresVersion93 {
 		mxidFields = relationsSQLpg93MxidFields
-		mxidAgeFields = relationsSQLpg93MxidAgeFields
 	} else {
 		mxidFields = relationsSQLDefaultMxidFields
-		mxidAgeFields = relationsSQLDefaultMxidAgeFields
 	}
 
 	if postgresVersion.Numeric >= state.PostgresVersion10 {
@@ -181,7 +174,7 @@ func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 	}
 
 	rows, err := db.Query(QueryMarkerSQL+fmt.Sprintf(relationsSQL, oidField,
-		mxidFields, mxidAgeFields, partBoundField, partStratField, partColsField,
+		mxidFields, partBoundField, partStratField, partColsField,
 		partExprField), ignoreRegexp)
 	if err != nil {
 		err = fmt.Errorf("Relations/Query: %s", err)
@@ -196,7 +189,7 @@ func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 
 		err = rows.Scan(&row.Oid, &row.SchemaName, &row.RelationName, &row.RelationType,
 			&options, &row.HasOids, &row.PersistenceType, &row.HasInheritanceChildren,
-			&row.HasToast, &row.FrozenXID, &row.MinimumMultixactXID, &row.FrozenXIDAge, &row.MinMXIDAge,
+			&row.HasToast, &row.FrozenXID, &row.MinimumMultixactXID,
 			&row.ParentTableOid, &row.PartitionBoundary, &row.PartitionStrategy, &partCols,
 			&row.PartitionedBy, &row.ExclusivelyLocked)
 		if err != nil {
