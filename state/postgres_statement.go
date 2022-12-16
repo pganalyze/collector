@@ -20,34 +20,32 @@ type PostgresStatement struct {
 //
 // See also https://www.postgresql.org/docs/9.5/static/pgstatstatements.html
 type PostgresStatementStats struct {
-	Calls             int64   // Number of times executed
-	TotalTime         float64 // Total time spent in the statement, in milliseconds
-	Rows              int64   // Total number of rows retrieved or affected by the statement
-	SharedBlksHit     int64   // Total number of shared block cache hits by the statement
-	SharedBlksRead    int64   // Total number of shared blocks read by the statement
-	SharedBlksDirtied int64   // Total number of shared blocks dirtied by the statement
-	SharedBlksWritten int64   // Total number of shared blocks written by the statement
-	LocalBlksHit      int64   // Total number of local block cache hits by the statement
-	LocalBlksRead     int64   // Total number of local blocks read by the statement
-	LocalBlksDirtied  int64   // Total number of local blocks dirtied by the statement
-	LocalBlksWritten  int64   // Total number of local blocks written by the statement
-	TempBlksRead      int64   // Total number of temp blocks read by the statement
-	TempBlksWritten   int64   // Total number of temp blocks written by the statement
-	BlkReadTime       float64 // Total time the statement spent reading blocks, in milliseconds (if track_io_timing is enabled, otherwise zero)
-	BlkWriteTime      float64 // Total time the statement spent writing blocks, in milliseconds (if track_io_timing is enabled, otherwise zero)
-
-	// Postgres 9.5+
-	MinTime    null.Float // Minimum time spent in the statement, in milliseconds
-	MaxTime    null.Float // Maximum time spent in the statement, in milliseconds
-	MeanTime   null.Float // Mean time spent in the statement, in milliseconds
-	StddevTime null.Float // Population standard deviation of time spent in the statement, in milliseconds
+	Calls             int64      // Number of times executed
+	TotalTime         float64    // Total time spent in the statement, in milliseconds
+	Rows              int64      // Total number of rows retrieved or affected by the statement
+	SharedBlksHit     int64      // Total number of shared block cache hits by the statement
+	SharedBlksRead    int64      // Total number of shared blocks read by the statement
+	SharedBlksDirtied int64      // Total number of shared blocks dirtied by the statement
+	SharedBlksWritten int64      // Total number of shared blocks written by the statement
+	LocalBlksHit      int64      // Total number of local block cache hits by the statement
+	LocalBlksRead     int64      // Total number of local blocks read by the statement
+	LocalBlksDirtied  int64      // Total number of local blocks dirtied by the statement
+	LocalBlksWritten  int64      // Total number of local blocks written by the statement
+	TempBlksRead      int64      // Total number of temp blocks read by the statement
+	TempBlksWritten   int64      // Total number of temp blocks written by the statement
+	BlkReadTime       float64    // Total time the statement spent reading blocks, in milliseconds (if track_io_timing is enabled, otherwise zero)
+	BlkWriteTime      float64    // Total time the statement spent writing blocks, in milliseconds (if track_io_timing is enabled, otherwise zero)
+	MinTime           null.Float // Minimum time spent in the statement, in milliseconds
+	MaxTime           null.Float // Maximum time spent in the statement, in milliseconds
+	MeanTime          null.Float // Mean time spent in the statement, in milliseconds
+	StddevTime        null.Float // Population standard deviation of time spent in the statement, in milliseconds
 }
 
 // PostgresStatementKey - Information that uniquely identifies a query
 type PostgresStatementKey struct {
 	DatabaseOid Oid   // OID of database in which the statement was executed
 	UserOid     Oid   // OID of user who executed the statement
-	QueryID     int64 // Postgres 9.4+: Internal hash code, computed from the statement's parse tree
+	QueryID     int64 // Internal hash code, computed from the statement's parse tree
 }
 
 type PostgresStatementStatsTimeKey struct {
