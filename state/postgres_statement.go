@@ -2,8 +2,6 @@ package state
 
 import (
 	"time"
-
-	"github.com/guregu/null"
 )
 
 // PostgresStatement - Specific kind of statement that has run one or multiple times
@@ -20,25 +18,25 @@ type PostgresStatement struct {
 //
 // See also https://www.postgresql.org/docs/9.5/static/pgstatstatements.html
 type PostgresStatementStats struct {
-	Calls             int64      // Number of times executed
-	TotalTime         float64    // Total time spent in the statement, in milliseconds
-	Rows              int64      // Total number of rows retrieved or affected by the statement
-	SharedBlksHit     int64      // Total number of shared block cache hits by the statement
-	SharedBlksRead    int64      // Total number of shared blocks read by the statement
-	SharedBlksDirtied int64      // Total number of shared blocks dirtied by the statement
-	SharedBlksWritten int64      // Total number of shared blocks written by the statement
-	LocalBlksHit      int64      // Total number of local block cache hits by the statement
-	LocalBlksRead     int64      // Total number of local blocks read by the statement
-	LocalBlksDirtied  int64      // Total number of local blocks dirtied by the statement
-	LocalBlksWritten  int64      // Total number of local blocks written by the statement
-	TempBlksRead      int64      // Total number of temp blocks read by the statement
-	TempBlksWritten   int64      // Total number of temp blocks written by the statement
-	BlkReadTime       float64    // Total time the statement spent reading blocks, in milliseconds (if track_io_timing is enabled, otherwise zero)
-	BlkWriteTime      float64    // Total time the statement spent writing blocks, in milliseconds (if track_io_timing is enabled, otherwise zero)
-	MinTime           null.Float // Minimum time spent in the statement, in milliseconds
-	MaxTime           null.Float // Maximum time spent in the statement, in milliseconds
-	MeanTime          null.Float // Mean time spent in the statement, in milliseconds
-	StddevTime        null.Float // Population standard deviation of time spent in the statement, in milliseconds
+	Calls             int64   // Number of times executed
+	TotalTime         float64 // Total time spent in the statement, in milliseconds
+	Rows              int64   // Total number of rows retrieved or affected by the statement
+	SharedBlksHit     int64   // Total number of shared block cache hits by the statement
+	SharedBlksRead    int64   // Total number of shared blocks read by the statement
+	SharedBlksDirtied int64   // Total number of shared blocks dirtied by the statement
+	SharedBlksWritten int64   // Total number of shared blocks written by the statement
+	LocalBlksHit      int64   // Total number of local block cache hits by the statement
+	LocalBlksRead     int64   // Total number of local blocks read by the statement
+	LocalBlksDirtied  int64   // Total number of local blocks dirtied by the statement
+	LocalBlksWritten  int64   // Total number of local blocks written by the statement
+	TempBlksRead      int64   // Total number of temp blocks read by the statement
+	TempBlksWritten   int64   // Total number of temp blocks written by the statement
+	BlkReadTime       float64 // Total time the statement spent reading blocks, in milliseconds (if track_io_timing is enabled, otherwise zero)
+	BlkWriteTime      float64 // Total time the statement spent writing blocks, in milliseconds (if track_io_timing is enabled, otherwise zero)
+	MinTime           float64 // Minimum time spent in the statement, in milliseconds
+	MaxTime           float64 // Maximum time spent in the statement, in milliseconds
+	MeanTime          float64 // Mean time spent in the statement, in milliseconds
+	StddevTime        float64 // Population standard deviation of time spent in the statement, in milliseconds
 }
 
 // PostgresStatementKey - Information that uniquely identifies a query

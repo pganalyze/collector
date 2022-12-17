@@ -1674,14 +1674,6 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 				antiWraparound := parts[2] == "to prevent wraparound "
 				logLine.Details["anti_wraparound"] = antiWraparound
 			}
-			if parts[7] != "" {
-				pinskippedPages, _ := strconv.ParseInt(parts[7], 10, 64)
-				logLine.Details["pinskipped_pages"] = pinskippedPages
-			}
-			if parts[8] != "" {
-				frozenskippedPages, _ := strconv.ParseInt(parts[8], 10, 64)
-				logLine.Details["frozenskipped_pages"] = frozenskippedPages
-			}
 			if parts[12] != "" {
 				oldestXmin, _ := strconv.ParseInt(parts[12], 10, 64)
 				logLine.Details["oldest_xmin"] = oldestXmin
