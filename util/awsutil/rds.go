@@ -17,6 +17,11 @@ var IdentifierMap *util.TTLMap = util.NewTTLMap(5 * 60)
 var ErrorCache *util.TTLMap = util.NewTTLMap(10 * 60)
 
 func FindRdsIdentifier(config config.ServerConfig, sess *session.Session) (identifier string, err error) {
+	if config.AwsDbInstanceID != "" {
+		identifier = config.AwsDbInstanceID
+		return
+	}
+
 	identifier = IdentifierMap.Get(config.AwsDbInstanceID)
 	if identifier != "" {
 		return
