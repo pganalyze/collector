@@ -9,7 +9,7 @@ type OidToIdx map[state.Oid]int32
 
 func transformPostgres(s snapshot.FullSnapshot, newState state.PersistedState, diffState state.DiffState, transientState state.TransientState) snapshot.FullSnapshot {
 	s, roleOidToIdx := transformPostgresRoles(s, transientState)
-	s, databaseOidToIdx := transformPostgresDatabases(s, newState, diffState, transientState, roleOidToIdx)
+	s, databaseOidToIdx := transformPostgresDatabases(s, diffState, transientState, roleOidToIdx)
 	s, typeOidToIdx := transformPostgresTypes(s, transientState, databaseOidToIdx)
 
 	s = transformPostgresVersion(s, transientState)
@@ -60,7 +60,7 @@ func transformPostgresRoles(s snapshot.FullSnapshot, transientState state.Transi
 	return s, roleOidToIdx
 }
 
-func transformPostgresDatabases(s snapshot.FullSnapshot, newState state.PersistedState, diffState state.DiffState, transientState state.TransientState, roleOidToIdx OidToIdx) (snapshot.FullSnapshot, OidToIdx) {
+func transformPostgresDatabases(s snapshot.FullSnapshot, diffState state.DiffState, transientState state.TransientState, roleOidToIdx OidToIdx) (snapshot.FullSnapshot, OidToIdx) {
 	databaseOidToIdx := make(OidToIdx)
 
 	for _, database := range transientState.Databases {
@@ -95,14 +95,14 @@ func transformPostgresDatabases(s snapshot.FullSnapshot, newState state.Persiste
 
 		s.DatabaseInformations = append(s.DatabaseInformations, &info)
 
-		diff, exist := diffState.DatabaseStats[database.Oid]
+		stats, exist := diffState.DatabaseStats[database.Oid]
 		if exist {
 			stat := snapshot.DatabaseStatistic{
 				DatabaseIdx:  databaseOidToIdx[database.Oid],
-				FrozenxidAge: diff.FrozenXIDAge,
-				MinmxidAge:   diff.MinMXIDAge,
-				XactCommit:   diff.XactCommit,
-				XactRollback: diff.XactRollback,
+				FrozenxidAge: stats.FrozenXIDAge,
+				MinmxidAge:   stats.MinMXIDAge,
+				XactCommit:   stats.XactCommit,
+				XactRollback: stats.XactRollback,
 			}
 			s.DatabaseStatictics = append(s.DatabaseStatictics, &stat)
 		}
