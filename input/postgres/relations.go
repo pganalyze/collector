@@ -10,8 +10,6 @@ import (
 	"github.com/pganalyze/collector/state"
 )
 
-const relationsSQLDefaultOptionalFields = "0"
-const relationsSQLpg93OptionalFields = "c.relminmxid"
 const relationsSQLOidField = "c.relhasoids AS relation_has_oids"
 const relationsSQLpg12OidField = "false AS relation_has_oids"
 const relationsSQLpartBoundField = "''"
@@ -35,7 +33,7 @@ const relationsSQL string = `
 				c.relhassubclass AS relation_has_inheritance_children,
 				c.reltoastrelid IS NOT NULL AS relation_has_toast,
 				c.relfrozenxid AS relation_frozen_xid,
-				%s,
+				c.relminmxid AS relation_min_mxid,
 				COALESCE((SELECT inhparent FROM pg_inherits WHERE inhrelid = c.oid ORDER BY inhseqno LIMIT 1), 0) AS parent_relid,
 				%s,
 				%s,
@@ -142,18 +140,11 @@ func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 	relations := make(map[state.Oid]state.PostgresRelation, 0)
 
 	// Relations
-	var optionalFields string
 	var oidField string
 	var partBoundField string
 	var partStratField string
 	var partColsField string
 	var partExprField string
-
-	if postgresVersion.Numeric >= state.PostgresVersion93 {
-		optionalFields = relationsSQLpg93OptionalFields
-	} else {
-		optionalFields = relationsSQLDefaultOptionalFields
-	}
 
 	if postgresVersion.Numeric >= state.PostgresVersion10 {
 		partBoundField = relationsSQLpg10PartBoundField
@@ -174,7 +165,7 @@ func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 	}
 
 	rows, err := db.Query(QueryMarkerSQL+fmt.Sprintf(relationsSQL, oidField,
-		optionalFields, partBoundField, partStratField, partColsField, partExprField), ignoreRegexp)
+		partBoundField, partStratField, partColsField, partExprField), ignoreRegexp)
 	if err != nil {
 		err = fmt.Errorf("Relations/Query: %s", err)
 		return nil, err

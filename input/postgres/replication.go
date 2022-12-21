@@ -153,7 +153,11 @@ func GetIsReplica(logger *util.Logger, db *sql.DB) (bool, error) {
 		return false, nil
 	}
 
+	return getIsReplica(db)
+}
+
+func getIsReplica(db *sql.DB) (bool, error) {
 	var isReplica bool
-	err = db.QueryRow(QueryMarkerSQL + "SELECT pg_catalog.pg_is_in_recovery()").Scan(&isReplica)
+	err := db.QueryRow(QueryMarkerSQL + "SELECT pg_catalog.pg_is_in_recovery()").Scan(&isReplica)
 	return isReplica, err
 }

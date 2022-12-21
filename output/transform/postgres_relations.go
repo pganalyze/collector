@@ -157,6 +157,8 @@ func transformPostgresRelations(s snapshot.FullSnapshot, newState state.Persiste
 					ToastBlksHit:   stats.ToastBlksHit,
 					TidxBlksRead:   stats.TidxBlksRead,
 					TidxBlksHit:    stats.TidxBlksHit,
+					FrozenxidAge:   stats.FrozenXIDAge,
+					MinmxidAge:     stats.MinMXIDAge,
 				}
 				if stats.NModSinceAnalyze.Valid {
 					statistic.NModSinceAnalyze = stats.NModSinceAnalyze.Int64

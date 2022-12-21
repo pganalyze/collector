@@ -32,6 +32,8 @@ type PostgresRelationStats struct {
 	ToastBlksHit     int64     // Number of buffer hits in this table's TOAST table (if any)
 	TidxBlksRead     int64     // Number of disk blocks read from this table's TOAST table indexes (if any)
 	TidxBlksHit      int64     // Number of buffer hits in this table's TOAST table indexes (if any)
+	FrozenXIDAge     int32     // Age of frozen XID for this table
+	MinMXIDAge       int32     // Age of minimum multixact ID for this table
 }
 
 type PostgresIndexStats struct {
@@ -101,6 +103,8 @@ func (curr PostgresRelationStats) DiffSince(prev PostgresRelationStats) DiffedPo
 		ToastBlksHit:     curr.ToastBlksHit - prev.ToastBlksHit,
 		TidxBlksRead:     curr.TidxBlksRead - prev.TidxBlksRead,
 		TidxBlksHit:      curr.TidxBlksHit - prev.TidxBlksHit,
+		FrozenXIDAge:     curr.FrozenXIDAge,
+		MinMXIDAge:       curr.MinMXIDAge,
 	}
 }
 
