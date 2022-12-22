@@ -53,7 +53,10 @@ SELECT c.oid,
 			 COALESCE(sio.tidx_blks_read, 0),
 			 COALESCE(sio.tidx_blks_hit, 0),
 			 CASE WHEN c.relfrozenxid <> '0' THEN age(c.relfrozenxid) ELSE 0 END AS relation_xid_age,
-			 CASE WHEN c.relminmxid <> '0' THEN mxid_age(c.relminmxid) ELSE 0 END AS relation_mxid_age
+			 CASE WHEN c.relminmxid <> '0' THEN mxid_age(c.relminmxid) ELSE 0 END AS relation_mxid_age,
+			 c.relpages,
+			 c.reltuples,
+			 c.relallvisible
 	FROM pg_catalog.pg_class c
 	LEFT JOIN pg_catalog.pg_namespace n ON (n.oid = c.relnamespace)
 	LEFT JOIN pg_catalog.pg_stat_user_tables s ON (s.relid = c.oid)
@@ -132,7 +135,8 @@ func GetRelationStats(db *sql.DB, postgresVersion state.PostgresVersion, ignoreR
 			&stats.AnalyzeCount, &stats.AutoanalyzeCount, &stats.HeapBlksRead,
 			&stats.HeapBlksHit, &stats.IdxBlksRead, &stats.IdxBlksHit,
 			&stats.ToastBlksRead, &stats.ToastBlksHit, &stats.TidxBlksRead,
-			&stats.TidxBlksHit, &stats.FrozenXIDAge, &stats.MinMXIDAge)
+			&stats.TidxBlksHit, &stats.FrozenXIDAge, &stats.MinMXIDAge,
+			&stats.Relpages, &stats.Reltuples, &stats.Relallvisible)
 		if err != nil {
 			err = fmt.Errorf("RelationStats/Scan: %s", err)
 			return
