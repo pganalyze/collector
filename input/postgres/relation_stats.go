@@ -141,6 +141,11 @@ func GetRelationStats(db *sql.DB, postgresVersion state.PostgresVersion, ignoreR
 		relStats[oid] = stats
 	}
 
+	if err = rows.Err(); err != nil {
+		err = fmt.Errorf("RelationStats/Rows: %s", err)
+		return
+	}
+
 	relStats, err = handleRelationStatsExt(db, relStats, postgresVersion, ignoreRegexp)
 
 	return
@@ -174,6 +179,11 @@ func GetIndexStats(db *sql.DB, postgresVersion state.PostgresVersion, ignoreRege
 		}
 
 		indexStats[oid] = stats
+	}
+
+	if err = rows.Err(); err != nil {
+		err = fmt.Errorf("IndexStats/Rows: %s", err)
+		return
 	}
 
 	indexStats, err = handleIndexStatsExt(db, indexStats, postgresVersion, ignoreRegexp)
@@ -224,6 +234,10 @@ func GetColumnStats(logger *util.Logger, db *sql.DB, globalCollectionOpts state.
 
 		key := state.PostgresColumnStatsKey{SchemaName: s.SchemaName, TableName: s.TableName, ColumnName: s.ColumnName}
 		statsMap[key] = append(statsMap[key], s)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, err
 	}
 
 	return statsMap, nil

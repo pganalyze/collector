@@ -207,6 +207,11 @@ func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 		relations[row.Oid] = row
 	}
 
+	if err := rows.Err(); err != nil {
+		err = fmt.Errorf("Relations/Rows: %s", err)
+		return nil, err
+	}
+
 	// Columns
 	rows, err = db.Query(QueryMarkerSQL+columnsSQL, ignoreRegexp)
 	if err != nil {
@@ -229,6 +234,11 @@ func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 		relation := relations[row.RelationOid]
 		relation.Columns = append(relation.Columns, row)
 		relations[row.RelationOid] = relation
+	}
+
+	if err := rows.Err(); err != nil {
+		err = fmt.Errorf("Columns/Rows: %s", err)
+		return nil, err
 	}
 
 	// Indices
@@ -268,6 +278,11 @@ func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 		relation := relations[row.RelationOid]
 		relation.Indices = append(relation.Indices, row)
 		relations[row.RelationOid] = relation
+	}
+
+	if err := rows.Err(); err != nil {
+		err = fmt.Errorf("Indices/Rows: %s", err)
+		return nil, err
 	}
 
 	// Constraints
@@ -319,6 +334,11 @@ func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 		relations[row.RelationOid] = relation
 	}
 
+	if err := rows.Err(); err != nil {
+		err = fmt.Errorf("Constraints/Rows: %s", err)
+		return nil, err
+	}
+
 	// View definitions
 	rows, err = db.Query(QueryMarkerSQL+viewDefinitionSQL, ignoreRegexp)
 	if err != nil {
@@ -341,6 +361,11 @@ func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 		relation := relations[relationOid]
 		relation.ViewDefinition = viewDefinition
 		relations[relationOid] = relation
+	}
+
+	if err := rows.Err(); err != nil {
+		err = fmt.Errorf("Views/Rows: %s", err)
+		return nil, err
 	}
 
 	// Flip the oid-based map into an array

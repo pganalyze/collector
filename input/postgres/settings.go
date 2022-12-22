@@ -61,5 +61,10 @@ func GetSettings(db *sql.DB) ([]state.PostgresSetting, error) {
 		settings = append(settings, row)
 	}
 
+	if err = rows.Err(); err != nil {
+		err = fmt.Errorf("Settings/Rows: %s", err)
+		return nil, err
+	}
+
 	return settings, nil
 }

@@ -47,6 +47,10 @@ func handleRelationStatsExt(db *sql.DB, relStats state.PostgresRelationStatsMap,
 			s.ToastSizeBytes = 0
 			relStats[oid] = s
 		}
+
+		if err = rows.Err(); err != nil {
+			return relStats, fmt.Errorf("RelationStatsExt/Rows: %s", err)
+		}
 	}
 
 	return relStats, nil
@@ -123,6 +127,10 @@ func handleIndexStatsExt(db *sql.DB, idxStats state.PostgresIndexStatsMap, postg
 			s := idxStats[oid]
 			s.SizeBytes = sizeBytes
 			idxStats[oid] = s
+		}
+
+		if err = rows.Err(); err != nil {
+			return idxStats, fmt.Errorf("IndexStatsExt/Rows: %s", err)
 		}
 	}
 

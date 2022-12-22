@@ -84,6 +84,10 @@ func GetVacuumStats(logger *util.Logger, db *sql.DB, ignoreRegexp string) (repor
 		}
 	}
 
+	if err = configRows.Err(); err != nil {
+		return
+	}
+
 	rows, err := db.Query(QueryMarkerSQL + tableVacuumSQL)
 	if err != nil {
 		return
@@ -148,6 +152,10 @@ func GetVacuumStats(logger *util.Logger, db *sql.DB, ignoreRegexp string) (repor
 		}
 
 		report.Relations = append(report.Relations, entry)
+	}
+
+	if err = rows.Err(); err != nil {
+		return
 	}
 
 	report.DatabaseName, err = CurrentDatabaseName(db)

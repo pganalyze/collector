@@ -63,5 +63,9 @@ func GetDatabases(logger *util.Logger, db *sql.DB, postgresVersion state.Postgre
 		databaseStats[d.Oid] = ds
 	}
 
+	if err = rows.Err(); err != nil {
+		return nil, nil, err
+	}
+
 	return databases, databaseStats, nil
 }

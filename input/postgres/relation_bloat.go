@@ -215,6 +215,11 @@ func GetRelationBloat(logger *util.Logger, db *sql.DB, columnStatsSourceTable st
 		}
 	}
 
+	if err = rows.Err(); err != nil {
+		err = fmt.Errorf("TableBloat/Rows: %s", err)
+		return nil, err
+	}
+
 	return
 }
 
@@ -238,6 +243,11 @@ func GetIndexBloat(logger *util.Logger, db *sql.DB, columnStatsSourceTable, igno
 		if row.TotalBytes > 0 && row.BloatBytes > 0 {
 			indexBloat = append(indexBloat, row)
 		}
+	}
+
+	if err = rows.Err(); err != nil {
+		err = fmt.Errorf("IndexBloat/Rows: %s", err)
+		return nil, err
 	}
 
 	return
