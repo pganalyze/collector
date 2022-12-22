@@ -7,7 +7,7 @@ import (
 	"github.com/pganalyze/collector/state"
 )
 
-func transformPostgresRelations(s snapshot.FullSnapshot, newState state.PersistedState, diffState state.DiffState, databaseOidToIdx OidToIdx, typeOidToIdx OidToIdx) snapshot.FullSnapshot {
+func transformPostgresRelations(s snapshot.FullSnapshot, newState state.PersistedState, diffState state.DiffState, databaseOidToIdx OidToIdx, typeOidToIdx OidToIdx, currentXactId int64) snapshot.FullSnapshot {
 	relationOidToIdx := state.MakeOidToIdxMap()
 	for _, relation := range newState.Relations {
 		ref := snapshot.RelationReference{
@@ -162,7 +162,7 @@ func transformPostgresRelations(s snapshot.FullSnapshot, newState state.Persiste
 					Relpages:        stats.Relpages,
 					Reltuples:       stats.Reltuples,
 					Relallvisible:   stats.Relallvisible,
-					Relfrozenxid:    int64(relation.FrozenXID),
+					Relfrozenxid:    relation.FullFrozenXID(currentXactId),
 					Relminmxid:      int32(relation.MinimumMultixactXID),
 					LastVacuum:      snapshot.NullTimeToNullTimestamp(stats.LastVacuum),
 					LastAutovacuum:  snapshot.NullTimeToNullTimestamp(stats.LastAutovacuum),

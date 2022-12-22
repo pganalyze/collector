@@ -17,7 +17,7 @@ func transformPostgres(s snapshot.FullSnapshot, newState state.PersistedState, d
 	s = transformPostgresServerStats(s, transientState)
 	s = transformPostgresReplication(s, transientState, roleOidToIdx)
 	s = transformPostgresStatements(s, newState, diffState, transientState, roleOidToIdx, databaseOidToIdx)
-	s = transformPostgresRelations(s, newState, diffState, databaseOidToIdx, typeOidToIdx)
+	s = transformPostgresRelations(s, newState, diffState, databaseOidToIdx, typeOidToIdx, s.ServerStatistic.CurrentXactId)
 	s = transformPostgresFunctions(s, newState, diffState, roleOidToIdx, databaseOidToIdx)
 	s = transformPostgresBackendCounts(s, transientState, roleOidToIdx, databaseOidToIdx)
 	s = transformPostgresExtensions(s, transientState, databaseOidToIdx)
