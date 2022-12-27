@@ -3097,7 +3097,7 @@ type RelationStatistic struct {
 	Reltuples       float32        `protobuf:"fixed32,41,opt,name=reltuples,proto3" json:"reltuples,omitempty"`                                  // Number of live rows in the table. -1 indicating that the row count is unknown
 	Relallvisible   int32          `protobuf:"varint,42,opt,name=relallvisible,proto3" json:"relallvisible,omitempty"`                           // Number of pages that are marked all-visible in the table's visibility map
 	Relfrozenxid    int64          `protobuf:"varint,43,opt,name=relfrozenxid,proto3" json:"relfrozenxid,omitempty"`                             // All transaction IDs before this one have been replaced with a permanent (“frozen”) transaction ID in this table, in xid8 (64-bit FullTransactionId)
-	Relminmxid      int32          `protobuf:"varint,44,opt,name=relminmxid,proto3" json:"relminmxid,omitempty"`                                 // All multixact IDs before this one have been replaced by a transaction ID in this table
+	Relminmxid      int64          `protobuf:"varint,44,opt,name=relminmxid,proto3" json:"relminmxid,omitempty"`                                 // All multixact IDs before this one have been replaced by a transaction ID in this table
 	LastVacuum      *NullTimestamp `protobuf:"bytes,45,opt,name=last_vacuum,json=lastVacuum,proto3" json:"last_vacuum,omitempty"`                // Last time at which this table was manually vacuumed (not counting VACUUM FULL)
 	LastAutovacuum  *NullTimestamp `protobuf:"bytes,46,opt,name=last_autovacuum,json=lastAutovacuum,proto3" json:"last_autovacuum,omitempty"`    // Last time at which this table was vacuumed by the autovacuum daemon
 	LastAnalyze     *NullTimestamp `protobuf:"bytes,47,opt,name=last_analyze,json=lastAnalyze,proto3" json:"last_analyze,omitempty"`             // Last time at which this table was manually analyzed
@@ -3339,7 +3339,7 @@ func (x *RelationStatistic) GetRelfrozenxid() int64 {
 	return 0
 }
 
-func (x *RelationStatistic) GetRelminmxid() int32 {
+func (x *RelationStatistic) GetRelminmxid() int64 {
 	if x != nil {
 		return x.Relminmxid
 	}
@@ -5290,7 +5290,7 @@ var file_full_snapshot_proto_rawDesc = []byte{
 	0x72, 0x65, 0x6c, 0x66, 0x72, 0x6f, 0x7a, 0x65, 0x6e, 0x78, 0x69, 0x64, 0x18, 0x2b, 0x20, 0x01,
 	0x28, 0x03, 0x52, 0x0c, 0x72, 0x65, 0x6c, 0x66, 0x72, 0x6f, 0x7a, 0x65, 0x6e, 0x78, 0x69, 0x64,
 	0x12, 0x1e, 0x0a, 0x0a, 0x72, 0x65, 0x6c, 0x6d, 0x69, 0x6e, 0x6d, 0x78, 0x69, 0x64, 0x18, 0x2c,
-	0x20, 0x01, 0x28, 0x05, 0x52, 0x0a, 0x72, 0x65, 0x6c, 0x6d, 0x69, 0x6e, 0x6d, 0x78, 0x69, 0x64,
+	0x20, 0x01, 0x28, 0x03, 0x52, 0x0a, 0x72, 0x65, 0x6c, 0x6d, 0x69, 0x6e, 0x6d, 0x78, 0x69, 0x64,
 	0x12, 0x43, 0x0a, 0x0b, 0x6c, 0x61, 0x73, 0x74, 0x5f, 0x76, 0x61, 0x63, 0x75, 0x75, 0x6d, 0x18,
 	0x2d, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x22, 0x2e, 0x70, 0x67, 0x61, 0x6e, 0x61, 0x6c, 0x79, 0x7a,
 	0x65, 0x2e, 0x63, 0x6f, 0x6c, 0x6c, 0x65, 0x63, 0x74, 0x6f, 0x72, 0x2e, 0x4e, 0x75, 0x6c, 0x6c,
