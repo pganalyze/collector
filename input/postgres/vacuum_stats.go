@@ -46,7 +46,10 @@ func GetVacuumStats(logger *util.Logger, db *sql.DB, ignoreRegexp string) (repor
 		var name string
 		var value string
 
-		configRows.Scan(&name, &value)
+		err = configRows.Scan(&name, &value)
+		if err != nil {
+			return
+		}
 
 		switch name {
 		case "autovacuum":
@@ -99,11 +102,14 @@ func GetVacuumStats(logger *util.Logger, db *sql.DB, ignoreRegexp string) (repor
 		var entry state.PostgresVacuumStatsEntry
 		var relopts string
 
-		rows.Scan(&entry.SchemaName, &entry.RelationName, &entry.LiveRowCount,
+		err = rows.Scan(&entry.SchemaName, &entry.RelationName, &entry.LiveRowCount,
 			&entry.DeadRowCount, &entry.Relfrozenxid, &entry.Relminmxid,
 			&entry.LastManualVacuumRun, &entry.LastAutoVacuumRun,
 			&entry.LastManualAnalyzeRun, &entry.LastAutoAnalyzeRun,
 			&relopts)
+		if err != nil {
+			return
+		}
 
 		entry.AutovacuumEnabled = report.AutovacuumEnabled
 		entry.AutovacuumVacuumThreshold = report.AutovacuumVacuumThreshold
