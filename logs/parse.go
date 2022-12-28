@@ -486,10 +486,16 @@ func ParseLogLineWithPrefix(prefix string, line string) (logLine state.LogLine, 
 		// https://pkg.go.dev/time#Parse
 		zone, offset := logLine.OccurredAt.Zone()
 		if offset == 0 && zone != "UTC" && zone != "" {
-			zoneLocation, err := time.LoadLocation(zone)
-			if err != nil {
-				// We don't know which timezone this is (and a timezone name is present), so we can't process this log line
-				return
+			var zoneLocation *time.Location
+			zoneNum, err := strconv.Atoi(zone)
+			if err == nil {
+				zoneLocation = time.FixedZone(zone, zoneNum*3600)
+			} else {
+				zoneLocation, err = time.LoadLocation(zone)
+				if err != nil {
+					// We don't know which timezone this is (and a timezone name is present), so we can't process this log line
+					return
+				}
 			}
 			logLine.OccurredAt, err = time.ParseInLocation(timeFormat, timePart, zoneLocation)
 			if err != nil {
