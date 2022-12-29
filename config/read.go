@@ -538,30 +538,35 @@ func Read(logger *util.Logger, filename string) (Config, error) {
 
 			for _, kv := range os.Environ() {
 				parts := strings.SplitN(kv, "=", 2)
-				if strings.HasSuffix(parts[0], "_URL") {
-					matched := pg_uri_regex.MatchString(parts[1])
-					if !matched {
-						continue
-					}
-
-					config := getDefaultConfig()
-					config, err = preprocessConfig(config)
-					if err != nil {
-						return conf, err
-					}
-					config.SectionName = parts[0]
-					config.SystemID = strings.Replace(parts[0], "_URL", "", 1)
-					config.SystemType = "heroku"
-					config.DbURL = parts[1]
-					config.Identifier = ServerIdentifier{
-						APIKey:      config.APIKey,
-						APIBaseURL:  config.APIBaseURL,
-						SystemID:    config.SystemID,
-						SystemType:  config.SystemType,
-						SystemScope: config.SystemScope,
-					}
-					conf.Servers = append(conf.Servers, *config)
+				parsed_key := parts[0]
+				parsed_value := parts[1]
+				if !strings.HasSuffix(parsed_key, "_URL") {
+					continue
 				}
+
+				matched := pg_uri_regex.MatchString(parsed_value)
+				if !matched {
+					continue
+				}
+
+				config := getDefaultConfig()
+				config, err = preprocessConfig(config)
+				if err != nil {
+					return conf, err
+				}
+
+				config.SectionName = parsed_key
+				config.SystemID = strings.Replace(parsed_key, "_URL", "", 1)
+				config.SystemType = "heroku"
+				config.DbURL = parsed_value
+				config.Identifier = ServerIdentifier{
+					APIKey:      config.APIKey,
+					APIBaseURL:  config.APIBaseURL,
+					SystemID:    config.SystemID,
+					SystemType:  config.SystemType,
+					SystemScope: config.SystemScope,
+				}
+				conf.Servers = append(conf.Servers, *config)
 			}
 		} else if os.Getenv("PGA_API_KEY") != "" {
 			config := getDefaultConfig()
