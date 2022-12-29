@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -533,9 +534,16 @@ func Read(logger *util.Logger, filename string) (Config, error) {
 		}
 	} else {
 		if os.Getenv("DYNO") != "" && os.Getenv("PORT") != "" {
+			pg_uri_regex, _ := regexp.Compile("^postgres(?:ql)?://.*")
+
 			for _, kv := range os.Environ() {
 				parts := strings.SplitN(kv, "=", 2)
 				if strings.HasSuffix(parts[0], "_URL") {
+					matched := pg_uri_regex.MatchString(parts[1])
+					if !matched {
+						continue
+					}
+
 					config := getDefaultConfig()
 					config, err = preprocessConfig(config)
 					if err != nil {
