@@ -534,7 +534,7 @@ func Read(logger *util.Logger, filename string) (Config, error) {
 		}
 	} else {
 		if os.Getenv("DYNO") != "" && os.Getenv("PORT") != "" {
-			pg_uri_regex, _ := regexp.MustCompile("^postgres(?:ql)?://.*")
+			pg_uri_regex, _ := regexp.MustCompile("\Apostgres(?:ql)?://.*")
 
 			for _, kv := range os.Environ() {
 				parts := strings.SplitN(kv, "=", 2)
