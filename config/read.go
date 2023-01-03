@@ -24,6 +24,8 @@ import (
 
 const DefaultAPIBaseURL = "https://api.pganalyze.com"
 
+var pgURIRegexp = regexp.MustCompile(`\Apostgres(?:ql)?://.*`)
+
 func parseConfigBool(value string) bool {
 	var val = strings.ToLower(value)
 	if val == "" || val == "0" || val == "off" || val == "false" || val == "no" || val == "f" || val == "n" {
@@ -534,17 +536,15 @@ func Read(logger *util.Logger, filename string) (Config, error) {
 		}
 	} else {
 		if os.Getenv("DYNO") != "" && os.Getenv("PORT") != "" {
-			pg_uri_regex := regexp.MustCompile(`\Apostgres(?:ql)?://.*`)
-
 			for _, kv := range os.Environ() {
 				parts := strings.SplitN(kv, "=", 2)
-				parsed_key := parts[0]
-				parsed_value := parts[1]
-				if !strings.HasSuffix(parsed_key, "_URL") {
+				parsedKey := parts[0]
+				parsedValue := parts[1]
+				if !strings.HasSuffix(parsedKey, "_URL") {
 					continue
 				}
 
-				matched := pg_uri_regex.MatchString(parsed_value)
+				matched := pgURIRegexp.MatchString(parsedValue)
 				if !matched {
 					continue
 				}
@@ -555,10 +555,10 @@ func Read(logger *util.Logger, filename string) (Config, error) {
 					return conf, err
 				}
 
-				config.SectionName = parsed_key
-				config.SystemID = strings.Replace(parsed_key, "_URL", "", 1)
+				config.SectionName = parsedKey
+				config.SystemID = strings.Replace(parsedKey, "_URL", "", 1)
 				config.SystemType = "heroku"
-				config.DbURL = parsed_value
+				config.DbURL = parsedValue
 				config.Identifier = ServerIdentifier{
 					APIKey:      config.APIKey,
 					APIBaseURL:  config.APIBaseURL,
