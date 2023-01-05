@@ -35,4 +35,23 @@ func TestPreprocessConfigAiven(t *testing.T) {
 			t.Errorf("%d: want %v; got %v", idx, item.expectedProj, processed.AivenProjectID)
 		}
 	}
+
+	{
+		// ensure we avoid overwriting explicitly-specified config values
+		var config ServerConfig
+		config.DbHost = "my-service-my-project.aivencloud.com"
+		config.AivenServiceID = "my-service"
+		config.AivenProjectID = "my-project"
+		processed, err := preprocessConfig(&config)
+		if err != nil {
+			t.Errorf("want nil; got %v", err)
+		}
+		if processed.AivenServiceID != "my-service" {
+			t.Errorf("want %v; got %v", "my-service", processed.AivenServiceID)
+		}
+		if processed.AivenProjectID != "my-project" {
+			t.Errorf("want %v; got %v", "my-project", processed.AivenProjectID)
+		}
+	}
+
 }
