@@ -68,7 +68,7 @@ func collectDiffAndSubmit(server *state.Server, globalCollectionOpts state.Colle
 		newState.StatementStats = transientState.ResetStatementStats
 	}
 
-	newState.QueryIdentities = pruneQueryIdentities(newState.QueryIdentities)
+	pruneQueryIdentities(server)
 
 	return newState, collectionStatus, nil
 }
@@ -258,13 +258,15 @@ func CollectAllServers(servers []*state.Server, globalCollectionOpts state.Colle
 	return
 }
 
-func pruneQueryIdentities(oldMap state.QueryIdentityMap) (newMap state.QueryIdentityMap) {
+func pruneQueryIdentities(server *state.Server) {
 	max := 100000
-	if len(oldMap) < max {
-		return oldMap
+	if len(server.QueryIdentities) < max {
+		return
 	}
-	slice := make([]state.QueryIdentity, 0, len(oldMap))
-	for _, identity := range oldMap {
+	server.QueryIdentitiesMutex.Lock()
+	newMap := make(state.QueryIdentityMap)
+	slice := make([]state.QueryIdentity, 0, len(server.QueryIdentities))
+	for _, identity := range server.QueryIdentities {
 		slice = append(slice, identity)
 	}
 	sort.Slice(slice, func(i, j int) bool {
@@ -273,7 +275,8 @@ func pruneQueryIdentities(oldMap state.QueryIdentityMap) (newMap state.QueryIden
 	for _, identity := range slice[:max-1] {
 		newMap[identity.QueryID] = identity
 	}
-	return
+	server.QueryIdentities = newMap
+	server.QueryIdentitiesMutex.Unlock()
 }
 
 func min(x, y int) int {

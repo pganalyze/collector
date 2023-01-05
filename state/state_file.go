@@ -9,10 +9,15 @@ import (
 )
 
 func WriteStateFile(servers []*Server, globalCollectionOpts CollectionOpts, logger *util.Logger) {
-	stateOnDisk := StateOnDisk{PrevStateByServer: make(map[config.ServerIdentifier]PersistedState), FormatVersion: StateOnDiskFormatVersion}
+	stateOnDisk := StateOnDisk{
+		PrevStateByServer:       make(map[config.ServerIdentifier]PersistedState),
+		QueryIdentitiesByServer: make(map[config.ServerIdentifier]QueryIdentityMap),
+		FormatVersion:           StateOnDiskFormatVersion,
+	}
 
 	for _, server := range servers {
 		stateOnDisk.PrevStateByServer[server.Config.Identifier] = server.PrevState
+		stateOnDisk.QueryIdentitiesByServer[server.Config.Identifier] = server.QueryIdentities
 	}
 
 	file, err := os.Create(globalCollectionOpts.StateFilename)
@@ -54,6 +59,12 @@ func ReadStateFile(servers []*Server, globalCollectionOpts CollectionOpts, logge
 			prefixedLogger := logger.WithPrefix(server.Config.SectionName)
 			prefixedLogger.PrintVerbose("Successfully recovered state from on-disk file")
 			servers[idx].PrevState = prevState
+		}
+		queryIdentities, exist := stateOnDisk.QueryIdentitiesByServer[server.Config.Identifier]
+		if exist {
+			server.QueryIdentitiesMutex.Lock()
+			server.QueryIdentities = queryIdentities
+			server.QueryIdentitiesMutex.Unlock()
 		}
 	}
 }

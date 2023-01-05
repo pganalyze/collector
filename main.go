@@ -74,7 +74,7 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 		if globalCollectionOpts.TestRun && globalCollectionOpts.TestSection != "" && globalCollectionOpts.TestSection != config.SectionName {
 			continue
 		}
-		servers = append(servers, &state.Server{Config: config, StateMutex: &sync.Mutex{}, LogStateMutex: &sync.Mutex{}, ActivityStateMutex: &sync.Mutex{}, CollectionStatusMutex: &sync.Mutex{}})
+		servers = append(servers, &state.Server{Config: config, StateMutex: &sync.Mutex{}, LogStateMutex: &sync.Mutex{}, ActivityStateMutex: &sync.Mutex{}, CollectionStatusMutex: &sync.Mutex{}, QueryIdentitiesMutex: &sync.RWMutex{}})
 		if config.EnableReports {
 			hasAnyReportsEnabled = true
 		}

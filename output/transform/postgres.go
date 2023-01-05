@@ -7,7 +7,7 @@ import (
 
 type OidToIdx map[state.Oid]int32
 
-func transformPostgres(s snapshot.FullSnapshot, newState state.PersistedState, diffState state.DiffState, transientState state.TransientState) snapshot.FullSnapshot {
+func transformPostgres(s snapshot.FullSnapshot, server *state.Server, newState state.PersistedState, diffState state.DiffState, transientState state.TransientState) snapshot.FullSnapshot {
 	s, roleOidToIdx := transformPostgresRoles(s, transientState)
 	s, databaseOidToIdx := transformPostgresDatabases(s, transientState, roleOidToIdx)
 	s, typeOidToIdx := transformPostgresTypes(s, transientState, databaseOidToIdx)
@@ -15,7 +15,7 @@ func transformPostgres(s snapshot.FullSnapshot, newState state.PersistedState, d
 	s = transformPostgresVersion(s, transientState)
 	s = transformPostgresConfig(s, transientState)
 	s = transformPostgresReplication(s, transientState, roleOidToIdx)
-	s = transformPostgresStatements(s, newState, diffState, transientState, roleOidToIdx, databaseOidToIdx)
+	s = transformPostgresStatements(s, server, newState, diffState, transientState, roleOidToIdx, databaseOidToIdx)
 	s = transformPostgresRelations(s, newState, diffState, databaseOidToIdx, typeOidToIdx)
 	s = transformPostgresFunctions(s, newState, diffState, roleOidToIdx, databaseOidToIdx)
 	s = transformPostgresBackendCounts(s, transientState, roleOidToIdx, databaseOidToIdx)

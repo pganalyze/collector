@@ -40,9 +40,6 @@ type PersistedState struct {
 
 	// All statement stats that have not been identified (will be cleared by the next full snapshot)
 	UnidentifiedStatementStats HistoricStatementStatsMap
-
-	// Keeps track of queryid -> fingerprint pairs in case a query is no longer in pg_stat_statements
-	QueryIdentities QueryIdentityMap
 }
 
 // TransientState - State thats only used within a collector run (and not needed for diffs)
@@ -168,12 +165,13 @@ type DiffState struct {
 }
 
 // StateOnDiskFormatVersion - Increment this when an old state preserved to disk should be ignored
-const StateOnDiskFormatVersion = 6
+const StateOnDiskFormatVersion = 7
 
 type StateOnDisk struct {
 	FormatVersion uint
 
-	PrevStateByServer map[config.ServerIdentifier]PersistedState
+	PrevStateByServer       map[config.ServerIdentifier]PersistedState
+	QueryIdentitiesByServer map[config.ServerIdentifier]QueryIdentityMap
 }
 
 type CollectionOpts struct {
@@ -278,6 +276,10 @@ type Server struct {
 	// differences (see https://groups.google.com/g/golang-nuts/c/eIqkhXh9PLg),
 	// as we access this in high frequency log-related code paths.
 	LogIgnoreFlags uint32
+
+	// Keeps track of queryid -> fingerprint pairs in case a query is no longer in pg_stat_statements
+	QueryIdentities      QueryIdentityMap
+	QueryIdentitiesMutex *sync.RWMutex
 }
 
 const (
