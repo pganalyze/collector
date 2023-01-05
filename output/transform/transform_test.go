@@ -36,7 +36,7 @@ func TestStatements(t *testing.T) {
 	diffState.StatementStats[key1] = state.DiffedPostgresStatementStats{Calls: 1}
 	diffState.StatementStats[key2] = state.DiffedPostgresStatementStats{Calls: 13}
 
-	actual := transform.StateToSnapshot(server, newState, diffState, transientState)
+	actual := transform.StateToSnapshot(&server, newState, diffState, transientState)
 	actualJSON, _ := json.Marshal(actual)
 
 	expected := pganalyze_collector.FullSnapshot{
