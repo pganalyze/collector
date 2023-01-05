@@ -16,6 +16,7 @@ func TestStatements(t *testing.T) {
 	key1 := state.PostgresStatementKey{QueryID: 1}
 	key2 := state.PostgresStatementKey{QueryID: 2}
 
+	server := state.Server{}
 	newState := state.PersistedState{}
 	transientState := state.TransientState{Statements: make(state.PostgresStatementMap), StatementTexts: make(state.PostgresStatementTextMap)}
 	diffState := state.DiffState{StatementStats: make(state.DiffedPostgresStatementStatsMap)}
@@ -35,7 +36,7 @@ func TestStatements(t *testing.T) {
 	diffState.StatementStats[key1] = state.DiffedPostgresStatementStats{Calls: 1}
 	diffState.StatementStats[key2] = state.DiffedPostgresStatementStats{Calls: 13}
 
-	actual := transform.StateToSnapshot(newState, diffState, transientState)
+	actual := transform.StateToSnapshot(server, newState, diffState, transientState)
 	actualJSON, _ := json.Marshal(actual)
 
 	expected := pganalyze_collector.FullSnapshot{
