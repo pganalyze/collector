@@ -443,10 +443,16 @@ func preprocessConfig(config *ServerConfig) (*ServerConfig, error) {
 
 	if config.DbSslCertContents != "" {
 		config.DbSslCert, err = writeValueToTempfile(config.DbSslCertContents)
+		if err != nil {
+			return config, err
+		}
 	}
 
 	if config.DbSslKeyContents != "" {
 		config.DbSslKey, err = writeValueToTempfile(config.DbSslKeyContents)
+		if err != nil {
+			return config, err
+		}
 	}
 
 	if config.AwsEndpointSigningRegionLegacy != "" && config.AwsEndpointSigningRegion == "" {
