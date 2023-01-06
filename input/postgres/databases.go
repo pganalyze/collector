@@ -8,60 +8,64 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
-const databasesSQLDefaultOptionalFields = "1"
-const databasesSQLpg93OptionalFields = "datminmxid"
-
 // See also https://www.postgresql.org/docs/9.5/static/catalog-pg-database.html
 const databasesSQL string = `
-SELECT oid,
-			 datname,
-			 datdba,
-			 pg_catalog.pg_encoding_to_char(encoding),
-			 datcollate,
-			 datctype,
-			 datistemplate,
-			 datallowconn,
-			 datconnlimit,
-			 datfrozenxid,
-			 %s
-	FROM pg_catalog.pg_database`
+SELECT
+	d.oid,
+	d.datname,
+	d.datdba,
+	pg_catalog.pg_encoding_to_char(d.encoding),
+	d.datcollate,
+	d.datctype,
+	d.datistemplate,
+	d.datallowconn,
+	d.datconnlimit,
+	d.datfrozenxid,
+	d.datminmxid,
+	CASE WHEN d.datfrozenxid <> '0' THEN age(d.datfrozenxid) ELSE 0 END,
+	CASE WHEN d.datminmxid <> '0' THEN mxid_age(d.datminmxid) ELSE 0 END,
+	sd.xact_commit,
+	sd.xact_rollback
+FROM pg_catalog.pg_database d
+	LEFT JOIN pg_catalog.pg_stat_database sd
+	ON d.oid = sd.datid`
 
-func GetDatabases(logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion) ([]state.PostgresDatabase, error) {
-	var optionalFields string
-
-	if postgresVersion.Numeric >= state.PostgresVersion93 {
-		optionalFields = databasesSQLpg93OptionalFields
-	} else {
-		optionalFields = databasesSQLDefaultOptionalFields
-	}
-
-	stmt, err := db.Prepare(QueryMarkerSQL + fmt.Sprintf(databasesSQL, optionalFields))
+func GetDatabases(logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion) ([]state.PostgresDatabase, state.PostgresDatabaseStatsMap, error) {
+	stmt, err := db.Prepare(QueryMarkerSQL + fmt.Sprintf(databasesSQL))
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	defer stmt.Close()
 
 	rows, err := stmt.Query()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	defer rows.Close()
 
 	var databases []state.PostgresDatabase
+	var databaseStats = make(state.PostgresDatabaseStatsMap)
 
 	for rows.Next() {
 		var d state.PostgresDatabase
+		var ds state.PostgresDatabaseStats
 
 		err := rows.Scan(&d.Oid, &d.Name, &d.OwnerRoleOid, &d.Encoding, &d.Collate, &d.CType,
-			&d.IsTemplate, &d.AllowConnections, &d.ConnectionLimit, &d.FrozenXID, &d.MinimumMultixactXID)
+			&d.IsTemplate, &d.AllowConnections, &d.ConnectionLimit, &d.FrozenXID, &d.MinimumMultixactXID,
+			&ds.FrozenXIDAge, &ds.MinMXIDAge, &ds.XactCommit, &ds.XactRollback)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		databases = append(databases, d)
+		databaseStats[d.Oid] = ds
 	}
 
-	return databases, nil
+	if err = rows.Err(); err != nil {
+		return nil, nil, err
+	}
+
+	return databases, databaseStats, nil
 }

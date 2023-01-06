@@ -1,4 +1,4 @@
-FROM postgres:9.4
+FROM citusdata/citus:11.1
 
 ARG TARGETARCH
 

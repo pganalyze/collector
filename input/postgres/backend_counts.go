@@ -73,5 +73,9 @@ func GetBackendCounts(logger *util.Logger, db *sql.DB, postgresVersion state.Pos
 		backendCounts = append(backendCounts, row)
 	}
 
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
 	return backendCounts, nil
 }

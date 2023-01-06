@@ -10,8 +10,6 @@ import (
 	"github.com/pganalyze/collector/state"
 )
 
-const relationsSQLDefaultOptionalFields = "0"
-const relationsSQLpg93OptionalFields = "c.relminmxid"
 const relationsSQLOidField = "c.relhasoids AS relation_has_oids"
 const relationsSQLpg12OidField = "false AS relation_has_oids"
 const relationsSQLpartBoundField = "''"
@@ -35,7 +33,7 @@ const relationsSQL string = `
 				c.relhassubclass AS relation_has_inheritance_children,
 				c.reltoastrelid IS NOT NULL AS relation_has_toast,
 				c.relfrozenxid AS relation_frozen_xid,
-				%s,
+				c.relminmxid AS relation_min_mxid,
 				COALESCE((SELECT inhparent FROM pg_inherits WHERE inhrelid = c.oid ORDER BY inhseqno LIMIT 1), 0) AS parent_relid,
 				%s,
 				%s,
@@ -142,18 +140,11 @@ func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 	relations := make(map[state.Oid]state.PostgresRelation, 0)
 
 	// Relations
-	var optionalFields string
 	var oidField string
 	var partBoundField string
 	var partStratField string
 	var partColsField string
 	var partExprField string
-
-	if postgresVersion.Numeric >= state.PostgresVersion93 {
-		optionalFields = relationsSQLpg93OptionalFields
-	} else {
-		optionalFields = relationsSQLDefaultOptionalFields
-	}
 
 	if postgresVersion.Numeric >= state.PostgresVersion10 {
 		partBoundField = relationsSQLpg10PartBoundField
@@ -174,7 +165,7 @@ func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 	}
 
 	rows, err := db.Query(QueryMarkerSQL+fmt.Sprintf(relationsSQL, oidField,
-		optionalFields, partBoundField, partStratField, partColsField, partExprField), ignoreRegexp)
+		partBoundField, partStratField, partColsField, partExprField), ignoreRegexp)
 	if err != nil {
 		err = fmt.Errorf("Relations/Query: %s", err)
 		return nil, err
@@ -216,6 +207,11 @@ func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 		relations[row.Oid] = row
 	}
 
+	if err := rows.Err(); err != nil {
+		err = fmt.Errorf("Relations/Rows: %s", err)
+		return nil, err
+	}
+
 	// Columns
 	rows, err = db.Query(QueryMarkerSQL+columnsSQL, ignoreRegexp)
 	if err != nil {
@@ -238,6 +234,11 @@ func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 		relation := relations[row.RelationOid]
 		relation.Columns = append(relation.Columns, row)
 		relations[row.RelationOid] = relation
+	}
+
+	if err := rows.Err(); err != nil {
+		err = fmt.Errorf("Columns/Rows: %s", err)
+		return nil, err
 	}
 
 	// Indices
@@ -277,6 +278,11 @@ func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 		relation := relations[row.RelationOid]
 		relation.Indices = append(relation.Indices, row)
 		relations[row.RelationOid] = relation
+	}
+
+	if err := rows.Err(); err != nil {
+		err = fmt.Errorf("Indices/Rows: %s", err)
+		return nil, err
 	}
 
 	// Constraints
@@ -328,6 +334,11 @@ func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 		relations[row.RelationOid] = relation
 	}
 
+	if err := rows.Err(); err != nil {
+		err = fmt.Errorf("Constraints/Rows: %s", err)
+		return nil, err
+	}
+
 	// View definitions
 	rows, err = db.Query(QueryMarkerSQL+viewDefinitionSQL, ignoreRegexp)
 	if err != nil {
@@ -350,6 +361,11 @@ func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 		relation := relations[relationOid]
 		relation.ViewDefinition = viewDefinition
 		relations[relationOid] = relation
+	}
+
+	if err := rows.Err(); err != nil {
+		err = fmt.Errorf("Views/Rows: %s", err)
+		return nil, err
 	}
 
 	// Flip the oid-based map into an array

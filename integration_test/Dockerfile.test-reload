@@ -1,4 +1,4 @@
-FROM ubuntu:18.04
+FROM ubuntu:20.04
 
 ARG TARGETARCH
 
@@ -8,7 +8,7 @@ RUN apt-get update -qq && apt-get install -y -q systemd
 COPY integration_test/container.target /etc/systemd/system/container.target
 RUN ln -sf /etc/systemd/system/container.target /etc/systemd/system/default.target
 STOPSIGNAL SIGRTMIN+3
-ENTRYPOINT ["/sbin/init"]
+ENTRYPOINT ["/lib/systemd/systemd"]
 CMD ["--log-level=info"]
 
 ENV GOVERSION 1.17
@@ -34,5 +34,7 @@ RUN cp $CODE_DIR/pganalyze-collector /usr/bin/
 RUN cp $CODE_DIR/pganalyze-collector-helper /usr/bin/
 RUN cp $CODE_DIR/pganalyze-collector-setup /usr/bin/
 RUN cp $CODE_DIR/contrib/pganalyze-collector.conf /etc/pganalyze-collector.conf
+RUN mkdir -p /etc/systemd/system/
+RUN cp $CODE_DIR/contrib/systemd/pganalyze-collector.service /etc/systemd/system/pganalyze-collector.service
 
 RUN sh $CODE_DIR/packages/src/deb-systemd/after-install.sh

@@ -11,7 +11,8 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    # Use new enough OS that has CGroupsv2 enabled (required by the integration tests)
+    runs-on: ubuntu-22.04
 
     steps:
 

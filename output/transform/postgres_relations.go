@@ -7,7 +7,7 @@ import (
 	"github.com/pganalyze/collector/state"
 )
 
-func transformPostgresRelations(s snapshot.FullSnapshot, newState state.PersistedState, diffState state.DiffState, databaseOidToIdx OidToIdx, typeOidToIdx OidToIdx) snapshot.FullSnapshot {
+func transformPostgresRelations(s snapshot.FullSnapshot, newState state.PersistedState, diffState state.DiffState, databaseOidToIdx OidToIdx, typeOidToIdx OidToIdx, currentXactId int64) snapshot.FullSnapshot {
 	relationOidToIdx := state.MakeOidToIdxMap()
 	for _, relation := range newState.Relations {
 		ref := snapshot.RelationReference{
@@ -136,27 +136,38 @@ func transformPostgresRelations(s snapshot.FullSnapshot, newState state.Persiste
 			stats, exists := diffedSchemaStats.RelationStats[relation.Oid]
 			if exists {
 				statistic := snapshot.RelationStatistic{
-					RelationIdx:    relationIdx,
-					SizeBytes:      stats.SizeBytes,
-					ToastSizeBytes: stats.ToastSizeBytes,
-					SeqScan:        stats.SeqScan,
-					SeqTupRead:     stats.SeqTupRead,
-					IdxScan:        stats.IdxScan,
-					IdxTupFetch:    stats.IdxTupFetch,
-					NTupIns:        stats.NTupIns,
-					NTupUpd:        stats.NTupUpd,
-					NTupDel:        stats.NTupDel,
-					NTupHotUpd:     stats.NTupHotUpd,
-					NLiveTup:       stats.NLiveTup,
-					NDeadTup:       stats.NDeadTup,
-					HeapBlksRead:   stats.HeapBlksRead,
-					HeapBlksHit:    stats.HeapBlksHit,
-					IdxBlksRead:    stats.IdxBlksRead,
-					IdxBlksHit:     stats.IdxBlksHit,
-					ToastBlksRead:  stats.ToastBlksRead,
-					ToastBlksHit:   stats.ToastBlksHit,
-					TidxBlksRead:   stats.TidxBlksRead,
-					TidxBlksHit:    stats.TidxBlksHit,
+					RelationIdx:     relationIdx,
+					SizeBytes:       stats.SizeBytes,
+					ToastSizeBytes:  stats.ToastSizeBytes,
+					SeqScan:         stats.SeqScan,
+					SeqTupRead:      stats.SeqTupRead,
+					IdxScan:         stats.IdxScan,
+					IdxTupFetch:     stats.IdxTupFetch,
+					NTupIns:         stats.NTupIns,
+					NTupUpd:         stats.NTupUpd,
+					NTupDel:         stats.NTupDel,
+					NTupHotUpd:      stats.NTupHotUpd,
+					NLiveTup:        stats.NLiveTup,
+					NDeadTup:        stats.NDeadTup,
+					HeapBlksRead:    stats.HeapBlksRead,
+					HeapBlksHit:     stats.HeapBlksHit,
+					IdxBlksRead:     stats.IdxBlksRead,
+					IdxBlksHit:      stats.IdxBlksHit,
+					ToastBlksRead:   stats.ToastBlksRead,
+					ToastBlksHit:    stats.ToastBlksHit,
+					TidxBlksRead:    stats.TidxBlksRead,
+					TidxBlksHit:     stats.TidxBlksHit,
+					FrozenxidAge:    stats.FrozenXIDAge,
+					MinmxidAge:      stats.MinMXIDAge,
+					Relpages:        stats.Relpages,
+					Reltuples:       stats.Reltuples,
+					Relallvisible:   stats.Relallvisible,
+					Relfrozenxid:    relation.FullFrozenXID(currentXactId),
+					Relminmxid:      int64(relation.MinimumMultixactXID),
+					LastVacuum:      snapshot.NullTimeToNullTimestamp(stats.LastVacuum),
+					LastAutovacuum:  snapshot.NullTimeToNullTimestamp(stats.LastAutovacuum),
+					LastAnalyze:     snapshot.NullTimeToNullTimestamp(stats.LastAnalyze),
+					LastAutoanalyze: snapshot.NullTimeToNullTimestamp(stats.LastAutoanalyze),
 				}
 				if stats.NModSinceAnalyze.Valid {
 					statistic.NModSinceAnalyze = stats.NModSinceAnalyze.Int64

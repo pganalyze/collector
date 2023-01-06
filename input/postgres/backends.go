@@ -94,5 +94,9 @@ func GetBackends(logger *util.Logger, db *sql.DB, postgresVersion state.Postgres
 		activities = append(activities, row)
 	}
 
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
 	return activities, nil
 }

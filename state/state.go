@@ -21,6 +21,7 @@ type SchemaStats struct {
 type PersistedState struct {
 	CollectedAt time.Time
 
+	DatabaseStats  PostgresDatabaseStatsMap
 	StatementStats PostgresStatementStatsMap
 	SchemaStats    map[Oid]*SchemaStats
 
@@ -59,6 +60,7 @@ type TransientState struct {
 	// in order to enable the next snapshot to be able to diff against something
 	ResetStatementStats PostgresStatementStatsMap
 
+	ServerStats   PostgresServerStats
 	Replication   PostgresReplication
 	Settings      []PostgresSetting
 	BackendCounts []PostgresBackendCount
@@ -162,6 +164,8 @@ type DiffState struct {
 	SystemDiskStats    DiffedDiskStatsMap
 
 	CollectorStats DiffedCollectorStats
+
+	DatabaseStats DiffedPostgresDatabaseStatsMap
 }
 
 // StateOnDiskFormatVersion - Increment this when an old state preserved to disk should be ignored

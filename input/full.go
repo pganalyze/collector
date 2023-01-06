@@ -35,7 +35,7 @@ func CollectFull(server *state.Server, connection *sql.DB, globalCollectionOpts 
 		return
 	}
 
-	ts.Databases, err = postgres.GetDatabases(logger, connection, ts.Version)
+	ts.Databases, ps.DatabaseStats, err = postgres.GetDatabases(logger, connection, ts.Version)
 	if err != nil {
 		logger.PrintError("Error collecting pg_databases")
 		return
@@ -79,6 +79,12 @@ func CollectFull(server *state.Server, connection *sql.DB, globalCollectionOpts 
 		// had issues make this work reliably
 		logger.PrintWarning("Skipping replication statistics, due to error: %s", err)
 		err = nil
+	}
+
+	ts.ServerStats, err = postgres.GetServerStats(logger, connection, ts.Version, systemType)
+	if err != nil {
+		logger.PrintError("Error collecting Postgres server statistics: %s", err)
+		return
 	}
 
 	ts.BackendCounts, err = postgres.GetBackendCounts(logger, connection, ts.Version, server.Config.SystemType)

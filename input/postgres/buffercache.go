@@ -129,6 +129,10 @@ func GetBuffercache(logger *util.Logger, db *sql.DB, systemType, ignoreRegexp st
 			report.Entries = append(report.Entries, row)
 		}
 	}
+	if err = rows.Err(); err != nil {
+		err = fmt.Errorf("Buffercache/Rows: %s", err)
+		return
+	}
 
 	for idx, row := range report.Entries {
 		if row.SchemaName != nil && *row.SchemaName == "pg_toast" && row.ObjectName != nil {

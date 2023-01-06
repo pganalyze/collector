@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -22,6 +23,8 @@ import (
 )
 
 const DefaultAPIBaseURL = "https://api.pganalyze.com"
+
+var pgURIRegexp = regexp.MustCompile(`\Apostgres(?:ql)?://.*`)
 
 func parseConfigBool(value string) bool {
 	var val = strings.ToLower(value)
@@ -209,6 +212,9 @@ func getDefaultConfig() *ServerConfig {
 	}
 	if logSyslogServer := os.Getenv("LOG_SYSLOG_SERVER"); logSyslogServer != "" {
 		config.LogSyslogServer = logSyslogServer
+	}
+	if alwaysCollectSystemData := os.Getenv("PGA_ALWAYS_COLLECT_SYSTEM_DATA"); alwaysCollectSystemData != "" {
+		config.AlwaysCollectSystemData = parseConfigBool(alwaysCollectSystemData)
 	}
 	if logPgReadFile := os.Getenv("LOG_PG_READ_FILE"); logPgReadFile != "" {
 		config.LogPgReadFile = parseConfigBool(logPgReadFile)
@@ -437,10 +443,16 @@ func preprocessConfig(config *ServerConfig) (*ServerConfig, error) {
 
 	if config.DbSslCertContents != "" {
 		config.DbSslCert, err = writeValueToTempfile(config.DbSslCertContents)
+		if err != nil {
+			return config, err
+		}
 	}
 
 	if config.DbSslKeyContents != "" {
 		config.DbSslKey, err = writeValueToTempfile(config.DbSslKeyContents)
+		if err != nil {
+			return config, err
+		}
 	}
 
 	if config.AwsEndpointSigningRegionLegacy != "" && config.AwsEndpointSigningRegion == "" {
@@ -532,25 +544,35 @@ func Read(logger *util.Logger, filename string) (Config, error) {
 		if os.Getenv("DYNO") != "" && os.Getenv("PORT") != "" {
 			for _, kv := range os.Environ() {
 				parts := strings.SplitN(kv, "=", 2)
-				if strings.HasSuffix(parts[0], "_URL") {
-					config := getDefaultConfig()
-					config, err = preprocessConfig(config)
-					if err != nil {
-						return conf, err
-					}
-					config.SectionName = parts[0]
-					config.SystemID = strings.Replace(parts[0], "_URL", "", 1)
-					config.SystemType = "heroku"
-					config.DbURL = parts[1]
-					config.Identifier = ServerIdentifier{
-						APIKey:      config.APIKey,
-						APIBaseURL:  config.APIBaseURL,
-						SystemID:    config.SystemID,
-						SystemType:  config.SystemType,
-						SystemScope: config.SystemScope,
-					}
-					conf.Servers = append(conf.Servers, *config)
+				parsedKey := parts[0]
+				parsedValue := parts[1]
+				if !strings.HasSuffix(parsedKey, "_URL") {
+					continue
 				}
+
+				matched := pgURIRegexp.MatchString(parsedValue)
+				if !matched {
+					continue
+				}
+
+				config := getDefaultConfig()
+				config, err = preprocessConfig(config)
+				if err != nil {
+					return conf, err
+				}
+
+				config.SectionName = parsedKey
+				config.SystemID = strings.Replace(parsedKey, "_URL", "", 1)
+				config.SystemType = "heroku"
+				config.DbURL = parsedValue
+				config.Identifier = ServerIdentifier{
+					APIKey:      config.APIKey,
+					APIBaseURL:  config.APIBaseURL,
+					SystemID:    config.SystemID,
+					SystemType:  config.SystemType,
+					SystemScope: config.SystemScope,
+				}
+				conf.Servers = append(conf.Servers, *config)
 			}
 		} else if os.Getenv("PGA_API_KEY") != "" {
 			config := getDefaultConfig()

@@ -3,7 +3,8 @@ package state
 import "github.com/guregu/null"
 
 type Oid uint64
-type Xid uint32
+type Xid uint32  // 32-bit transaction ID
+type Xid8 uint64 // 64-bit transaction ID
 
 // PostgresType - User-defined custom data types
 type PostgresType struct {

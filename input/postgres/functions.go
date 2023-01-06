@@ -85,6 +85,10 @@ func GetFunctions(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 		functions = append(functions, row)
 	}
 
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
 	return functions, nil
 }
 
@@ -115,6 +119,11 @@ func GetFunctionStats(db *sql.DB, postgresVersion state.PostgresVersion, ignoreR
 		}
 
 		functionStats[oid] = stats
+	}
+
+	if err = rows.Err(); err != nil {
+		err = fmt.Errorf("FunctionStats/Rows: %s", err)
+		return
 	}
 
 	return

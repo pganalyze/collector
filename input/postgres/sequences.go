@@ -77,6 +77,11 @@ func GetSequenceReport(logger *util.Logger, db *sql.DB) (report state.PostgresSe
 		report.Sequences[oid] = seq
 	}
 
+	if err = rows.Err(); err != nil {
+		err = fmt.Errorf("SequenceReport/Rows: %s", err)
+		return
+	}
+
 	for oid, seq := range report.Sequences {
 		err = db.QueryRow(QueryMarkerSQL+sequenceStateSQL, seq.SchemaName, seq.SequenceName).Scan(
 			&seq.LastValue, &seq.StartValue, &seq.IncrementBy, &seq.MaxValue, &seq.MinValue, &seq.CacheValue, &seq.IsCycled)
@@ -108,6 +113,11 @@ func GetSequenceReport(logger *util.Logger, db *sql.DB) (report state.PostgresSe
 		report.SerialColumns = append(report.SerialColumns, col)
 	}
 
+	if err = columnRows.Err(); err != nil {
+		err = fmt.Errorf("SequenceReport/Column/Rows: %s", err)
+		return
+	}
+
 	// Inferred foreign serial columns
 	for idx, col := range report.SerialColumns {
 		fColName := fmt.Sprintf("%s_%s", inflector.Singularize(col.RelationName), col.ColumnName)
@@ -134,6 +144,11 @@ func GetSequenceReport(logger *util.Logger, db *sql.DB) (report state.PostgresSe
 			}
 
 			col.ForeignColumns = append(col.ForeignColumns, fCol)
+		}
+
+		if qErr = foreignRows.Err(); qErr != nil {
+			err = fmt.Errorf("SequenceReport/InferForeign/Rows: %s", qErr)
+			return
 		}
 
 		report.SerialColumns[idx] = col

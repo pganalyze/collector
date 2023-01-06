@@ -32,6 +32,11 @@ type PostgresRelationStats struct {
 	ToastBlksHit     int64     // Number of buffer hits in this table's TOAST table (if any)
 	TidxBlksRead     int64     // Number of disk blocks read from this table's TOAST table indexes (if any)
 	TidxBlksHit      int64     // Number of buffer hits in this table's TOAST table indexes (if any)
+	FrozenXIDAge     int32     // Age of frozen XID for this table
+	MinMXIDAge       int32     // Age of minimum multixact ID for this table
+	Relpages         int32     // Size of the on-disk representation of this table in pages (of size BLCKSZ)
+	Reltuples        float32   // Number of live rows in the table. -1 indicating that the row count is unknown
+	Relallvisible    int32     // Number of pages that are marked all-visible in the table's visibility map
 }
 
 type PostgresIndexStats struct {
@@ -101,6 +106,11 @@ func (curr PostgresRelationStats) DiffSince(prev PostgresRelationStats) DiffedPo
 		ToastBlksHit:     curr.ToastBlksHit - prev.ToastBlksHit,
 		TidxBlksRead:     curr.TidxBlksRead - prev.TidxBlksRead,
 		TidxBlksHit:      curr.TidxBlksHit - prev.TidxBlksHit,
+		FrozenXIDAge:     curr.FrozenXIDAge,
+		MinMXIDAge:       curr.MinMXIDAge,
+		Relpages:         curr.Relpages,
+		Reltuples:        curr.Reltuples,
+		Relallvisible:    curr.Relallvisible,
 	}
 }
 

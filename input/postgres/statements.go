@@ -258,8 +258,8 @@ func GetStatements(server *state.Server, logger *util.Logger, db *sql.DB, global
 		}
 		statementStats[key] = stats
 	}
-	err = rows.Err()
-	if err != nil {
+
+	if err = rows.Err(); err != nil {
 		return nil, nil, nil, err
 	}
 
