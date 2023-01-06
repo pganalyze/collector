@@ -52,14 +52,23 @@ func LogPgReadFile(server *state.Server, globalCollectionOpts state.CollectionOp
 		err = fmt.Errorf("LogFileSql/Query: %s", err)
 		return server.LogPrevState, nil, nil, err
 	}
+	defer rows.Close()
 
 	var fileNames []string
 	for rows.Next() {
 		var fileName string
 		err = rows.Scan(&fileName)
+		if err != nil {
+			err = fmt.Errorf("LogFileSql/Scan: %s", err)
+			return server.LogPrevState, nil, nil, err
+		}
 		fileNames = append(fileNames, fileName)
 	}
-	rows.Close()
+
+	if err = rows.Err(); err != nil {
+		err = fmt.Errorf("LogFileSql/Rows: %s", err)
+		return server.LogPrevState, nil, nil, err
+	}
 
 	useHelper := StatsHelperExists(db, "read_log_file")
 	var logReadSql = SuperUserReadLogFileSql

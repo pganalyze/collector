@@ -77,5 +77,9 @@ func GetTypes(db *sql.DB, postgresVersion state.PostgresVersion, currentDatabase
 		types = append(types, t)
 	}
 
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
 	return types, nil
 }

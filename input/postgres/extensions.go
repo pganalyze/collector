@@ -43,5 +43,9 @@ func GetExtensions(db *sql.DB, currentDatabaseOid state.Oid) ([]state.PostgresEx
 		extensions = append(extensions, e)
 	}
 
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
 	return extensions, nil
 }

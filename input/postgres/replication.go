@@ -137,6 +137,10 @@ func GetReplication(logger *util.Logger, db *sql.DB, postgresVersion state.Postg
 		repl.Standbys = append(repl.Standbys, s)
 	}
 
+	if err = rows.Err(); err != nil {
+		return repl, err
+	}
+
 	return repl, nil
 }
 

@@ -71,5 +71,9 @@ func GetRoles(logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVer
 		roles = append(roles, r)
 	}
 
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
 	return roles, nil
 }
