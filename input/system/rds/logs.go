@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -99,7 +100,8 @@ func DownloadLogFiles(server *state.Server, logger *util.Logger) (state.Persiste
 			goto ErrorCleanup
 		}
 
-		newLogLines, newSamples, _ := logs.ParseAndAnalyzeBuffer(string(buf), 0, linesNewerThan, server)
+		fileContent := strings.NewReader(string(buf))
+		newLogLines, newSamples, _ := logs.ParseAndAnalyzeBuffer(fileContent, 0, linesNewerThan, server)
 
 		var logFile state.LogFile
 		logFile.UUID = uuid.NewV4()

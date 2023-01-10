@@ -3,6 +3,7 @@ package postgres
 import (
 	"fmt"
 	"io/ioutil"
+	"strings"
 	"time"
 
 	"github.com/pganalyze/collector/logs"
@@ -108,7 +109,8 @@ func LogPgReadFile(server *state.Server, globalCollectionOpts state.CollectionOp
 			goto ErrorCleanup
 		}
 
-		newLogLines, newSamples, _ := logs.ParseAndAnalyzeBuffer(logData, 0, linesNewerThan, server)
+		logReader := strings.NewReader(logData)
+		newLogLines, newSamples, _ := logs.ParseAndAnalyzeBuffer(logReader, 0, linesNewerThan, server)
 		logFile.LogLines = append(logFile.LogLines, newLogLines...)
 		samples = append(samples, newSamples...)
 

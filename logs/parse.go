@@ -544,10 +544,10 @@ func ParseLogLineWithPrefix(prefix string, line string) (logLine state.LogLine, 
 	return
 }
 
-func ParseAndAnalyzeBuffer(buffer string, initialByteStart int64, linesNewerThan time.Time, server *state.Server) ([]state.LogLine, []state.PostgresQuerySample, int64) {
+func ParseAndAnalyzeBuffer(logStream io.Reader, initialByteStart int64, linesNewerThan time.Time, server *state.Server) ([]state.LogLine, []state.PostgresQuerySample, int64) {
 	var logLines []state.LogLine
 	currentByteStart := initialByteStart
-	reader := bufio.NewReader(strings.NewReader(buffer))
+	reader := bufio.NewReader(logStream)
 
 	for {
 		line, err := reader.ReadString('\n')

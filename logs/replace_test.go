@@ -1,6 +1,7 @@
 package logs_test
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -60,7 +61,7 @@ var replaceTests = []replaceTestpair{
 
 func TestReplaceSecrets(t *testing.T) {
 	for _, pair := range replaceTests {
-		logLines, _, _ := logs.ParseAndAnalyzeBuffer(string(pair.input), 0, time.Time{}, &state.Server{})
+		logLines, _, _ := logs.ParseAndAnalyzeBuffer(strings.NewReader(pair.input), 0, time.Time{}, &state.Server{})
 		output := logs.ReplaceSecrets([]byte(pair.input), logLines, state.ParseFilterLogSecret(pair.filterLogSecret))
 
 		cfg := pretty.CompareConfig
