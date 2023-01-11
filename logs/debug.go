@@ -2,6 +2,7 @@ package logs
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"io"
 	"regexp"
@@ -39,6 +40,39 @@ func PrintDebugInfo(logFileContents string, logLines []state.LogLine, samples []
 			fmt.Printf("  Content: %#v\n", logFileContents[logLine.ByteContentStart:logLine.ByteEnd])
 			fmt.Printf("---\n")
 		}
+	}
+}
+
+func PrintDebugLogLines(logFileContents string, logLines []state.LogLine, classifications map[pganalyze_collector.LogLineInformation_LogClassification]bool) {
+	fmt.Println("\nParsed log lines:")
+	linesById := make(map[uuid.UUID]*state.LogLine)
+	for _, logLine := range logLines {
+		linesById[logLine.UUID] = &logLine
+		if len(classifications) > 0 {
+			var classifiedLine *state.LogLine
+			if logLine.ParentUUID == uuid.Nil {
+				classifiedLine = &logLine
+			} else {
+				classifiedLine = linesById[logLine.ParentUUID]
+			}
+			if _, ok := classifications[classifiedLine.Classification]; !ok {
+				continue
+			}
+		}
+		detailsStr, err := json.Marshal(logLine.Details)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Printf("%s\n", logFileContents[logLine.ByteStart:logLine.ByteEnd])
+		fmt.Printf("  Level:          %s\n", logLine.LogLevel)
+		if logLine.ParentUUID == uuid.Nil {
+			fmt.Printf("  Classification: %s (%d)\n", logLine.Classification, logLine.Classification)
+		}
+		if len(logLine.Details) > 0 {
+			fmt.Printf("  Details:        %s\n", detailsStr)
+		}
+		fmt.Printf("  Content:    %#v\n", logFileContents[logLine.ByteContentStart:logLine.ByteEnd])
+		fmt.Printf("---\n")
 	}
 }
 

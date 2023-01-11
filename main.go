@@ -26,6 +26,7 @@ import (
 	"github.com/pganalyze/collector/input/postgres"
 	"github.com/pganalyze/collector/input/system/selfhosted"
 	"github.com/pganalyze/collector/logs"
+	"github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/runner"
 	"github.com/pganalyze/collector/scheduler"
 	"github.com/pganalyze/collector/state"
@@ -228,6 +229,7 @@ func main() {
 	var dryRun bool
 	var dryRunLogs bool
 	var analyzeLogfile string
+	var analyzeDebugClassifications string
 	var filterLogFile string
 	var filterLogSecret string
 	var debugLogs bool
@@ -269,6 +271,7 @@ func main() {
 	flag.BoolVar(&dryRun, "dry-run", false, "Print JSON data that would get sent to web service (without actually sending) and exit afterwards")
 	flag.BoolVar(&dryRunLogs, "dry-run-logs", false, "Print JSON data for log snapshot (without actually sending) and exit afterwards")
 	flag.StringVar(&analyzeLogfile, "analyze-logfile", "", "Analyzes the content of the given log file and returns debug output about it")
+	flag.StringVar(&analyzeDebugClassifications, "analyze-debug-classifications", "", "When used with --analyze-logfile, print detailed information about given classifications (can be comma-separated list of integer classifications, or keyword 'all')")
 	flag.StringVar(&filterLogFile, "filter-logfile", "", "Test command that filters all known secrets in the logfile according to the filter-log-secret option")
 	flag.StringVar(&filterLogSecret, "filter-log-secret", "all", "Sets the type of secrets filtered by the filter-logfile test command (default: all)")
 	flag.BoolVar(&debugLogs, "debug-logs", false, "Outputs all log analysis that would be sent, doesn't send any other data (use for debugging only)")
@@ -379,7 +382,24 @@ func main() {
 		reader := strings.NewReader(content)
 		logReader := logs.NewMaybeHerokuLogReader(reader)
 		logLines, samples, _ := logs.ParseAndAnalyzeBuffer(logReader, 0, time.Time{}, &state.Server{})
-		logs.PrintDebugInfo(string(content), logLines, samples)
+		logs.PrintDebugInfo(content, logLines, samples)
+		if analyzeDebugClassifications != "" {
+			classifications := strings.Split(analyzeDebugClassifications, ",")
+			classMap := make(map[pganalyze_collector.LogLineInformation_LogClassification]bool)
+			for _, classification := range classifications {
+				if classification == "all" {
+					// we represent "all" as an empty map
+					continue
+				}
+				classVal, err := strconv.ParseInt(classification, 10, 32)
+				if err != nil {
+					fmt.Printf("ERROR: invalid classification: %s\n", err)
+				}
+				classInt := int32(classVal)
+				classMap[pganalyze_collector.LogLineInformation_LogClassification(classInt)] = true
+			}
+			logs.PrintDebugLogLines(content, logLines, classMap)
+		}
 		return
 	}
 
