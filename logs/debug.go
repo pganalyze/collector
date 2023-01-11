@@ -28,7 +28,7 @@ func PrintDebugInfo(logFileContents string, logLines []state.LogLine, samples []
 	}
 
 	for classification, count := range groups {
-		fmt.Printf("%d x %s\n", count, classification)
+		fmt.Printf("%d x %s (%d)\n", count, classification, classification)
 	}
 
 	if len(unclassifiedLogLines) > 0 {
