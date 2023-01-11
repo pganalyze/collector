@@ -12,6 +12,7 @@ import (
 	"runtime/pprof"
 	"runtime/trace"
 	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -369,24 +370,30 @@ func main() {
 	}
 
 	if analyzeLogfile != "" {
-		content, err := ioutil.ReadFile(analyzeLogfile)
+		contentBytes, err := ioutil.ReadFile(analyzeLogfile)
 		if err != nil {
 			fmt.Printf("ERROR: %s\n", err)
 			return
 		}
-		logLines, samples := logs.DebugParseAndAnalyzeBuffer(string(content))
+		content := string(contentBytes)
+		reader := strings.NewReader(content)
+		logReader := logs.NewMaybeHerokuLogReader(reader)
+		logLines, samples, _ := logs.ParseAndAnalyzeBuffer(logReader, 0, time.Time{}, &state.Server{})
 		logs.PrintDebugInfo(string(content), logLines, samples)
 		return
 	}
 
 	if filterLogFile != "" {
-		content, err := ioutil.ReadFile(filterLogFile)
+		contentBytes, err := ioutil.ReadFile(filterLogFile)
 		if err != nil {
 			fmt.Printf("ERROR: %s\n", err)
 			return
 		}
-		logLines, _ := logs.DebugParseAndAnalyzeBuffer(string(content))
-		output := logs.ReplaceSecrets(content, logLines, state.ParseFilterLogSecret(filterLogSecret))
+		content := string(contentBytes)
+		reader := strings.NewReader(content)
+		logReader := logs.NewMaybeHerokuLogReader(reader)
+		logLines, _, _ := logs.ParseAndAnalyzeBuffer(logReader, 0, time.Time{}, &state.Server{})
+		output := logs.ReplaceSecrets(contentBytes, logLines, state.ParseFilterLogSecret(filterLogSecret))
 		fmt.Printf("%s", output)
 		return
 	}

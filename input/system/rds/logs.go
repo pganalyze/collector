@@ -2,6 +2,7 @@ package rds
 
 import (
 	"errors"
+	"bufio"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -100,7 +101,7 @@ func DownloadLogFiles(server *state.Server, logger *util.Logger) (state.Persiste
 			goto ErrorCleanup
 		}
 
-		fileContent := strings.NewReader(string(buf))
+		fileContent := bufio.NewReader(strings.NewReader(string(buf)))
 		newLogLines, newSamples, _ := logs.ParseAndAnalyzeBuffer(fileContent, 0, linesNewerThan, server)
 
 		var logFile state.LogFile

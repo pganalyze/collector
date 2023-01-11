@@ -1,7 +1,10 @@
 package logs
 
 import (
+	"bufio"
 	"fmt"
+	"io"
+	"regexp"
 
 	"github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
@@ -37,4 +40,27 @@ func PrintDebugInfo(logFileContents string, logLines []state.LogLine, samples []
 			fmt.Printf("---\n")
 		}
 	}
+}
+
+var HerokuPostgresDebugRegexp = regexp.MustCompile(`^(\w+ \d+ \d+:\d+:\d+ \w+ app\[postgres\] \w+ )?\[(\w+)\] \[\d+-\d+\] (.+)`)
+
+type MaybeHerokuLogReader struct {
+	LineReader
+}
+
+func NewMaybeHerokuLogReader(r io.Reader) *MaybeHerokuLogReader {
+	return &MaybeHerokuLogReader{bufio.NewReader((r))}
+}
+
+func (lr *MaybeHerokuLogReader) ReadString(delim byte) (string, error) {
+	line, err := lr.LineReader.ReadString(delim)
+	if err != nil {
+		return "", err
+	}
+	contentParts := HerokuPostgresDebugRegexp.FindStringSubmatch(line)
+	if len(contentParts) == 4 {
+		return contentParts[3], nil
+	}
+
+	return line, nil
 }
