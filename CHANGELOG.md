@@ -1,5 +1,37 @@
 # Changelog
 
+## 0.47.0      2023-01-12
+
+* Fix RDS log processing for large log file sections
+  - This fixes an issue with RDS log file chunks larger than 10MB that caused
+    the collector to calculate log text source offsets incorrectly and could
+    lead to mangled log text in the pganalyze UI and incorrect log filtering
+* Warn if some log lines will be ignored
+  - Some verbose logging settings can lead to log lines being ignored by the
+    collector for performance reasons: warn about this on startup
+* Improve Aiven Service ID and Project ID detection from hostname
+* Fix error handling when fetching stats
+  - The missing checks could previously lead to incomplete snapshots, possibly
+    resulting in tables or indexes temporarily disappearing in pganalyze
+* Fix error handling regarding reading SSL-related config values on startup
+* Ignore non-Postgres URIs in environment on Heroku ([@Preovaleo](https://github.com/Preovaleo))
+* Send additional Postgres table stats
+  - Send relpages, reltuples, relallvisible
+* Send additional Postgres transaction metadata
+  - server level (new stats): current TXID and next MXID
+  - database level: age of datfrozenxid and datminmxid, also xact_commit and
+    xact_rollback
+  - table level: the age of relfrozenxid and relminmxid
+* Send Citus distributed index sizes
+* Add `always_collect_system_data` config option
+  - Also configurable with the `PGA_ALWAYS_COLLECT_SYSTEM_DATA` environment
+    variable
+  - This is useful for package-based setups which monitor the local server by a
+    non-local IP
+* Update pg_query_go version to 2.2.0
+* Install script: Detect aarch64 for Ubuntu/Debian package install
+
+
 ## 0.46.1      2022-10-21
 
 * Fix Postgres 15 compatibility due to version check bug
