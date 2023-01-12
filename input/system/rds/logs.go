@@ -134,7 +134,7 @@ func DownloadLogFiles(server *state.Server, logger *util.Logger) (state.Persiste
 			goto ErrorCleanup
 		}
 
-		newLogLines, newSamples, _ = logs.ParseAndAnalyzeBuffer(string(buf), 0, linesNewerThan, server)
+		newLogLines, newSamples, _ = logs.ParseAndAnalyzeBuffer(string(buf), int64(readStart), linesNewerThan, server)
 		logFile.LogLines = append(logFile.LogLines, newLogLines...)
 		samples = append(samples, newSamples...)
 
