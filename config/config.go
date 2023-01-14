@@ -6,6 +6,14 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
+	"github.com/aws/aws-sdk-go/aws/defaults"
+	"github.com/aws/aws-sdk-go/aws/endpoints"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/rds/rdsutils"
 )
 
 type Config struct {
@@ -13,11 +21,12 @@ type Config struct {
 }
 
 // ServerIdentifier -
-//   Unique identity of each configured server, for deduplication inside the collector.
 //
-//   Note we intentionally don't include the Fallback variables in the identifier, since that is mostly intended
-//   to help transition systems when their "identity" is altered due to collector changes - in the collector we rely
-//   on the non-Fallback values only.
+//	Unique identity of each configured server, for deduplication inside the collector.
+//
+//	Note we intentionally don't include the Fallback variables in the identifier, since that is mostly intended
+//	to help transition systems when their "identity" is altered due to collector changes - in the collector we rely
+//	on the non-Fallback values only.
 type ServerIdentifier struct {
 	APIKey      string
 	APIBaseURL  string
@@ -27,9 +36,10 @@ type ServerIdentifier struct {
 }
 
 // ServerConfig -
-//   Contains the information how to connect to a Postgres instance,
-//   with optional AWS credentials to get metrics
-//   from AWS CloudWatch as well as RDS logfiles
+//
+//	Contains the information how to connect to a Postgres instance,
+//	with optional AWS credentials to get metrics
+//	from AWS CloudWatch as well as RDS logfiles
 type ServerConfig struct {
 	APIKey     string `ini:"api_key"`
 	APIBaseURL string `ini:"api_base_url"`
@@ -55,6 +65,7 @@ type ServerConfig struct {
 	DbSslCertContents     string `ini:"db_sslcert_contents"`
 	DbSslKey              string `ini:"db_sslkey"`
 	DbSslKeyContents      string `ini:"db_sslkey_contents"`
+	DbUseIamAuth          bool   `ini:"db_use_iam_auth"`
 
 	// We have to do some tricks to support sslmode=prefer, namely we have to
 	// first try an SSL connection (= require), and if that fails change the
@@ -194,14 +205,14 @@ func (config ServerConfig) SupportsLogDownload() bool {
 }
 
 // GetPqOpenString - Gets the database configuration as a string that can be passed to lib/pq for connecting
-func (config ServerConfig) GetPqOpenString(dbNameOverride string) string {
+func (config ServerConfig) GetPqOpenString(dbNameOverride string) (string, error) {
 	var dbUsername, dbPassword, dbName, dbHost, dbSslMode, dbSslRootCert, dbSslCert, dbSslKey string
 	var dbPort int
 
 	if config.DbURL != "" {
 		u, err := url.Parse(config.DbURL)
 		if err != nil {
-			return ""
+			return "", fmt.Errorf("failed to parse database URL: %w", err)
 		}
 
 		if u.User != nil {
@@ -295,6 +306,24 @@ func (config ServerConfig) GetPqOpenString(dbNameOverride string) string {
 		dbSslRootCert = "/usr/share/pganalyze-collector/sslrootcert/rds-ca-2019-root.pem"
 	}
 
+	// Handle AWS IAM Auth
+	if config.DbUseIamAuth {
+		sess, err := config.GetAwsSession()
+		if err != nil {
+			return "", err
+		}
+		if dbToken, err := rdsutils.BuildAuthToken(
+			fmt.Sprintf("%s:%d", dbHost, dbPort),
+			config.AwsRegion,
+			dbUsername,
+			sess.Config.Credentials,
+		); err != nil {
+			return "", err
+		} else {
+			dbPassword = dbToken
+		}
+	}
+
 	// Generate the actual string
 	if dbUsername != "" {
 		dbinfo = append(dbinfo, fmt.Sprintf("user='%s'", strings.Replace(dbUsername, "'", "\\'", -1)))
@@ -325,7 +354,7 @@ func (config ServerConfig) GetPqOpenString(dbNameOverride string) string {
 	}
 	dbinfo = append(dbinfo, "connect_timeout=10")
 
-	return strings.Join(dbinfo, " ")
+	return strings.Join(dbinfo, " "), nil
 }
 
 // GetDbHost - Gets the database hostname from the given configuration
@@ -404,4 +433,86 @@ func (config ServerConfig) GetDbName() string {
 	}
 
 	return config.DbName
+}
+
+// GetAwsSession - Returns an AWS session for the specified server cfguration
+func (cfg ServerConfig) GetAwsSession() (*session.Session, error) {
+	var providers []credentials.Provider
+
+	customResolver := func(service, region string, optFns ...func(*endpoints.Options)) (endpoints.ResolvedEndpoint, error) {
+		if service == endpoints.RdsServiceID && cfg.AwsEndpointRdsURL != "" {
+			return endpoints.ResolvedEndpoint{
+				URL:           cfg.AwsEndpointRdsURL,
+				SigningRegion: cfg.AwsEndpointSigningRegion,
+			}, nil
+		}
+		if service == endpoints.Ec2ServiceID && cfg.AwsEndpointEc2URL != "" {
+			return endpoints.ResolvedEndpoint{
+				URL:           cfg.AwsEndpointEc2URL,
+				SigningRegion: cfg.AwsEndpointSigningRegion,
+			}, nil
+		}
+		if service == endpoints.MonitoringServiceID && cfg.AwsEndpointCloudwatchURL != "" {
+			return endpoints.ResolvedEndpoint{
+				URL:           cfg.AwsEndpointCloudwatchURL,
+				SigningRegion: cfg.AwsEndpointSigningRegion,
+			}, nil
+		}
+		if service == endpoints.LogsServiceID && cfg.AwsEndpointCloudwatchLogsURL != "" {
+			return endpoints.ResolvedEndpoint{
+				URL:           cfg.AwsEndpointCloudwatchLogsURL,
+				SigningRegion: cfg.AwsEndpointSigningRegion,
+			}, nil
+		}
+
+		return endpoints.DefaultResolver().EndpointFor(service, region, optFns...)
+	}
+
+	if cfg.AwsAccessKeyID != "" {
+		providers = append(providers, &credentials.StaticProvider{
+			Value: credentials.Value{
+				AccessKeyID:     cfg.AwsAccessKeyID,
+				SecretAccessKey: cfg.AwsSecretAccessKey,
+				SessionToken:    "",
+			},
+		})
+	}
+
+	// add default providers
+	providers = append(providers, &credentials.EnvProvider{})
+	providers = append(providers, &credentials.SharedCredentialsProvider{Filename: "", Profile: ""})
+
+	// add the metadata service
+	def := defaults.Get()
+	def.Config.HTTPClient = CreateEC2IMDSHTTPClient(cfg)
+	def.Config.MaxRetries = aws.Int(2)
+	providers = append(providers, defaults.RemoteCredProvider(*def.Config, def.Handlers))
+
+	creds := credentials.NewChainCredentials(providers)
+
+	if cfg.AwsAssumeRole != "" || (cfg.AwsWebIdentityTokenFile != "" && cfg.AwsRoleArn != "") {
+		sess, err := session.NewSession(&aws.Config{
+			Credentials:                   creds,
+			CredentialsChainVerboseErrors: aws.Bool(true),
+			Region:                        aws.String(cfg.AwsRegion),
+			HTTPClient:                    cfg.HTTPClient,
+			EndpointResolver:              endpoints.ResolverFunc(customResolver),
+		})
+		if err != nil {
+			return nil, err
+		}
+		if cfg.AwsAssumeRole != "" {
+			creds = stscreds.NewCredentials(sess, cfg.AwsAssumeRole)
+		} else if cfg.AwsWebIdentityTokenFile != "" && cfg.AwsRoleArn != "" {
+			creds = stscreds.NewWebIdentityCredentials(sess, cfg.AwsRoleArn, "", cfg.AwsWebIdentityTokenFile)
+		}
+	}
+
+	return session.NewSession(&aws.Config{
+		Credentials:                   creds,
+		CredentialsChainVerboseErrors: aws.Bool(true),
+		Region:                        aws.String(cfg.AwsRegion),
+		HTTPClient:                    cfg.HTTPClient,
+		EndpointResolver:              endpoints.ResolverFunc(customResolver),
+	})
 }

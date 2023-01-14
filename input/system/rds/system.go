@@ -22,7 +22,7 @@ const AuroraMaxStorage = 64 * 1024 * 1024 * 1024 * 1024
 func GetSystemState(config config.ServerConfig, logger *util.Logger) (system state.SystemState) {
 	system.Info.Type = state.AmazonRdsSystem
 
-	sess, err := awsutil.GetAwsSession(config)
+	sess, err := config.GetAwsSession()
 	if err != nil {
 		logger.PrintError("Rds/System: Encountered error getting session: %v\n", err)
 		return

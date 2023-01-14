@@ -23,37 +23,37 @@ import (
 // can be stubbed out for unit testing your code with the SDK without needing
 // to inject custom request handlers into the SDK's request pipeline.
 //
-//    // myFunc uses an SDK service client to make a request to
-//    // AWS Key Management Service.
-//    func myFunc(svc kmsiface.KMSAPI) bool {
-//        // Make svc.CancelKeyDeletion request
-//    }
+//	// myFunc uses an SDK service client to make a request to
+//	// AWS Key Management Service.
+//	func myFunc(svc kmsiface.KMSAPI) bool {
+//	    // Make svc.CancelKeyDeletion request
+//	}
 //
-//    func main() {
-//        sess := session.New()
-//        svc := kms.New(sess)
+//	func main() {
+//	    sess := session.New()
+//	    svc := kms.New(sess)
 //
-//        myFunc(svc)
-//    }
+//	    myFunc(svc)
+//	}
 //
 // In your _test.go file:
 //
-//    // Define a mock struct to be used in your unit tests of myFunc.
-//    type mockKMSClient struct {
-//        kmsiface.KMSAPI
-//    }
-//    func (m *mockKMSClient) CancelKeyDeletion(input *kms.CancelKeyDeletionInput) (*kms.CancelKeyDeletionOutput, error) {
-//        // mock response/functionality
-//    }
+//	// Define a mock struct to be used in your unit tests of myFunc.
+//	type mockKMSClient struct {
+//	    kmsiface.KMSAPI
+//	}
+//	func (m *mockKMSClient) CancelKeyDeletion(input *kms.CancelKeyDeletionInput) (*kms.CancelKeyDeletionOutput, error) {
+//	    // mock response/functionality
+//	}
 //
-//    func TestMyFunc(t *testing.T) {
-//        // Setup Test
-//        mockSvc := &mockKMSClient{}
+//	func TestMyFunc(t *testing.T) {
+//	    // Setup Test
+//	    mockSvc := &mockKMSClient{}
 //
-//        myfunc(mockSvc)
+//	    myfunc(mockSvc)
 //
-//        // Verify myFunc's functionality
-//    }
+//	    // Verify myFunc's functionality
+//	}
 //
 // It is important to note that this interface will have breaking changes
 // when the service model is updated and adds new API operations, paginators,
@@ -104,6 +104,9 @@ type KMSAPI interface {
 	DescribeCustomKeyStoresWithContext(aws.Context, *kms.DescribeCustomKeyStoresInput, ...request.Option) (*kms.DescribeCustomKeyStoresOutput, error)
 	DescribeCustomKeyStoresRequest(*kms.DescribeCustomKeyStoresInput) (*request.Request, *kms.DescribeCustomKeyStoresOutput)
 
+	DescribeCustomKeyStoresPages(*kms.DescribeCustomKeyStoresInput, func(*kms.DescribeCustomKeyStoresOutput, bool) bool) error
+	DescribeCustomKeyStoresPagesWithContext(aws.Context, *kms.DescribeCustomKeyStoresInput, func(*kms.DescribeCustomKeyStoresOutput, bool) bool, ...request.Option) error
+
 	DescribeKey(*kms.DescribeKeyInput) (*kms.DescribeKeyOutput, error)
 	DescribeKeyWithContext(aws.Context, *kms.DescribeKeyInput, ...request.Option) (*kms.DescribeKeyOutput, error)
 	DescribeKeyRequest(*kms.DescribeKeyInput) (*request.Request, *kms.DescribeKeyOutput)
@@ -147,6 +150,10 @@ type KMSAPI interface {
 	GenerateDataKeyWithoutPlaintext(*kms.GenerateDataKeyWithoutPlaintextInput) (*kms.GenerateDataKeyWithoutPlaintextOutput, error)
 	GenerateDataKeyWithoutPlaintextWithContext(aws.Context, *kms.GenerateDataKeyWithoutPlaintextInput, ...request.Option) (*kms.GenerateDataKeyWithoutPlaintextOutput, error)
 	GenerateDataKeyWithoutPlaintextRequest(*kms.GenerateDataKeyWithoutPlaintextInput) (*request.Request, *kms.GenerateDataKeyWithoutPlaintextOutput)
+
+	GenerateMac(*kms.GenerateMacInput) (*kms.GenerateMacOutput, error)
+	GenerateMacWithContext(aws.Context, *kms.GenerateMacInput, ...request.Option) (*kms.GenerateMacOutput, error)
+	GenerateMacRequest(*kms.GenerateMacInput) (*request.Request, *kms.GenerateMacOutput)
 
 	GenerateRandom(*kms.GenerateRandomInput) (*kms.GenerateRandomOutput, error)
 	GenerateRandomWithContext(aws.Context, *kms.GenerateRandomInput, ...request.Option) (*kms.GenerateRandomOutput, error)
@@ -204,9 +211,15 @@ type KMSAPI interface {
 	ListResourceTagsWithContext(aws.Context, *kms.ListResourceTagsInput, ...request.Option) (*kms.ListResourceTagsOutput, error)
 	ListResourceTagsRequest(*kms.ListResourceTagsInput) (*request.Request, *kms.ListResourceTagsOutput)
 
+	ListResourceTagsPages(*kms.ListResourceTagsInput, func(*kms.ListResourceTagsOutput, bool) bool) error
+	ListResourceTagsPagesWithContext(aws.Context, *kms.ListResourceTagsInput, func(*kms.ListResourceTagsOutput, bool) bool, ...request.Option) error
+
 	ListRetirableGrants(*kms.ListRetirableGrantsInput) (*kms.ListGrantsResponse, error)
 	ListRetirableGrantsWithContext(aws.Context, *kms.ListRetirableGrantsInput, ...request.Option) (*kms.ListGrantsResponse, error)
 	ListRetirableGrantsRequest(*kms.ListRetirableGrantsInput) (*request.Request, *kms.ListGrantsResponse)
+
+	ListRetirableGrantsPages(*kms.ListRetirableGrantsInput, func(*kms.ListGrantsResponse, bool) bool) error
+	ListRetirableGrantsPagesWithContext(aws.Context, *kms.ListRetirableGrantsInput, func(*kms.ListGrantsResponse, bool) bool, ...request.Option) error
 
 	PutKeyPolicy(*kms.PutKeyPolicyInput) (*kms.PutKeyPolicyOutput, error)
 	PutKeyPolicyWithContext(aws.Context, *kms.PutKeyPolicyInput, ...request.Option) (*kms.PutKeyPolicyOutput, error)
@@ -215,6 +228,10 @@ type KMSAPI interface {
 	ReEncrypt(*kms.ReEncryptInput) (*kms.ReEncryptOutput, error)
 	ReEncryptWithContext(aws.Context, *kms.ReEncryptInput, ...request.Option) (*kms.ReEncryptOutput, error)
 	ReEncryptRequest(*kms.ReEncryptInput) (*request.Request, *kms.ReEncryptOutput)
+
+	ReplicateKey(*kms.ReplicateKeyInput) (*kms.ReplicateKeyOutput, error)
+	ReplicateKeyWithContext(aws.Context, *kms.ReplicateKeyInput, ...request.Option) (*kms.ReplicateKeyOutput, error)
+	ReplicateKeyRequest(*kms.ReplicateKeyInput) (*request.Request, *kms.ReplicateKeyOutput)
 
 	RetireGrant(*kms.RetireGrantInput) (*kms.RetireGrantOutput, error)
 	RetireGrantWithContext(aws.Context, *kms.RetireGrantInput, ...request.Option) (*kms.RetireGrantOutput, error)
@@ -252,9 +269,17 @@ type KMSAPI interface {
 	UpdateKeyDescriptionWithContext(aws.Context, *kms.UpdateKeyDescriptionInput, ...request.Option) (*kms.UpdateKeyDescriptionOutput, error)
 	UpdateKeyDescriptionRequest(*kms.UpdateKeyDescriptionInput) (*request.Request, *kms.UpdateKeyDescriptionOutput)
 
+	UpdatePrimaryRegion(*kms.UpdatePrimaryRegionInput) (*kms.UpdatePrimaryRegionOutput, error)
+	UpdatePrimaryRegionWithContext(aws.Context, *kms.UpdatePrimaryRegionInput, ...request.Option) (*kms.UpdatePrimaryRegionOutput, error)
+	UpdatePrimaryRegionRequest(*kms.UpdatePrimaryRegionInput) (*request.Request, *kms.UpdatePrimaryRegionOutput)
+
 	Verify(*kms.VerifyInput) (*kms.VerifyOutput, error)
 	VerifyWithContext(aws.Context, *kms.VerifyInput, ...request.Option) (*kms.VerifyOutput, error)
 	VerifyRequest(*kms.VerifyInput) (*request.Request, *kms.VerifyOutput)
+
+	VerifyMac(*kms.VerifyMacInput) (*kms.VerifyMacOutput, error)
+	VerifyMacWithContext(aws.Context, *kms.VerifyMacInput, ...request.Option) (*kms.VerifyMacOutput, error)
+	VerifyMacRequest(*kms.VerifyMacInput) (*request.Request, *kms.VerifyMacOutput)
 }
 
 var _ KMSAPI = (*kms.KMS)(nil)

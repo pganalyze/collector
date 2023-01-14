@@ -35,7 +35,10 @@ func EstablishConnection(server *state.Server, logger *util.Logger, globalCollec
 }
 
 func connectToDb(config config.ServerConfig, logger *util.Logger, globalCollectionOpts state.CollectionOpts, databaseName string) (*sql.DB, error) {
-	connectString := config.GetPqOpenString(databaseName)
+	connectString, err := config.GetPqOpenString(databaseName)
+	if err != nil {
+		return nil, err
+	}
 	connectString += " application_name=" + globalCollectionOpts.CollectorApplicationName
 
 	// logger.PrintVerbose("sql.Open(\"postgres\", \"%s\")", connectString)

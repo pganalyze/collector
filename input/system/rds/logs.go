@@ -25,7 +25,7 @@ func DownloadLogFiles(server *state.Server, logger *util.Logger) (state.Persiste
 	var logFiles []state.LogFile
 	var samples []state.PostgresQuerySample
 
-	sess, err := awsutil.GetAwsSession(server.Config)
+	sess, err := server.Config.GetAwsSession()
 	if err != nil {
 		err = fmt.Errorf("Error getting session: %s", err)
 		return server.LogPrevState, nil, nil, err
