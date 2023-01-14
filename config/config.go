@@ -57,6 +57,7 @@ type ServerConfig struct {
 	DbSslCertContents     string `ini:"db_sslcert_contents"`
 	DbSslKey              string `ini:"db_sslkey"`
 	DbSslKeyContents      string `ini:"db_sslkey_contents"`
+	DbUseIamAuth          bool   `ini:"db_use_iam_auth"`
 
 	// We have to do some tricks to support sslmode=prefer, namely we have to
 	// first try an SSL connection (= require), and if that fails change the
@@ -196,14 +197,14 @@ func (config ServerConfig) SupportsLogDownload() bool {
 }
 
 // GetPqOpenString - Gets the database configuration as a string that can be passed to lib/pq for connecting
-func (config ServerConfig) GetPqOpenString(dbNameOverride string) string {
+func (config ServerConfig) GetPqOpenString(dbNameOverride string, passwordOverride string) (string, error) {
 	var dbUsername, dbPassword, dbName, dbHost, dbSslMode, dbSslRootCert, dbSslCert, dbSslKey string
 	var dbPort int
 
 	if config.DbURL != "" {
 		u, err := url.Parse(config.DbURL)
 		if err != nil {
-			return ""
+			return "", fmt.Errorf("Failed to parse database URL: %w", err)
 		}
 
 		if u.User != nil {
@@ -242,7 +243,9 @@ func (config ServerConfig) GetPqOpenString(dbNameOverride string) string {
 	if config.DbUsername != "" {
 		dbUsername = config.DbUsername
 	}
-	if config.DbPassword != "" {
+	if passwordOverride != "" {
+		dbPassword = passwordOverride
+	} else if config.DbPassword != "" {
 		dbPassword = config.DbPassword
 	}
 	if dbNameOverride != "" {
@@ -327,7 +330,7 @@ func (config ServerConfig) GetPqOpenString(dbNameOverride string) string {
 	}
 	dbinfo = append(dbinfo, "connect_timeout=10")
 
-	return strings.Join(dbinfo, " ")
+	return strings.Join(dbinfo, " "), nil
 }
 
 // GetDbHost - Gets the database hostname from the given configuration

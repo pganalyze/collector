@@ -113,6 +113,9 @@ func getDefaultConfig() *ServerConfig {
 	if dbSslKey := os.Getenv("DB_SSLKEY"); dbSslKey != "" {
 		config.DbSslKey = dbSslKey
 	}
+	if dbUseIamAuth := os.Getenv("DB_USE_IAM_AUTH"); dbUseIamAuth != "" {
+		config.DbUseIamAuth = parseConfigBool(dbUseIamAuth)
+	}
 	if dbSslKeyContents := os.Getenv("DB_SSLKEY_CONTENTS"); dbSslKeyContents != "" {
 		config.DbSslKeyContents = dbSslKeyContents
 	}
