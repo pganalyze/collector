@@ -204,8 +204,9 @@ func GetStatements(server *state.Server, logger *util.Logger, db *sql.DB, global
 
 	statementTexts := make(map[state.PostgresStatementKey]string)
 	statementStats := make(state.PostgresStatementStatsMap)
-	now := time.Now()
+	now := time.Now().Unix()
 
+	server.QueryIdentitiesMutex.Lock()
 	for rows.Next() {
 		var key state.PostgresStatementKey
 		var queryID null.Int
@@ -237,20 +238,14 @@ func GetStatements(server *state.Server, logger *util.Logger, db *sql.DB, global
 			statementTexts[key] = receivedQuery.String
 		}
 		if queryID.Valid && showtext {
-			server.QueryIdentitiesMutex.Lock()
-			if server.QueryIdentities == nil {
-				server.QueryIdentities = make(state.QueryIdentityMap)
-			}
 			if identity, ok := server.QueryIdentities[queryID.Int64]; ok {
 				identity.LastSeen = now
 			} else {
 				server.QueryIdentities[queryID.Int64] = state.QueryIdentity{
-					QueryID:     queryID.Int64,
 					Fingerprint: util.FingerprintQuery(receivedQuery.String, server.Config.FilterQueryText, -1),
 					LastSeen:    now,
 				}
 			}
-			server.QueryIdentitiesMutex.Unlock()
 		}
 		if ignoreIOTiming(postgresVersion, receivedQuery) {
 			stats.BlkReadTime = 0
@@ -258,6 +253,7 @@ func GetStatements(server *state.Server, logger *util.Logger, db *sql.DB, global
 		}
 		statementStats[key] = stats
 	}
+	server.QueryIdentitiesMutex.Unlock()
 
 	if err = rows.Err(); err != nil {
 		return nil, nil, nil, err

@@ -65,7 +65,7 @@ func upsertQueryReferenceAndInformation(s *snapshot.FullSnapshot, statementTexts
 func upsertQueryReferenceAndInformationSimple(server *state.Server, refs []*snapshot.QueryReference, infos []*snapshot.QueryInformation, roleIdx int32, databaseIdx int32, queryID null.Int, originalQuery string, trackActivityQuerySize int) (int32, []*snapshot.QueryReference, []*snapshot.QueryInformation) {
 	var fingerprint uint64
 	var fingerprintFound bool
-	if server.QueryIdentities != nil && queryID.Valid {
+	if queryID.Valid {
 		server.QueryIdentitiesMutex.RLock()
 		if identity, ok := server.QueryIdentities[queryID.Int64]; ok {
 			fingerprint = identity.Fingerprint

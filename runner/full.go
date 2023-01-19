@@ -260,23 +260,30 @@ func CollectAllServers(servers []*state.Server, globalCollectionOpts state.Colle
 
 func pruneQueryIdentities(server *state.Server) {
 	max := 100000
+	server.QueryIdentitiesMutex.Lock()
 	if len(server.QueryIdentities) < max {
+		server.QueryIdentitiesMutex.Unlock()
 		return
 	}
-	server.QueryIdentitiesMutex.Lock()
 	newMap := make(state.QueryIdentityMap)
-	slice := make([]state.QueryIdentity, 0, len(server.QueryIdentities))
-	for _, identity := range server.QueryIdentities {
-		slice = append(slice, identity)
+	slice := make([]QueryIdentity, 0, len(server.QueryIdentities))
+	for id, identity := range server.QueryIdentities {
+		slice = append(slice, QueryIdentity{id, identity})
 	}
 	sort.Slice(slice, func(i, j int) bool {
-		return slice[i].LastSeen.Before(slice[j].LastSeen)
+		return slice[i].identity.LastSeen < slice[j].identity.LastSeen
 	})
 	for _, identity := range slice[:max-1] {
-		newMap[identity.QueryID] = identity
+		newMap[identity.id] = identity.identity
 	}
 	server.QueryIdentities = newMap
 	server.QueryIdentitiesMutex.Unlock()
+}
+
+// temporary struct to hold onto the query ID
+type QueryIdentity struct {
+	id       int64
+	identity state.QueryIdentity
 }
 
 func min(x, y int) int {

@@ -106,9 +106,8 @@ func (stmt DiffedPostgresStatementStats) Add(other DiffedPostgresStatementStats)
 }
 
 type QueryIdentity struct {
-	QueryID     int64
 	Fingerprint uint64
-	LastSeen    time.Time
+	LastSeen    int64
 }
 
 type QueryIdentityMap map[int64]QueryIdentity
