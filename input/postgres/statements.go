@@ -219,6 +219,7 @@ func GetStatements(server *state.Server, logger *util.Logger, db *sql.DB, global
 			&stats.TempBlksRead, &stats.TempBlksWritten, &stats.BlkReadTime, &stats.BlkWriteTime,
 			&queryID, &stats.MinTime, &stats.MaxTime, &stats.MeanTime, &stats.StddevTime)
 		if err != nil {
+			server.QueryIdentitiesMutex.Unlock()
 			return nil, nil, nil, err
 		}
 
