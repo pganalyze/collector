@@ -13,11 +13,12 @@ type Config struct {
 }
 
 // ServerIdentifier -
-//   Unique identity of each configured server, for deduplication inside the collector.
 //
-//   Note we intentionally don't include the Fallback variables in the identifier, since that is mostly intended
-//   to help transition systems when their "identity" is altered due to collector changes - in the collector we rely
-//   on the non-Fallback values only.
+//	Unique identity of each configured server, for deduplication inside the collector.
+//
+//	Note we intentionally don't include the Fallback variables in the identifier, since that is mostly intended
+//	to help transition systems when their "identity" is altered due to collector changes - in the collector we rely
+//	on the non-Fallback values only.
 type ServerIdentifier struct {
 	APIKey      string
 	APIBaseURL  string
@@ -27,9 +28,10 @@ type ServerIdentifier struct {
 }
 
 // ServerConfig -
-//   Contains the information how to connect to a Postgres instance,
-//   with optional AWS credentials to get metrics
-//   from AWS CloudWatch as well as RDS logfiles
+//
+//	Contains the information how to connect to a Postgres instance,
+//	with optional AWS credentials to get metrics
+//	from AWS CloudWatch as well as RDS logfiles
 type ServerConfig struct {
 	APIKey     string `ini:"api_key"`
 	APIBaseURL string `ini:"api_base_url"`
