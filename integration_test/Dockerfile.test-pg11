@@ -2,7 +2,7 @@ FROM postgres:11-bullseye
 
 ARG TARGETARCH
 
-ENV GOVERSION 1.17
+ENV GOVERSION 1.19
 ENV CODE_DIR /collector
 ENV PATH $PATH:/usr/local/go/bin
 
