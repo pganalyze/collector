@@ -50,3 +50,10 @@ make integration_test
 ```
 
 Note the integration tests require Docker, and will take a while to run through.
+
+### Release
+
+1. Create a PR to update the version numbers and CHANGELOG.md
+2. Once PR is merged, create a new tag `git tag v0.x.y`, then push it `git push origin v0.x.y`
+3. Once a new tag is pushed, GitHub Action Release will be kicked and create a new release
+4. Modify a newly created release's description to match to CHANGELOG.md
