@@ -7,7 +7,9 @@ docker_exec = docker exec pga-collector-test $(1)
 docker_test_and_clean = docker exec pga-collector-test /root/systemd_test.sh && \
   docker kill pga-collector-test && docker rm pga-collector-test && docker rmi -f pga-collector-test
 
-DISTROS=centos7 rhel8 rockylinux8 rhel9 rockylinux9 fedora34 fedora35 fedora36 amazonlinux2 ubuntu-xenial ubuntu-bionic ubuntu-focal ubuntu-jammy debian-buster debian-bullseye
+# Note: The default list excludes rockylinux9 since there is an open issue with
+# /sbin/init not being present, see https://github.com/rocky-linux/sig-cloud-instance-images/issues/39
+DISTROS=centos7 rhel8 rockylinux8 rhel9 fedora34 fedora35 fedora36 amazonlinux2 ubuntu-xenial ubuntu-bionic ubuntu-focal ubuntu-jammy debian-buster debian-bullseye
 
 .PHONY: all $(DISTROS)
 
