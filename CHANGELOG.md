@@ -3,7 +3,8 @@
 ## 0.48.0      2023-01-26
 
 * Update to Go 1.19
-* Bugfix: Postgres table stats full frozenxid to be zero with zero relfrozenxid
+* Bugfix: Ensure relfrozenxid = 0 is tracked as full frozenxid = 0 (instead of
+  adding epoch prefix)
 
 
 ## 0.47.0      2023-01-12
