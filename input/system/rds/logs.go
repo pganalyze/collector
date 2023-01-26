@@ -1,6 +1,7 @@
 package rds
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -18,6 +19,8 @@ import (
 // (where the full RDS log file gets downloaded before the marker gets initialized)
 const maxLogParsingSize = 10 * 1024 * 1024
 
+var DescribeDBClustersErrorCache *util.TTLMap = util.NewTTLMap(10 * 60)
+
 // DownloadLogFiles - Gets log files for an Amazon RDS instance
 func DownloadLogFiles(server *state.Server, logger *util.Logger) (state.PersistedLogState, []state.LogFile, []state.PostgresQuerySample, error) {
 	var err error
@@ -31,12 +34,29 @@ func DownloadLogFiles(server *state.Server, logger *util.Logger) (state.Persiste
 		return server.LogPrevState, nil, nil, err
 	}
 
-	rdsSvc := rds.New(sess)
+	identifier := server.Config.AwsDbInstanceID
+	// If this is an Aurora cluster endpoint, we need to find the actual instance ID in order to get the logs
+	if identifier == "" {
+		if server.Config.AwsDbClusterID == "" {
+			return server.LogPrevState, nil, nil, fmt.Errorf("Neither AWS instance ID or cluster ID are specified - skipping log download")
+		}
 
-	identifier, err := awsutil.FindRdsIdentifier(server.Config, sess)
-	if err != nil {
-		err = fmt.Errorf("Error finding RDS instance: %s", err)
-		return server.LogPrevState, nil, nil, err
+		// Remember when an Aurora instance find failed previously to avoid failing on the same
+		// DescribeDBClusters call again and again. Note that we don't cache successes because
+		// we want to react quickly to failover events.
+		cachedError := DescribeDBClustersErrorCache.Get(server.Config.AwsDbClusterID)
+		if cachedError != "" {
+			return server.LogPrevState, nil, nil, errors.New(cachedError)
+		}
+
+		instance, err := awsutil.FindRdsInstance(server.Config, sess)
+		if err != nil {
+			err = fmt.Errorf("Error finding instance for cluster ID \"%s\": %s", server.Config.AwsDbClusterID, err)
+			DescribeDBClustersErrorCache.Put(server.Config.AwsDbClusterID, err.Error())
+			return server.LogPrevState, nil, nil, err
+		}
+
+		identifier = *instance.DBInstanceIdentifier
 	}
 
 	// Retrieve all possibly matching logfiles in the last two minutes, assuming
@@ -48,6 +68,8 @@ func DownloadLogFiles(server *state.Server, logger *util.Logger) (state.Persiste
 		DBInstanceIdentifier: &identifier,
 		FileLastWritten:      &lastWritten,
 	}
+
+	rdsSvc := rds.New(sess)
 
 	resp, err := rdsSvc.DescribeDBLogFiles(params)
 	if err != nil {
