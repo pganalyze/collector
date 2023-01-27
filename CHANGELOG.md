@@ -5,6 +5,21 @@
 * Update to Go 1.19
 * Bugfix: Ensure relfrozenxid = 0 is tracked as full frozenxid = 0 (instead of
   adding epoch prefix)
+* Amazon RDS and Amazon Aurora: Support IAM token authentication
+  - This adds a new configuration setting, `db_use_iam_auth` / `DB_USE_IAM_AUTH`.
+    If enabled, the collector fetches a short-lived token for logging into the
+    database instance from the AWS API, instead of using a hardcoded password
+    in the collector configuration file
+  - In order to use this setting, IAM authentication needs to be enabled on the
+    database instance / cluster, and the pganalyze IAM policy needs to be
+    extended to cover the "rds-db:connect" privilege for the pganalyze user:
+    https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.IAMPolicy.html
+* Amazon RDS: Avoid DescribeDBInstances calls for log downloads for RDS instances
+  - This should reduce issues with rate limiting on this API call in some cases
+* Amazon Aurora: Cache failures in DescribeDBClusters calls for up to 10 minutes
+  - This reduces repeated calls to the AWS API when the cluster identifier is
+    incorrect
+* Log parsing: Add support for timezones specified by number, such as "-03"
 
 
 ## 0.47.0      2023-01-12
