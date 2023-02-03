@@ -197,20 +197,23 @@ func downloadRdsLogFilePortion(rdsSvc *rds.RDS, tmpFile *os.File, logger *util.L
 // is often a collector crash (due to OOM), which would be less desirable.
 const maxLogParsingSize = 10 * 1024 * 1024
 
-func readLogFilePortion(tmpFile *os.File, bytesWritten int, logger *util.Logger) ([]byte, *os.File, error) {
+func readLogFilePortion(tmpFile *os.File, bytesWritten int64, logger *util.Logger) ([]byte, *os.File, error) {
+	var err error
+	var readStart int64
+
 	exceededMaxParsingSize := bytesWritten > maxLogParsingSize
 	if exceededMaxParsingSize {
 		logger.PrintWarning("RDS log file portion exceeded more than 10 MB of data in 30 second interval, collecting most recent data only (skipping %d bytes)", bytesWritten-maxLogParsingSize)
-
-		_, err := tmpFile.Seek(int64(bytesWritten-maxLogParsingSize), io.SeekStart)
-		if err != nil {
-			return nil, tmpFile, fmt.Errorf("Error seeking tempfile: %s", err)
-		}
+		readStart = bytesWritten - maxLogParsingSize
 	}
 
 	// Read the data into memory for analysis
+	_, err = tmpFile.Seek(readStart, io.SeekStart)
+	if err != nil {
+		return nil, tmpFile, fmt.Errorf("Error seeking tempfile: %s", err)
+	}
 	buf := make([]byte, bytesWritten)
-	_, err := io.ReadFull(tmpFile, buf)
+	_, err = io.ReadFull(tmpFile, buf)
 	if err != nil {
 		return nil, tmpFile, fmt.Errorf("Error reading %d bytes from tempfile: %s", len(buf), err)
 	}
