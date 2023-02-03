@@ -203,20 +203,22 @@ const maxLogParsingSize = 10 * 1024 * 1024
 
 func readLogFilePortion(tmpFile *os.File, bytesWritten int64, logger *util.Logger) ([]byte, *os.File, error) {
 	var err error
-	var readStart int64
+	var readSize int64
 
 	exceededMaxParsingSize := bytesWritten > maxLogParsingSize
 	if exceededMaxParsingSize {
 		logger.PrintWarning("RDS log file portion exceeded more than 10 MB of data in 30 second interval, collecting most recent data only (skipping %d bytes)", bytesWritten-maxLogParsingSize)
-		readStart = bytesWritten - maxLogParsingSize
+		readSize = maxLogParsingSize
+	} else {
+		readSize = bytesWritten
 	}
 
 	// Read the data into memory for analysis
-	_, err = tmpFile.Seek(readStart, io.SeekStart)
+	_, err = tmpFile.Seek(bytesWritten-readSize, io.SeekStart)
 	if err != nil {
 		return nil, tmpFile, fmt.Errorf("Error seeking tempfile: %s", err)
 	}
-	buf := make([]byte, bytesWritten)
+	buf := make([]byte, readSize)
 	_, err = io.ReadFull(tmpFile, buf)
 	if err != nil {
 		return nil, tmpFile, fmt.Errorf("Error reading %d bytes from tempfile: %s", len(buf), err)
