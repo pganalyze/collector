@@ -58,28 +58,32 @@ func DownloadLogFiles(server *state.Server, logger *util.Logger) (state.Persiste
 
 	for _, rdsLogFile := range resp.DescribeDBLogFiles {
 		var lastMarker *string
-		var bytesWritten = 0
+		var bytesWritten int64
 
 		prevMarker, ok := psl.AwsMarkers[*rdsLogFile.LogFileName]
 		if ok {
 			lastMarker = &prevMarker
 		}
 
-		tmpFile, err := ioutil.TempFile("", "")
+		var tmpFile *os.File
+		tmpFile, err = ioutil.TempFile("", "")
 		if err != nil {
 			err = fmt.Errorf("Error allocating tempfile for logs: %s", err)
 			goto ErrorCleanup
 		}
 
 		for {
-			newBytesWritten, newMarker, additionalDataPending, err := downloadRdsLogFilePortion(rdsSvc, tmpFile, logger, &identifier, rdsLogFile.LogFileName, lastMarker)
+			var newBytesWritten int
+			var newMarker *string
+			var additionalDataPending bool
+			newBytesWritten, newMarker, additionalDataPending, err = downloadRdsLogFilePortion(rdsSvc, tmpFile, logger, &identifier, rdsLogFile.LogFileName, lastMarker)
 			if err != nil {
 				tmpFile.Close()
 				os.Remove(tmpFile.Name())
 				goto ErrorCleanup
 			}
 
-			bytesWritten += newBytesWritten
+			bytesWritten += int64(newBytesWritten)
 			if newMarker != nil {
 				lastMarker = newMarker
 			}
@@ -89,7 +93,8 @@ func DownloadLogFiles(server *state.Server, logger *util.Logger) (state.Persiste
 			}
 		}
 
-		buf, tmpFile, err := readLogFilePortion(tmpFile, bytesWritten, logger)
+		var buf []byte
+		buf, tmpFile, err = readLogFilePortion(tmpFile, bytesWritten, logger)
 		if err != nil {
 			tmpFile.Close()
 			os.Remove(tmpFile.Name())
@@ -173,12 +178,11 @@ func downloadRdsLogFilePortion(rdsSvc *rds.RDS, tmpFile *os.File, logger *util.L
 	}
 
 	if len(*resp.LogFileData) > 0 {
-		_, err = tmpFile.WriteString(*resp.LogFileData)
+		newBytesWritten, err = tmpFile.WriteString(*resp.LogFileData)
 		if err != nil {
 			err = fmt.Errorf("Error writing to tempfile: %s", err)
 			return
 		}
-		newBytesWritten += len(*resp.LogFileData)
 	}
 
 	newMarker = resp.Marker
