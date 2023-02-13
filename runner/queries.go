@@ -52,20 +52,36 @@ func gatherQueryStatsForServer(server *state.Server, globalCollectionOpts state.
 		return newState, errors.Wrap(err, "error collecting pg_stat_statements")
 	}
 
+	_, newState.ServerIoStats, err = postgres.GetServerStats(logger, connection, postgresVersion, systemType)
+	if err != nil {
+		return newState, errors.Wrap(err, "error collecting Postgres server statistics")
+	}
+
 	// Don't calculate any diffs on the first run (but still update the state)
 	if len(server.PrevState.StatementStats) == 0 || server.PrevState.LastStatementStatsAt.IsZero() {
 		return newState, nil
 	}
 
-	diffedStatementStats := diffStatements(newState.StatementStats, server.PrevState.StatementStats)
 	collectedIntervalSecs := uint32(newState.LastStatementStatsAt.Sub(server.PrevState.LastStatementStatsAt) / time.Second)
-
 	timeKey := state.PostgresStatementStatsTimeKey{CollectedAt: collectedAt, CollectedIntervalSecs: collectedIntervalSecs}
+
+	// Remember diffed statement stats
 	newState.UnidentifiedStatementStats = server.PrevState.UnidentifiedStatementStats
 	if newState.UnidentifiedStatementStats == nil {
 		newState.UnidentifiedStatementStats = make(state.HistoricStatementStatsMap)
 	}
+	diffedStatementStats := diffStatements(newState.StatementStats, server.PrevState.StatementStats)
 	newState.UnidentifiedStatementStats[timeKey] = diffedStatementStats
+
+	// Remember diffed server I/O stats
+	if postgresVersion.Numeric >= state.PostgresVersion16 {
+		newState.QueuedServerIoStats = server.PrevState.QueuedServerIoStats
+		if newState.QueuedServerIoStats == nil {
+			newState.QueuedServerIoStats = make(state.HistoricPostgresServerIoStatsMap)
+		}
+		diffedServerIoStats := diffServerIoStats(newState.ServerIoStats, server.PrevState.ServerIoStats)
+		newState.QueuedServerIoStats[timeKey] = diffedServerIoStats
+	}
 
 	return newState, nil
 }

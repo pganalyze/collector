@@ -25,6 +25,7 @@ func diffState(logger *util.Logger, prevState state.PersistedState, newState sta
 			IndexStats:    diffIndexStats(newDbStats.IndexStats, prevIdxStats),
 		}
 	}
+	diffState.ServerIoStats = diffServerIoStats(newState.ServerIoStats, prevState.ServerIoStats)
 	diffState.SystemCPUStats = diffSystemCPUStats(newState.System.CPUStats, prevState.System.CPUStats)
 	diffState.SystemNetworkStats = diffSystemNetworkStats(newState.System.NetworkStats, prevState.System.NetworkStats, collectedIntervalSecs)
 	diffState.SystemDiskStats = diffSystemDiskStats(newState.System.DiskStats, prevState.System.DiskStats, collectedIntervalSecs)
@@ -186,5 +187,27 @@ func diffDatabaseStats(new state.PostgresDatabaseStatsMap, prev state.PostgresDa
 			}
 		}
 	}
+	return
+}
+
+func diffServerIoStats(new state.PostgresServerIoStatsMap, prev state.PostgresServerIoStatsMap) (diff state.DiffedPostgresServerIoStatsMap) {
+	followUpRun := len(prev) > 0
+
+	diff = make(state.DiffedPostgresServerIoStatsMap)
+	for k, stats := range new {
+		var s state.DiffedPostgresServerIoStats
+		prevStats, exists := prev[k]
+		if exists {
+			s = stats.DiffSince(prevStats)
+		} else if followUpRun { // New since the last run
+			s = stats.DiffSince(state.PostgresServerIoStats{})
+		}
+		// Skip over empty diffs (which can occur either because there was no activity, or for fixed entries that never saw activity)
+		if s.Reads.Int64 != 0 || s.Writes.Int64 != 0 || s.Extends.Int64 != 0 ||
+			s.Evictions.Int64 != 0 || s.Reuses.Int64 != 0 || s.Fsyncs.Int64 != 0 {
+			diff[k] = s
+		}
+	}
+
 	return
 }

@@ -81,7 +81,7 @@ func CollectFull(server *state.Server, connection *sql.DB, globalCollectionOpts 
 		err = nil
 	}
 
-	ts.ServerStats, err = postgres.GetServerStats(logger, connection, ts.Version, systemType)
+	ts.ServerStats, ps.ServerIoStats, err = postgres.GetServerStats(logger, connection, ts.Version, systemType)
 	if err != nil {
 		logger.PrintError("Error collecting Postgres server statistics: %s", err)
 		return

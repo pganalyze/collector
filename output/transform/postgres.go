@@ -1,6 +1,9 @@
 package transform
 
 import (
+	"time"
+
+	"github.com/golang/protobuf/ptypes"
 	snapshot "github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
 )
@@ -14,7 +17,7 @@ func transformPostgres(s snapshot.FullSnapshot, newState state.PersistedState, d
 
 	s = transformPostgresVersion(s, transientState)
 	s = transformPostgresConfig(s, transientState)
-	s = transformPostgresServerStats(s, transientState)
+	s = transformPostgresServerStats(s, diffState, transientState)
 	s = transformPostgresReplication(s, transientState, roleOidToIdx)
 	s = transformPostgresStatements(s, newState, diffState, transientState, roleOidToIdx, databaseOidToIdx)
 	s = transformPostgresRelations(s, newState, diffState, databaseOidToIdx, typeOidToIdx, s.ServerStatistic.CurrentXactId)
@@ -152,10 +155,64 @@ func transformPostgresVersion(s snapshot.FullSnapshot, transientState state.Tran
 	return s
 }
 
-func transformPostgresServerStats(s snapshot.FullSnapshot, transientState state.TransientState) snapshot.FullSnapshot {
+func transformPostgresServerStats(s snapshot.FullSnapshot, diffState state.DiffState, transientState state.TransientState) snapshot.FullSnapshot {
 	s.ServerStatistic = &snapshot.ServerStatistic{
 		CurrentXactId:   int64(transientState.ServerStats.CurrentXactId),
 		NextMultiXactId: int64(transientState.ServerStats.NextMultiXactId),
+	}
+
+	// Historic statement stats which are sent now since we got the query text only now
+	for timeKey, diffedStats := range transientState.HistoricServerIoStats {
+		// Ignore any data older than an hour, as a safety measure in case of many
+		// failed full snapshot runs (which don't reset state)
+		if time.Since(timeKey.CollectedAt).Hours() >= 1 {
+			continue
+		}
+
+		h := snapshot.HistoricServerIoStatistics{}
+		h.CollectedAt, _ = ptypes.TimestampProto(timeKey.CollectedAt)
+		h.CollectedIntervalSecs = timeKey.CollectedIntervalSecs
+
+		for k, stats := range diffedStats {
+			statsOut := &snapshot.ServerIoStatistic{
+				BackendType: k.BackendType,
+				IoObject:    k.IoObject,
+				IoContext:   k.IoContext,
+				OpBytes:     stats.OpBytes,
+			}
+			if stats.Reads.Valid {
+				statsOut.Reads = stats.Reads.Int64
+			} else {
+				statsOut.Reads = -1
+			}
+			if stats.Writes.Valid {
+				statsOut.Writes = stats.Writes.Int64
+			} else {
+				statsOut.Writes = -1
+			}
+			if stats.Extends.Valid {
+				statsOut.Extends = stats.Extends.Int64
+			} else {
+				statsOut.Extends = -1
+			}
+			if stats.Evictions.Valid {
+				statsOut.Evictions = stats.Evictions.Int64
+			} else {
+				statsOut.Evictions = -1
+			}
+			if stats.Reuses.Valid {
+				statsOut.Reuses = stats.Reuses.Int64
+			} else {
+				statsOut.Reuses = -1
+			}
+			if stats.Fsyncs.Valid {
+				statsOut.Fsyncs = stats.Fsyncs.Int64
+			} else {
+				statsOut.Fsyncs = -1
+			}
+			h.Statistics = append(h.Statistics, statsOut)
+		}
+		s.HistoricServerIoStatistics = append(s.HistoricServerIoStatistics, &h)
 	}
 
 	return s
