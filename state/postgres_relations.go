@@ -100,7 +100,7 @@ func (i PostgresIndex) Fillfactor() int32 {
 
 // FullFrozenXID - Returns frozenXid in 64-bit FullTransactionId, by calculating and adding an epoch from current transaction ID
 func (r PostgresRelation) FullFrozenXID(currentXactId int64) int64 {
-	if r.FrozenXID == 0 {
+	if r.FrozenXID == 0 || currentXactId == 0 {
 		return 0
 	}
 	// If we simply shift the currentXactId, it'll give the epoch of the current transaction ID, which may be different
