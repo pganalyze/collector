@@ -22,6 +22,15 @@ FROM pg_catalog.pg_control_checkpoint()
 `
 
 const xminHorizonSQL string = `
+WITH slots AS (
+	SELECT
+		xmin,
+		catalog_xmin
+	FROM pg_replication_slots
+	WHERE xmin IS NOT NULL
+	ORDER BY age(xmin) DESC
+	LIMIT 1
+)
 SELECT
 (
 	SELECT
@@ -32,13 +41,11 @@ SELECT
 	LIMIT 1
 ) as backend,
 (
-	SELECT
-		xmin
-	FROM pg_replication_slots
-	WHERE xmin IS NOT NULL
-	ORDER BY age(xmin) DESC
-	LIMIT 1
-) as replication_slot,
+	SELECT xmin FROM slots
+) as replication_slot_xmin,
+(
+	SELECT catalog_xmin FROM slots
+) as replication_slot_catalog_xmin,
 (
 	SELECT
 		transaction AS xmin
@@ -62,6 +69,16 @@ func GetServerStats(logger *util.Logger, db *sql.DB, postgresVersion state.Postg
 
 	// Only collect transaction ID or xmin horizon related stats with non-replicas
 	if isReplica, err := getIsReplica(db); err == nil && !isReplica {
+		// Query xmin horizon before querying the current transaction ID
+		// as the backend_xmin from pg_stat_activity can point to the "next" transaction ID.
+		err = db.QueryRow(QueryMarkerSQL+xminHorizonSQL).Scan(
+			&stats.XminHorizonBackend, &stats.XminHorizonReplicationSlot, &stats.XminHorizonReplicationSlotCatalog,
+			&stats.XminHorizonPreparedXact, &stats.XminHorizonStandby,
+		)
+		if err != nil {
+			return stats, err
+		}
+
 		if postgresVersion.Numeric >= state.PostgresVersion13 {
 			transactionIdSQL = transactionIdSQLPg13
 		} else {
@@ -70,14 +87,6 @@ func GetServerStats(logger *util.Logger, db *sql.DB, postgresVersion state.Postg
 
 		err = db.QueryRow(QueryMarkerSQL+transactionIdSQL).Scan(
 			&stats.CurrentXactId, &stats.NextMultiXactId,
-		)
-		if err != nil {
-			return stats, err
-		}
-
-		err = db.QueryRow(QueryMarkerSQL+xminHorizonSQL).Scan(
-			&stats.XminHorizonBackend, &stats.XminHorizonReplicationSlot,
-			&stats.XminHorizonPreparedXact, &stats.XminHorizonStandby,
 		)
 		if err != nil {
 			return stats, err

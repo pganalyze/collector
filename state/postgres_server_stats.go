@@ -9,10 +9,11 @@ type PostgresServerStats struct {
 	CurrentXactId   Xid8
 	NextMultiXactId Xid8
 
-	XminHorizonBackend         sql.NullInt32
-	XminHorizonReplicationSlot sql.NullInt32
-	XminHorizonPreparedXact    sql.NullInt32
-	XminHorizonStandby         sql.NullInt32
+	XminHorizonBackend                sql.NullInt32
+	XminHorizonReplicationSlot        sql.NullInt32
+	XminHorizonReplicationSlotCatalog sql.NullInt32
+	XminHorizonPreparedXact           sql.NullInt32
+	XminHorizonStandby                sql.NullInt32
 }
 
 // FullXminHorizonBackend - Returns XminHorizonBackend in 64-bit FullTransactionId
@@ -23,6 +24,11 @@ func (ss PostgresServerStats) FullXminHorizonBackend() int64 {
 // FullXminHorizonReplicationSlot - Returns XminHorizonReplicationSlot in 64-bit FullTransactionId
 func (ss PostgresServerStats) FullXminHorizonReplicationSlot() int64 {
 	return int64(XidToXid8(Xid(ss.XminHorizonReplicationSlot.Int32), Xid8(ss.CurrentXactId)))
+}
+
+// FullXminHorizonReplicationSlotCatalog - Returns XminHorizonReplicationSlotCatalog in 64-bit FullTransactionId
+func (ss PostgresServerStats) FullXminHorizonReplicationSlotCatalog() int64 {
+	return int64(XidToXid8(Xid(ss.XminHorizonReplicationSlotCatalog.Int32), Xid8(ss.CurrentXactId)))
 }
 
 // FullXminHorizonPreparedXact - Returns XminHorizonPreparedXact in 64-bit FullTransactionId
