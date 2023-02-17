@@ -125,6 +125,16 @@ func ParseLogLineWithPrefix(prefix string, line string) (logLine state.LogLine, 
 
 	rsyslog := false
 
+	// Only read the first 1000 characters of a log line to parse the log_line_prefix
+	//
+	// This reduces the overhead for very long loglines, because we don't pass in the
+	// whole line to the regexp engine (twice).
+	lineExtra := ""
+	if len(line) > 1000 {
+		lineExtra = line[1000:]
+		line = line[0:1000]
+	}
+
 	if prefix == "" {
 		if LogPrefixAmazonRdsRegexp.MatchString(line) {
 			prefix = LogPrefixAmazonRds
@@ -462,7 +472,7 @@ func ParseLogLineWithPrefix(prefix string, line string) (logLine state.LogLine, 
 			contentPart = parts[14]
 		default:
 			// Some callers use the content of unparsed lines to stitch multi-line logs together
-			logLine.Content = line
+			logLine.Content = line + lineExtra
 			return
 		}
 	}
@@ -521,7 +531,7 @@ func ParseLogLineWithPrefix(prefix string, line string) (logLine state.LogLine, 
 
 	backendPid, _ := strconv.ParseInt(pidPart, 10, 32)
 	logLine.BackendPid = int32(backendPid)
-	logLine.Content = contentPart
+	logLine.Content = contentPart + lineExtra
 
 	// This is actually a continuation of a previous line
 	if levelPart == "" {
