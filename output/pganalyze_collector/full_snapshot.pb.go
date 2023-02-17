@@ -1286,10 +1286,10 @@ type ServerStatistic struct {
 
 	CurrentXactId              int64 `protobuf:"varint,1,opt,name=current_xact_id,json=currentXactId,proto3" json:"current_xact_id,omitempty"`                                          // Current transaction ID in xid8 (64-bit FullTransactionId) for this server
 	NextMultiXactId            int64 `protobuf:"varint,2,opt,name=next_multi_xact_id,json=nextMultiXactId,proto3" json:"next_multi_xact_id,omitempty"`                                  // Next multixact ID in xid8 (64-bit FullTransactionId) for this server
-	XminHorizonBackend         int64 `protobuf:"varint,3,opt,name=xmin_horizon_backend,json=xminHorizonBackend,proto3" json:"xmin_horizon_backend,omitempty"`                           // The oldest xmin for backends
-	XminHorizonReplicationSlot int64 `protobuf:"varint,4,opt,name=xmin_horizon_replication_slot,json=xminHorizonReplicationSlot,proto3" json:"xmin_horizon_replication_slot,omitempty"` // The oldest xmin for replication slots
-	XminHorizonPreparedXact    int64 `protobuf:"varint,5,opt,name=xmin_horizon_prepared_xact,json=xminHorizonPreparedXact,proto3" json:"xmin_horizon_prepared_xact,omitempty"`          // The oldest xmin for prepared transactions
-	XminHorizonStandby         int64 `protobuf:"varint,6,opt,name=xmin_horizon_standby,json=xminHorizonStandby,proto3" json:"xmin_horizon_standby,omitempty"`                           // The oldest xmin for standbys
+	XminHorizonBackend         int64 `protobuf:"varint,3,opt,name=xmin_horizon_backend,json=xminHorizonBackend,proto3" json:"xmin_horizon_backend,omitempty"`                           // The oldest xmin for backends in xid8 (64-bit FullTransactionId)
+	XminHorizonReplicationSlot int64 `protobuf:"varint,4,opt,name=xmin_horizon_replication_slot,json=xminHorizonReplicationSlot,proto3" json:"xmin_horizon_replication_slot,omitempty"` // The oldest xmin for replication slots in xid8 (64-bit FullTransactionId)
+	XminHorizonPreparedXact    int64 `protobuf:"varint,5,opt,name=xmin_horizon_prepared_xact,json=xminHorizonPreparedXact,proto3" json:"xmin_horizon_prepared_xact,omitempty"`          // The oldest xmin for prepared transactions in xid8 (64-bit FullTransactionId)
+	XminHorizonStandby         int64 `protobuf:"varint,6,opt,name=xmin_horizon_standby,json=xminHorizonStandby,proto3" json:"xmin_horizon_standby,omitempty"`                           // The oldest xmin for standbys in xid8 (64-bit FullTransactionId)
 }
 
 func (x *ServerStatistic) Reset() {
