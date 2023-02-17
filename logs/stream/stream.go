@@ -10,6 +10,7 @@ import (
 	"github.com/pganalyze/collector/logs"
 	"github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
+	"github.com/pganalyze/collector/util"
 	uuid "github.com/satori/go.uuid"
 )
 
@@ -161,7 +162,7 @@ func isAdditionalLineLevel(str pganalyze_collector.LogLineInformation_LogLevel) 
 }
 
 // writeTmpLogFile - Setup temporary file that will be used for encryption
-func writeTmpLogFile(readyLogLines []state.LogLine) (state.LogFile, error) {
+func writeTmpLogFile(readyLogLines []state.LogLine, logger *util.Logger) (state.LogFile, error) {
 	var logFile state.LogFile
 	var err error
 	logFile.UUID = uuid.NewV4()
@@ -174,7 +175,7 @@ func writeTmpLogFile(readyLogLines []state.LogLine) (state.LogFile, error) {
 	for idx, logLine := range readyLogLines {
 		_, err = logFile.TmpFile.WriteString(logLine.Content)
 		if err != nil {
-			logFile.Cleanup()
+			logFile.Cleanup(logger)
 			return logFile, err
 		}
 		logLine.ByteStart = currentByteStart
@@ -254,7 +255,7 @@ const StreamReadyThreshold time.Duration = 3 * time.Second
 //
 // The caller is expected to keep a repository of "tooFreshLogLines" that they
 // can send back in again in the next call, combined with new lines received
-func AnalyzeStreamInGroups(logLines []state.LogLine, now time.Time, server *state.Server) (state.TransientLogState, state.LogFile, []state.LogLine, error) {
+func AnalyzeStreamInGroups(logLines []state.LogLine, now time.Time, server *state.Server, logger *util.Logger) (state.TransientLogState, state.LogFile, []state.LogLine, error) {
 	// Pre-Sort by PID, log line number and occurred at timestamp
 	//
 	// Its important we do this early, to support out-of-order receipt of log lines,
@@ -311,7 +312,7 @@ func AnalyzeStreamInGroups(logLines []state.LogLine, now time.Time, server *stat
 		}
 	}
 
-	logFile, err := writeTmpLogFile(analyzableLogLines)
+	logFile, err := writeTmpLogFile(analyzableLogLines, logger)
 	if err != nil {
 		return state.TransientLogState{}, state.LogFile{}, logLines, err
 	}

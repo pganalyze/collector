@@ -147,7 +147,7 @@ func downloadLogsForServer(server *state.Server, globalCollectionOpts state.Coll
 	}
 
 	transientLogState := state.TransientLogState{CollectedAt: time.Now()}
-	defer transientLogState.Cleanup()
+	defer transientLogState.Cleanup(logger)
 
 	var newLogState state.PersistedLogState
 	newLogState, transientLogState.LogFiles, transientLogState.QuerySamples, err = system.DownloadLogFiles(server, globalCollectionOpts, logger)
@@ -228,12 +228,12 @@ func processLogStream(server *state.Server, logLines []state.LogLine, now time.T
 	}
 	server.CollectionStatusMutex.Unlock()
 
-	transientLogState, logFile, tooFreshLogLines, err := stream.AnalyzeStreamInGroups(logLines, now, server)
+	transientLogState, logFile, tooFreshLogLines, err := stream.AnalyzeStreamInGroups(logLines, now, server, logger)
 	if err != nil {
 		logger.PrintError("%s", err)
 		return tooFreshLogLines
 	}
-	defer transientLogState.Cleanup()
+	defer transientLogState.Cleanup(logger)
 
 	transientLogState.LogFiles = []state.LogFile{logFile}
 

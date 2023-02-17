@@ -78,8 +78,7 @@ func DownloadLogFiles(server *state.Server, logger *util.Logger) (state.Persiste
 			var additionalDataPending bool
 			newBytesWritten, newMarker, additionalDataPending, err = downloadRdsLogFilePortion(rdsSvc, tmpFile, logger, &identifier, rdsLogFile.LogFileName, lastMarker)
 			if err != nil {
-				tmpFile.Close()
-				os.Remove(tmpFile.Name())
+				util.CleanupTmpFileAndLogErrors(tmpFile, logger)
 				goto ErrorCleanup
 			}
 
@@ -96,8 +95,7 @@ func DownloadLogFiles(server *state.Server, logger *util.Logger) (state.Persiste
 		var buf []byte
 		buf, tmpFile, err = readLogFilePortion(tmpFile, bytesWritten, logger)
 		if err != nil {
-			tmpFile.Close()
-			os.Remove(tmpFile.Name())
+			util.CleanupTmpFileAndLogErrors(tmpFile, logger)
 			goto ErrorCleanup
 		}
 
@@ -122,7 +120,7 @@ func DownloadLogFiles(server *state.Server, logger *util.Logger) (state.Persiste
 
 ErrorCleanup:
 	for _, logFile := range logFiles {
-		logFile.Cleanup()
+		logFile.Cleanup(logger)
 	}
 
 	return server.LogPrevState, nil, nil, err
@@ -234,14 +232,12 @@ func readLogFilePortion(tmpFile *os.File, bytesWritten int64, logger *util.Logge
 
 		_, err = truncatedTmpFile.Write(buf)
 		if err != nil {
-			truncatedTmpFile.Close()
-			os.Remove(truncatedTmpFile.Name())
+			util.CleanupTmpFileAndLogErrors(truncatedTmpFile, logger)
 			return nil, tmpFile, fmt.Errorf("Error writing to tempfile: %s", err)
 		}
 
 		// We succeeded, so remove the previous file and use the new one going forward
-		tmpFile.Close()
-		os.Remove(tmpFile.Name())
+		util.CleanupTmpFileAndLogErrors(tmpFile, logger)
 		tmpFile = truncatedTmpFile
 	}
 

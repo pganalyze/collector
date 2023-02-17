@@ -104,7 +104,7 @@ func LogPgReadFile(server *state.Server, globalCollectionOpts state.CollectionOp
 		_, err := logFile.TmpFile.WriteString(logData)
 		if err != nil {
 			err = fmt.Errorf("Error writing to tempfile: %s", err)
-			logFile.Cleanup()
+			logFile.Cleanup(logger)
 			goto ErrorCleanup
 		}
 
@@ -122,7 +122,7 @@ func LogPgReadFile(server *state.Server, globalCollectionOpts state.CollectionOp
 
 ErrorCleanup:
 	for _, logFile := range logFiles {
-		logFile.Cleanup()
+		logFile.Cleanup(logger)
 	}
 
 	return server.LogPrevState, nil, nil, err
