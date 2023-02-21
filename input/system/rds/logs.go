@@ -1,8 +1,8 @@
 package rds
 
 import (
-	"errors"
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
