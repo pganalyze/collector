@@ -381,7 +381,7 @@ func main() {
 		content := string(contentBytes)
 		reader := strings.NewReader(content)
 		logReader := logs.NewMaybeHerokuLogReader(reader)
-		logLines, samples, _ := logs.ParseAndAnalyzeBuffer(logReader, 0, time.Time{}, &state.Server{})
+		logLines, samples := logs.ParseAndAnalyzeBuffer(logReader, time.Time{}, &state.Server{})
 		logs.PrintDebugInfo(content, logLines, samples)
 		if analyzeDebugClassifications != "" {
 			classifications := strings.Split(analyzeDebugClassifications, ",")
@@ -412,7 +412,7 @@ func main() {
 		content := string(contentBytes)
 		reader := strings.NewReader(content)
 		logReader := logs.NewMaybeHerokuLogReader(reader)
-		logLines, _, _ := logs.ParseAndAnalyzeBuffer(logReader, 0, time.Time{}, &state.Server{})
+		logLines, _ := logs.ParseAndAnalyzeBuffer(logReader, time.Time{}, &state.Server{})
 		output := logs.ReplaceSecrets(contentBytes, logLines, state.ParseFilterLogSecret(filterLogSecret))
 		fmt.Printf("%s", output)
 		return

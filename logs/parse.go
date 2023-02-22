@@ -545,9 +545,9 @@ type LineReader interface {
 	ReadString(delim byte) (string, error)
 }
 
-func ParseAndAnalyzeBuffer(logStream LineReader, initialByteStart int64, linesNewerThan time.Time, server *state.Server) ([]state.LogLine, []state.PostgresQuerySample, int64) {
+func ParseAndAnalyzeBuffer(logStream LineReader, linesNewerThan time.Time, server *state.Server) ([]state.LogLine, []state.PostgresQuerySample) {
 	var logLines []state.LogLine
-	currentByteStart := initialByteStart
+	var currentByteStart int64 = 0
 
 	for {
 		line, err := logStream.ReadString('\n')
@@ -597,5 +597,5 @@ func ParseAndAnalyzeBuffer(logStream LineReader, initialByteStart int64, linesNe
 	}
 
 	newLogLines, newSamples := AnalyzeLogLines(logLines)
-	return newLogLines, newSamples, currentByteStart
+	return newLogLines, newSamples
 }
