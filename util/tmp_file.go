@@ -5,7 +5,7 @@ import (
 )
 
 // Clean up a created temporary file, reporting any errors to the log
-func CleanupTmpFileAndLogErrors(tmpFile *os.File, logger *Logger) {
+func CleanUpTmpFile(tmpFile *os.File, logger *Logger) {
 	err := tmpFile.Close()
 	if err != nil {
 		logger.PrintError("Failed to close temporary file \"%s\": %s", tmpFile.Name(), err)

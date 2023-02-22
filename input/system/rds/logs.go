@@ -78,7 +78,7 @@ func DownloadLogFiles(server *state.Server, logger *util.Logger) (state.Persiste
 			var additionalDataPending bool
 			newBytesWritten, newMarker, additionalDataPending, err = downloadRdsLogFilePortion(rdsSvc, tmpFile, logger, &identifier, rdsLogFile.LogFileName, lastMarker)
 			if err != nil {
-				util.CleanupTmpFileAndLogErrors(tmpFile, logger)
+				util.CleanUpTmpFile(tmpFile, logger)
 				goto ErrorCleanup
 			}
 
@@ -95,7 +95,7 @@ func DownloadLogFiles(server *state.Server, logger *util.Logger) (state.Persiste
 		var buf []byte
 		buf, tmpFile, err = readLogFilePortion(tmpFile, bytesWritten, logger)
 		if err != nil {
-			util.CleanupTmpFileAndLogErrors(tmpFile, logger)
+			util.CleanUpTmpFile(tmpFile, logger)
 			goto ErrorCleanup
 		}
 
@@ -128,33 +128,32 @@ ErrorCleanup:
 
 var DescribeDBClustersErrorCache *util.TTLMap = util.NewTTLMap(10 * 60)
 
+// getAwsDbInstanceID - Finds actual instance ID from Aurora cluster endpoint names in order to download logs
 func getAwsDbInstanceID(config config.ServerConfig, sess *session.Session) (string, error) {
-	identifier := config.AwsDbInstanceID
-	// If this is an Aurora cluster endpoint, we need to find the actual instance ID in order to get the logs
-	if identifier == "" {
-		if config.AwsDbClusterID == "" {
-			return "", fmt.Errorf("Neither AWS instance ID or cluster ID are specified - skipping log download")
-		}
-
-		// Remember when an Aurora instance find failed previously to avoid failing on the same
-		// DescribeDBClusters call again and again. Note that we don't cache successes because
-		// we want to react quickly to failover events.
-		cachedError := DescribeDBClustersErrorCache.Get(config.AwsDbClusterID)
-		if cachedError != "" {
-			return "", errors.New(cachedError)
-		}
-
-		instance, err := awsutil.FindRdsInstance(config, sess)
-		if err != nil {
-			err = fmt.Errorf("Error finding instance for cluster ID \"%s\": %s", config.AwsDbClusterID, err)
-			DescribeDBClustersErrorCache.Put(config.AwsDbClusterID, err.Error())
-			return "", err
-		}
-
-		identifier = *instance.DBInstanceIdentifier
+	if config.AwsDbInstanceID != "" {
+		return config.AwsDbInstanceID, nil
 	}
 
-	return identifier, nil
+	if config.AwsDbClusterID == "" {
+		return "", fmt.Errorf("Neither AWS instance ID or cluster ID are specified - skipping log download")
+	}
+
+	// Remember when an Aurora instance find failed previously to avoid failing on the same
+	// DescribeDBClusters call again and again. Note that we don't cache successes because
+	// we want to react quickly to failover events.
+	cachedError := DescribeDBClustersErrorCache.Get(config.AwsDbClusterID)
+	if cachedError != "" {
+		return "", errors.New(cachedError)
+	}
+
+	instance, err := awsutil.FindRdsInstance(config, sess)
+	if err != nil {
+		err = fmt.Errorf("Error finding instance for cluster ID \"%s\": %s", config.AwsDbClusterID, err)
+		DescribeDBClustersErrorCache.Put(config.AwsDbClusterID, err.Error())
+		return "", err
+	}
+
+	return *instance.DBInstanceIdentifier, nil
 }
 
 func downloadRdsLogFilePortion(rdsSvc *rds.RDS, tmpFile *os.File, logger *util.Logger, identifier *string, logFileName *string, lastMarker *string) (newBytesWritten int, newMarker *string, additionalDataPending bool, err error) {
@@ -232,12 +231,12 @@ func readLogFilePortion(tmpFile *os.File, bytesWritten int64, logger *util.Logge
 
 		_, err = truncatedTmpFile.Write(buf)
 		if err != nil {
-			util.CleanupTmpFileAndLogErrors(truncatedTmpFile, logger)
+			util.CleanUpTmpFile(truncatedTmpFile, logger)
 			return nil, tmpFile, fmt.Errorf("Error writing to tempfile: %s", err)
 		}
 
 		// We succeeded, so remove the previous file and use the new one going forward
-		util.CleanupTmpFileAndLogErrors(tmpFile, logger)
+		util.CleanUpTmpFile(tmpFile, logger)
 		tmpFile = truncatedTmpFile
 	}
 

@@ -182,7 +182,7 @@ type LogLine struct {
 
 func (logFile *LogFile) Cleanup(logger *util.Logger) {
 	if logFile.TmpFile != nil {
-		util.CleanupTmpFileAndLogErrors(logFile.TmpFile, logger)
+		util.CleanUpTmpFile(logFile.TmpFile, logger)
 	}
 }
 
