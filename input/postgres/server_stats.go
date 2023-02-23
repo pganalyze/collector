@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"database/sql"
+	"fmt"
 
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
@@ -22,45 +23,49 @@ FROM pg_catalog.pg_control_checkpoint()
 `
 
 const xminHorizonSQL string = `
-WITH slots AS (
-	SELECT
-		xmin,
-		catalog_xmin
-	FROM pg_replication_slots
-	WHERE xmin IS NOT NULL
-	ORDER BY age(xmin) DESC
-	LIMIT 1
-)
 SELECT
-(
+COALESCE((
 	SELECT
-		backend_xmin
+		CASE WHEN COALESCE(age(backend_xid), 0) > COALESCE(age(backend_xmin), 0)
+			THEN backend_xid
+			ELSE backend_xmin
+		END
 	FROM pg_stat_activity
 	WHERE backend_xmin IS NOT NULL OR backend_xid IS NOT NULL
 	ORDER BY greatest(age(backend_xmin), age(backend_xid)) DESC
 	LIMIT 1
-) as backend,
-(
-	SELECT xmin FROM slots
-) as replication_slot_xmin,
-(
-	SELECT catalog_xmin FROM slots
-) as replication_slot_catalog_xmin,
-(
+), '0'::xid) as backend,
+COALESCE((
+	SELECT
+		xmin
+	FROM pg_replication_slots
+	WHERE xmin IS NOT NULL
+	ORDER BY age(xmin) DESC
+	LIMIT 1
+), '0'::xid) as replication_slot_xmin,
+COALESCE((
+	SELECT
+		catalog_xmin
+	FROM pg_replication_slots
+	WHERE xmin IS NOT NULL
+	ORDER BY age(catalog_xmin) DESC
+	LIMIT 1
+), '0'::xid) as replication_slot_catalog_xmin,
+COALESCE((
 	SELECT
 		transaction AS xmin
 	FROM pg_prepared_xacts
 	ORDER BY age(transaction) DESC
 	LIMIT 1
-) as prepare_xact,
-(
+), '0'::xid) as prepare_xact,
+COALESCE((
 	SELECT
 		backend_xmin
-	FROM pg_stat_replication
+	FROM %s
 	WHERE backend_xmin IS NOT NULL
 	ORDER BY age(backend_xmin) DESC
 	LIMIT 1
-) as standby
+), '0'::xid) as standby
 `
 
 func GetServerStats(logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion, systemType string) (state.PostgresServerStats, error) {
@@ -71,7 +76,15 @@ func GetServerStats(logger *util.Logger, db *sql.DB, postgresVersion state.Postg
 	if isReplica, err := getIsReplica(db); err == nil && !isReplica {
 		// Query xmin horizon before querying the current transaction ID
 		// as the backend_xmin from pg_stat_activity can point to the "next" transaction ID.
-		err = db.QueryRow(QueryMarkerSQL+xminHorizonSQL).Scan(
+		var sourceStatReplicationTable string
+
+		if StatsHelperExists(db, "get_stat_replication") {
+			logger.PrintVerbose("Found pganalyze.get_stat_replication() stats helper")
+			sourceStatReplicationTable = "pganalyze.get_stat_replication()"
+		} else {
+			sourceStatReplicationTable = "pg_stat_replication"
+		}
+		err = db.QueryRow(QueryMarkerSQL+fmt.Sprintf(xminHorizonSQL, sourceStatReplicationTable)).Scan(
 			&stats.XminHorizonBackend, &stats.XminHorizonReplicationSlot, &stats.XminHorizonReplicationSlotCatalog,
 			&stats.XminHorizonPreparedXact, &stats.XminHorizonStandby,
 		)
