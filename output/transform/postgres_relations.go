@@ -53,8 +53,6 @@ func transformPostgresRelations(s snapshot.FullSnapshot, newState state.Persiste
 			HasOids:                relation.HasOids,
 			HasInheritanceChildren: relation.HasInheritanceChildren,
 			HasToast:               relation.HasToast,
-			FrozenXid:              uint32(relation.FrozenXID),
-			MinimumMultixactXid:    uint32(relation.MinimumMultixactXID),
 			ParentRelationIdx:      parentRelationIdx,
 			HasParentRelation:      parentRelationIdx != -1,
 			PartitionBoundary:      relation.PartitionBoundary,
