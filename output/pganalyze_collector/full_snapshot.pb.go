@@ -2916,8 +2916,8 @@ type RelationInformation struct {
 	HasOids                bool                              `protobuf:"varint,8,opt,name=has_oids,json=hasOids,proto3" json:"has_oids,omitempty"`
 	HasInheritanceChildren bool                              `protobuf:"varint,9,opt,name=has_inheritance_children,json=hasInheritanceChildren,proto3" json:"has_inheritance_children,omitempty"`
 	HasToast               bool                              `protobuf:"varint,10,opt,name=has_toast,json=hasToast,proto3" json:"has_toast,omitempty"`
-	FrozenXid              uint32                            `protobuf:"varint,11,opt,name=frozen_xid,json=frozenXid,proto3" json:"frozen_xid,omitempty"`                                 // deprecated in favor of relfrozenxid in RelationStatistic
-	MinimumMultixactXid    uint32                            `protobuf:"varint,12,opt,name=minimum_multixact_xid,json=minimumMultixactXid,proto3" json:"minimum_multixact_xid,omitempty"` // deprecated in favor of relminmxid in RelationStatistic
+	FrozenXid              uint32                            `protobuf:"varint,11,opt,name=frozen_xid,json=frozenXid,proto3" json:"frozen_xid,omitempty"`
+	MinimumMultixactXid    uint32                            `protobuf:"varint,12,opt,name=minimum_multixact_xid,json=minimumMultixactXid,proto3" json:"minimum_multixact_xid,omitempty"`
 	// True if another process is currently holding an AccessExclusiveLock on this
 	// relation, this also means we won't have columns/index/constraints information
 	ExclusivelyLocked bool                                  `protobuf:"varint,13,opt,name=exclusively_locked,json=exclusivelyLocked,proto3" json:"exclusively_locked,omitempty"`
