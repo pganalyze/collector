@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"time"
 
-	"github.com/golang/protobuf/ptypes"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/pganalyze/collector/input/postgres"
 	"github.com/pganalyze/collector/output/pganalyze_collector"
@@ -49,7 +49,7 @@ func (report *BuffercacheReport) Result() *pganalyze_collector.Report {
 
 	r.ReportRunId = report.ReportRunID
 	r.ReportType = "buffercache"
-	r.CollectedAt, _ = ptypes.TimestampProto(report.CollectedAt)
+	r.CollectedAt = timestamppb.New(report.CollectedAt)
 
 	data.FreeBytes = report.Data.FreeBytes
 	data.TotalBytes = report.Data.TotalBytes

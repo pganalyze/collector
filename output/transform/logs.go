@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/golang/protobuf/ptypes"
 	snapshot "github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
 	uuid "github.com/satori/go.uuid"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func LogStateToLogSnapshot(server *state.Server, logState state.TransientLogState) (snapshot.CompactLogSnapshot, snapshot.CompactSnapshot_BaseRefs) {
@@ -20,7 +20,7 @@ func LogStateToLogSnapshot(server *state.Server, logState state.TransientLogStat
 
 func transformPostgresQuerySamples(server *state.Server, s snapshot.CompactLogSnapshot, r snapshot.CompactSnapshot_BaseRefs, logState state.TransientLogState) (snapshot.CompactLogSnapshot, snapshot.CompactSnapshot_BaseRefs) {
 	for _, sampleIn := range logState.QuerySamples {
-		occurredAt, _ := ptypes.TimestampProto(sampleIn.OccurredAt)
+		occurredAt := timestamppb.New(sampleIn.OccurredAt)
 
 		if sampleIn.Query == "" {
 			continue
@@ -135,7 +135,7 @@ func transformSystemLogs(server *state.Server, s snapshot.CompactLogSnapshot, r 
 }
 
 func transformSystemLogLine(server *state.Server, r *snapshot.CompactSnapshot_BaseRefs, logFileIdx int32, logLineIn state.LogLine) snapshot.LogLineInformation {
-	occurredAt, _ := ptypes.TimestampProto(logLineIn.OccurredAt)
+	occurredAt := timestamppb.New(logLineIn.OccurredAt)
 
 	logLine := snapshot.LogLineInformation{
 		LogFileIdx:       logFileIdx,

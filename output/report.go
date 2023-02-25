@@ -9,10 +9,10 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/pganalyze/collector/reports"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
+	"google.golang.org/protobuf/proto"
 )
 
 func submitReportRun(server *state.Server, report reports.Report, logger *util.Logger, s3Location string) error {

@@ -11,13 +11,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/golang/protobuf/jsonpb"
-	"github.com/golang/protobuf/proto"
-	"github.com/golang/protobuf/ptypes"
 	"github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
 	uuid "github.com/satori/go.uuid"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func uploadAndSubmitCompactSnapshot(s pganalyze_collector.CompactSnapshot, grant state.Grant, server *state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, collectedAt time.Time, quiet bool, kind string) error {
@@ -30,7 +30,7 @@ func uploadAndSubmitCompactSnapshot(s pganalyze_collector.CompactSnapshot, grant
 	s.SnapshotVersionMinor = 0
 	s.CollectorVersion = util.CollectorNameAndVersion
 	s.SnapshotUuid = snapshotUUID.String()
-	s.CollectedAt, _ = ptypes.TimestampProto(collectedAt)
+	s.CollectedAt = timestamppb.New(collectedAt)
 
 	data, err = proto.Marshal(&s)
 	if err != nil {
@@ -81,13 +81,12 @@ func debugCompactOutputAsJSON(logger *util.Logger, compressedData bytes.Buffer) 
 	}
 
 	var out bytes.Buffer
-	var marshaler jsonpb.Marshaler
-	dataJSON, err := marshaler.MarshalToString(s)
+	dataJSON, err := protojson.Marshal(s)
 	if err != nil {
 		logger.PrintError("Failed to transform protocol buffers to JSON: %s", err)
 		return
 	}
-	json.Indent(&out, []byte(dataJSON), "", "\t")
+	json.Indent(&out, dataJSON, "", "\t")
 	logger.PrintInfo("Dry run - data that would have been sent will be output on stdout:\n")
 	fmt.Printf("%s\n", out.String())
 }

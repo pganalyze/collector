@@ -1,9 +1,9 @@
 package transform
 
 import (
-	"github.com/golang/protobuf/ptypes"
 	snapshot "github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func ActivityStateToCompactActivitySnapshot(server *state.Server, activityState state.TransientActivityState) (snapshot.CompactActivitySnapshot, snapshot.CompactSnapshot_BaseRefs) {
@@ -11,7 +11,7 @@ func ActivityStateToCompactActivitySnapshot(server *state.Server, activityState 
 	var r snapshot.CompactSnapshot_BaseRefs
 
 	if !server.ActivityPrevState.ActivitySnapshotAt.IsZero() {
-		s.PrevActivitySnapshotAt, _ = ptypes.TimestampProto(server.ActivityPrevState.ActivitySnapshotAt)
+		s.PrevActivitySnapshotAt = timestamppb.New(server.ActivityPrevState.ActivitySnapshotAt)
 	}
 
 	for _, backend := range activityState.Backends {
@@ -65,7 +65,7 @@ func ActivityStateToCompactActivitySnapshot(server *state.Server, activityState 
 			vacuumInfo.RelationIdx = -1
 		}
 
-		vacuumInfo.StartedAt, _ = ptypes.TimestampProto(vacuum.StartedAt)
+		vacuumInfo.StartedAt = timestamppb.New(vacuum.StartedAt)
 
 		s.VacuumProgressInformations = append(s.VacuumProgressInformations, &vacuumInfo)
 
