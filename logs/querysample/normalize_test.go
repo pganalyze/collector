@@ -98,7 +98,7 @@ var autoExplainQuerySampleTests = []autoExplainQuerySampleTestpair{
 	},
 	{
 		"json_with",
-		"<unparsable query>",
+		"with recursive search_graph(f, t, label) as (select * from graph0 g union all select g.* from graph0 g, search_graph sg where g.f = sg.t) search depth first by f, t set seq select * from search_graph order by seq; /* query from with regression test, slightly modified output to model auto_explain */",
 		nil,
 	},
 	{
