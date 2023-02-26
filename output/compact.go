@@ -3,6 +3,7 @@ package output
 import (
 	"bytes"
 	"compress/zlib"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -20,7 +21,7 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
-func uploadAndSubmitCompactSnapshot(s pganalyze_collector.CompactSnapshot, grant state.Grant, server *state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, collectedAt time.Time, quiet bool, kind string) error {
+func uploadAndSubmitCompactSnapshot(ctx context.Context, s pganalyze_collector.CompactSnapshot, grant state.Grant, server *state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, collectedAt time.Time, quiet bool, kind string) error {
 	var err error
 	var data []byte
 
@@ -52,13 +53,13 @@ func uploadAndSubmitCompactSnapshot(s pganalyze_collector.CompactSnapshot, grant
 		return nil
 	}
 
-	s3Location, err := uploadSnapshot(server.Config.HTTPClientWithRetry, grant, logger, compressedData, snapshotUUID.String())
+	s3Location, err := uploadSnapshot(ctx, server.Config.HTTPClientWithRetry, grant, logger, compressedData, snapshotUUID.String())
 	if err != nil {
 		logger.PrintError("Error uploading to S3: %s", err)
 		return err
 	}
 
-	return submitCompactSnapshot(server, collectionOpts, logger, s3Location, collectedAt, quiet, kind)
+	return submitCompactSnapshot(ctx, server, collectionOpts, logger, s3Location, collectedAt, quiet, kind)
 }
 
 func debugCompactOutputAsJSON(logger *util.Logger, compressedData bytes.Buffer) {
@@ -92,7 +93,7 @@ func debugCompactOutputAsJSON(logger *util.Logger, compressedData bytes.Buffer) 
 	fmt.Printf("%s\n", out.String())
 }
 
-func submitCompactSnapshot(server *state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, s3Location string, collectedAt time.Time, quiet bool, kind string) error {
+func submitCompactSnapshot(ctx context.Context, server *state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, s3Location string, collectedAt time.Time, quiet bool, kind string) error {
 	requestURL := server.Config.APIBaseURL + "/v2/snapshots/compact"
 
 	if collectionOpts.TestRun {
@@ -104,7 +105,7 @@ func submitCompactSnapshot(server *state.Server, collectionOpts state.Collection
 		"collected_at": {fmt.Sprintf("%d", collectedAt.Unix())},
 	}
 
-	req, err := http.NewRequest("POST", requestURL, strings.NewReader(data.Encode()))
+	req, err := http.NewRequestWithContext(ctx, "POST", requestURL, strings.NewReader(data.Encode()))
 	if err != nil {
 		return err
 	}

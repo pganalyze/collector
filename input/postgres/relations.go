@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"strconv"
@@ -138,7 +139,7 @@ SELECT c.oid,
 			 AND c.oid NOT IN (SELECT relid FROM locked_relids)
 			 AND ($1 = '' OR (n.nspname || '.' || c.relname) !~* $1)`
 
-func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, currentDatabaseOid state.Oid, ignoreRegexp string) ([]state.PostgresRelation, error) {
+func GetRelations(ctx context.Context, db *sql.DB, postgresVersion state.PostgresVersion, currentDatabaseOid state.Oid, ignoreRegexp string) ([]state.PostgresRelation, error) {
 	relations := make(map[state.Oid]state.PostgresRelation, 0)
 
 	// Relations
@@ -166,7 +167,7 @@ func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 		oidField = relationsSQLOidField
 	}
 
-	rows, err := db.Query(QueryMarkerSQL+fmt.Sprintf(relationsSQL, oidField,
+	rows, err := db.QueryContext(ctx, QueryMarkerSQL+fmt.Sprintf(relationsSQL, oidField,
 		partBoundField, partStratField, partColsField, partExprField), ignoreRegexp)
 	if err != nil {
 		err = fmt.Errorf("Relations/Query: %s", err)
@@ -215,7 +216,7 @@ func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 	}
 
 	// Columns
-	rows, err = db.Query(QueryMarkerSQL+columnsSQL, ignoreRegexp)
+	rows, err = db.QueryContext(ctx, QueryMarkerSQL+columnsSQL, ignoreRegexp)
 	if err != nil {
 		err = fmt.Errorf("Columns/Query: %s", err)
 		return nil, err
@@ -244,7 +245,7 @@ func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 	}
 
 	// Indices
-	rows, err = db.Query(QueryMarkerSQL+indicesSQL, ignoreRegexp)
+	rows, err = db.QueryContext(ctx, QueryMarkerSQL+indicesSQL, ignoreRegexp)
 	if err != nil {
 		err = fmt.Errorf("Indices/Query: %s", err)
 		return nil, err
@@ -288,7 +289,7 @@ func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 	}
 
 	// Constraints
-	rows, err = db.Query(QueryMarkerSQL+constraintsSQL, ignoreRegexp)
+	rows, err = db.QueryContext(ctx, QueryMarkerSQL+constraintsSQL, ignoreRegexp)
 	if err != nil {
 		err = fmt.Errorf("Constraints/Query: %s", err)
 		return nil, err
@@ -342,7 +343,7 @@ func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 	}
 
 	// View definitions
-	rows, err = db.Query(QueryMarkerSQL+viewDefinitionSQL, ignoreRegexp)
+	rows, err = db.QueryContext(ctx, QueryMarkerSQL+viewDefinitionSQL, ignoreRegexp)
 	if err != nil {
 		err = fmt.Errorf("Views/Prepare: %s", err)
 		return nil, err

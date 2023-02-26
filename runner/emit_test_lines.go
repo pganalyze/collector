@@ -1,6 +1,7 @@
 package runner
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/pganalyze/collector/input/postgres"
@@ -8,19 +9,19 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
-func EmitTestLogMsg(server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) error {
-	db, err := postgres.EstablishConnection(server, logger, globalCollectionOpts, "")
+func EmitTestLogMsg(ctx context.Context, server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) error {
+	db, err := postgres.EstablishConnection(ctx, server, logger, globalCollectionOpts, "")
 	if err != nil {
 		return err
 	}
 	defer db.Close()
 
-	_, err = db.Exec(postgres.QueryMarkerSQL + fmt.Sprintf("DO $$BEGIN\nRAISE LOG 'pganalyze-collector-identify: %s';\nEND$$;", server.Config.SectionName))
+	_, err = db.ExecContext(ctx, postgres.QueryMarkerSQL+fmt.Sprintf("DO $$BEGIN\nRAISE LOG 'pganalyze-collector-identify: %s';\nEND$$;", server.Config.SectionName))
 	return err
 }
 
-func EmitTestExplain(server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) error {
-	db, err := postgres.EstablishConnection(server, logger, globalCollectionOpts, "")
+func EmitTestExplain(ctx context.Context, server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) error {
+	db, err := postgres.EstablishConnection(ctx, server, logger, globalCollectionOpts, "")
 	if err != nil {
 		return err
 	}
@@ -30,7 +31,7 @@ func EmitTestExplain(server *state.Server, globalCollectionOpts state.Collection
 	//
 	// Note that we intentionally don't use the pganalyze collector query marker here,
 	// since we want the EXPLAIN plan to show up in the pganalyze user interface
-	_, err = db.Exec(`WITH naptime(value) AS (
+	_, err = db.ExecContext(ctx, `WITH naptime(value) AS (
 SELECT
 	COALESCE(pg_catalog.max(setting::float), 0) / 1000 * 1.2
 FROM

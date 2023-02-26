@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"context"
 	"database/sql"
 	"strconv"
 	"strings"
@@ -34,8 +35,8 @@ SELECT name, setting
 	FROM pg_catalog.pg_settings
  WHERE name LIKE 'autovacuum%'`
 
-func GetVacuumStats(logger *util.Logger, db *sql.DB, ignoreRegexp string) (report state.PostgresVacuumStats, err error) {
-	configRows, err := db.Query(QueryMarkerSQL+globalVacuumSettingsSQL, ignoreRegexp)
+func GetVacuumStats(ctx context.Context, logger *util.Logger, db *sql.DB, ignoreRegexp string) (report state.PostgresVacuumStats, err error) {
+	configRows, err := db.QueryContext(ctx, QueryMarkerSQL+globalVacuumSettingsSQL, ignoreRegexp)
 	if err != nil {
 		return
 	}
@@ -91,7 +92,7 @@ func GetVacuumStats(logger *util.Logger, db *sql.DB, ignoreRegexp string) (repor
 		return
 	}
 
-	rows, err := db.Query(QueryMarkerSQL + tableVacuumSQL)
+	rows, err := db.QueryContext(ctx, QueryMarkerSQL+tableVacuumSQL)
 	if err != nil {
 		return
 	}
@@ -164,7 +165,7 @@ func GetVacuumStats(logger *util.Logger, db *sql.DB, ignoreRegexp string) (repor
 		return
 	}
 
-	report.DatabaseName, err = CurrentDatabaseName(db)
+	report.DatabaseName, err = CurrentDatabaseName(ctx, db)
 	if err != nil {
 		return
 	}

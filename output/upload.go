@@ -2,6 +2,7 @@ package output
 
 import (
 	"bytes"
+	"context"
 	"encoding/xml"
 	"fmt"
 	"io/ioutil"
@@ -20,7 +21,7 @@ type s3UploadResponse struct {
 	Key      string
 }
 
-func uploadSnapshot(httpClient *http.Client, grant state.Grant, logger *util.Logger, data bytes.Buffer, filename string) (string, error) {
+func uploadSnapshot(ctx context.Context, httpClient *http.Client, grant state.Grant, logger *util.Logger, data bytes.Buffer, filename string) (string, error) {
 	var err error
 
 	if !grant.Valid {
@@ -45,10 +46,10 @@ func uploadSnapshot(httpClient *http.Client, grant state.Grant, logger *util.Log
 
 	logger.PrintVerbose("Successfully prepared S3 request - size of request body: %.4f MB", float64(data.Len())/1024.0/1024.0)
 
-	return uploadToS3(httpClient, grant.S3URL, grant.S3Fields, logger, data.Bytes(), filename)
+	return uploadToS3(ctx, httpClient, grant.S3URL, grant.S3Fields, logger, data.Bytes(), filename)
 }
 
-func uploadToS3(httpClient *http.Client, S3URL string, S3Fields map[string]string, logger *util.Logger, data []byte, filename string) (string, error) {
+func uploadToS3(ctx context.Context, httpClient *http.Client, S3URL string, S3Fields map[string]string, logger *util.Logger, data []byte, filename string) (string, error) {
 	var err error
 	var formBytes bytes.Buffer
 
@@ -69,7 +70,7 @@ func uploadToS3(httpClient *http.Client, S3URL string, S3Fields map[string]strin
 
 	writer.Close()
 
-	req, err := http.NewRequest("POST", S3URL, &formBytes)
+	req, err := http.NewRequestWithContext(ctx, "POST", S3URL, &formBytes)
 	if err != nil {
 		return "", err
 	}

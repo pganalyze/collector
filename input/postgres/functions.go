@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 
@@ -43,7 +44,7 @@ SELECT funcid, calls, total_time, self_time
 	   AND pp.oid NOT IN (SELECT pd.objid FROM pg_catalog.pg_depend pd WHERE pd.deptype = 'e' AND pd.classid = 'pg_catalog.pg_proc'::regclass)
 	   AND ($1 = '' OR (pn.nspname || '.' || pp.proname) !~* $1)`
 
-func GetFunctions(db *sql.DB, postgresVersion state.PostgresVersion, currentDatabaseOid state.Oid, ignoreRegexp string) ([]state.PostgresFunction, error) {
+func GetFunctions(ctx context.Context, db *sql.DB, postgresVersion state.PostgresVersion, currentDatabaseOid state.Oid, ignoreRegexp string) ([]state.PostgresFunction, error) {
 	var kindFields string
 
 	if postgresVersion.Numeric >= state.PostgresVersion11 {
@@ -52,14 +53,14 @@ func GetFunctions(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 		kindFields = functionsSQLDefaultKindFields
 	}
 
-	stmt, err := db.Prepare(QueryMarkerSQL + fmt.Sprintf(functionsSQL, kindFields))
+	stmt, err := db.PrepareContext(ctx, QueryMarkerSQL+fmt.Sprintf(functionsSQL, kindFields))
 	if err != nil {
 		return nil, err
 	}
 
 	defer stmt.Close()
 
-	rows, err := stmt.Query(ignoreRegexp)
+	rows, err := stmt.QueryContext(ctx, ignoreRegexp)
 	if err != nil {
 		return nil, err
 	}
@@ -92,15 +93,15 @@ func GetFunctions(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 	return functions, nil
 }
 
-func GetFunctionStats(db *sql.DB, postgresVersion state.PostgresVersion, ignoreRegexp string) (functionStats state.PostgresFunctionStatsMap, err error) {
-	stmt, err := db.Prepare(QueryMarkerSQL + functionStatsSQL)
+func GetFunctionStats(ctx context.Context, db *sql.DB, postgresVersion state.PostgresVersion, ignoreRegexp string) (functionStats state.PostgresFunctionStatsMap, err error) {
+	stmt, err := db.PrepareContext(ctx, QueryMarkerSQL+functionStatsSQL)
 	if err != nil {
 		err = fmt.Errorf("FunctionStats/Prepare: %s", err)
 		return
 	}
 	defer stmt.Close()
 
-	rows, err := stmt.Query(ignoreRegexp)
+	rows, err := stmt.QueryContext(ctx, ignoreRegexp)
 	if err != nil {
 		err = fmt.Errorf("FunctionStats/Query: %s", err)
 		return

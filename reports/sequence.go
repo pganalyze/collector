@@ -1,6 +1,7 @@
 package reports
 
 import (
+	"context"
 	"database/sql"
 	"time"
 
@@ -29,8 +30,8 @@ func (report SequenceReport) ReportType() string {
 }
 
 // Run the report
-func (report *SequenceReport) Run(server *state.Server, logger *util.Logger, connection *sql.DB) (err error) {
-	report.Data, err = postgres.GetSequenceReport(logger, connection)
+func (report *SequenceReport) Run(ctx context.Context, server *state.Server, logger *util.Logger, connection *sql.DB) (err error) {
+	report.Data, err = postgres.GetSequenceReport(ctx, logger, connection)
 	if err != nil {
 		return
 	}

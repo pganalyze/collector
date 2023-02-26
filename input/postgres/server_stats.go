@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 
@@ -68,23 +69,23 @@ COALESCE((
 ), '0'::xid) as standby
 `
 
-func GetServerStats(logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion, systemType string) (state.PostgresServerStats, error) {
+func GetServerStats(ctx context.Context, logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion, systemType string) (state.PostgresServerStats, error) {
 	var stats state.PostgresServerStats
 	var transactionIdSQL string
 
 	// Only collect transaction ID or xmin horizon related stats with non-replicas
-	if isReplica, err := getIsReplica(db); err == nil && !isReplica {
+	if isReplica, err := getIsReplica(ctx, db); err == nil && !isReplica {
 		// Query xmin horizon before querying the current transaction ID
 		// as the backend_xmin from pg_stat_activity can point to the "next" transaction ID.
 		var sourceStatReplicationTable string
 
-		if StatsHelperExists(db, "get_stat_replication") {
+		if StatsHelperExists(ctx, db, "get_stat_replication") {
 			logger.PrintVerbose("Found pganalyze.get_stat_replication() stats helper")
 			sourceStatReplicationTable = "pganalyze.get_stat_replication()"
 		} else {
 			sourceStatReplicationTable = "pg_catalog.pg_stat_replication"
 		}
-		err = db.QueryRow(QueryMarkerSQL+fmt.Sprintf(xminHorizonSQL, sourceStatReplicationTable)).Scan(
+		err = db.QueryRowContext(ctx, QueryMarkerSQL+fmt.Sprintf(xminHorizonSQL, sourceStatReplicationTable)).Scan(
 			&stats.XminHorizonBackend, &stats.XminHorizonReplicationSlot, &stats.XminHorizonReplicationSlotCatalog,
 			&stats.XminHorizonPreparedXact, &stats.XminHorizonStandby,
 		)
@@ -98,7 +99,7 @@ func GetServerStats(logger *util.Logger, db *sql.DB, postgresVersion state.Postg
 			transactionIdSQL = transactionIdSQLDefault
 		}
 
-		err = db.QueryRow(QueryMarkerSQL+transactionIdSQL).Scan(
+		err = db.QueryRowContext(ctx, QueryMarkerSQL+transactionIdSQL).Scan(
 			&stats.CurrentXactId, &stats.NextMultiXactId,
 		)
 		if err != nil {

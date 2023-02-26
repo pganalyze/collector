@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 
@@ -30,15 +31,15 @@ FROM pg_catalog.pg_database d
 	LEFT JOIN pg_catalog.pg_stat_database sd
 	ON d.oid = sd.datid`
 
-func GetDatabases(logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion) ([]state.PostgresDatabase, state.PostgresDatabaseStatsMap, error) {
-	stmt, err := db.Prepare(QueryMarkerSQL + fmt.Sprintf(databasesSQL))
+func GetDatabases(ctx context.Context, logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion) ([]state.PostgresDatabase, state.PostgresDatabaseStatsMap, error) {
+	stmt, err := db.PrepareContext(ctx, QueryMarkerSQL+fmt.Sprintf(databasesSQL))
 	if err != nil {
 		return nil, nil, err
 	}
 
 	defer stmt.Close()
 
-	rows, err := stmt.Query()
+	rows, err := stmt.QueryContext(ctx)
 	if err != nil {
 		return nil, nil, err
 	}

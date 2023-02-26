@@ -1,6 +1,7 @@
 package runner
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"strconv"
@@ -15,7 +16,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func processActivityForServer(server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.PersistedActivityState, bool, error) {
+func processActivityForServer(ctx context.Context, server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.PersistedActivityState, bool, error) {
 	var newGrant state.Grant
 	var err error
 	var connection *sql.DB
@@ -24,13 +25,13 @@ func processActivityForServer(server *state.Server, globalCollectionOpts state.C
 	newState := server.ActivityPrevState
 
 	if server.Config.SkipIfReplica {
-		connection, err = postgres.EstablishConnection(server, logger, globalCollectionOpts, "")
+		connection, err = postgres.EstablishConnection(ctx, server, logger, globalCollectionOpts, "")
 		if err != nil {
 			return newState, false, errors.Wrap(err, "failed to connect to database")
 		}
 		defer connection.Close()
 		var isReplica bool
-		isReplica, err = postgres.GetIsReplica(logger, connection)
+		isReplica, err = postgres.GetIsReplica(ctx, logger, connection)
 		if err != nil {
 			return newState, false, err
 		}
@@ -57,14 +58,14 @@ func processActivityForServer(server *state.Server, globalCollectionOpts state.C
 	// N.B.: Without the SkipIfReplica flag, we wait to establish the connection to avoid opening
 	// and closing it for no reason when the grant EnableActivity is not set (e.g., production plans)
 	if connection == nil {
-		connection, err = postgres.EstablishConnection(server, logger, globalCollectionOpts, "")
+		connection, err = postgres.EstablishConnection(ctx, server, logger, globalCollectionOpts, "")
 		if err != nil {
 			return newState, false, errors.Wrap(err, "failed to connect to database")
 		}
 		defer connection.Close()
 	}
 
-	trackActivityQuerySize, err := postgres.GetPostgresSetting("track_activity_query_size", server, globalCollectionOpts, logger)
+	trackActivityQuerySize, err := postgres.GetPostgresSetting(ctx, "track_activity_query_size", server, globalCollectionOpts, logger)
 	if err != nil {
 		activity.TrackActivityQuerySize = -1
 	} else {
@@ -74,7 +75,7 @@ func processActivityForServer(server *state.Server, globalCollectionOpts state.C
 		}
 	}
 
-	activity.Version, err = postgres.GetPostgresVersion(logger, connection)
+	activity.Version, err = postgres.GetPostgresVersion(ctx, logger, connection)
 	if err != nil {
 		return newState, false, errors.Wrap(err, "error collecting postgres version")
 	}
@@ -83,19 +84,19 @@ func processActivityForServer(server *state.Server, globalCollectionOpts state.C
 		return newState, false, fmt.Errorf("Error: Your PostgreSQL server version (%s) is too old, 9.3 or newer is required", activity.Version.Short)
 	}
 
-	activity.Backends, err = postgres.GetBackends(logger, connection, activity.Version, server.Config.SystemType, globalCollectionOpts.CollectPostgresLocks)
+	activity.Backends, err = postgres.GetBackends(ctx, logger, connection, activity.Version, server.Config.SystemType, globalCollectionOpts.CollectPostgresLocks)
 	if err != nil {
 		return newState, false, errors.Wrap(err, "error collecting pg_stat_activity")
 	}
 
-	activity.Vacuums, err = postgres.GetVacuumProgress(logger, connection, activity.Version, server.Config.IgnoreSchemaRegexp)
+	activity.Vacuums, err = postgres.GetVacuumProgress(ctx, logger, connection, activity.Version, server.Config.IgnoreSchemaRegexp)
 	if err != nil {
 		return newState, false, errors.Wrap(err, "error collecting pg_stat_vacuum_progress")
 	}
 
 	activity.CollectedAt = time.Now()
 
-	err = output.SubmitCompactActivitySnapshot(server, newGrant, globalCollectionOpts, logger, activity)
+	err = output.SubmitCompactActivitySnapshot(ctx, server, newGrant, globalCollectionOpts, logger, activity)
 	if err != nil {
 		return newState, false, errors.Wrap(err, "failed to upload/send activity snapshot")
 	}
@@ -105,7 +106,7 @@ func processActivityForServer(server *state.Server, globalCollectionOpts state.C
 }
 
 // CollectActivityFromAllServers - Collects activity from all servers and sends them to the pganalyze service
-func CollectActivityFromAllServers(servers []*state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (allSuccessful bool) {
+func CollectActivityFromAllServers(ctx context.Context, servers []*state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (allSuccessful bool) {
 	var wg sync.WaitGroup
 
 	allSuccessful = true
@@ -124,7 +125,7 @@ func CollectActivityFromAllServers(servers []*state.Server, globalCollectionOpts
 			}
 
 			server.ActivityStateMutex.Lock()
-			newState, success, err := processActivityForServer(server, globalCollectionOpts, prefixedLogger)
+			newState, success, err := processActivityForServer(ctx, server, globalCollectionOpts, prefixedLogger)
 			if err != nil {
 				server.ActivityStateMutex.Unlock()
 

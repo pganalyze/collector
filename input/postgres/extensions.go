@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"context"
 	"database/sql"
 
 	"github.com/pganalyze/collector/state"
@@ -14,15 +15,15 @@ SELECT extname,
   JOIN pg_namespace ON (pg_extension.extnamespace = pg_namespace.oid)
 	 `
 
-func GetExtensions(db *sql.DB, currentDatabaseOid state.Oid) ([]state.PostgresExtension, error) {
-	stmt, err := db.Prepare(QueryMarkerSQL + extensionsSQL)
+func GetExtensions(ctx context.Context, db *sql.DB, currentDatabaseOid state.Oid) ([]state.PostgresExtension, error) {
+	stmt, err := db.PrepareContext(ctx, QueryMarkerSQL+extensionsSQL)
 	if err != nil {
 		return nil, err
 	}
 
 	defer stmt.Close()
 
-	rows, err := stmt.Query()
+	rows, err := stmt.QueryContext(ctx)
 	if err != nil {
 		return nil, err
 	}

@@ -107,32 +107,32 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 		logger.PrintInfo("Running collector test with %s", util.CollectorNameAndVersion)
 	}
 
-	checkAllInitialCollectionStatus(servers, globalCollectionOpts, logger)
+	checkAllInitialCollectionStatus(ctx, servers, globalCollectionOpts, logger)
 
 	// We intentionally don't do a test-run in the normal mode, since we're fine with
 	// a later SIGHUP that fixes the config (or a temporarily unreachable server at start)
 	if globalCollectionOpts.TestRun {
 		if globalCollectionOpts.TestReport != "" {
-			runner.RunTestReport(servers, globalCollectionOpts, logger)
+			runner.RunTestReport(ctx, servers, globalCollectionOpts, logger)
 			return
 		} else if globalCollectionOpts.TestExplain {
 			for _, server := range servers {
 				prefixedLogger := logger.WithPrefix(server.Config.SectionName)
-				err := runner.EmitTestExplain(server, globalCollectionOpts, prefixedLogger)
+				err := runner.EmitTestExplain(ctx, server, globalCollectionOpts, prefixedLogger)
 				if err != nil {
 					prefixedLogger.PrintError("Failed to run test explain: %s", err)
 				}
 			}
 			return
 		} else if globalCollectionOpts.TestRunLogs {
-			reloadOkay = doLogTest(servers, globalCollectionOpts, logger)
+			reloadOkay = doLogTest(ctx, servers, globalCollectionOpts, logger)
 			return
 		} else {
 			var allFullSuccessful bool
 			var allActivitySuccessful bool
-			allFullSuccessful = runner.CollectAllServers(servers, globalCollectionOpts, logger)
+			allFullSuccessful = runner.CollectAllServers(ctx, servers, globalCollectionOpts, logger)
 			if hasAnyActivityEnabled {
-				allActivitySuccessful = runner.CollectActivityFromAllServers(servers, globalCollectionOpts, logger)
+				allActivitySuccessful = runner.CollectActivityFromAllServers(ctx, servers, globalCollectionOpts, logger)
 			} else {
 				allActivitySuccessful = true
 			}
@@ -141,7 +141,7 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 				// have Log Insights enabled on your plan (which would fail the log test when getting the log grant).
 				// In these situations we still want --test to be successful (i.e. issue a reload), but --test-logs
 				// would fail (and not reload).
-				doLogTest(servers, globalCollectionOpts, logger)
+				doLogTest(ctx, servers, globalCollectionOpts, logger)
 			}
 
 			reloadOkay = allFullSuccessful && allActivitySuccessful
@@ -178,20 +178,20 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 	}
 
 	if globalCollectionOpts.DiscoverLogLocation {
-		selfhosted.DiscoverLogLocation(servers, globalCollectionOpts, logger)
+		selfhosted.DiscoverLogLocation(ctx, servers, globalCollectionOpts, logger)
 		return
 	}
 
-	schedulerGroups["stats"].Schedule(ctx, func() {
+	schedulerGroups["stats"].Schedule(ctx, func(ctx context.Context) {
 		wg.Add(1)
-		runner.CollectAllServers(servers, globalCollectionOpts, logger)
+		runner.CollectAllServers(ctx, servers, globalCollectionOpts, logger)
 		wg.Done()
 	}, logger, "full snapshot of all servers")
 
 	if hasAnyReportsEnabled {
-		schedulerGroups["reports"].Schedule(ctx, func() {
+		schedulerGroups["reports"].Schedule(ctx, func(ctx context.Context) {
 			wg.Add(1)
-			runner.RunRequestedReports(servers, globalCollectionOpts, logger)
+			runner.RunRequestedReports(ctx, servers, globalCollectionOpts, logger)
 			wg.Done()
 		}, logger, "requested reports for all servers")
 	}
@@ -204,16 +204,16 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 	}
 
 	if hasAnyActivityEnabled {
-		schedulerGroups["activity"].Schedule(ctx, func() {
+		schedulerGroups["activity"].Schedule(ctx, func(ctx context.Context) {
 			wg.Add(1)
-			runner.CollectActivityFromAllServers(servers, globalCollectionOpts, logger)
+			runner.CollectActivityFromAllServers(ctx, servers, globalCollectionOpts, logger)
 			wg.Done()
 		}, logger, "activity snapshot of all servers")
 	}
 
-	schedulerGroups["query_stats"].ScheduleSecondary(ctx, func() {
+	schedulerGroups["query_stats"].ScheduleSecondary(ctx, func(ctx context.Context) {
 		wg.Add(1)
-		runner.GatherQueryStatsFromAllServers(servers, globalCollectionOpts, logger)
+		runner.GatherQueryStatsFromAllServers(ctx, servers, globalCollectionOpts, logger)
 		wg.Done()
 	}, logger, "high frequency query statistics of all servers", schedulerGroups["stats"])
 
@@ -495,24 +495,24 @@ ReadConfigAndRun:
 	}
 }
 
-func checkAllInitialCollectionStatus(servers []*state.Server, opts state.CollectionOpts, logger *util.Logger) {
+func checkAllInitialCollectionStatus(ctx context.Context, servers []*state.Server, opts state.CollectionOpts, logger *util.Logger) {
 	for _, server := range servers {
 		var prefixedLogger = logger.WithPrefix(server.Config.SectionName)
-		err := checkOneInitialCollectionStatus(server, opts, prefixedLogger)
+		err := checkOneInitialCollectionStatus(ctx, server, opts, prefixedLogger)
 		if err != nil {
 			prefixedLogger.PrintVerbose("could not check initial collection status: %s", err)
 		}
 	}
 }
 
-func checkOneInitialCollectionStatus(server *state.Server, opts state.CollectionOpts, logger *util.Logger) error {
-	conn, err := postgres.EstablishConnection(server, logger, opts, "")
+func checkOneInitialCollectionStatus(ctx context.Context, server *state.Server, opts state.CollectionOpts, logger *util.Logger) error {
+	conn, err := postgres.EstablishConnection(ctx, server, logger, opts, "")
 	if err != nil {
 		return errors.Wrap(err, "failed to connect to database")
 	}
 	defer conn.Close()
 
-	settings, err := postgres.GetSettings(conn)
+	settings, err := postgres.GetSettings(ctx, conn)
 	if err != nil {
 		return err
 	}
@@ -521,7 +521,7 @@ func checkOneInitialCollectionStatus(server *state.Server, opts state.Collection
 	var isIgnoredReplica bool
 	var collectionDisabledReason string
 	if server.Config.SkipIfReplica {
-		isIgnoredReplica, err = postgres.GetIsReplica(logger, conn)
+		isIgnoredReplica, err = postgres.GetIsReplica(ctx, logger, conn)
 		if err != nil {
 			return err
 		}
@@ -562,9 +562,9 @@ func Reload(logger *util.Logger) {
 	os.Exit(0)
 }
 
-func doLogTest(servers []*state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) bool {
+func doLogTest(ctx context.Context, servers []*state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) bool {
 	// Initial test
-	hasFailedServers, hasSuccessfulLocalServers := runner.TestLogsForAllServers(servers, globalCollectionOpts, logger)
+	hasFailedServers, hasSuccessfulLocalServers := runner.TestLogsForAllServers(ctx, servers, globalCollectionOpts, logger)
 
 	// Re-test using lower privileges
 	if hasFailedServers {

@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 
@@ -83,11 +84,11 @@ SELECT (query_start_epoch || padded_pid)::bigint AS vacuum_identity,
  WHERE c.oid IS NOT NULL OR (a.query <> '<insufficient privilege>' AND a.nspname IS NOT NULL AND a.relname IS NOT NULL)
 `
 
-func GetVacuumProgress(logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion, ignoreRegexp string) ([]state.PostgresVacuumProgress, error) {
+func GetVacuumProgress(ctx context.Context, logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion, ignoreRegexp string) ([]state.PostgresVacuumProgress, error) {
 	var activitySourceTable string
 	var sql string
 
-	if StatsHelperExists(db, "get_stat_activity") {
+	if StatsHelperExists(ctx, db, "get_stat_activity") {
 		activitySourceTable = "pganalyze.get_stat_activity()"
 	} else {
 		activitySourceTable = "pg_catalog.pg_stat_activity"
@@ -97,7 +98,7 @@ func GetVacuumProgress(logger *util.Logger, db *sql.DB, postgresVersion state.Po
 		sql = fmt.Sprintf(vacuumProgressSQLpg95, activitySourceTable)
 	} else {
 		var vacuumSourceTable string
-		if StatsHelperExists(db, "get_stat_progress_vacuum") {
+		if StatsHelperExists(ctx, db, "get_stat_progress_vacuum") {
 			vacuumSourceTable = "pganalyze.get_stat_progress_vacuum()"
 		} else {
 			vacuumSourceTable = "pg_catalog.pg_stat_progress_vacuum"
@@ -105,14 +106,14 @@ func GetVacuumProgress(logger *util.Logger, db *sql.DB, postgresVersion state.Po
 		sql = fmt.Sprintf(vacuumProgressSQLDefault, activitySourceTable, vacuumSourceTable)
 	}
 
-	stmt, err := db.Prepare(QueryMarkerSQL + sql)
+	stmt, err := db.PrepareContext(ctx, QueryMarkerSQL+sql)
 	if err != nil {
 		return nil, err
 	}
 
 	defer stmt.Close()
 
-	rows, err := stmt.Query(ignoreRegexp)
+	rows, err := stmt.QueryContext(ctx, ignoreRegexp)
 	if err != nil {
 		return nil, err
 	}
@@ -140,7 +141,7 @@ func GetVacuumProgress(logger *util.Logger, db *sql.DB, postgresVersion state.Po
 
 	for idx, row := range vacuums {
 		if row.SchemaName == "pg_toast" {
-			schemaName, relationName, err := resolveToastTable(db, row.RelationName)
+			schemaName, relationName, err := resolveToastTable(ctx, db, row.RelationName)
 			if err != nil {
 				logger.PrintVerbose("Failed to resolve TOAST table \"%s\": %s", row.RelationName, err)
 			} else if schemaName != "" && relationName != "" {
