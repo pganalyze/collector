@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"time"
 
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
@@ -11,8 +12,16 @@ import (
 
 const defaultSchemaTableLimit = 5000
 
+// Since schema data collection is a special case that can fail when a server has
+// a lot of databases (e.g. multi-tenant use case), we explicitly have a shorter
+// timeout than a full collection interval (10 minutes)
+const schemaCollectionTimeout = 8 * time.Minute
+
 func CollectAllSchemas(ctx context.Context, server *state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, ps state.PersistedState, ts state.TransientState, systemType string) (state.PersistedState, state.TransientState, error) {
 	schemaDbNames := []string{}
+
+	ctxSchema, cancel := context.WithTimeout(ctx, schemaCollectionTimeout)
+	defer cancel()
 
 	if server.Config.DbAllNames {
 		for _, database := range ts.Databases {
@@ -41,6 +50,14 @@ func CollectAllSchemas(ctx context.Context, server *state.Server, collectionOpts
 			// If the outer context failed, return an error to the caller
 			if ctx.Err() != nil {
 				return ps, ts, err
+			}
+			// If the schema context failed, stop doing any further collection.
+			// We avoid returning an error in this case to allow other collector
+			// functions to report their data, and send any schema information
+			// we already collected.
+			if ctxSchema.Err() != nil {
+				logger.PrintWarning("Failed to collect schema metadata for database %s and all remaining databases: %s", dbName, err)
+				return ps, ts, nil
 			}
 			warning := "Failed to collect schema metadata for database %s: %s"
 			if collectionOpts.TestRun {
