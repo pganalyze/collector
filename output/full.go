@@ -3,6 +3,7 @@ package output
 import (
 	"bytes"
 	"compress/zlib"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -22,20 +23,20 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
-func SendFull(server *state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, newState state.PersistedState, diffState state.DiffState, transientState state.TransientState, collectedIntervalSecs uint32) error {
+func SendFull(ctx context.Context, server *state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, newState state.PersistedState, diffState state.DiffState, transientState state.TransientState, collectedIntervalSecs uint32) error {
 	s := transform.StateToSnapshot(newState, diffState, transientState)
 	s.CollectedIntervalSecs = collectedIntervalSecs
 	s.CollectorErrors = logger.ErrorMessages
 
-	return submitFull(s, server, collectionOpts, logger, newState.CollectedAt, false)
+	return submitFull(ctx, s, server, collectionOpts, logger, newState.CollectedAt, false)
 }
 
-func SendFailedFull(server *state.Server, collectionOpts state.CollectionOpts, logger *util.Logger) error {
+func SendFailedFull(ctx context.Context, server *state.Server, collectionOpts state.CollectionOpts, logger *util.Logger) error {
 	s := snapshot.FullSnapshot{FailedRun: true, CollectorErrors: logger.ErrorMessages}
-	return submitFull(s, server, collectionOpts, logger, time.Now(), true)
+	return submitFull(ctx, s, server, collectionOpts, logger, time.Now(), true)
 }
 
-func submitFull(s snapshot.FullSnapshot, server *state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, collectedAt time.Time, quiet bool) error {
+func submitFull(ctx context.Context, s snapshot.FullSnapshot, server *state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, collectedAt time.Time, quiet bool) error {
 	var err error
 	var data []byte
 
@@ -69,13 +70,13 @@ func submitFull(s snapshot.FullSnapshot, server *state.Server, collectionOpts st
 		return nil
 	}
 
-	s3Location, err := uploadSnapshot(server.Config.HTTPClientWithRetry, server.Grant, logger, compressedData, snapshotUUID.String())
+	s3Location, err := uploadSnapshot(ctx, server.Config.HTTPClientWithRetry, server.Grant, logger, compressedData, snapshotUUID.String())
 	if err != nil {
 		logger.PrintError("Error uploading to S3: %s", err)
 		return err
 	}
 
-	return submitSnapshot(server, collectionOpts, logger, s3Location, collectedAt, quiet)
+	return submitSnapshot(ctx, server, collectionOpts, logger, s3Location, collectedAt, quiet)
 }
 
 func debugOutputAsJSON(logger *util.Logger, compressedData bytes.Buffer) {
@@ -109,7 +110,7 @@ func debugOutputAsJSON(logger *util.Logger, compressedData bytes.Buffer) {
 	fmt.Printf("%s\n", out.String())
 }
 
-func submitSnapshot(server *state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, s3Location string, collectedAt time.Time, quiet bool) error {
+func submitSnapshot(ctx context.Context, server *state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, s3Location string, collectedAt time.Time, quiet bool) error {
 	requestURL := server.Config.APIBaseURL + "/v2/snapshots"
 
 	if collectionOpts.TestRun {
@@ -121,7 +122,7 @@ func submitSnapshot(server *state.Server, collectionOpts state.CollectionOpts, l
 		"collected_at": {fmt.Sprintf("%d", collectedAt.Unix())},
 	}
 
-	req, err := http.NewRequest("POST", requestURL, strings.NewReader(data.Encode()))
+	req, err := http.NewRequestWithContext(ctx, "POST", requestURL, strings.NewReader(data.Encode()))
 	if err != nil {
 		return err
 	}

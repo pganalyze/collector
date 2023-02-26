@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 
@@ -76,7 +77,7 @@ SELECT client_addr,
 	FROM %s
  WHERE client_addr IS NOT NULL`
 
-func GetReplication(logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion, systemType string) (state.PostgresReplication, error) {
+func GetReplication(ctx context.Context, logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion, systemType string) (state.PostgresReplication, error) {
 	var err error
 	var repl state.PostgresReplication
 	var sourceTable string
@@ -88,11 +89,11 @@ func GetReplication(logger *util.Logger, db *sql.DB, postgresVersion state.Postg
 		return repl, nil
 	}
 
-	if StatsHelperExists(db, "get_stat_replication") {
+	if StatsHelperExists(ctx, db, "get_stat_replication") {
 		logger.PrintVerbose("Found pganalyze.get_stat_replication() stats helper")
 		sourceTable = "pganalyze.get_stat_replication()"
 	} else {
-		if systemType != "heroku" && !connectedAsSuperUser(db, systemType) && !connectedAsMonitoringRole(db) {
+		if systemType != "heroku" && !connectedAsSuperUser(ctx, db, systemType) && !connectedAsMonitoringRole(ctx, db) {
 			logger.PrintInfo("Warning: You are not connecting as superuser. Please setup" +
 				" the monitoring helper functions (https://github.com/pganalyze/collector#setting-up-a-restricted-monitoring-user)" +
 				" or connect as superuser, to get replication statistics.")
@@ -108,7 +109,7 @@ func GetReplication(logger *util.Logger, db *sql.DB, postgresVersion state.Postg
 		replicationSQL = replicationSQLPg9
 	}
 
-	err = db.QueryRow(QueryMarkerSQL+replicationSQL).Scan(
+	err = db.QueryRowContext(ctx, QueryMarkerSQL+replicationSQL).Scan(
 		&repl.InRecovery, &repl.CurrentXlogLocation, &repl.IsStreaming,
 		&repl.ReceiveLocation, &repl.ReplayLocation, &repl.ApplyByteLag,
 		&repl.ReplayTimestamp, &repl.ReplayTimestampAge,
@@ -117,7 +118,7 @@ func GetReplication(logger *util.Logger, db *sql.DB, postgresVersion state.Postg
 		return repl, err
 	}
 
-	rows, err := db.Query(QueryMarkerSQL + fmt.Sprintf(replicationStandbySQL, sourceTable))
+	rows, err := db.QueryContext(ctx, QueryMarkerSQL+fmt.Sprintf(replicationStandbySQL, sourceTable))
 	if err != nil {
 		return repl, err
 	}
@@ -144,8 +145,8 @@ func GetReplication(logger *util.Logger, db *sql.DB, postgresVersion state.Postg
 	return repl, nil
 }
 
-func GetIsReplica(logger *util.Logger, db *sql.DB) (bool, error) {
-	isAwsAurora, err := GetIsAwsAurora(db)
+func GetIsReplica(ctx context.Context, logger *util.Logger, db *sql.DB) (bool, error) {
+	isAwsAurora, err := GetIsAwsAurora(ctx, db)
 	if err != nil {
 		logger.PrintVerbose("Error checking Postgres version: %s", err)
 		return false, err
@@ -157,11 +158,11 @@ func GetIsReplica(logger *util.Logger, db *sql.DB) (bool, error) {
 		return false, nil
 	}
 
-	return getIsReplica(db)
+	return getIsReplica(ctx, db)
 }
 
-func getIsReplica(db *sql.DB) (bool, error) {
+func getIsReplica(ctx context.Context, db *sql.DB) (bool, error) {
 	var isReplica bool
-	err := db.QueryRow(QueryMarkerSQL + "SELECT pg_catalog.pg_is_in_recovery()").Scan(&isReplica)
+	err := db.QueryRowContext(ctx, QueryMarkerSQL+"SELECT pg_catalog.pg_is_in_recovery()").Scan(&isReplica)
 	return isReplica, err
 }

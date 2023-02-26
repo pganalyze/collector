@@ -1,6 +1,8 @@
 package output
 
 import (
+	"context"
+
 	"github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/output/transform"
 	"github.com/pganalyze/collector/state"
@@ -8,9 +10,9 @@ import (
 )
 
 // UploadAndSendLogs - Filters the log file, then uploads it to the storage and sends the metadata to the API
-func UploadAndSendLogs(server *state.Server, grant state.GrantLogs, collectionOpts state.CollectionOpts, logger *util.Logger, logState state.TransientLogState) error {
+func UploadAndSendLogs(ctx context.Context, server *state.Server, grant state.GrantLogs, collectionOpts state.CollectionOpts, logger *util.Logger, logState state.TransientLogState) error {
 	if collectionOpts.SubmitCollectedData && grant.EncryptionKey.CiphertextBlob != "" {
-		logState.LogFiles = EncryptAndUploadLogfiles(server.Config.HTTPClientWithRetry, grant.Logdata, grant.EncryptionKey, logger, logState.LogFiles)
+		logState.LogFiles = EncryptAndUploadLogfiles(ctx, server.Config.HTTPClientWithRetry, grant.Logdata, grant.EncryptionKey, logger, logState.LogFiles)
 	}
 
 	ls, r := transform.LogStateToLogSnapshot(server, logState)
@@ -21,5 +23,5 @@ func UploadAndSendLogs(server *state.Server, grant state.GrantLogs, collectionOp
 
 	snapshotGrant := state.Grant{Valid: true, S3URL: grant.Snapshot.S3URL, S3Fields: grant.Snapshot.S3Fields}
 
-	return uploadAndSubmitCompactSnapshot(s, snapshotGrant, server, collectionOpts, logger, logState.CollectedAt, false, "logs")
+	return uploadAndSubmitCompactSnapshot(ctx, s, snapshotGrant, server, collectionOpts, logger, logState.CollectedAt, false, "logs")
 }

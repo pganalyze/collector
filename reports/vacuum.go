@@ -1,6 +1,7 @@
 package reports
 
 import (
+	"context"
 	"database/sql"
 	"time"
 
@@ -29,8 +30,8 @@ func (report VacuumReport) ReportType() string {
 }
 
 // Run the report
-func (report *VacuumReport) Run(server *state.Server, logger *util.Logger, connection *sql.DB) (err error) {
-	report.Data, err = postgres.GetVacuumStats(logger, connection, server.Config.IgnoreSchemaRegexp)
+func (report *VacuumReport) Run(ctx context.Context, server *state.Server, logger *util.Logger, connection *sql.DB) (err error) {
+	report.Data, err = postgres.GetVacuumStats(ctx, logger, connection, server.Config.IgnoreSchemaRegexp)
 	if err != nil {
 		return
 	}

@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io/ioutil"
 	"strings"
@@ -34,7 +35,7 @@ SELECT (SELECT size FROM pg_catalog.pg_ls_logdir() WHERE name = $1),
 `
 
 // LogPgReadFile - Gets log files using the pg_read_file function
-func LogPgReadFile(server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.PersistedLogState, []state.LogFile, []state.PostgresQuerySample, error) {
+func LogPgReadFile(ctx context.Context, server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.PersistedLogState, []state.LogFile, []state.PostgresQuerySample, error) {
 	var err error
 	var psl state.PersistedLogState = server.LogPrevState
 	var logFiles []state.LogFile
@@ -42,14 +43,14 @@ func LogPgReadFile(server *state.Server, globalCollectionOpts state.CollectionOp
 
 	linesNewerThan := time.Now().Add(-2 * time.Minute)
 
-	db, err := EstablishConnection(server, logger, globalCollectionOpts, "")
+	db, err := EstablishConnection(ctx, server, logger, globalCollectionOpts, "")
 	if err != nil {
 		logger.PrintWarning("Could not connect to fetch logs: %s", err)
 		return server.LogPrevState, nil, nil, err
 	}
 	defer db.Close()
 
-	rows, err := db.Query(QueryMarkerSQL + LogFileSql)
+	rows, err := db.QueryContext(ctx, QueryMarkerSQL+LogFileSql)
 	if err != nil {
 		err = fmt.Errorf("LogFileSql/Query: %s", err)
 		return server.LogPrevState, nil, nil, err
@@ -72,7 +73,7 @@ func LogPgReadFile(server *state.Server, globalCollectionOpts state.CollectionOp
 		return server.LogPrevState, nil, nil, err
 	}
 
-	useHelper := StatsHelperExists(db, "read_log_file")
+	useHelper := StatsHelperExists(ctx, db, "read_log_file")
 	var logReadSql = SuperUserReadLogFileSql
 	if useHelper {
 		logger.PrintVerbose("Found pganalyze.read_log_file() stats helper")
@@ -88,7 +89,7 @@ func LogPgReadFile(server *state.Server, globalCollectionOpts state.CollectionOp
 		var logData string
 		var newOffset int64
 		prevOffset, _ := psl.ReadFileMarkers[fileName]
-		err = db.QueryRow(QueryMarkerSQL+logReadSql, fileName, prevOffset).Scan(&newOffset, &logData)
+		err = db.QueryRowContext(ctx, QueryMarkerSQL+logReadSql, fileName, prevOffset).Scan(&newOffset, &logData)
 		if err != nil {
 			err = fmt.Errorf("LogReadSql/QueryRow: %s", err)
 			goto ErrorCleanup

@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"strings"
@@ -28,7 +29,7 @@ SELECT (extract(epoch from COALESCE(backend_start, pg_catalog.pg_postmaster_star
 FROM %s
 WHERE pid IS NOT NULL`
 
-func GetBackends(logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion, systemType string, collectPostgresLocks bool) ([]state.PostgresBackend, error) {
+func GetBackends(ctx context.Context, logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion, systemType string, collectPostgresLocks bool) ([]state.PostgresBackend, error) {
 	var optionalFields string
 	var blockingPidsField string
 	var sourceTable string
@@ -48,20 +49,20 @@ func GetBackends(logger *util.Logger, db *sql.DB, postgresVersion state.Postgres
 		blockingPidsField = "NULL"
 	}
 
-	if StatsHelperExists(db, "get_stat_activity") {
+	if StatsHelperExists(ctx, db, "get_stat_activity") {
 		sourceTable = "pganalyze.get_stat_activity()"
 	} else {
 		sourceTable = "pg_catalog.pg_stat_activity"
 	}
 
-	stmt, err := db.Prepare(QueryMarkerSQL + fmt.Sprintf(activitySQL, optionalFields, blockingPidsField, sourceTable))
+	stmt, err := db.PrepareContext(ctx, QueryMarkerSQL+fmt.Sprintf(activitySQL, optionalFields, blockingPidsField, sourceTable))
 	if err != nil {
 		return nil, err
 	}
 
 	defer stmt.Close()
 
-	rows, err := stmt.Query()
+	rows, err := stmt.QueryContext(ctx)
 	if err != nil {
 		return nil, err
 	}

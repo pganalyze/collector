@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -49,7 +50,7 @@ SELECT nspname,
  WHERE pge.extname = 'pg_stat_statements'
 `
 
-func statementStatsHelperExists(db *sql.DB, showtext bool) bool {
+func statementStatsHelperExists(ctx context.Context, db *sql.DB, showtext bool) bool {
 	var enabled bool
 	var additionalWhere string
 
@@ -57,7 +58,7 @@ func statementStatsHelperExists(db *sql.DB, showtext bool) bool {
 		additionalWhere = "AND pronargs = 1"
 	}
 
-	err := db.QueryRow(QueryMarkerSQL + fmt.Sprintf(statementStatsHelperSQL, additionalWhere)).Scan(&enabled)
+	err := db.QueryRowContext(ctx, QueryMarkerSQL+fmt.Sprintf(statementStatsHelperSQL, additionalWhere)).Scan(&enabled)
 	if err != nil {
 		return false
 	}
@@ -73,26 +74,26 @@ func insufficientPrivilege(query string) bool {
 	return query == "<insufficient privilege>"
 }
 
-func ResetStatements(logger *util.Logger, db *sql.DB, systemType string) error {
+func ResetStatements(ctx context.Context, logger *util.Logger, db *sql.DB, systemType string) error {
 	var method string
-	if StatsHelperExists(db, "reset_stat_statements") {
+	if StatsHelperExists(ctx, db, "reset_stat_statements") {
 		logger.PrintVerbose("Found pganalyze.reset_stat_statements() stats helper")
 		method = "pganalyze.reset_stat_statements()"
 	} else {
-		if !connectedAsSuperUser(db, systemType) && !connectedAsMonitoringRole(db) {
+		if !connectedAsSuperUser(ctx, db, systemType) && !connectedAsMonitoringRole(ctx, db) {
 			logger.PrintInfo("Warning: You are not connecting as superuser. Please" +
 				" contact support to get advice on setting up stat statements reset")
 		}
 		method = "pg_stat_statements_reset()"
 	}
-	_, err := db.Exec(QueryMarkerSQL + "SELECT " + method)
+	_, err := db.ExecContext(ctx, QueryMarkerSQL+"SELECT "+method)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func GetStatements(server *state.Server, logger *util.Logger, db *sql.DB, globalCollectionOpts state.CollectionOpts, postgresVersion state.PostgresVersion, showtext bool, systemType string) (state.PostgresStatementMap, state.PostgresStatementTextMap, state.PostgresStatementStatsMap, error) {
+func GetStatements(ctx context.Context, server *state.Server, logger *util.Logger, db *sql.DB, globalCollectionOpts state.CollectionOpts, postgresVersion state.PostgresVersion, showtext bool, systemType string) (state.PostgresStatementMap, state.PostgresStatementTextMap, state.PostgresStatementStatsMap, error) {
 	var err error
 	var totalTimeField string
 	var optionalFields string
@@ -111,14 +112,14 @@ func GetStatements(server *state.Server, logger *util.Logger, db *sql.DB, global
 		extMinorVersion = 1
 	}
 
-	err = db.QueryRow(QueryMarkerSQL+statementExtensionVersionSQL).Scan(&extSchema, &foundExtMinorVersion)
+	err = db.QueryRowContext(ctx, QueryMarkerSQL+statementExtensionVersionSQL).Scan(&extSchema, &foundExtMinorVersion)
 	if err != nil && err != sql.ErrNoRows {
 		return nil, nil, nil, err
 	}
 
 	if err == sql.ErrNoRows {
 		logger.PrintInfo("pg_stat_statements does not exist, trying to create extension...")
-		_, err = db.Exec(QueryMarkerSQL + "CREATE EXTENSION IF NOT EXISTS pg_stat_statements SCHEMA public")
+		_, err = db.ExecContext(ctx, QueryMarkerSQL+"CREATE EXTENSION IF NOT EXISTS pg_stat_statements SCHEMA public")
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -147,7 +148,7 @@ func GetStatements(server *state.Server, logger *util.Logger, db *sql.DB, global
 	}
 
 	usingStatsHelper := false
-	if statementStatsHelperExists(db, showtext) {
+	if statementStatsHelperExists(ctx, db, showtext) {
 		usingStatsHelper = true
 		if !showtext {
 			logger.PrintVerbose("Found pganalyze.get_stat_statements(false) stats helper")
@@ -157,7 +158,7 @@ func GetStatements(server *state.Server, logger *util.Logger, db *sql.DB, global
 			sourceTable = "pganalyze.get_stat_statements()"
 		}
 	} else {
-		if systemType != "heroku" && !connectedAsSuperUser(db, systemType) && !connectedAsMonitoringRole(db) && globalCollectionOpts.TestRun {
+		if systemType != "heroku" && !connectedAsSuperUser(ctx, db, systemType) && !connectedAsMonitoringRole(ctx, db) && globalCollectionOpts.TestRun {
 			logger.PrintInfo("Warning: You are not connecting as superuser. Please setup" +
 				" the monitoring helper functions (https://github.com/pganalyze/collector#setting-up-a-restricted-monitoring-user)" +
 				" or connect as superuser, to get query statistics for all roles.")
@@ -171,7 +172,7 @@ func GetStatements(server *state.Server, logger *util.Logger, db *sql.DB, global
 
 	querySql := QueryMarkerSQL + fmt.Sprintf(statementSQL, totalTimeField, optionalFields, sourceTable)
 
-	stmt, err := db.Prepare(querySql)
+	stmt, err := db.PrepareContext(ctx, querySql)
 	if err != nil {
 		var e *pq.Error
 		if !usingStatsHelper && errors.As(err, &e) {
@@ -186,7 +187,7 @@ func GetStatements(server *state.Server, logger *util.Logger, db *sql.DB, global
 
 	defer stmt.Close()
 
-	rows, err := stmt.Query()
+	rows, err := stmt.QueryContext(ctx)
 	if err != nil {
 		var e *pq.Error
 		if errors.As(err, &e) && e.Code == "55000" { // object_not_in_prerequisite_state

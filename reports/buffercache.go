@@ -1,6 +1,7 @@
 package reports
 
 import (
+	"context"
 	"database/sql"
 	"time"
 
@@ -30,10 +31,10 @@ func (report BuffercacheReport) ReportType() string {
 }
 
 // Run the report
-func (report *BuffercacheReport) Run(server *state.Server, logger *util.Logger, connection *sql.DB) (err error) {
+func (report *BuffercacheReport) Run(ctx context.Context, server *state.Server, logger *util.Logger, connection *sql.DB) (err error) {
 	systemType := server.Config.SystemType
 
-	report.Data, err = postgres.GetBuffercache(logger, connection, systemType, server.Config.IgnoreSchemaRegexp)
+	report.Data, err = postgres.GetBuffercache(ctx, logger, connection, systemType, server.Config.IgnoreSchemaRegexp)
 	if err != nil {
 		return
 	}

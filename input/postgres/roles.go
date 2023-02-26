@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 
@@ -30,7 +31,7 @@ SELECT oid,
 	FROM pg_roles r
 	 `
 
-func GetRoles(logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion) ([]state.PostgresRole, error) {
+func GetRoles(ctx context.Context, logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion) ([]state.PostgresRole, error) {
 	var optionalFields string
 
 	if postgresVersion.Numeric >= state.PostgresVersion95 {
@@ -39,14 +40,14 @@ func GetRoles(logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVer
 		optionalFields = rolesSQLDefaultOptionalFields
 	}
 
-	stmt, err := db.Prepare(QueryMarkerSQL + fmt.Sprintf(rolesSQL, optionalFields))
+	stmt, err := db.PrepareContext(ctx, QueryMarkerSQL+fmt.Sprintf(rolesSQL, optionalFields))
 	if err != nil {
 		return nil, err
 	}
 
 	defer stmt.Close()
 
-	rows, err := stmt.Query()
+	rows, err := stmt.QueryContext(ctx)
 	if err != nil {
 		return nil, err
 	}

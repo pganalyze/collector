@@ -2,6 +2,7 @@ package rds
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -21,7 +22,7 @@ import (
 )
 
 // DownloadLogFiles - Gets log files for an Amazon RDS instance
-func DownloadLogFiles(server *state.Server, logger *util.Logger) (state.PersistedLogState, []state.LogFile, []state.PostgresQuerySample, error) {
+func DownloadLogFiles(ctx context.Context, server *state.Server, logger *util.Logger) (state.PersistedLogState, []state.LogFile, []state.PostgresQuerySample, error) {
 	var err error
 	var psl state.PersistedLogState = server.LogPrevState
 	var logFiles []state.LogFile

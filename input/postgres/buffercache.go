@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -32,10 +33,10 @@ SELECT pg_catalog.sum(block_count) * pg_catalog.current_setting('block_size')::i
 
 const sharedBufferSettingSQL string = `SELECT pg_catalog.current_setting('shared_buffers')`
 
-func getSharedBufferBytes(db *sql.DB) int64 {
+func getSharedBufferBytes(context context.Context, db *sql.DB) int64 {
 	var bytesStr string
 
-	err := db.QueryRow(QueryMarkerSQL + sharedBufferSettingSQL).Scan(&bytesStr)
+	err := db.QueryRowContext(context, QueryMarkerSQL+sharedBufferSettingSQL).Scan(&bytesStr)
 	if err != nil {
 		return 0
 	}
@@ -69,14 +70,14 @@ func getSharedBufferBytes(db *sql.DB) int64 {
 	return bytes * multiplier
 }
 
-func GetBuffercache(logger *util.Logger, db *sql.DB, systemType, ignoreRegexp string) (report state.PostgresBuffercache, err error) {
+func GetBuffercache(ctx context.Context, logger *util.Logger, db *sql.DB, systemType, ignoreRegexp string) (report state.PostgresBuffercache, err error) {
 	var sourceTable string
 
-	if StatsHelperExists(db, "get_buffercache") {
+	if StatsHelperExists(ctx, db, "get_buffercache") {
 		logger.PrintVerbose("Found pganalyze.get_buffercache() stats helper")
 		sourceTable = "pganalyze.get_buffercache()"
 	} else {
-		if !connectedAsSuperUser(db, systemType) && !connectedAsMonitoringRole(db) {
+		if !connectedAsSuperUser(ctx, db, systemType) && !connectedAsMonitoringRole(ctx, db) {
 			logger.PrintInfo("Warning: You are not connecting as superuser. Please setup" +
 				" the monitoring helper functions (https://github.com/pganalyze/collector#setting-up-a-restricted-monitoring-user)" +
 				" or connect as superuser to run the buffercache report.")
@@ -85,18 +86,18 @@ func GetBuffercache(logger *util.Logger, db *sql.DB, systemType, ignoreRegexp st
 	}
 
 	query := QueryMarkerSQL + fmt.Sprintf(buffercacheSQL, sourceTable)
-	rows, err := db.Query(query, ignoreRegexp)
+	rows, err := db.QueryContext(ctx, query, ignoreRegexp)
 	if err != nil {
 		var e *pq.Error
 		if errors.As(err, &e) && e.Code == "42P01" { // undefined_table
 			logger.PrintInfo("pg_buffercache relation does not exist, trying to create extension...")
 
-			_, err = db.Exec(QueryMarkerSQL + "CREATE EXTENSION IF NOT EXISTS pg_buffercache SCHEMA public")
+			_, err = db.ExecContext(ctx, QueryMarkerSQL+"CREATE EXTENSION IF NOT EXISTS pg_buffercache SCHEMA public")
 			if err != nil {
 				return
 			}
 
-			rows, err = db.Query(query, ignoreRegexp)
+			rows, err = db.QueryContext(ctx, query, ignoreRegexp)
 			if err != nil {
 				return
 			}
@@ -140,7 +141,7 @@ func GetBuffercache(logger *util.Logger, db *sql.DB, systemType, ignoreRegexp st
 			if row.ObjectKind != nil && *row.ObjectKind == "i" {
 				toastTable = strings.Replace(toastTable, "_index", "", 1)
 			}
-			schemaName, relationName, err := resolveToastTable(db, toastTable)
+			schemaName, relationName, err := resolveToastTable(ctx, db, toastTable)
 			if err != nil {
 				logger.PrintVerbose("Failed to resolve TOAST table \"%s\": %s", toastTable, err)
 			} else if schemaName != "" && relationName != "" {
@@ -152,7 +153,7 @@ func GetBuffercache(logger *util.Logger, db *sql.DB, systemType, ignoreRegexp st
 		}
 	}
 
-	report.TotalBytes = getSharedBufferBytes(db)
+	report.TotalBytes = getSharedBufferBytes(ctx, db)
 	report.FreeBytes = report.TotalBytes - usedBytes
 
 	return

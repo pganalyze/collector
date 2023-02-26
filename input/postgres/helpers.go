@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"strconv"
@@ -57,9 +58,9 @@ SELECT n.nspname, c.relname
                          WHERE n2.nspname = 'pg_toast' AND c2.relname = $1)
 `
 
-func resolveToastTable(db *sql.DB, toastName string) (string, string, error) {
+func resolveToastTable(ctx context.Context, db *sql.DB, toastName string) (string, string, error) {
 	var schemaName, relationName string
-	err := db.QueryRow(QueryMarkerSQL+resolveToastSQL, toastName).Scan(&schemaName, &relationName)
+	err := db.QueryRowContext(ctx, QueryMarkerSQL+resolveToastSQL, toastName).Scan(&schemaName, &relationName)
 	if err != nil {
 		return "", "", err
 	}
@@ -71,10 +72,10 @@ SELECT setting
 	FROM pg_settings
  WHERE name = '%s'`
 
-func GetPostgresSetting(settingName string, server *state.Server, globalCollectionOpts state.CollectionOpts, prefixedLogger *util.Logger) (string, error) {
+func GetPostgresSetting(ctx context.Context, settingName string, server *state.Server, globalCollectionOpts state.CollectionOpts, prefixedLogger *util.Logger) (string, error) {
 	var value string
 
-	db, err := EstablishConnection(server, prefixedLogger, globalCollectionOpts, "")
+	db, err := EstablishConnection(ctx, server, prefixedLogger, globalCollectionOpts, "")
 	if err != nil {
 		return "", fmt.Errorf("Could not connect to database to retrieve \"%s\": %s", settingName, err)
 	}
