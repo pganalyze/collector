@@ -15,7 +15,8 @@ type Group struct {
 func (group Group) Schedule(ctx context.Context, runner func(context.Context), logger *util.Logger, logName string) {
 	go func() {
 		for {
-			delay := group.interval.Next(time.Now()).Sub(time.Now())
+			nextExecutions := group.interval.NextN(time.Now(), 2)
+			delay := time.Until(nextExecutions[0])
 
 			logger.PrintVerbose("Scheduled next run for %s in %+v", logName, delay)
 
@@ -23,13 +24,16 @@ func (group Group) Schedule(ctx context.Context, runner func(context.Context), l
 			case <-ctx.Done():
 				return
 			case <-time.After(delay):
-				// NOTE: In the future we'll measure the runner's execution time
-				// and decide the next scheduling interval based on that
-				runner(ctx)
+				func() {
+					// Cancel runner at latest right before next scheduled execution should
+					// occur, to prevent skipping over runner executions by accident.
+					ctx, cancel := context.WithDeadline(ctx, nextExecutions[1].Add(-1*time.Second))
+					defer cancel()
+					runner(ctx)
+				}()
 			}
 		}
 	}()
-	return
 }
 
 // ScheduleSecondary - Behaves almost like Schedule, but ignores the point in time
@@ -62,7 +66,6 @@ func (group Group) ScheduleSecondary(ctx context.Context, runner func(context.Co
 			}
 		}
 	}()
-	return
 }
 
 func GetSchedulerGroups() (groups map[string]Group, err error) {
