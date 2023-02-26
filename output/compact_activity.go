@@ -15,8 +15,14 @@ func SubmitCompactActivitySnapshot(ctx context.Context, server *state.Server, gr
 
 	if server.Config.FilterQuerySample == "all" {
 		for idx, backend := range as.Backends {
-			if backend.QueryText != "" {
-				as.Backends[idx].QueryText, _ = pg_query.Normalize(backend.QueryText)
+			// Normalize can be slow, protect against edge cases here by checking for cancellations
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			default:
+				if backend.QueryText != "" {
+					as.Backends[idx].QueryText, _ = pg_query.Normalize(backend.QueryText)
+				}
 			}
 		}
 	}

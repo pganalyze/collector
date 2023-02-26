@@ -253,22 +253,28 @@ func GetStatements(ctx context.Context, server *state.Server, logger *util.Logge
 		insufficientPrivsQueryFingerprint := util.FingerprintText(util.QueryTextInsufficientPrivs)
 
 		for key, text := range statementTexts {
-			if insufficientPrivilege(text) {
-				statements[key] = state.PostgresStatement{
-					InsufficientPrivilege: true,
-					Fingerprint:           insufficientPrivsQueryFingerprint,
-				}
-			} else if collectorStatement(text) {
-				statements[key] = state.PostgresStatement{
-					Collector:   true,
-					Fingerprint: collectorQueryFingerprint,
-				}
-			} else {
-				fp := util.FingerprintQuery(text, server.Config.FilterQueryText, -1)
-				statements[key] = state.PostgresStatement{Fingerprint: fp}
-				_, ok := statementTextsByFp[fp]
-				if !ok {
-					statementTextsByFp[fp] = util.NormalizeQuery(text, server.Config.FilterQueryText, -1)
+			select {
+			// Since fingerprinting/normalizing can take time, explicitly check for cancellations
+			case <-ctx.Done():
+				return nil, nil, nil, ctx.Err()
+			default:
+				if insufficientPrivilege(text) {
+					statements[key] = state.PostgresStatement{
+						InsufficientPrivilege: true,
+						Fingerprint:           insufficientPrivsQueryFingerprint,
+					}
+				} else if collectorStatement(text) {
+					statements[key] = state.PostgresStatement{
+						Collector:   true,
+						Fingerprint: collectorQueryFingerprint,
+					}
+				} else {
+					fp := util.FingerprintQuery(text, server.Config.FilterQueryText, -1)
+					statements[key] = state.PostgresStatement{Fingerprint: fp}
+					_, ok := statementTextsByFp[fp]
+					if !ok {
+						statementTextsByFp[fp] = util.NormalizeQuery(text, server.Config.FilterQueryText, -1)
+					}
 				}
 			}
 		}
