@@ -35,11 +35,10 @@ import (
 	_ "github.com/lib/pq" // Enable database package to use Postgres
 )
 
-func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *util.Logger, configFilename string) (keepRunning bool, reloadOkay bool, writeStateFile func()) {
+func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *util.Logger, configFilename string) (keepRunning bool, testRunSuccess chan bool, writeStateFile func()) {
 	var servers []*state.Server
 
 	keepRunning = false
-	reloadOkay = false
 	writeStateFile = func() {}
 
 	schedulerGroups, err := scheduler.GetSchedulerGroups()
@@ -112,61 +111,71 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 	// We intentionally don't do a test-run in the normal mode, since we're fine with
 	// a later SIGHUP that fixes the config (or a temporarily unreachable server at start)
 	if globalCollectionOpts.TestRun {
-		if globalCollectionOpts.TestReport != "" {
-			runner.RunTestReport(ctx, servers, globalCollectionOpts, logger)
-			return
-		} else if globalCollectionOpts.TestExplain {
-			for _, server := range servers {
-				prefixedLogger := logger.WithPrefix(server.Config.SectionName)
-				err := runner.EmitTestExplain(ctx, server, globalCollectionOpts, prefixedLogger)
-				if err != nil {
-					prefixedLogger.PrintError("Failed to run test explain: %s", err)
-				}
-			}
-			return
-		} else if globalCollectionOpts.TestRunLogs {
-			reloadOkay = doLogTest(ctx, servers, globalCollectionOpts, logger)
-			return
-		} else {
-			var allFullSuccessful bool
-			var allActivitySuccessful bool
-			allFullSuccessful = runner.CollectAllServers(ctx, servers, globalCollectionOpts, logger)
-			if hasAnyActivityEnabled {
-				allActivitySuccessful = runner.CollectActivityFromAllServers(ctx, servers, globalCollectionOpts, logger)
-			} else {
-				allActivitySuccessful = true
-			}
-			if hasAnyLogsEnabled {
-				// We intentionally don't fail for the regular test command if the log test fails, since you may not
-				// have Log Insights enabled on your plan (which would fail the log test when getting the log grant).
-				// In these situations we still want --test to be successful (i.e. issue a reload), but --test-logs
-				// would fail (and not reload).
-				doLogTest(ctx, servers, globalCollectionOpts, logger)
-			}
-
-			reloadOkay = allFullSuccessful && allActivitySuccessful
-			if reloadOkay {
-				// in a dry run, we will not actually have URLs; avoid this output in that case
-				var hasURLs bool
+		wg.Add(1)
+		testRunSuccess = make(chan bool)
+		go func() {
+			if globalCollectionOpts.TestReport != "" {
+				runner.RunTestReport(ctx, servers, globalCollectionOpts, logger)
+				testRunSuccess <- true
+			} else if globalCollectionOpts.TestExplain {
+				success := true
 				for _, server := range servers {
-					if server.PGAnalyzeURL != "" {
-						hasURLs = true
-						break
+					prefixedLogger := logger.WithPrefix(server.Config.SectionName)
+					err := runner.EmitTestExplain(ctx, server, globalCollectionOpts, prefixedLogger)
+					if err != nil {
+						prefixedLogger.PrintError("Failed to run test explain: %s", err)
+						success = false
 					}
 				}
-				if hasURLs {
-					fmt.Fprintln(os.Stderr)
-					fmt.Fprintln(os.Stderr, "Test successful. View servers in pganalyze:")
+				testRunSuccess <- success
+			} else if globalCollectionOpts.TestRunLogs {
+				success := doLogTest(ctx, servers, globalCollectionOpts, logger)
+				testRunSuccess <- success
+			} else {
+				var allFullSuccessful bool
+				var allActivitySuccessful bool
+				allFullSuccessful = runner.CollectAllServers(ctx, servers, globalCollectionOpts, logger)
+				if ctx.Err() == nil {
+					if hasAnyActivityEnabled {
+						allActivitySuccessful = runner.CollectActivityFromAllServers(ctx, servers, globalCollectionOpts, logger)
+					} else {
+						allActivitySuccessful = true
+					}
+				}
+				if hasAnyLogsEnabled && ctx.Err() == nil {
+					// We intentionally don't fail for the regular test command if the log test fails, since you may not
+					// have Log Insights enabled on your plan (which would fail the log test when getting the log grant).
+					// In these situations we still want --test to be successful (i.e. issue a reload), but --test-logs
+					// would fail (and not reload).
+					doLogTest(ctx, servers, globalCollectionOpts, logger)
+				}
+
+				success := allFullSuccessful && allActivitySuccessful
+				if success {
+					// in a dry run, we will not actually have URLs; avoid this output in that case
+					var hasURLs bool
 					for _, server := range servers {
 						if server.PGAnalyzeURL != "" {
-							fmt.Fprintf(os.Stderr, " - [%s]: %s\n", server.Config.SectionName, server.PGAnalyzeURL)
+							hasURLs = true
+							break
 						}
 					}
-					fmt.Fprintln(os.Stderr)
+					if hasURLs {
+						fmt.Fprintln(os.Stderr)
+						fmt.Fprintln(os.Stderr, "Test successful. View servers in pganalyze:")
+						for _, server := range servers {
+							if server.PGAnalyzeURL != "" {
+								fmt.Fprintf(os.Stderr, " - [%s]: %s\n", server.Config.SectionName, server.PGAnalyzeURL)
+							}
+						}
+						fmt.Fprintln(os.Stderr)
+					}
 				}
+				testRunSuccess <- success
 			}
-			return
-		}
+			wg.Done()
+		}()
+		return
 	}
 
 	if globalCollectionOpts.DebugLogs {
@@ -442,12 +451,13 @@ func main() {
 	}
 
 	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
+	signal.Notify(sigs, os.Interrupt, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
 
 ReadConfigAndRun:
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := sync.WaitGroup{}
-	keepRunning, reloadOkay, writeStateFile := run(ctx, &wg, globalCollectionOpts, logger, configFilename)
+	exitCode := 0
+	keepRunning, testRunSuccess, writeStateFile := run(ctx, &wg, globalCollectionOpts, logger, configFilename)
 
 	if keepRunning {
 		// Block here until we get any of the registered signals
@@ -473,25 +483,47 @@ ReadConfigAndRun:
 			goto ReadConfigAndRun
 		}
 
-		signal.Stop(sigs)
-
 		logger.PrintInfo("Exiting...")
+	} else {
+		// The run function started some work (e.g. a test command), wait for that to finish before exiting
+		done := make(chan struct{})
+		go func() {
+			defer close(done)
+			wg.Wait()
+		}()
+	DoneOrSignal:
+		for {
+			select {
+			case success := <-testRunSuccess:
+				if reloadRun {
+					if success {
+						Reload(logger)
+					} else {
+						logger.PrintError("Error: Reload requested, but ignoring since configuration errors are present")
+						exitCode = 1
+					}
+				}
+				break DoneOrSignal
+			case s := <-sigs:
+				if s == syscall.SIGINT || s == syscall.SIGTERM {
+					logger.PrintError("Interrupt")
+					break DoneOrSignal
+				}
+			}
+		}
 	}
 
 	cancel()
 	wg.Wait()
 
-	if reloadRun {
-		if reloadOkay {
-			Reload(logger)
-		} else {
-			logger.PrintError("Error: Reload requested, but ignoring since configuration errors are present")
-			os.Exit(1)
-		}
-	}
+	signal.Stop(sigs)
 
 	if testRunAndTrace {
 		trace.Stop()
+	}
+
+	if exitCode != 0 {
+		os.Exit(exitCode)
 	}
 }
 
