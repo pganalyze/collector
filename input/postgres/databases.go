@@ -22,8 +22,8 @@ SELECT
 	d.datconnlimit,
 	d.datfrozenxid,
 	d.datminmxid,
-	CASE WHEN d.datfrozenxid <> '0' THEN age(d.datfrozenxid) ELSE 0 END,
-	CASE WHEN d.datminmxid <> '0' THEN mxid_age(d.datminmxid) ELSE 0 END,
+	CASE WHEN d.datfrozenxid <> '0' THEN pg_catalog.age(d.datfrozenxid) ELSE 0 END,
+	CASE WHEN d.datminmxid <> '0' THEN pg_catalog.mxid_age(d.datminmxid) ELSE 0 END,
 	sd.xact_commit,
 	sd.xact_rollback
 FROM pg_catalog.pg_database d

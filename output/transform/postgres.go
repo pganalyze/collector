@@ -154,8 +154,13 @@ func transformPostgresVersion(s snapshot.FullSnapshot, transientState state.Tran
 
 func transformPostgresServerStats(s snapshot.FullSnapshot, transientState state.TransientState) snapshot.FullSnapshot {
 	s.ServerStatistic = &snapshot.ServerStatistic{
-		CurrentXactId:   int64(transientState.ServerStats.CurrentXactId),
-		NextMultiXactId: int64(transientState.ServerStats.NextMultiXactId),
+		CurrentXactId:                     int64(transientState.ServerStats.CurrentXactId),
+		NextMultiXactId:                   int64(transientState.ServerStats.NextMultiXactId),
+		XminHorizonBackend:                transientState.ServerStats.FullXminHorizonBackend(),
+		XminHorizonReplicationSlot:        transientState.ServerStats.FullXminHorizonReplicationSlot(),
+		XminHorizonReplicationSlotCatalog: transientState.ServerStats.FullXminHorizonReplicationSlot(),
+		XminHorizonPreparedXact:           transientState.ServerStats.FullXminHorizonPreparedXact(),
+		XminHorizonStandby:                transientState.ServerStats.FullXminHorizonStandby(),
 	}
 
 	return s
