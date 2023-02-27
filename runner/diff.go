@@ -78,6 +78,11 @@ func diffRelationStats(new state.PostgresRelationStatsMap, prev state.PostgresRe
 				LastAutovacuum:   stats.LastAutovacuum,
 				LastAnalyze:      stats.LastAnalyze,
 				LastAutoanalyze:  stats.LastAutoanalyze,
+				FrozenXIDAge:     stats.FrozenXIDAge,
+				MinMXIDAge:       stats.MinMXIDAge,
+				Relpages:         stats.Relpages,
+				Reltuples:        stats.Reltuples,
+				Relallvisible:    stats.Relallvisible,
 			}
 		}
 	}
@@ -165,11 +170,20 @@ func diffCollectorStats(new state.CollectorStats, prev state.CollectorStats) (di
 }
 
 func diffDatabaseStats(new state.PostgresDatabaseStatsMap, prev state.PostgresDatabaseStatsMap) (diff state.DiffedPostgresDatabaseStatsMap) {
+	followUpRun := len(prev) > 0
+
 	diff = make(state.DiffedPostgresDatabaseStatsMap)
 	for databaseOid, stats := range new {
 		prevStats, exists := prev[databaseOid]
 		if exists {
 			diff[databaseOid] = stats.DiffSince(prevStats)
+		} else if followUpRun { // New since the last run
+			diff[databaseOid] = stats.DiffSince(state.PostgresDatabaseStats{})
+		} else {
+			diff[databaseOid] = state.DiffedPostgresDatabaseStats{
+				FrozenXIDAge: stats.FrozenXIDAge,
+				MinMXIDAge:   stats.MinMXIDAge,
+			}
 		}
 	}
 	return

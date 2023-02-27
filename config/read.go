@@ -113,6 +113,9 @@ func getDefaultConfig() *ServerConfig {
 	if dbSslKey := os.Getenv("DB_SSLKEY"); dbSslKey != "" {
 		config.DbSslKey = dbSslKey
 	}
+	if dbUseIamAuth := os.Getenv("DB_USE_IAM_AUTH"); dbUseIamAuth != "" {
+		config.DbUseIamAuth = parseConfigBool(dbUseIamAuth)
+	}
 	if dbSslKeyContents := os.Getenv("DB_SSLKEY_CONTENTS"); dbSslKeyContents != "" {
 		config.DbSslKeyContents = dbSslKeyContents
 	}
@@ -401,12 +404,21 @@ func preprocessConfig(config *ServerConfig) (*ServerConfig, error) {
 	} else if strings.HasSuffix(host, ".aivencloud.com") {
 		parts := strings.SplitN(host, ".", 2)
 		if len(parts) == 2 && (parts[1] == "aivencloud.com") { // Safety check for any escaping issues
-			projSvcParts := strings.SplitN(parts[0], "-", 3)
+			// Aiven domains encode the project id and service id in the subdomain:
+			//    <SERVICE_NAME>-<PROJECT_NAME>.aivencloud.com
+			// (see https://docs.aiven.io/docs/platform/reference/service-ip-address#default-service-hostname)
+			//
+			// It's not documented whether the project name can contain dashes, but the
+			// default service names do, so we assume that everything before the last
+			// dash is the service name.
+			subdomain := parts[0]
+			projSvcParts := strings.Split(subdomain, "-")
+			lastEntryIdx := len(projSvcParts) - 1
 			if config.AivenServiceID == "" {
-				config.AivenServiceID = strings.Join(projSvcParts[0:2], "-")
+				config.AivenServiceID = strings.Join(projSvcParts[0:lastEntryIdx], "-")
 			}
 			if config.AivenProjectID == "" {
-				config.AivenProjectID = projSvcParts[2]
+				config.AivenProjectID = projSvcParts[lastEntryIdx]
 			}
 		}
 	}

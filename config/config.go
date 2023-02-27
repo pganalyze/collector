@@ -13,11 +13,12 @@ type Config struct {
 }
 
 // ServerIdentifier -
-//   Unique identity of each configured server, for deduplication inside the collector.
 //
-//   Note we intentionally don't include the Fallback variables in the identifier, since that is mostly intended
-//   to help transition systems when their "identity" is altered due to collector changes - in the collector we rely
-//   on the non-Fallback values only.
+//	Unique identity of each configured server, for deduplication inside the collector.
+//
+//	Note we intentionally don't include the Fallback variables in the identifier, since that is mostly intended
+//	to help transition systems when their "identity" is altered due to collector changes - in the collector we rely
+//	on the non-Fallback values only.
 type ServerIdentifier struct {
 	APIKey      string
 	APIBaseURL  string
@@ -27,9 +28,10 @@ type ServerIdentifier struct {
 }
 
 // ServerConfig -
-//   Contains the information how to connect to a Postgres instance,
-//   with optional AWS credentials to get metrics
-//   from AWS CloudWatch as well as RDS logfiles
+//
+//	Contains the information how to connect to a Postgres instance,
+//	with optional AWS credentials to get metrics
+//	from AWS CloudWatch as well as RDS logfiles
 type ServerConfig struct {
 	APIKey     string `ini:"api_key"`
 	APIBaseURL string `ini:"api_base_url"`
@@ -55,6 +57,7 @@ type ServerConfig struct {
 	DbSslCertContents     string `ini:"db_sslcert_contents"`
 	DbSslKey              string `ini:"db_sslkey"`
 	DbSslKeyContents      string `ini:"db_sslkey_contents"`
+	DbUseIamAuth          bool   `ini:"db_use_iam_auth"`
 
 	// We have to do some tricks to support sslmode=prefer, namely we have to
 	// first try an SSL connection (= require), and if that fails change the
@@ -194,14 +197,14 @@ func (config ServerConfig) SupportsLogDownload() bool {
 }
 
 // GetPqOpenString - Gets the database configuration as a string that can be passed to lib/pq for connecting
-func (config ServerConfig) GetPqOpenString(dbNameOverride string) string {
+func (config ServerConfig) GetPqOpenString(dbNameOverride string, passwordOverride string) (string, error) {
 	var dbUsername, dbPassword, dbName, dbHost, dbSslMode, dbSslRootCert, dbSslCert, dbSslKey string
 	var dbPort int
 
 	if config.DbURL != "" {
 		u, err := url.Parse(config.DbURL)
 		if err != nil {
-			return ""
+			return "", fmt.Errorf("Failed to parse database URL: %w", err)
 		}
 
 		if u.User != nil {
@@ -240,7 +243,9 @@ func (config ServerConfig) GetPqOpenString(dbNameOverride string) string {
 	if config.DbUsername != "" {
 		dbUsername = config.DbUsername
 	}
-	if config.DbPassword != "" {
+	if passwordOverride != "" {
+		dbPassword = passwordOverride
+	} else if config.DbPassword != "" {
 		dbPassword = config.DbPassword
 	}
 	if dbNameOverride != "" {
@@ -325,7 +330,7 @@ func (config ServerConfig) GetPqOpenString(dbNameOverride string) string {
 	}
 	dbinfo = append(dbinfo, "connect_timeout=10")
 
-	return strings.Join(dbinfo, " ")
+	return strings.Join(dbinfo, " "), nil
 }
 
 // GetDbHost - Gets the database hostname from the given configuration

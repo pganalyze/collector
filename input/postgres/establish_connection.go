@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/aws/aws-sdk-go/service/rds/rdsutils"
 	"github.com/pganalyze/collector/config"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
+	"github.com/pganalyze/collector/util/awsutil"
 )
 
 func EstablishConnection(server *state.Server, logger *util.Logger, globalCollectionOpts state.CollectionOpts, databaseName string) (connection *sql.DB, err error) {
@@ -35,7 +37,32 @@ func EstablishConnection(server *state.Server, logger *util.Logger, globalCollec
 }
 
 func connectToDb(config config.ServerConfig, logger *util.Logger, globalCollectionOpts state.CollectionOpts, databaseName string) (*sql.DB, error) {
-	connectString := config.GetPqOpenString(databaseName)
+	var dbPasswordOverride string
+
+	if config.DbUseIamAuth {
+		if config.SystemType != "amazon_rds" {
+			return nil, fmt.Errorf("IAM auth is only supported for Amazon RDS and Aurora - turn off IAM auth setting to use password-based authentication")
+		}
+		sess, err := awsutil.GetAwsSession(config)
+		if err != nil {
+			return nil, err
+		}
+		if dbToken, err := rdsutils.BuildAuthToken(
+			fmt.Sprintf("%s:%d", config.GetDbHost(), config.GetDbPort()),
+			config.AwsRegion,
+			config.GetDbUsername(),
+			sess.Config.Credentials,
+		); err != nil {
+			return nil, err
+		} else {
+			dbPasswordOverride = dbToken
+		}
+	}
+
+	connectString, err := config.GetPqOpenString(databaseName, dbPasswordOverride)
+	if err != nil {
+		return nil, err
+	}
 	connectString += " application_name=" + globalCollectionOpts.CollectorApplicationName
 
 	// logger.PrintVerbose("sql.Open(\"postgres\", \"%s\")", connectString)

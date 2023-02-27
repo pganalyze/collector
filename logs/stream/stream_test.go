@@ -2,6 +2,8 @@ package stream_test
 
 import (
 	"io/ioutil"
+	"log"
+	"os"
 	"sort"
 	"testing"
 	"time"
@@ -10,6 +12,7 @@ import (
 	"github.com/pganalyze/collector/logs/stream"
 	"github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
+	"github.com/pganalyze/collector/util"
 	uuid "github.com/satori/go.uuid"
 )
 
@@ -357,7 +360,7 @@ var streamTests = []streamTestpair{
 
 func TestAnalyzeStreamInGroups(t *testing.T) {
 	for _, pair := range streamTests {
-		TransientLogState, logFile, tooFreshLogLines, err := stream.AnalyzeStreamInGroups(pair.logLines, now, &state.Server{})
+		TransientLogState, logFile, tooFreshLogLines, err := stream.AnalyzeStreamInGroups(pair.logLines, now, &state.Server{}, &util.Logger{Destination: log.New(os.Stderr, "", log.LstdFlags)})
 		logFileContent := ""
 		if logFile.TmpFile != nil {
 			dat, err := ioutil.ReadFile(logFile.TmpFile.Name())

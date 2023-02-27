@@ -118,8 +118,10 @@ SELECT c.oid,
 	FROM pg_catalog.pg_constraint r
 			 JOIN pg_catalog.pg_class c ON (r.conrelid = c.oid)
 			 JOIN pg_catalog.pg_namespace n ON (n.oid = c.relnamespace)
-WHERE n.nspname NOT IN ('pg_catalog','pg_toast','information_schema')
+WHERE c.relkind IN ('r','v','m','p')
+			AND c.relpersistence <> 't'
 			AND c.oid NOT IN (SELECT pd.objid FROM pg_catalog.pg_depend pd WHERE pd.deptype = 'e' AND pd.classid = 'pg_catalog.pg_class'::regclass)
+			AND n.nspname NOT IN ('pg_catalog','pg_toast','information_schema')
 			AND c.oid NOT IN (SELECT relid FROM locked_relids)
 			AND ($1 = '' OR (n.nspname || '.' || c.relname) !~* $1)`
 

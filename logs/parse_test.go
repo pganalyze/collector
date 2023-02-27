@@ -523,6 +523,17 @@ var parseTests = []parseTestpair{
 		},
 		true,
 	},
+	{
+		"",
+		"2022-12-23 09:53:43.862 -03 [790081] LOG: pganalyze-collector-identify: server1",
+		state.LogLine{
+			OccurredAt: time.Date(2022, time.December, 23, 9, 53, 43, 862*1000*1000, time.FixedZone("-03", -3*3600)),
+			LogLevel:   6,
+			BackendPid: 790081,
+			Content:    "pganalyze-collector-identify: server1",
+		},
+		true,
+	},
 }
 
 func TestParseLogLineWithPrefix(t *testing.T) {

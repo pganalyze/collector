@@ -30,6 +30,16 @@ var fullFrozenXIDTests = []struct {
 		12345,
 		(2 << 32) + 12345,
 	},
+	{
+		(2 << 32) + 12345,
+		0,
+		0,
+	},
+	{
+		0,
+		12345,
+		0,
+	},
 }
 
 func TestFullFrozenXID(t *testing.T) {

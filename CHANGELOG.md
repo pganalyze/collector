@@ -1,5 +1,59 @@
 # Changelog
 
+## 0.48.0      2023-01-26
+
+* Update to Go 1.19
+* Bugfix: Ensure relfrozenxid = 0 is tracked as full frozenxid = 0 (instead of
+  adding epoch prefix)
+* Amazon RDS and Amazon Aurora: Support IAM token authentication
+  - This adds a new configuration setting, `db_use_iam_auth` / `DB_USE_IAM_AUTH`.
+    If enabled, the collector fetches a short-lived token for logging into the
+    database instance from the AWS API, instead of using a hardcoded password
+    in the collector configuration file
+  - In order to use this setting, IAM authentication needs to be enabled on the
+    database instance / cluster, and the pganalyze IAM policy needs to be
+    extended to cover the "rds-db:connect" privilege for the pganalyze user:
+    https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.IAMPolicy.html
+* Amazon RDS: Avoid DescribeDBInstances calls for log downloads for RDS instances
+  - This should reduce issues with rate limiting on this API call in some cases
+* Amazon Aurora: Cache failures in DescribeDBClusters calls for up to 10 minutes
+  - This reduces repeated calls to the AWS API when the cluster identifier is
+    incorrect
+* Log parsing: Add support for timezones specified by number, such as "-03"
+
+
+## 0.47.0      2023-01-12
+
+* Fix RDS log processing for large log file sections
+  - This fixes an issue with RDS log file chunks larger than 10MB that caused
+    the collector to calculate log text source offsets incorrectly and could
+    lead to mangled log text in the pganalyze UI and incorrect log filtering
+* Warn if some log lines will be ignored
+  - Some verbose logging settings can lead to log lines being ignored by the
+    collector for performance reasons: warn about this on startup
+* Improve Aiven Service ID and Project ID detection from hostname
+* Fix error handling when fetching stats
+  - The missing checks could previously lead to incomplete snapshots, possibly
+    resulting in tables or indexes temporarily disappearing in pganalyze
+* Fix error handling regarding reading SSL-related config values on startup
+* Ignore non-Postgres URIs in environment on Heroku ([@Preovaleo](https://github.com/Preovaleo))
+* Send additional Postgres table stats
+  - Send relpages, reltuples, relallvisible
+* Send additional Postgres transaction metadata
+  - server level (new stats): current TXID and next MXID
+  - database level: age of datfrozenxid and datminmxid, also xact_commit and
+    xact_rollback
+  - table level: the age of relfrozenxid and relminmxid
+* Send Citus distributed index sizes
+* Add `always_collect_system_data` config option
+  - Also configurable with the `PGA_ALWAYS_COLLECT_SYSTEM_DATA` environment
+    variable
+  - This is useful for package-based setups which monitor the local server by a
+    non-local IP
+* Update pg_query_go version to 2.2.0
+* Install script: Detect aarch64 for Ubuntu/Debian package install
+
+
 ## 0.46.1      2022-10-21
 
 * Fix Postgres 15 compatibility due to version check bug

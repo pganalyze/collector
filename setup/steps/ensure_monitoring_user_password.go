@@ -32,7 +32,10 @@ var EnsureMonitoringUserPassword = &s.Step{
 			return false, fmt.Errorf("expected one server in config; found %d", len(cfg.Servers))
 		}
 		serverCfg := cfg.Servers[0]
-		pqStr := serverCfg.GetPqOpenString("")
+		pqStr, err := serverCfg.GetPqOpenString("", "")
+		if err != nil {
+			return false, err
+		}
 		conn, err := sql.Open("postgres", pqStr)
 		err = conn.Ping()
 		if err != nil {

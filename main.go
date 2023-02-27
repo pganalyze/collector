@@ -104,12 +104,15 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 		state.WriteStateFile(servers, globalCollectionOpts, logger)
 	}
 
+	if globalCollectionOpts.TestRun {
+		logger.PrintInfo("Running collector test with %s", util.CollectorNameAndVersion)
+	}
+
 	checkAllInitialCollectionStatus(servers, globalCollectionOpts, logger)
 
 	// We intentionally don't do a test-run in the normal mode, since we're fine with
 	// a later SIGHUP that fixes the config (or a temporarily unreachable server at start)
 	if globalCollectionOpts.TestRun {
-		logger.PrintInfo("Running collector test with %s", util.CollectorNameAndVersion)
 		if globalCollectionOpts.TestReport != "" {
 			runner.RunTestReport(servers, globalCollectionOpts, logger)
 			return
@@ -506,6 +509,10 @@ func checkOneInitialCollectionStatus(server *state.Server, opts state.Collection
 		logger.PrintInfo("All monitoring suspended for this server: %s", collectionDisabledReason)
 	} else if logsDisabled {
 		logger.PrintInfo("Log collection suspended for this server: %s", logsDisabledReason)
+	} else if logsIgnoreDuration {
+		logger.PrintInfo("Log duration lines will be ignored for this server: %s", logsDisabledReason)
+	} else if logsIgnoreStatement {
+		logger.PrintInfo("Log statement lines will be ignored for this server: %s", logsDisabledReason)
 	}
 
 	server.CollectionStatusMutex.Lock()
