@@ -36,7 +36,6 @@ require (
 	github.com/mitchellh/mapstructure v1.4.2 // indirect
 	github.com/ogier/pflag v0.0.0-20160129220114-45c278ab3607
 	github.com/papertrail/go-tail v0.0.0-20180509224916-973c153b0431
-	github.com/pganalyze/pg_query_go/v2 v2.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/satori/go.uuid v0.0.0-20160713180306-0aa62d5ddceb
 	github.com/shirou/gopsutil v3.21.10+incompatible
@@ -50,7 +49,10 @@ require (
 	gopkg.in/mcuadros/go-syslog.v2 v2.3.0
 )
 
-require github.com/prometheus/procfs v0.7.3
+require (
+	github.com/pganalyze/pg_query_go/v4 v4.2.0
+	github.com/prometheus/procfs v0.7.3
+)
 
 require (
 	github.com/Azure/go-amqp v0.16.0 // indirect
