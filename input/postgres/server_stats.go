@@ -10,14 +10,14 @@ import (
 
 const transactionIdSQLPg13 string = `
 SELECT
-	pg_current_xact_id(),
+    pg_catalog.pg_current_xact_id(),
 	next_multixact_id
 FROM pg_catalog.pg_control_checkpoint()
 `
 
 const transactionIdSQLDefault string = `
 SELECT
-	txid_current(),
+    pg_catalog.txid_current(),
 	next_multixact_id
 FROM pg_catalog.pg_control_checkpoint()
 `
@@ -26,36 +26,36 @@ const xminHorizonSQL string = `
 SELECT
 COALESCE((
 	SELECT
-		CASE WHEN COALESCE(age(backend_xid), 0) > COALESCE(age(backend_xmin), 0)
+		CASE WHEN COALESCE(pg_catalog.age(backend_xid), 0) > COALESCE(pg_catalog.age(backend_xmin), 0)
 			THEN backend_xid
 			ELSE backend_xmin
 		END
-	FROM pg_stat_activity
+	FROM pg_catalog.pg_stat_activity
 	WHERE backend_xmin IS NOT NULL OR backend_xid IS NOT NULL
-	ORDER BY greatest(age(backend_xmin), age(backend_xid)) DESC
+	ORDER BY greatest(pg_catalog.age(backend_xmin), pg_catalog.age(backend_xid)) DESC
 	LIMIT 1
 ), '0'::xid) as backend,
 COALESCE((
 	SELECT
 		xmin
-	FROM pg_replication_slots
+	FROM pg_catalog.pg_replication_slots
 	WHERE xmin IS NOT NULL
-	ORDER BY age(xmin) DESC
+	ORDER BY pg_catalog.age(xmin) DESC
 	LIMIT 1
 ), '0'::xid) as replication_slot_xmin,
 COALESCE((
 	SELECT
 		catalog_xmin
-	FROM pg_replication_slots
-	WHERE xmin IS NOT NULL
-	ORDER BY age(catalog_xmin) DESC
+	FROM pg_catalog.pg_replication_slots
+	WHERE catalog_xmin IS NOT NULL
+	ORDER BY pg_catalog.age(catalog_xmin) DESC
 	LIMIT 1
 ), '0'::xid) as replication_slot_catalog_xmin,
 COALESCE((
 	SELECT
 		transaction AS xmin
-	FROM pg_prepared_xacts
-	ORDER BY age(transaction) DESC
+	FROM pg_catalog.pg_prepared_xacts
+	ORDER BY pg_catalog.age(transaction) DESC
 	LIMIT 1
 ), '0'::xid) as prepare_xact,
 COALESCE((
@@ -63,7 +63,7 @@ COALESCE((
 		backend_xmin
 	FROM %s
 	WHERE backend_xmin IS NOT NULL
-	ORDER BY age(backend_xmin) DESC
+	ORDER BY pg_catalog.age(backend_xmin) DESC
 	LIMIT 1
 ), '0'::xid) as standby
 `
@@ -82,7 +82,7 @@ func GetServerStats(logger *util.Logger, db *sql.DB, postgresVersion state.Postg
 			logger.PrintVerbose("Found pganalyze.get_stat_replication() stats helper")
 			sourceStatReplicationTable = "pganalyze.get_stat_replication()"
 		} else {
-			sourceStatReplicationTable = "pg_stat_replication"
+			sourceStatReplicationTable = "pg_catalog.pg_stat_replication"
 		}
 		err = db.QueryRow(QueryMarkerSQL+fmt.Sprintf(xminHorizonSQL, sourceStatReplicationTable)).Scan(
 			&stats.XminHorizonBackend, &stats.XminHorizonReplicationSlot, &stats.XminHorizonReplicationSlotCatalog,
