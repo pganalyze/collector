@@ -1,8 +1,10 @@
 package postgres
 
 import (
+	"bufio"
 	"fmt"
 	"io/ioutil"
+	"strings"
 	"time"
 
 	"github.com/pganalyze/collector/logs"
@@ -108,7 +110,8 @@ func LogPgReadFile(server *state.Server, globalCollectionOpts state.CollectionOp
 			goto ErrorCleanup
 		}
 
-		newLogLines, newSamples, _ := logs.ParseAndAnalyzeBuffer(logData, 0, linesNewerThan, server)
+		logReader := bufio.NewReader(strings.NewReader(logData))
+		newLogLines, newSamples := logs.ParseAndAnalyzeBuffer(logReader, linesNewerThan, server)
 		logFile.LogLines = append(logFile.LogLines, newLogLines...)
 		samples = append(samples, newSamples...)
 
