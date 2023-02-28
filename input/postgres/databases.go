@@ -9,7 +9,7 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
-// See also https://www.postgresql.org/docs/9.5/static/catalog-pg-database.html
+// See also https://www.postgresql.org/docs/current/static/catalog-pg-database.html
 const databasesSQL string = `
 SELECT
 	d.oid,

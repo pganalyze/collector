@@ -9,41 +9,6 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
-const vacuumProgressSQLpg95 string = `
-WITH activity AS (
-	SELECT pg_catalog.to_char(pid, 'FM0000000') AS padded_pid,
-	       EXTRACT(epoch FROM a.query_start)::int::text AS query_start_epoch,
-				 EXTRACT(epoch FROM COALESCE(backend_start, pg_catalog.pg_postmaster_start_time()))::int::text AS backend_start_epoch,
-				 a.datname,
-				 (SELECT pg_catalog.regexp_matches(query, 'autovacuum: VACUUM (ANALYZE )?([^\.]+).([^\(]+)( \(to prevent wraparound\))?'))[2] AS nspname,
-				 (SELECT pg_catalog.regexp_matches(query, 'autovacuum: VACUUM (ANALYZE )?([^\.]+).([^\(]+)( \(to prevent wraparound\))?'))[3] AS relname,
-				 COALESCE(a.usename, '') AS usename,
-				 a.query_start,
-				 a.query LIKE 'autovacuum: VACUUM%%' AS autovacuum
-    FROM %s a
-	 WHERE a.query LIKE 'autovacuum: VACUUM%%'
-)
-SELECT (a.query_start_epoch || a.padded_pid)::bigint AS vacuum_identity,
-			 (a.backend_start_epoch || a.padded_pid)::bigint AS backend_identity,
-			 a.datname,
-			 a.nspname,
-			 CASE
-			   WHEN ($1 = '' OR (a.nspname || '.' || a.relname) !~* $1) THEN a.relname
-			   ELSE ''
-		   END AS relname,
-       a.usename,
-			 a.query_start AS started_at,
-			 a.autovacuum,
-			 '' AS phase,
-			 0 AS heap_blks_total,
-			 0 AS heap_blks_scanned,
-			 0 AS heap_blks_vacuumed,
-			 0 AS index_vacuum_count,
-			 0 AS max_dead_tuples,
-			 0 AS num_dead_tuples
-	FROM activity a
-`
-
 const vacuumProgressSQLDefault string = `
 WITH activity AS (
 	SELECT pg_catalog.to_char(pid, 'FM0000000') AS padded_pid,
@@ -94,17 +59,13 @@ func GetVacuumProgress(ctx context.Context, logger *util.Logger, db *sql.DB, pos
 		activitySourceTable = "pg_catalog.pg_stat_activity"
 	}
 
-	if postgresVersion.Numeric < state.PostgresVersion96 {
-		sql = fmt.Sprintf(vacuumProgressSQLpg95, activitySourceTable)
+	var vacuumSourceTable string
+	if StatsHelperExists(ctx, db, "get_stat_progress_vacuum") {
+		vacuumSourceTable = "pganalyze.get_stat_progress_vacuum()"
 	} else {
-		var vacuumSourceTable string
-		if StatsHelperExists(ctx, db, "get_stat_progress_vacuum") {
-			vacuumSourceTable = "pganalyze.get_stat_progress_vacuum()"
-		} else {
-			vacuumSourceTable = "pg_catalog.pg_stat_progress_vacuum"
-		}
-		sql = fmt.Sprintf(vacuumProgressSQLDefault, activitySourceTable, vacuumSourceTable)
+		vacuumSourceTable = "pg_catalog.pg_stat_progress_vacuum"
 	}
+	sql = fmt.Sprintf(vacuumProgressSQLDefault, activitySourceTable, vacuumSourceTable)
 
 	stmt, err := db.PrepareContext(ctx, QueryMarkerSQL+sql)
 	if err != nil {
