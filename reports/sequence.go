@@ -5,11 +5,11 @@ import (
 	"database/sql"
 	"time"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/pganalyze/collector/input/postgres"
 	"github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // VacuumReport - Report on sequence statistics
@@ -46,7 +46,7 @@ func (report *SequenceReport) Result() *pganalyze_collector.Report {
 
 	r.ReportRunId = report.ReportRunID
 	r.ReportType = report.ReportType()
-	r.CollectedAt, _ = ptypes.TimestampProto(report.CollectedAt)
+	r.CollectedAt = timestamppb.New(report.CollectedAt)
 
 	data.DatabaseReferences = append(data.DatabaseReferences, &pganalyze_collector.DatabaseReference{Name: report.Data.DatabaseName})
 

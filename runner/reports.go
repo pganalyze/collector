@@ -11,13 +11,12 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/golang/protobuf/jsonpb"
-
 	"github.com/pganalyze/collector/input/postgres"
 	"github.com/pganalyze/collector/output"
 	"github.com/pganalyze/collector/reports"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 func runReport(ctx context.Context, reportType string, server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (report reports.Report) {
@@ -129,13 +128,12 @@ func RunTestReport(ctx context.Context, servers []*state.Server, globalCollectio
 		}
 
 		var out bytes.Buffer
-		var marshaler jsonpb.Marshaler
-		dataJSON, err := marshaler.MarshalToString(report.Result())
+		dataJSON, err := protojson.Marshal(report.Result())
 		if err != nil {
 			logger.PrintError("Failed to transform protocol buffers to JSON: %s", err)
 			return
 		}
-		json.Indent(&out, []byte(dataJSON), "", "\t")
+		json.Indent(&out, dataJSON, "", "\t")
 		fmt.Printf("%s\n", out.String())
 	}
 }

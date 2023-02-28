@@ -1,9 +1,9 @@
 package transform
 
 import (
-	"github.com/golang/protobuf/ptypes"
 	snapshot "github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func transformBackendWithoutRefs(backend state.PostgresBackend) snapshot.Backend {
@@ -22,19 +22,19 @@ func transformBackendWithoutRefs(backend state.PostgresBackend) snapshot.Backend
 	}
 
 	if backend.BackendStart.Valid {
-		b.BackendStart, _ = ptypes.TimestampProto(backend.BackendStart.Time)
+		b.BackendStart = timestamppb.New(backend.BackendStart.Time)
 	}
 
 	if backend.XactStart.Valid {
-		b.XactStart, _ = ptypes.TimestampProto(backend.XactStart.Time)
+		b.XactStart = timestamppb.New(backend.XactStart.Time)
 	}
 
 	if backend.QueryStart.Valid {
-		b.QueryStart, _ = ptypes.TimestampProto(backend.QueryStart.Time)
+		b.QueryStart = timestamppb.New(backend.QueryStart.Time)
 	}
 
 	if backend.StateChange.Valid {
-		b.StateChange, _ = ptypes.TimestampProto(backend.StateChange.Time)
+		b.StateChange = timestamppb.New(backend.StateChange.Time)
 	}
 
 	if backend.Waiting.Valid {

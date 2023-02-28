@@ -1,8 +1,8 @@
 package pganalyze_collector
 
 import (
-	"github.com/golang/protobuf/ptypes"
 	"github.com/guregu/null"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func NullTimeToNullTimestamp(in null.Time) *NullTimestamp {
@@ -10,7 +10,7 @@ func NullTimeToNullTimestamp(in null.Time) *NullTimestamp {
 		return &NullTimestamp{Valid: false}
 	}
 
-	ts, _ := ptypes.TimestampProto(in.Time)
+	ts := timestamppb.New(in.Time)
 
 	return &NullTimestamp{Valid: true, Value: ts}
 }

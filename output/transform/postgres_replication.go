@@ -1,9 +1,9 @@
 package transform
 
 import (
-	"github.com/golang/protobuf/ptypes"
 	snapshot "github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func transformPostgresReplication(s snapshot.FullSnapshot, transientState state.TransientState, roleOidToIdx OidToIdx) snapshot.FullSnapshot {
@@ -31,7 +31,7 @@ func transformPostgresReplication(s snapshot.FullSnapshot, transientState state.
 	}
 
 	if r.ReplayTimestamp.Valid {
-		s.Replication.ReplayTimestamp, _ = ptypes.TimestampProto(r.ReplayTimestamp.Time)
+		s.Replication.ReplayTimestamp = timestamppb.New(r.ReplayTimestamp.Time)
 	}
 
 	if r.ReplayTimestampAge.Valid {
@@ -55,7 +55,7 @@ func transformPostgresReplication(s snapshot.FullSnapshot, transientState state.
 		if standby.ClientHostname.Valid {
 			info.ClientHostname = standby.ClientHostname.String
 		}
-		info.BackendStart, _ = ptypes.TimestampProto(standby.BackendStart)
+		info.BackendStart = timestamppb.New(standby.BackendStart)
 		s.Replication.StandbyInformations = append(s.Replication.StandbyInformations, info)
 
 		stats := snapshot.StandbyStatistic{

@@ -5,11 +5,11 @@ import (
 	"database/sql"
 	"time"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/pganalyze/collector/input/postgres"
 	"github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // VacuumReport - Report on table vacuum statistics
@@ -46,7 +46,7 @@ func (report *VacuumReport) Result() *pganalyze_collector.Report {
 
 	r.ReportRunId = report.ReportRunID
 	r.ReportType = report.ReportType()
-	r.CollectedAt, _ = ptypes.TimestampProto(report.CollectedAt)
+	r.CollectedAt = timestamppb.New(report.CollectedAt)
 
 	data.DatabaseReferences = append(data.DatabaseReferences, &pganalyze_collector.DatabaseReference{Name: report.Data.DatabaseName})
 	data.AutovacuumMaxWorkers = report.Data.AutovacuumMaxWorkers
@@ -72,19 +72,19 @@ func (report *VacuumReport) Result() *pganalyze_collector.Report {
 		}
 
 		if relation.LastManualVacuumRun.Valid {
-			t, _ := ptypes.TimestampProto(relation.LastManualVacuumRun.Time)
+			t := timestamppb.New(relation.LastManualVacuumRun.Time)
 			stats.LastManualVacuumRun = &pganalyze_collector.NullTimestamp{Valid: true, Value: t}
 		}
 		if relation.LastAutoVacuumRun.Valid {
-			t, _ := ptypes.TimestampProto(relation.LastAutoVacuumRun.Time)
+			t := timestamppb.New(relation.LastAutoVacuumRun.Time)
 			stats.LastAutoVacuumRun = &pganalyze_collector.NullTimestamp{Valid: true, Value: t}
 		}
 		if relation.LastManualAnalyzeRun.Valid {
-			t, _ := ptypes.TimestampProto(relation.LastManualAnalyzeRun.Time)
+			t := timestamppb.New(relation.LastManualAnalyzeRun.Time)
 			stats.LastManualAnalyzeRun = &pganalyze_collector.NullTimestamp{Valid: true, Value: t}
 		}
 		if relation.LastAutoAnalyzeRun.Valid {
-			t, _ := ptypes.TimestampProto(relation.LastAutoAnalyzeRun.Time)
+			t := timestamppb.New(relation.LastAutoAnalyzeRun.Time)
 			stats.LastAutoAnalyzeRun = &pganalyze_collector.NullTimestamp{Valid: true, Value: t}
 		}
 
