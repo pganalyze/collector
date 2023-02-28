@@ -6,7 +6,9 @@
   - Besides supporting newer syntax like the MERGE statement, this parser
     update also drops support for "?" replacement characters found in
     pg_stat_statements output before Postgres 10
-  - Postgres 10 is now the minimum required version for running the collector
+* Postgres 10 is now the minimum required version for running the collector
+  - We have dropped support for 9.6 and earlier due to the parser update,
+    and due to Postgres 9.6 now being End-of-Life (EOL) for over 1 year
 * Enforce maximum time for each snapshot collection using deadlines
   - Sometimes individual database servers can take longer than the allocated
     interval (e.g. 10 minutes for a full snapshot), which previously lead to
