@@ -40,7 +40,7 @@ func GetBackends(ctx context.Context, logger *util.Logger, db *sql.DB, postgresV
 		sourceTable = "pg_catalog.pg_stat_activity"
 	}
 
-	stmt, err := db.PrepareContext(ctx, QueryMarkerSQL + fmt.Sprintf(activitySQL, blockingPidsField, sourceTable))
+	stmt, err := db.PrepareContext(ctx, QueryMarkerSQL+fmt.Sprintf(activitySQL, blockingPidsField, sourceTable))
 	if err != nil {
 		return nil, err
 	}
