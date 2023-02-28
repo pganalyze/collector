@@ -1,5 +1,37 @@
 # Changelog
 
+## 0.49.0      2023-02-27
+
+* Update pg_query_go to v4 / Postgres 15 parser
+  - Besides supporting newer syntax like the MERGE statement, this parser
+    update also drops support for "?" replacement characters found in
+    pg_stat_statements output before Postgres 10
+* Postgres 10 is now the minimum required version for running the collector
+  - We have dropped support for 9.6 and earlier due to the parser update,
+    and due to Postgres 9.6 now being End-of-Life (EOL) for over 1 year
+* Enforce maximum time for each snapshot collection using deadlines
+  - Sometimes individual database servers can take longer than the allocated
+    interval (e.g. 10 minutes for a full snapshot), which previously lead to
+    missing data for other servers monitored by the same collector process
+  - The new deadline-based logic ensures that collector functions return with
+    a "context deadline exceeded" error when the allocated interval is exceed,
+    causing a clear error for that server, and allowing other servers to
+    continue reporting their data as planned
+  - As a side effect of this change, Ctrl+C (SIGINT) now works to stop a
+    collector test right away, instead of waiting for the snapshot to complete
+* Log Insights
+  - Only consider first 1000 characters for log_line_prefix to speed up parsing
+  - Clearly report errors with closing/removing temporary files
+  - Improve --analyze-logfile mode for debugging log parsing
+  - Amazon RDS/Aurora: Improve handling of excessively large log file portions
+  - Azure DB for Postgres: Fix log line parsing for DETAIL lines
+* Collect xmin horizon metrics
+* Bugfixes
+  - Relation info: Correctly filter out foreign tables for constraints query
+  - Return zero as FullFrozenXID for replicas
+  - Update Go modules flagged by dependency scanners (issues are not actually applicable)
+
+
 ## 0.48.0      2023-01-26
 
 * Update to Go 1.19
