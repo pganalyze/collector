@@ -11,11 +11,6 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
-const activitySQLDefaultOptionalFields = "waiting, NULL, NULL, NULL, NULL, NULL"
-const activitySQLpg94OptionalFields = "waiting, backend_xid, backend_xmin, NULL, NULL, NULL"
-const activitySQLpg96OptionalFields = `COALESCE(wait_event_type, '') = 'Lock' as waiting, backend_xid, backend_xmin, wait_event_type, wait_event, NULL`
-const activitySQLpg10OptionalFields = `COALESCE(wait_event_type, '') = 'Lock' as waiting, backend_xid, backend_xmin, wait_event_type, wait_event, backend_type`
-
 const pgBlockingPidsField = `
 CASE
 	WHEN COALESCE(wait_event_type, '') = 'Lock' THEN pg_blocking_pids(pid)
@@ -25,25 +20,15 @@ END
 const activitySQL string = `
 SELECT (extract(epoch from COALESCE(backend_start, pg_catalog.pg_postmaster_start_time()))::int::text || pg_catalog.to_char(pid, 'FM0000000'))::bigint,
 	datid, datname, usesysid, usename, pid, application_name, client_addr::text, client_port,
-	backend_start, xact_start, query_start, state_change, %s, %s, state, query
+	backend_start, xact_start, query_start, state_change, COALESCE(wait_event_type, '') = 'Lock' as waiting, backend_xid, backend_xmin, wait_event_type, wait_event, backend_type, %s, state, query
 FROM %s
 WHERE pid IS NOT NULL`
 
 func GetBackends(ctx context.Context, logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion, systemType string, collectPostgresLocks bool) ([]state.PostgresBackend, error) {
-	var optionalFields string
 	var blockingPidsField string
 	var sourceTable string
 
-	if postgresVersion.Numeric >= state.PostgresVersion10 {
-		optionalFields = activitySQLpg10OptionalFields
-	} else if postgresVersion.Numeric >= state.PostgresVersion96 {
-		optionalFields = activitySQLpg96OptionalFields
-	} else if postgresVersion.Numeric >= state.PostgresVersion94 {
-		optionalFields = activitySQLpg94OptionalFields
-	} else {
-		optionalFields = activitySQLDefaultOptionalFields
-	}
-	if collectPostgresLocks && postgresVersion.Numeric >= state.PostgresVersion96 {
+	if collectPostgresLocks {
 		blockingPidsField = pgBlockingPidsField
 	} else {
 		blockingPidsField = "NULL"
@@ -55,7 +40,7 @@ func GetBackends(ctx context.Context, logger *util.Logger, db *sql.DB, postgresV
 		sourceTable = "pg_catalog.pg_stat_activity"
 	}
 
-	stmt, err := db.PrepareContext(ctx, QueryMarkerSQL+fmt.Sprintf(activitySQL, optionalFields, blockingPidsField, sourceTable))
+	stmt, err := db.PrepareContext(ctx, QueryMarkerSQL+fmt.Sprintf(activitySQL, blockingPidsField, sourceTable))
 	if err != nil {
 		return nil, err
 	}

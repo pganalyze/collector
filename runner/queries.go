@@ -42,11 +42,6 @@ func gatherQueryStatsForServer(ctx context.Context, server *state.Server, global
 		return newState, errors.Wrap(err, "error collecting Postgres Version")
 	}
 
-	if postgresVersion.Numeric < state.PostgresVersion94 {
-		logger.PrintVerbose("Skipping high frequency query stats run since Postgres version is too old (9.4+ required)")
-		return newState, nil
-	}
-
 	newState.LastStatementStatsAt = time.Now()
 	_, _, newState.StatementStats, err = postgres.GetStatements(ctx, server, logger, connection, globalCollectionOpts, postgresVersion, false, systemType)
 	if err != nil {

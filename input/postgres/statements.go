@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"hash/fnv"
 	"strings"
 
 	"github.com/guregu/null"
@@ -14,14 +13,9 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
-const statementSQLOptionalFieldsDefault = "NULL, NULL, NULL, NULL, NULL"
-const statementSQLTotalTimeFieldDefault = "total_time"
-
-// pg_stat_statements 1.2+ (Postgres 9.4+)
-const statementSQLOptionalFieldsMinorVersion2 = "queryid, NULL, NULL, NULL, NULL"
-
 // pg_stat_statements 1.3+ (Postgres 9.5+)
 const statementSQLOptionalFieldsMinorVersion3 = "queryid, min_time, max_time, mean_time, stddev_time"
+const statementSQLTotalTimeFieldDefault = "total_time"
 
 // pg_stat_statements 1.8+ (Postgres 13+)
 const statementSQLOptionalFieldsMinorVersion8 = "queryid, min_exec_time, max_exec_time, mean_exec_time, stddev_exec_time"
@@ -104,12 +98,8 @@ func GetStatements(ctx context.Context, server *state.Server, logger *util.Logge
 
 	if postgresVersion.Numeric >= state.PostgresVersion13 {
 		extMinorVersion = 8
-	} else if postgresVersion.Numeric >= state.PostgresVersion95 {
-		extMinorVersion = 3
-	} else if postgresVersion.Numeric >= state.PostgresVersion94 {
-		extMinorVersion = 2
 	} else {
-		extMinorVersion = 1
+		extMinorVersion = 3
 	}
 
 	err = db.QueryRowContext(ctx, QueryMarkerSQL+statementExtensionVersionSQL).Scan(&extSchema, &foundExtMinorVersion)
@@ -131,10 +121,8 @@ func GetStatements(ctx context.Context, server *state.Server, logger *util.Logge
 		optionalFields = statementSQLOptionalFieldsMinorVersion8
 	} else if foundExtMinorVersion >= 3 {
 		optionalFields = statementSQLOptionalFieldsMinorVersion3
-	} else if foundExtMinorVersion >= 2 {
-		optionalFields = statementSQLOptionalFieldsMinorVersion2
 	} else {
-		optionalFields = statementSQLOptionalFieldsDefault
+		return nil, nil, nil, fmt.Errorf("pg_stat_statements extension not supported (1.%d installed, 1.3+ supported). To update run `ALTER EXTENSION pg_stat_statements UPDATE`", foundExtMinorVersion)
 	}
 
 	if foundExtMinorVersion >= 8 {
@@ -222,11 +210,6 @@ func GetStatements(ctx context.Context, server *state.Server, logger *util.Logge
 
 		if queryID.Valid {
 			key.QueryID = queryID.Int64
-		} else if receivedQuery.Valid && receivedQuery.String != "<insufficient privilege>" {
-			// Note: This is a heuristic for old Postgres versions and will not work for duplicate queries (e.g. when tables are dropped and recreated)
-			h := fnv.New64a()
-			h.Write([]byte(receivedQuery.String))
-			key.QueryID = int64(h.Sum64())
 		} else {
 			// We can't process this entry, most likely a permission problem with reading the query ID
 			continue

@@ -1,3 +1,0 @@
-"select count(*) from pgbench_branches"
-"<pganalyze-collector>"
-"<unparsable query>"

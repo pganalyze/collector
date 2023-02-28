@@ -81,7 +81,7 @@ func processActivityForServer(ctx context.Context, server *state.Server, globalC
 	}
 
 	if activity.Version.Numeric < state.MinRequiredPostgresVersion {
-		return newState, false, fmt.Errorf("Error: Your PostgreSQL server version (%s) is too old, 9.3 or newer is required", activity.Version.Short)
+		return newState, false, fmt.Errorf("Error: Your PostgreSQL server version (%s) is too old, 10 or newer is required", activity.Version.Short)
 	}
 
 	activity.Backends, err = postgres.GetBackends(ctx, logger, connection, activity.Version, server.Config.SystemType, globalCollectionOpts.CollectPostgresLocks)
