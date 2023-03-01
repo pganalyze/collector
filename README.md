@@ -50,6 +50,7 @@ to run as a superuser, you can setup a separate monitoring user like this:
 
 ```sql
 CREATE SCHEMA pganalyze;
+GRANT USAGE ON SCHEMA pganalyze TO pganalyze;
 
 CREATE EXTENSION IF NOT EXISTS pg_stat_statements WITH SCHEMA public;
 
