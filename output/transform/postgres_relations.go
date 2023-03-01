@@ -1,10 +1,10 @@
 package transform
 
 import (
-	"github.com/golang/protobuf/ptypes"
 	"github.com/guregu/null"
 	snapshot "github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func transformPostgresRelations(s snapshot.FullSnapshot, newState state.PersistedState, diffState state.DiffState, databaseOidToIdx OidToIdx, typeOidToIdx OidToIdx, currentXactId int64) snapshot.FullSnapshot {
@@ -53,8 +53,6 @@ func transformPostgresRelations(s snapshot.FullSnapshot, newState state.Persiste
 			HasOids:                relation.HasOids,
 			HasInheritanceChildren: relation.HasInheritanceChildren,
 			HasToast:               relation.HasToast,
-			FrozenXid:              uint32(relation.FrozenXID),
-			MinimumMultixactXid:    uint32(relation.MinimumMultixactXID),
 			ParentRelationIdx:      parentRelationIdx,
 			HasParentRelation:      parentRelationIdx != -1,
 			PartitionBoundary:      relation.PartitionBoundary,
@@ -243,7 +241,7 @@ func addRelationEvents(relationIdx int32, events []*snapshot.RelationEvent, coun
 		return events
 	}
 
-	ts, _ := ptypes.TimestampProto(lastTime.Time)
+	ts := timestamppb.New(lastTime.Time)
 
 	for i := int64(0); i < count; i++ {
 		event := snapshot.RelationEvent{

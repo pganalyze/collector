@@ -1,20 +1,28 @@
 package output
 
 import (
+	"context"
+
 	"github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/output/transform"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
-	pg_query "github.com/pganalyze/pg_query_go/v2"
+	pg_query "github.com/pganalyze/pg_query_go/v4"
 )
 
-func SubmitCompactActivitySnapshot(server *state.Server, grant state.Grant, collectionOpts state.CollectionOpts, logger *util.Logger, activityState state.TransientActivityState) error {
+func SubmitCompactActivitySnapshot(ctx context.Context, server *state.Server, grant state.Grant, collectionOpts state.CollectionOpts, logger *util.Logger, activityState state.TransientActivityState) error {
 	as, r := transform.ActivityStateToCompactActivitySnapshot(server, activityState)
 
 	if server.Config.FilterQuerySample == "all" {
 		for idx, backend := range as.Backends {
-			if backend.QueryText != "" {
-				as.Backends[idx].QueryText, _ = pg_query.Normalize(backend.QueryText)
+			// Normalize can be slow, protect against edge cases here by checking for cancellations
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			default:
+				if backend.QueryText != "" {
+					as.Backends[idx].QueryText, _ = pg_query.Normalize(backend.QueryText)
+				}
 			}
 		}
 	}
@@ -23,5 +31,5 @@ func SubmitCompactActivitySnapshot(server *state.Server, grant state.Grant, coll
 		BaseRefs: &r,
 		Data:     &pganalyze_collector.CompactSnapshot_ActivitySnapshot{ActivitySnapshot: &as},
 	}
-	return uploadAndSubmitCompactSnapshot(s, grant, server, collectionOpts, logger, activityState.CollectedAt, false, "activity")
+	return uploadAndSubmitCompactSnapshot(ctx, s, grant, server, collectionOpts, logger, activityState.CollectedAt, false, "activity")
 }

@@ -1,15 +1,13 @@
 package postgres
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
 )
-
-const relationStatsSQLDefaultOptionalFields = "NULL"
-const relationStatsSQLpg94OptionalFields = "s.n_mod_since_analyze"
 
 const relationStatsSQL = `
 WITH locked_relids AS (
@@ -35,7 +33,7 @@ SELECT c.oid,
 			 COALESCE(s.n_tup_hot_upd, 0),
 			 COALESCE(s.n_live_tup, 0),
 			 COALESCE(s.n_dead_tup, 0),
-			 %s,
+			 s.n_mod_since_analyze,
 			 s.last_vacuum,
 			 s.last_autovacuum,
 			 s.last_analyze,
@@ -52,8 +50,8 @@ SELECT c.oid,
 			 COALESCE(sio.toast_blks_hit, 0),
 			 COALESCE(sio.tidx_blks_read, 0),
 			 COALESCE(sio.tidx_blks_hit, 0),
-			 CASE WHEN c.relfrozenxid <> '0' THEN age(c.relfrozenxid) ELSE 0 END AS relation_xid_age,
-			 CASE WHEN c.relminmxid <> '0' THEN mxid_age(c.relminmxid) ELSE 0 END AS relation_mxid_age,
+			 CASE WHEN c.relfrozenxid <> '0' THEN pg_catalog.age(c.relfrozenxid) ELSE 0 END AS relation_xid_age,
+			 CASE WHEN c.relminmxid <> '0' THEN pg_catalog.mxid_age(c.relminmxid) ELSE 0 END AS relation_mxid_age,
 			 c.relpages,
 			 c.reltuples,
 			 c.relallvisible
@@ -97,23 +95,15 @@ SELECT 1 AS enabled
  WHERE n.nspname = 'pganalyze' AND p.proname = 'get_column_stats'
 `
 
-func GetRelationStats(db *sql.DB, postgresVersion state.PostgresVersion, ignoreRegexp string) (relStats state.PostgresRelationStatsMap, err error) {
-	var optionalFields string
-
-	if postgresVersion.Numeric >= state.PostgresVersion94 {
-		optionalFields = relationStatsSQLpg94OptionalFields
-	} else {
-		optionalFields = relationStatsSQLDefaultOptionalFields
-	}
-
-	stmt, err := db.Prepare(QueryMarkerSQL + fmt.Sprintf(relationStatsSQL, optionalFields))
+func GetRelationStats(ctx context.Context, db *sql.DB, postgresVersion state.PostgresVersion, ignoreRegexp string) (relStats state.PostgresRelationStatsMap, err error) {
+	stmt, err := db.PrepareContext(ctx, QueryMarkerSQL+relationStatsSQL)
 	if err != nil {
 		err = fmt.Errorf("RelationStats/Prepare: %s", err)
 		return
 	}
 	defer stmt.Close()
 
-	rows, err := stmt.Query(ignoreRegexp)
+	rows, err := stmt.QueryContext(ctx, ignoreRegexp)
 	if err != nil {
 		err = fmt.Errorf("RelationStats/Query: %s", err)
 		return
@@ -150,20 +140,20 @@ func GetRelationStats(db *sql.DB, postgresVersion state.PostgresVersion, ignoreR
 		return
 	}
 
-	relStats, err = handleRelationStatsExt(db, relStats, postgresVersion, ignoreRegexp)
+	relStats, err = handleRelationStatsExt(ctx, db, relStats, postgresVersion, ignoreRegexp)
 
 	return
 }
 
-func GetIndexStats(db *sql.DB, postgresVersion state.PostgresVersion, ignoreRegexp string) (indexStats state.PostgresIndexStatsMap, err error) {
-	stmt, err := db.Prepare(QueryMarkerSQL + indexStatsSQL)
+func GetIndexStats(ctx context.Context, db *sql.DB, postgresVersion state.PostgresVersion, ignoreRegexp string) (indexStats state.PostgresIndexStatsMap, err error) {
+	stmt, err := db.PrepareContext(ctx, QueryMarkerSQL+indexStatsSQL)
 	if err != nil {
 		err = fmt.Errorf("IndexStats/Prepare: %s", err)
 		return
 	}
 	defer stmt.Close()
 
-	rows, err := stmt.Query(ignoreRegexp)
+	rows, err := stmt.QueryContext(ctx, ignoreRegexp)
 	if err != nil {
 		err = fmt.Errorf("IndexStats/Query: %s", err)
 		return
@@ -190,12 +180,12 @@ func GetIndexStats(db *sql.DB, postgresVersion state.PostgresVersion, ignoreRege
 		return
 	}
 
-	indexStats, err = handleIndexStatsExt(db, indexStats, postgresVersion, ignoreRegexp)
+	indexStats, err = handleIndexStatsExt(ctx, db, indexStats, postgresVersion, ignoreRegexp)
 
 	return
 }
 
-func GetColumnStats(logger *util.Logger, db *sql.DB, globalCollectionOpts state.CollectionOpts, systemType string, dbName string) (columnStats state.PostgresColumnStatsMap, err error) {
+func GetColumnStats(ctx context.Context, logger *util.Logger, db *sql.DB, globalCollectionOpts state.CollectionOpts, systemType string, dbName string) (columnStats state.PostgresColumnStatsMap, err error) {
 	var sourceTable string
 
 	helperExists := false
@@ -205,7 +195,7 @@ func GetColumnStats(logger *util.Logger, db *sql.DB, globalCollectionOpts state.
 		logger.PrintVerbose("Found pganalyze.get_column_stats() stats helper")
 		sourceTable = "pganalyze.get_column_stats()"
 	} else {
-		if systemType != "heroku" && !connectedAsSuperUser(db, systemType) && globalCollectionOpts.TestRun {
+		if systemType != "heroku" && !connectedAsSuperUser(ctx, db, systemType) && globalCollectionOpts.TestRun {
 			logger.PrintInfo("Warning: Limited access to table column statistics detected in database %s. Please set up"+
 				" the monitoring helper function pganalyze.get_column_stats (https://github.com/pganalyze/collector#setting-up-a-restricted-monitoring-user)"+
 				" or connect as superuser, to get column statistics for all tables.", dbName)
@@ -213,13 +203,13 @@ func GetColumnStats(logger *util.Logger, db *sql.DB, globalCollectionOpts state.
 		sourceTable = "pg_catalog.pg_stats"
 	}
 
-	stmt, err := db.Prepare(QueryMarkerSQL + fmt.Sprintf(columnStatsSQL, sourceTable))
+	stmt, err := db.PrepareContext(ctx, QueryMarkerSQL+fmt.Sprintf(columnStatsSQL, sourceTable))
 	if err != nil {
 		return nil, err
 	}
 	defer stmt.Close()
 
-	rows, err := stmt.Query()
+	rows, err := stmt.QueryContext(ctx)
 	if err != nil {
 		return nil, err
 	}

@@ -2,6 +2,7 @@ package runner
 
 import (
 	"bytes"
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -10,22 +11,21 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/golang/protobuf/jsonpb"
-
 	"github.com/pganalyze/collector/input/postgres"
 	"github.com/pganalyze/collector/output"
 	"github.com/pganalyze/collector/reports"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
-func runReport(reportType string, server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (report reports.Report) {
+func runReport(ctx context.Context, reportType string, server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (report reports.Report) {
 	var err error
 	var connection *sql.DB
 
 	prefixedLogger := logger.WithPrefix(server.Config.SectionName)
 
-	connection, err = postgres.EstablishConnection(server, logger, globalCollectionOpts, "")
+	connection, err = postgres.EstablishConnection(ctx, server, logger, globalCollectionOpts, "")
 	if err != nil {
 		prefixedLogger.PrintError("Error: Failed to connect to database: %s", err)
 		return
@@ -38,7 +38,7 @@ func runReport(reportType string, server *state.Server, globalCollectionOpts sta
 		return nil
 	}
 
-	err = report.Run(server, logger, connection)
+	err = report.Run(ctx, server, logger, connection)
 	if err != nil {
 		logger.PrintError("Failed to run report: %s", err)
 		connection.Close()
@@ -120,27 +120,26 @@ func getRequestedReports(server *state.Server, globalCollectionOpts state.Collec
 }
 
 // RunTestReport - Runs globalCollectionOpts.TestReport for all servers and outputs the result to stdout
-func RunTestReport(servers []*state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
+func RunTestReport(ctx context.Context, servers []*state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
 	for _, server := range servers {
-		report := runReport(globalCollectionOpts.TestReport, server, globalCollectionOpts, logger)
+		report := runReport(ctx, globalCollectionOpts.TestReport, server, globalCollectionOpts, logger)
 		if report == nil {
 			continue
 		}
 
 		var out bytes.Buffer
-		var marshaler jsonpb.Marshaler
-		dataJSON, err := marshaler.MarshalToString(report.Result())
+		dataJSON, err := protojson.Marshal(report.Result())
 		if err != nil {
 			logger.PrintError("Failed to transform protocol buffers to JSON: %s", err)
 			return
 		}
-		json.Indent(&out, []byte(dataJSON), "", "\t")
+		json.Indent(&out, dataJSON, "", "\t")
 		fmt.Printf("%s\n", out.String())
 	}
 }
 
 // RunRequestedReports - Retrieves current report requests from the server, runs them and submits their data
-func RunRequestedReports(servers []*state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
+func RunRequestedReports(ctx context.Context, servers []*state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
 	for _, server := range servers {
 		if !server.Config.EnableReports {
 			continue
@@ -158,20 +157,20 @@ func RunRequestedReports(servers []*state.Server, globalCollectionOpts state.Col
 			continue
 		}
 
-		connection, err := postgres.EstablishConnection(server, prefixedLogger, globalCollectionOpts, "")
+		connection, err := postgres.EstablishConnection(ctx, server, prefixedLogger, globalCollectionOpts, "")
 		if err != nil {
 			prefixedLogger.PrintError("Error: Failed to connect to database: %s", err)
 			continue
 		}
 
 		for _, report := range reports {
-			err = report.Run(server, prefixedLogger, connection)
+			err = report.Run(ctx, server, prefixedLogger, connection)
 			if err != nil {
 				prefixedLogger.PrintError("Failed to run report: %s", err)
 				continue
 			}
 
-			output.SubmitReport(server, grant, report, prefixedLogger)
+			output.SubmitReport(ctx, server, grant, report, prefixedLogger)
 		}
 
 		// This is the easiest way to avoid opening multiple connections to different databases on the same instance

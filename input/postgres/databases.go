@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 
@@ -8,7 +9,7 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
-// See also https://www.postgresql.org/docs/9.5/static/catalog-pg-database.html
+// See also https://www.postgresql.org/docs/current/static/catalog-pg-database.html
 const databasesSQL string = `
 SELECT
 	d.oid,
@@ -22,23 +23,23 @@ SELECT
 	d.datconnlimit,
 	d.datfrozenxid,
 	d.datminmxid,
-	CASE WHEN d.datfrozenxid <> '0' THEN age(d.datfrozenxid) ELSE 0 END,
-	CASE WHEN d.datminmxid <> '0' THEN mxid_age(d.datminmxid) ELSE 0 END,
+	CASE WHEN d.datfrozenxid <> '0' THEN pg_catalog.age(d.datfrozenxid) ELSE 0 END,
+	CASE WHEN d.datminmxid <> '0' THEN pg_catalog.mxid_age(d.datminmxid) ELSE 0 END,
 	sd.xact_commit,
 	sd.xact_rollback
 FROM pg_catalog.pg_database d
 	LEFT JOIN pg_catalog.pg_stat_database sd
 	ON d.oid = sd.datid`
 
-func GetDatabases(logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion) ([]state.PostgresDatabase, state.PostgresDatabaseStatsMap, error) {
-	stmt, err := db.Prepare(QueryMarkerSQL + fmt.Sprintf(databasesSQL))
+func GetDatabases(ctx context.Context, logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion) ([]state.PostgresDatabase, state.PostgresDatabaseStatsMap, error) {
+	stmt, err := db.PrepareContext(ctx, QueryMarkerSQL+fmt.Sprintf(databasesSQL))
 	if err != nil {
 		return nil, nil, err
 	}
 
 	defer stmt.Close()
 
-	rows, err := stmt.Query()
+	rows, err := stmt.QueryContext(ctx)
 	if err != nil {
 		return nil, nil, err
 	}

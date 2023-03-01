@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"strconv"
@@ -12,14 +13,6 @@ import (
 
 const relationsSQLOidField = "c.relhasoids AS relation_has_oids"
 const relationsSQLpg12OidField = "false AS relation_has_oids"
-const relationsSQLpartBoundField = "''"
-const relationsSQLpartStratField = "''"
-const relationsSQLpartColsField = "''"
-const relationsSQLpartExprField = "''"
-const relationsSQLpg10PartBoundField = "COALESCE(pg_get_expr(c.relpartbound, c.oid, true), '') AS partition_boundary"
-const relationsSQLpg10partStratField = "COALESCE((SELECT p.partstrat FROM pg_partitioned_table p WHERE p.partrelid = c.oid), '') AS partition_strategy"
-const relationsSQLpg10PartColsField = "(SELECT p.partattrs FROM pg_partitioned_table p WHERE p.partrelid = c.oid) AS partition_columns"
-const relationsSQLpg10partExprField = "COALESCE(pg_catalog.pg_get_partkeydef(c.oid), '') AS partition_expr"
 
 const relationsSQL string = `
 	 WITH locked_relids AS (SELECT DISTINCT relation relid FROM pg_catalog.pg_locks WHERE mode = 'AccessExclusiveLock' AND relation IS NOT NULL)
@@ -35,10 +28,10 @@ const relationsSQL string = `
 				c.relfrozenxid AS relation_frozen_xid,
 				c.relminmxid AS relation_min_mxid,
 				COALESCE((SELECT inhparent FROM pg_inherits WHERE inhrelid = c.oid ORDER BY inhseqno LIMIT 1), 0) AS parent_relid,
-				%s,
-				%s,
-				%s,
-				%s,
+				COALESCE(pg_get_expr(c.relpartbound, c.oid, true), '') AS partition_boundary,
+				COALESCE((SELECT p.partstrat FROM pg_partitioned_table p WHERE p.partrelid = c.oid), '') AS partition_strategy,
+				(SELECT p.partattrs FROM pg_partitioned_table p WHERE p.partrelid = c.oid) AS partition_columns,
+				COALESCE(pg_catalog.pg_get_partkeydef(c.oid), '') AS partition_expr,
 				locked_relids.relid IS NOT NULL
 	 FROM pg_catalog.pg_class c
 	 LEFT JOIN pg_catalog.pg_namespace n ON (n.oid = c.relnamespace)
@@ -138,27 +131,11 @@ SELECT c.oid,
 			 AND c.oid NOT IN (SELECT relid FROM locked_relids)
 			 AND ($1 = '' OR (n.nspname || '.' || c.relname) !~* $1)`
 
-func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, currentDatabaseOid state.Oid, ignoreRegexp string) ([]state.PostgresRelation, error) {
+func GetRelations(ctx context.Context, db *sql.DB, postgresVersion state.PostgresVersion, currentDatabaseOid state.Oid, ignoreRegexp string) ([]state.PostgresRelation, error) {
 	relations := make(map[state.Oid]state.PostgresRelation, 0)
 
 	// Relations
 	var oidField string
-	var partBoundField string
-	var partStratField string
-	var partColsField string
-	var partExprField string
-
-	if postgresVersion.Numeric >= state.PostgresVersion10 {
-		partBoundField = relationsSQLpg10PartBoundField
-		partStratField = relationsSQLpg10partStratField
-		partColsField = relationsSQLpg10PartColsField
-		partExprField = relationsSQLpg10partExprField
-	} else {
-		partBoundField = relationsSQLpartBoundField
-		partStratField = relationsSQLpartStratField
-		partColsField = relationsSQLpartColsField
-		partExprField = relationsSQLpartExprField
-	}
 
 	if postgresVersion.Numeric >= state.PostgresVersion12 {
 		oidField = relationsSQLpg12OidField
@@ -166,8 +143,7 @@ func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 		oidField = relationsSQLOidField
 	}
 
-	rows, err := db.Query(QueryMarkerSQL+fmt.Sprintf(relationsSQL, oidField,
-		partBoundField, partStratField, partColsField, partExprField), ignoreRegexp)
+	rows, err := db.QueryContext(ctx, QueryMarkerSQL+fmt.Sprintf(relationsSQL, oidField), ignoreRegexp)
 	if err != nil {
 		err = fmt.Errorf("Relations/Query: %s", err)
 		return nil, err
@@ -215,7 +191,7 @@ func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 	}
 
 	// Columns
-	rows, err = db.Query(QueryMarkerSQL+columnsSQL, ignoreRegexp)
+	rows, err = db.QueryContext(ctx, QueryMarkerSQL+columnsSQL, ignoreRegexp)
 	if err != nil {
 		err = fmt.Errorf("Columns/Query: %s", err)
 		return nil, err
@@ -244,7 +220,7 @@ func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 	}
 
 	// Indices
-	rows, err = db.Query(QueryMarkerSQL+indicesSQL, ignoreRegexp)
+	rows, err = db.QueryContext(ctx, QueryMarkerSQL+indicesSQL, ignoreRegexp)
 	if err != nil {
 		err = fmt.Errorf("Indices/Query: %s", err)
 		return nil, err
@@ -288,7 +264,7 @@ func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 	}
 
 	// Constraints
-	rows, err = db.Query(QueryMarkerSQL+constraintsSQL, ignoreRegexp)
+	rows, err = db.QueryContext(ctx, QueryMarkerSQL+constraintsSQL, ignoreRegexp)
 	if err != nil {
 		err = fmt.Errorf("Constraints/Query: %s", err)
 		return nil, err
@@ -342,7 +318,7 @@ func GetRelations(db *sql.DB, postgresVersion state.PostgresVersion, currentData
 	}
 
 	// View definitions
-	rows, err = db.Query(QueryMarkerSQL+viewDefinitionSQL, ignoreRegexp)
+	rows, err = db.QueryContext(ctx, QueryMarkerSQL+viewDefinitionSQL, ignoreRegexp)
 	if err != nil {
 		err = fmt.Errorf("Views/Prepare: %s", err)
 		return nil, err

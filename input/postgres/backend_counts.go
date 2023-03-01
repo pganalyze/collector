@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"strings"
@@ -9,45 +10,32 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
-const backendCountsSQLDefaultOptionalFields = "CASE WHEN query LIKE 'autovacuum: %' THEN 'autovacuum worker' ELSE 'client backend' END, COALESCE(waiting, false) AS waiting_for_lock,"
-const backendCountsSQLpg96OptionalFields = "CASE WHEN query LIKE 'autovacuum: %' THEN 'autovacuum worker' ELSE 'client backend' END, COALESCE(wait_event_type, '') = 'Lock' AS waiting_for_lock,"
-const backendCountsSQLpg10OptionalFields = "COALESCE(backend_type, 'unknown'), COALESCE(wait_event_type, '') = 'Lock' AS waiting_for_lock,"
-
 const backendCountsSQL string = `
  SELECT datid,
 				usesysid,
 				COALESCE(state, 'unknown'),
-				%s
+				COALESCE(backend_type, 'unknown'), COALESCE(wait_event_type, '') = 'Lock' AS waiting_for_lock,
 				pg_catalog.count(*)
 	 FROM %s
 	GROUP BY 1, 2, 3, 4, 5`
 
-func GetBackendCounts(logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion, systemType string) ([]state.PostgresBackendCount, error) {
-	var optionalFields string
+func GetBackendCounts(ctx context.Context, logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion, systemType string) ([]state.PostgresBackendCount, error) {
 	var sourceTable string
 
-	if postgresVersion.Numeric >= state.PostgresVersion10 {
-		optionalFields = backendCountsSQLpg10OptionalFields
-	} else if postgresVersion.Numeric >= state.PostgresVersion96 {
-		optionalFields = backendCountsSQLpg96OptionalFields
-	} else {
-		optionalFields = backendCountsSQLDefaultOptionalFields
-	}
-
-	if StatsHelperExists(db, "get_stat_activity") {
+	if StatsHelperExists(ctx, db, "get_stat_activity") {
 		sourceTable = "pganalyze.get_stat_activity()"
 	} else {
 		sourceTable = "pg_catalog.pg_stat_activity"
 	}
 
-	stmt, err := db.Prepare(QueryMarkerSQL + fmt.Sprintf(backendCountsSQL, optionalFields, sourceTable))
+	stmt, err := db.PrepareContext(ctx, QueryMarkerSQL+fmt.Sprintf(backendCountsSQL, sourceTable))
 	if err != nil {
 		return nil, err
 	}
 
 	defer stmt.Close()
 
-	rows, err := stmt.Query()
+	rows, err := stmt.QueryContext(ctx)
 	if err != nil {
 		return nil, err
 	}

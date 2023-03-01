@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 )
@@ -19,11 +20,11 @@ const connectedAsCloudSQLSuperuser string = `
 SELECT pg_has_role(oid, 'MEMBER') FROM pg_roles WHERE rolname = 'cloudsqlsuperuser'
 `
 
-func connectedAsSuperUser(db *sql.DB, systemType string) bool {
+func connectedAsSuperUser(ctx context.Context, db *sql.DB, systemType string) bool {
 	var enabled bool
 
 	if systemType == "amazon_rds" {
-		err := db.QueryRow(QueryMarkerSQL + connectedAsRdsSuperUserSQL).Scan(&enabled)
+		err := db.QueryRowContext(ctx, QueryMarkerSQL+connectedAsRdsSuperUserSQL).Scan(&enabled)
 		if err != nil {
 			return false
 		}
@@ -31,7 +32,7 @@ func connectedAsSuperUser(db *sql.DB, systemType string) bool {
 	}
 
 	if systemType == "azure_database" {
-		err := db.QueryRow(QueryMarkerSQL + connectedAsAzurePostgresAdmin).Scan(&enabled)
+		err := db.QueryRowContext(ctx, QueryMarkerSQL+connectedAsAzurePostgresAdmin).Scan(&enabled)
 		if err != nil {
 			return false
 		}
@@ -39,14 +40,14 @@ func connectedAsSuperUser(db *sql.DB, systemType string) bool {
 	}
 
 	if systemType == "google_cloudsql" {
-		err := db.QueryRow(QueryMarkerSQL + connectedAsCloudSQLSuperuser).Scan(&enabled)
+		err := db.QueryRowContext(ctx, QueryMarkerSQL+connectedAsCloudSQLSuperuser).Scan(&enabled)
 		if err != nil {
 			return false
 		}
 		return enabled
 	}
 
-	err := db.QueryRow(QueryMarkerSQL + connectedAsSuperUserSQL).Scan(&enabled)
+	err := db.QueryRowContext(ctx, QueryMarkerSQL+connectedAsSuperUserSQL).Scan(&enabled)
 	if err != nil {
 		return false
 	}
@@ -71,10 +72,10 @@ const connectedAsMonitoringRoleSQL string = `
 SELECT pg_has_role(oid, 'MEMBER') FROM pg_roles WHERE rolname = 'pg_monitor'
 `
 
-func connectedAsMonitoringRole(db *sql.DB) bool {
+func connectedAsMonitoringRole(ctx context.Context, db *sql.DB) bool {
 	var enabled bool
 
-	err := db.QueryRow(QueryMarkerSQL + connectedAsMonitoringRoleSQL).Scan(&enabled)
+	err := db.QueryRowContext(ctx, QueryMarkerSQL+connectedAsMonitoringRoleSQL).Scan(&enabled)
 	if err != nil {
 		return false
 	}
@@ -89,10 +90,10 @@ SELECT 1 AS enabled
  WHERE n.nspname = 'pganalyze' AND p.proname = '%s'
 `
 
-func StatsHelperExists(db *sql.DB, statsHelper string) bool {
+func StatsHelperExists(ctx context.Context, db *sql.DB, statsHelper string) bool {
 	var enabled bool
 
-	err := db.QueryRow(QueryMarkerSQL + fmt.Sprintf(statsHelperSQL, statsHelper)).Scan(&enabled)
+	err := db.QueryRowContext(ctx, QueryMarkerSQL+fmt.Sprintf(statsHelperSQL, statsHelper)).Scan(&enabled)
 	if err != nil {
 		return false
 	}

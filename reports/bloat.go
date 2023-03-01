@@ -1,14 +1,15 @@
 package reports
 
 import (
+	"context"
 	"database/sql"
 	"time"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/pganalyze/collector/input/postgres"
 	"github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // BloatReport - Report on table and index bloat
@@ -29,10 +30,10 @@ func (report BloatReport) ReportType() string {
 }
 
 // Run the report
-func (report *BloatReport) Run(server *state.Server, logger *util.Logger, connection *sql.DB) (err error) {
+func (report *BloatReport) Run(ctx context.Context, server *state.Server, logger *util.Logger, connection *sql.DB) (err error) {
 	systemType := server.Config.SystemType
 
-	report.Data, err = postgres.GetBloatStats(logger, connection, systemType, server.Config.IgnoreSchemaRegexp)
+	report.Data, err = postgres.GetBloatStats(ctx, logger, connection, systemType, server.Config.IgnoreSchemaRegexp)
 	if err != nil {
 		return
 	}
@@ -47,7 +48,7 @@ func (report *BloatReport) Result() *pganalyze_collector.Report {
 
 	r.ReportRunId = report.ReportRunID
 	r.ReportType = "bloat"
-	r.CollectedAt, _ = ptypes.TimestampProto(report.CollectedAt)
+	r.CollectedAt = timestamppb.New(report.CollectedAt)
 
 	data.DatabaseReferences = append(data.DatabaseReferences, &pganalyze_collector.DatabaseReference{Name: report.Data.DatabaseName})
 

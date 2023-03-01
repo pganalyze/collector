@@ -3,10 +3,10 @@ package transform
 import (
 	"time"
 
-	"github.com/golang/protobuf/ptypes"
 	snapshot "github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func groupStatements(server *state.Server, statements state.PostgresStatementMap, statsMap state.DiffedPostgresStatementStatsMap) map[statementKey]statementValue {
@@ -90,7 +90,7 @@ func transformPostgresStatements(s snapshot.FullSnapshot, server *state.Server, 
 		}
 
 		h := snapshot.HistoricQueryStatistics{}
-		h.CollectedAt, _ = ptypes.TimestampProto(timeKey.CollectedAt)
+		h.CollectedAt = timestamppb.New(timeKey.CollectedAt)
 		h.CollectedIntervalSecs = timeKey.CollectedIntervalSecs
 
 		groupedStatements = groupStatements(server, transientState.Statements, diffedStats)

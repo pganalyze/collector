@@ -30,7 +30,7 @@ var fingerprintTests = []struct {
 		"4f75277b70af299c",
 	},
 	{
-		"DELETE FROM x WHERE \"id\" IN (?)",
+		"DELETE FROM x WHERE \"id\" IN ($1)",
 		"6b0d33245a74c535",
 	},
 	{

@@ -1,6 +1,7 @@
 package runner
 
 import (
+	"context"
 	"database/sql"
 	"sync"
 	"time"
@@ -11,7 +12,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func gatherQueryStatsForServer(server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.PersistedState, error) {
+func gatherQueryStatsForServer(ctx context.Context, server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.PersistedState, error) {
 	var err error
 	var connection *sql.DB
 
@@ -19,7 +20,7 @@ func gatherQueryStatsForServer(server *state.Server, globalCollectionOpts state.
 	systemType := server.Config.SystemType
 	collectedAt := time.Now()
 
-	connection, err = postgres.EstablishConnection(server, logger, globalCollectionOpts, "")
+	connection, err = postgres.EstablishConnection(ctx, server, logger, globalCollectionOpts, "")
 	if err != nil {
 		return newState, errors.Wrap(err, "failed to connect to database")
 	}
@@ -27,7 +28,7 @@ func gatherQueryStatsForServer(server *state.Server, globalCollectionOpts state.
 
 	if server.Config.SkipIfReplica {
 		var isReplica bool
-		isReplica, err = postgres.GetIsReplica(logger, connection)
+		isReplica, err = postgres.GetIsReplica(ctx, logger, connection)
 		if err != nil {
 			return newState, err
 		}
@@ -36,18 +37,13 @@ func gatherQueryStatsForServer(server *state.Server, globalCollectionOpts state.
 		}
 	}
 
-	postgresVersion, err := postgres.GetPostgresVersion(logger, connection)
+	postgresVersion, err := postgres.GetPostgresVersion(ctx, logger, connection)
 	if err != nil {
 		return newState, errors.Wrap(err, "error collecting Postgres Version")
 	}
 
-	if postgresVersion.Numeric < state.PostgresVersion94 {
-		logger.PrintVerbose("Skipping high frequency query stats run since Postgres version is too old (9.4+ required)")
-		return newState, nil
-	}
-
 	newState.LastStatementStatsAt = time.Now()
-	_, _, newState.StatementStats, err = postgres.GetStatements(server, logger, connection, globalCollectionOpts, postgresVersion, false, systemType)
+	_, _, newState.StatementStats, err = postgres.GetStatements(ctx, server, logger, connection, globalCollectionOpts, postgresVersion, false, systemType)
 	if err != nil {
 		return newState, errors.Wrap(err, "error collecting pg_stat_statements")
 	}
@@ -70,7 +66,7 @@ func gatherQueryStatsForServer(server *state.Server, globalCollectionOpts state.
 	return newState, nil
 }
 
-func GatherQueryStatsFromAllServers(servers []*state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
+func GatherQueryStatsFromAllServers(ctx context.Context, servers []*state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
 	var wg sync.WaitGroup
 
 	for idx := range servers {
@@ -83,7 +79,7 @@ func GatherQueryStatsFromAllServers(servers []*state.Server, globalCollectionOpt
 			prefixedLogger := logger.WithPrefixAndRememberErrors(server.Config.SectionName)
 
 			server.StateMutex.Lock()
-			newState, err := gatherQueryStatsForServer(server, globalCollectionOpts, prefixedLogger)
+			newState, err := gatherQueryStatsForServer(ctx, server, globalCollectionOpts, prefixedLogger)
 
 			if err != nil {
 				server.StateMutex.Unlock()

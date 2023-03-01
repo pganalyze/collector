@@ -1,11 +1,14 @@
 package rds
 
 import (
+	"bufio"
+	"context"
 	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -19,7 +22,7 @@ import (
 )
 
 // DownloadLogFiles - Gets log files for an Amazon RDS instance
-func DownloadLogFiles(server *state.Server, logger *util.Logger) (state.PersistedLogState, []state.LogFile, []state.PostgresQuerySample, error) {
+func DownloadLogFiles(ctx context.Context, server *state.Server, logger *util.Logger) (state.PersistedLogState, []state.LogFile, []state.PostgresQuerySample, error) {
 	var err error
 	var psl state.PersistedLogState = server.LogPrevState
 	var logFiles []state.LogFile
@@ -99,7 +102,8 @@ func DownloadLogFiles(server *state.Server, logger *util.Logger) (state.Persiste
 			goto ErrorCleanup
 		}
 
-		newLogLines, newSamples, _ := logs.ParseAndAnalyzeBuffer(string(buf), 0, linesNewerThan, server)
+		fileContent := bufio.NewReader(strings.NewReader(string(buf)))
+		newLogLines, newSamples := logs.ParseAndAnalyzeBuffer(fileContent, linesNewerThan, server)
 
 		var logFile state.LogFile
 		logFile.UUID = uuid.NewV4()

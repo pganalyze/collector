@@ -11,6 +11,7 @@ import (
 
 	"github.com/pganalyze/collector/config"
 	"github.com/pganalyze/collector/logs"
+	"github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
 	uuid "github.com/satori/go.uuid"
@@ -84,50 +85,7 @@ func setupEventHubReceiver(ctx context.Context, wg *sync.WaitGroup, logger *util
 		}
 		for _, record := range eventData.Records {
 			if record.Category == "PostgreSQLLogs" && record.OperationName == "LogEvent" {
-				// For Single Server, adjust Azure-modified log messages to be standard Postgres log messages
-				if strings.HasPrefix(record.Properties.Message, "connection received:") {
-					record.Properties.Message = connectionReceivedRegexp.ReplaceAllString(record.Properties.Message, "$1")
-				}
-				if strings.HasPrefix(record.Properties.Message, "connection authorized:") {
-					record.Properties.Message = connectionAuthorizedRegexp.ReplaceAllString(record.Properties.Message, "$1 $2")
-				}
-				if strings.HasPrefix(record.Properties.Message, "checkpoint complete") {
-					record.Properties.Message = checkpointCompleteRegexp.ReplaceAllString(record.Properties.Message, "$1$2")
-				}
-
-				// For Flexible Server, logical server name is not set, so instead determine it based on the resource ID
-				if record.LogicalServerName == "" {
-					resourceParts := strings.Split(record.ResourceID, "/")
-					record.LogicalServerName = strings.ToLower(resourceParts[len(resourceParts)-1])
-				}
-
 				azureLogStream <- record
-
-				// DETAIL messages are handled a bit weird here - for now we'll just fake a separate log message
-				// to get them through. Note that other secondary log lines (CONTEXT, STATEMENT, etc) are missing
-				// from the log stream.
-				if record.Properties.Detail != "" {
-					azureLogStream <- AzurePostgresLogRecord{
-						LogicalServerName: record.LogicalServerName,
-						SubscriptionID:    record.SubscriptionID,
-						ResourceGroup:     record.ResourceGroup,
-						Time:              record.Time,
-						ResourceID:        record.ResourceID,
-						Category:          record.Category,
-						OperationName:     record.OperationName,
-						Properties: AzurePostgresLogMessage{
-							Prefix:       record.Properties.Prefix,
-							Message:      record.Properties.Detail, // This is the important difference from the main message
-							Detail:       "",
-							ErrorLevel:   "DETAIL",
-							Domain:       record.Properties.Domain,
-							SchemaName:   record.Properties.SchemaName,
-							TableName:    record.Properties.TableName,
-							ColumnName:   record.Properties.ColumnName,
-							DatatypeName: record.Properties.DatatypeName,
-						},
-					}
-				}
 			}
 		}
 		return nil
@@ -180,6 +138,55 @@ func SetupLogSubscriber(ctx context.Context, wg *sync.WaitGroup, globalCollectio
 	return nil
 }
 
+// Parses one Azure Event Hub log record into one or two log lines (main + DETAIL)
+func ParseRecordToLogLines(in AzurePostgresLogRecord) ([]state.LogLine, string, error) {
+	var azureDbServerName string
+
+	logLineContent := in.Properties.Message
+
+	if in.LogicalServerName == "" { // Flexible Server
+		// For Flexible Server, logical server name is not set, so instead determine it based on the resource ID
+		resourceParts := strings.Split(in.ResourceID, "/")
+		azureDbServerName = strings.ToLower(resourceParts[len(resourceParts)-1])
+	} else { // Single Server
+		// Adjust Azure-modified log messages to be standard Postgres log messages
+		if strings.HasPrefix(logLineContent, "connection received:") {
+			logLineContent = connectionReceivedRegexp.ReplaceAllString(logLineContent, "$1")
+		}
+		if strings.HasPrefix(logLineContent, "connection authorized:") {
+			logLineContent = connectionAuthorizedRegexp.ReplaceAllString(logLineContent, "$1 $2")
+		}
+		if strings.HasPrefix(logLineContent, "checkpoint complete") {
+			logLineContent = checkpointCompleteRegexp.ReplaceAllString(logLineContent, "$1$2")
+		}
+		// Add prefix and error level, which are separated from the content on
+		// Single Server (but our parser expects them together)
+		logLineContent = fmt.Sprintf("%s%s:  %s", in.Properties.Prefix, in.Properties.ErrorLevel, logLineContent)
+
+		azureDbServerName = in.LogicalServerName
+	}
+
+	logLine, ok := logs.ParseLogLineWithPrefix("", logLineContent)
+	if !ok {
+		return []state.LogLine{}, "", fmt.Errorf("Can't parse log line: \"%s\"", logLineContent)
+	}
+
+	logLines := []state.LogLine{logLine}
+
+	// DETAIL messages are not emitted in the main log stream, but instead added to the
+	// primary message in the "detail" field. Create a log line to pass them along.
+	//
+	// Other secondary log lines (CONTEXT, STATEMENT, etc) are missing on Azure.
+	if in.Properties.Detail != "" {
+		detailLogLine := logLine
+		detailLogLine.Content = in.Properties.Detail
+		detailLogLine.LogLevel = pganalyze_collector.LogLineInformation_DETAIL
+		logLines = append(logLines, detailLogLine)
+	}
+
+	return logLines, azureDbServerName, nil
+}
+
 func setupLogTransformer(ctx context.Context, wg *sync.WaitGroup, servers []*state.Server, in <-chan AzurePostgresLogRecord, out chan state.ParsedLogStreamItem, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
 	wg.Add(1)
 	go func() {
@@ -198,30 +205,30 @@ func setupLogTransformer(ctx context.Context, wg *sync.WaitGroup, servers []*sta
 					return
 				}
 
-				// For Flexible Server, attempt direct parsing first (without modifying the message)
-				logLine, ok := logs.ParseLogLineWithPrefix("", in.Properties.Message)
-				if !ok {
-					// For Single Server, the actual Event Hub messages are missing the log_line_prefix and error level, so add them
-					logLineContent := fmt.Sprintf("%s%s:  %s", in.Properties.Prefix, in.Properties.ErrorLevel, in.Properties.Message)
-					logLine, ok = logs.ParseLogLineWithPrefix("", logLineContent)
-					if !ok {
-						logger.PrintError("Can't parse log line: \"%s\"", logLineContent)
-						continue
-					}
+				logLines, azureDbServerName, err := ParseRecordToLogLines(in)
+				if err != nil {
+					logger.PrintError("%s", err)
+					continue
 				}
-				logLine.CollectedAt = time.Now()
-				logLine.UUID = uuid.NewV4()
+				if len(logLines) == 0 {
+					continue
+				}
 
 				// Ignore loglines which are outside our time window (except in test runs)
-				if !logLine.OccurredAt.IsZero() && logLine.OccurredAt.Before(linesNewerThan) && !globalCollectionOpts.TestRun {
+				if !logLines[0].OccurredAt.IsZero() && logLines[0].OccurredAt.Before(linesNewerThan) && !globalCollectionOpts.TestRun {
 					continue
 				}
 
 				foundServer := false
 				for _, server := range servers {
-					if in.LogicalServerName == server.Config.AzureDbServerName {
-						out <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: logLine}
+					if azureDbServerName == server.Config.AzureDbServerName {
 						foundServer = true
+
+						for _, logLine := range logLines {
+							logLine.CollectedAt = time.Now()
+							logLine.UUID = uuid.NewV4()
+							out <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: logLine}
+						}
 					}
 				}
 

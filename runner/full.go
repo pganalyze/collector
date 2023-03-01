@@ -1,6 +1,7 @@
 package runner
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"os/exec"
@@ -19,17 +20,17 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
-func collectDiffAndSubmit(server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.PersistedState, state.CollectionStatus, error) {
+func collectDiffAndSubmit(ctx context.Context, server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.PersistedState, state.CollectionStatus, error) {
 	var newState state.PersistedState
 	var err error
 	var connection *sql.DB
 
-	connection, err = postgres.EstablishConnection(server, logger, globalCollectionOpts, "")
+	connection, err = postgres.EstablishConnection(ctx, server, logger, globalCollectionOpts, "")
 	if err != nil {
 		return newState, state.CollectionStatus{}, fmt.Errorf("Failed to connect to database: %s", err)
 	}
 
-	newState, transientState, err := input.CollectFull(server, connection, globalCollectionOpts, logger)
+	newState, transientState, err := input.CollectFull(ctx, server, connection, globalCollectionOpts, logger)
 	if err != nil {
 		connection.Close()
 		return newState, state.CollectionStatus{}, err
@@ -57,7 +58,7 @@ func collectDiffAndSubmit(server *state.Server, globalCollectionOpts state.Colle
 
 	transientState.HistoricStatementStats = server.PrevState.UnidentifiedStatementStats
 
-	err = output.SendFull(server, globalCollectionOpts, logger, newState, diffState, transientState, collectedIntervalSecs)
+	err = output.SendFull(ctx, server, globalCollectionOpts, logger, newState, diffState, transientState, collectedIntervalSecs)
 	if err != nil {
 		return newState, collectionStatus, err
 	}
@@ -85,13 +86,13 @@ func capturePanic(f func()) (err interface{}, stackTrace []byte) {
 	return
 }
 
-func processServer(server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.PersistedState, state.Grant, state.CollectionStatus, error) {
+func processServer(ctx context.Context, server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.PersistedState, state.Grant, state.CollectionStatus, error) {
 	var newGrant state.Grant
 	var newState state.PersistedState
 	var collectionStatus state.CollectionStatus
 	var err error
 
-	err = checkReplicaCollectionDisabled(server, globalCollectionOpts, logger)
+	err = checkReplicaCollectionDisabled(ctx, server, globalCollectionOpts, logger)
 	if err != nil {
 		return state.PersistedState{}, state.Grant{}, state.CollectionStatus{}, err
 	}
@@ -121,7 +122,7 @@ func processServer(server *state.Server, globalCollectionOpts state.CollectionOp
 	}
 
 	runFunc := func() {
-		newState, collectionStatus, err = collectDiffAndSubmit(server, globalCollectionOpts, logger)
+		newState, collectionStatus, err = collectDiffAndSubmit(ctx, server, globalCollectionOpts, logger)
 	}
 
 	var panicErr interface{}
@@ -154,19 +155,19 @@ func runCompletionCallback(callbackType string, callbackCmd string, sectionName 
 	}
 }
 
-func checkReplicaCollectionDisabled(server *state.Server, opts state.CollectionOpts, logger *util.Logger) error {
+func checkReplicaCollectionDisabled(ctx context.Context, server *state.Server, opts state.CollectionOpts, logger *util.Logger) error {
 	if !server.Config.SkipIfReplica {
 		return nil
 	}
 
-	connection, err := postgres.EstablishConnection(server, logger, opts, "")
+	connection, err := postgres.EstablishConnection(ctx, server, logger, opts, "")
 	if err != nil {
 		return fmt.Errorf("Failed to connect to database: %s", err)
 	}
 	defer connection.Close()
 
 	var isReplica bool
-	isReplica, err = postgres.GetIsReplica(logger, connection)
+	isReplica, err = postgres.GetIsReplica(ctx, logger, connection)
 	if err != nil {
 		return fmt.Errorf("Error checking replication status")
 	}
@@ -178,7 +179,7 @@ func checkReplicaCollectionDisabled(server *state.Server, opts state.CollectionO
 }
 
 // CollectAllServers - Collects statistics from all servers and sends them as full snapshots to the pganalyze service
-func CollectAllServers(servers []*state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (allSuccessful bool) {
+func CollectAllServers(ctx context.Context, servers []*state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (allSuccessful bool) {
 	var wg sync.WaitGroup
 
 	allSuccessful = true
@@ -195,7 +196,7 @@ func CollectAllServers(servers []*state.Server, globalCollectionOpts state.Colle
 			}
 
 			server.StateMutex.Lock()
-			newState, grant, newCollectionStatus, err := processServer(server, globalCollectionOpts, prefixedLogger)
+			newState, grant, newCollectionStatus, err := processServer(ctx, server, globalCollectionOpts, prefixedLogger)
 			if err != nil {
 				server.StateMutex.Unlock()
 
@@ -220,7 +221,7 @@ func CollectAllServers(servers []*state.Server, globalCollectionOpts state.Colle
 
 					if grant.Valid && !globalCollectionOpts.TestRun && globalCollectionOpts.SubmitCollectedData {
 						server.Grant = grant
-						err = output.SendFailedFull(server, globalCollectionOpts, prefixedLogger)
+						err = output.SendFailedFull(ctx, server, globalCollectionOpts, prefixedLogger)
 						if err != nil {
 							prefixedLogger.PrintWarning("Could not send error information to remote server: %s", err)
 						}

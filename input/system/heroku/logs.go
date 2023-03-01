@@ -51,7 +51,7 @@ func catchIdentifyServerLine(sourceName string, content string, sourceToServer m
 	return sourceToServer
 }
 
-func processSystemMetrics(timestamp time.Time, content []byte, sourceToServer map[string]*state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger, namespace string) {
+func processSystemMetrics(ctx context.Context, timestamp time.Time, content []byte, sourceToServer map[string]*state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger, namespace string) {
 	var sample SystemSample
 	err := logfmt.Unmarshal(content, &sample)
 	if err != nil {
@@ -119,7 +119,7 @@ func processSystemMetrics(timestamp time.Time, content []byte, sourceToServer ma
 		},
 	}
 
-	err = output.SubmitCompactSystemSnapshot(server, grant, globalCollectionOpts, prefixedLogger, system, timestamp)
+	err = output.SubmitCompactSystemSnapshot(ctx, server, grant, globalCollectionOpts, prefixedLogger, system, timestamp)
 	if err != nil {
 		prefixedLogger.PrintError("Failed to upload/send compact system snapshot: %s", err)
 		return
@@ -128,7 +128,7 @@ func processSystemMetrics(timestamp time.Time, content []byte, sourceToServer ma
 	return
 }
 
-func logStreamItemToLogLine(item HerokuLogStreamItem, servers []*state.Server, sourceToServer map[string]*state.Server, now time.Time, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (map[string]*state.Server, *state.LogLine, string) {
+func logStreamItemToLogLine(ctx context.Context, item HerokuLogStreamItem, servers []*state.Server, sourceToServer map[string]*state.Server, now time.Time, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (map[string]*state.Server, *state.LogLine, string) {
 	timestamp, err := time.Parse(time.RFC3339, string(item.Header.Time))
 	if err != nil {
 		return sourceToServer, nil, ""
@@ -144,7 +144,7 @@ func logStreamItemToLogLine(item HerokuLogStreamItem, servers []*state.Server, s
 	}
 
 	if string(item.Header.Procid) == "heroku-postgres" {
-		processSystemMetrics(timestamp, item.Content, sourceToServer, globalCollectionOpts, logger, namespace)
+		processSystemMetrics(ctx, timestamp, item.Content, sourceToServer, globalCollectionOpts, logger, namespace)
 		return sourceToServer, nil, ""
 	}
 
@@ -201,7 +201,7 @@ func setupLogTransformer(ctx context.Context, wg *sync.WaitGroup, servers []*sta
 
 				var logLine *state.LogLine
 				var sourceName string
-				sourceToServer, logLine, sourceName = logStreamItemToLogLine(item, servers, sourceToServer, now, globalCollectionOpts, logger)
+				sourceToServer, logLine, sourceName = logStreamItemToLogLine(ctx, item, servers, sourceToServer, now, globalCollectionOpts, logger)
 				if logLine == nil || sourceName == "" {
 					continue
 				}

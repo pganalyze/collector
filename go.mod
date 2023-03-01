@@ -21,7 +21,7 @@ require (
 	github.com/go-ini/ini v1.62.0
 	github.com/go-ole/go-ole v0.0.0-20160708033836-be49f7c07711 // indirect
 	github.com/golang-jwt/jwt/v4 v4.1.0 // indirect
-	github.com/golang/protobuf v1.4.2
+	github.com/golang/protobuf v1.4.2 // indirect
 	github.com/gopherjs/gopherjs v0.0.0-20181103185306-d547d1d9531e // indirect
 	github.com/gorhill/cronexpr v0.0.0-20160318121724-f0984319b442
 	github.com/guregu/null v0.0.0-20160228005316-41961cea0328
@@ -36,21 +36,23 @@ require (
 	github.com/mitchellh/mapstructure v1.4.2 // indirect
 	github.com/ogier/pflag v0.0.0-20160129220114-45c278ab3607
 	github.com/papertrail/go-tail v0.0.0-20180509224916-973c153b0431
-	github.com/pganalyze/pg_query_go/v2 v2.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/satori/go.uuid v0.0.0-20160713180306-0aa62d5ddceb
 	github.com/shirou/gopsutil v3.21.10+incompatible
 	github.com/smartystreets/assertions v0.0.0-20160707190355-2063fd1cc7c9 // indirect
 	github.com/smartystreets/goconvey v0.0.0-20160704134950-4622128e06c7 // indirect
-	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519 // indirect
-	golang.org/x/net v0.0.0-20210929193557-e81a3d93ecf6
+	golang.org/x/crypto v0.6.0 // indirect
+	golang.org/x/net v0.7.0
 	google.golang.org/api v0.32.0
 	google.golang.org/protobuf v1.25.0
 	gopkg.in/ini.v1 v1.62.0 // indirect
 	gopkg.in/mcuadros/go-syslog.v2 v2.3.0
 )
 
-require github.com/prometheus/procfs v0.7.3
+require (
+	github.com/pganalyze/pg_query_go/v4 v4.2.0
+	github.com/prometheus/procfs v0.7.3
+)
 
 require (
 	github.com/Azure/go-amqp v0.16.0 // indirect
@@ -75,14 +77,13 @@ require (
 	github.com/tklauser/numcpus v0.3.0 // indirect
 	go.opencensus.io v0.22.4 // indirect
 	golang.org/x/lint v0.0.0-20200302205851-738671d3881b // indirect
-	golang.org/x/mod v0.3.0 // indirect
+	golang.org/x/mod v0.6.0-dev.0.20220419223038-86c51ed26bb4 // indirect
 	golang.org/x/oauth2 v0.0.0-20200902213428-5d25da1a8d43 // indirect
-	golang.org/x/sync v0.0.0-20201207232520-09787c993a3a // indirect
-	golang.org/x/sys v0.0.0-20210816074244-15123e1e1f71 // indirect
-	golang.org/x/term v0.0.0-20201126162022-7de9c90e9dd1 // indirect
-	golang.org/x/text v0.3.6 // indirect
-	golang.org/x/tools v0.0.0-20201002184944-ecd9fd270d5d // indirect
-	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
+	golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4 // indirect
+	golang.org/x/sys v0.5.0 // indirect
+	golang.org/x/term v0.5.0 // indirect
+	golang.org/x/text v0.7.0 // indirect
+	golang.org/x/tools v0.1.12 // indirect
 	google.golang.org/appengine v1.6.6 // indirect
 	google.golang.org/genproto v0.0.0-20201002142447-3860012362da // indirect
 	google.golang.org/grpc v1.32.0 // indirect

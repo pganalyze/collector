@@ -1,47 +1,13 @@
 package postgres
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
 )
-
-const vacuumProgressSQLpg95 string = `
-WITH activity AS (
-	SELECT pg_catalog.to_char(pid, 'FM0000000') AS padded_pid,
-	       EXTRACT(epoch FROM a.query_start)::int::text AS query_start_epoch,
-				 EXTRACT(epoch FROM COALESCE(backend_start, pg_catalog.pg_postmaster_start_time()))::int::text AS backend_start_epoch,
-				 a.datname,
-				 (SELECT pg_catalog.regexp_matches(query, 'autovacuum: VACUUM (ANALYZE )?([^\.]+).([^\(]+)( \(to prevent wraparound\))?'))[2] AS nspname,
-				 (SELECT pg_catalog.regexp_matches(query, 'autovacuum: VACUUM (ANALYZE )?([^\.]+).([^\(]+)( \(to prevent wraparound\))?'))[3] AS relname,
-				 COALESCE(a.usename, '') AS usename,
-				 a.query_start,
-				 a.query LIKE 'autovacuum: VACUUM%%' AS autovacuum
-    FROM %s a
-	 WHERE a.query LIKE 'autovacuum: VACUUM%%'
-)
-SELECT (a.query_start_epoch || a.padded_pid)::bigint AS vacuum_identity,
-			 (a.backend_start_epoch || a.padded_pid)::bigint AS backend_identity,
-			 a.datname,
-			 a.nspname,
-			 CASE
-			   WHEN ($1 = '' OR (a.nspname || '.' || a.relname) !~* $1) THEN a.relname
-			   ELSE ''
-		   END AS relname,
-       a.usename,
-			 a.query_start AS started_at,
-			 a.autovacuum,
-			 '' AS phase,
-			 0 AS heap_blks_total,
-			 0 AS heap_blks_scanned,
-			 0 AS heap_blks_vacuumed,
-			 0 AS index_vacuum_count,
-			 0 AS max_dead_tuples,
-			 0 AS num_dead_tuples
-	FROM activity a
-`
 
 const vacuumProgressSQLDefault string = `
 WITH activity AS (
@@ -83,36 +49,32 @@ SELECT (query_start_epoch || padded_pid)::bigint AS vacuum_identity,
  WHERE c.oid IS NOT NULL OR (a.query <> '<insufficient privilege>' AND a.nspname IS NOT NULL AND a.relname IS NOT NULL)
 `
 
-func GetVacuumProgress(logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion, ignoreRegexp string) ([]state.PostgresVacuumProgress, error) {
+func GetVacuumProgress(ctx context.Context, logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion, ignoreRegexp string) ([]state.PostgresVacuumProgress, error) {
 	var activitySourceTable string
 	var sql string
 
-	if StatsHelperExists(db, "get_stat_activity") {
+	if StatsHelperExists(ctx, db, "get_stat_activity") {
 		activitySourceTable = "pganalyze.get_stat_activity()"
 	} else {
 		activitySourceTable = "pg_catalog.pg_stat_activity"
 	}
 
-	if postgresVersion.Numeric < state.PostgresVersion96 {
-		sql = fmt.Sprintf(vacuumProgressSQLpg95, activitySourceTable)
+	var vacuumSourceTable string
+	if StatsHelperExists(ctx, db, "get_stat_progress_vacuum") {
+		vacuumSourceTable = "pganalyze.get_stat_progress_vacuum()"
 	} else {
-		var vacuumSourceTable string
-		if StatsHelperExists(db, "get_stat_progress_vacuum") {
-			vacuumSourceTable = "pganalyze.get_stat_progress_vacuum()"
-		} else {
-			vacuumSourceTable = "pg_catalog.pg_stat_progress_vacuum"
-		}
-		sql = fmt.Sprintf(vacuumProgressSQLDefault, activitySourceTable, vacuumSourceTable)
+		vacuumSourceTable = "pg_catalog.pg_stat_progress_vacuum"
 	}
+	sql = fmt.Sprintf(vacuumProgressSQLDefault, activitySourceTable, vacuumSourceTable)
 
-	stmt, err := db.Prepare(QueryMarkerSQL + sql)
+	stmt, err := db.PrepareContext(ctx, QueryMarkerSQL+sql)
 	if err != nil {
 		return nil, err
 	}
 
 	defer stmt.Close()
 
-	rows, err := stmt.Query(ignoreRegexp)
+	rows, err := stmt.QueryContext(ctx, ignoreRegexp)
 	if err != nil {
 		return nil, err
 	}
@@ -140,7 +102,7 @@ func GetVacuumProgress(logger *util.Logger, db *sql.DB, postgresVersion state.Po
 
 	for idx, row := range vacuums {
 		if row.SchemaName == "pg_toast" {
-			schemaName, relationName, err := resolveToastTable(db, row.RelationName)
+			schemaName, relationName, err := resolveToastTable(ctx, db, row.RelationName)
 			if err != nil {
 				logger.PrintVerbose("Failed to resolve TOAST table \"%s\": %s", row.RelationName, err)
 			} else if schemaName != "" && relationName != "" {

@@ -12,6 +12,7 @@ import (
 	"runtime/pprof"
 	"runtime/trace"
 	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -25,6 +26,7 @@ import (
 	"github.com/pganalyze/collector/input/postgres"
 	"github.com/pganalyze/collector/input/system/selfhosted"
 	"github.com/pganalyze/collector/logs"
+	"github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/runner"
 	"github.com/pganalyze/collector/scheduler"
 	"github.com/pganalyze/collector/state"
@@ -33,11 +35,10 @@ import (
 	_ "github.com/lib/pq" // Enable database package to use Postgres
 )
 
-func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *util.Logger, configFilename string) (keepRunning bool, reloadOkay bool, writeStateFile func()) {
+func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *util.Logger, configFilename string) (keepRunning bool, testRunSuccess chan bool, writeStateFile func()) {
 	var servers []*state.Server
 
 	keepRunning = false
-	reloadOkay = false
 	writeStateFile = func() {}
 
 	schedulerGroups, err := scheduler.GetSchedulerGroups()
@@ -108,66 +109,76 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 		logger.PrintInfo("Running collector test with %s", util.CollectorNameAndVersion)
 	}
 
-	checkAllInitialCollectionStatus(servers, globalCollectionOpts, logger)
+	checkAllInitialCollectionStatus(ctx, servers, globalCollectionOpts, logger)
 
 	// We intentionally don't do a test-run in the normal mode, since we're fine with
 	// a later SIGHUP that fixes the config (or a temporarily unreachable server at start)
 	if globalCollectionOpts.TestRun {
-		if globalCollectionOpts.TestReport != "" {
-			runner.RunTestReport(servers, globalCollectionOpts, logger)
-			return
-		} else if globalCollectionOpts.TestExplain {
-			for _, server := range servers {
-				prefixedLogger := logger.WithPrefix(server.Config.SectionName)
-				err := runner.EmitTestExplain(server, globalCollectionOpts, prefixedLogger)
-				if err != nil {
-					prefixedLogger.PrintError("Failed to run test explain: %s", err)
-				}
-			}
-			return
-		} else if globalCollectionOpts.TestRunLogs {
-			reloadOkay = doLogTest(servers, globalCollectionOpts, logger)
-			return
-		} else {
-			var allFullSuccessful bool
-			var allActivitySuccessful bool
-			allFullSuccessful = runner.CollectAllServers(servers, globalCollectionOpts, logger)
-			if hasAnyActivityEnabled {
-				allActivitySuccessful = runner.CollectActivityFromAllServers(servers, globalCollectionOpts, logger)
-			} else {
-				allActivitySuccessful = true
-			}
-			if hasAnyLogsEnabled {
-				// We intentionally don't fail for the regular test command if the log test fails, since you may not
-				// have Log Insights enabled on your plan (which would fail the log test when getting the log grant).
-				// In these situations we still want --test to be successful (i.e. issue a reload), but --test-logs
-				// would fail (and not reload).
-				doLogTest(servers, globalCollectionOpts, logger)
-			}
-
-			reloadOkay = allFullSuccessful && allActivitySuccessful
-			if reloadOkay {
-				// in a dry run, we will not actually have URLs; avoid this output in that case
-				var hasURLs bool
+		wg.Add(1)
+		testRunSuccess = make(chan bool)
+		go func() {
+			if globalCollectionOpts.TestReport != "" {
+				runner.RunTestReport(ctx, servers, globalCollectionOpts, logger)
+				testRunSuccess <- true
+			} else if globalCollectionOpts.TestExplain {
+				success := true
 				for _, server := range servers {
-					if server.PGAnalyzeURL != "" {
-						hasURLs = true
-						break
+					prefixedLogger := logger.WithPrefix(server.Config.SectionName)
+					err := runner.EmitTestExplain(ctx, server, globalCollectionOpts, prefixedLogger)
+					if err != nil {
+						prefixedLogger.PrintError("Failed to run test explain: %s", err)
+						success = false
 					}
 				}
-				if hasURLs {
-					fmt.Fprintln(os.Stderr)
-					fmt.Fprintln(os.Stderr, "Test successful. View servers in pganalyze:")
+				testRunSuccess <- success
+			} else if globalCollectionOpts.TestRunLogs {
+				success := doLogTest(ctx, servers, globalCollectionOpts, logger)
+				testRunSuccess <- success
+			} else {
+				var allFullSuccessful bool
+				var allActivitySuccessful bool
+				allFullSuccessful = runner.CollectAllServers(ctx, servers, globalCollectionOpts, logger)
+				if ctx.Err() == nil {
+					if hasAnyActivityEnabled {
+						allActivitySuccessful = runner.CollectActivityFromAllServers(ctx, servers, globalCollectionOpts, logger)
+					} else {
+						allActivitySuccessful = true
+					}
+				}
+				if hasAnyLogsEnabled && ctx.Err() == nil {
+					// We intentionally don't fail for the regular test command if the log test fails, since you may not
+					// have Log Insights enabled on your plan (which would fail the log test when getting the log grant).
+					// In these situations we still want --test to be successful (i.e. issue a reload), but --test-logs
+					// would fail (and not reload).
+					doLogTest(ctx, servers, globalCollectionOpts, logger)
+				}
+
+				success := allFullSuccessful && allActivitySuccessful
+				if success {
+					// in a dry run, we will not actually have URLs; avoid this output in that case
+					var hasURLs bool
 					for _, server := range servers {
 						if server.PGAnalyzeURL != "" {
-							fmt.Fprintf(os.Stderr, " - [%s]: %s\n", server.Config.SectionName, server.PGAnalyzeURL)
+							hasURLs = true
+							break
 						}
 					}
-					fmt.Fprintln(os.Stderr)
+					if hasURLs {
+						fmt.Fprintln(os.Stderr)
+						fmt.Fprintln(os.Stderr, "Test successful. View servers in pganalyze:")
+						for _, server := range servers {
+							if server.PGAnalyzeURL != "" {
+								fmt.Fprintf(os.Stderr, " - [%s]: %s\n", server.Config.SectionName, server.PGAnalyzeURL)
+							}
+						}
+						fmt.Fprintln(os.Stderr)
+					}
 				}
+				testRunSuccess <- success
 			}
-			return
-		}
+			wg.Done()
+		}()
+		return
 	}
 
 	if globalCollectionOpts.DebugLogs {
@@ -179,20 +190,20 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 	}
 
 	if globalCollectionOpts.DiscoverLogLocation {
-		selfhosted.DiscoverLogLocation(servers, globalCollectionOpts, logger)
+		selfhosted.DiscoverLogLocation(ctx, servers, globalCollectionOpts, logger)
 		return
 	}
 
-	schedulerGroups["stats"].Schedule(ctx, func() {
+	schedulerGroups["stats"].Schedule(ctx, func(ctx context.Context) {
 		wg.Add(1)
-		runner.CollectAllServers(servers, globalCollectionOpts, logger)
+		runner.CollectAllServers(ctx, servers, globalCollectionOpts, logger)
 		wg.Done()
 	}, logger, "full snapshot of all servers")
 
 	if hasAnyReportsEnabled {
-		schedulerGroups["reports"].Schedule(ctx, func() {
+		schedulerGroups["reports"].Schedule(ctx, func(ctx context.Context) {
 			wg.Add(1)
-			runner.RunRequestedReports(servers, globalCollectionOpts, logger)
+			runner.RunRequestedReports(ctx, servers, globalCollectionOpts, logger)
 			wg.Done()
 		}, logger, "requested reports for all servers")
 	}
@@ -205,16 +216,16 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 	}
 
 	if hasAnyActivityEnabled {
-		schedulerGroups["activity"].Schedule(ctx, func() {
+		schedulerGroups["activity"].Schedule(ctx, func(ctx context.Context) {
 			wg.Add(1)
-			runner.CollectActivityFromAllServers(servers, globalCollectionOpts, logger)
+			runner.CollectActivityFromAllServers(ctx, servers, globalCollectionOpts, logger)
 			wg.Done()
 		}, logger, "activity snapshot of all servers")
 	}
 
-	schedulerGroups["query_stats"].ScheduleSecondary(ctx, func() {
+	schedulerGroups["query_stats"].ScheduleSecondary(ctx, func(ctx context.Context) {
 		wg.Add(1)
-		runner.GatherQueryStatsFromAllServers(servers, globalCollectionOpts, logger)
+		runner.GatherQueryStatsFromAllServers(ctx, servers, globalCollectionOpts, logger)
 		wg.Done()
 	}, logger, "high frequency query statistics of all servers", schedulerGroups["stats"])
 
@@ -230,6 +241,7 @@ func main() {
 	var dryRun bool
 	var dryRunLogs bool
 	var analyzeLogfile string
+	var analyzeDebugClassifications string
 	var filterLogFile string
 	var filterLogSecret string
 	var debugLogs bool
@@ -271,6 +283,7 @@ func main() {
 	flag.BoolVar(&dryRun, "dry-run", false, "Print JSON data that would get sent to web service (without actually sending) and exit afterwards")
 	flag.BoolVar(&dryRunLogs, "dry-run-logs", false, "Print JSON data for log snapshot (without actually sending) and exit afterwards")
 	flag.StringVar(&analyzeLogfile, "analyze-logfile", "", "Analyzes the content of the given log file and returns debug output about it")
+	flag.StringVar(&analyzeDebugClassifications, "analyze-debug-classifications", "", "When used with --analyze-logfile, print detailed information about given classifications (can be comma-separated list of integer classifications, or keyword 'all')")
 	flag.StringVar(&filterLogFile, "filter-logfile", "", "Test command that filters all known secrets in the logfile according to the filter-log-secret option")
 	flag.StringVar(&filterLogSecret, "filter-log-secret", "all", "Sets the type of secrets filtered by the filter-logfile test command (default: all)")
 	flag.BoolVar(&debugLogs, "debug-logs", false, "Outputs all log analysis that would be sent, doesn't send any other data (use for debugging only)")
@@ -372,24 +385,47 @@ func main() {
 	}
 
 	if analyzeLogfile != "" {
-		content, err := ioutil.ReadFile(analyzeLogfile)
+		contentBytes, err := ioutil.ReadFile(analyzeLogfile)
 		if err != nil {
 			fmt.Printf("ERROR: %s\n", err)
 			return
 		}
-		logLines, samples := logs.DebugParseAndAnalyzeBuffer(string(content))
-		logs.PrintDebugInfo(string(content), logLines, samples)
+		content := string(contentBytes)
+		reader := strings.NewReader(content)
+		logReader := logs.NewMaybeHerokuLogReader(reader)
+		logLines, samples := logs.ParseAndAnalyzeBuffer(logReader, time.Time{}, &state.Server{})
+		logs.PrintDebugInfo(content, logLines, samples)
+		if analyzeDebugClassifications != "" {
+			classifications := strings.Split(analyzeDebugClassifications, ",")
+			classMap := make(map[pganalyze_collector.LogLineInformation_LogClassification]bool)
+			for _, classification := range classifications {
+				if classification == "all" {
+					// we represent "all" as an empty map
+					continue
+				}
+				classVal, err := strconv.ParseInt(classification, 10, 32)
+				if err != nil {
+					fmt.Printf("ERROR: invalid classification: %s\n", err)
+				}
+				classInt := int32(classVal)
+				classMap[pganalyze_collector.LogLineInformation_LogClassification(classInt)] = true
+			}
+			logs.PrintDebugLogLines(content, logLines, classMap)
+		}
 		return
 	}
 
 	if filterLogFile != "" {
-		content, err := ioutil.ReadFile(filterLogFile)
+		contentBytes, err := ioutil.ReadFile(filterLogFile)
 		if err != nil {
 			fmt.Printf("ERROR: %s\n", err)
 			return
 		}
-		logLines, _ := logs.DebugParseAndAnalyzeBuffer(string(content))
-		output := logs.ReplaceSecrets(content, logLines, state.ParseFilterLogSecret(filterLogSecret))
+		content := string(contentBytes)
+		reader := strings.NewReader(content)
+		logReader := logs.NewMaybeHerokuLogReader(reader)
+		logLines, _ := logs.ParseAndAnalyzeBuffer(logReader, time.Time{}, &state.Server{})
+		output := logs.ReplaceSecrets(contentBytes, logLines, state.ParseFilterLogSecret(filterLogSecret))
 		fmt.Printf("%s", output)
 		return
 	}
@@ -418,12 +454,13 @@ func main() {
 	}
 
 	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
+	signal.Notify(sigs, os.Interrupt, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
 
 ReadConfigAndRun:
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := sync.WaitGroup{}
-	keepRunning, reloadOkay, writeStateFile := run(ctx, &wg, globalCollectionOpts, logger, configFilename)
+	exitCode := 0
+	keepRunning, testRunSuccess, writeStateFile := run(ctx, &wg, globalCollectionOpts, logger, configFilename)
 
 	if keepRunning {
 		// Block here until we get any of the registered signals
@@ -449,46 +486,68 @@ ReadConfigAndRun:
 			goto ReadConfigAndRun
 		}
 
-		signal.Stop(sigs)
-
 		logger.PrintInfo("Exiting...")
+	} else {
+		// The run function started some work (e.g. a test command), wait for that to finish before exiting
+		done := make(chan struct{})
+		go func() {
+			defer close(done)
+			wg.Wait()
+		}()
+	DoneOrSignal:
+		for {
+			select {
+			case success := <-testRunSuccess:
+				if reloadRun {
+					if success {
+						Reload(logger)
+					} else {
+						logger.PrintError("Error: Reload requested, but ignoring since configuration errors are present")
+						exitCode = 1
+					}
+				}
+				break DoneOrSignal
+			case s := <-sigs:
+				if s == syscall.SIGINT || s == syscall.SIGTERM {
+					logger.PrintError("Interrupt")
+					break DoneOrSignal
+				}
+			}
+		}
 	}
 
 	cancel()
 	wg.Wait()
 
-	if reloadRun {
-		if reloadOkay {
-			Reload(logger)
-		} else {
-			logger.PrintError("Error: Reload requested, but ignoring since configuration errors are present")
-			os.Exit(1)
-		}
-	}
+	signal.Stop(sigs)
 
 	if testRunAndTrace {
 		trace.Stop()
 	}
+
+	if exitCode != 0 {
+		os.Exit(exitCode)
+	}
 }
 
-func checkAllInitialCollectionStatus(servers []*state.Server, opts state.CollectionOpts, logger *util.Logger) {
+func checkAllInitialCollectionStatus(ctx context.Context, servers []*state.Server, opts state.CollectionOpts, logger *util.Logger) {
 	for _, server := range servers {
 		var prefixedLogger = logger.WithPrefix(server.Config.SectionName)
-		err := checkOneInitialCollectionStatus(server, opts, prefixedLogger)
+		err := checkOneInitialCollectionStatus(ctx, server, opts, prefixedLogger)
 		if err != nil {
 			prefixedLogger.PrintVerbose("could not check initial collection status: %s", err)
 		}
 	}
 }
 
-func checkOneInitialCollectionStatus(server *state.Server, opts state.CollectionOpts, logger *util.Logger) error {
-	conn, err := postgres.EstablishConnection(server, logger, opts, "")
+func checkOneInitialCollectionStatus(ctx context.Context, server *state.Server, opts state.CollectionOpts, logger *util.Logger) error {
+	conn, err := postgres.EstablishConnection(ctx, server, logger, opts, "")
 	if err != nil {
 		return errors.Wrap(err, "failed to connect to database")
 	}
 	defer conn.Close()
 
-	settings, err := postgres.GetSettings(conn)
+	settings, err := postgres.GetSettings(ctx, conn)
 	if err != nil {
 		return err
 	}
@@ -497,7 +556,7 @@ func checkOneInitialCollectionStatus(server *state.Server, opts state.Collection
 	var isIgnoredReplica bool
 	var collectionDisabledReason string
 	if server.Config.SkipIfReplica {
-		isIgnoredReplica, err = postgres.GetIsReplica(logger, conn)
+		isIgnoredReplica, err = postgres.GetIsReplica(ctx, logger, conn)
 		if err != nil {
 			return err
 		}
@@ -538,9 +597,9 @@ func Reload(logger *util.Logger) {
 	os.Exit(0)
 }
 
-func doLogTest(servers []*state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) bool {
+func doLogTest(ctx context.Context, servers []*state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) bool {
 	// Initial test
-	hasFailedServers, hasSuccessfulLocalServers := runner.TestLogsForAllServers(servers, globalCollectionOpts, logger)
+	hasFailedServers, hasSuccessfulLocalServers := runner.TestLogsForAllServers(ctx, servers, globalCollectionOpts, logger)
 
 	// Re-test using lower privileges
 	if hasFailedServers {

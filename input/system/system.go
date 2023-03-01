@@ -1,6 +1,8 @@
 package system
 
 import (
+	"context"
+
 	"github.com/pganalyze/collector/config"
 	"github.com/pganalyze/collector/input/postgres"
 	"github.com/pganalyze/collector/input/system/rds"
@@ -10,14 +12,14 @@ import (
 )
 
 // DownloadLogFiles - Downloads all new log files for the remote system and returns them
-func DownloadLogFiles(server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (psl state.PersistedLogState, files []state.LogFile, querySamples []state.PostgresQuerySample, err error) {
+func DownloadLogFiles(ctx context.Context, server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (psl state.PersistedLogState, files []state.LogFile, querySamples []state.PostgresQuerySample, err error) {
 	if server.Config.SystemType == "amazon_rds" {
-		psl, files, querySamples, err = rds.DownloadLogFiles(server, logger)
+		psl, files, querySamples, err = rds.DownloadLogFiles(ctx, server, logger)
 		if err != nil {
 			return
 		}
 	} else if server.Config.LogPgReadFile {
-		psl, files, querySamples, err = postgres.LogPgReadFile(server, globalCollectionOpts, logger)
+		psl, files, querySamples, err = postgres.LogPgReadFile(ctx, server, globalCollectionOpts, logger)
 		if err != nil {
 			return
 		}

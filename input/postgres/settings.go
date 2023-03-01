@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 
@@ -29,8 +30,8 @@ SELECT DISTINCT ON (name)
   FROM pg_catalog.pg_settings
  ORDER BY name, CASE source WHEN 'default' THEN 1 ELSE 0 END`
 
-func GetSettings(db *sql.DB) ([]state.PostgresSetting, error) {
-	stmt, err := db.Prepare(QueryMarkerSQL + settingsSQL)
+func GetSettings(ctx context.Context, db *sql.DB) ([]state.PostgresSetting, error) {
+	stmt, err := db.PrepareContext(ctx, QueryMarkerSQL+settingsSQL)
 	if err != nil {
 		err = fmt.Errorf("Settings/Prepare: %s", err)
 		return nil, err
@@ -38,7 +39,7 @@ func GetSettings(db *sql.DB) ([]state.PostgresSetting, error) {
 
 	defer stmt.Close()
 
-	rows, err := stmt.Query()
+	rows, err := stmt.QueryContext(ctx)
 	if err != nil {
 		err = fmt.Errorf("Settings/Query: %s", err)
 		return nil, err

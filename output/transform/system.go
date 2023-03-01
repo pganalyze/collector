@@ -3,9 +3,9 @@ package transform
 import (
 	"sort"
 
-	"github.com/golang/protobuf/ptypes"
 	snapshot "github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func SystemStateToCompactSystemSnapshot(systemState state.SystemState) snapshot.CompactSystemSnapshot {
@@ -54,8 +54,8 @@ func transformSystem(systemState state.SystemState, diffState state.DiffState) *
 	} else if systemState.Info.Type == state.AmazonRdsSystem {
 		system.SystemInformation.Type = snapshot.SystemInformation_AMAZON_RDS_SYSTEM
 		if systemState.Info.AmazonRds != nil {
-			latestRestorableTime, _ := ptypes.TimestampProto(systemState.Info.AmazonRds.LatestRestorableTime)
-			createdAt, _ := ptypes.TimestampProto(systemState.Info.AmazonRds.CreatedAt)
+			latestRestorableTime := timestamppb.New(systemState.Info.AmazonRds.LatestRestorableTime)
+			createdAt := timestamppb.New(systemState.Info.AmazonRds.CreatedAt)
 
 			system.SystemInformation.Info = &snapshot.SystemInformation_AmazonRds{
 				AmazonRds: &snapshot.SystemInformationAmazonRDS{

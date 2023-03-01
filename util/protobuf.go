@@ -4,11 +4,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/golang/protobuf/ptypes"
-	"github.com/golang/protobuf/ptypes/timestamp"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-type Timestamp timestamp.Timestamp
+type Timestamp timestamppb.Timestamp
 
 func (ts *Timestamp) Scan(value interface{}) error {
 	if ts != nil {
@@ -16,16 +15,13 @@ func (ts *Timestamp) Scan(value interface{}) error {
 	}
 
 	var t time.Time
-	var protoTs *timestamp.Timestamp
+	var protoTs *timestamppb.Timestamp
 	if value == nil {
 		return nil
 	}
 
 	t = value.(time.Time)
-	protoTs, err := ptypes.TimestampProto(t)
-	if err != nil {
-		return err
-	}
+	protoTs = timestamppb.New(t)
 
 	*ts = Timestamp(*protoTs)
 

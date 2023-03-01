@@ -12,10 +12,11 @@ type Group struct {
 	interval *cronexpr.Expression
 }
 
-func (group Group) Schedule(ctx context.Context, runner func(), logger *util.Logger, logName string) {
+func (group Group) Schedule(ctx context.Context, runner func(context.Context), logger *util.Logger, logName string) {
 	go func() {
 		for {
-			delay := group.interval.Next(time.Now()).Sub(time.Now())
+			nextExecutions := group.interval.NextN(time.Now(), 2)
+			delay := time.Until(nextExecutions[0])
 
 			logger.PrintVerbose("Scheduled next run for %s in %+v", logName, delay)
 
@@ -23,18 +24,21 @@ func (group Group) Schedule(ctx context.Context, runner func(), logger *util.Log
 			case <-ctx.Done():
 				return
 			case <-time.After(delay):
-				// NOTE: In the future we'll measure the runner's execution time
-				// and decide the next scheduling interval based on that
-				runner()
+				func() {
+					// Cancel runner at latest right before next scheduled execution should
+					// occur, to prevent skipping over runner executions by accident.
+					ctx, cancel := context.WithDeadline(ctx, nextExecutions[1].Add(-1*time.Second))
+					defer cancel()
+					runner(ctx)
+				}()
 			}
 		}
 	}()
-	return
 }
 
 // ScheduleSecondary - Behaves almost like Schedule, but ignores the point in time
 // where the primary group also has a run (to avoid overlapping statistics)
-func (group Group) ScheduleSecondary(ctx context.Context, runner func(), logger *util.Logger, logName string, primaryGroup Group) {
+func (group Group) ScheduleSecondary(ctx context.Context, runner func(context.Context), logger *util.Logger, logName string, primaryGroup Group) {
 	go func() {
 		for {
 			timeNow := time.Now()
@@ -57,12 +61,11 @@ func (group Group) ScheduleSecondary(ctx context.Context, runner func(), logger 
 				if int(delay.Seconds()) == int(delayPrimary.Seconds()) {
 					logger.PrintVerbose("Skipping run for %s since it overlaps with primary group time", logName)
 				} else {
-					runner()
+					runner(ctx)
 				}
 			}
 		}
 	}()
-	return
 }
 
 func GetSchedulerGroups() (groups map[string]Group, err error) {

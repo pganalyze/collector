@@ -1,10 +1,11 @@
 package reports
 
 import (
+	"context"
 	"database/sql"
 	"time"
 
-	"github.com/golang/protobuf/ptypes"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/pganalyze/collector/input/postgres"
 	"github.com/pganalyze/collector/output/pganalyze_collector"
@@ -30,10 +31,10 @@ func (report BuffercacheReport) ReportType() string {
 }
 
 // Run the report
-func (report *BuffercacheReport) Run(server *state.Server, logger *util.Logger, connection *sql.DB) (err error) {
+func (report *BuffercacheReport) Run(ctx context.Context, server *state.Server, logger *util.Logger, connection *sql.DB) (err error) {
 	systemType := server.Config.SystemType
 
-	report.Data, err = postgres.GetBuffercache(logger, connection, systemType, server.Config.IgnoreSchemaRegexp)
+	report.Data, err = postgres.GetBuffercache(ctx, logger, connection, systemType, server.Config.IgnoreSchemaRegexp)
 	if err != nil {
 		return
 	}
@@ -49,7 +50,7 @@ func (report *BuffercacheReport) Result() *pganalyze_collector.Report {
 
 	r.ReportRunId = report.ReportRunID
 	r.ReportType = "buffercache"
-	r.CollectedAt, _ = ptypes.TimestampProto(report.CollectedAt)
+	r.CollectedAt = timestamppb.New(report.CollectedAt)
 
 	data.FreeBytes = report.Data.FreeBytes
 	data.TotalBytes = report.Data.TotalBytes

@@ -3,22 +3,23 @@ package output
 import (
 	"bytes"
 	"compress/zlib"
+	"context"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/pganalyze/collector/reports"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
+	"google.golang.org/protobuf/proto"
 )
 
-func submitReportRun(server *state.Server, report reports.Report, logger *util.Logger, s3Location string) error {
+func submitReportRun(ctx context.Context, server *state.Server, report reports.Report, logger *util.Logger, s3Location string) error {
 	data := url.Values{"s3_location": {s3Location}}
 
-	req, err := http.NewRequest("POST", server.Config.APIBaseURL+"/v2/reports/submit_run", strings.NewReader(data.Encode()))
+	req, err := http.NewRequestWithContext(ctx, "POST", server.Config.APIBaseURL+"/v2/reports/submit_run", strings.NewReader(data.Encode()))
 	if err != nil {
 		return err
 	}
@@ -58,7 +59,7 @@ func submitReportRun(server *state.Server, report reports.Report, logger *util.L
 	return nil
 }
 
-func SubmitReport(server *state.Server, grant state.Grant, report reports.Report, logger *util.Logger) error {
+func SubmitReport(ctx context.Context, server *state.Server, grant state.Grant, report reports.Report, logger *util.Logger) error {
 	var err error
 	var data []byte
 
@@ -75,11 +76,11 @@ func SubmitReport(server *state.Server, grant state.Grant, report reports.Report
 	w.Write(data)
 	w.Close()
 
-	s3Location, err := uploadSnapshot(server.Config.HTTPClientWithRetry, grant, logger, compressedData, report.RunID())
+	s3Location, err := uploadSnapshot(ctx, server.Config.HTTPClientWithRetry, grant, logger, compressedData, report.RunID())
 	if err != nil {
 		logger.PrintError("Error uploading to S3: %s", err)
 		return err
 	}
 
-	return submitReportRun(server, report, logger, s3Location)
+	return submitReportRun(ctx, server, report, logger, s3Location)
 }

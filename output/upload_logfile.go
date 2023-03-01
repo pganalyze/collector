@@ -2,6 +2,7 @@ package output
 
 import (
 	"bytes"
+	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
@@ -47,7 +48,7 @@ func (kh *keyHandler) GenerateCipherData(keySize, ivSize int) (s3crypto.CipherDa
 	return cd, nil
 }
 
-func EncryptAndUploadLogfiles(httpClient *http.Client, s3 state.GrantS3, encryptionKey state.GrantLogsEncryptionKey, logger *util.Logger, logFiles []state.LogFile) []state.LogFile {
+func EncryptAndUploadLogfiles(ctx context.Context, httpClient *http.Client, s3 state.GrantS3, encryptionKey state.GrantLogsEncryptionKey, logger *util.Logger, logFiles []state.LogFile) []state.LogFile {
 	if len(logFiles) == 0 {
 		return logFiles
 	}
@@ -121,7 +122,7 @@ func EncryptAndUploadLogfiles(httpClient *http.Client, s3 state.GrantS3, encrypt
 		formFields["x-amz-meta-x-amz-unencrypted-content-md5"] = env.UnencryptedMD5
 		formFields["x-amz-meta-x-amz-unencrypted-content-length"] = env.UnencryptedContentLen
 
-		s3Location, err := uploadToS3(httpClient, s3.S3URL, formFields, logger, encryptedContent, logFile.UUID.String())
+		s3Location, err := uploadToS3(ctx, httpClient, s3.S3URL, formFields, logger, encryptedContent, logFile.UUID.String())
 		if err != nil {
 			logger.PrintError("Log S3 upload failed: %s", err)
 			return logFiles
