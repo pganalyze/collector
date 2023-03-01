@@ -115,6 +115,7 @@ $$
   /* pganalyze-collector */ SELECT last_value, start_value, increment_by, max_value, min_value, cache_size, cycle
     FROM pg_sequences WHERE schemaname = schema_name AND sequencename = sequence_name;
 $$ LANGUAGE sql VOLATILE SECURITY DEFINER;
+```
 
 If you enabled the optional reset mode (usually not required), you will also need this helper method:
 
