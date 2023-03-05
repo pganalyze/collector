@@ -54,7 +54,8 @@ SELECT c.oid,
 			 CASE WHEN c.relminmxid <> '0' THEN pg_catalog.mxid_age(c.relminmxid) ELSE 0 END AS relation_mxid_age,
 			 c.relpages,
 			 c.reltuples,
-			 c.relallvisible
+			 c.relallvisible,
+			 false AS exclusively_locked
 	FROM pg_catalog.pg_class c
 	LEFT JOIN pg_catalog.pg_namespace n ON (n.oid = c.relnamespace)
 	LEFT JOIN pg_catalog.pg_stat_user_tables s ON (s.relid = c.oid)
@@ -65,6 +66,44 @@ SELECT c.oid,
 			 AND c.oid NOT IN (SELECT pd.objid FROM pg_catalog.pg_depend pd WHERE pd.deptype = 'e' AND pd.classid = 'pg_catalog.pg_class'::regclass)
 			 AND n.nspname NOT IN ('pg_catalog','pg_toast','information_schema')
 			 AND ($1 = '' OR (n.nspname || '.' || c.relname) !~* $1)
+ UNION ALL
+SELECT relid,
+	   0,
+	   0,
+	   0,
+	   0,
+	   0,
+	   0,
+	   0,
+	   0,
+	   0,
+	   0,
+	   0,
+	   0,
+	   0,
+	   NULL,
+	   NULL,
+	   NULL,
+	   NULL,
+	   0,
+	   0,
+	   0,
+	   0,
+	   0,
+	   0,
+	   0,
+	   0,
+	   0,
+	   0,
+	   0,
+	   0,
+	   0,
+	   0,
+	   0,
+	   0,
+	   0,
+	   true AS exclusively_locked
+  FROM locked_relids_with_parents
 `
 
 const indexStatsSQL = `
@@ -75,11 +114,22 @@ SELECT s.indexrelid,
 			 COALESCE(s.idx_tup_read, 0),
 			 COALESCE(s.idx_tup_fetch, 0),
 			 COALESCE(sio.idx_blks_read, 0),
-			 COALESCE(sio.idx_blks_hit, 0)
+			 COALESCE(sio.idx_blks_hit, 0),
+			 false AS exclusively_locked
 	FROM pg_catalog.pg_stat_user_indexes s
 			 LEFT JOIN pg_catalog.pg_statio_user_indexes sio USING (indexrelid)
  WHERE s.indexrelid NOT IN (SELECT relid FROM locked_relids)
 			 AND ($1 = '' OR (s.schemaname || '.' || s.relname) !~* $1)
+UNION ALL
+SELECT relid,
+	   0,
+	   0,
+	   0,
+	   0,
+	   0,
+	   0,
+	   true AS exclusively_locked
+  FROM locked_relids
 `
 
 const columnStatsSQL = `
@@ -126,7 +176,8 @@ func GetRelationStats(ctx context.Context, db *sql.DB, postgresVersion state.Pos
 			&stats.HeapBlksHit, &stats.IdxBlksRead, &stats.IdxBlksHit,
 			&stats.ToastBlksRead, &stats.ToastBlksHit, &stats.TidxBlksRead,
 			&stats.TidxBlksHit, &stats.FrozenXIDAge, &stats.MinMXIDAge,
-			&stats.Relpages, &stats.Reltuples, &stats.Relallvisible)
+			&stats.Relpages, &stats.Reltuples, &stats.Relallvisible,
+			&stats.ExclusivelyLocked)
 		if err != nil {
 			err = fmt.Errorf("RelationStats/Scan: %s", err)
 			return
@@ -166,7 +217,8 @@ func GetIndexStats(ctx context.Context, db *sql.DB, postgresVersion state.Postgr
 		var stats state.PostgresIndexStats
 
 		err = rows.Scan(&oid, &stats.SizeBytes, &stats.IdxScan, &stats.IdxTupRead,
-			&stats.IdxTupFetch, &stats.IdxBlksRead, &stats.IdxBlksHit)
+			&stats.IdxTupFetch, &stats.IdxBlksRead, &stats.IdxBlksHit,
+			&stats.ExclusivelyLocked)
 		if err != nil {
 			err = fmt.Errorf("IndexStats/Scan: %s", err)
 			return

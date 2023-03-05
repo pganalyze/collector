@@ -3,49 +3,51 @@ package state
 import "github.com/guregu/null"
 
 type PostgresRelationStats struct {
-	SizeBytes        int64     // On-disk size including FSM and VM, plus TOAST table if any, excluding indices
-	ToastSizeBytes   int64     // TOAST table and TOAST index size (included in SizeBytes as well)
-	SeqScan          int64     // Number of sequential scans initiated on this table
-	SeqTupRead       int64     // Number of live rows fetched by sequential scans
-	IdxScan          int64     // Number of index scans initiated on this table
-	IdxTupFetch      int64     // Number of live rows fetched by index scans
-	NTupIns          int64     // Number of rows inserted
-	NTupUpd          int64     // Number of rows updated
-	NTupDel          int64     // Number of rows deleted
-	NTupHotUpd       int64     // Number of rows HOT updated (i.e., with no separate index update required)
-	NLiveTup         int64     // Estimated number of live rows
-	NDeadTup         int64     // Estimated number of dead rows
-	NModSinceAnalyze null.Int  // Estimated number of rows modified since this table was last analyzed
-	LastVacuum       null.Time // Last time at which this table was manually vacuumed (not counting VACUUM FULL)
-	LastAutovacuum   null.Time // Last time at which this table was vacuumed by the autovacuum daemon
-	LastAnalyze      null.Time // Last time at which this table was manually analyzed
-	LastAutoanalyze  null.Time // Last time at which this table was analyzed by the autovacuum daemon
-	VacuumCount      int64     // Number of times this table has been manually vacuumed (not counting VACUUM FULL)
-	AutovacuumCount  int64     // Number of times this table has been vacuumed by the autovacuum daemon
-	AnalyzeCount     int64     // Number of times this table has been manually analyzed
-	AutoanalyzeCount int64     // Number of times this table has been analyzed by the autovacuum daemon
-	HeapBlksRead     int64     // Number of disk blocks read from this table
-	HeapBlksHit      int64     // Number of buffer hits in this table
-	IdxBlksRead      int64     // Number of disk blocks read from all indexes on this table
-	IdxBlksHit       int64     // Number of buffer hits in all indexes on this table
-	ToastBlksRead    int64     // Number of disk blocks read from this table's TOAST table (if any)
-	ToastBlksHit     int64     // Number of buffer hits in this table's TOAST table (if any)
-	TidxBlksRead     int64     // Number of disk blocks read from this table's TOAST table indexes (if any)
-	TidxBlksHit      int64     // Number of buffer hits in this table's TOAST table indexes (if any)
-	FrozenXIDAge     int32     // Age of frozen XID for this table
-	MinMXIDAge       int32     // Age of minimum multixact ID for this table
-	Relpages         int32     // Size of the on-disk representation of this table in pages (of size BLCKSZ)
-	Reltuples        float32   // Number of live rows in the table. -1 indicating that the row count is unknown
-	Relallvisible    int32     // Number of pages that are marked all-visible in the table's visibility map
+	SizeBytes         int64     // On-disk size including FSM and VM, plus TOAST table if any, excluding indices
+	ToastSizeBytes    int64     // TOAST table and TOAST index size (included in SizeBytes as well)
+	SeqScan           int64     // Number of sequential scans initiated on this table
+	SeqTupRead        int64     // Number of live rows fetched by sequential scans
+	IdxScan           int64     // Number of index scans initiated on this table
+	IdxTupFetch       int64     // Number of live rows fetched by index scans
+	NTupIns           int64     // Number of rows inserted
+	NTupUpd           int64     // Number of rows updated
+	NTupDel           int64     // Number of rows deleted
+	NTupHotUpd        int64     // Number of rows HOT updated (i.e., with no separate index update required)
+	NLiveTup          int64     // Estimated number of live rows
+	NDeadTup          int64     // Estimated number of dead rows
+	NModSinceAnalyze  null.Int  // Estimated number of rows modified since this table was last analyzed
+	LastVacuum        null.Time // Last time at which this table was manually vacuumed (not counting VACUUM FULL)
+	LastAutovacuum    null.Time // Last time at which this table was vacuumed by the autovacuum daemon
+	LastAnalyze       null.Time // Last time at which this table was manually analyzed
+	LastAutoanalyze   null.Time // Last time at which this table was analyzed by the autovacuum daemon
+	VacuumCount       int64     // Number of times this table has been manually vacuumed (not counting VACUUM FULL)
+	AutovacuumCount   int64     // Number of times this table has been vacuumed by the autovacuum daemon
+	AnalyzeCount      int64     // Number of times this table has been manually analyzed
+	AutoanalyzeCount  int64     // Number of times this table has been analyzed by the autovacuum daemon
+	HeapBlksRead      int64     // Number of disk blocks read from this table
+	HeapBlksHit       int64     // Number of buffer hits in this table
+	IdxBlksRead       int64     // Number of disk blocks read from all indexes on this table
+	IdxBlksHit        int64     // Number of buffer hits in all indexes on this table
+	ToastBlksRead     int64     // Number of disk blocks read from this table's TOAST table (if any)
+	ToastBlksHit      int64     // Number of buffer hits in this table's TOAST table (if any)
+	TidxBlksRead      int64     // Number of disk blocks read from this table's TOAST table indexes (if any)
+	TidxBlksHit       int64     // Number of buffer hits in this table's TOAST table indexes (if any)
+	FrozenXIDAge      int32     // Age of frozen XID for this table
+	MinMXIDAge        int32     // Age of minimum multixact ID for this table
+	Relpages          int32     // Size of the on-disk representation of this table in pages (of size BLCKSZ)
+	Reltuples         float32   // Number of live rows in the table. -1 indicating that the row count is unknown
+	Relallvisible     int32     // Number of pages that are marked all-visible in the table's visibility map
+	ExclusivelyLocked bool      // Whether these statistics are zeroed out because the table was locked at collection time
 }
 
 type PostgresIndexStats struct {
-	SizeBytes   int64
-	IdxScan     int64 // Number of index scans initiated on this index
-	IdxTupRead  int64 // Number of index entries returned by scans on this index
-	IdxTupFetch int64 // Number of live table rows fetched by simple index scans using this index
-	IdxBlksRead int64 // Number of disk blocks read from this index
-	IdxBlksHit  int64 // Number of buffer hits in this index
+	SizeBytes         int64
+	IdxScan           int64 // Number of index scans initiated on this index
+	IdxTupRead        int64 // Number of index entries returned by scans on this index
+	IdxTupFetch       int64 // Number of live table rows fetched by simple index scans using this index
+	IdxBlksRead       int64 // Number of disk blocks read from this index
+	IdxBlksHit        int64 // Number of buffer hits in this index
+	ExclusivelyLocked bool  // Whether these statistics are zeroed out because the index was locked at collection time
 }
 
 type PostgresColumnStats struct {
