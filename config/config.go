@@ -108,6 +108,9 @@ type ServerConfig struct {
 	AivenProjectID string `ini:"aiven_project_id"`
 	AivenServiceID string `ini:"aiven_service_id"`
 
+	K8sKubeConfigPath string `ini:"k8s_kubeconfig_path"`
+	K8sApiServerUrl   string `ini:"k8s_api_server_url"`
+
 	SectionName string
 	Identifier  ServerIdentifier
 
@@ -132,6 +135,13 @@ type ServerConfig struct {
 	// Configures the collector to start a built-in syslog server that listens
 	// on the specifed "hostname:port" for Postgres log messages
 	LogSyslogServer string `ini:"db_log_syslog_server"`
+
+	// Configure the collector to tail a container within a Kubernetes pod
+	LogKubernetesPod string `ini:"db_log_kubernetes_pod"`
+	// The container name within the kubernetes pod to tail
+	LogKubernetesContainer string `ini:"db_log_kubernetes_container"`
+	// The namespace of the pod to tail, if not set will be "default"
+	LogKubernetesNamespace string `ini:"db_log_kubernetes_namespace"`
 
 	// Configures the collector to use the "pg_read_file" (superuser) or
 	// "pganalyze.read_log_file" (helper) function to retrieve log data

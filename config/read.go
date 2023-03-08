@@ -216,6 +216,12 @@ func getDefaultConfig() *ServerConfig {
 	if logSyslogServer := os.Getenv("LOG_SYSLOG_SERVER"); logSyslogServer != "" {
 		config.LogSyslogServer = logSyslogServer
 	}
+	if logKubernetesPodName := os.Getenv("LOG_KUBERNETES_POD"); logKubernetesPodName != "" {
+		config.LogKubernetesPod = logKubernetesPodName
+	}
+	if logKubernetesContainerName := os.Getenv("LOG_KUBERNETES_CONTAINER"); logKubernetesContainerName != "" {
+		config.LogKubernetesContainer = logKubernetesContainerName
+	}
 	if alwaysCollectSystemData := os.Getenv("PGA_ALWAYS_COLLECT_SYSTEM_DATA"); alwaysCollectSystemData != "" {
 		config.AlwaysCollectSystemData = parseConfigBool(alwaysCollectSystemData)
 	}

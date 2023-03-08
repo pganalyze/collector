@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	v1 "k8s.io/api/core/v1"
 	"os"
 	"os/exec"
 	"path"
@@ -24,6 +25,9 @@ import (
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
 	uuid "github.com/satori/go.uuid"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/clientcmd"
+	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 )
 
 type SelfHostedLogStreamItem struct {
@@ -40,6 +44,8 @@ const settingValueSQL string = `
 SELECT setting
 	FROM pg_settings
  WHERE name = '%s'`
+
+const kubernetesReconnectDelay = 1 * time.Second
 
 func getPostgresSetting(ctx context.Context, settingName string, server *state.Server, globalCollectionOpts state.CollectionOpts, prefixedLogger *util.Logger) (string, error) {
 	var value string
@@ -134,6 +140,15 @@ func SetupLogTailForServer(ctx context.Context, wg *sync.WaitGroup, globalCollec
 	return setupLogLocationTail(ctx, server.Config.LogLocation, logStream, logger)
 }
 
+func SetupLogTailForPod(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *util.Logger, server *state.Server, parsedLogStream chan state.ParsedLogStreamItem) error {
+	if globalCollectionOpts.DebugLogs || globalCollectionOpts.TestRun {
+		logger.PrintInfo("Setting up log tail for pod: %s, container: %s", server.Config.LogKubernetesPod, server.Config.LogKubernetesContainer)
+	}
+
+	logStream := setupLogTransformer(ctx, wg, server, globalCollectionOpts, logger, parsedLogStream)
+	return setupKubernetesTail(ctx, server.Config.LogKubernetesPod, server.Config.LogKubernetesContainer, server.Config.LogKubernetesNamespace, server.Config.K8sKubeConfigPath, server.Config.K8sApiServerUrl, logStream, logger)
+}
+
 // SetupLogTails - Sets up continuously running log tails for all servers with a
 // local log directory or file specified
 func SetupLogTails(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *util.Logger, servers []*state.Server, parsedLogStream chan state.ParsedLogStreamItem) {
@@ -154,6 +169,16 @@ func SetupLogTails(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts
 			err := setupDockerTail(ctx, server.Config.LogDockerTail, logStream, prefixedLogger)
 			if err != nil {
 				prefixedLogger.PrintError("ERROR - %s", err)
+			}
+		} else if server.Config.LogKubernetesPod != "" && server.Config.LogKubernetesContainer != "" {
+			if globalCollectionOpts.DebugLogs || globalCollectionOpts.TestRun {
+				prefixedLogger.PrintInfo("Setting up kubectl logs tail for %s", server.Config.LogKubernetesPod)
+			}
+
+			logStream := setupLogTransformer(ctx, wg, server, globalCollectionOpts, prefixedLogger, parsedLogStream)
+			err := setupKubernetesTail(ctx, server.Config.LogKubernetesPod, server.Config.LogKubernetesContainer, server.Config.LogKubernetesNamespace, server.Config.K8sKubeConfigPath, server.Config.K8sApiServerUrl, logStream, prefixedLogger)
+			if err != nil {
+				prefixedLogger.PrintError("Error - %s", err)
 			}
 		} else if server.Config.LogSyslogServer != "" {
 			logStream := setupLogTransformer(ctx, wg, server, globalCollectionOpts, prefixedLogger, parsedLogStream)
@@ -365,6 +390,80 @@ func setupDockerTail(ctx context.Context, containerName string, out chan<- SelfH
 					prefixedLogger.PrintError("Failed to kill docker log tail process when stop received: %s", err)
 				}
 				return
+			}
+		}
+	}()
+
+	return nil
+}
+
+func tailPod(ctx context.Context, clientSet *kubernetes.Clientset, podName string, containerName string, namespace string, out chan<- SelfHostedLogStreamItem, prefixedLogger *util.Logger) error {
+	count := int64(0)
+	podLogOptions := v1.PodLogOptions{
+		Container: containerName,
+		Follow:    true,
+		TailLines: &count,
+	}
+
+	stream, err := clientSet.
+		CoreV1().
+		Pods(namespace).
+		GetLogs(podName, &podLogOptions).
+		Stream(ctx)
+
+	if err != nil {
+		return err
+	}
+
+	prefixedLogger.PrintVerbose("Started collecting pod logs for pod: %s, container: %s, namespace: %s", podName, containerName, namespace)
+
+	scanner := bufio.NewScanner(stream)
+	for scanner.Scan() {
+		out <- SelfHostedLogStreamItem{Line: scanner.Text()}
+	}
+	_ = stream.Close()
+	prefixedLogger.PrintVerbose("Kubernetes pod log stream closed")
+	return nil
+}
+
+func setupKubernetesTail(ctx context.Context, podName string, containerName string, namespace string, kubeconfigPath string, apiServerUrl string, out chan<- SelfHostedLogStreamItem, prefixedLogger *util.Logger) error {
+	loadingRules := clientcmd.ClientConfigLoadingRules{}
+	configOverrides := clientcmd.ConfigOverrides{}
+	if kubeconfigPath != "" {
+		loadingRules.ExplicitPath = kubeconfigPath
+	}
+	if apiServerUrl != "" {
+		configOverrides.ClusterInfo = clientcmdapi.Cluster{Server: apiServerUrl}
+	}
+	clientConfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(&loadingRules, &configOverrides)
+	if namespace == "" {
+		// If using a configuration file this will set the namespace to that of the default context
+		// Otherwise if using the in-cluster authentication it will resolve with the following precedence:
+		// POD_NAMESPACE (must be set with downward API)
+		// Namespace of the service account token if available
+		// Otherwise it will be set to "default"
+		namespace, _, _ = clientConfig.Namespace()
+	}
+	config, err := clientConfig.ClientConfig()
+	if err != nil {
+		return err
+	}
+	clientSet, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return err
+	}
+
+	go func() {
+		for {
+			if err := tailPod(ctx, clientSet, podName, containerName, namespace, out, prefixedLogger); err != nil {
+				if ctx.Err() != nil {
+					prefixedLogger.PrintVerbose("Kubernetes log tail received stop signal")
+					return
+				}
+				if err != nil {
+					prefixedLogger.PrintError("Tailing pod failed with error: %s", err.Error())
+				}
+				time.Sleep(kubernetesReconnectDelay)
 			}
 		}
 	}()
