@@ -112,6 +112,7 @@ func GetStatements(ctx context.Context, server *state.Server, logger *util.Logge
 		logger.PrintInfo("pg_stat_statements does not exist, trying to create extension...")
 		_, err = db.ExecContext(ctx, QueryMarkerSQL+"CREATE EXTENSION IF NOT EXISTS pg_stat_statements SCHEMA public")
 		if err != nil {
+			logger.PrintInfo("HINT - if you expect the extension to already be installed, please review the pganalyze documentation: https://pganalyze.com/docs/install/troubleshooting/pg_stat_statements")
 			return nil, nil, nil, err
 		}
 		extSchema = "public"

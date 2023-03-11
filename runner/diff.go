@@ -63,9 +63,11 @@ func diffRelationStats(new state.PostgresRelationStatsMap, prev state.PostgresRe
 	diff = make(state.DiffedPostgresRelationStatsMap)
 	for key, stats := range new {
 		prevStats, exists := prev[key]
-		if exists {
+		if stats.ExclusivelyLocked {
+			// Skip, we don't have any usable data for this relation
+		} else if exists && !prevStats.ExclusivelyLocked {
 			diff[key] = stats.DiffSince(prevStats)
-		} else if followUpRun { // New since the last run
+		} else if followUpRun && !prevStats.ExclusivelyLocked { // New relation since the last run
 			diff[key] = stats.DiffSince(state.PostgresRelationStats{})
 		} else {
 			diff[key] = state.DiffedPostgresRelationStats{
@@ -96,9 +98,11 @@ func diffIndexStats(new state.PostgresIndexStatsMap, prev state.PostgresIndexSta
 	diff = make(state.DiffedPostgresIndexStatsMap)
 	for key, stats := range new {
 		prevStats, exists := prev[key]
-		if exists {
+		if stats.ExclusivelyLocked {
+			// Skip, we don't have any usable data for this index
+		} else if exists && !prevStats.ExclusivelyLocked {
 			diff[key] = stats.DiffSince(prevStats)
-		} else if followUpRun { // New since the last run
+		} else if followUpRun && !prevStats.ExclusivelyLocked { // New index since the last run
 			diff[key] = stats.DiffSince(state.PostgresIndexStats{})
 		} else {
 			diff[key] = state.DiffedPostgresIndexStats{

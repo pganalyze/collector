@@ -50,6 +50,7 @@ to run as a superuser, you can setup a separate monitoring user like this:
 
 ```sql
 CREATE SCHEMA pganalyze;
+GRANT USAGE ON SCHEMA pganalyze TO pganalyze;
 
 CREATE EXTENSION IF NOT EXISTS pg_stat_statements WITH SCHEMA public;
 
@@ -115,6 +116,7 @@ $$
   /* pganalyze-collector */ SELECT last_value, start_value, increment_by, max_value, min_value, cache_size, cycle
     FROM pg_sequences WHERE schemaname = schema_name AND sequencename = sequence_name;
 $$ LANGUAGE sql VOLATILE SECURITY DEFINER;
+```
 
 If you enabled the optional reset mode (usually not required), you will also need this helper method:
 
