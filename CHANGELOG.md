@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.49.1      2023-03-10
+
+* Relation queries: Correctly handle later queries encountering a lock
+  - This fixes edge cases where relation metadata (e.g. which indexes exist)
+    can appear and disappear from one snapshot to the next, due to locks
+    held for parts of the snapshot collection
+* Relation statistics: Avoid bogus data due to diffs against locked objects
+  - This fixes a bug where table or index statistics can be skipped due to
+    locks held on the relation, and that causing a bad data point to be
+    collected on a subsequent snapshot, since the prior snapshot would be
+    missing an entry for that relation. Fixed by consistently skipping
+    statistics for that table/index in such situations.
+* Amazon RDS / Aurora: Support new long-lived CA authorities
+  - Introduces the new "rds-ca-global" option for db_sslrootcert, which is the
+    recommended configuration for RDS and Aurora going forward, which encompasses
+    both "rds-ca-2019-root" and all newer RDS CAs such as "rds-ca-rsa2048-g1".
+  - For compatibility reasons we still support naming the "rds-ca-2019-root" CA
+    explicitly, but its now just an alias for the global set.
+* Citus: Add option to turn off collection of Citus schema statistics
+  - For certain Citus deployments, running the relation or index size functions
+    can fail or time out due to a very high number of distributed tables.
+  - Adds the new option "disable_citus_schema_stats" / "DISABLE_CITUS_SCHEMA_STATS"
+    to turn off the collection of these statistics. When using this option its
+    recommended to instead monitor the workers directly for table and index sizes.
+* Add troubleshooting HINT when creating pg_stat_statements extension fails
+  - This commonly fails due to creating pg_stat_statements on the wrong database,
+    see https://pganalyze.com/docs/install/troubleshooting/pg_stat_statements
+
+
 ## 0.49.0      2023-02-27
 
 * Update pg_query_go to v4 / Postgres 15 parser
