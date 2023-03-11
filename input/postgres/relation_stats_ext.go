@@ -21,15 +21,15 @@ SELECT logicalrelid::oid,
  WHERE ($1 = '' OR (n.nspname || '.' || c.relname) !~* $1)
 `
 
-func handleRelationStatsExt(ctx context.Context, db *sql.DB, relStats state.PostgresRelationStatsMap, postgresVersion state.PostgresVersion, ignoreRegexp string) (state.PostgresRelationStatsMap, error) {
-	if postgresVersion.IsCitus {
+func handleRelationStatsExt(ctx context.Context, db *sql.DB, relStats state.PostgresRelationStatsMap, postgresVersion state.PostgresVersion, server *state.Server) (state.PostgresRelationStatsMap, error) {
+	if postgresVersion.IsCitus && !server.Config.DisableCitusSchemaStats {
 		stmt, err := db.PrepareContext(ctx, QueryMarkerSQL+citusRelationSizeSQL)
 		if err != nil {
 			return relStats, fmt.Errorf("RelationStatsExt/Prepare: %s", err)
 		}
 		defer stmt.Close()
 
-		rows, err := stmt.QueryContext(ctx, ignoreRegexp)
+		rows, err := stmt.QueryContext(ctx, server.Config.IgnoreSchemaRegexp)
 		if err != nil {
 			return relStats, fmt.Errorf("RelationStatsExt/Query: %s", err)
 		}
@@ -103,15 +103,15 @@ GROUP BY
   oid;
 `
 
-func handleIndexStatsExt(ctx context.Context, db *sql.DB, idxStats state.PostgresIndexStatsMap, postgresVersion state.PostgresVersion, ignoreRegexp string) (state.PostgresIndexStatsMap, error) {
-	if postgresVersion.IsCitus {
+func handleIndexStatsExt(ctx context.Context, db *sql.DB, idxStats state.PostgresIndexStatsMap, postgresVersion state.PostgresVersion, server *state.Server) (state.PostgresIndexStatsMap, error) {
+	if postgresVersion.IsCitus && !server.Config.DisableCitusSchemaStats {
 		stmt, err := db.PrepareContext(ctx, QueryMarkerSQL+citusIndexSizeSQL)
 		if err != nil {
 			return idxStats, fmt.Errorf("IndexStatsExt/Prepare: %s", err)
 		}
 		defer stmt.Close()
 
-		rows, err := stmt.QueryContext(ctx, ignoreRegexp)
+		rows, err := stmt.QueryContext(ctx, server.Config.IgnoreSchemaRegexp)
 		if err != nil {
 			return idxStats, fmt.Errorf("IndexStatsExt/Query: %s", err)
 		}

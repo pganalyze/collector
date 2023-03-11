@@ -145,7 +145,7 @@ SELECT 1 AS enabled
  WHERE n.nspname = 'pganalyze' AND p.proname = 'get_column_stats'
 `
 
-func GetRelationStats(ctx context.Context, db *sql.DB, postgresVersion state.PostgresVersion, ignoreRegexp string) (relStats state.PostgresRelationStatsMap, err error) {
+func GetRelationStats(ctx context.Context, db *sql.DB, postgresVersion state.PostgresVersion, server *state.Server) (relStats state.PostgresRelationStatsMap, err error) {
 	stmt, err := db.PrepareContext(ctx, QueryMarkerSQL+relationStatsSQL)
 	if err != nil {
 		err = fmt.Errorf("RelationStats/Prepare: %s", err)
@@ -153,7 +153,7 @@ func GetRelationStats(ctx context.Context, db *sql.DB, postgresVersion state.Pos
 	}
 	defer stmt.Close()
 
-	rows, err := stmt.QueryContext(ctx, ignoreRegexp)
+	rows, err := stmt.QueryContext(ctx, server.Config.IgnoreSchemaRegexp)
 	if err != nil {
 		err = fmt.Errorf("RelationStats/Query: %s", err)
 		return
@@ -191,12 +191,12 @@ func GetRelationStats(ctx context.Context, db *sql.DB, postgresVersion state.Pos
 		return
 	}
 
-	relStats, err = handleRelationStatsExt(ctx, db, relStats, postgresVersion, ignoreRegexp)
+	relStats, err = handleRelationStatsExt(ctx, db, relStats, postgresVersion, server)
 
 	return
 }
 
-func GetIndexStats(ctx context.Context, db *sql.DB, postgresVersion state.PostgresVersion, ignoreRegexp string) (indexStats state.PostgresIndexStatsMap, err error) {
+func GetIndexStats(ctx context.Context, db *sql.DB, postgresVersion state.PostgresVersion, server *state.Server) (indexStats state.PostgresIndexStatsMap, err error) {
 	stmt, err := db.PrepareContext(ctx, QueryMarkerSQL+indexStatsSQL)
 	if err != nil {
 		err = fmt.Errorf("IndexStats/Prepare: %s", err)
@@ -204,7 +204,7 @@ func GetIndexStats(ctx context.Context, db *sql.DB, postgresVersion state.Postgr
 	}
 	defer stmt.Close()
 
-	rows, err := stmt.QueryContext(ctx, ignoreRegexp)
+	rows, err := stmt.QueryContext(ctx, server.Config.IgnoreSchemaRegexp)
 	if err != nil {
 		err = fmt.Errorf("IndexStats/Query: %s", err)
 		return
@@ -232,7 +232,7 @@ func GetIndexStats(ctx context.Context, db *sql.DB, postgresVersion state.Postgr
 		return
 	}
 
-	indexStats, err = handleIndexStatsExt(ctx, db, indexStats, postgresVersion, ignoreRegexp)
+	indexStats, err = handleIndexStatsExt(ctx, db, indexStats, postgresVersion, server)
 
 	return
 }

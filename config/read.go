@@ -219,6 +219,9 @@ func getDefaultConfig() *ServerConfig {
 	if alwaysCollectSystemData := os.Getenv("PGA_ALWAYS_COLLECT_SYSTEM_DATA"); alwaysCollectSystemData != "" {
 		config.AlwaysCollectSystemData = parseConfigBool(alwaysCollectSystemData)
 	}
+	if disableCitusSchemaStats := os.Getenv("DISABLE_CITUS_SCHEMA_STATS"); disableCitusSchemaStats != "" {
+		config.DisableCitusSchemaStats = parseConfigBool(disableCitusSchemaStats)
+	}
 	if logPgReadFile := os.Getenv("LOG_PG_READ_FILE"); logPgReadFile != "" {
 		config.LogPgReadFile = parseConfigBool(logPgReadFile)
 	}
