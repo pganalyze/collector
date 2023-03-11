@@ -294,11 +294,10 @@ func (config ServerConfig) GetPqOpenString(dbNameOverride string, passwordOverri
 	}
 
 	// Handle SSL certificates shipped with the collector
-	if dbSslRootCert == "rds-ca-2015-root" {
-		dbSslRootCert = "/usr/share/pganalyze-collector/sslrootcert/rds-ca-2015-root.pem"
-	}
-	if dbSslRootCert == "rds-ca-2019-root" {
-		dbSslRootCert = "/usr/share/pganalyze-collector/sslrootcert/rds-ca-2019-root.pem"
+	//
+	// Note: "rds-ca-2019-root" is a legacy cert expiring in 2024 that is part of the global CA set
+	if dbSslRootCert == "rds-ca-2019-root" || dbSslRootCert == "rds-ca-global" {
+		dbSslRootCert = "/usr/share/pganalyze-collector/sslrootcert/rds-ca-global.pem"
 	}
 
 	// Generate the actual string

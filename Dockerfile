@@ -14,7 +14,7 @@ WORKDIR $CODE_DIR
 RUN  make build_dist_alpine OUTFILE=$HOME_DIR/collector 
 
 RUN mkdir -p /usr/share/pganalyze-collector/sslrootcert/
-COPY contrib/sslrootcert/rds-ca-2019-root.pem contrib/sslrootcert/rds-ca-2015-root.pem /usr/share/pganalyze-collector/sslrootcert/
+COPY contrib/sslrootcert/rds-ca-global.pem /usr/share/pganalyze-collector/sslrootcert/
 COPY contrib/docker-entrypoint.sh $HOME_DIR
 RUN chmod +x $HOME_DIR/docker-entrypoint.sh
 
