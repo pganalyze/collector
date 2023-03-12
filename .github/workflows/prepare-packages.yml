@@ -20,17 +20,17 @@ jobs:
     steps:
 
     - name: Check out code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
       with:
         submodules: true
-        fetch-depth: 10 # Temporary for testing
+        fetch-depth: 0 # Temporary for testing
 
     - name: Build packages and test them
       run: |
         DOCKER_BUILDKIT=1 make -C packages test
 
     - name: Upload packages as artifacts
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: packages
         path: |
