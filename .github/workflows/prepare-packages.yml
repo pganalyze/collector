@@ -23,6 +23,7 @@ jobs:
       uses: actions/checkout@v2
       with:
         submodules: true
+        fetch-depth: 10 # Temporary for testing
 
     - name: Build packages and test them
       run: |
