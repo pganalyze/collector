@@ -25,6 +25,9 @@ jobs:
         submodules: true
         fetch-depth: 0 # Temporary for testing
 
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v1
+
     - name: Build packages and test them
       run: |
         DOCKER_BUILDKIT=1 make -C packages test
