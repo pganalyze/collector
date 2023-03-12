@@ -26,7 +26,7 @@ jobs:
 
     - name: Build packages and test them
       run: |
-        make -C packages test
+        DOCKER_BUILDKIT=1 make -C packages test
 
     - name: Upload packages as artifacts
       uses: actions/upload-artifact@v2
