@@ -11,6 +11,7 @@ ps u -U pganalyze | grep -q pganalyze-collector
 
 # Verify that reloading works and emits a log notice
 systemctl reload pganalyze-collector
+journalctl -u pganalyze-collector -n 100
 journalctl -u pganalyze-collector | grep -q "Reloading configuration"
 
 # Verify that stopping works
