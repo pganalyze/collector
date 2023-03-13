@@ -10,8 +10,9 @@ systemctl status pganalyze-collector | grep -q running
 ps u -U pganalyze | grep -q pganalyze-collector
 
 # Verify that reloading works and emits a log notice
+sleep 3
 systemctl reload pganalyze-collector
-sleep 10
+sleep 3
 journalctl -u pganalyze-collector -n 100
 journalctl -u pganalyze-collector | grep -q "Reloading configuration"
 
