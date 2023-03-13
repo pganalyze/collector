@@ -1,5 +1,6 @@
 #!/bin/bash
 
+set -x
 set -e
 
 # Verify that we're running after package installation
