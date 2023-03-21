@@ -63,6 +63,16 @@ func transformPostgresRelations(s snapshot.FullSnapshot, newState state.Persiste
 			Options:                relation.Options,
 		}
 
+		// In case of exclusively locked relations that are encountered by a later input query
+		// (e.g. to get column or index information), it can happen that we get partial data
+		// - make sure we don't send that unnecessarily (the server would just ignore it)
+		if relation.ExclusivelyLocked {
+			// Still add to RelationInformations as some basic information like RelationType
+			// will be used with RelationReferences
+			s.RelationInformations = append(s.RelationInformations, &info)
+			continue
+		}
+
 		schemaStats, schemaStatsExist := newState.SchemaStats[relation.DatabaseOid]
 
 		if relation.ViewDefinition != "" {
