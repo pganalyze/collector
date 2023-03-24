@@ -64,8 +64,9 @@ func CollectFull(ctx context.Context, server *state.Server, connection *sql.DB, 
 		ps.StatementResetCounter = 0
 		err = postgres.ResetStatements(ctx, logger, connection, systemType)
 		if err != nil {
-			// This is a non-fatal error, so continue snapshot collection but report it
-			logger.PrintWarning("Failed to call pg_stat_statements_reset() as requested: %s", err)
+			// This is a non-fatal error, so continue snapshot collection but do log it as an error
+			// (this gets automatically added to the snapshot's CollectorErrors information)
+			logger.PrintError("Error calling pg_stat_statements_reset() as requested: %s", err)
 			err = nil
 		} else {
 			_, _, ts.ResetStatementStats, err = postgres.GetStatements(ctx, server, logger, connection, globalCollectionOpts, ts.Version, false, systemType)
