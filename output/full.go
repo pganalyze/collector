@@ -40,6 +40,12 @@ func submitFull(ctx context.Context, s snapshot.FullSnapshot, server *state.Serv
 	var err error
 	var data []byte
 
+	err = verifyIntegrity(s)
+	if err != nil {
+		logger.PrintError(fmt.Sprintf("Snapshot integrity check failed: %s; please contact support", err))
+		return err
+	}
+
 	snapshotUUID := uuid.NewV4()
 
 	s.SnapshotVersionMajor = 1
@@ -77,6 +83,32 @@ func submitFull(ctx context.Context, s snapshot.FullSnapshot, server *state.Serv
 	}
 
 	return submitSnapshot(ctx, server, collectionOpts, logger, s3Location, collectedAt, quiet)
+}
+
+func verifyIntegrity(s snapshot.FullSnapshot) error {
+	if len(s.DatabaseInformations) != len(s.DatabaseReferences) {
+		return fmt.Errorf("found %d DatabaseInformations but %d DatabaseReferences", len(s.DatabaseInformations), len(s.DatabaseReferences))
+	}
+	if len(s.RoleInformations) != len(s.RoleReferences) {
+		return fmt.Errorf("found %d RoleInformations but %d RoleReferences", len(s.RoleInformations), len(s.RoleReferences))
+	}
+	if len(s.TablespaceInformations) != len(s.TablespaceReferences) {
+		return fmt.Errorf("found %d TablespaceInformations but %d TablespaceReferences", len(s.TablespaceInformations), len(s.TablespaceReferences))
+	}
+	if len(s.RelationInformations) != len(s.RelationReferences) {
+		return fmt.Errorf("found %d RelationInformations but %d RelationReferences", len(s.RelationInformations), len(s.RelationReferences))
+	}
+	if len(s.IndexInformations) != len(s.IndexReferences) {
+		return fmt.Errorf("found %d IndexInformations but %d IndexReferences", len(s.IndexInformations), len(s.IndexReferences))
+	}
+	if len(s.FunctionInformations) != len(s.FunctionReferences) {
+		return fmt.Errorf("found %d FunctionInformations but %d FunctionReferences", len(s.FunctionInformations), len(s.FunctionReferences))
+	}
+	if len(s.QueryInformations) != len(s.QueryReferences) {
+		return fmt.Errorf("found %d QueryInformations but %d QueryReferences", len(s.QueryInformations), len(s.QueryReferences))
+	}
+
+	return nil
 }
 
 func debugOutputAsJSON(logger *util.Logger, compressedData bytes.Buffer) {
