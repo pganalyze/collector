@@ -26,13 +26,20 @@ import (
 func SendFull(ctx context.Context, server *state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, newState state.PersistedState, diffState state.DiffState, transientState state.TransientState, collectedIntervalSecs uint32) error {
 	s := transform.StateToSnapshot(newState, diffState, transientState)
 	s.CollectedIntervalSecs = collectedIntervalSecs
-	s.CollectorErrors = logger.ErrorMessages
-
-	return submitFull(ctx, s, server, collectionOpts, logger, newState.CollectedAt, false)
+	err := verifyIntegrity(&s)
+	if err != nil {
+		logger.PrintError(fmt.Sprintf("Snapshot integrity check failed: %s; please contact support", err))
+		// Don't return an error here, since that would skip the state update, and
+		// if the integrity failure is due to a state diffing issue, we would not
+		// be able to make progress. Instead, send a failed snapshot directly.
+		return SendFailedFull(ctx, server, collectionOpts, logger)
+	} else {
+		return submitFull(ctx, s, server, collectionOpts, logger, newState.CollectedAt, false)
+	}
 }
 
 func SendFailedFull(ctx context.Context, server *state.Server, collectionOpts state.CollectionOpts, logger *util.Logger) error {
-	s := snapshot.FullSnapshot{FailedRun: true, CollectorErrors: logger.ErrorMessages}
+	s := snapshot.FullSnapshot{FailedRun: true}
 	return submitFull(ctx, s, server, collectionOpts, logger, time.Now(), true)
 }
 
@@ -40,14 +47,9 @@ func submitFull(ctx context.Context, s snapshot.FullSnapshot, server *state.Serv
 	var err error
 	var data []byte
 
-	err = verifyIntegrity(s)
-	if err != nil {
-		logger.PrintError(fmt.Sprintf("Snapshot integrity check failed: %s; please contact support", err))
-		return err
-	}
-
 	snapshotUUID := uuid.NewV4()
 
+	s.CollectorErrors = logger.ErrorMessages
 	s.SnapshotVersionMajor = 1
 	s.SnapshotVersionMinor = 0
 	s.CollectorVersion = util.CollectorNameAndVersion
@@ -85,7 +87,7 @@ func submitFull(ctx context.Context, s snapshot.FullSnapshot, server *state.Serv
 	return submitSnapshot(ctx, server, collectionOpts, logger, s3Location, collectedAt, quiet)
 }
 
-func verifyIntegrity(s snapshot.FullSnapshot) error {
+func verifyIntegrity(s *snapshot.FullSnapshot) error {
 	if len(s.DatabaseInformations) != len(s.DatabaseReferences) {
 		return fmt.Errorf("found %d DatabaseInformations but %d DatabaseReferences", len(s.DatabaseInformations), len(s.DatabaseReferences))
 	}
