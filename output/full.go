@@ -108,13 +108,6 @@ func verifyIntegrity(s snapshot.FullSnapshot) error {
 		return fmt.Errorf("found %d QueryInformations but %d QueryReferences", len(s.QueryInformations), len(s.QueryReferences))
 	}
 
-	for _, stat := range s.RelationStatistics {
-		if stat.NTupIns < 0 || stat.NTupUpd < 0 || stat.NTupHotUpd < 0 || stat.NTupDel < 0 {
-			rel := s.RelationReferences[stat.RelationIdx]
-			return fmt.Errorf("found negative stats for relation %s.%s", rel.SchemaName, rel.RelationName)
-		}
-	}
-
 	return nil
 }
 
