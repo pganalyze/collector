@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.49.2      2023-03-30
+
+* Bugfix: Ensure all relation information will be sent out even with a lock
+  - This fixes a bug where we were not sending out relation information of
+    relations encountered locks. Processing a snapshot missing such information
+    was failing
+* Allow pg_stat_statements_reset() to fail with a soft error
+  - This was a hard error previously, which failed the snapshot and the snapshot
+    state did not get persisted, indirectly led to a memory leak
+* Add integrity checks before uploading snapshots
+  - Validate some structural assumptions that cannot be enforced by protobuf
+    before sending a snapshot
+
 ## 0.49.1      2023-03-10
 
 * Relation queries: Correctly handle later queries encountering a lock
