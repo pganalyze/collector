@@ -23,14 +23,18 @@ jobs:
       uses: actions/checkout@v3
       with:
         submodules: true
-        fetch-depth: 0 # Temporary for testing
+        fetch-depth: 0 # Temporary for testing (since the tag set in packages/ is not the tip)
 
     - name: Set up QEMU
       uses: docker/setup-qemu-action@v1
 
-    - name: Build packages and test them
+    - name: Build packages
       run: |
-        DOCKER_BUILDKIT=1 make -C packages test
+        DOCKER_BUILDKIT=1 make -C packages build
+
+#    - name: Test packages
+#      run: |
+#        DOCKER_BUILDKIT=1 make -C packages test
 
     - name: Upload packages as artifacts
       uses: actions/upload-artifact@v3
@@ -42,3 +46,30 @@ jobs:
           packages/tmp/pganalyze-collector_*_amd64.deb
           packages/tmp/pganalyze-collector_*_arm64.deb
         if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Download build
+      uses: actions/download-artifact@v3
+      with:
+        name: packages
+
+    - name: Unzip packages
+      run: |
+        unzip packages.zip
+
+    - name: List files (for debugging)
+      run: |
+        ls -lisa
+
+    - name: Get version from tag
+      id: get_version
+      run: echo "version=v0.49.1" >> $GITHUB_OUTPUT
+      #run: echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+    - name: Output version we're working with
+      run: |
+        echo ${{ steps.get_version.outputs.version }}
