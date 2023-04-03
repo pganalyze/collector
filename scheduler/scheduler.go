@@ -30,7 +30,7 @@ func (group Group) Schedule(ctx context.Context, runner func(context.Context), l
 					deadline := nextExecutions[1].Add(-1 * time.Second)
 					// Extend the deadline of very short runs to avoid pointless cancellations.
 					if nextExecutions[1].Sub(nextExecutions[0]) <= 15*time.Second {
-						deadline = deadline.Add(15 * time.Second)
+						deadline = nextExecutions[0].Add(19 * time.Second)
 					}
 					ctx, cancel := context.WithDeadline(ctx, deadline)
 					defer cancel()
