@@ -57,10 +57,6 @@ jobs:
       with:
         name: packages
 
-    - name: Unzip packages
-      run: |
-        unzip packages.zip
-
     - name: List files (for debugging)
       run: |
         ls -lisa
