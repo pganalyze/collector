@@ -32,9 +32,9 @@ jobs:
       run: |
         DOCKER_BUILDKIT=1 make -C packages build
 
-   - name: Test packages
-     run: |
-       DOCKER_BUILDKIT=1 make -C packages test
+    - name: Test packages
+      run: |
+        DOCKER_BUILDKIT=1 make -C packages test
 
     - name: Upload packages as artifacts
       uses: actions/upload-artifact@v3
