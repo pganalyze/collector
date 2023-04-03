@@ -27,7 +27,12 @@ func (group Group) Schedule(ctx context.Context, runner func(context.Context), l
 				func() {
 					// Cancel runner at latest right before next scheduled execution should
 					// occur, to prevent skipping over runner executions by accident.
-					ctx, cancel := context.WithDeadline(ctx, nextExecutions[1].Add(-1*time.Second))
+					deadline := nextExecutions[1].Add(-1*time.Second)
+					// Extend the deadline of very short runs to avoid pointless cancellations.
+					if nextExecutions[1].Sub(nextExecutions[0]) <= 15*time.Second {
+						deadline = deadline.Add(15*time.Second)
+					}
+					ctx, cancel := context.WithDeadline(ctx, deadline)
 					defer cancel()
 					runner(ctx)
 				}()
