@@ -45,19 +45,64 @@ jobs:
         name: pganalyze-collector-linux-amd64
         path: pganalyze-collector-linux-amd64
 
+  build_packages:
+    # Use older Ubuntu release to ensure availability of CGroupsv1 (which are necessary
+    # currently to support older systemd on some of the test containers)
+    runs-on: ubuntu-20.04
+    permissions: {}
+    # ensure we don't release on create events for branches (only tags)
+    if: ${{ startsWith( github.ref, 'refs/tags' ) }}
+
+    steps:
+
+    - name: Check out code
+      uses: actions/checkout@v3
+      with:
+        submodules: true
+
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v1
+
+    - name: Build packages
+      run: |
+        DOCKER_BUILDKIT=1 make -C packages build
+
+    - name: Test packages
+      run: |
+        DOCKER_BUILDKIT=1 make -C packages test
+
+    - name: Upload packages as artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: packages
+        path: |
+          packages/tmp/pganalyze-collector-*.aarch64.rpm
+          packages/tmp/pganalyze-collector-*.x86_64.rpm
+          packages/tmp/pganalyze-collector_*_amd64.deb
+          packages/tmp/pganalyze-collector_*_arm64.deb
+        if-no-files-found: error
+
   release:
-    needs: build
+    needs: [build, build_packages]
     runs-on: ubuntu-latest
+    # ensure we don't release on create events for branches (only tags)
+    if: ${{ startsWith( github.ref, 'refs/tags' ) }}
 
     steps:
     - name: Download build
-      uses: actions/download-artifact@v2
+      uses: actions/download-artifact@v3
       with:
         name: pganalyze-collector-linux-amd64
 
+    steps:
+    - name: Download build packages
+      uses: actions/download-artifact@v3
+      with:
+        name: packages
+
     - name: Get version from tag
       id: get_version
-      run: echo ::set-output name=version::${GITHUB_REF#refs/tags/}
+      run: echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
     - name: Create release
       id: create_release
@@ -79,4 +124,44 @@ jobs:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
         asset_path: ./pganalyze-collector-linux-amd64
         asset_name: pganalyze-collector-linux-amd64
+        asset_content_type: application/octet-stream
+
+    - name: Upload release build package (RPM, x86-64)
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./pganalyze-collector-${{ steps.get_version.outputs.version }}-1.x86_64.rpm
+        asset_name: pganalyze-collector-${{ steps.get_version.outputs.version }}-1.x86_64.rpm
+        asset_content_type: application/octet-stream
+
+    - name: Upload release build package (RPM, arm64)
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./pganalyze-collector-${{ steps.get_version.outputs.version }}-1.aarch64.rpm
+        asset_name: pganalyze-collector-${{ steps.get_version.outputs.version }}-1.aarch64.rpm
+        asset_content_type: application/octet-stream
+
+    - name: Upload release build package (DEB, x86-64)
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./pganalyze-collector_${{ steps.get_version.outputs.version }}_amd64.deb
+        asset_name: pganalyze-collector_${{ steps.get_version.outputs.version }}_amd64.deb
+        asset_content_type: application/octet-stream
+
+    - name: Upload release build package (DEB, arm64)
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./pganalyze-collector_${{ steps.get_version.outputs.version }}_arm64.deb
+        asset_name: pganalyze-collector_${{ steps.get_version.outputs.version }}_arm64.deb
         asset_content_type: application/octet-stream
