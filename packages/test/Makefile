@@ -9,7 +9,7 @@ docker_test_and_clean = docker exec pga-collector-test /root/systemd_test.sh && 
 
 # Note: The default list excludes rockylinux9 since there is an open issue with
 # /sbin/init not being present, see https://github.com/rocky-linux/sig-cloud-instance-images/issues/39
-DISTROS=centos7 rhel8 rockylinux8 rhel9 fedora34 fedora35 fedora36 amazonlinux2 ubuntu-xenial ubuntu-bionic ubuntu-focal ubuntu-jammy debian-buster debian-bullseye
+DISTROS=centos7 rhel8 rockylinux8 rhel9 fedora36 fedora37 amazonlinux2 amazonlinux2023 ubuntu-xenial ubuntu-bionic ubuntu-focal ubuntu-jammy debian-buster debian-bullseye
 
 .PHONY: all $(DISTROS)
 
@@ -92,32 +92,20 @@ rockylinux9: $(RPM_PACKAGE_X86_64) $(RPM_PACKAGE_ARM64)
 	$(call docker_test_and_clean)
 	rm Dockerfile.tmp
 
-fedora34: $(RPM_PACKAGE_X86_64) $(RPM_PACKAGE_ARM64)
-	echo "FROM fedora:34" > Dockerfile.tmp
-	echo "RUN dnf install -y procps systemd" >> Dockerfile.tmp
-	echo "COPY . /root" >> Dockerfile.tmp
-	$(call docker_build_and_run,amd64)
-	$(call docker_exec,dnf install -y --nogpgcheck /root/$(RPM_PACKAGE_X86_64))
-	$(call docker_test_and_clean)
-	$(call docker_build_and_run,arm64)
-	$(call docker_exec,dnf install -y --nogpgcheck /root/$(RPM_PACKAGE_ARM64))
-	$(call docker_test_and_clean)
-	rm Dockerfile.tmp
-
-fedora35: $(RPM_PACKAGE_X86_64) $(RPM_PACKAGE_ARM64)
-	echo "FROM fedora:35" > Dockerfile.tmp
-	echo "RUN dnf install -y procps systemd" >> Dockerfile.tmp
-	echo "COPY . /root" >> Dockerfile.tmp
-	$(call docker_build_and_run,amd64)
-	$(call docker_exec,dnf install -y --nogpgcheck /root/$(RPM_PACKAGE_X86_64))
-	$(call docker_test_and_clean)
-	$(call docker_build_and_run,arm64)
-	$(call docker_exec,dnf install -y --nogpgcheck /root/$(RPM_PACKAGE_ARM64))
-	$(call docker_test_and_clean)
-	rm Dockerfile.tmp
-
 fedora36: $(RPM_PACKAGE_X86_64) $(RPM_PACKAGE_ARM64)
 	echo "FROM fedora:36" > Dockerfile.tmp
+	echo "RUN dnf install -y procps systemd" >> Dockerfile.tmp
+	echo "COPY . /root" >> Dockerfile.tmp
+	$(call docker_build_and_run,amd64)
+	$(call docker_exec,dnf install -y --nogpgcheck /root/$(RPM_PACKAGE_X86_64))
+	$(call docker_test_and_clean)
+	$(call docker_build_and_run,arm64)
+	$(call docker_exec,dnf install -y --nogpgcheck /root/$(RPM_PACKAGE_ARM64))
+	$(call docker_test_and_clean)
+	rm Dockerfile.tmp
+
+fedora37: $(RPM_PACKAGE_X86_64) $(RPM_PACKAGE_ARM64)
+	echo "FROM fedora:37" > Dockerfile.tmp
 	echo "RUN dnf install -y procps systemd" >> Dockerfile.tmp
 	echo "COPY . /root" >> Dockerfile.tmp
 	$(call docker_build_and_run,amd64)
@@ -137,6 +125,18 @@ amazonlinux2: $(RPM_PACKAGE_X86_64) $(RPM_PACKAGE_ARM64)
 	$(call docker_test_and_clean)
 	$(call docker_build_and_run,arm64)
 	$(call docker_exec,yum install -y --nogpgcheck /root/$(RPM_PACKAGE_ARM64))
+	$(call docker_test_and_clean)
+	rm Dockerfile.tmp
+
+amazonlinux2023: $(RPM_PACKAGE_X86_64) $(RPM_PACKAGE_ARM64)
+	echo "FROM amazonlinux:2023" > Dockerfile.tmp
+	echo "RUN yum install -y procps systemd" >> Dockerfile.tmp
+	echo "COPY . /root" >> Dockerfile.tmp
+	$(call docker_build_and_run,amd64)
+	$(call docker_exec,dnf install -y --nogpgcheck /root/$(RPM_PACKAGE_X86_64))
+	$(call docker_test_and_clean)
+	$(call docker_build_and_run,arm64)
+	$(call docker_exec,dnf install -y --nogpgcheck /root/$(RPM_PACKAGE_ARM64))
 	$(call docker_test_and_clean)
 	rm Dockerfile.tmp
 
