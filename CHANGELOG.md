@@ -12,6 +12,8 @@
 * Add integrity checks before uploading snapshots
   - Validate some structural assumptions that cannot be enforced by protobuf
     before sending a snapshot
+* Bugfix: Increase timeout to prevent data loss when monitoring many servers
+  - This mitigates an issue introduced in 0.49.0
 
 ## 0.49.1      2023-03-10
 
