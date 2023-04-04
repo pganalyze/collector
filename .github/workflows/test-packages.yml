@@ -25,8 +25,8 @@ jobs:
 
     - name: Build packages
       run: |
-        DOCKER_BUILDKIT=1 GIT_VERSION=HEAD VERSION=devel make -C packages build
+        DOCKER_BUILDKIT=1 GIT_VERSION=HEAD VERSION=0.0.0 make -C packages build
 
     - name: Test packages
       run: |
-        DOCKER_BUILDKIT=1 GIT_VERSION=HEAD VERSION=devel make -C packages test
+        DOCKER_BUILDKIT=1 GIT_VERSION=HEAD VERSION=0.0.0 make -C packages test
