@@ -1,6 +1,9 @@
 export NAME ?= pganalyze-collector
-export VERSION ?= 0.49.1
+export VERSION ?= 0.49.2
 export GIT_VERSION ?= v$(VERSION)
+#export GIT_VERSION=HEAD
+#export GIT_VERSION=618e85ce5ed5365bc7d9d9da866fdeb73bac5a55
+#export VERSION=$(shell git show -s --format=%ct.%h HEAD)
 
 export RPM_PACKAGE_X86_64=$(NAME)-$(VERSION)-1.x86_64.rpm
 export RPM_PACKAGE_ARM64=$(NAME)-$(VERSION)-1.aarch64.rpm
