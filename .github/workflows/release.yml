@@ -94,7 +94,6 @@ jobs:
       with:
         name: pganalyze-collector-linux-amd64
 
-    steps:
     - name: Download build packages
       uses: actions/download-artifact@v3
       with:
