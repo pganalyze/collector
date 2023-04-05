@@ -99,9 +99,11 @@ jobs:
       with:
         name: packages
 
-    - name: Get version from tag
+    - name: Get version and git version from tag
       id: get_version
-      run: echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+      run: |
+        echo "git_version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
     - name: Create release
       id: create_release
@@ -109,8 +111,8 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: ${{ steps.get_version.outputs.version }}
-        release_name: ${{ steps.get_version.outputs.version }}
+        tag_name: ${{ steps.get_version.outputs.git_version }}
+        release_name: ${{ steps.get_version.outputs.git_version }}
         draft: false
         prerelease: false
 
