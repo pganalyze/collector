@@ -57,17 +57,23 @@ then
   pkg=yum
   distribution=el
   version=7
+elif grep -q '^ID="amzn"$' /etc/os-release && grep -q '^VERSION_ID="2023"$' /etc/os-release;
+then
+  # Amazon Linux 2023, utilizing same glibc version (2.34) as CentOS Streams 9
+  pkg=yum
+  distribution=el
+  version=9
 elif grep -q '^ID="\(rhel\|centos\)"$' /etc/os-release;
 then
   # RHEL and CentOS
   pkg=yum
   distribution=el
   version=$(grep VERSION_ID /etc/os-release | cut -d= -f2 | tr -d '"' | cut -d. -f1)
-  if [ "$version" != 7 ] && [ "$version" != 8 ];
+  if [ "$version" != 7 ] && [ "$version" != 8 ] && [ "$version" != 9 ];
   then
-    if confirm "Unsupported RHEL or CentOS version; try RHEL8 package?";
+    if confirm "Unsupported RHEL or CentOS version; try RHEL9 package?";
     then
-      version=8
+      version=9
     else
       fail "unrecognized RHEL or CentOS version: ${version}"
     fi
@@ -79,11 +85,11 @@ then
   distribution=fedora
   version=$(grep VERSION_ID /etc/os-release | cut -d= -f2)
 
-  if [ "$version" != 35 ] && [ "$version" != 34 ];
+  if [ "$version" != 37 ] && [ "$version" != 36 ];
   then
-    if confirm "Unsupported Fedora version; try Fedora 35 package?";
+    if confirm "Unsupported Fedora version; try Fedora 37 package?";
     then
-      version=35
+      version=37
     else
       fail "unrecognized Fedora version: ${version}"
     fi
@@ -120,7 +126,7 @@ then
   fi
 else
   >&2 cat /etc/os-release
-  fail "unrecognized distribution: ${distribution}"
+  fail "unrecognized distribution"
 fi
 
 # If we're already running as sudo or root, no need to do anything;
