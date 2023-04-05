@@ -1,5 +1,8 @@
 FROM centos:7
 
+# Replace with ARM base image when building on ARM:
+#FROM arm64v8/centos:7
+
 # Build arguments
 ARG VERSION
 ENV NAME pganalyze-collector
