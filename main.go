@@ -117,6 +117,9 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 			if globalCollectionOpts.TestReport != "" {
 				runner.RunTestReport(ctx, servers, globalCollectionOpts, logger)
 				testRunSuccess <- true
+			} else if globalCollectionOpts.TestJob != "" {
+				runner.RunTestJob(ctx, servers, globalCollectionOpts, logger)
+				testRunSuccess <- true
 			} else if globalCollectionOpts.TestExplain {
 				success := true
 				for _, server := range servers {
@@ -205,6 +208,12 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 		}, logger, "requested reports for all servers")
 	}
 
+	schedulerGroups["jobs"].Schedule(ctx, func(ctx context.Context) {
+		wg.Add(1)
+		runner.RunJobs(ctx, servers, globalCollectionOpts, logger)
+		wg.Done()
+	}, logger, "jobs for all servers")
+
 	if hasAnyLogsEnabled {
 		runner.SetupLogCollection(ctx, wg, servers, globalCollectionOpts, logger, hasAnyHeroku, hasAnyGoogleCloudSQL, hasAnyAzureDatabase)
 	} else if os.Getenv("DYNO") != "" && os.Getenv("PORT") != "" {
@@ -245,6 +254,8 @@ func main() {
 	var discoverLogLocation bool
 	var testRun bool
 	var testReport string
+	var testJob string
+	var testJobParameters string
 	var testRunLogs bool
 	var testExplain bool
 	var testSection string
@@ -268,6 +279,8 @@ func main() {
 	flag.BoolVarP(&showVersion, "version", "", false, "Shows current version of the collector and exits")
 	flag.BoolVarP(&testRun, "test", "t", false, "Tests whether we can successfully collect statistics (including log data if configured), submits it to the server, and exits afterwards")
 	flag.StringVar(&testReport, "test-report", "", "Tests a particular report and returns its output as JSON")
+	flag.StringVar(&testJob, "test-job", "", "Tests a particular job and returns its result. WARNING! this will actually take the job's action!")
+	flag.StringVar(&testJobParameters, "test-job-params", "", "Parameters for the job that is being tested")
 	flag.BoolVar(&testRunLogs, "test-logs", false, "Tests whether log collection works (does not test privilege dropping for local log collection, use --test for that)")
 	flag.BoolVar(&testExplain, "test-explain", false, "Tests whether EXPLAIN collection works by issuing a dummy query (ensure log collection works first)")
 	flag.StringVar(&testSection, "test-section", "", "Tests a particular section of the config file, i.e. a specific server, and ignores all other config sections")
@@ -334,7 +347,7 @@ func main() {
 		}
 	}
 
-	if testReport != "" || testRunLogs || testRunAndTrace || testExplain {
+	if testReport != "" || testJob != "" || testRunLogs || testRunAndTrace || testExplain {
 		testRun = true
 	}
 
@@ -343,6 +356,8 @@ func main() {
 		SubmitCollectedData:      !benchmark && true,
 		TestRun:                  testRun,
 		TestReport:               testReport,
+		TestJob:              	  testJob,
+		TestJobParameters:        testJobParameters,
 		TestRunLogs:              testRunLogs || dryRunLogs,
 		TestExplain:              testExplain,
 		TestSection:              testSection,

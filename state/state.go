@@ -198,6 +198,8 @@ type CollectionOpts struct {
 	SubmitCollectedData bool
 	TestRun             bool
 	TestReport          string
+	TestJob          	string
+	TestJobParameters   string
 	TestRunLogs         bool
 	TestExplain         bool
 	TestSection         string

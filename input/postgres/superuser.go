@@ -55,6 +55,11 @@ func connectedAsSuperUser(ctx context.Context, db *sql.DB, systemType string) bo
 	return enabled
 }
 
+// TODO: Convert other callers to use the publicly exported function
+func ConnectedAsSuperUser(ctx context.Context, db *sql.DB, systemType string) bool {
+	return connectedAsSuperUser(ctx, db, systemType)
+}
+
 func isCloudInternalDatabase(systemType string, databaseName string) bool {
 	if systemType == "amazon_rds" {
 		return databaseName == "rdsadmin"

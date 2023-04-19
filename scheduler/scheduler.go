@@ -95,6 +95,7 @@ func GetSchedulerGroups() (groups map[string]Group, err error) {
 	groups["reports"] = Group{interval: oneMinuteInterval}
 	groups["activity"] = Group{interval: tenSecondInterval}
 	groups["query_stats"] = Group{interval: oneMinuteInterval}
+	groups["jobs"] = Group{interval: tenSecondInterval}
 
 	return
 }
