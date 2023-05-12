@@ -32,10 +32,12 @@ const relationsSQL string = `
 				COALESCE((SELECT p.partstrat FROM pg_partitioned_table p WHERE p.partrelid = c.oid), '') AS partition_strategy,
 				(SELECT p.partattrs FROM pg_partitioned_table p WHERE p.partrelid = c.oid) AS partition_columns,
 				COALESCE(pg_catalog.pg_get_partkeydef(c.oid), '') AS partition_expr,
-				locked_relids.relid IS NOT NULL AS exclusively_locked
+				locked_relids.relid IS NOT NULL AS exclusively_locked,
+				COALESCE(toast.relname, '') AS toast_table
 	 FROM pg_catalog.pg_class c
 	 LEFT JOIN pg_catalog.pg_namespace n ON (n.oid = c.relnamespace)
 	 LEFT JOIN locked_relids ON (c.oid = locked_relids.relid)
+	 LEFT JOIN pg_class toast ON (c.reltoastrelid = toast.oid AND toast.relkind = 't')
 	WHERE c.relkind IN ('r','v','m','p')
 				AND c.relpersistence <> 't'
 				AND c.oid NOT IN (SELECT pd.objid FROM pg_catalog.pg_depend pd WHERE pd.deptype = 'e' AND pd.classid = 'pg_catalog.pg_class'::regclass)
@@ -207,7 +209,7 @@ func GetRelations(ctx context.Context, db *sql.DB, postgresVersion state.Postgre
 			&options, &row.HasOids, &row.PersistenceType, &row.HasInheritanceChildren,
 			&row.HasToast, &row.FrozenXID, &row.MinimumMultixactXID, &row.ParentTableOid,
 			&row.PartitionBoundary, &row.PartitionStrategy, &partCols, &row.PartitionedBy,
-			&row.ExclusivelyLocked)
+			&row.ExclusivelyLocked, &row.ToastTable)
 		if err != nil {
 			err = fmt.Errorf("Relations/Scan: %s", err)
 			return nil, err
