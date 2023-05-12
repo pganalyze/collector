@@ -100,7 +100,7 @@ func getEventHubConsumerClient(config config.ServerConfig) (*azeventhubs.Consume
 		}
 	}
 
-	consumerClient, err := azeventhubs.NewConsumerClient(config.AzureEventhubNamespace + ".servicebus.windows.net", config.AzureEventhubName, azeventhubs.DefaultConsumerGroup, credential, nil)
+	consumerClient, err := azeventhubs.NewConsumerClient(config.AzureEventhubNamespace+".servicebus.windows.net", config.AzureEventhubName, azeventhubs.DefaultConsumerGroup, credential, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to configure Event Hub: %s", err)
 	}
@@ -174,7 +174,7 @@ func setupEventHubReceiver(ctx context.Context, wg *sync.WaitGroup, logger *util
 	}
 
 	logger.PrintVerbose("Initializing Azure Event Hub handler for %d partitions", len(partitionIDs))
-	
+
 	handler := func(ctx context.Context, event *azeventhubs.ReceivedEventData) {
 		var eventData AzureEventHubData
 		err = json.Unmarshal(event.Body, &eventData)
@@ -188,7 +188,7 @@ func setupEventHubReceiver(ctx context.Context, wg *sync.WaitGroup, logger *util
 		}
 	}
 
-	go runEventHubHandlers(ctx, partitionIDs, logger, config, handler);
+	go runEventHubHandlers(ctx, partitionIDs, logger, config, handler)
 
 	return nil
 }
