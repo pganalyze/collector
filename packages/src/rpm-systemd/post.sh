@@ -30,3 +30,6 @@ elif [ "$1" -eq "2" ]; then
   systemctl stop pganalyze-collector.service
   systemctl start pganalyze-collector.service
 fi
+
+# Enable the service to ensure it gets started after reboot
+systemctl enable pganalyze-collector.service
