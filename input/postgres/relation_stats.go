@@ -56,7 +56,7 @@ SELECT c.oid,
 			 c.reltuples,
 			 c.relallvisible,
 			 false AS exclusively_locked,
-			 COALESCE(toast.reltuples, 0) AS toast_reltuples
+			 COALESCE(toast.reltuples, -1) AS toast_reltuples
 	FROM pg_catalog.pg_class c
 	LEFT JOIN pg_catalog.pg_namespace n ON (n.oid = c.relnamespace)
 	LEFT JOIN pg_catalog.pg_stat_user_tables s ON (s.relid = c.oid)
@@ -104,7 +104,8 @@ SELECT relid,
 	   0,
 	   0,
 	   0,
-	   true AS exclusively_locked
+	   true AS exclusively_locked,
+	   0
   FROM locked_relids_with_parents
 `
 
