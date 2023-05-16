@@ -39,7 +39,7 @@ func SetupLogCollection(ctx context.Context, wg *sync.WaitGroup, servers []*stat
 		if server.Config.DisableLogs {
 			continue
 		}
-		if server.Config.LogLocation != "" || server.Config.LogDockerTail != "" || server.Config.LogSyslogServer != "" {
+		if server.Config.LogLocation != "" || server.Config.LogDockerTail != "" || server.Config.LogSyslogServer != "" || server.Config.LogKubernetesPod != "" {
 			hasAnyLogTails = true
 		} else if server.Config.SupportsLogDownload() {
 			hasAnyLogDownloads = true
@@ -390,6 +390,8 @@ func TestLogsForAllServers(ctx context.Context, servers []*state.Server, globalC
 			} else {
 				success = false
 			}
+		} else if server.Config.LogKubernetesPod != "" && server.Config.LogKubernetesContainer != "" {
+			success = testKubernetesLogTail(ctx, &wg, server, globalCollectionOpts, prefixedLogger)
 		} else if server.Config.SupportsLogDownload() {
 			success = testLogDownload(ctx, &wg, server, globalCollectionOpts, prefixedLogger)
 		} else if server.Config.AzureDbServerName != "" && server.Config.AzureEventhubNamespace != "" && server.Config.AzureEventhubName != "" {
@@ -431,6 +433,22 @@ func testLocalLogTail(ctx context.Context, wg *sync.WaitGroup, server *state.Ser
 	}
 
 	logger.PrintInfo("  Local log test successful")
+	return true
+}
+
+func testKubernetesLogTail(ctx context.Context, wg *sync.WaitGroup, server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) bool {
+	logger.PrintInfo("Testing log collection (kubernetes)...")
+
+	logTestSucceeded := make(chan bool, 1)
+	parsedLogStream := setupLogStreamer(ctx, wg, globalCollectionOpts, logger, []*state.Server{server}, logTestSucceeded, stream.LogTestCollectorIdentify)
+
+	err := selfhosted.SetupLogTailForPod(ctx, wg, globalCollectionOpts, logger, server, parsedLogStream)
+	if err != nil {
+		logger.PrintError("ERROR - Could not tail logs for server: %s", err)
+		return false
+	}
+
+	logger.PrintInfo("  Kubernetes log test successful")
 	return true
 }
 
