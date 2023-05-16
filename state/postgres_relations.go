@@ -33,7 +33,7 @@ type PostgresRelation struct {
 	// relation, this also means we don't collect columns/index/constraints data
 	ExclusivelyLocked bool
 
-	ToastTable string
+	ToastName string
 }
 
 type PostgresColumn struct {

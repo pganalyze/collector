@@ -78,8 +78,8 @@ func transformPostgresRelations(s snapshot.FullSnapshot, newState state.Persiste
 		if relation.ViewDefinition != "" {
 			info.ViewDefinition = &snapshot.NullString{Valid: true, Value: relation.ViewDefinition}
 		}
-		if relation.ToastTable != "" {
-			info.ToastTable = &snapshot.NullString{Valid: true, Value: relation.ToastTable}
+		if relation.ToastName != "" {
+			info.ToastName = &snapshot.NullString{Valid: true, Value: relation.ToastName}
 		}
 		for _, column := range relation.Columns {
 			var stats []*snapshot.RelationInformation_ColumnStatistic

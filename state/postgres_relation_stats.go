@@ -38,7 +38,7 @@ type PostgresRelationStats struct {
 	Reltuples         float32   // Number of live rows in the table. -1 indicating that the row count is unknown
 	Relallvisible     int32     // Number of pages that are marked all-visible in the table's visibility map
 	ExclusivelyLocked bool      // Whether these statistics are zeroed out because the table was locked at collection time
-	ToastReltuples    int32     // Number of live rows in the TOAST table. -1 indicating that the row count is unknown
+	ToastReltuples    float32   // Number of live rows in the TOAST table. -1 indicating that the row count is unknown
 }
 
 type PostgresIndexStats struct {

@@ -209,7 +209,7 @@ func GetRelations(ctx context.Context, db *sql.DB, postgresVersion state.Postgre
 			&options, &row.HasOids, &row.PersistenceType, &row.HasInheritanceChildren,
 			&row.HasToast, &row.FrozenXID, &row.MinimumMultixactXID, &row.ParentTableOid,
 			&row.PartitionBoundary, &row.PartitionStrategy, &partCols, &row.PartitionedBy,
-			&row.ExclusivelyLocked, &row.ToastTable)
+			&row.ExclusivelyLocked, &row.ToastName)
 		if err != nil {
 			err = fmt.Errorf("Relations/Scan: %s", err)
 			return nil, err
