@@ -39,6 +39,7 @@ type PostgresRelationStats struct {
 	Relallvisible     int32     // Number of pages that are marked all-visible in the table's visibility map
 	ExclusivelyLocked bool      // Whether these statistics are zeroed out because the table was locked at collection time
 	ToastReltuples    float32   // Number of live rows in the TOAST table. -1 indicating that the row count is unknown
+	ToastRelpages     int32     // Size of the on-disk representation of the TOAST table in pages (of size BLCKSZ)
 }
 
 type PostgresIndexStats struct {
@@ -115,6 +116,7 @@ func (curr PostgresRelationStats) DiffSince(prev PostgresRelationStats) DiffedPo
 		Reltuples:        curr.Reltuples,
 		Relallvisible:    curr.Relallvisible,
 		ToastReltuples:   curr.ToastReltuples,
+		ToastRelpages:    curr.ToastRelpages,
 	}
 }
 

@@ -174,6 +174,7 @@ func transformPostgresRelations(s snapshot.FullSnapshot, newState state.Persiste
 					Reltuples:       stats.Reltuples,
 					Relallvisible:   stats.Relallvisible,
 					ToastReltuples:  stats.ToastReltuples,
+					ToastRelpages:   stats.ToastRelpages,
 					Relfrozenxid:    relation.FullFrozenXID(currentXactId),
 					Relminmxid:      int64(relation.MinimumMultixactXID),
 					LastVacuum:      snapshot.NullTimeToNullTimestamp(stats.LastVacuum),

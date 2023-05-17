@@ -56,7 +56,8 @@ SELECT c.oid,
 			 c.reltuples,
 			 c.relallvisible,
 			 false AS exclusively_locked,
-			 COALESCE(toast.reltuples, -1) AS toast_reltuples
+			 COALESCE(toast.reltuples, -1) AS toast_reltuples,
+			 COALESCE(toast.relpages, 0) AS toast_relpages
 	FROM pg_catalog.pg_class c
 	LEFT JOIN pg_catalog.pg_namespace n ON (n.oid = c.relnamespace)
 	LEFT JOIN pg_catalog.pg_stat_user_tables s ON (s.relid = c.oid)
@@ -105,6 +106,7 @@ SELECT relid,
 	   0,
 	   0,
 	   true AS exclusively_locked,
+	   0,
 	   0
   FROM locked_relids_with_parents
 `
@@ -180,7 +182,7 @@ func GetRelationStats(ctx context.Context, db *sql.DB, postgresVersion state.Pos
 			&stats.ToastBlksRead, &stats.ToastBlksHit, &stats.TidxBlksRead,
 			&stats.TidxBlksHit, &stats.FrozenXIDAge, &stats.MinMXIDAge,
 			&stats.Relpages, &stats.Reltuples, &stats.Relallvisible,
-			&stats.ExclusivelyLocked, &stats.ToastReltuples)
+			&stats.ExclusivelyLocked, &stats.ToastReltuples, &stats.ToastRelpages)
 		if err != nil {
 			err = fmt.Errorf("RelationStats/Scan: %s", err)
 			return

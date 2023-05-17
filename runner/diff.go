@@ -86,6 +86,7 @@ func diffRelationStats(new state.PostgresRelationStatsMap, prev state.PostgresRe
 				Reltuples:        stats.Reltuples,
 				Relallvisible:    stats.Relallvisible,
 				ToastReltuples:   stats.ToastReltuples,
+				ToastRelpages:    stats.ToastRelpages,
 			}
 		}
 	}
