@@ -260,6 +260,7 @@ func main() {
 	var logToJSON bool
 	var logNoTimestamps bool
 	var reloadRun bool
+	var noReload bool
 	var benchmark bool
 
 	logFlags := log.LstdFlags
@@ -272,6 +273,7 @@ func main() {
 	flag.BoolVar(&testExplain, "test-explain", false, "Tests whether EXPLAIN collection works by issuing a dummy query (ensure log collection works first)")
 	flag.StringVar(&testSection, "test-section", "", "Tests a particular section of the config file, i.e. a specific server, and ignores all other config sections")
 	flag.BoolVar(&reloadRun, "reload", false, "Reloads the collector daemon thats running on the host")
+	flag.BoolVar(&noReload, "no-reload", false, "Disables automatic config reloading during a test run")
 	flag.BoolVarP(&logger.Verbose, "verbose", "v", false, "Outputs additional debugging information, use this if you're encoutering errors or other problems")
 	flag.BoolVarP(&logger.Quiet, "quiet", "q", false, "Only outputs error messages to the logs and hides informational and warning messages")
 	flag.BoolVar(&logToSyslog, "syslog", false, "Write all log output to syslog instead of stderr (disabled by default)")
@@ -302,6 +304,11 @@ func main() {
 	flag.StringVar(&pidFilename, "pidfile", "", "Specifies a path that a pidfile should be written to (default is no pidfile being written)")
 	flag.BoolVar(&benchmark, "benchmark", false, "Runs collector in benchmark mode (skip submitting the statistics to the server)")
 	flag.Parse()
+
+	// Automatically reload the configuration after a successful test run.
+	if testRun && !noReload {
+		reloadRun = true;
+	}
 
 	if showVersion {
 		fmt.Printf("%s\n", util.CollectorVersion)
