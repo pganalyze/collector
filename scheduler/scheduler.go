@@ -89,18 +89,12 @@ func GetSchedulerGroups() (groups map[string]Group, err error) {
 		return
 	}
 
-	hourInterval, err := cronexpr.Parse("0 * * * *")
-	if err != nil {
-		return
-	}
-
 	groups = make(map[string]Group)
 
 	groups["stats"] = Group{interval: tenMinuteInterval}
 	groups["reports"] = Group{interval: oneMinuteInterval}
 	groups["activity"] = Group{interval: tenSecondInterval}
 	groups["query_stats"] = Group{interval: oneMinuteInterval}
-	groups["reload"] = Group{interval: hourInterval}
 
 	return
 }

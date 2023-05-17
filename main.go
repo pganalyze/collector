@@ -226,12 +226,6 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 		wg.Done()
 	}, logger, "high frequency query statistics of all servers", schedulerGroups["stats"])
 
-	schedulerGroups["reload"].Schedule(ctx, func(ctx context.Context) {
-		wg.Add(1)
-		Reload(logger)
-		wg.Done()
-	}, logger, "")
-
 	keepRunning = true
 	return
 }
