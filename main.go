@@ -307,7 +307,7 @@ func main() {
 
 	// Automatically reload the configuration after a successful test run.
 	if testRun && !noReload {
-		reloadRun = true;
+		reloadRun = true
 	}
 
 	if showVersion {
