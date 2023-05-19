@@ -267,7 +267,7 @@ func main() {
 	logger := &util.Logger{}
 
 	flag.BoolVarP(&showVersion, "version", "", false, "Shows current version of the collector and exits")
-	flag.BoolVarP(&testRun, "test", "t", false, "Tests whether we can successfully collect statistics (including log data if configured), submits it to the server, and exits afterwards")
+	flag.BoolVarP(&testRun, "test", "t", false, "Tests data collection (including logs), submits it to the server, and reloads the collector daemon (disable with --no-reload)")
 	flag.StringVar(&testReport, "test-report", "", "Tests a particular report and returns its output as JSON")
 	flag.BoolVar(&testRunLogs, "test-logs", false, "Tests whether log collection works (does not test privilege dropping for local log collection, use --test for that)")
 	flag.BoolVar(&testExplain, "test-explain", false, "Tests whether EXPLAIN collection works by issuing a dummy query (ensure log collection works first)")
