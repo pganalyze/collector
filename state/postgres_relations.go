@@ -32,6 +32,8 @@ type PostgresRelation struct {
 	// True if another process is currently holding an AccessExclusiveLock on this
 	// relation, this also means we don't collect columns/index/constraints data
 	ExclusivelyLocked bool
+
+	ToastName string
 }
 
 type PostgresColumn struct {

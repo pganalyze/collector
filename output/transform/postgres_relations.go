@@ -78,6 +78,9 @@ func transformPostgresRelations(s snapshot.FullSnapshot, newState state.Persiste
 		if relation.ViewDefinition != "" {
 			info.ViewDefinition = &snapshot.NullString{Valid: true, Value: relation.ViewDefinition}
 		}
+		if relation.ToastName != "" {
+			info.ToastName = &snapshot.NullString{Valid: true, Value: relation.ToastName}
+		}
 		for _, column := range relation.Columns {
 			var stats []*snapshot.RelationInformation_ColumnStatistic
 			if schemaStatsExist {
@@ -170,6 +173,8 @@ func transformPostgresRelations(s snapshot.FullSnapshot, newState state.Persiste
 					Relpages:        stats.Relpages,
 					Reltuples:       stats.Reltuples,
 					Relallvisible:   stats.Relallvisible,
+					ToastReltuples:  stats.ToastReltuples,
+					ToastRelpages:   stats.ToastRelpages,
 					Relfrozenxid:    relation.FullFrozenXID(currentXactId),
 					Relminmxid:      int64(relation.MinimumMultixactXID),
 					LastVacuum:      snapshot.NullTimeToNullTimestamp(stats.LastVacuum),
