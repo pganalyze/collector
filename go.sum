@@ -60,8 +60,6 @@ github.com/StackExchange/wmi v0.0.0-20150520194626-f3e2bae1e0cb h1:DkaUUcxmj7OTQ
 github.com/StackExchange/wmi v0.0.0-20150520194626-f3e2bae1e0cb/go.mod h1:3eOhrUMpNV+6aFIbp5/iudMxNCF27Vw2OZgy4xEx0Fg=
 github.com/aws/aws-sdk-go v1.36.10 h1:JCBOoVIEJkNcio01MNbmelgOc6+uxANTC3TYYPlcsEE=
 github.com/aws/aws-sdk-go v1.36.10/go.mod h1:hcU610XS61/+aQV88ixoOzUoG7v3b31pl2zKMmprdro=
-github.com/bmizerany/lpx v0.0.0-20130503172629-af85cf24c156 h1:0ywL+47/N2nSZUMM4VUYMZus+FPVfXbbXb2qhGpzsS8=
-github.com/bmizerany/lpx v0.0.0-20130503172629-af85cf24c156/go.mod h1:sBo9Xky5Lv+sFCp5t1OH7lwY/qRcheGrbjsvb0FdUwM=
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
 github.com/certifi/gocertifi v0.0.0-20160926115448-a61bf5eafa3a h1:zmAIZ9hpjwOsxZ/no776lftrcUR2w0lPiDq3tOBZjh4=
 github.com/certifi/gocertifi v0.0.0-20160926115448-a61bf5eafa3a/go.mod h1:GJKEexRPVJrBSOjoqN5VNOIKJ5Q3RViH6eu3puDRwx4=

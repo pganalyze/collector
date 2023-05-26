@@ -9,7 +9,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bmizerany/lpx"
 	"github.com/kr/logfmt"
 	"github.com/pganalyze/collector/grant"
 	"github.com/pganalyze/collector/logs"
@@ -17,12 +16,6 @@ import (
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
 )
-
-type HerokuLogStreamItem struct {
-	Header  lpx.Header
-	Content []byte
-	Path    string
-}
 
 type SystemSample struct {
 	Source            string  `logfmt:"source"`
@@ -124,17 +117,11 @@ func processSystemMetrics(ctx context.Context, timestamp time.Time, content []by
 		prefixedLogger.PrintError("Failed to upload/send compact system snapshot: %s", err)
 		return
 	}
-
-	return
 }
 
-func logStreamItemToLogLine(ctx context.Context, item HerokuLogStreamItem, servers []*state.Server, sourceToServer map[string]*state.Server, now time.Time, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (map[string]*state.Server, *state.LogLine, string) {
-	timestamp, err := time.Parse(time.RFC3339, string(item.Header.Time))
+func logStreamItemToLogLine(ctx context.Context, item HttpSyslogMessage, servers []*state.Server, sourceToServer map[string]*state.Server, now time.Time, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (map[string]*state.Server, *state.LogLine, string) {
+	timestamp, err := time.Parse(time.RFC3339, item.HeaderTimestamp)
 	if err != nil {
-		return sourceToServer, nil, ""
-	}
-
-	if string(item.Header.Name) != "app" {
 		return sourceToServer, nil, ""
 	}
 
@@ -143,12 +130,12 @@ func logStreamItemToLogLine(ctx context.Context, item HerokuLogStreamItem, serve
 		namespace = strings.Replace(item.Path, "/logs/", "", 1)
 	}
 
-	if string(item.Header.Procid) == "heroku-postgres" {
+	if item.HeaderProcID == "heroku-postgres" {
 		processSystemMetrics(ctx, timestamp, item.Content, sourceToServer, globalCollectionOpts, logger, namespace)
 		return sourceToServer, nil, ""
 	}
 
-	parts := regexp.MustCompile(`^postgres.(\d+)`).FindStringSubmatch(string(item.Header.Procid))
+	parts := regexp.MustCompile(`^postgres.(\d+)`).FindStringSubmatch(item.HeaderProcID)
 	if len(parts) != 2 {
 		return sourceToServer, nil, ""
 	}
@@ -181,7 +168,7 @@ func logStreamItemToLogLine(ctx context.Context, item HerokuLogStreamItem, serve
 	return sourceToServer, &logLine, sourceName
 }
 
-func setupLogTransformer(ctx context.Context, wg *sync.WaitGroup, servers []*state.Server, in <-chan HerokuLogStreamItem, out chan state.ParsedLogStreamItem, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
+func setupLogTransformer(ctx context.Context, wg *sync.WaitGroup, servers []*state.Server, in <-chan HttpSyslogMessage, out chan state.ParsedLogStreamItem, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
