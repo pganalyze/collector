@@ -8,7 +8,7 @@ require (
 	github.com/AlecAivazis/survey/v2 v2.2.1
 	github.com/StackExchange/wmi v0.0.0-20150520194626-f3e2bae1e0cb // indirect
 	github.com/aws/aws-sdk-go v1.36.10
-	github.com/certifi/gocertifi v0.0.0-20160926115448-a61bf5eafa3a // indirect
+	github.com/certifi/gocertifi v0.0.0-20210507211836-431795d63e8d // indirect
 	github.com/fsnotify/fsnotify v1.4.9
 	github.com/gedex/inflector v0.0.0-20161103042756-046f2c312046
 	github.com/getsentry/raven-go v0.0.0-20161115135411-3f7439d3e74d
