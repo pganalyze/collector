@@ -149,9 +149,6 @@ github.com/aws/aws-sdk-go/service/s3/s3crypto
 github.com/aws/aws-sdk-go/service/s3/s3iface
 github.com/aws/aws-sdk-go/service/sts
 github.com/aws/aws-sdk-go/service/sts/stsiface
-# github.com/bmizerany/lpx v0.0.0-20130503172629-af85cf24c156
-## explicit
-github.com/bmizerany/lpx
 # github.com/certifi/gocertifi v0.0.0-20160926115448-a61bf5eafa3a
 ## explicit
 github.com/certifi/gocertifi
