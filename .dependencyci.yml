@@ -1,5 +1,0 @@
-platform:
-  Go:
-    github.com/gorhill/cronexpr:
-      tests:
-        unlicensed: skip
