@@ -1,70 +1,43 @@
 ---
-- - :approve
-  - github.com/aws/aws-sdk-go
-  - :who: 
-    :why: 
+- - :permit
+  - Apache 2.0
+  - :who:
+    :why:
     :versions: []
-    :when: 2016-04-10 12:27:08.055624000 Z
-- - :approve
-  - github.com/go-ini/ini
-  - :who: 
-    :why: 
+    :when: 2023-05-26 06:02:02.253044000 Z
+- - :permit
+  - New BSD
+  - :who:
+    :why:
     :versions: []
-    :when: 2016-04-10 12:27:15.524527000 Z
+    :when: 2023-05-26 06:02:04.944594000 Z
+- - :permit
+  - MIT
+  - :who:
+    :why:
+    :versions: []
+    :when: 2023-05-26 06:02:08.079741000 Z
+- - :permit
+  - Simplified BSD
+  - :who:
+    :why:
+    :versions: []
+    :when: 2023-05-26 06:02:21.166628000 Z
+- - :permit
+  - Mozilla Public License 2.0
+  - :who:
+    :why:
+    :versions: []
+    :when: 2023-05-26 06:02:34.133659000 Z
 - - :approve
   - github.com/gorhill/cronexpr
-  - :who: 
-    :why: 
+  - :who:
+    :why: Licensed under Apache 2.0
     :versions: []
-    :when: 2016-04-10 12:27:28.748745000 Z
-- - :license
-  - github.com/go-ini/ini
-  - Apache 2.0
-  - :who: 
-    :why: 
-    :versions: []
-    :when: 2016-04-10 12:27:45.685578000 Z
-- - :license
-  - github.com/gorhill/cronexpr
-  - Apache 2.0
-  - :who: 
-    :why: 
-    :versions: []
-    :when: 2016-04-10 12:27:52.453946000 Z
+    :when: 2023-05-26 06:09:52.270555000 Z
 - - :approve
-  - github.com/lfittl/pg_query_go
-  - :who: 
-    :why: 
+  - github.com/jmespath/go-jmespath
+  - :who:
+    :why: Licensed under Apache 2.0
     :versions: []
-    :when: 2016-04-10 12:29:51.469547000 Z
-- - :approve
-  - github.com/lib/pq
-  - :who: 
-    :why: 
-    :versions: []
-    :when: 2016-04-10 12:30:44.980308000 Z
-- - :approve
-  - github.com/vaughan0/go-ini
-  - :who: 
-    :why: 
-    :versions: []
-    :when: 2016-04-10 12:33:38.070473000 Z
-- - :approve
-  - github.com/ogier/pflag
-  - :who: 
-    :why: 
-    :versions: []
-    :when: 2016-04-10 12:33:51.339486000 Z
-- - :license
-  - gopkg.in/guregu/null.v2
-  - BSD-2-Clause
-  - :who: 
-    :why: 
-    :versions: []
-    :when: 2016-04-10 12:34:48.258368000 Z
-- - :approve
-  - gopkg.in/guregu/null.v2
-  - :who: 
-    :why: 
-    :versions: []
-    :when: 2016-04-10 12:35:02.532037000 Z
+    :when: 2023-05-26 06:11:11.931533000 Z
