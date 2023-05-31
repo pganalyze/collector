@@ -56,10 +56,12 @@ output/pganalyze_collector/snapshot.pb.go: $(PROTOBUF_FILES)
 ifdef PROTOC_VERSION
 	mkdir -p $(PWD)/bin
 	GOBIN=$(PWD)/bin go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
-	protoc --go_out=. --go_opt=module=github.com/pganalyze/collector -I protobuf $(PROTOBUF_FILES)
-else
-	@echo '👷 Warning: protoc not found, skipping protocol buffer regeneration (to install protoc check Makefile instructions in install_protoc step)'
-endif
+# 	GOBIN=$(PWD)/bin go install github.com/planetscale/vtprotobuf
+	GOBIN=$(PWD)/bin go install github.com/planetscale/vtprotobuf/cmd/protoc-gen-go-vtproto@latest
+	protoc --go_out=. --go_opt=module=github.com/pganalyze/collector \
+		--plugin protoc-gen-go-vtproto="bin/protoc-gen-go-vtproto" \
+		--go-vtproto_out=. --go-vtproto_opt=features=marshal+unmarshal+size \
+		-I protobuf $(PROTOBUF_FILES)
 
 install_protoc:
 ifdef PROTOC_VERSION

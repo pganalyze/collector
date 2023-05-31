@@ -21,6 +21,7 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
+	// "github.com/planetscale/vtprotobuf"
 )
 
 func SendFull(ctx context.Context, server *state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, newState state.PersistedState, diffState state.DiffState, transientState state.TransientState, collectedIntervalSecs uint32) error {
@@ -58,7 +59,9 @@ func submitFull(ctx context.Context, s snapshot.FullSnapshot, server *state.Serv
 	s.CollectorLogSnapshotDisabled = server.CollectionStatus.LogSnapshotDisabled
 	s.CollectorLogSnapshotDisabledReason = server.CollectionStatus.LogSnapshotDisabledReason
 
-	data, err = proto.Marshal(&s)
+	start := time.Now()
+	data, err = s.MarshalVT()
+	fmt.Printf("full: %s\n", time.Since(start))
 	if err != nil {
 		logger.PrintError("Error marshaling protocol buffers")
 		return err

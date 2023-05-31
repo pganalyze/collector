@@ -33,7 +33,9 @@ func uploadAndSubmitCompactSnapshot(ctx context.Context, s pganalyze_collector.C
 	s.SnapshotUuid = snapshotUUID.String()
 	s.CollectedAt = timestamppb.New(collectedAt)
 
-	data, err = proto.Marshal(&s)
+	start := time.Now()
+	data, err = s.MarshalVT()
+	fmt.Printf("compact: %s\n", time.Since(start))
 	if err != nil {
 		logger.PrintError("Error marshaling protocol buffers")
 		return err
