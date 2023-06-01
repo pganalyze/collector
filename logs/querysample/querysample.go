@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/guregu/null"
+	"github.com/pganalyze/collector/logs/util"
 	"github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
 )
@@ -15,7 +16,7 @@ import (
 func TransformAutoExplainToQuerySample(logLine state.LogLine, explainText string, queryRuntime string) (state.PostgresQuerySample, error) {
 	queryRuntimeMs, _ := strconv.ParseFloat(queryRuntime, 64)
 	if strings.HasPrefix(explainText, "{") { // json format
-		if strings.HasSuffix(explainText, "[Your log message was truncated]") {
+		if util.WasTruncated(explainText) {
 			return state.PostgresQuerySample{}, fmt.Errorf("auto_explain output was truncated and can't be parsed as JSON")
 		} else {
 			return transformExplainJSONToQuerySample(logLine, explainText, queryRuntimeMs)
