@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/pganalyze/collector/logs/querysample"
+	"github.com/pganalyze/collector/logs/util"
 	"github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
 )
@@ -1491,7 +1492,7 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 	if matchesPrefix(logLine, duration.primary.prefixes) {
 		logLine.Classification = duration.classification
 		logLine, parts = matchLogLine(logLine, duration.primary)
-		if strings.HasSuffix(strings.TrimSpace(logLine.Content), "[Your log message was truncated]") {
+		if util.WasTruncated(logLine.Content) {
 			logLine.Details = map[string]interface{}{"truncated": true}
 		} else if len(parts) == 5 {
 			var parameterParts [][]string
@@ -2106,7 +2107,7 @@ func AnalyzeBackendLogLines(logLines []state.LogLine) (logLinesOut []state.LogLi
 			if futureLine.LogLevel == pganalyze_collector.LogLineInformation_STATEMENT || futureLine.LogLevel == pganalyze_collector.LogLineInformation_DETAIL ||
 				futureLine.LogLevel == pganalyze_collector.LogLineInformation_HINT || futureLine.LogLevel == pganalyze_collector.LogLineInformation_CONTEXT ||
 				futureLine.LogLevel == pganalyze_collector.LogLineInformation_QUERY {
-				if futureLine.LogLevel == pganalyze_collector.LogLineInformation_STATEMENT && !strings.HasSuffix(futureLine.Content, "[Your log message was truncated]") {
+				if futureLine.LogLevel == pganalyze_collector.LogLineInformation_STATEMENT && !util.WasTruncated(futureLine.Content) {
 					logLine.Query = futureLine.Content
 					statementLine = futureLine
 					statementLine.ParentUUID = logLine.UUID
