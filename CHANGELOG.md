@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.50.0      2023-06-05
+
+* Track TOAST table name, reltuples and relpages
+* Reload collector config after successful test run
+  - If you have previously run "--reload --test" you can now simply run "--reload"
+  - To restore the old behaviour, pass the "--no-reload" flag together with "--test"
+* RPM packages: Ensure collector gets started after reboot
+  - Due to a packaging oversight, the pganalyze-collector service was not correctly
+    enabled in systemd, which caused the collector to not start after a system reboot
+  - If you are upgrading, the package upgrade script will automatically fix this for you
+* Collector install script: Add Amazon Linux 2023, refresh other versions
+* Azure Database for PostgreSQL / Azure Cosmos DB for PostgreSQL
+  - Add support for Azure Kubernetes Service (AKS) Workload Identity
+    - To utilize this integration, follow the regular Azure instructions for workload
+      identity - the relevant environment variables will be automatically recognized
+* Amazon RDS:
+  - auto_explain and slow query log: Look for "[Your log message was truncated]" marker
+    in the middle of multi-line log messages, not just at the end
+    - This can occur due to limitations of the AWS API - this way the log line is
+      correctly marked as truncated, instead of as a parsing error
+* Heroku Postgres:
+  - Rewrite syslog parsing code and inline it, to avoid "lpx" library license ambiguity
+
+
 ## 0.49.2      2023-03-30
 
 * Bugfix: Ensure all relation information will be sent out even with a lock
