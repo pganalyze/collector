@@ -1,7 +1,14 @@
 package parser
 
 /*
-#cgo CFLAGS: -Iinclude -g -fstack-protector -std=gnu99
+ * Note on CFLAGS below:
+ *
+ * -Wno-deprecated-non-prototype avoids warnings on Clang 15.0+, this can be removed in Postgres 16:
+ * https://git.postgresql.org/gitweb/?p=postgresql.git;a=commit;h=1c27d16e6e5c1f463bbe1e9ece88dda811235165
+ */
+
+/*
+#cgo CFLAGS: -Iinclude -g -fstack-protector -std=gnu99 -Wno-deprecated-non-prototype -Wno-unknown-warning-option
 #cgo LDFLAGS:
 #include "pg_query.h"
 #include "xxhash.h"
@@ -23,12 +30,42 @@ uint64_t pg_query_hash_xxh3_64(void *data, size_t len, size_t seed) {
 import "C"
 
 import (
-	"errors"
 	"unsafe"
 )
 
 func init() {
 	C.pg_query_init()
+}
+
+type Error struct {
+	Message   string // exception message
+	Funcname  string // source function of exception (e.g. SearchSysCache)
+	Filename  string // source of exception (e.g. parse.l)
+	Lineno    int    // source of exception (e.g. 104)
+	Cursorpos int    // char in query at which exception occurred
+	Context   string // additional context (optional, can be NULL)
+}
+
+func (e *Error) Error() string {
+	return e.Message
+}
+
+func newPgQueryError(errC *C.PgQueryError) *Error {
+	err := &Error{
+		Message:   C.GoString(errC.message),
+		Lineno:    int(errC.lineno),
+		Cursorpos: int(errC.cursorpos),
+	}
+	if errC.funcname != nil {
+		err.Funcname = C.GoString(errC.funcname)
+	}
+	if errC.filename != nil {
+		err.Filename = C.GoString(errC.filename)
+	}
+	if errC.context != nil {
+		err.Context = C.GoString(errC.context)
+	}
+	return err
 }
 
 // ParseToJSON - Parses the given SQL statement into a parse tree (JSON format)
@@ -41,8 +78,7 @@ func ParseToJSON(input string) (result string, err error) {
 	defer C.pg_query_free_parse_result(resultC)
 
 	if resultC.error != nil {
-		errMessage := C.GoString(resultC.error.message)
-		err = errors.New(errMessage)
+		err = newPgQueryError(resultC.error)
 		return
 	}
 
@@ -60,8 +96,7 @@ func ScanToProtobuf(input string) (result []byte, err error) {
 	defer C.pg_query_free_scan_result(resultC)
 
 	if resultC.error != nil {
-		errMessage := C.GoString(resultC.error.message)
-		err = errors.New(errMessage)
+		err = newPgQueryError(resultC.error)
 		return
 	}
 
@@ -80,8 +115,7 @@ func ParseToProtobuf(input string) (result []byte, err error) {
 	defer C.pg_query_free_protobuf_parse_result(resultC)
 
 	if resultC.error != nil {
-		errMessage := C.GoString(resultC.error.message)
-		err = errors.New(errMessage)
+		err = newPgQueryError(resultC.error)
 		return
 	}
 
@@ -100,8 +134,7 @@ func DeparseFromProtobuf(input []byte) (result string, err error) {
 	defer C.pg_query_free_deparse_result(resultC)
 
 	if resultC.error != nil {
-		errMessage := C.GoString(resultC.error.message)
-		err = errors.New(errMessage)
+		err = newPgQueryError(resultC.error)
 		return
 	}
 
@@ -120,8 +153,7 @@ func ParsePlPgSqlToJSON(input string) (result string, err error) {
 	defer C.pg_query_free_plpgsql_parse_result(resultC)
 
 	if resultC.error != nil {
-		errMessage := C.GoString(resultC.error.message)
-		err = errors.New(errMessage)
+		err = newPgQueryError(resultC.error)
 		return
 	}
 
@@ -139,8 +171,7 @@ func Normalize(input string) (result string, err error) {
 	defer C.pg_query_free_normalize_result(resultC)
 
 	if resultC.error != nil {
-		errMessage := C.GoString(resultC.error.message)
-		err = errors.New(errMessage)
+		err = newPgQueryError(resultC.error)
 		return
 	}
 
@@ -158,8 +189,7 @@ func FingerprintToUInt64(input string) (result uint64, err error) {
 	defer C.pg_query_free_fingerprint_result(resultC)
 
 	if resultC.error != nil {
-		errMessage := C.GoString(resultC.error.message)
-		err = errors.New(errMessage)
+		err = newPgQueryError(resultC.error)
 		return
 	}
 
@@ -178,8 +208,7 @@ func FingerprintToHexStr(input string) (result string, err error) {
 	defer C.pg_query_free_fingerprint_result(resultC)
 
 	if resultC.error != nil {
-		errMessage := C.GoString(resultC.error.message)
-		err = errors.New(errMessage)
+		err = newPgQueryError(resultC.error)
 		return
 	}
 
