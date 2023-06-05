@@ -308,14 +308,9 @@ The script will also have the following environment variables set:
 * PGA_ERROR_MESSAGE (error message, in the case of the error callback)
 
 
-Authors
--------
-
- * [Lukas Fittl](https://github.com/lfittl)
- * [Michael Renner](https://github.com/terrorobe)
-
-
 License
 -------
 
 pganalyze-collector is licensed under the 3-clause BSD license, see LICENSE file for details.
+
+Copyright (c) 2012-2023, Duboce Labs, Inc. (pganalyze)
