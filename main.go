@@ -509,6 +509,8 @@ ReadConfigAndRun:
 						logger.PrintError("Error: Reload requested, but ignoring since configuration errors are present")
 						exitCode = 1
 					}
+				} else if !success {
+					exitCode = 1
 				}
 				break DoneOrSignal
 			case s := <-sigs:
