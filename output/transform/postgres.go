@@ -158,7 +158,7 @@ func transformPostgresServerStats(s snapshot.FullSnapshot, transientState state.
 		NextMultiXactId:                   int64(transientState.ServerStats.NextMultiXactId),
 		XminHorizonBackend:                transientState.ServerStats.FullXminHorizonBackend(),
 		XminHorizonReplicationSlot:        transientState.ServerStats.FullXminHorizonReplicationSlot(),
-		XminHorizonReplicationSlotCatalog: transientState.ServerStats.FullXminHorizonReplicationSlot(),
+		XminHorizonReplicationSlotCatalog: transientState.ServerStats.FullXminHorizonReplicationSlotCatalog(),
 		XminHorizonPreparedXact:           transientState.ServerStats.FullXminHorizonPreparedXact(),
 		XminHorizonStandby:                transientState.ServerStats.FullXminHorizonStandby(),
 	}
