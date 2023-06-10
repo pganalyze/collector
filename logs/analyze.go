@@ -83,13 +83,14 @@ var autoVacuum = analyzeGroup{
 			`(?:\d+ skipped using mintxid)?,?\s*` + // Google AlloyDB for PostgreSQL
 			`tuples: (\d+) removed, (\d+) remain, (\d+) are dead but not yet removable(?:, oldest xmin: (\d+))?,?\s*` +
 			`(?:index scan (not needed|needed|bypassed|bypassed by failsafe): (\d+) pages from table \(([\d.]+)% of total\) (?:have|had) (\d+) dead item identifiers(?: removed)?)?,?\s*` + // Postgres 14+
+			`((?:index ".+?": pages: \d+ in total, \d+ newly deleted, \d+ currently deleted, \d+ reusable,?\s*)*)?` + // Postgres 14+
 			`(?:I/O timings: read: ([\d.]+) ms, write: ([\d.]+) ms)?,?\s*` + // Postgres 14+
 			`(?:avg read rate: ([\d.]+) MB/s, avg write rate: ([\d.]+) MB/s)?,?\s*` + // Postgres 14+
 			`buffer usage: (\d+) hits, (\d+) misses, (\d+) dirtied,?\s*` +
 			`(?:avg read rate: ([\d.]+) MB/s, avg write rate: ([\d.]+) MB/s)?,?\s*` + // Postgres 13 and older
 			`(?:WAL usage: (\d+) records, (\d+) full page images, (\d+) bytes)?,?\s*` + // Postgres 14+
 			`system usage: CPU(?:(?: ([\d.]+)s/([\d.]+)u sec elapsed ([\d.]+) sec)|(?:: user: ([\d.]+) s, system: ([\d.]+) s, elapsed: ([\d.]+) s))`),
-		secrets: []state.LogSecretKind{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+		secrets: []state.LogSecretKind{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 	},
 }
 var autoAnalyze = analyzeGroup{
@@ -1144,6 +1145,7 @@ var otherContextPatterns = []match{
 	},
 }
 
+var autoVacuumIndexRegexp = regexp.MustCompile(`index "(.+?)": pages: (\d+) in total, (\d+) newly deleted, (\d+) currently deleted, (\d+) reusable,?\s*`)
 var parallelWorkerProcessTextRegexp = regexp.MustCompile(`^parallel worker for PID (\d+)`)
 
 func AnalyzeLogLines(logLinesIn []state.LogLine) (logLinesOut []state.LogLine, samples []state.PostgresQuerySample) {
@@ -1595,7 +1597,7 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 	}
 	if matchesPrefix(logLine, autoVacuum.primary.prefixes) {
 		logLine, parts = matchLogLine(logLine, autoVacuum.primary)
-		if len(parts) == 35 {
+		if len(parts) == 36 {
 			var readRatePart, writeRatePart, kernelPart, userPart, elapsedPart string
 
 			aggressiveVacuum := parts[1] == "aggressive "
@@ -1621,32 +1623,32 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 			newRelTuples, _ := strconv.ParseInt(parts[10], 10, 64)
 			newDeadTuples, _ := strconv.ParseInt(parts[11], 10, 64)
 
-			// Parts 12 to 18 (Index scan info, I/O read/write timings) are only present on Postgres 14+ and dealt with at the end
+			// Parts 12 to 19 (Index scan info, I/O read/write timings) are only present on Postgres 14+ and dealt with at the end
 
-			if parts[19] != "" { // Postgres 14+, with I/O information before buffers
-				readRatePart = parts[19]
-				writeRatePart = parts[20]
+			if parts[20] != "" { // Postgres 14+, with I/O information before buffers
+				readRatePart = parts[20]
+				writeRatePart = parts[21]
 			} else { // Postgres 13 and older
-				readRatePart = parts[24]
-				writeRatePart = parts[25]
+				readRatePart = parts[25]
+				writeRatePart = parts[26]
 			}
 			readRateMb, _ := strconv.ParseFloat(readRatePart, 64)
 			writeRateMb, _ := strconv.ParseFloat(writeRatePart, 64)
 
-			vacuumPageHit, _ := strconv.ParseInt(parts[21], 10, 64)
-			vacuumPageMiss, _ := strconv.ParseInt(parts[22], 10, 64)
-			vacuumPageDirty, _ := strconv.ParseInt(parts[23], 10, 64)
+			vacuumPageHit, _ := strconv.ParseInt(parts[22], 10, 64)
+			vacuumPageMiss, _ := strconv.ParseInt(parts[23], 10, 64)
+			vacuumPageDirty, _ := strconv.ParseInt(parts[24], 10, 64)
 
-			// Parts 26 to 28 (WAL Usage) are only present on Postgres 13+ and dealt with at the end
+			// Parts 27 to 29 (WAL Usage) are only present on Postgres 13+ and dealt with at the end
 
-			if parts[29] != "" {
-				kernelPart = parts[29]
-				userPart = parts[30]
-				elapsedPart = parts[31]
+			if parts[30] != "" {
+				kernelPart = parts[30]
+				userPart = parts[31]
+				elapsedPart = parts[32]
 			} else {
-				userPart = parts[32]
-				kernelPart = parts[33]
-				elapsedPart = parts[34]
+				userPart = parts[33]
+				kernelPart = parts[34]
+				elapsedPart = parts[35]
 			}
 			rusageKernelMode, _ := strconv.ParseFloat(kernelPart, 64)
 			rusageUserMode, _ := strconv.ParseFloat(userPart, 64)
@@ -1671,7 +1673,7 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 			// status displayed, but we have no way to distinguish it from versions that didn't
 			// have it - there, only include the case when the vacuum indeed is a anti-wraparound
 			// vacuum.
-			if parts[2] != "" || parts[26] != "" {
+			if parts[2] != "" || parts[27] != "" {
 				antiWraparound := parts[2] == "to prevent wraparound "
 				logLine.Details["anti_wraparound"] = antiWraparound
 			}
@@ -1689,15 +1691,32 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 				logLine.Details["lpdead_items"] = lpdeadItems
 			}
 			if parts[17] != "" {
-				blkReadTime, _ := strconv.ParseFloat(parts[17], 64)
-				blkWriteTime, _ := strconv.ParseFloat(parts[18], 64)
+				indexParts := autoVacuumIndexRegexp.FindAllStringSubmatch(parts[17], -1)
+				index_vacuums := make(map[string]interface{})
+				for _, p := range indexParts {
+					numPages, _ := strconv.ParseInt(p[2], 10, 64)
+					pagesNewlyDeleted, _ := strconv.ParseInt(p[3], 10, 64)
+					pagesDeleted, _ := strconv.ParseInt(p[4], 10, 64)
+					pagesFree, _ := strconv.ParseInt(p[5], 10, 64)
+					index_vacuums[p[1]] = map[string]interface{}{
+						"num_pages":           numPages,
+						"pages_newly_deleted": pagesNewlyDeleted,
+						"pages_deleted":       pagesDeleted,
+						"pages_free":          pagesFree,
+					}
+				}
+				logLine.Details["index_vacuums"] = index_vacuums
+			}
+			if parts[18] != "" {
+				blkReadTime, _ := strconv.ParseFloat(parts[18], 64)
+				blkWriteTime, _ := strconv.ParseFloat(parts[19], 64)
 				logLine.Details["blk_read_time"] = blkReadTime
 				logLine.Details["blk_write_time"] = blkWriteTime
 			}
-			if parts[26] != "" {
-				walRecords, _ := strconv.ParseInt(parts[26], 10, 64)
-				walFpi, _ := strconv.ParseInt(parts[27], 10, 64)
-				walBytes, _ := strconv.ParseInt(parts[28], 10, 64)
+			if parts[27] != "" {
+				walRecords, _ := strconv.ParseInt(parts[27], 10, 64)
+				walFpi, _ := strconv.ParseInt(parts[28], 10, 64)
+				walBytes, _ := strconv.ParseInt(parts[29], 10, 64)
 				logLine.Details["wal_records"] = walRecords
 				logLine.Details["wal_fpi"] = walFpi
 				logLine.Details["wal_bytes"] = walBytes

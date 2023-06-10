@@ -1443,6 +1443,75 @@ var tests = []testpair{
 	},
 	{
 		[]state.LogLine{{
+			Content: "automatic aggressive vacuum to prevent wraparound of table \"mydb.myschema.mytable\": index scans: 1\n" +
+				"	pages: 8141555 removed, 4783594 remain, 0 skipped due to pins, 10478504 skipped frozen\n" +
+				"	tuples: 2153407 removed, 44326634 remain, 252 are dead but not yet removable, oldest xmin: 1887899920\n" +
+				"	index scan needed: 808328 pages from table (6.25% of total) had 2317145 dead item identifiers removed\n" +
+				"	index \"mytable_index1\": pages: 235675 in total, 5967 newly deleted, 174124 currently deleted, 168157 reusable\n" +
+				"	index \"mytable_index2\": pages: 179 in total, 0 newly deleted, 0 currently deleted, 0 reusable\n" +
+				"	I/O timings: read: 377482.257 ms, write: 8483.639 ms\n" +
+				"	avg read rate: 104.788 MB/s, avg write rate: 19.082 MB/s\n" +
+				"	buffer usage: 2692149 hits, 11619539 misses, 2115983 dirtied\n" +
+				"	WAL usage: 4628822 records, 1983515 full page images, 4131405282 bytes\n" +
+				"	system usage: CPU: user: 189.32 s, system: 84.28 s, elapsed: 866.30 s",
+			LogLevel: pganalyze_collector.LogLineInformation_LOG,
+		}},
+		[]state.LogLine{{
+			Classification: pganalyze_collector.LogLineInformation_AUTOVACUUM_COMPLETED,
+			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
+			Database:       "mydb",
+			SchemaName:     "myschema",
+			RelationName:   "mytable",
+			Details: map[string]interface{}{
+				"aggressive":               true,
+				"anti_wraparound":          true,
+				"num_index_scans":          1,
+				"pages_removed":            8141555,
+				"rel_pages":                4783594,
+				"pinskipped_pages":         0,
+				"frozenskipped_pages":      10478504,
+				"tuples_deleted":           2153407,
+				"new_rel_tuples":           44326634,
+				"new_dead_tuples":          252,
+				"oldest_xmin":              1887899920,
+				"lpdead_index_scan":        "needed",
+				"lpdead_item_pages":        808328,
+				"lpdead_item_page_percent": 6.25,
+				"lpdead_items":             2317145,
+				"blk_read_time":            377482.257,
+				"blk_write_time":           8483.639,
+				"read_rate_mb":             104.788,
+				"write_rate_mb":            19.082,
+				"vacuum_page_hit":          2692149,
+				"vacuum_page_miss":         11619539,
+				"vacuum_page_dirty":        2115983,
+				"wal_records":              4628822,
+				"wal_fpi":                  1983515,
+				"wal_bytes":                4131405282,
+				"rusage_user":              189.32,
+				"rusage_kernel":            84.28,
+				"elapsed_secs":             866.3,
+				"index_vacuums": map[string]interface{}{
+					"mytable_index1": map[string]interface{}{
+						"num_pages":           235675,
+						"pages_deleted":       174124,
+						"pages_free":          168157,
+						"pages_newly_deleted": 5967,
+					},
+					"mytable_index2": map[string]interface{}{
+						"num_pages":           179,
+						"pages_deleted":       0,
+						"pages_free":          0,
+						"pages_newly_deleted": 0,
+					},
+				},
+			},
+			ReviewedForSecrets: true,
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
 			Content: "automatic vacuum of table \"alloydbadmin.public.heartbeat\": index scans: 0, elapsed time: 0 s, index vacuum time: 0 ms," +
 				" pages: 0 removed, 1 remain, 0 skipped due to pins, 0 skipped frozen 0 skipped using mintxid," +
 				" tuples: 60 removed, 1 remain, 0 are dead but not yet removable, oldest xmin: 1782," +
