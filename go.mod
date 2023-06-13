@@ -29,7 +29,7 @@ require (
 	github.com/ogier/pflag v0.0.0-20160129220114-45c278ab3607
 	github.com/papertrail/go-tail v0.0.0-20180509224916-973c153b0431
 	github.com/pkg/errors v0.9.1
-	github.com/satori/go.uuid v0.0.0-20160713180306-0aa62d5ddceb
+	github.com/satori/go.uuid v1.2.0
 	github.com/shirou/gopsutil v3.21.10+incompatible
 	github.com/smartystreets/assertions v0.0.0-20160707190355-2063fd1cc7c9 // indirect
 	github.com/smartystreets/goconvey v0.0.0-20160704134950-4622128e06c7 // indirect
