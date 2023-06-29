@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.50.1      2023-06-29
+
+* Bugfix: Return correct exit code with the data collection test run
+  - The correct exit code was returned with "--reload --test", but not with "--test"
+* Xmin horizon metrics: Fix incorrect ReplicationSlotCatalog
+  - ReplicationSlot was wrongly sent as ReplicationSlotCatalog
+  - Xmin horizon metrics collection was introduced in 0.49.0
+* Update github.com/satori/go.uuid to 1.2.0
+  - Fixes CVE-2021-3538 which may have led to random UUIDs having less randomness than intended
+* Log Insights: Add autovacuum index statistics information introduced in Postgres 14
+  - Previously, if autovacuum logs include such information, we were failing to
+    match this log line and these logs were not showing up in Log Insights
+
+
 ## 0.50.0      2023-06-05
 
 * Track TOAST table name, reltuples and relpages
