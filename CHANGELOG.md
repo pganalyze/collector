@@ -23,7 +23,7 @@
 
 * Track TOAST table name, reltuples and relpages
 * Reload collector config after successful test run
-  - If you have previously run "--reload --test" you can now simply run "--reload"
+  - If you have previously run "--reload --test" you can now simply run "--test"
   - To restore the old behaviour, pass the "--no-reload" flag together with "--test"
 * RPM packages: Ensure collector gets started after reboot
   - Due to a packaging oversight, the pganalyze-collector service was not correctly
