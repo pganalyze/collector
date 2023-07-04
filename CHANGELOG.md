@@ -8,10 +8,15 @@
   - ReplicationSlot was wrongly sent as ReplicationSlotCatalog
   - Xmin horizon metrics collection was introduced in 0.49.0
 * Update github.com/satori/go.uuid to 1.2.0
-  - Fixes CVE-2021-3538 which may have led to random UUIDs having less randomness than intended
+  - Fixes CVE-2021-3538 which may have led to random UUIDs having less
+    randomness than intended
+  - Effective security impact of this historic issue is expected to be minimal,
+    since random UUIDs are only used for snapshot identifiers associated to a
+    particular pganalyze server ID
 * Log Insights: Add autovacuum index statistics information introduced in Postgres 14
-  - Previously, if autovacuum logs include such information, we were failing to
-    match this log line and these logs were not showing up in Log Insights
+  - Previously, if autovacuum logs included such information, the collector
+    failed to match the log line and the events would not be classified
+    correctly in Log Insights
 
 
 ## 0.50.0      2023-06-05
