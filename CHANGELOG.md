@@ -1,10 +1,29 @@
 # Changelog
 
+## 0.50.1      2023-06-29
+
+* Bugfix: Return correct exit code with the data collection test run
+  - The correct exit code was returned with "--reload --test", but not with "--test"
+* Xmin horizon metrics: Fix incorrect ReplicationSlotCatalog
+  - ReplicationSlot was wrongly sent as ReplicationSlotCatalog
+  - Xmin horizon metrics collection was introduced in 0.49.0
+* Update github.com/satori/go.uuid to 1.2.0
+  - Fixes CVE-2021-3538 which may have led to random UUIDs having less
+    randomness than intended
+  - Effective security impact of this historic issue is expected to be minimal,
+    since random UUIDs are only used for snapshot identifiers associated to a
+    particular pganalyze server ID
+* Log Insights: Add autovacuum index statistics information introduced in Postgres 14
+  - Previously, if autovacuum logs included such information, the collector
+    failed to match the log line and the events would not be classified
+    correctly in Log Insights
+
+
 ## 0.50.0      2023-06-05
 
 * Track TOAST table name, reltuples and relpages
 * Reload collector config after successful test run
-  - If you have previously run "--reload --test" you can now simply run "--reload"
+  - If you have previously run "--reload --test" you can now simply run "--test"
   - To restore the old behaviour, pass the "--no-reload" flag together with "--test"
 * RPM packages: Ensure collector gets started after reboot
   - Due to a packaging oversight, the pganalyze-collector service was not correctly
