@@ -1132,6 +1132,30 @@ var tests = []testpair{
 			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
 			UUID:     uuid.UUID{1},
 		}, {
+			Content:  "automatic vacuum of table \"dbname.schemaname.tablename\"",
+			LogLevel: pganalyze_collector.LogLineInformation_CONTEXT,
+		}},
+		[]state.LogLine{{
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_AUTOVACUUM_CANCEL,
+			UUID:               uuid.UUID{1},
+			Database:           "dbname",
+			SchemaName:         "schemaname",
+			RelationName:       "tablename",
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_CONTEXT,
+			ParentUUID:         uuid.UUID{1},
+			ReviewedForSecrets: true,
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
+			Content:  "canceling autovacuum task",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+			UUID:     uuid.UUID{1},
+		}, {
 			Content:  "automatic analyze of table \"dbname.schemaname.tablename\"",
 			LogLevel: pganalyze_collector.LogLineInformation_CONTEXT,
 		}},
@@ -1142,6 +1166,98 @@ var tests = []testpair{
 			Database:           "dbname",
 			SchemaName:         "schemaname",
 			RelationName:       "tablename",
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_CONTEXT,
+			ParentUUID:         uuid.UUID{1},
+			ReviewedForSecrets: true,
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
+			Content:  "canceling autovacuum task",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+			UUID:     uuid.UUID{1},
+		}, {
+			Content:  "while scanning block 123 of relation \"public.mytable\"",
+			LogLevel: pganalyze_collector.LogLineInformation_CONTEXT,
+		}},
+		[]state.LogLine{{
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_AUTOVACUUM_CANCEL,
+			UUID:               uuid.UUID{1},
+			SchemaName:         "public",
+			RelationName:       "mytable",
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_CONTEXT,
+			ParentUUID:         uuid.UUID{1},
+			ReviewedForSecrets: true,
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
+			Content:  "canceling autovacuum task",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+			UUID:     uuid.UUID{1},
+		}, {
+			Content:  "while scanning block 123 of relation \"public.mytable\"",
+			LogLevel: pganalyze_collector.LogLineInformation_CONTEXT,
+		}},
+		[]state.LogLine{{
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_AUTOVACUUM_CANCEL,
+			UUID:               uuid.UUID{1},
+			SchemaName:         "public",
+			RelationName:       "mytable",
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_CONTEXT,
+			ParentUUID:         uuid.UUID{1},
+			ReviewedForSecrets: true,
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
+			Content:  "canceling autovacuum task",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+			UUID:     uuid.UUID{1},
+		}, {
+			Content:  "while cleaning up index \"myindex\" of relation \"public.mytable\"",
+			LogLevel: pganalyze_collector.LogLineInformation_CONTEXT,
+		}},
+		[]state.LogLine{{
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_AUTOVACUUM_CANCEL,
+			UUID:               uuid.UUID{1},
+			SchemaName:         "public",
+			RelationName:       "mytable",
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_CONTEXT,
+			ParentUUID:         uuid.UUID{1},
+			ReviewedForSecrets: true,
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
+			Content:  "canceling autovacuum task",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+			UUID:     uuid.UUID{1},
+		}, {
+			Content:  "while truncating relation \"public.mytable\" to 0 blocks",
+			LogLevel: pganalyze_collector.LogLineInformation_CONTEXT,
+		}},
+		[]state.LogLine{{
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_AUTOVACUUM_CANCEL,
+			UUID:               uuid.UUID{1},
+			SchemaName:         "public",
+			RelationName:       "mytable",
 			ReviewedForSecrets: true,
 		}, {
 			LogLevel:           pganalyze_collector.LogLineInformation_CONTEXT,
