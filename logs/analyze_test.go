@@ -1796,10 +1796,12 @@ var tests = []testpair{
 			UUID:     uuid.UUID{1},
 		}},
 		[]state.LogLine{{
-			LogLevel:           pganalyze_collector.LogLineInformation_LOG,
-			Classification:     pganalyze_collector.LogLineInformation_SKIPPING_VACUUM_LOCK_NOT_AVAILABLE,
-			UUID:               uuid.UUID{1},
-			RelationName:       "mytable",
+			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
+			Classification: pganalyze_collector.LogLineInformation_SKIPPING_VACUUM_LOCK_NOT_AVAILABLE,
+			UUID:           uuid.UUID{1},
+			Details: map[string]interface{}{
+				"relation_name": "mytable",
+			},
 			ReviewedForSecrets: true,
 		}},
 		nil,
@@ -1810,10 +1812,12 @@ var tests = []testpair{
 			UUID:     uuid.UUID{1},
 		}},
 		[]state.LogLine{{
-			LogLevel:           pganalyze_collector.LogLineInformation_LOG,
-			Classification:     pganalyze_collector.LogLineInformation_SKIPPING_ANALYZE_LOCK_NOT_AVAILABLE,
-			UUID:               uuid.UUID{1},
-			RelationName:       "pgbench_tellers",
+			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
+			Classification: pganalyze_collector.LogLineInformation_SKIPPING_ANALYZE_LOCK_NOT_AVAILABLE,
+			UUID:           uuid.UUID{1},
+			Details: map[string]interface{}{
+				"relation_name": "pgbench_tellers",
+			},
 			ReviewedForSecrets: true,
 		}},
 		nil,

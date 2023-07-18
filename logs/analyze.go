@@ -1560,7 +1560,9 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 		logLine.Classification = skippingVacuum.classification
 		logLine, parts = matchLogLine(logLine, skippingVacuum.primary)
 		if len(parts) == 2 {
-			logLine.RelationName = parts[1]
+			// Unfortunately Postgres doesn't log a schema here, so we need to store this
+			// outside of the usual relation reference (which requires a schema)
+			logLine.Details = map[string]interface{}{"relation_name": parts[1]}
 		}
 		contextLine = matchOtherContextLogLine(contextLine)
 		return logLine, statementLine, detailLine, contextLine, hintLine, samples
@@ -1569,7 +1571,9 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 		logLine.Classification = skippingAnalyze.classification
 		logLine, parts = matchLogLine(logLine, skippingAnalyze.primary)
 		if len(parts) == 2 {
-			logLine.RelationName = parts[1]
+			// Unfortunately Postgres doesn't log a schema here, so we need to store this
+			// outside of the usual relation reference (which requires a schema)
+			logLine.Details = map[string]interface{}{"relation_name": parts[1]}
 		}
 		contextLine = matchOtherContextLogLine(contextLine)
 		return logLine, statementLine, detailLine, contextLine, hintLine, samples
