@@ -1114,8 +1114,12 @@ var pgaCollectorIdentify = analyzeGroup{
 }
 
 // CONTEXT patterns (errcontext calls in Postgres)
-var contextCancelAutovacuum = match{
-	regexp:  regexp.MustCompile(`automatic analyze of table "(.+?)"`),
+var contextCancelAutovacuum = match{ // do_autovacuum in autovacuum.c
+	regexp:  regexp.MustCompile(`automatic (?:vacuum|analyze) of table "(.+?)"`),
+	secrets: []state.LogSecretKind{0},
+}
+var contextCancelAutovacuumDetail = match{ // vacuum_error_callback in vacuumlazy.c
+	regexp:  regexp.MustCompile(`while (?:scanning|vacuuming|vacuuming index \"[^"]+\"|cleaning up index \"[^"]+\"|truncating) (?:block \d+ )?(?:of )?relation "(.+?)"(?: to \d+ blocks)?`),
 	secrets: []state.LogSecretKind{0},
 }
 var otherContextPatterns = []match{
@@ -1538,6 +1542,15 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 				}
 				if len(subParts) >= 3 {
 					logLine.RelationName = subParts[2]
+				}
+			} else {
+				contextLine, parts = matchLogLine(contextLine, contextCancelAutovacuumDetail)
+				if len(parts) == 2 {
+					subParts := strings.SplitN(parts[1], ".", 2)
+					if len(subParts) == 2 {
+						logLine.SchemaName = subParts[0]
+						logLine.RelationName = subParts[1]
+					}
 				}
 			}
 			return logLine, statementLine, detailLine, contextLine, hintLine, samples
