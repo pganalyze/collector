@@ -10,8 +10,8 @@ rpm --addsign /rpm/systemd/$RPM_PACKAGE_ARM64
 
 # Verify that we've actually correctly signed the packages
 rpm --import https://packages.pganalyze.com/pganalyze_signing_key.asc
-rpm --checksig /rpm/systemd/$RPM_PACKAGE_X86_64
-rpm --checksig /rpm/systemd/$RPM_PACKAGE_ARM64
+rpm --checksig -v /rpm/systemd/$RPM_PACKAGE_X86_64
+rpm --checksig -v /rpm/systemd/$RPM_PACKAGE_ARM64
 
 mkdir -p /repo/el/7/RPMS
 cp /rpm/systemd/$RPM_PACKAGE_X86_64 /repo/el/7/RPMS/
