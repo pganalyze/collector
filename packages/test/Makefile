@@ -9,7 +9,7 @@ docker_test_and_clean = docker exec pga-collector-test /root/systemd_test.sh && 
 
 # Note: The default list excludes rockylinux9 since there is an open issue with
 # /sbin/init not being present, see https://github.com/rocky-linux/sig-cloud-instance-images/issues/39
-DISTROS=centos7 rhel8 rockylinux8 rhel9 fedora36 fedora37 amazonlinux2 amazonlinux2023 ubuntu-xenial ubuntu-bionic ubuntu-focal ubuntu-jammy debian-bullseye debian-bookworm
+DISTROS=centos7 rhel8 rockylinux8 rhel9 fedora36 fedora37 amazonlinux2 amazonlinux2023 ubuntu-focal ubuntu-jammy debian-bullseye debian-bookworm
 
 .PHONY: all $(DISTROS)
 
@@ -140,32 +140,6 @@ amazonlinux2023: $(RPM_PACKAGE_X86_64) $(RPM_PACKAGE_ARM64)
 	$(call docker_test_and_clean)
 	rm Dockerfile.tmp
 
-ubuntu-xenial: $(DEB_PACKAGE_X86_64) $(DEB_PACKAGE_ARM64)
-	echo "FROM ubuntu:xenial" > Dockerfile.tmp
-	echo "COPY . /root" >> Dockerfile.tmp
-	echo "RUN rm /usr/sbin/policy-rc.d" >> Dockerfile.tmp
-	$(call docker_build_and_run,amd64)
-	$(call docker_exec,dpkg -i /root/$(DEB_PACKAGE_X86_64))
-	$(call docker_test_and_clean)
-	$(call docker_build_and_run,arm64)
-	$(call docker_exec,dpkg -i /root/$(DEB_PACKAGE_ARM64))
-	$(call docker_test_and_clean)
-	rm Dockerfile.tmp
-
-ubuntu-bionic: $(DEB_PACKAGE_X86_64) $(DEB_PACKAGE_ARM64)
-	echo "FROM ubuntu:bionic" > Dockerfile.tmp
-	echo "COPY . /root" >> Dockerfile.tmp
-	echo "RUN apt-get update" >> Dockerfile.tmp
-	echo "RUN apt-get install systemd-sysv -y" >> Dockerfile.tmp
-	echo "RUN rm /usr/sbin/policy-rc.d" >> Dockerfile.tmp
-	$(call docker_build_and_run,amd64)
-	$(call docker_exec,dpkg -i /root/$(DEB_PACKAGE_X86_64))
-	$(call docker_test_and_clean)
-	$(call docker_build_and_run,arm64)
-	$(call docker_exec,dpkg -i /root/$(DEB_PACKAGE_ARM64))
-	$(call docker_test_and_clean)
-	rm Dockerfile.tmp
-
 ubuntu-focal: $(DEB_PACKAGE_X86_64) $(DEB_PACKAGE_ARM64)
 	echo "FROM ubuntu:focal" > Dockerfile.tmp
 	echo "COPY . /root" >> Dockerfile.tmp
@@ -185,18 +159,6 @@ ubuntu-jammy: $(DEB_PACKAGE_X86_64) $(DEB_PACKAGE_ARM64)
 	echo "COPY . /root" >> Dockerfile.tmp
 	echo "RUN apt-get update" >> Dockerfile.tmp
 	echo "RUN apt-get install systemd-sysv -y" >> Dockerfile.tmp
-	echo "RUN rm /usr/sbin/policy-rc.d" >> Dockerfile.tmp
-	$(call docker_build_and_run,amd64)
-	$(call docker_exec,dpkg -i /root/$(DEB_PACKAGE_X86_64))
-	$(call docker_test_and_clean)
-	$(call docker_build_and_run,arm64)
-	$(call docker_exec,dpkg -i /root/$(DEB_PACKAGE_ARM64))
-	$(call docker_test_and_clean)
-	rm Dockerfile.tmp
-
-debian-jessie: $(DEB_PACKAGE_X86_64) $(DEB_PACKAGE_ARM64)
-	echo "FROM debian:jessie" > Dockerfile.tmp
-	echo "COPY . /root" >> Dockerfile.tmp
 	echo "RUN rm /usr/sbin/policy-rc.d" >> Dockerfile.tmp
 	$(call docker_build_and_run,amd64)
 	$(call docker_exec,dpkg -i /root/$(DEB_PACKAGE_X86_64))
