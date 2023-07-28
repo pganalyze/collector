@@ -9,7 +9,7 @@ docker_test_and_clean = docker exec pga-collector-test /root/systemd_test.sh && 
 
 # Note: The default list excludes rockylinux9 since there is an open issue with
 # /sbin/init not being present, see https://github.com/rocky-linux/sig-cloud-instance-images/issues/39
-DISTROS=centos7 rhel8 rockylinux8 rhel9 fedora36 fedora37 amazonlinux2 amazonlinux2023 ubuntu-xenial ubuntu-bionic ubuntu-focal ubuntu-jammy debian-buster debian-bullseye
+DISTROS=centos7 rhel8 rockylinux8 rhel9 fedora36 fedora37 amazonlinux2 amazonlinux2023 ubuntu-xenial ubuntu-bionic ubuntu-focal ubuntu-jammy debian-bullseye debian-bookworm
 
 .PHONY: all $(DISTROS)
 
@@ -206,8 +206,8 @@ debian-jessie: $(DEB_PACKAGE_X86_64) $(DEB_PACKAGE_ARM64)
 	$(call docker_test_and_clean)
 	rm Dockerfile.tmp
 
-debian-buster: $(DEB_PACKAGE_X86_64) $(DEB_PACKAGE_ARM64)
-	echo "FROM debian:buster" > Dockerfile.tmp
+debian-bullseye: $(DEB_PACKAGE_X86_64) $(DEB_PACKAGE_ARM64)
+	echo "FROM debian:bullseye" > Dockerfile.tmp
 	echo "RUN apt-get update -qq && apt-get install -y -q systemd-sysv procps" >> Dockerfile.tmp
 	echo "COPY . /root" >> Dockerfile.tmp
 	echo "RUN rm /usr/sbin/policy-rc.d" >> Dockerfile.tmp
@@ -219,8 +219,8 @@ debian-buster: $(DEB_PACKAGE_X86_64) $(DEB_PACKAGE_ARM64)
 	$(call docker_test_and_clean)
 	rm Dockerfile.tmp
 
-debian-bullseye: $(DEB_PACKAGE_X86_64) $(DEB_PACKAGE_ARM64)
-	echo "FROM debian:bullseye" > Dockerfile.tmp
+debian-bookworm: $(DEB_PACKAGE_X86_64) $(DEB_PACKAGE_ARM64)
+	echo "FROM debian:bookworm" > Dockerfile.tmp
 	echo "RUN apt-get update -qq && apt-get install -y -q systemd-sysv procps" >> Dockerfile.tmp
 	echo "COPY . /root" >> Dockerfile.tmp
 	echo "RUN rm /usr/sbin/policy-rc.d" >> Dockerfile.tmp

@@ -115,11 +115,11 @@ then
   pkg=deb
   distribution=debian
   version=$(grep VERSION_CODENAME /etc/os-release | cut -d= -f2)
-  if [ "$version" != bullseye ] && [ "$version" != buster ];
+  if [ "$version" != bookworm ] && [ "$version" != bullseye ];
   then
-    if confirm "Unsupported Debian version; try Debian Bullseye (11) package?";
+    if confirm "Unsupported Debian version; try Debian Bookworm (12) package?";
     then
-      version=bullseye
+      version=bookworm
     else
       fail "unrecognized Debian version: ${version}"
     fi
