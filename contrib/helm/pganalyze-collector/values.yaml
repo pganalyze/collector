@@ -55,15 +55,24 @@ serviceAccount:
 
 podAnnotations: {}
 
-podSecurityContext: {}
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
 
 securityContext:
   capabilities:
     drop:
-    - ALL
+      - ALL
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
   runAsNonRoot: true
   runAsUser: 1000
-  allowPrivilegeEscalation: false
+  runAsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
 
 resources:
   limits:
@@ -74,10 +83,15 @@ resources:
     memory: 1024Mi
 
 # -- List of volumes to attach to the pod
-volumes: []
+volumes:
+  - name: scratch
+    emptyDir: {}
 
 # -- List of volume mounts to attach to the container
-volumeMounts: []
+volumeMounts:
+  - mountPath: /tmp
+    name: scratch
+    subPath: tmp
 
 nodeSelector: {}
 
