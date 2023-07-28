@@ -30,15 +30,15 @@ cp /root/deb.distributions /repo/debian/jessie/conf/distributions
 reprepro --basedir /repo/debian/jessie includedeb stable /deb/systemd/$DEB_PACKAGE_X86_64
 reprepro --basedir /repo/debian/jessie includedeb stable /deb/systemd/$DEB_PACKAGE_ARM64
 
-mkdir -p /repo/debian/buster/conf
-cp /root/deb.distributions /repo/debian/buster/conf/distributions
-reprepro --basedir /repo/debian/buster includedeb stable /deb/systemd/$DEB_PACKAGE_X86_64
-reprepro --basedir /repo/debian/buster includedeb stable /deb/systemd/$DEB_PACKAGE_ARM64
-
 mkdir -p /repo/debian/bullseye/conf
 cp /root/deb.distributions /repo/debian/bullseye/conf/distributions
 reprepro --basedir /repo/debian/bullseye includedeb stable /deb/systemd/$DEB_PACKAGE_X86_64
 reprepro --basedir /repo/debian/bullseye includedeb stable /deb/systemd/$DEB_PACKAGE_ARM64
+
+mkdir -p /repo/debian/bookworm/conf
+cp /root/deb.distributions /repo/debian/bookworm/conf/distributions
+reprepro --basedir /repo/debian/bookworm includedeb stable /deb/systemd/$DEB_PACKAGE_X86_64
+reprepro --basedir /repo/debian/bookworm includedeb stable /deb/systemd/$DEB_PACKAGE_ARM64
 
 # Verify signatures
 apt-key add /repo/pganalyze_signing_key.asc
@@ -47,5 +47,5 @@ gpgv --keyring /etc/apt/trusted.gpg /repo/ubuntu/bionic/dists/stable/InRelease
 gpgv --keyring /etc/apt/trusted.gpg /repo/ubuntu/focal/dists/stable/InRelease
 gpgv --keyring /etc/apt/trusted.gpg /repo/ubuntu/jammy/dists/stable/InRelease
 gpgv --keyring /etc/apt/trusted.gpg /repo/debian/jessie/dists/stable/InRelease
-gpgv --keyring /etc/apt/trusted.gpg /repo/debian/buster/dists/stable/InRelease
 gpgv --keyring /etc/apt/trusted.gpg /repo/debian/bullseye/dists/stable/InRelease
+gpgv --keyring /etc/apt/trusted.gpg /repo/debian/bookworm/dists/stable/InRelease
