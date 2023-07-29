@@ -135,16 +135,16 @@ func runEventHubHandlers(ctx context.Context, partitionIDs []string, logger *uti
 
 	for _, partitionID := range partitionIDs {
 		wg.Add(1)
-		go func() {
+		go func(partID string) {
 			defer wg.Done()
 
-			partitionClient, err := consumerClient.NewPartitionClient(partitionID, &azeventhubs.PartitionClientOptions{
+			partitionClient, err := consumerClient.NewPartitionClient(partID, &azeventhubs.PartitionClientOptions{
 				StartPosition: azeventhubs.StartPosition{
 					Earliest: to.Ptr(true),
 				},
 			})
 			if err != nil {
-				logger.PrintError("Failed to set up Azure Event Hub partition client for partition %s: %s", partitionID, err)
+				logger.PrintError("Failed to set up Azure Event Hub partition client for partition %s: %s", partID, err)
 			}
 			defer partitionClient.Close(ctx)
 
@@ -152,7 +152,7 @@ func runEventHubHandlers(ctx context.Context, partitionIDs []string, logger *uti
 				events, err := partitionClient.ReceiveEvents(ctx, 1, nil)
 				if err != nil {
 					if err != context.Canceled {
-						logger.PrintError("Failed to receive events from Azure Event Hub for partition %s: %s", partitionID, err)
+						logger.PrintError("Failed to receive events from Azure Event Hub for partition %s: %s", partID, err)
 					}
 					break
 				}
@@ -161,7 +161,7 @@ func runEventHubHandlers(ctx context.Context, partitionIDs []string, logger *uti
 					handler(ctx, event)
 				}
 			}
-		}()
+		}(partitionID)
 	}
 
 	wg.Wait()
