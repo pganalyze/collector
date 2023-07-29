@@ -75,7 +75,7 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 		if globalCollectionOpts.TestRun && globalCollectionOpts.TestSection != "" && globalCollectionOpts.TestSection != config.SectionName {
 			continue
 		}
-		servers = append(servers, &state.Server{Config: config, StateMutex: &sync.Mutex{}, LogStateMutex: &sync.Mutex{}, ActivityStateMutex: &sync.Mutex{}, CollectionStatusMutex: &sync.Mutex{}})
+		servers = append(servers, &state.Server{Config: config, StateMutex: &sync.Mutex{}, LogStateMutex: &sync.Mutex{}, ActivityStateMutex: &sync.Mutex{}, CollectionStatusMutex: &sync.Mutex{}, LogTimezoneMutex: &sync.Mutex{}})
 		if config.EnableReports {
 			hasAnyReportsEnabled = true
 		}
@@ -578,6 +578,11 @@ func checkOneInitialCollectionStatus(ctx context.Context, server *state.Server, 
 		logger.PrintInfo("Log duration lines will be ignored for this server: %s", logsDisabledReason)
 	} else if logsIgnoreStatement {
 		logger.PrintInfo("Log statement lines will be ignored for this server: %s", logsDisabledReason)
+	}
+
+	server.SetLogTimezone(settings)
+	if server.LogTimezone == nil {
+		logger.PrintWarning("Could not determine log timezone for this server: %s")
 	}
 
 	server.CollectionStatusMutex.Lock()

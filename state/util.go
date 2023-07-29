@@ -1,5 +1,7 @@
 package state
 
+import "time"
+
 type OidToIdxMap map[Oid](map[Oid]int32)
 
 func MakeOidToIdxMap() OidToIdxMap {
@@ -37,4 +39,23 @@ func XidToXid8(xid Xid, currentXactId Xid8) Xid8 {
 	// By subtracting the xid from the current one, we can get the epoch of the given xid.
 	xidEpoch := int32((currentXactId - Xid8(xid)) >> 32)
 	return Xid8(xidEpoch)<<32 | Xid8(xid)
+}
+
+func getTimeZoneFromSettings(settings []PostgresSetting) *time.Location {
+	for _, setting := range settings {
+		if setting.Name != "log_timezone" {
+			continue
+		}
+		if !setting.ResetValue.Valid {
+			return nil
+		}
+
+		zoneStr := setting.ResetValue.String
+		zone, err := time.LoadLocation(zoneStr)
+		if err != nil {
+			return nil
+		}
+		return zone
+	}
+	return nil
 }

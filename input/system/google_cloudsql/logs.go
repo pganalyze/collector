@@ -192,7 +192,7 @@ func setupLogTransformer(ctx context.Context, wg *sync.WaitGroup, servers []*sta
 				// Note that we need to restore the original trailing newlines since
 				// AnalyzeStreamInGroups expects them and they are not present in the GCP
 				// log stream.
-				logLine, _ := logs.ParseLogLineWithPrefix("", in.Content+"\n")
+				logLine, _ := logs.ParseLogLineWithPrefix("", in.Content+"\n", nil)
 				logLine.OccurredAt = in.OccurredAt
 
 				// Ignore loglines which are outside our time window
