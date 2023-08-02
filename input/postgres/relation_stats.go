@@ -156,7 +156,15 @@ SELECT 1 AS enabled
 `
 
 func GetRelationStats(ctx context.Context, db *sql.DB, postgresVersion state.PostgresVersion, server *state.Server) (relStats state.PostgresRelationStatsMap, err error) {
-	stmt, err := db.PrepareContext(ctx, QueryMarkerSQL+relationStatsSQL)
+	var insertsSinceVacuumField string
+
+	if postgresVersion.Numeric >= state.PostgresVersion13 {
+		insertsSinceVacuumField = relationStatsSQLInsertsSinceVacuumFieldPg13
+	} else {
+		insertsSinceVacuumField = relationStatsSQLInsertsSinceVacuumFieldDefault
+	}
+
+	stmt, err := db.PrepareContext(ctx, QueryMarkerSQL+fmt.Sprintf(relationStatsSQL, insertsSinceVacuumField))
 	if err != nil {
 		err = fmt.Errorf("RelationStats/Prepare: %s", err)
 		return
