@@ -9,6 +9,9 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
+const relationStatsSQLInsertsSinceVacuumFieldPg13 string = "s.n_ins_since_vacuum"
+const relationStatsSQLInsertsSinceVacuumFieldDefault string = "0"
+
 const relationStatsSQL = `
 WITH locked_relids AS (
 	SELECT DISTINCT relation relid FROM pg_catalog.pg_locks WHERE mode = 'AccessExclusiveLock' AND relation IS NOT NULL
@@ -34,6 +37,7 @@ SELECT c.oid,
 			 COALESCE(s.n_live_tup, 0),
 			 COALESCE(s.n_dead_tup, 0),
 			 s.n_mod_since_analyze,
+			 %s,
 			 s.last_vacuum,
 			 s.last_autovacuum,
 			 s.last_analyze,
@@ -71,6 +75,7 @@ SELECT c.oid,
 			 AND ($1 = '' OR (n.nspname || '.' || c.relname) !~* $1)
  UNION ALL
 SELECT relid,
+	   0,
 	   0,
 	   0,
 	   0,
@@ -174,7 +179,7 @@ func GetRelationStats(ctx context.Context, db *sql.DB, postgresVersion state.Pos
 			&stats.SeqScan, &stats.SeqTupRead,
 			&stats.IdxScan, &stats.IdxTupFetch, &stats.NTupIns,
 			&stats.NTupUpd, &stats.NTupDel, &stats.NTupHotUpd,
-			&stats.NLiveTup, &stats.NDeadTup, &stats.NModSinceAnalyze,
+			&stats.NLiveTup, &stats.NDeadTup, &stats.NModSinceAnalyze, &stats.NInsSinceVacuum,
 			&stats.LastVacuum, &stats.LastAutovacuum, &stats.LastAnalyze,
 			&stats.LastAutoanalyze, &stats.VacuumCount, &stats.AutovacuumCount,
 			&stats.AnalyzeCount, &stats.AutoanalyzeCount, &stats.HeapBlksRead,

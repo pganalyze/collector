@@ -76,6 +76,7 @@ func diffRelationStats(new state.PostgresRelationStatsMap, prev state.PostgresRe
 				NLiveTup:         stats.NLiveTup,
 				NDeadTup:         stats.NDeadTup,
 				NModSinceAnalyze: stats.NModSinceAnalyze,
+				NInsSinceVacuum:  stats.NInsSinceVacuum,
 				LastVacuum:       stats.LastVacuum,
 				LastAutovacuum:   stats.LastAutovacuum,
 				LastAnalyze:      stats.LastAnalyze,

@@ -15,7 +15,8 @@ type PostgresRelationStats struct {
 	NTupHotUpd        int64     // Number of rows HOT updated (i.e., with no separate index update required)
 	NLiveTup          int64     // Estimated number of live rows
 	NDeadTup          int64     // Estimated number of dead rows
-	NModSinceAnalyze  null.Int  // Estimated number of rows modified since this table was last analyzed
+	NModSinceAnalyze  int64     // Estimated number of rows modified since this table was last analyzed
+	NInsSinceVacuum   int64     // Estimated number of rows inserted since this table was last vacuumed
 	LastVacuum        null.Time // Last time at which this table was manually vacuumed (not counting VACUUM FULL)
 	LastAutovacuum    null.Time // Last time at which this table was vacuumed by the autovacuum daemon
 	LastAnalyze       null.Time // Last time at which this table was manually analyzed
@@ -94,6 +95,7 @@ func (curr PostgresRelationStats) DiffSince(prev PostgresRelationStats) DiffedPo
 		NLiveTup:         curr.NLiveTup,
 		NDeadTup:         curr.NDeadTup,
 		NModSinceAnalyze: curr.NModSinceAnalyze,
+		NInsSinceVacuum:  curr.NInsSinceVacuum,
 		LastVacuum:       curr.LastVacuum,
 		LastAutovacuum:   curr.LastAutovacuum,
 		LastAnalyze:      curr.LastAnalyze,
