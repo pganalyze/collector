@@ -116,10 +116,6 @@ func IsSupportedPrefix(prefix string) bool {
 func ParseLogLineWithPrefix(prefix string, line string, tz *time.Location) (logLine state.LogLine, ok bool) {
 	var timePart, userPart, dbPart, appPart, pidPart, logLineNumberPart, levelPart, contentPart string
 
-	// Assume Postgres time format unless overriden by the prefix (e.g. syslog)
-	timeFormat := "2006-01-02 15:04:05 -0700"
-	timeFormatAlt := "2006-01-02 15:04:05 MST"
-
 	rsyslog := false
 
 	// Only read the first 1000 characters of a log line to parse the log_line_prefix
@@ -186,8 +182,7 @@ func ParseLogLineWithPrefix(prefix string, line string, tz *time.Location) (logL
 		if len(parts) == 0 {
 			return
 		}
-		timeFormat = "2006 Jan  2 15:04:05"
-		timeFormatAlt = ""
+
 		timePart = fmt.Sprintf("%d %s", time.Now().Year(), parts[1])
 		// ignore syslog hostname
 		// ignore syslog process name
@@ -475,7 +470,7 @@ func ParseLogLineWithPrefix(prefix string, line string, tz *time.Location) (logL
 	}
 
 	if timePart != "" {
-		occurredAt := getOccurredAt(timePart, timeFormat, timeFormatAlt, tz)
+		occurredAt := getOccurredAt(timePart, tz, rsyslog)
 		if occurredAt.IsZero() {
 			return
 		}
@@ -511,21 +506,29 @@ func ParseLogLineWithPrefix(prefix string, line string, tz *time.Location) (logL
 	return
 }
 
-func getOccurredAt(timePart, timeFormat, timeFormatAlt string, tz *time.Location) time.Time {
-	if tz != nil {
-		result, err := time.ParseInLocation(timeFormat, timePart, tz)
-		if err == nil {
-			return result
+func getOccurredAt(timePart string, tz *time.Location, rsyslog bool) time.Time {
+	if tz != nil && !rsyslog {
+		lastSpaceIdx := strings.LastIndex(timePart, " ")
+		if lastSpaceIdx == -1 {
+			return time.Time{}
 		}
-		if timeFormatAlt != "" {
-			// Ensure we have the correct format remembered for ParseInLocation call that may happen later
-			timeFormat = timeFormatAlt
-			result, err := time.ParseInLocation(timeFormat, timePart, tz)
-			if err == nil {
-				return result
-			}
+		timePartNoTz := timePart[0:lastSpaceIdx]
+		result, err := time.ParseInLocation("2006-01-02 15:04:05", timePartNoTz, tz)
+		if err != nil {
+			return time.Time{}
 		}
-		// if there is an error, we fall through and try the fallback method below
+
+		return result
+	}
+
+	// Assume Postgres time format unless overriden by the prefix (e.g. syslog)
+	var timeFormat, timeFormatAlt string
+	if rsyslog {
+		timeFormat = "2006 Jan  2 15:04:05"
+		timeFormatAlt = ""
+	} else {
+		timeFormat = "2006-01-02 15:04:05 -0700"
+		timeFormatAlt = "2006-01-02 15:04:05 MST"
 	}
 
 	ts, err := time.Parse(timeFormat, timePart)
