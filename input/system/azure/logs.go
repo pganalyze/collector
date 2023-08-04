@@ -251,7 +251,7 @@ func ParseRecordToLogLines(in AzurePostgresLogRecord) ([]state.LogLine, string, 
 		azureDbServerName = in.LogicalServerName
 	}
 
-	logLine, ok := logs.ParseLogLineWithPrefix("", logLineContent)
+	logLine, ok := logs.ParseLogLineWithPrefix("", logLineContent, nil)
 	if !ok {
 		return []state.LogLine{}, "", fmt.Errorf("Can't parse log line: \"%s\"", logLineContent)
 	}

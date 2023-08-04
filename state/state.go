@@ -273,6 +273,11 @@ type Server struct {
 	CollectionStatus      CollectionStatus
 	CollectionStatusMutex *sync.Mutex
 
+	// The time zone that logs are parsed in, synced from the setting log_timezone
+	// The StateMutex should be held while updating this
+	LogTimezone      *time.Location
+	LogTimezoneMutex *sync.Mutex
+
 	// Boolean flags for which log lines should be ignored for processing
 	//
 	// Internally this uses atomics (not a mutex) due to noticable performance
@@ -295,6 +300,24 @@ func (s *Server) SetLogIgnoreFlags(ignoreStatement bool, ignoreDuration bool) {
 		newFlags |= LOG_IGNORE_DURATION
 	}
 	atomic.StoreUint32(&s.LogIgnoreFlags, newFlags)
+}
+
+func (s *Server) SetLogTimezone(settings []PostgresSetting) {
+	tz := getTimeZoneFromSettings(settings)
+
+	s.LogTimezoneMutex.Lock()
+	defer s.LogTimezoneMutex.Unlock()
+	s.LogTimezone = tz
+}
+
+func (s *Server) GetLogTimezone() *time.Location {
+	s.LogTimezoneMutex.Lock()
+	defer s.LogTimezoneMutex.Unlock()
+	if s.LogTimezone == nil {
+		return nil
+	}
+	tz := *s.LogTimezone
+	return &tz
 }
 
 // IgnoreLogLine - helper function that lets callers determine whether a log

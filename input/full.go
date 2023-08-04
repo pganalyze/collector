@@ -133,6 +133,8 @@ func CollectFull(ctx context.Context, server *state.Server, connection *sql.DB, 
 		ps.System = system.GetSystemState(server.Config, logger)
 	}
 
+	server.SetLogTimezone(ts.Settings)
+
 	ps.CollectorStats = getCollectorStats()
 	ts.CollectorConfig = getCollectorConfig(server.Config)
 	ts.CollectorPlatform = getCollectorPlatform(globalCollectionOpts, logger)
