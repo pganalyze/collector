@@ -75,7 +75,7 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 		if globalCollectionOpts.TestRun && globalCollectionOpts.TestSection != "" && globalCollectionOpts.TestSection != config.SectionName {
 			continue
 		}
-		servers = append(servers, &state.Server{Config: config, StateMutex: &sync.Mutex{}, LogStateMutex: &sync.Mutex{}, ActivityStateMutex: &sync.Mutex{}, CollectionStatusMutex: &sync.Mutex{}, LogTimezoneMutex: &sync.Mutex{}})
+		servers = append(servers, state.MakeServer(config))
 		if config.EnableReports {
 			hasAnyReportsEnabled = true
 		}
@@ -397,7 +397,7 @@ func main() {
 		content := string(contentBytes)
 		reader := strings.NewReader(content)
 		logReader := logs.NewMaybeHerokuLogReader(reader)
-		logLines, samples := logs.ParseAndAnalyzeBuffer(logReader, time.Time{}, &state.Server{})
+		logLines, samples := logs.ParseAndAnalyzeBuffer(logReader, time.Time{}, state.MakeServer(config.ServerConfig{}))
 		logs.PrintDebugInfo(content, logLines, samples)
 		if analyzeDebugClassifications != "" {
 			classifications := strings.Split(analyzeDebugClassifications, ",")

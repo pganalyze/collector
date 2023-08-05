@@ -286,6 +286,17 @@ type Server struct {
 	LogIgnoreFlags uint32
 }
 
+func MakeServer(config config.ServerConfig) *Server {
+	return &Server{
+		Config:                config,
+		StateMutex:            &sync.Mutex{},
+		LogStateMutex:         &sync.Mutex{},
+		ActivityStateMutex:    &sync.Mutex{},
+		CollectionStatusMutex: &sync.Mutex{},
+		LogTimezoneMutex:      &sync.Mutex{},
+	}
+}
+
 const (
 	LOG_IGNORE_STATEMENT uint32 = 1 << iota
 	LOG_IGNORE_DURATION
