@@ -1721,23 +1721,23 @@ var tests = []testpair{
 	},
 	{
 		[]state.LogLine{{
-			Content: "automatic aggressive vacuum to prevent wraparound of table \"mydb.myschema.mytable\": index scans: 1\n" +
-				"	pages: 0 removed, 300815 remain, 40572 scanned (13.49% of total)\n" +
-				"	tuples: 2867 removed, 16861077 remain, 0 are dead but not yet removable\n" +
-				"	tuples missed: 5 dead from 1 pages not removed due to cleanup lock contention\n" +
-				"	removable cutoff: 3555970282, which was 0 XIDs old when operation ended\n" +
-				"	new relfrozenxid: 3506326394, which is 195284419 XIDs ahead of previous value\n" +
-				"	new relminmxid: 83, which is 5 MXIDs ahead of previous value\n" +
-				"	index scan needed: 11169 pages from table (3.71% of total) had 160440 dead item identifiers removed\n" +
-				"	index \"index1\": pages: 46608 in total, 0 newly deleted, 0 currently deleted, 0 reusable\n" +
-				"	index \"index2\": pages: 9365 in total, 2 newly deleted, 2 currently deleted, 0 reusable\n" +
-				"	index \"index3\": pages: 38252 in total, 129 newly deleted, 14414 currently deleted, 14285 reusable\n" +
-				"	index \"index4\": pages: 59530 in total, 0 newly deleted, 21608 currently deleted, 21608 reusable\n" +
-				"	I/O timings: read: 1661.751 ms, write: 283.343 ms\n" +
-				"	avg read rate: 76.468 MB/s, avg write rate: 28.413 MB/s\n" +
-				"	buffer usage: 79150 hits, 206012 misses, 76546 dirtied\n" +
-				"	WAL usage: 93766 records, 71348 full page images, 169121919 bytes\n" +
-				"	system usage: CPU: user: 4.49 s, system: 1.30 s, elapsed: 21.04 s\n",
+			Content: `automatic aggressive vacuum to prevent wraparound of table "mydb.myschema.mytable": index scans: 1
+	pages: 0 removed, 300815 remain, 40572 scanned (13.49% of total)
+	tuples: 2867 removed, 16861077 remain, 0 are dead but not yet removable
+	tuples missed: 5 dead from 1 pages not removed due to cleanup lock contention
+	removable cutoff: 3555970282, which was 0 XIDs old when operation ended
+	new relfrozenxid: 3506326394, which is 195284419 XIDs ahead of previous value
+	new relminmxid: 83, which is 5 MXIDs ahead of previous value
+	index scan needed: 11169 pages from table (3.71% of total) had 160440 dead item identifiers removed
+	index "index1": pages: 46608 in total, 0 newly deleted, 0 currently deleted, 0 reusable
+	index "index2": pages: 9365 in total, 2 newly deleted, 2 currently deleted, 0 reusable
+	index "index3": pages: 38252 in total, 129 newly deleted, 14414 currently deleted, 14285 reusable
+	index "index4": pages: 59530 in total, 0 newly deleted, 21608 currently deleted, 21608 reusable
+	I/O timings: read: 1661.751 ms, write: 283.343 ms
+	avg read rate: 76.468 MB/s, avg write rate: 28.413 MB/s
+	buffer usage: 79150 hits, 206012 misses, 76546 dirtied
+	WAL usage: 93766 records, 71348 full page images, 169121919 bytes
+	system usage: CPU: user: 4.49 s, system: 1.30 s, elapsed: 21.04 s`,
 			LogLevel: pganalyze_collector.LogLineInformation_LOG,
 		}},
 		[]state.LogLine{{
