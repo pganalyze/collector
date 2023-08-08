@@ -55,7 +55,7 @@ docker_release:
 output/pganalyze_collector/snapshot.pb.go: $(PROTOBUF_FILES)
 ifdef PROTOC_VERSION
 	mkdir -p $(PWD)/bin
-	GOBIN=$(PWD)/bin go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+	GOBIN=$(PWD)/bin go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.31.0
 	protoc --go_out=. --go_opt=module=github.com/pganalyze/collector -I protobuf $(PROTOBUF_FILES)
 else
 	@echo '👷 Warning: protoc not found, skipping protocol buffer regeneration (to install protoc check Makefile instructions in install_protoc step)'
