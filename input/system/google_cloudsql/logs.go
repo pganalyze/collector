@@ -203,7 +203,6 @@ func setupLogTransformer(ctx context.Context, wg *sync.WaitGroup, servers []*sta
 						// log stream.
 						tz := server.GetLogTimezone()
 						logLine, _ := logs.ParseLogLineWithPrefix("", in.Content+"\n", tz)
-						logLine.OccurredAt = in.OccurredAt
 
 						// Ignore loglines which are outside our time window
 						if !logLine.OccurredAt.IsZero() && logLine.OccurredAt.Before(linesNewerThan) {
