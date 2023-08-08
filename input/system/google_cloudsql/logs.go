@@ -189,32 +189,35 @@ func setupLogTransformer(ctx context.Context, wg *sync.WaitGroup, servers []*sta
 					return
 				}
 
-				// We ignore failures here since we want the per-backend stitching logic
-				// that runs later on (and any other parsing errors will just be ignored).
-				// Note that we need to restore the original trailing newlines since
-				// AnalyzeStreamInGroups expects them and they are not present in the GCP
-				// log stream.
-				logLine, _ := logs.ParseLogLineWithPrefix("", in.Content+"\n", nil)
-				logLine.OccurredAt = in.OccurredAt
-
-				// Ignore loglines which are outside our time window
-				if !logLine.OccurredAt.IsZero() && logLine.OccurredAt.Before(linesNewerThan) {
-					continue
-				}
-
 				for _, server := range servers {
 					projectMatch := in.GcpProjectID == server.Config.GcpProjectID
 					cloudSqlMatch := projectMatch && in.GcpCloudSQLInstanceID != "" && in.GcpCloudSQLInstanceID == server.Config.GcpCloudSQLInstanceID
 					alloyDbMatch := projectMatch && in.GcpAlloyDBClusterID != "" && in.GcpAlloyDBClusterID == server.Config.GcpAlloyDBClusterID && in.GcpAlloyDBInstanceID != "" && in.GcpAlloyDBInstanceID == server.Config.GcpAlloyDBInstanceID
+					serverMatch := cloudSqlMatch || alloyDbMatch
 
-					if alloyDbMatch {
-						// AlloyDB adds a special [filename:lineno] prefix to all log lines (not part of log_line_prefix)
-						parts := AlloyDBPrefixRegex.FindStringSubmatch(string(logLine.Content))
-						if len(parts) == 2 {
-							logLine.Content = parts[1]
+					if serverMatch {
+						// We ignore failures here since we want the per-backend stitching logic
+						// that runs later on (and any other parsing errors will just be ignored).
+						// Note that we need to restore the original trailing newlines since
+						// AnalyzeStreamInGroups expects them and they are not present in the GCP
+						// log stream.
+						tz := server.GetLogTimezone()
+						logLine, _ := logs.ParseLogLineWithPrefix("", in.Content+"\n", tz)
+						logLine.OccurredAt = in.OccurredAt
+
+						// Ignore loglines which are outside our time window
+						if !logLine.OccurredAt.IsZero() && logLine.OccurredAt.Before(linesNewerThan) {
+							continue
 						}
-					}
-					if cloudSqlMatch || alloyDbMatch {
+
+						if alloyDbMatch {
+							// AlloyDB adds a special [filename:lineno] prefix to all log lines (not part of log_line_prefix)
+							parts := AlloyDBPrefixRegex.FindStringSubmatch(string(logLine.Content))
+							if len(parts) == 2 {
+								logLine.Content = parts[1]
+							}
+						}
+
 						out <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: logLine}
 					}
 				}
