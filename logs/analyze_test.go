@@ -1721,6 +1721,100 @@ var tests = []testpair{
 	},
 	{
 		[]state.LogLine{{
+			Content: `automatic aggressive vacuum to prevent wraparound of table "mydb.myschema.mytable": index scans: 1
+	pages: 0 removed, 300815 remain, 40572 scanned (13.49% of total)
+	tuples: 2867 removed, 16861077 remain, 0 are dead but not yet removable
+	tuples missed: 5 dead from 1 pages not removed due to cleanup lock contention
+	removable cutoff: 3555970282, which was 0 XIDs old when operation ended
+	new relfrozenxid: 3506326394, which is 195284419 XIDs ahead of previous value
+	new relminmxid: 83, which is 5 MXIDs ahead of previous value
+	index scan needed: 11169 pages from table (3.71% of total) had 160440 dead item identifiers removed
+	index "index1": pages: 46608 in total, 0 newly deleted, 0 currently deleted, 0 reusable
+	index "index2": pages: 9365 in total, 2 newly deleted, 2 currently deleted, 0 reusable
+	index "index3": pages: 38252 in total, 129 newly deleted, 14414 currently deleted, 14285 reusable
+	index "index4": pages: 59530 in total, 0 newly deleted, 21608 currently deleted, 21608 reusable
+	I/O timings: read: 1661.751 ms, write: 283.343 ms
+	avg read rate: 76.468 MB/s, avg write rate: 28.413 MB/s
+	buffer usage: 79150 hits, 206012 misses, 76546 dirtied
+	WAL usage: 93766 records, 71348 full page images, 169121919 bytes
+	system usage: CPU: user: 4.49 s, system: 1.30 s, elapsed: 21.04 s`,
+			LogLevel: pganalyze_collector.LogLineInformation_LOG,
+		}},
+		[]state.LogLine{{
+			Classification: pganalyze_collector.LogLineInformation_AUTOVACUUM_COMPLETED,
+			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
+			Database:       "mydb",
+			SchemaName:     "myschema",
+			RelationName:   "mytable",
+			Details: map[string]interface{}{
+				"aggressive":               true,
+				"anti_wraparound":          true,
+				"num_index_scans":          1,
+				"pages_removed":            0,
+				"rel_pages":                300815,
+				"scanned_pages":            40572,
+				"scanned_pages_percent":    13.49,
+				"tuples_deleted":           2867,
+				"new_rel_tuples":           16861077,
+				"new_dead_tuples":          0,
+				"missed_dead_tuples":       5,
+				"missed_dead_pages":        1,
+				"oldest_xmin":              3555970282,
+				"oldest_xmin_age":          0,
+				"new_relfrozenxid":         3506326394,
+				"new_relfrozenxid_diff":    195284419,
+				"new_relminmxid":           83,
+				"new_relminmxid_diff":      5,
+				"lpdead_index_scan":        "needed",
+				"lpdead_item_pages":        11169,
+				"lpdead_item_page_percent": 3.71,
+				"lpdead_items":             160440,
+				"blk_read_time":            1661.751,
+				"blk_write_time":           283.343,
+				"read_rate_mb":             76.468,
+				"write_rate_mb":            28.413,
+				"vacuum_page_hit":          79150,
+				"vacuum_page_miss":         206012,
+				"vacuum_page_dirty":        76546,
+				"wal_records":              93766,
+				"wal_fpi":                  71348,
+				"wal_bytes":                169121919,
+				"rusage_user":              4.49,
+				"rusage_kernel":            1.30,
+				"elapsed_secs":             21.04,
+				"index_vacuums": map[string]interface{}{
+					"index1": map[string]interface{}{
+						"num_pages":           46608,
+						"pages_newly_deleted": 0,
+						"pages_deleted":       0,
+						"pages_free":          0,
+					},
+					"index2": map[string]interface{}{
+						"num_pages":           9365,
+						"pages_newly_deleted": 2,
+						"pages_deleted":       2,
+						"pages_free":          0,
+					},
+					"index3": map[string]interface{}{
+						"num_pages":           38252,
+						"pages_newly_deleted": 129,
+						"pages_deleted":       14414,
+						"pages_free":          14285,
+					},
+					"index4": map[string]interface{}{
+						"num_pages":           59530,
+						"pages_newly_deleted": 0,
+						"pages_deleted":       21608,
+						"pages_free":          21608,
+					},
+				},
+			},
+			ReviewedForSecrets: true,
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
 			Content:  "automatic analyze of table \"postgres.public.pgbench_branches\" system usage: CPU 1.02s/2.08u sec elapsed 108.25 sec",
 			LogLevel: pganalyze_collector.LogLineInformation_LOG,
 		}},
