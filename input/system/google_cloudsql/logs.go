@@ -203,15 +203,18 @@ func setupLogTransformer(ctx context.Context, wg *sync.WaitGroup, servers []*sta
 				}
 
 				for _, server := range servers {
-					if in.GcpProjectID == server.Config.GcpProjectID && in.GcpCloudSQLInstanceID != "" && in.GcpCloudSQLInstanceID == server.Config.GcpCloudSQLInstanceID {
-						out <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: logLine}
-					}
-					if in.GcpProjectID == server.Config.GcpProjectID && in.GcpAlloyDBClusterID != "" && in.GcpAlloyDBClusterID == server.Config.GcpAlloyDBClusterID && in.GcpAlloyDBInstanceID != "" && in.GcpAlloyDBInstanceID == server.Config.GcpAlloyDBInstanceID {
+					projectMatch := in.GcpProjectID == server.Config.GcpProjectID
+					cloudSqlMatch := projectMatch && in.GcpCloudSQLInstanceID != "" && in.GcpCloudSQLInstanceID == server.Config.GcpCloudSQLInstanceID
+					alloyDbMatch := projectMatch && in.GcpAlloyDBClusterID != "" && in.GcpAlloyDBClusterID == server.Config.GcpAlloyDBClusterID && in.GcpAlloyDBInstanceID != "" && in.GcpAlloyDBInstanceID == server.Config.GcpAlloyDBInstanceID
+
+					if alloyDbMatch {
 						// AlloyDB adds a special [filename:lineno] prefix to all log lines (not part of log_line_prefix)
 						parts := AlloyDBPrefixRegex.FindStringSubmatch(string(logLine.Content))
 						if len(parts) == 2 {
 							logLine.Content = parts[1]
 						}
+					}
+					if cloudSqlMatch || alloyDbMatch {
 						out <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: logLine}
 					}
 				}
