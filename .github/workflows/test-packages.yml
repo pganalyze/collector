@@ -10,7 +10,7 @@ jobs:
   build:
     # Use older Ubuntu release to ensure availability of CGroupsv1 (which are necessary
     # currently to support older systemd on some of the test containers)
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-20.04-4-cores
     permissions: {}
 
     steps:
@@ -22,11 +22,13 @@ jobs:
 
     - name: Set up QEMU
       uses: docker/setup-qemu-action@v2
+      with:
+        platforms: arm64
 
     - name: Build packages
       run: |
-        DOCKER_BUILDKIT=1 GIT_VERSION=HEAD VERSION=0.0.0 make -C packages build
+        GIT_VERSION=HEAD VERSION=0.0.0 make -C packages build
 
     - name: Test packages
       run: |
-        DOCKER_BUILDKIT=1 GIT_VERSION=HEAD VERSION=0.0.0 make -C packages test
+        GIT_VERSION=HEAD VERSION=0.0.0 make -C packages test
