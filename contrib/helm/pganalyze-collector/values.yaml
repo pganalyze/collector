@@ -92,6 +92,9 @@ volumeMounts:
   - mountPath: /tmp
     name: scratch
     subPath: tmp
+  - mountPath: /state
+    name: scratch
+    subPath: state
 
 nodeSelector: {}
 
