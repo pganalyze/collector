@@ -18,7 +18,7 @@ COPY contrib/sslrootcert/rds-ca-global.pem /usr/share/pganalyze-collector/sslroo
 COPY contrib/docker-entrypoint.sh $HOME_DIR
 RUN chmod +x $HOME_DIR/docker-entrypoint.sh
 
-FROM alpine:3.15 as slim
+FROM alpine:3.18 as slim
 
 RUN apk add --no-cache ca-certificates tzdata
 
