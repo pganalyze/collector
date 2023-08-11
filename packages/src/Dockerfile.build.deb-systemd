@@ -16,7 +16,7 @@ RUN apt-get update -qq \
 RUN gem install public_suffix -v 4.0.7 && gem install fpm -v 1.14.1
 
 # Golang
-RUN curl -o go.tar.gz -sSL "https://golang.org/dl/go${GOVERSION}.linux-${TARGETARCH}.tar.gz"
+RUN curl -o go.tar.gz -sSL "https://go.dev/dl/go${GOVERSION}.linux-${TARGETARCH}.tar.gz"
 RUN tar -C /usr/local -xzf go.tar.gz
 
 # Build arguments
