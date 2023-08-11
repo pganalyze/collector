@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.51.0      2023-08-12
+
+* Autovacuum:
+  - Add support for updated log format in Postgres 15+
+  - Remember unqualified name for "skipping vacuum" log events
+  - Add more cases for "canceling autovacuum task" log context line
+  - Track n_ins_since_vacuum value to determine when insert-based autovacuum was triggered
+* AWS Aurora: Correctly detect Aurora reader instances as replicas
+* Self-managed servers: Use log_timezone setting to determine log timezone if possible
+* Azure: Fix partition selection issue in Azure log processing
+* Helm chart: Improve default security settings
+* Update Go version to 1.21
+* Packages:
+  - Switch to SHA256 signatures to fix RHEL9 install errors
+  - Drop Ubuntu 16.04, 18.04 and Debian 10 (Buster) support, as they are no longer supported
+
+
 ## 0.50.1      2023-06-29
 
 * Bugfix: Return correct exit code with the data collection test run
