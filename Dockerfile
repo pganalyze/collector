@@ -1,4 +1,4 @@
-FROM golang:1.19-alpine as base
+FROM golang:1.21-alpine as base
 MAINTAINER team@pganalyze.com
 
 ENV GOPATH /go

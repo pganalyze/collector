@@ -2,7 +2,7 @@ FROM citusdata/citus:11.1
 
 ARG TARGETARCH
 
-ENV GOVERSION 1.19
+ENV GOVERSION 1.21.0
 ENV CODE_DIR /collector
 ENV PATH $PATH:/usr/local/go/bin
 
