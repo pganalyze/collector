@@ -9,7 +9,7 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
-const replicationSQL string = `
+const replicationSQLPostgres string = `
 SELECT in_recovery,
 			 CASE WHEN in_recovery THEN NULL ELSE pg_catalog.pg_current_wal_lsn() END AS current_xlog_location,
 			 COALESCE(receive_location, '0/0') >= replay_location AS is_streaming,
@@ -22,6 +22,18 @@ SELECT in_recovery,
 							 pg_catalog.pg_last_wal_receive_lsn() AS receive_location,
 							 pg_catalog.pg_last_wal_replay_lsn() AS replay_location,
 							 pg_catalog.pg_last_xact_replay_timestamp() AS replay_ts) r`
+
+// See https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora_replica_status.html
+const replicationSQLAurora string = `
+SELECT session_id <> 'MASTER_SESSION_ID' AS in_recovery,
+			 CASE WHEN session_id <> 'MASTER_SESSION_ID' THEN NULL ELSE durable_lsn END AS current_xlog_location,
+			 CASE WHEN session_id <> 'MASTER_SESSION_ID' THEN true ELSE NULL END AS is_streaming,
+			 highest_lsn_rcvd AS receive_location,
+			 CASE WHEN session_id <> 'MASTER_SESSION_ID' THEN durable_lsn ELSE NULL END AS replay_location,
+			 highest_lsn_rcvd - durable_lsn AS apply_byte_lag,
+			 NULL AS replay_ts,
+			 (replica_lag_in_msec / 1000)::int AS replay_ts_age
+	FROM pg_catalog.aurora_replica_status() WHERE server_id = pg_catalog.aurora_db_instance_identifier()`
 
 const replicationStandbySQL string = `
 SELECT client_addr,
@@ -47,9 +59,31 @@ func GetReplication(ctx context.Context, logger *util.Logger, db *sql.DB, postgr
 	var err error
 	var repl state.PostgresReplication
 	var sourceTable string
+	var replicationSQL string
 
 	if postgresVersion.IsAwsAurora {
-		// Most replication functions are not supported on AWS Aurora Postgres
+		// Old Aurora releases don't have a way to self-identify the instance, which is needed to get replication metrics
+		if !auroraDbInstanceIdentifierExists(ctx, db) {
+			return repl, nil
+		}
+		replicationSQL = replicationSQLAurora
+	} else {
+		replicationSQL = replicationSQLPostgres
+	}
+
+	err = db.QueryRowContext(ctx, QueryMarkerSQL+replicationSQL).Scan(
+		&repl.InRecovery, &repl.CurrentXlogLocation, &repl.IsStreaming,
+		&repl.ReceiveLocation, &repl.ReplayLocation, &repl.ApplyByteLag,
+		&repl.ReplayTimestamp, &repl.ReplayTimestampAge,
+	)
+	if err != nil {
+		return repl, err
+	}
+
+	// Skip follower statistics on Aurora for now - there might be a benefit to support this for monitoring
+	// logical replication in the future, but it requires a bit more work since Aurora will error out
+	// if you call pg_catalog.pg_current_wal_lsn() when wal_level is not logical.
+	if postgresVersion.IsAwsAurora {
 		return repl, nil
 	}
 
@@ -63,15 +97,6 @@ func GetReplication(ctx context.Context, logger *util.Logger, db *sql.DB, postgr
 				" or connect as superuser, to get replication statistics.")
 		}
 		sourceTable = "pg_stat_replication"
-	}
-
-	err = db.QueryRowContext(ctx, QueryMarkerSQL+replicationSQL).Scan(
-		&repl.InRecovery, &repl.CurrentXlogLocation, &repl.IsStreaming,
-		&repl.ReceiveLocation, &repl.ReplayLocation, &repl.ApplyByteLag,
-		&repl.ReplayTimestamp, &repl.ReplayTimestampAge,
-	)
-	if err != nil {
-		return repl, err
 	}
 
 	rows, err := db.QueryContext(ctx, QueryMarkerSQL+fmt.Sprintf(replicationStandbySQL, sourceTable))
@@ -109,9 +134,7 @@ func GetIsReplica(ctx context.Context, logger *util.Logger, db *sql.DB) (bool, e
 	}
 
 	if isAwsAurora {
-		// AWS Aurora is always considered a primary for purposes of the
-		// skip_if_replica flag
-		return false, nil
+		return getIsReplicaAurora(ctx, db)
 	}
 
 	return getIsReplica(ctx, db)
@@ -121,4 +144,33 @@ func getIsReplica(ctx context.Context, db *sql.DB) (bool, error) {
 	var isReplica bool
 	err := db.QueryRowContext(ctx, QueryMarkerSQL+"SELECT pg_catalog.pg_is_in_recovery()").Scan(&isReplica)
 	return isReplica, err
+}
+
+func getIsReplicaAurora(ctx context.Context, db *sql.DB) (bool, error) {
+	// The function aurora_db_instance_identifier() is not available on very old Aurora versions,
+	// assume the instance is always a primary in those cases, see
+	// https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora_db_instance_identifier.html
+	if !auroraDbInstanceIdentifierExists(ctx, db) {
+		return false, nil
+	}
+	var isReplica bool
+	err := db.QueryRowContext(ctx, QueryMarkerSQL+"SELECT session_id <> 'MASTER_SESSION_ID' FROM pg_catalog.aurora_replica_status() WHERE server_id = pg_catalog.aurora_db_instance_identifier()").Scan(&isReplica)
+	return isReplica, err
+}
+
+const auroraDbInstanceIdentifierSQL string = `
+SELECT 1 AS available
+	FROM pg_catalog.aurora_list_builtins()
+ WHERE "Name" = 'aurora_db_instance_identifier'
+`
+
+func auroraDbInstanceIdentifierExists(ctx context.Context, db *sql.DB) bool {
+	var available bool
+
+	err := db.QueryRowContext(ctx, QueryMarkerSQL+auroraDbInstanceIdentifierSQL).Scan(&available)
+	if err != nil {
+		return false
+	}
+
+	return available
 }
