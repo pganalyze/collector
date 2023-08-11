@@ -62,6 +62,7 @@ func GetReplication(ctx context.Context, logger *util.Logger, db *sql.DB, postgr
 	var replicationSQL string
 
 	if postgresVersion.IsAwsAurora {
+		// Old Aurora releases don't have a way to self-identify the instance, which is needed to get replication metrics
 		if !auroraDbInstanceIdentifierExists(ctx, db) {
 			return repl, nil
 		}
