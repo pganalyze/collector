@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.51.1      2023-08-15
+
+* Bugfix: Support NULL n_mod_since_analyze and n_ins_since_vacuum
+  - This mitigates an issue introduced in 0.51.0
+
+
 ## 0.51.0      2023-08-12
 
 * Autovacuum:
