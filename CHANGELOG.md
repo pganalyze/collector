@@ -2,8 +2,9 @@
 
 ## 0.51.1      2023-08-15
 
-* Bugfix: Support NULL n_mod_since_analyze and n_ins_since_vacuum
-  - This mitigates an issue introduced in 0.51.0
+* Fix handling of tables that only have an entry in pg_class, but not pg_stat_user_tables
+  - Due to a bug introduced in the last release (0.51.0), databases with such tables would
+    error out and be ignored due to n_mod_since_analyze and n_ins_since_vacuum being NULL
 
 
 ## 0.51.0      2023-08-12
