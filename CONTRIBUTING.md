@@ -1,5 +1,11 @@
 ## Contributing Instructions
 
+Pull the project with submodules.
+
+```sh
+git clone --recursive https://github.com/pganalyze/collector
+```
+
 ### Setup
 
 The dependencies are stored in the `vendor` folder, so no installation is needed.
