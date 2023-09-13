@@ -557,6 +557,7 @@ func checkOneInitialCollectionStatus(ctx context.Context, server *state.Server, 
 	if err != nil {
 		return err
 	}
+	postgres.SetDataDirectory(server, settings)
 	logsDisabled, logsIgnoreStatement, logsIgnoreDuration, logsDisabledReason := logs.ValidateLogCollectionConfig(server, settings)
 
 	var isIgnoredReplica bool

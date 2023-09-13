@@ -190,6 +190,9 @@ type ServerConfig struct {
 	// HTTP clients to be used for API connections
 	HTTPClient          *http.Client
 	HTTPClientWithRetry *http.Client
+
+	// Data directory used for system stats
+	DataDirectory string
 }
 
 // SupportsLogDownload - Determines whether the specified config can download logs

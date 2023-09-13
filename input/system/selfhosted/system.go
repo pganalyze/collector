@@ -36,7 +36,7 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger) (system sta
 		Architecture: runtime.GOARCH,
 	}
 
-	statusBytes, err := exec.Command("/usr/bin/pganalyze-collector-helper", "status").Output()
+	statusBytes, err := exec.Command("/usr/bin/pganalyze-collector-helper", "status", config.DataDirectory).Output()
 	if err != nil {
 		logger.PrintVerbose("Selfhosted/System: Could not run helper process: %s", err)
 	} else {
