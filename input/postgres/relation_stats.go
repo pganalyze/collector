@@ -14,7 +14,7 @@ const relationStatsSQLInsertsSinceVacuumFieldDefault string = "0"
 
 const relationStatsSQL = `
 WITH locked_relids AS (
-	SELECT DISTINCT relation relid FROM pg_catalog.pg_locks WHERE mode = 'AccessExclusiveLock' AND relation IS NOT NULL
+	SELECT DISTINCT relation relid FROM pg_catalog.pg_locks WHERE mode = 'AccessExclusiveLock' AND relation IS NOT NULL AND locktype <> 'tuple'
 ),
 locked_relids_with_parents AS (
 	SELECT DISTINCT inhparent relid FROM pg_catalog.pg_inherits WHERE inhrelid IN (SELECT relid FROM locked_relids)
@@ -117,7 +117,7 @@ SELECT relid,
 `
 
 const indexStatsSQL = `
-WITH locked_relids AS (SELECT DISTINCT relation relid FROM pg_catalog.pg_locks WHERE mode = 'AccessExclusiveLock' AND relation IS NOT NULL)
+WITH locked_relids AS (SELECT DISTINCT relation relid FROM pg_catalog.pg_locks WHERE mode = 'AccessExclusiveLock' AND relation IS NOT NULL AND locktype <> 'tuple')
 SELECT s.indexrelid,
 			 COALESCE(pg_catalog.pg_relation_size(s.indexrelid), 0) AS size_bytes,
 			 COALESCE(s.idx_scan, 0),
