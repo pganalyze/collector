@@ -130,7 +130,7 @@ func CollectFull(ctx context.Context, server *state.Server, connection *sql.DB, 
 	}
 
 	if globalCollectionOpts.CollectSystemInformation {
-		ps.System = system.GetSystemState(server.Config, logger)
+		ps.System = system.GetSystemState(server.Config, logger, globalCollectionOpts)
 	}
 
 	server.SetLogTimezone(ts.Settings)

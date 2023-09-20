@@ -31,7 +31,7 @@ func DownloadLogFiles(ctx context.Context, server *state.Server, globalCollectio
 }
 
 // GetSystemState - Retrieves a system snapshot for this system and returns it
-func GetSystemState(config config.ServerConfig, logger *util.Logger) (system state.SystemState) {
+func GetSystemState(config config.ServerConfig, logger *util.Logger, globalCollectionOpts state.CollectionOpts) (system state.SystemState) {
 	dbHost := config.GetDbHost()
 	if config.SystemType == "amazon_rds" {
 		system = rds.GetSystemState(config, logger)
@@ -46,8 +46,18 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger) (system sta
 		// runs on the database server itself and can gather local statistics
 		system = selfhosted.GetSystemState(config, logger)
 		system.Info.Type = state.CrunchyBridgeSystem
+	} else if config.SystemType == "aiven" {
+		system.Info.Type = state.AivenSystem
 	} else if dbHost == "" || dbHost == "localhost" || dbHost == "127.0.0.1" || config.AlwaysCollectSystemData {
 		system = selfhosted.GetSystemState(config, logger)
+	} else {
+		if globalCollectionOpts.TestRun {
+			// Detected as self hosted, but not collecting system state as we
+			// didn't detect the collector is running on the same instance as
+			// the database server.
+			// Leave logs for if this is a test run.
+			logger.PrintInfo("Remote host (%s) was specified for the database address, skip collecting system state. Consider enabling always_collect_system_data if it's a local database with a non-local IP address", dbHost)
+		}
 	}
 
 	system.Info.SystemID = config.SystemID
