@@ -56,7 +56,7 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger, globalColle
 			// didn't detect the collector is running on the same instance as
 			// the database server.
 			// Leave logs for if this is a test run.
-			logger.PrintInfo("Remote host (%s) was specified for the database address, skip collecting system state. Consider enabling always_collect_system_data if it's a local database with a non-local IP address", dbHost)
+			logger.PrintInfo("Skipping collection of system state: remote host (%s) was specified for the database address. Consider enabling always_collect_system_data if the database is running on the same system as the collector", dbHost)
 		}
 	}
 
