@@ -15,7 +15,7 @@ const relationsSQLOidField = "c.relhasoids AS relation_has_oids"
 const relationsSQLpg12OidField = "false AS relation_has_oids"
 
 const relationsSQL string = `
-	 WITH locked_relids AS (SELECT DISTINCT relation relid FROM pg_catalog.pg_locks WHERE mode = 'AccessExclusiveLock' AND relation IS NOT NULL)
+	 WITH locked_relids AS (SELECT DISTINCT relation relid FROM pg_catalog.pg_locks WHERE mode = 'AccessExclusiveLock' AND relation IS NOT NULL AND locktype = 'relation')
  SELECT c.oid,
 				n.nspname AS schema_name,
 				c.relname AS table_name,
@@ -45,7 +45,7 @@ const relationsSQL string = `
 				AND ($1 = '' OR (n.nspname || '.' || c.relname) !~* $1)`
 
 const columnsSQL string = `
-	 WITH locked_relids AS (SELECT DISTINCT relation relid FROM pg_catalog.pg_locks WHERE mode = 'AccessExclusiveLock' AND relation IS NOT NULL)
+	 WITH locked_relids AS (SELECT DISTINCT relation relid FROM pg_catalog.pg_locks WHERE mode = 'AccessExclusiveLock' AND relation IS NOT NULL AND locktype = 'relation')
  SELECT c.oid,
 				a.attname AS name,
 				pg_catalog.format_type(a.atttypid, a.atttypmod) AS data_type,
@@ -81,7 +81,7 @@ const columnsSQL string = `
    FROM locked_relids`
 
 const indicesSQL string = `
-	WITH locked_relids AS (SELECT DISTINCT relation relid FROM pg_catalog.pg_locks WHERE mode = 'AccessExclusiveLock' AND relation IS NOT NULL)
+	WITH locked_relids AS (SELECT DISTINCT relation relid FROM pg_catalog.pg_locks WHERE mode = 'AccessExclusiveLock' AND relation IS NOT NULL AND locktype = 'relation')
 SELECT c.oid,
 			 c2.oid,
 			 i.indkey::text,
@@ -125,7 +125,7 @@ SELECT c.oid,
 `
 
 const constraintsSQL string = `
-	WITH locked_relids AS (SELECT DISTINCT relation relid FROM pg_catalog.pg_locks WHERE mode = 'AccessExclusiveLock' AND relation IS NOT NULL)
+	WITH locked_relids AS (SELECT DISTINCT relation relid FROM pg_catalog.pg_locks WHERE mode = 'AccessExclusiveLock' AND relation IS NOT NULL AND locktype = 'relation')
 SELECT c.oid,
 			 conname,
 			 contype,
@@ -162,7 +162,7 @@ SELECT relid,
 `
 
 const viewDefinitionSQL string = `
-	WITH locked_relids AS (SELECT DISTINCT relation relid FROM pg_catalog.pg_locks WHERE mode = 'AccessExclusiveLock' AND relation IS NOT NULL)
+	WITH locked_relids AS (SELECT DISTINCT relation relid FROM pg_catalog.pg_locks WHERE mode = 'AccessExclusiveLock' AND relation IS NOT NULL AND locktype = 'relation')
 SELECT c.oid,
 			 pg_catalog.pg_get_viewdef(c.oid) AS view_definition,
 			 false AS exclusively_locked
