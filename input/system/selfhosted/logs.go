@@ -340,7 +340,7 @@ func setupLogLocationTail(ctx context.Context, logLocation string, out chan<- Se
 func setupDockerTail(ctx context.Context, containerName string, out chan<- SelfHostedLogStreamItem, prefixedLogger *util.Logger) error {
 	var err error
 
-	cmd := exec.Command("docker", "logs", containerName, "-f", "--tail", "0")
+	cmd := exec.Command("docker", "logs", "-f", "--tail", "0", containerName)
 	stderr, _ := cmd.StderrPipe()
 
 	scanner := bufio.NewScanner(stderr)
