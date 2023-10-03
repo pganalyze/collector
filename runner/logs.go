@@ -318,6 +318,9 @@ func postprocessAndSendLogs(ctx context.Context, server *state.Server, globalCol
 		// Do nothing if filter_query_sample = none (we just take the query samples as they are generated)
 	}
 
+	// Export query samples as traces, if OpenTelemetry endpoint is configured
+	querysample.ReportQuerySamplesAsTraceSpans(ctx, server, logger, grant, transientLogState.QuerySamples)
+
 	for idx := range transientLogState.LogFiles {
 		// The actual filtering (aka masking of secrets) is done later in
 		// EncryptAndUploadLogfiles, based on this setting

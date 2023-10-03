@@ -213,6 +213,7 @@ type CollectionOpts struct {
 
 type GrantConfig struct {
 	ServerID  string `json:"server_id"`
+	ServerURL string `json:"server_url"`
 	SentryDsn string `json:"sentry_dsn"`
 
 	Features GrantFeatures `json:"features"`
