@@ -13,6 +13,7 @@ import (
 
 type GrantLogs struct {
 	Valid         bool
+	Config        GrantConfig            `json:"config"`
 	Logdata       GrantS3                `json:"logdata"`
 	Snapshot      GrantS3                `json:"snapshot"`
 	EncryptionKey GrantLogsEncryptionKey `json:"encryption_key"`

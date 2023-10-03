@@ -254,6 +254,9 @@ func getDefaultConfig() *ServerConfig {
 	if filterQueryText := os.Getenv("FILTER_QUERY_TEXT"); filterQueryText != "" {
 		config.FilterQueryText = filterQueryText
 	}
+	if otelExporterOtlpEndpoint := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"); otelExporterOtlpEndpoint != "" {
+		config.OtelExporterOtlpEndpoint = otelExporterOtlpEndpoint
+	}
 	if httpProxy := os.Getenv("HTTP_PROXY"); httpProxy != "" {
 		config.HTTPProxy = httpProxy
 	}

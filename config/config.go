@@ -182,6 +182,9 @@ type ServerConfig struct {
 	FilterQuerySample string `ini:"filter_query_sample"` // none/normalize/all (defaults to "none")
 	FilterQueryText   string `ini:"filter_query_text"`   // none/unparsable (defaults to "unparsable")
 
+	// Configuration for OpenTelemetry trace exports
+	OtelExporterOtlpEndpoint string `ini:"otel_exporter_otlp_endpoint"` // See https://github.com/open-telemetry/opentelemetry-specification/blob/v1.20.0/specification/protocol/exporter.md
+
 	// HTTP proxy overrides
 	HTTPProxy  string `ini:"http_proxy"`
 	HTTPSProxy string `ini:"https_proxy"`
