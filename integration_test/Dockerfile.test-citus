@@ -1,5 +1,8 @@
 FROM citusdata/citus:11.1
 
+# Workaround for https://github.com/docker-library/postgres/issues/1112
+RUN echo en_US.UTF-8 UTF-8 >> /etc/locale.gen
+
 ARG TARGETARCH
 
 ENV GOVERSION 1.21.0
