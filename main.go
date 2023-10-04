@@ -560,7 +560,7 @@ func checkOneInitialCollectionStatus(ctx context.Context, server *state.Server, 
 
 	// We don't need a mutex here, because we only check once at startup
 	dataDirectorySetting := postgres.GetDataDirectory(server, settings)
-	if dataDirectorySetting != "" {
+	if dataDirectorySetting != "" && server.Config.DataDirectory == "" {
 		server.Config.DataDirectory = dataDirectorySetting
 	}
 
