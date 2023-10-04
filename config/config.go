@@ -59,6 +59,9 @@ type ServerConfig struct {
 	DbSslKeyContents      string `ini:"db_sslkey_contents"`
 	DbUseIamAuth          bool   `ini:"db_use_iam_auth"`
 
+	// Postgres data directory, as used for system stats (autodetected if unset)
+	DbDataDirectory string `ini:"db_data_directory"`
+
 	// We have to do some tricks to support sslmode=prefer, namely we have to
 	// first try an SSL connection (= require), and if that fails change the
 	// sslmode to none

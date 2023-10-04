@@ -119,6 +119,9 @@ func getDefaultConfig() *ServerConfig {
 	if dbSslKeyContents := os.Getenv("DB_SSLKEY_CONTENTS"); dbSslKeyContents != "" {
 		config.DbSslKeyContents = dbSslKeyContents
 	}
+	if dataDirectory := os.Getenv("DB_DATA_DIRECTORY"); dataDirectory != "" {
+		config.DbDataDirectory = dataDirectory
+	}
 	if awsRegion := os.Getenv("AWS_REGION"); awsRegion != "" {
 		config.AwsRegion = awsRegion
 	}

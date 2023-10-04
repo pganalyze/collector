@@ -38,7 +38,7 @@ func getPostmasterPid() (int, error) {
 	return pgPid, nil
 }
 
-func getStatus() {
+func getStatus(dataDirectory string) {
 	var pgControldataOut, xlogUsageBytesStr []byte
 	var pgControldataBinary string
 	var status helperStatus
@@ -48,7 +48,12 @@ func getStatus() {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%s\n", err)
 	} else {
-		status.DataDirectory = os.Getenv("PGDATA")
+		if dataDirectory != "" {
+			status.DataDirectory = dataDirectory
+		} else {
+			status.DataDirectory = os.Getenv("PGDATA")
+		}
+
 		if status.DataDirectory == "" {
 			status.DataDirectory, err = filepath.EvalSymlinks("/proc/" + strconv.Itoa(status.PostmasterPid) + "/cwd")
 			if err != nil {
@@ -115,7 +120,11 @@ func main() {
 
 	switch os.Args[1] {
 	case "status":
-		getStatus()
+		var dataDir string
+		if len(os.Args) == 3 {
+			dataDir = os.Args[2]
+		}
+		getStatus(dataDir)
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown command: %s\n", os.Args[1])
 	}
