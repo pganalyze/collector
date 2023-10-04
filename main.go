@@ -557,7 +557,11 @@ func checkOneInitialCollectionStatus(ctx context.Context, server *state.Server, 
 	if err != nil {
 		return err
 	}
-	postgres.SetDataDirectory(server, settings)
+	autodetectedDataDir := postgres.GetDataDirectory(server, settings)
+	if autodetectedDataDir != "" {
+		server.Config.DataDirectory = autodetectedDataDir
+	}
+
 	logsDisabled, logsIgnoreStatement, logsIgnoreDuration, logsDisabledReason := logs.ValidateLogCollectionConfig(server, settings)
 
 	var isIgnoredReplica bool

@@ -67,6 +67,9 @@ type ServerConfig struct {
 	DbExtraNames []string // Additional databases that should be fetched (determined by additional databases in db_name)
 	DbAllNames   bool     // All databases except template databases should be fetched (determined by * in the db_name list)
 
+	// Postgres data directory, as used for system stats (autodetected if unset)
+	DataDirectory string `ini:"data_directory"`
+
 	AwsRegion               string `ini:"aws_region"`
 	AwsAccountID            string `ini:"aws_account_id"`
 	AwsDbInstanceID         string `ini:"aws_db_instance_id"`
@@ -190,9 +193,6 @@ type ServerConfig struct {
 	// HTTP clients to be used for API connections
 	HTTPClient          *http.Client
 	HTTPClientWithRetry *http.Client
-
-	// Data directory used for system stats
-	DataDirectory string
 }
 
 // SupportsLogDownload - Determines whether the specified config can download logs
