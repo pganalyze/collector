@@ -1,4 +1,4 @@
-FROM citusdata/citus:11.1
+FROM citusdata/citus:12.1
 
 # Workaround for https://github.com/docker-library/postgres/issues/1112
 RUN echo en_US.UTF-8 UTF-8 >> /etc/locale.gen
