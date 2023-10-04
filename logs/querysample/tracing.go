@@ -53,7 +53,10 @@ func ExportQuerySamplesAsTraceSpans(ctx context.Context, server *state.Server, l
 			startTime := sample.OccurredAt.Add(duration)
 			endTime := sample.OccurredAt
 			_, span := tracer.Start(ctx, otelSpanName, trace.WithTimestamp(startTime))
-			span.SetAttributes(attribute.String("url.full", urlToSample(server, grant, sample)))
+			// See https://opentelemetry.io/docs/specs/otel/trace/semantic_conventions/database/
+			// however note that "db.postgresql.plan" is non-standard.
+			span.SetAttributes(attribute.String("db.system", "postgresql"))
+			span.SetAttributes(attribute.String("db.postgresql.plan", urlToSample(server, grant, sample)))
 			span.End(trace.WithTimestamp(endTime))
 			exportCount += 1
 		}
