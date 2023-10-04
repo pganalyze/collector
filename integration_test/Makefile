@@ -13,9 +13,9 @@ docker_run_cmd = docker run --name pganalyze-collector-test \
   -d pganalyze-collector-test $(1)
 docker_run_cmd_postgres = $(call docker_run_cmd,postgres -c pg_stat_statements.track_utility=off)
 
-.PHONY: pg10 pg11 pg12 pg13 pg14 pg15 citus reload guided-setup installer
+.PHONY: pg10 pg11 pg12 pg13 pg14 pg15 pg16 citus reload guided-setup installer
 
-all: pg10 pg11 pg12 pg13 pg14 pg15 citus reload guided-setup installer
+all: pg10 pg11 pg12 pg13 pg14 pg15 pg16 citus reload guided-setup installer
 
 pg10:
 	docker build -f Dockerfile.test-pg10 $(DOCKER_BUILD_OPTS)
@@ -154,6 +154,29 @@ pg15:
 	fi
 	jq '.queryInformations[].normalizedQuery' pg15_2.json | sort --version-sort -f > pg15.out
 	diff -Naur pg15.expected pg15.out && echo 'success'
+
+pg16:
+	docker build -f Dockerfile.test-pg16 $(DOCKER_BUILD_OPTS)
+	$(docker_run_cmd_postgres)
+	sleep 10
+	docker exec pganalyze-collector-test pgbench -U postgres postgres -i
+	docker exec pganalyze-collector-test pgbench -U postgres postgres
+	docker exec pganalyze-collector-test sh -c "DB_USERNAME=postgres PGA_API_KEY=dummy PGA_DISABLE_ACTIVITY=1 IGNORE_SCHEMA_REGEXP=pgbench_history pganalyze-collector --dry-run --force-state-update -v" > pg16_1.json
+	docker exec pganalyze-collector-test pgbench -U postgres postgres
+	docker exec pganalyze-collector-test sh -c "DB_USERNAME=postgres PGA_API_KEY=dummy PGA_DISABLE_ACTIVITY=1 IGNORE_SCHEMA_REGEXP=pgbench_history pganalyze-collector --dry-run --force-state-update -v" > pg16_2.json
+	docker rm -f pganalyze-collector-test
+	docker rmi pganalyze-collector-test
+	if [ "`jq '.collectorErrors' pg16_2.json | tr -d ' \n\r\t '`" != "null" ]; then \
+		jq '.collectorErrors' pg16_2.json; \
+		exit 1; \
+	fi
+	if jq '.relationReferences' pg16_2.json | grep --quiet pgbench_history; then \
+                echo "failed to ignore table according to IGNORE_SCHEMA_REGEXP=pgbench_history" \
+		jq '.relationReferences' pg16_2.json; \
+		exit 1; \
+	fi
+	jq '.queryInformations[].normalizedQuery' pg16_2.json | sort --version-sort -f > pg16.out
+	diff -Naur pg16.expected pg16.out && echo 'success'
 
 citus:
 	docker build -f Dockerfile.test-citus $(DOCKER_BUILD_OPTS)
