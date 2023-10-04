@@ -35,7 +35,7 @@ import (
 	_ "github.com/lib/pq" // Enable database package to use Postgres
 )
 
-func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *util.Logger, configFilename string) (keepRunning bool, testRunSuccess chan bool, writeStateFile func()) {
+func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *util.Logger, configFilename string) (keepRunning bool, testRunSuccess chan bool, writeStateFile func(), shutdown func()) {
 	var servers []*state.Server
 
 	keepRunning = false
@@ -54,12 +54,29 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 		return
 	}
 
-	for idx, server := range conf.Servers {
-		prefixedLogger := logger.WithPrefix(server.SectionName)
-		prefixedLogger.PrintVerbose("Identified as api_system_type: %s, api_system_scope: %s, api_system_id: %s", server.SystemType, server.SystemScope, server.SystemID)
+	for idx, cfg := range conf.Servers {
+		prefixedLogger := logger.WithPrefix(cfg.SectionName)
+		prefixedLogger.PrintVerbose("Identified as api_system_type: %s, api_system_scope: %s, api_system_id: %s", cfg.SystemType, cfg.SystemScope, cfg.SystemID)
 
-		conf.Servers[idx].HTTPClient = config.CreateHTTPClient(server, prefixedLogger, false)
-		conf.Servers[idx].HTTPClientWithRetry = config.CreateHTTPClient(server, prefixedLogger, true)
+		conf.Servers[idx].HTTPClient = config.CreateHTTPClient(cfg, prefixedLogger, false)
+		conf.Servers[idx].HTTPClientWithRetry = config.CreateHTTPClient(cfg, prefixedLogger, true)
+		if cfg.OtelExporterOtlpEndpoint != "" {
+			conf.Servers[idx].OTelTracingProvider, conf.Servers[idx].OTelTracingProviderShutdownFunc, err = config.CreateOTelTracingProvider(ctx, cfg)
+			if err != nil {
+				logger.PrintError("Failed to initialize OpenTelemetry tracing provider, disabling exports: %s", err)
+			}
+		}
+	}
+
+	shutdown = func() {
+		for _, cfg := range conf.Servers {
+			if cfg.OTelTracingProviderShutdownFunc == nil {
+				continue
+			}
+			if err := cfg.OTelTracingProviderShutdownFunc(ctx); err != nil {
+				logger.PrintError("Failed to shutdown OpenTelemetry tracing provider: %s", err)
+			}
+		}
 	}
 
 	// Avoid even running the scheduler when we already know its not needed
@@ -464,7 +481,7 @@ ReadConfigAndRun:
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := sync.WaitGroup{}
 	exitCode := 0
-	keepRunning, testRunSuccess, writeStateFile := run(ctx, &wg, globalCollectionOpts, logger, configFilename)
+	keepRunning, testRunSuccess, writeStateFile, shutdown := run(ctx, &wg, globalCollectionOpts, logger, configFilename)
 
 	if keepRunning {
 		// Block here until we get any of the registered signals
@@ -484,6 +501,7 @@ ReadConfigAndRun:
 				}
 			}
 			logger.PrintInfo("Reloading configuration...")
+			shutdown()
 			cancel()
 			wg.Wait()
 			writeStateFile()
@@ -522,6 +540,7 @@ ReadConfigAndRun:
 		}
 	}
 
+	shutdown()
 	cancel()
 	wg.Wait()
 

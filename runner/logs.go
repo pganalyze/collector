@@ -319,7 +319,9 @@ func postprocessAndSendLogs(ctx context.Context, server *state.Server, globalCol
 	}
 
 	// Export query samples as traces, if OpenTelemetry endpoint is configured
-	querysample.ReportQuerySamplesAsTraceSpans(ctx, server, logger, grant, transientLogState.QuerySamples)
+	if server.Config.OTelTracingProvider != nil && len(transientLogState.QuerySamples) != 0 {
+		querysample.ExportQuerySamplesAsTraceSpans(ctx, server, logger, grant, transientLogState.QuerySamples)
+	}
 
 	for idx := range transientLogState.LogFiles {
 		// The actual filtering (aka masking of secrets) is done later in
