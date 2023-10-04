@@ -37,8 +37,7 @@
 // The paths are specific to some target message type,
 // which is not stored within the FieldMask message itself.
 //
-//
-// Constructing a FieldMask
+// # Constructing a FieldMask
 //
 // The New function is used construct a FieldMask:
 //
@@ -61,8 +60,7 @@
 //		... // handle error
 //	}
 //
-//
-// Type checking a FieldMask
+// # Type checking a FieldMask
 //
 // In order to verify that a FieldMask represents a set of fields that are
 // reachable from some target message type, use the IsValid method:
@@ -89,8 +87,8 @@ import (
 
 // `FieldMask` represents a set of symbolic field paths, for example:
 //
-//     paths: "f.a"
-//     paths: "f.b.d"
+//	paths: "f.a"
+//	paths: "f.b.d"
 //
 // Here `f` represents a field in some root message, `a` and `b`
 // fields in the message found in `f`, and `d` a field found in the
@@ -107,27 +105,26 @@ import (
 // specified in the mask. For example, if the mask in the previous
 // example is applied to a response message as follows:
 //
-//     f {
-//       a : 22
-//       b {
-//         d : 1
-//         x : 2
-//       }
-//       y : 13
-//     }
-//     z: 8
+//	f {
+//	  a : 22
+//	  b {
+//	    d : 1
+//	    x : 2
+//	  }
+//	  y : 13
+//	}
+//	z: 8
 //
 // The result will not contain specific values for fields x,y and z
 // (their value will be set to the default, and omitted in proto text
 // output):
 //
-//
-//     f {
-//       a : 22
-//       b {
-//         d : 1
-//       }
-//     }
+//	f {
+//	  a : 22
+//	  b {
+//	    d : 1
+//	  }
+//	}
 //
 // A repeated field is not allowed except at the last position of a
 // paths string.
@@ -165,36 +162,36 @@ import (
 //
 // For example, given the target message:
 //
-//     f {
-//       b {
-//         d: 1
-//         x: 2
-//       }
-//       c: [1]
-//     }
+//	f {
+//	  b {
+//	    d: 1
+//	    x: 2
+//	  }
+//	  c: [1]
+//	}
 //
 // And an update message:
 //
-//     f {
-//       b {
-//         d: 10
-//       }
-//       c: [2]
-//     }
+//	f {
+//	  b {
+//	    d: 10
+//	  }
+//	  c: [2]
+//	}
 //
 // then if the field mask is:
 //
-//  paths: ["f.b", "f.c"]
+//	paths: ["f.b", "f.c"]
 //
 // then the result will be:
 //
-//     f {
-//       b {
-//         d: 10
-//         x: 2
-//       }
-//       c: [1, 2]
-//     }
+//	f {
+//	  b {
+//	    d: 10
+//	    x: 2
+//	  }
+//	  c: [1, 2]
+//	}
 //
 // An implementation may provide options to override this default behavior for
 // repeated and message fields.
@@ -232,51 +229,51 @@ import (
 //
 // As an example, consider the following message declarations:
 //
-//     message Profile {
-//       User user = 1;
-//       Photo photo = 2;
-//     }
-//     message User {
-//       string display_name = 1;
-//       string address = 2;
-//     }
+//	message Profile {
+//	  User user = 1;
+//	  Photo photo = 2;
+//	}
+//	message User {
+//	  string display_name = 1;
+//	  string address = 2;
+//	}
 //
 // In proto a field mask for `Profile` may look as such:
 //
-//     mask {
-//       paths: "user.display_name"
-//       paths: "photo"
-//     }
+//	mask {
+//	  paths: "user.display_name"
+//	  paths: "photo"
+//	}
 //
 // In JSON, the same mask is represented as below:
 //
-//     {
-//       mask: "user.displayName,photo"
-//     }
+//	{
+//	  mask: "user.displayName,photo"
+//	}
 //
 // # Field Masks and Oneof Fields
 //
 // Field masks treat fields in oneofs just as regular fields. Consider the
 // following message:
 //
-//     message SampleMessage {
-//       oneof test_oneof {
-//         string name = 4;
-//         SubMessage sub_message = 9;
-//       }
-//     }
+//	message SampleMessage {
+//	  oneof test_oneof {
+//	    string name = 4;
+//	    SubMessage sub_message = 9;
+//	  }
+//	}
 //
 // The field mask can be:
 //
-//     mask {
-//       paths: "name"
-//     }
+//	mask {
+//	  paths: "name"
+//	}
 //
 // Or:
 //
-//     mask {
-//       paths: "sub_message"
-//     }
+//	mask {
+//	  paths: "sub_message"
+//	}
 //
 // Note that oneof type names ("test_oneof" in this case) cannot be used in
 // paths.
@@ -393,9 +390,12 @@ func numValidPaths(m proto.Message, paths []string) int {
 
 			// Identify the next message to search within.
 			md = fd.Message() // may be nil
-			if fd.IsMap() {
-				md = fd.MapValue().Message() // may be nil
+
+			// Repeated fields are only allowed at the last position.
+			if fd.IsList() || fd.IsMap() {
+				md = nil
 			}
+
 			return true
 		}) {
 			return i
@@ -512,16 +512,16 @@ var file_google_protobuf_field_mask_proto_rawDesc = []byte{
 	0x74, 0x6f, 0x12, 0x0f, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f,
 	0x62, 0x75, 0x66, 0x22, 0x21, 0x0a, 0x09, 0x46, 0x69, 0x65, 0x6c, 0x64, 0x4d, 0x61, 0x73, 0x6b,
 	0x12, 0x14, 0x0a, 0x05, 0x70, 0x61, 0x74, 0x68, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x09, 0x52,
-	0x05, 0x70, 0x61, 0x74, 0x68, 0x73, 0x42, 0x8c, 0x01, 0x0a, 0x13, 0x63, 0x6f, 0x6d, 0x2e, 0x67,
+	0x05, 0x70, 0x61, 0x74, 0x68, 0x73, 0x42, 0x85, 0x01, 0x0a, 0x13, 0x63, 0x6f, 0x6d, 0x2e, 0x67,
 	0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66, 0x42, 0x0e,
 	0x46, 0x69, 0x65, 0x6c, 0x64, 0x4d, 0x61, 0x73, 0x6b, 0x50, 0x72, 0x6f, 0x74, 0x6f, 0x50, 0x01,
-	0x5a, 0x39, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e, 0x67, 0x6f, 0x6c, 0x61, 0x6e, 0x67, 0x2e,
-	0x6f, 0x72, 0x67, 0x2f, 0x67, 0x65, 0x6e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2f, 0x70, 0x72, 0x6f,
-	0x74, 0x6f, 0x62, 0x75, 0x66, 0x2f, 0x66, 0x69, 0x65, 0x6c, 0x64, 0x5f, 0x6d, 0x61, 0x73, 0x6b,
-	0x3b, 0x66, 0x69, 0x65, 0x6c, 0x64, 0x5f, 0x6d, 0x61, 0x73, 0x6b, 0xf8, 0x01, 0x01, 0xa2, 0x02,
-	0x03, 0x47, 0x50, 0x42, 0xaa, 0x02, 0x1e, 0x47, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e, 0x50, 0x72,
-	0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66, 0x2e, 0x57, 0x65, 0x6c, 0x6c, 0x4b, 0x6e, 0x6f, 0x77, 0x6e,
-	0x54, 0x79, 0x70, 0x65, 0x73, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x5a, 0x32, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e, 0x67, 0x6f, 0x6c, 0x61, 0x6e, 0x67, 0x2e,
+	0x6f, 0x72, 0x67, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66, 0x2f, 0x74, 0x79, 0x70,
+	0x65, 0x73, 0x2f, 0x6b, 0x6e, 0x6f, 0x77, 0x6e, 0x2f, 0x66, 0x69, 0x65, 0x6c, 0x64, 0x6d, 0x61,
+	0x73, 0x6b, 0x70, 0x62, 0xf8, 0x01, 0x01, 0xa2, 0x02, 0x03, 0x47, 0x50, 0x42, 0xaa, 0x02, 0x1e,
+	0x47, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e, 0x50, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66, 0x2e,
+	0x57, 0x65, 0x6c, 0x6c, 0x4b, 0x6e, 0x6f, 0x77, 0x6e, 0x54, 0x79, 0x70, 0x65, 0x73, 0x62, 0x06,
+	0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (

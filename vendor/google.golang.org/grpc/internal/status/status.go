@@ -49,7 +49,7 @@ func New(c codes.Code, msg string) *Status {
 }
 
 // Newf returns New(c, fmt.Sprintf(format, a...)).
-func Newf(c codes.Code, format string, a ...interface{}) *Status {
+func Newf(c codes.Code, format string, a ...any) *Status {
 	return New(c, fmt.Sprintf(format, a...))
 }
 
@@ -64,7 +64,7 @@ func Err(c codes.Code, msg string) error {
 }
 
 // Errorf returns Error(c, fmt.Sprintf(format, a...)).
-func Errorf(c codes.Code, format string, a ...interface{}) error {
+func Errorf(c codes.Code, format string, a ...any) error {
 	return Err(c, fmt.Sprintf(format, a...))
 }
 
@@ -97,7 +97,7 @@ func (s *Status) Err() error {
 	if s.Code() == codes.OK {
 		return nil
 	}
-	return &Error{e: s.Proto()}
+	return &Error{s: s}
 }
 
 // WithDetails returns a new status with the provided details messages appended to the status.
@@ -120,11 +120,11 @@ func (s *Status) WithDetails(details ...proto.Message) (*Status, error) {
 
 // Details returns a slice of details messages attached to the status.
 // If a detail cannot be decoded, the error is returned in place of the detail.
-func (s *Status) Details() []interface{} {
+func (s *Status) Details() []any {
 	if s == nil || s.s == nil {
 		return nil
 	}
-	details := make([]interface{}, 0, len(s.s.Details))
+	details := make([]any, 0, len(s.s.Details))
 	for _, any := range s.s.Details {
 		detail := &ptypes.DynamicAny{}
 		if err := ptypes.UnmarshalAny(any, detail); err != nil {
@@ -136,19 +136,23 @@ func (s *Status) Details() []interface{} {
 	return details
 }
 
+func (s *Status) String() string {
+	return fmt.Sprintf("rpc error: code = %s desc = %s", s.Code(), s.Message())
+}
+
 // Error wraps a pointer of a status proto. It implements error and Status,
 // and a nil *Error should never be returned by this package.
 type Error struct {
-	e *spb.Status
+	s *Status
 }
 
 func (e *Error) Error() string {
-	return fmt.Sprintf("rpc error: code = %s desc = %s", codes.Code(e.e.GetCode()), e.e.GetMessage())
+	return e.s.String()
 }
 
 // GRPCStatus returns the Status represented by se.
 func (e *Error) GRPCStatus() *Status {
-	return FromProto(e.e)
+	return e.s
 }
 
 // Is implements future error.Is functionality.
@@ -158,5 +162,15 @@ func (e *Error) Is(target error) bool {
 	if !ok {
 		return false
 	}
-	return proto.Equal(e.e, tse.e)
+	return proto.Equal(e.s.s, tse.s.s)
+}
+
+// IsRestrictedControlPlaneCode returns whether the status includes a code
+// restricted for control plane usage as defined by gRFC A54.
+func IsRestrictedControlPlaneCode(s *Status) bool {
+	switch s.Code() {
+	case codes.InvalidArgument, codes.NotFound, codes.AlreadyExists, codes.FailedPrecondition, codes.Aborted, codes.OutOfRange, codes.DataLoss:
+		return true
+	}
+	return false
 }
