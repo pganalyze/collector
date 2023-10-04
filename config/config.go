@@ -189,7 +189,10 @@ type ServerConfig struct {
 	FilterQueryText   string `ini:"filter_query_text"`   // none/unparsable (defaults to "unparsable")
 
 	// Configuration for OpenTelemetry trace exports
-	OtelExporterOtlpEndpoint string `ini:"otel_exporter_otlp_endpoint"` // See https://github.com/open-telemetry/opentelemetry-specification/blob/v1.20.0/specification/protocol/exporter.md
+	//
+	// See https://github.com/open-telemetry/opentelemetry-specification/blob/v1.20.0/specification/protocol/exporter.md
+	OtelExporterOtlpEndpoint string `ini:"otel_exporter_otlp_endpoint"`
+	OtelExporterOtlpHeaders  string `ini:"otel_exporter_otlp_headers"`
 
 	// HTTP proxy overrides
 	HTTPProxy  string `ini:"http_proxy"`
