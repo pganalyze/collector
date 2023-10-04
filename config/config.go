@@ -59,6 +59,9 @@ type ServerConfig struct {
 	DbSslKeyContents      string `ini:"db_sslkey_contents"`
 	DbUseIamAuth          bool   `ini:"db_use_iam_auth"`
 
+	// Postgres data directory, as used for system stats (autodetected if unset)
+	DataDirectory string `ini:"db_data_directory"`
+
 	// We have to do some tricks to support sslmode=prefer, namely we have to
 	// first try an SSL connection (= require), and if that fails change the
 	// sslmode to none
@@ -66,9 +69,6 @@ type ServerConfig struct {
 
 	DbExtraNames []string // Additional databases that should be fetched (determined by additional databases in db_name)
 	DbAllNames   bool     // All databases except template databases should be fetched (determined by * in the db_name list)
-
-	// Postgres data directory, as used for system stats (autodetected if unset)
-	DataDirectory string `ini:"data_directory"`
 
 	AwsRegion               string `ini:"aws_region"`
 	AwsAccountID            string `ini:"aws_account_id"`
