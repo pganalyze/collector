@@ -263,6 +263,9 @@ func getDefaultConfig() *ServerConfig {
 	if otelExporterOtlpEndpoint := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"); otelExporterOtlpEndpoint != "" {
 		config.OtelExporterOtlpEndpoint = otelExporterOtlpEndpoint
 	}
+	if otelExporterOtlpHeaders := os.Getenv("OTEL_EXPORTER_OTLP_HEADERS"); otelExporterOtlpHeaders != "" {
+		config.OtelExporterOtlpHeaders = otelExporterOtlpHeaders
+	}
 	if httpProxy := os.Getenv("HTTP_PROXY"); httpProxy != "" {
 		config.HTTPProxy = httpProxy
 	}
@@ -379,11 +382,35 @@ func CreateOTelTracingProvider(ctx context.Context, conf ServerConfig) (*sdktrac
 	ctx, cancel := context.WithTimeout(ctx, time.Second)
 	defer cancel()
 
+	var headers map[string]string
+
+	if conf.OtelExporterOtlpHeaders != "" {
+		headers = make(map[string]string)
+		for _, h := range strings.Split(conf.OtelExporterOtlpHeaders, ",") {
+			nameEscaped, valueEscaped, found := strings.Cut(h, "=")
+			if !found {
+				return nil, nil, fmt.Errorf("unsupported header setting: missing '='")
+			}
+			name, err := url.QueryUnescape(nameEscaped)
+			if err != nil {
+				return nil, nil, fmt.Errorf("unsupported header setting, could not unescape header name: %s", err)
+			}
+			value, err := url.QueryUnescape(valueEscaped)
+			if err != nil {
+				return nil, nil, fmt.Errorf("unsupported header setting, could not unescape header value: %s", err)
+			}
+			headers[strings.TrimSpace(name)] = strings.TrimSpace(value)
+		}
+	}
+
 	switch scheme {
 	case "http", "https":
 		opts := []otlptracehttp.Option{otlptracehttp.WithEndpoint(u.Host)}
 		if scheme == "http" {
 			opts = append(opts, otlptracehttp.WithInsecure())
+		}
+		if headers != nil {
+			opts = append(opts, otlptracehttp.WithHeaders(headers))
 		}
 		traceExporter, err = otlptracehttp.New(ctx, opts...)
 		if err != nil {
@@ -392,6 +419,9 @@ func CreateOTelTracingProvider(ctx context.Context, conf ServerConfig) (*sdktrac
 	case "grpc":
 		// For now we always require TLS for gRPC connections
 		opts := []otlptracegrpc.Option{otlptracegrpc.WithEndpoint(u.Host)}
+		if headers != nil {
+			opts = append(opts, otlptracegrpc.WithHeaders(headers))
+		}
 		traceExporter, err = otlptracegrpc.New(ctx, opts...)
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to create GRPC trace exporter: %w", err)
