@@ -1,11 +1,14 @@
 package config
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
+
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 )
 
 type Config struct {
@@ -196,6 +199,10 @@ type ServerConfig struct {
 	// HTTP clients to be used for API connections
 	HTTPClient          *http.Client
 	HTTPClientWithRetry *http.Client
+
+	// OpenTelemetry tracing provider, if enabled
+	OTelTracingProvider             *sdktrace.TracerProvider
+	OTelTracingProviderShutdownFunc func(context.Context) error
 }
 
 // SupportsLogDownload - Determines whether the specified config can download logs

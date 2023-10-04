@@ -15,6 +15,12 @@ import (
 	"time"
 
 	"github.com/go-ini/ini"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
+	sdkresource "go.opentelemetry.io/otel/sdk/resource"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
 	"golang.org/x/net/http/httpproxy"
 
 	"github.com/pganalyze/collector/util"
@@ -352,6 +358,59 @@ func CreateEC2IMDSHTTPClient(conf ServerConfig) *http.Client {
 	return &http.Client{
 		Timeout: 1 * time.Second,
 	}
+}
+
+const otelServiceName = "Postgres (pganalyze)"
+
+func CreateOTelTracingProvider(ctx context.Context, conf ServerConfig) (*sdktrace.TracerProvider, func(context.Context) error, error) {
+	res, err := sdkresource.New(ctx,
+		sdkresource.WithAttributes(
+			semconv.ServiceName(otelServiceName),
+		),
+	)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to create resource: %w", err)
+	}
+
+	u, err := url.Parse(conf.OtelExporterOtlpEndpoint)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to parse endpoint URL: %w", err)
+	}
+	scheme := strings.ToLower(u.Scheme)
+
+	var traceExporter *otlptrace.Exporter
+	ctx, cancel := context.WithTimeout(ctx, time.Second)
+	defer cancel()
+
+	switch scheme {
+	case "http", "https":
+		opts := []otlptracehttp.Option{otlptracehttp.WithEndpoint(u.Host)}
+		if scheme == "http" {
+			opts = append(opts, otlptracehttp.WithInsecure())
+		}
+		traceExporter, err = otlptracehttp.New(ctx, opts...)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to create HTTP trace exporter: %w", err)
+		}
+	case "grpc":
+		// For now we always require TLS for gRPC connections
+		opts := []otlptracegrpc.Option{otlptracegrpc.WithEndpoint(u.Host)}
+		traceExporter, err = otlptracegrpc.New(ctx, opts...)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to create GRPC trace exporter: %w", err)
+		}
+	default:
+		return nil, nil, fmt.Errorf("unsupported protocol: %s", u.Scheme)
+	}
+
+	bsp := sdktrace.NewBatchSpanProcessor(traceExporter)
+	tracerProvider := sdktrace.NewTracerProvider(
+		sdktrace.WithSampler(sdktrace.AlwaysSample()),
+		sdktrace.WithResource(res),
+		sdktrace.WithSpanProcessor(bsp),
+	)
+
+	return tracerProvider, tracerProvider.Shutdown, nil
 }
 
 func writeValueToTempfile(value string) (string, error) {
