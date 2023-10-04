@@ -558,10 +558,9 @@ func checkOneInitialCollectionStatus(ctx context.Context, server *state.Server, 
 		return err
 	}
 
-	// We don't need a mutex here, because we only check once at startup
-	dataDirectorySetting := postgres.GetDataDirectory(server, settings)
-	if dataDirectorySetting != "" && server.Config.DataDirectory == "" {
-		server.Config.DataDirectory = dataDirectorySetting
+	if server.Config.DbDataDirectory == "" {
+		// We don't need a mutex here, because we only do this once at startup
+		server.Config.DbDataDirectory = postgres.GetDataDirectory(server, settings)
 	}
 
 	logsDisabled, logsIgnoreStatement, logsIgnoreDuration, logsDisabledReason := logs.ValidateLogCollectionConfig(server, settings)
