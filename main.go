@@ -40,6 +40,7 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 
 	keepRunning = false
 	writeStateFile = func() {}
+	shutdown = func() {}
 
 	schedulerGroups, err := scheduler.GetSchedulerGroups()
 	if err != nil {
