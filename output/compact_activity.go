@@ -12,7 +12,7 @@ import (
 func SubmitCompactActivitySnapshot(ctx context.Context, server *state.Server, grant state.Grant, collectionOpts state.CollectionOpts, logger *util.Logger, activityState state.TransientActivityState) error {
 	as, r := transform.ActivityStateToCompactActivitySnapshot(server, activityState)
 
-	if server.Config.FilterQuerySample != "none" {
+	if server.Config.FilterQuerySample != "" && server.Config.FilterQuerySample != "none" {
 		for idx, backend := range as.Backends {
 			// Normalize can be slow, protect against edge cases here by checking for cancellations
 			select {
