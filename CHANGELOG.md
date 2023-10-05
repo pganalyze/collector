@@ -4,18 +4,23 @@
 
 * OpenTelemetry integration: Allow exporting EXPLAIN plans as trace spans
   - This is an experimental feature that allows configuring the collector
-    to send an OTel tracing span for each processed EXPLAIN plan with an
-    associated `traceparent` query tag (e.g. set by sqlcommenter) to the
-    configured OpenTelemetry endpoint.
-  - To configure the OLTP protocol endpoint, set the new config setting
+    to send an OpenTelemetry tracing span for each processed EXPLAIN plan
+    with an associated `traceparent` query tag (e.g. set by sqlcommenter)
+    to the configured OpenTelemetry endpoint
+  - To configure the OTLP protocol endpoint, set the new config setting
     `otel_exporter_otlp_endpoint` / `OTEL_EXPORTER_OTLP_ENDPOINT`, with a
     endpoint string like "http://localhost:4318". You can also optionally
-    set the `otel_exporter_otlp_headers` / `OTEL_EXPORTER_OTLP_ENDPOINT`
+    set the `otel_exporter_otlp_headers` / `OTEL_EXPORTER_OTLP_HEADERS`
     variable to add authentication details used by hosted tracing providers
-    like Honeycomb and New Relic.
+    like Honeycomb and New Relic
 * Relax locking requirements for collecting table stats
   - This avoids skipped statistics due to page or tuple level locks,
     which do not conflict with `pg_relation_size` as run by the collector.
+* Activity snapshots: Normalize queries for `filter_query_sample = normalize`
+  - This matches the existing behavior when `filter_query_sample` is set
+    to `all`, which is to run the normalization function on pg_stat_activity
+    query texts, making sure all parameter values are replaced with `$n`
+    parameter references
 * Self-managed servers: Add test run notice when system stats are skipped
 * Docker log tail: Re-order args to also support podman aliased as docker
 
