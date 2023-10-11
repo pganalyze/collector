@@ -99,7 +99,9 @@ func GetStatements(ctx context.Context, server *state.Server, logger *util.Logge
 	var extMinorVersion int16
 	var foundExtMinorVersion int16
 
-	if postgresVersion.Numeric >= state.PostgresVersion13 {
+	if postgresVersion.Numeric >= state.PostgresVersion14 {
+		extMinorVersion = 9
+	} else if postgresVersion.Numeric >= state.PostgresVersion13 {
 		extMinorVersion = 8
 	} else {
 		extMinorVersion = 3
