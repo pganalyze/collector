@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.52.1      2023-10-11
+
+* Postgres 14+: Include toplevel attribute in statement statistics key
+  - This could have caused statistics to be incorrect in Postgres 14+ when
+    the same query was called both from within a function (toplevel=false)
+    and directly (toplevel=true), with pg_stat_statements.track set to "all"
+  - If affected, the issue may have shown by bogus statistics being recorded,
+    for example very high call counts, since the statement stats diff would
+    not have used the correct reference
+
+
 ## 0.52.0      2023-10-04
 
 * OpenTelemetry integration: Allow exporting EXPLAIN plans as trace spans
