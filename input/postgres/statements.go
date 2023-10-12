@@ -14,12 +14,15 @@ import (
 )
 
 // pg_stat_statements 1.3+ (Postgres 9.5+)
-const statementSQLOptionalFieldsMinorVersion3 = "queryid, min_time, max_time, mean_time, stddev_time"
+const statementSQLOptionalFieldsMinorVersion3 = "queryid, min_time, max_time, mean_time, stddev_time, NULL"
 const statementSQLTotalTimeFieldDefault = "total_time"
 
 // pg_stat_statements 1.8+ (Postgres 13+)
-const statementSQLOptionalFieldsMinorVersion8 = "queryid, min_exec_time, max_exec_time, mean_exec_time, stddev_exec_time"
+const statementSQLOptionalFieldsMinorVersion8 = "queryid, min_exec_time, max_exec_time, mean_exec_time, stddev_exec_time, NULL"
 const statementSQLTotalTimeFieldMinorVersion8 = "total_exec_time"
+
+// pg_stat_statements 1.9+ (Postgres 14+)
+const statementSQLOptionalFieldsMinorVersion9 = "queryid, min_exec_time, max_exec_time, mean_exec_time, stddev_exec_time, toplevel"
 
 const statementSQL string = `
 SELECT dbid, userid, query, calls, %s, rows, shared_blks_hit, shared_blks_read,
@@ -96,7 +99,9 @@ func GetStatements(ctx context.Context, server *state.Server, logger *util.Logge
 	var extMinorVersion int16
 	var foundExtMinorVersion int16
 
-	if postgresVersion.Numeric >= state.PostgresVersion13 {
+	if postgresVersion.Numeric >= state.PostgresVersion14 {
+		extMinorVersion = 9
+	} else if postgresVersion.Numeric >= state.PostgresVersion13 {
 		extMinorVersion = 8
 	} else {
 		extMinorVersion = 3
@@ -118,7 +123,9 @@ func GetStatements(ctx context.Context, server *state.Server, logger *util.Logge
 		foundExtMinorVersion = extMinorVersion
 	}
 
-	if foundExtMinorVersion >= 8 {
+	if foundExtMinorVersion >= 9 {
+		optionalFields = statementSQLOptionalFieldsMinorVersion9
+	} else if foundExtMinorVersion >= 8 {
 		optionalFields = statementSQLOptionalFieldsMinorVersion8
 	} else if foundExtMinorVersion >= 3 {
 		optionalFields = statementSQLOptionalFieldsMinorVersion3
@@ -204,7 +211,7 @@ func GetStatements(ctx context.Context, server *state.Server, logger *util.Logge
 			&stats.SharedBlksHit, &stats.SharedBlksRead, &stats.SharedBlksDirtied, &stats.SharedBlksWritten,
 			&stats.LocalBlksHit, &stats.LocalBlksRead, &stats.LocalBlksDirtied, &stats.LocalBlksWritten,
 			&stats.TempBlksRead, &stats.TempBlksWritten, &stats.BlkReadTime, &stats.BlkWriteTime,
-			&queryID, &stats.MinTime, &stats.MaxTime, &stats.MeanTime, &stats.StddevTime)
+			&queryID, &stats.MinTime, &stats.MaxTime, &stats.MeanTime, &stats.StddevTime, &key.TopLevel)
 		if err != nil {
 			return nil, nil, nil, err
 		}

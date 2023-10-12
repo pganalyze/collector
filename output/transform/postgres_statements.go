@@ -18,6 +18,8 @@ func groupStatements(statements state.PostgresStatementMap, statsMap state.Diffe
 			statement = state.PostgresStatement{QueryTextUnavailable: true, Fingerprint: util.FingerprintText(util.QueryTextUnavailable)}
 		}
 
+		// Note we intentionally don't include sKey.TopLevel here, since we don't (yet)
+		// separate statistics based on that attribute in the pganalyze app
 		key := statementKey{
 			databaseOid: sKey.DatabaseOid,
 			userOid:     sKey.UserOid,
