@@ -129,5 +129,6 @@ func getCollectorConfig(c config.ServerConfig) state.CollectorConfig {
 		FilterQueryText:            c.FilterQueryText,
 		HasProxy:                   c.HTTPProxy != "" || c.HTTPSProxy != "",
 		ConfigFromEnv:              os.Getenv("PGA_API_KEY") != "",
+		OtelExporterOtlpEndpoint:   c.OtelExporterOtlpEndpoint,
 	}
 }

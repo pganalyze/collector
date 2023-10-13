@@ -134,6 +134,7 @@ type CollectorConfig struct {
 	FilterQueryText            string
 	HasProxy                   bool
 	ConfigFromEnv              bool
+	OtelExporterOtlpEndpoint   string
 }
 
 type CollectorPlatform struct {

@@ -67,6 +67,7 @@ func transformCollectorConfig(s snapshot.FullSnapshot, state state.TransientStat
 		FilterQueryText:            c.FilterQueryText,
 		HasProxy:                   c.HasProxy,
 		ConfigFromEnv:              c.ConfigFromEnv,
+		OtelExporterOtlpEndpoint:   c.OtelExporterOtlpEndpoint,
 	}
 	return s
 }
