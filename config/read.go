@@ -29,6 +29,7 @@ import (
 )
 
 const DefaultAPIBaseURL = "https://api.pganalyze.com"
+const DefaultOtelServiceName = "Postgres (pganalyze)"
 
 var pgURIRegexp = regexp.MustCompile(`\Apostgres(?:ql)?://.*`)
 
@@ -47,6 +48,7 @@ func getDefaultConfig() *ServerConfig {
 		SectionName:             "default",
 		QueryStatsInterval:      60,
 		MaxCollectorConnections: 10,
+		OtelServiceName:         DefaultOtelServiceName,
 	}
 
 	// The environment variables are the default way to configure when running inside a Docker container.
@@ -269,6 +271,9 @@ func getDefaultConfig() *ServerConfig {
 	if otelExporterOtlpHeaders := os.Getenv("OTEL_EXPORTER_OTLP_HEADERS"); otelExporterOtlpHeaders != "" {
 		config.OtelExporterOtlpHeaders = otelExporterOtlpHeaders
 	}
+	if otelServiceName := os.Getenv("OTEL_SERVICE_NAME"); otelServiceName != "" {
+		config.OtelServiceName = otelServiceName
+	}
 	if httpProxy := os.Getenv("HTTP_PROXY"); httpProxy != "" {
 		config.HTTPProxy = httpProxy
 	}
@@ -363,12 +368,10 @@ func CreateEC2IMDSHTTPClient(conf ServerConfig) *http.Client {
 	}
 }
 
-const otelServiceName = "Postgres (pganalyze)"
-
 func CreateOTelTracingProvider(ctx context.Context, conf ServerConfig) (*sdktrace.TracerProvider, func(context.Context) error, error) {
 	res, err := sdkresource.New(ctx,
 		sdkresource.WithAttributes(
-			semconv.ServiceName(otelServiceName),
+			semconv.ServiceName(conf.OtelServiceName),
 		),
 	)
 	if err != nil {

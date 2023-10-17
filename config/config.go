@@ -193,6 +193,7 @@ type ServerConfig struct {
 	// See https://github.com/open-telemetry/opentelemetry-specification/blob/v1.20.0/specification/protocol/exporter.md
 	OtelExporterOtlpEndpoint string `ini:"otel_exporter_otlp_endpoint"`
 	OtelExporterOtlpHeaders  string `ini:"otel_exporter_otlp_headers"`
+	OtelServiceName          string `ini:"otel_service_name"`
 
 	// HTTP proxy overrides
 	HTTPProxy  string `ini:"http_proxy"`
