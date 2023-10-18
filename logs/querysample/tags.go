@@ -34,19 +34,19 @@ func parseTags(query string) map[string]string {
 				// Parse sqlcommenter format (key='value')
 				keyAndValue := strings.SplitN(part, "=", 2)
 				// Remove surrounding single quotes (if present)
-				value := keyAndValue[1]
+				value := strings.TrimSpace(keyAndValue[1])
 				if match := singleQuotedRegex.FindStringSubmatch(value); match != nil {
 					value = match[1]
 				}
 				// Decode key and value
-				key := decodeString(keyAndValue[0])
+				key := decodeString(strings.TrimSpace(keyAndValue[0]))
 				value = decodeString(value)
 
 				tags[key] = value
 			} else if strings.Contains(part, ":") {
 				// Parse marginalia format (key:value)
 				keyAndValue := strings.SplitN(part, ":", 2)
-				tags[keyAndValue[0]] = keyAndValue[1]
+				tags[strings.TrimSpace(keyAndValue[0])] = strings.TrimSpace(keyAndValue[1])
 			} // TODO: Support other formats
 		}
 	}
