@@ -48,7 +48,7 @@ func uploadAndSubmitCompactSnapshot(ctx context.Context, s pganalyze_collector.C
 		if collectionOpts.OutputAsJson {
 			debugCompactOutputAsJSON(logger, compressedData)
 		} else if !quiet {
-			logger.PrintInfo("Collected compact %s snapshot successfully", kind)
+			logger.PrintVerbose("Collected compact %s snapshot successfully", kind)
 		}
 		return nil
 	}
@@ -137,7 +137,7 @@ func submitCompactSnapshot(ctx context.Context, server *state.Server, collection
 	if len(msg) > 0 && collectionOpts.TestRun {
 		logger.PrintInfo("  %s", msg)
 	} else if !quiet {
-		logger.PrintInfo("Submitted compact %s snapshot successfully", kind)
+		logger.PrintVerbose("Submitted compact %s snapshot successfully", kind)
 	}
 
 	return nil
