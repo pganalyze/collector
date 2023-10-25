@@ -1,10 +1,15 @@
 package querysample
 
 import (
+	"net/url"
+	"regexp"
 	"strings"
 
 	pg_query "github.com/pganalyze/pg_query_go/v4"
 )
+
+var singleQuotedRegex = regexp.MustCompile(`^'(.*)'$`)
+var metaCharacterRegex = regexp.MustCompile(`\\(.)`)
 
 func parseTags(query string) map[string]string {
 	tokens, err := pg_query.Scan(query)
@@ -26,14 +31,41 @@ func parseTags(query string) map[string]string {
 		}
 		for _, part := range strings.Split(strings.TrimSpace(comment), ",") {
 			if strings.Contains(part, "=") {
+				// Parse sqlcommenter format (key='value')
 				keyAndValue := strings.SplitN(part, "=", 2)
-				tags[keyAndValue[0]] = keyAndValue[1]
-				// TODO: Handle sqlcommenter's URL encoding logic, and quoting with single quotes
+				// Remove surrounding single quotes (if present)
+				value := strings.TrimSpace(keyAndValue[1])
+				if match := singleQuotedRegex.FindStringSubmatch(value); match != nil {
+					value = match[1]
+				}
+				// Decode key and value
+				key := decodeString(strings.TrimSpace(keyAndValue[0]))
+				value = decodeString(value)
+
+				tags[key] = value
 			} else if strings.Contains(part, ":") {
+				// Parse marginalia format (key:value)
 				keyAndValue := strings.SplitN(part, ":", 2)
-				tags[keyAndValue[0]] = keyAndValue[1]
+				tags[strings.TrimSpace(keyAndValue[0])] = strings.TrimSpace(keyAndValue[1])
 			} // TODO: Support other formats
 		}
 	}
 	return tags
+}
+
+func decodeString(str string) string {
+	// From https://google.github.io/sqlcommenter/spec/#parsing
+	// 1. Unescape the meta characters
+	unescapedStr := metaCharacterRegex.ReplaceAllStringFunc(str, func(matched string) string {
+		// This is simply returning the single char after the backslash "\"
+		// Things like \n or \t are not supported
+		return string(matched[1])
+	})
+	// 2. URL Decode
+	decodedStr, err := url.QueryUnescape(unescapedStr)
+	if err != nil {
+		// Give up decode and use the original str
+		decodedStr = unescapedStr
+	}
+	return decodedStr
 }
