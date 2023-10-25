@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"sort"
 	"strings"
 	"time"
 
@@ -48,7 +49,7 @@ func uploadAndSubmitCompactSnapshot(ctx context.Context, s pganalyze_collector.C
 		if collectionOpts.OutputAsJson {
 			debugCompactOutputAsJSON(logger, compressedData)
 		} else if !quiet {
-			logger.PrintVerbose("Collected compact %s snapshot successfully", kind)
+			logger.PrintInfo("Collected compact %s snapshot successfully", kind)
 		}
 		return nil
 	}
@@ -138,7 +139,29 @@ func submitCompactSnapshot(ctx context.Context, server *state.Server, collection
 		logger.PrintInfo("  %s", msg)
 	} else if !quiet {
 		logger.PrintVerbose("Submitted compact %s snapshot successfully", kind)
+		if time.Now().Sub(lastLog) > time.Minute {
+			lastLog = time.Now()
+			details := ""
+			var keys []string
+			for k := range callCounts {
+				keys = append(keys, k)
+			}
+			sort.Strings(keys)
+			for i, kind := range keys {
+				details += fmt.Sprintf("%d %s", callCounts[kind], kind)
+				if i < len(keys)-1 {
+					details += ", "
+				}
+			}
+			logger.PrintInfo("Compact snapshots submitted over the past minute: " + details)
+			callCounts = make(map[string]uint8)
+		} else {
+			callCounts[kind] = callCounts[kind] + 1
+		}
 	}
 
 	return nil
 }
+
+var callCounts = make(map[string]uint8)
+var lastLog = time.Now()
