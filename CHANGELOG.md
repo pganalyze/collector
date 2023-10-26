@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.52.2      2023-10-26
+
+* OpenTelemetry integration:
+  - Support sqlcommenter format query tag (`key='value'`) for `traceparent`
+  - Add a new config setting `otel_service_name` / `OTEL_SERVICE_NAME` for
+    customizing the OpenTelemetry service name
+
+
 ## 0.52.1      2023-10-11
 
 * Postgres 14+: Include toplevel attribute in statement statistics key
