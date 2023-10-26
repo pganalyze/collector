@@ -289,7 +289,7 @@ type Server struct {
 
 	// State to track compact snapshot submissions, and log them routinely
 	CompactLogStats map[string]uint8
-	CompactLogTime time.Time
+	CompactLogTime  time.Time
 }
 
 func MakeServer(config config.ServerConfig) *Server {
