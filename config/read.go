@@ -671,8 +671,7 @@ func Read(logger *util.Logger, filename string) (Config, error) {
 				SystemScope: config.SystemScope,
 			}
 			conf.Servers = append(conf.Servers, *config)
-		}
-		if os.Getenv("DYNO") != "" && os.Getenv("PORT") != "" {
+		} else if os.Getenv("DYNO") != "" && os.Getenv("PORT") != "" {
 			for _, kv := range os.Environ() {
 				parts := strings.SplitN(kv, "=", 2)
 				parsedKey := parts[0]
