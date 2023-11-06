@@ -33,6 +33,7 @@ VOLUME ["/state"]
 
 USER pganalyze
 
+EXPOSE 8080
 ENTRYPOINT ["/home/pganalyze/docker-entrypoint.sh"]
 
 CMD ["collector"]
