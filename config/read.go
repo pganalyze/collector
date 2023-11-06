@@ -654,6 +654,24 @@ func Read(logger *util.Logger, filename string) (Config, error) {
 			return conf, fmt.Errorf("Configuration file is empty, please edit %s and reload the collector", filename)
 		}
 	} else {
+		if os.Getenv("APTIBLE_APP") != "" && os.Getenv("PORT") != "" {
+			config := getDefaultConfig()
+			config, err = preprocessConfig(config)
+			if err != nil {
+				return conf, err
+			}
+			config.SectionName = "aptible"
+			config.SystemID = os.Getenv("APTIBLE_APP")
+			config.SystemType = "aptible"
+			config.Identifier = ServerIdentifier{
+				APIKey:      config.APIKey,
+				APIBaseURL:  config.APIBaseURL,
+				SystemID:    config.SystemID,
+				SystemType:  config.SystemType,
+				SystemScope: config.SystemScope,
+			}
+			conf.Servers = append(conf.Servers, *config)
+		}
 		if os.Getenv("DYNO") != "" && os.Getenv("PORT") != "" {
 			for _, kv := range os.Environ() {
 				parts := strings.SplitN(kv, "=", 2)
