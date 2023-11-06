@@ -22,7 +22,9 @@ type AptibleLog struct {
 }
 
 func SetupHttpHandlerLogs(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *util.Logger, servers []*state.Server, parsedLogStream chan state.ParsedLogStreamItem) {
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 			switch r.Method {
 			case http.MethodPost:
