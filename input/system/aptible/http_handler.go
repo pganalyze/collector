@@ -34,9 +34,8 @@ func SetupHttpHandlerLogs(ctx context.Context, wg *sync.WaitGroup, globalCollect
 					log.Fatalln("WARNING: Log message not parsed")
 					break
 				}
-				fmt.Fprintf(os.Stderr, "%+v\n", logMessage)
 
-				if (logMessage.Source != "database" || logMessage.Database != "healthie-staging-14") {
+				if logMessage.Source != "database" || logMessage.Database != "healthie-staging-14" {
 					break
 				}
 				logLine, _ := logs.ParseLogLineWithPrefix("", logMessage.Log+"\n", nil)
