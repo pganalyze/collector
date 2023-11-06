@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"sync"
@@ -27,24 +28,37 @@ type AptibleLog struct {
 
 func SetupHttpHandlerLogs(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *util.Logger, servers []*state.Server, parsedLogStream chan state.ParsedLogStreamItem) {
 	go func() {
-		http.HandleFunc("/", util.HttpRedirectToApp)
-		http.HandleFunc("/logs/", func(w http.ResponseWriter, r *http.Request) {
-			io.Copy(os.Stdout, r.Body)
-			decoder := json.NewDecoder(r.Body)
+		http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+			switch r.Method {
+			case http.MethodGet:
+				w.WriteHeader(http.StatusOK)
+				w.Header().Set("Content-Type", "application/json")
+				resp := make(map[string]string)
+				resp["message"] = "Status OK"
+				jsonResp, err := json.Marshal(resp)
+				if err != nil {
+					log.Fatalf("Error happened in JSON marshal. Err: %s", err)
+				}
+				w.Write(jsonResp)
+				return
+			case http.MethodPost:
+				io.Copy(os.Stderr, r.Body)
+				decoder := json.NewDecoder(r.Body)
 
-			var log AptibleLog
-			err := decoder.Decode(&log)
-			if err != nil {
-				fmt.Printf("WARNING: Log message not parsed\n")
-			} else {
-				logLine, _ := logs.ParseLogLineWithPrefix("", log.Log+"\n", nil)
-				//logLine.OccurredAt = log.Timestamp
-				//logLine.LogLineNumber = int32(logLineNumber)
-				//logLine.LogLineNumberChunk = int32(logLineNumberChunk)
-				// somehow map back to a server identifier, which is the app identifier
-				// Identifier is where it's going. LogLine is where it came from
-				//parsedLogStream <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: log.Log}
-				fmt.Println(logLine)
+				var logMessage AptibleLog
+				err := decoder.Decode(&logMessage)
+				if err != nil {
+					log.Fatalln("WARNING: Log message not parsed")
+				} else {
+					logLine, _ := logs.ParseLogLineWithPrefix("", logMessage.Log+"\n", nil)
+					//logLine.OccurredAt = log.Timestamp
+					//logLine.LogLineNumber = int32(logLineNumber)
+					//logLine.LogLineNumberChunk = int32(logLineNumberChunk)
+					// somehow map back to a server identifier, which is the app identifier
+					// Identifier is where it's going. LogLine is where it came from
+					//parsedLogStream <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: log.Log}
+					fmt.Println(logLine)
+				}
 			}
 		})
 		http.ListenAndServe(":"+os.Getenv("PORT"), nil)
