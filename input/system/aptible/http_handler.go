@@ -54,7 +54,7 @@ func SetupHttpHandlerLogs(ctx context.Context, wg *sync.WaitGroup, globalCollect
 				//logLine.LogLineNumberChunk = int32(logLineNumberChunk)
 				// somehow map back to a server identifier, which is the app identifier
 				// Identifier is where it's going. LogLine is where it came from
-				fmt.Fprintf(os.Stderr, "%+v\n", logLine)
+				// fmt.Fprintf(os.Stderr, "%+v\n", logLine)
 				for _, server := range servers {
 					if server.Config.SectionName == "healthie-staging-14" {
 						parsedLogStream <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: logLine}
