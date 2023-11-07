@@ -660,8 +660,10 @@ func Read(logger *util.Logger, filename string) (Config, error) {
 			if err != nil {
 				return conf, err
 			}
-			config.SectionName = "aptible"
-			config.SystemID = os.Getenv("APTIBLE_APP")
+			config.SystemID, config.SystemType, config.SystemScope, config.SystemIDFallback, config.SystemTypeFallback, config.SystemScopeFallback = identifySystem(*config)
+			conf.Servers = append(conf.Servers, *config)
+
+			config.SectionName = "healthie-staging-14"
 			config.SystemType = "aptible"
 			config.Identifier = ServerIdentifier{
 				APIKey:      config.APIKey,
@@ -670,6 +672,7 @@ func Read(logger *util.Logger, filename string) (Config, error) {
 				SystemType:  config.SystemType,
 				SystemScope: config.SystemScope,
 			}
+
 			conf.Servers = append(conf.Servers, *config)
 		} else if os.Getenv("DYNO") != "" && os.Getenv("PORT") != "" {
 			for _, kv := range os.Environ() {
