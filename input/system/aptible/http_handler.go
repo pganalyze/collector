@@ -8,8 +8,8 @@ import (
 	"net/http"
 	"os"
 	"sync"
+	"time"
 
-	"github.com/pganalyze/collector/logs"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
 )
@@ -37,18 +37,28 @@ func SetupHttpHandlerLogs(ctx context.Context, wg *sync.WaitGroup, globalCollect
 					break
 				}
 
-				fmt.Fprintf(os.Stderr, "%+v\n", logMessage)
 				if logMessage.Source != "database" || logMessage.Database != "healthie-staging-14" {
 					break
 				}
-				logLine, _ := logs.ParseLogLineWithPrefix("", logMessage.Log+"\n", nil)
-				//logLine.OccurredAt = log.Timestamp
+				// logLine, _ := logs.ParseLogLineWithPrefix("", logMessage.Log+"\n", nil)
+				logLine := state.LogLine{}
+				occurredAt, err := time.Parse(time.RFC3339, logMessage.Time)
+				if err != nil {
+					log.Fatalf("Error happened time parsing. Err: %s", err)
+				}
+				logLine.OccurredAt = occurredAt
+				logLine.Content = logMessage.Log
+				logLine.ByteEnd = int64(len(logMessage.Log))
 				//logLine.LogLineNumber = int32(logLineNumber)
 				//logLine.LogLineNumberChunk = int32(logLineNumberChunk)
 				// somehow map back to a server identifier, which is the app identifier
 				// Identifier is where it's going. LogLine is where it came from
-				//parsedLogStream <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: log.Log}
 				fmt.Fprintf(os.Stderr, "%+v\n", logLine)
+				for _, server := range servers {
+					if server.Config.SectionName == "healthie-staging-14" {
+						parsedLogStream <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: logLine}
+					}
+				}
 			}
 			w.WriteHeader(http.StatusOK)
 			w.Header().Set("Content-Type", "application/json")
