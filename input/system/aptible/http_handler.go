@@ -19,6 +19,7 @@ type AptibleLog struct {
 	Log      string `json:"log"`
 	Source   string `json:"source"`
 	Database string `json:"database"`
+	Offset   string `json:"offset"`
 }
 
 func SetupHttpHandlerLogs(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *util.Logger, servers []*state.Server, parsedLogStream chan state.ParsedLogStreamItem) {
@@ -41,7 +42,8 @@ func SetupHttpHandlerLogs(ctx context.Context, wg *sync.WaitGroup, globalCollect
 					break
 				}
 				// logLine, _ := logs.ParseLogLineWithPrefix("", logMessage.Log+"\n", nil)
-				fmt.Fprintf(os.Stderr, "%s\n", logMessage.Log)
+				fmt.Fprintf(os.Stderr, "%s\n", logMessage)
+				// UUID is offset?
 				logLine := state.LogLine{}
 				occurredAt, err := time.Parse(time.RFC3339, logMessage.Time)
 				if err != nil {
