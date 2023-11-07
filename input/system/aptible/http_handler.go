@@ -42,7 +42,7 @@ func SetupHttpHandlerLogs(ctx context.Context, wg *sync.WaitGroup, globalCollect
 					break
 				}
 				// logLine, _ := logs.ParseLogLineWithPrefix("", logMessage.Log+"\n", nil)
-				fmt.Fprintf(os.Stderr, "%s\n", logMessage)
+				fmt.Fprintf(os.Stderr, "%v\n", logMessage)
 				// UUID is offset?
 				logLine := state.LogLine{}
 				occurredAt, err := time.Parse(time.RFC3339, logMessage.Time)
