@@ -19,7 +19,7 @@ type AptibleLog struct {
 	Log      string `json:"log"`
 	Source   string `json:"source"`
 	Database string `json:"database"`
-	Offset   string `json:"offset"`
+	Offset   int    `json:"offset"`
 }
 
 func SetupHttpHandlerLogs(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *util.Logger, servers []*state.Server, parsedLogStream chan state.ParsedLogStreamItem) {
