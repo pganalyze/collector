@@ -37,6 +37,7 @@ func SetupHttpHandlerLogs(ctx context.Context, wg *sync.WaitGroup, globalCollect
 					break
 				}
 
+				fmt.Fprintf(os.Stderr, "%+v\n", logMessage)
 				if logMessage.Source != "database" || logMessage.Database != "healthie-staging-14" {
 					break
 				}
