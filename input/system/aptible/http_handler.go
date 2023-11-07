@@ -27,6 +27,16 @@ func SetupHttpHandlerLogs(ctx context.Context, wg *sync.WaitGroup, globalCollect
 	go func() {
 		defer wg.Done()
 		http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			w.Header().Set("Content-Type", "application/json")
+			resp := make(map[string]string)
+			resp["message"] = "Status OK"
+			jsonResp, err := json.Marshal(resp)
+			if err != nil {
+				log.Fatalf("Error happened in JSON marshal. Err: %s", err)
+			}
+			w.Write(jsonResp)
+
 			switch r.Method {
 			case http.MethodPost:
 				decoder := json.NewDecoder(r.Body)
@@ -34,12 +44,12 @@ func SetupHttpHandlerLogs(ctx context.Context, wg *sync.WaitGroup, globalCollect
 				var logMessage AptibleLog
 				err := decoder.Decode(&logMessage)
 				if err != nil {
-					log.Fatalln("WARNING: Log message not parsed")
-					break
+					log.Fatalln("WARNING: Log message not parsed: %s", err)
+					return
 				}
 
 				if logMessage.Source != "database" || logMessage.Database != "healthie-staging-14" {
-					break
+					return
 				}
 				// logLine, _ := logs.ParseLogLineWithPrefix("", logMessage.Log+"\n", nil)
 				fmt.Fprintf(os.Stderr, "%v\n", logMessage)
@@ -59,19 +69,10 @@ func SetupHttpHandlerLogs(ctx context.Context, wg *sync.WaitGroup, globalCollect
 				// fmt.Fprintf(os.Stderr, "%+v\n", logLine)
 				for _, server := range servers {
 					if server.Config.SectionName == "healthie-staging-14" {
-						parsedLogStream <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: logLine}
+						//parsedLogStream <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: logLine}
 					}
 				}
 			}
-			w.WriteHeader(http.StatusOK)
-			w.Header().Set("Content-Type", "application/json")
-			resp := make(map[string]string)
-			resp["message"] = "Status OK"
-			jsonResp, err := json.Marshal(resp)
-			if err != nil {
-				log.Fatalf("Error happened in JSON marshal. Err: %s", err)
-			}
-			w.Write(jsonResp)
 		})
 		http.ListenAndServe(":"+os.Getenv("PORT"), nil)
 	}()
