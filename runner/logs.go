@@ -48,7 +48,7 @@ func SetupLogCollection(ctx context.Context, wg *sync.WaitGroup, servers []*stat
 	}
 
 	var parsedLogStream chan state.ParsedLogStreamItem
-	if hasAnyLogTails || hasAnyHeroku || hasAnyGoogleCloudSQL || hasAnyAzureDatabase {
+	if hasAnyLogTails || hasAnyHeroku || hasAnyAptible || hasAnyGoogleCloudSQL || hasAnyAzureDatabase {
 		parsedLogStream = setupLogStreamer(ctx, wg, globalCollectionOpts, logger, servers, nil, stream.LogTestNone)
 	}
 	if hasAnyLogTails {
