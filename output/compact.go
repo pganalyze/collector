@@ -143,7 +143,6 @@ func submitCompactSnapshot(ctx context.Context, server *state.Server, collection
 			server.CompactLogTime = time.Now()
 			server.CompactLogStats = make(map[string]uint8)
 		} else if time.Now().Sub(server.CompactLogTime) > time.Minute {
-			server.CompactLogTime = time.Now()
 			var keys []string
 			for k := range server.CompactLogStats {
 				keys = append(keys, k)
@@ -156,7 +155,10 @@ func submitCompactSnapshot(ctx context.Context, server *state.Server, collection
 					details += ", "
 				}
 			}
-			logger.PrintInfo("Compact snapshots submitted: " + details)
+			if len(details) > 0 {
+				logger.PrintInfo("Compact snapshots submitted: " + details)
+			}
+			server.CompactLogTime = time.Now()
 			server.CompactLogStats = make(map[string]uint8)
 		} else {
 			server.CompactLogStats[kind] = server.CompactLogStats[kind] + 1
