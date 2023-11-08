@@ -397,8 +397,12 @@ func TestLogsForAllServers(ctx context.Context, servers []*state.Server, globalC
 			}
 		} else if server.Config.SupportsLogDownload() {
 			success = testLogDownload(ctx, &wg, server, globalCollectionOpts, prefixedLogger)
-		} else if server.Config.AzureDbServerName != "" && server.Config.AzureEventhubNamespace != "" && server.Config.AzureEventhubName != "" {
-			success = testAzureLogStream(ctx, &wg, server, globalCollectionOpts, prefixedLogger)
+		} else if server.Config.AzureEventhubNamespace != "" && server.Config.AzureEventhubName != "" {
+			if server.Config.AzureDbServerName == "" {
+				prefixedLogger.PrintError("ERROR - Detected Azure Event Hub setup but azure_db_server_name is not set")
+			} else {
+				success = testAzureLogStream(ctx, &wg, server, globalCollectionOpts, prefixedLogger)
+			}
 		} else if server.Config.GcpCloudSQLInstanceID != "" && server.Config.GcpPubsubSubscription != "" {
 			success = testGoogleCloudsqlLogStream(ctx, &wg, server, globalCollectionOpts, prefixedLogger)
 		}

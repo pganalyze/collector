@@ -696,6 +696,9 @@ func Read(logger *util.Logger, filename string) (Config, error) {
 			config.SystemID, config.SystemType, config.SystemScope, config.SystemIDFallback, config.SystemTypeFallback, config.SystemScopeFallback = identifySystem(*config)
 			conf.Servers = append(conf.Servers, *config)
 		} else {
+			if os.Getenv("API_KEY") != "" {
+				logger.PrintInfo("Environment variable API_KEY was found, but not PGA_API_KEY. Please double check the variable name")
+			}
 			return conf, fmt.Errorf("No configuration file found at %s, and no environment variables set", filename)
 		}
 	}
