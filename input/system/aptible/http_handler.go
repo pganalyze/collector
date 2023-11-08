@@ -3,7 +3,6 @@ package aptible
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -53,22 +52,11 @@ func SetupHttpHandlerLogs(ctx context.Context, wg *sync.WaitGroup, globalCollect
 					return
 				}
 				logLine, _ := logs.ParseLogLineWithPrefix("", logMessage.Log+"\n", nil)
-				fmt.Fprintf(os.Stderr, "Time: %s\n", logMessage.Time)
-				fmt.Fprintf(os.Stderr, "Source: %s\n", logMessage.Source)
-				fmt.Fprintf(os.Stderr, "Database: %s\n", logMessage.Database)
-				fmt.Fprintf(os.Stderr, "Offset: %d\n", logMessage.Offset)
-				fmt.Fprintf(os.Stderr, "Log: %s\n", logMessage.Log)
-				// UUID is offset?
 				occurredAt, err := time.Parse(time.RFC3339, logMessage.Time)
 				if err != nil {
 					log.Fatalf("Error happened time parsing. Err: %s", err)
 				}
 				logLine.OccurredAt = occurredAt
-				//logLine.LogLineNumber = int32(logLineNumber)
-				//logLine.LogLineNumberChunk = int32(logLineNumberChunk)
-				// somehow map back to a server identifier, which is the app identifier
-				// Identifier is where it's going. LogLine is where it came from
-				// fmt.Fprintf(os.Stderr, "%+v\n", logLine)
 				for _, server := range servers {
 					if server.Config.SectionName == "healthie-staging-14" {
 						parsedLogStream <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: logLine}
