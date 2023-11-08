@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pganalyze/collector/logs"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
 )
@@ -51,21 +52,18 @@ func SetupHttpHandlerLogs(ctx context.Context, wg *sync.WaitGroup, globalCollect
 				if logMessage.Source != "database" || logMessage.Database != "healthie-staging-14" {
 					return
 				}
-				// logLine, _ := logs.ParseLogLineWithPrefix("", logMessage.Log+"\n", nil)
+				logLine, _ := logs.ParseLogLineWithPrefix("", logMessage.Log+"\n", nil)
 				fmt.Fprintf(os.Stderr, "Time: %s\n", logMessage.Time)
 				fmt.Fprintf(os.Stderr, "Source: %s\n", logMessage.Source)
 				fmt.Fprintf(os.Stderr, "Database: %s\n", logMessage.Database)
 				fmt.Fprintf(os.Stderr, "Offset: %d\n", logMessage.Offset)
 				fmt.Fprintf(os.Stderr, "Log: %s\n", logMessage.Log)
 				// UUID is offset?
-				logLine := state.LogLine{}
 				occurredAt, err := time.Parse(time.RFC3339, logMessage.Time)
 				if err != nil {
 					log.Fatalf("Error happened time parsing. Err: %s", err)
 				}
 				logLine.OccurredAt = occurredAt
-				logLine.Content = logMessage.Log
-				logLine.ByteEnd = int64(len(logMessage.Log))
 				//logLine.LogLineNumber = int32(logLineNumber)
 				//logLine.LogLineNumberChunk = int32(logLineNumberChunk)
 				// somehow map back to a server identifier, which is the app identifier
@@ -73,7 +71,7 @@ func SetupHttpHandlerLogs(ctx context.Context, wg *sync.WaitGroup, globalCollect
 				// fmt.Fprintf(os.Stderr, "%+v\n", logLine)
 				for _, server := range servers {
 					if server.Config.SectionName == "healthie-staging-14" {
-						//parsedLogStream <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: logLine}
+						parsedLogStream <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: logLine}
 					}
 				}
 			}
