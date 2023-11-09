@@ -662,9 +662,7 @@ func Read(logger *util.Logger, filename string) (Config, error) {
 			}
 			config.SystemID, config.SystemType, config.SystemScope, config.SystemIDFallback, config.SystemTypeFallback, config.SystemScopeFallback = identifySystem(*config)
 			config.SectionName = "healthie-staging-14"
-			config.SystemType = "aptible"
-			conf.Servers = append(conf.Servers, *config)
-
+			// config.SystemType = "aptible"
 			conf.Servers = append(conf.Servers, *config)
 		} else if os.Getenv("DYNO") != "" && os.Getenv("PORT") != "" {
 			for _, kv := range os.Environ() {

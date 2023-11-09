@@ -116,7 +116,7 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 		if config.SystemType == "heroku" {
 			hasAnyHeroku = true
 		}
-		if config.SystemType == "aptible" {
+		if os.Getenv("APTIBLE_APP") != "" {
 			hasAnyAptible = true
 		}
 	}
