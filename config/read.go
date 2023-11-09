@@ -5,7 +5,6 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net"
 	"net/http"
 	"net/url"
@@ -675,7 +674,8 @@ func Read(logger *util.Logger, filename string) (Config, error) {
 			}
 
 			conf.Servers = append(conf.Servers, *config)
-			log.Fatalln("Aptible server config added: %v", config)
+			logger.PrintVerbose("default server config added: %s\n", config.APIKey)
+			logger.PrintVerbose("default server config identifier added: %s\n", config.Identifier.APIKey)
 		} else if os.Getenv("DYNO") != "" && os.Getenv("PORT") != "" {
 			for _, kv := range os.Environ() {
 				parts := strings.SplitN(kv, "=", 2)
@@ -717,7 +717,8 @@ func Read(logger *util.Logger, filename string) (Config, error) {
 			}
 			config.SystemID, config.SystemType, config.SystemScope, config.SystemIDFallback, config.SystemTypeFallback, config.SystemScopeFallback = identifySystem(*config)
 			conf.Servers = append(conf.Servers, *config)
-			log.Fatalf("default server config added: %v\n", config)
+			logger.PrintVerbose("default server config added: %s\n", config.APIKey)
+			logger.PrintVerbose("default server config identifier added: %s\n", config.Identifier.APIKey)
 		} else {
 			return conf, fmt.Errorf("No configuration file found at %s, and no environment variables set", filename)
 		}
