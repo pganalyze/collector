@@ -584,7 +584,7 @@ func Read(logger *util.Logger, filename string) (Config, error) {
 	var conf Config
 	var err error
 
-	if _, err = os.Stat(filename); err == nil {
+	if _, err = os.Stat(filename); err == nil && false {
 		configFile, err := ini.LoadSources(ini.LoadOptions{SpaceBeforeInlineComment: true}, filename)
 		if err != nil {
 			return conf, err
@@ -674,8 +674,6 @@ func Read(logger *util.Logger, filename string) (Config, error) {
 			}
 
 			conf.Servers = append(conf.Servers, *config)
-			logger.PrintVerbose("default server config added: %s\n", config.APIKey)
-			logger.PrintVerbose("default server config identifier added: %s\n", config.Identifier.APIKey)
 		} else if os.Getenv("DYNO") != "" && os.Getenv("PORT") != "" {
 			for _, kv := range os.Environ() {
 				parts := strings.SplitN(kv, "=", 2)
@@ -717,8 +715,6 @@ func Read(logger *util.Logger, filename string) (Config, error) {
 			}
 			config.SystemID, config.SystemType, config.SystemScope, config.SystemIDFallback, config.SystemTypeFallback, config.SystemScopeFallback = identifySystem(*config)
 			conf.Servers = append(conf.Servers, *config)
-			logger.PrintVerbose("default server config added: %s\n", config.APIKey)
-			logger.PrintVerbose("default server config identifier added: %s\n", config.Identifier.APIKey)
 		} else {
 			return conf, fmt.Errorf("No configuration file found at %s, and no environment variables set", filename)
 		}
