@@ -51,18 +51,17 @@ func SetupHttpHandlerLogs(ctx context.Context, wg *sync.WaitGroup, globalCollect
 					return
 				}
 				logLine, ok := logs.ParseLogLineWithPrefix(logs.LogPrefixCustom3, logMessage.Log+"\n", nil)
-				if !ok {
-					log.Fatalln("WARNING: Log line not parsed: %s", logMessage.Log)
-					return
-				}
-				// occurredAt, err := time.Parse(time.RFC3339, logMessage.Time)
-				// if err != nil {
-				// 	log.Fatalf("Error happened time parsing. Err: %s", err)
-				// }
-				// logLine.OccurredAt = occurredAt
-				for _, server := range servers {
-					if server.Config.SectionName == "healthie-staging-14" {
-						parsedLogStream <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: logLine}
+				if ok {
+					log.Fatalln("Log line parsed: %v", logLine)
+					// occurredAt, err := time.Parse(time.RFC3339, logMessage.Time)
+					// if err != nil {
+					// 	log.Fatalf("Error happened time parsing. Err: %s", err)
+					// }
+					// logLine.OccurredAt = occurredAt
+					for _, server := range servers {
+						if server.Config.SectionName == "healthie-staging-14" {
+							parsedLogStream <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: logLine}
+						}
 					}
 				}
 			}
