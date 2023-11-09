@@ -32,7 +32,7 @@ func SetupHttpHandlerLogs(ctx context.Context, wg *sync.WaitGroup, globalCollect
 			resp["message"] = "Status OK"
 			jsonResp, err := json.Marshal(resp)
 			if err != nil {
-				log.Fatalf("Error happened in JSON marshal. Err: %s", err)
+				log.Fatalf("Error happened in JSON marshal. Err: %s\n", err)
 			}
 			w.Write(jsonResp)
 
@@ -43,7 +43,7 @@ func SetupHttpHandlerLogs(ctx context.Context, wg *sync.WaitGroup, globalCollect
 				var logMessage AptibleLog
 				err := decoder.Decode(&logMessage)
 				if err != nil {
-					log.Fatalln("WARNING: Log message not parsed: %s", err)
+					log.Fatalf("WARNING: Log message not parsed: %s\n", err)
 					return
 				}
 
@@ -52,7 +52,7 @@ func SetupHttpHandlerLogs(ctx context.Context, wg *sync.WaitGroup, globalCollect
 				}
 				logLine, ok := logs.ParseLogLineWithPrefix(logs.LogPrefixCustom3, logMessage.Log+"\n", nil)
 				if ok {
-					log.Fatalln("Log line parsed: %v", logLine)
+					log.Fatalf("Log line parsed: %v\n", logLine)
 					// occurredAt, err := time.Parse(time.RFC3339, logMessage.Time)
 					// if err != nil {
 					// 	log.Fatalf("Error happened time parsing. Err: %s", err)
