@@ -52,7 +52,7 @@ func SetupHttpHandlerLogs(ctx context.Context, wg *sync.WaitGroup, globalCollect
 				if logMessage.Source != "database" || logMessage.Database != "healthie-staging-14" {
 					return
 				}
-				logLine, ok := logs.ParseLogLineWithPrefix(logs.LogPrefixCustom3, logMessage.Log+"\n", nil)
+				logLine, ok := logs.ParseLogLineWithPrefix("", logMessage.Log+"\n", nil)
 				if ok {
 					log.Fatalf("Log line parsed: %v\n", logLine)
 					occurredAt, err := time.Parse(time.RFC3339, logMessage.Time)
