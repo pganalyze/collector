@@ -50,9 +50,9 @@ func SetupHttpHandlerLogs(ctx context.Context, wg *sync.WaitGroup, globalCollect
 				if logMessage.Source != "database" || logMessage.Database != "healthie-staging-14" {
 					return
 				}
-				logLine, err := logs.ParseLogLineWithPrefix(logs.LogPrefixCustom3, logMessage.Log+"\n", nil)
-				if err != nil {
-					log.Fatalln("WARNING: Log line not parsed: %s", err)
+				logLine, ok := logs.ParseLogLineWithPrefix(logs.LogPrefixCustom3, logMessage.Log+"\n", nil)
+				if !ok {
+					log.Fatalln("WARNING: Log line not parsed: %s", logMessage.Log)
 					return
 				}
 				// occurredAt, err := time.Parse(time.RFC3339, logMessage.Time)
