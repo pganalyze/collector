@@ -654,7 +654,7 @@ func Read(logger *util.Logger, filename string) (Config, error) {
 			return conf, fmt.Errorf("Configuration file is empty, please edit %s and reload the collector", filename)
 		}
 	} else {
-		if os.Getenv("APTIBLE_APP") != "" && os.Getenv("PORT") != "" {
+		if os.Getenv("APTIBLE_APP") != "" {
 			config := getDefaultConfig()
 			config, err = preprocessConfig(config)
 			if err != nil {

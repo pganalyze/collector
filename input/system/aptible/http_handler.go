@@ -3,6 +3,7 @@ package aptible
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -23,7 +24,32 @@ type AptibleLog struct {
 }
 
 func SetupHttpHandlerLogs(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *util.Logger, servers []*state.Server, parsedLogStream chan state.ParsedLogStreamItem) {
-	wg.Add(1)
+	wg.Add(2)
+
+	go func() {
+		defer wg.Done()
+		http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			w.Header().Set("Content-Type", "application/json")
+			resp := make(map[string]string)
+			resp["message"] = "Status OK"
+			jsonResp, err := json.Marshal(resp)
+			if err != nil {
+				log.Fatalf("Error happened in JSON marshal. Err: %s\n", err)
+			}
+			w.Write(jsonResp)
+
+			switch r.Method {
+			case http.MethodPost:
+				// decoder := json.NewDecoder(r.Body)
+
+				bytes, _ := io.ReadAll(r.Body)
+				logger.PrintVerbose(string(bytes))
+			}
+		})
+		http.ListenAndServe(":"+os.Getenv("METRICS_PORT"), nil)
+	}()
+
 	go func() {
 		defer wg.Done()
 		http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -66,6 +92,6 @@ func SetupHttpHandlerLogs(ctx context.Context, wg *sync.WaitGroup, globalCollect
 				}
 			}
 		})
-		http.ListenAndServe(":"+os.Getenv("PORT"), nil)
+		http.ListenAndServe(":"+os.Getenv("LOGS_PORT"), nil)
 	}()
 }
