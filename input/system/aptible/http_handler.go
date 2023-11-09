@@ -51,19 +51,15 @@ func SetupHttpHandlerLogs(ctx context.Context, wg *sync.WaitGroup, globalCollect
 				if logMessage.Source != "database" || logMessage.Database != "healthie-staging-14" {
 					return
 				}
-				logLine, ok := logs.ParseLogLineWithPrefix("", logMessage.Log+"\n", nil)
+				logLine, ok := logs.ParseLogLineWithPrefix(logs.LogPrefixCustom3, logMessage.Log+"\n", nil)
 				if ok {
 					occurredAt, err := time.Parse(time.RFC3339, logMessage.Time)
 					if err != nil {
 						log.Fatalf("Error happened time parsing. Err: %s", err)
 					}
 					logLine.OccurredAt = occurredAt
-					logger.PrintVerbose("Log line level")
-					logger.PrintVerbose(logLine.LogLevel.String())
-					//logLine.LogLevel = pganalyze_collector.LogLineInformation_CONTEXT
 					for _, server := range servers {
 						if server.Config.SectionName == "healthie-staging-14" {
-							logger.PrintVerbose("Server match, sending logs")
 							parsedLogStream <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: logLine}
 						}
 					}
