@@ -708,6 +708,7 @@ func Read(logger *util.Logger, filename string) (Config, error) {
 				conf.Servers = append(conf.Servers, *config)
 			}
 		} else if os.Getenv("PGA_API_KEY") != "" {
+			logger.PrintVerbose("Configuring from only api key")
 			config := getDefaultConfig()
 			config, err = preprocessConfig(config)
 			if err != nil {
