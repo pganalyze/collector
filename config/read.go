@@ -661,8 +661,6 @@ func Read(logger *util.Logger, filename string) (Config, error) {
 				return conf, err
 			}
 			config.SystemID, config.SystemType, config.SystemScope, config.SystemIDFallback, config.SystemTypeFallback, config.SystemScopeFallback = identifySystem(*config)
-			conf.Servers = append(conf.Servers, *config)
-
 			config.SectionName = "healthie-staging-14"
 			config.SystemType = "aptible"
 			config.Identifier = ServerIdentifier{
