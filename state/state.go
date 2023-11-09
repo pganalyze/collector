@@ -286,6 +286,10 @@ type Server struct {
 	// differences (see https://groups.google.com/g/golang-nuts/c/eIqkhXh9PLg),
 	// as we access this in high frequency log-related code paths.
 	LogIgnoreFlags uint32
+
+	// State to track compact snapshot submissions, and log them routinely
+	CompactLogStats map[string]uint8
+	CompactLogTime  time.Time
 }
 
 func MakeServer(config config.ServerConfig) *Server {
