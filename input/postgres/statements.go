@@ -141,6 +141,10 @@ func GetStatements(ctx context.Context, server *state.Server, logger *util.Logge
 
 	if globalCollectionOpts.TestRun && foundExtMinorVersion < extMinorVersion {
 		logger.PrintInfo("pg_stat_statements extension outdated (1.%d installed, 1.%d available). To update run `ALTER EXTENSION pg_stat_statements UPDATE`", foundExtMinorVersion, extMinorVersion)
+		if extMinorVersion >= 9 {
+			// with Postgres 14+, there is a known data issue if pgss is using the older version
+			logger.PrintError("Outdated pg_stat_statements extension is known to cause the incorrect data with query statistics")
+		}
 	}
 
 	usingStatsHelper := false
