@@ -3,6 +3,7 @@ package aptible
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"os"
 	"sync"
@@ -57,15 +58,23 @@ func SetupHttpHandler(ctx context.Context, wg *sync.WaitGroup, globalCollectionO
 
 		switch r.Method {
 		case http.MethodPost:
-			decoder := json.NewDecoder(r.Body)
-
-			var sample AptibleMetric
-			err := decoder.Decode(&sample)
+			content, err := io.ReadAll(r.Body)
 			if err != nil {
-				logger.PrintWarning("WARNING: Metric message not parsed: %s\n", err)
-			} else {
-				HandleMetricMessage(ctx, &sample, globalCollectionOpts, logger, servers)
+				logger.PrintError("Error reading metric %s\n", err)
+				return
 			}
+			logger.PrintVerbose("Metric: %s\n", string(content))
+			/*
+				decoder := json.NewDecoder(r.Body)
+
+				var sample AptibleMetric
+				err := decoder.Decode(&sample)
+				if err != nil {
+					logger.PrintWarning("WARNING: Metric message not parsed: %s\n", err)
+				} else {
+					HandleMetricMessage(ctx, &sample, globalCollectionOpts, logger, servers)
+				}
+			*/
 		}
 	})
 
