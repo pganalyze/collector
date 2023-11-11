@@ -55,6 +55,8 @@ func HandleMetricMessage(ctx context.Context, message string, globalCollectionOp
 			switch key {
 			case "app":
 				sample.App = value
+			case "database":
+				sample.Database = value
 			case "container":
 				sample.Container = value
 			case "environment":
