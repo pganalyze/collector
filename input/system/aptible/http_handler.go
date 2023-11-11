@@ -1,11 +1,13 @@
 package aptible
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"io"
 	"net/http"
 	"os"
+	"strings"
 	"sync"
 
 	"github.com/pganalyze/collector/state"
@@ -56,23 +58,24 @@ func SetupHttpHandler(ctx context.Context, wg *sync.WaitGroup, globalCollectionO
 
 		switch r.Method {
 		case http.MethodPost:
-			content, err := io.ReadAll(r.Body)
-			if err != nil {
-				logger.PrintError("Error reading metric %s\n", err)
-				return
+			message, _ := io.ReadAll(r.Body)
+			parts := strings.Split(string(message), ",")
+			mappings := make(map[string]string)
+			for _, part := range parts {
+				pairs := strings.Split(part, "=")
+				mappings[pairs[0]] = pairs[1]
 			}
-			logger.PrintVerbose("Metric: %s\n", string(content))
-			/*
-				decoder := json.NewDecoder(r.Body)
+			jsonBytes, _ := json.Marshal(mappings)
 
-				var sample AptibleMetric
-				err := decoder.Decode(&sample)
-				if err != nil {
-					logger.PrintWarning("WARNING: Metric message not parsed: %s\n", err)
-				} else {
-					HandleMetricMessage(ctx, &sample, globalCollectionOpts, logger, servers)
-				}
-			*/
+			var sample AptibleMetric
+			decoder := json.NewDecoder(bytes.NewReader(jsonBytes))
+			err := decoder.Decode(&sample)
+			if err != nil {
+				logger.PrintWarning("WARNING: Metric message not parsed: %s\n", err)
+				logger.PrintWarning("WARNING: Metric message is: %s\n", string(message))
+			} else {
+				HandleMetricMessage(ctx, &sample, globalCollectionOpts, logger, servers)
+			}
 		}
 	})
 
