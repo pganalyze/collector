@@ -2,6 +2,8 @@ package aptible
 
 import (
 	"context"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/pganalyze/collector/grant"
@@ -14,19 +16,19 @@ const MB_TO_BYTE = 1024 * 1024
 
 type AptibleMetric struct {
 	Running       bool   `json:"running"`
-	MilliCpuUsage int    `json:"milli_cpu_usage"` // the Container's average CPU usage (in milli CPUs) over the reporting period.
-	MilliCpuLimit int    `json:"milli_cpu_limit"` // the maximum CPU accessible to the container. If CPU Isolation is disabled, this metric will return 0.
-	MemoryTotalMB int    `json:"memory_total_mb"` // the Container's total memory usage.
-	MemoryRssMB   int    `json:"memory_rss_mb"`   // the Container's RSS memory usage. This memory is typically not reclaimable. If this exceeds the memory_limit_mb, the container will be restarted.
-	MemoryLimitMB int    `json:"memory_limit_mb"` // the Container's Memory Limit.
-	DiskReadKBPS  int    `json:"disk_read_kbps"`  // the Container's average disk read bandwidth over the reporting period.
-	DiskWriteKBPS int    `json:"disk_write_kbps"` // the Container's average disk write bandwidth over the reporting period.
-	DiskReadIOPS  int    `json:"disk_read_iops"`  // the Container's average disk read IOPS over the reporting period.
-	DiskWriteIOPS int    `json:"disk_write_iops"` // the Container's average disk write IOPS over the reporting period.
-	DiskUsageMB   int    `json:"disk_usage_mb"`   // the Database's Disk usage (Database metrics only).
-	DiskLimitMB   int    `json:"disk_limit_mb"`   // the Database's Disk size (Database metrics only).
-	PidsCurrent   int    `json:"pids_current"`    // the current number of tasks in the Container (see Other Limits).
-	PidsLimit     int    `json:"pids_limit"`      // the maximum number of tasks for the Container (see Other Limits).
+	MilliCpuUsage uint64 `json:"milli_cpu_usage"` // the Container's average CPU usage (in milli CPUs) over the reporting period.
+	MilliCpuLimit uint64 `json:"milli_cpu_limit"` // the maximum CPU accessible to the container. If CPU Isolation is disabled, this metric will return 0.
+	MemoryTotalMB uint64 `json:"memory_total_mb"` // the Container's total memory usage.
+	MemoryRssMB   uint64 `json:"memory_rss_mb"`   // the Container's RSS memory usage. This memory is typically not reclaimable. If this exceeds the memory_limit_mb, the container will be restarted.
+	MemoryLimitMB uint64 `json:"memory_limit_mb"` // the Container's Memory Limit.
+	DiskReadKBPS  uint64 `json:"disk_read_kbps"`  // the Container's average disk read bandwidth over the reporting period.
+	DiskWriteKBPS uint64 `json:"disk_write_kbps"` // the Container's average disk write bandwidth over the reporting period.
+	DiskReadIOPS  uint64 `json:"disk_read_iops"`  // the Container's average disk read IOPS over the reporting period.
+	DiskWriteIOPS uint64 `json:"disk_write_iops"` // the Container's average disk write IOPS over the reporting period.
+	DiskUsageMB   uint64 `json:"disk_usage_mb"`   // the Database's Disk usage (Database metrics only).
+	DiskLimitMB   uint64 `json:"disk_limit_mb"`   // the Database's Disk size (Database metrics only).
+	PidsCurrent   uint64 `json:"pids_current"`    // the current number of tasks in the Container (see Other Limits).
+	PidsLimit     uint64 `json:"pids_limit"`      // the maximum number of tasks for the Container (see Other Limits).
 	Environment   string `json:"environment"`     // Environment handle
 	App           string `json:"app"`             // App handle (App metrics only)
 	Database      string `json:"database"`        // Database handle (Database metrics only)
@@ -35,7 +37,62 @@ type AptibleMetric struct {
 	Container     string `json:"container"`       // full Container ID
 }
 
-func HandleMetricMessage(ctx context.Context, sample *AptibleMetric, globalCollectionOpts state.CollectionOpts, logger *util.Logger, servers []*state.Server) {
+func parseUint(str string) uint64 {
+	number, _ := strconv.ParseUint(str[:len(str)-1], 10, 64)
+	return number
+}
+
+func HandleMetricMessage(ctx context.Context, message string, globalCollectionOpts state.CollectionOpts, logger *util.Logger, servers []*state.Server) {
+	keyValuePairsString := strings.TrimPrefix(strings.ReplaceAll(message, " ", ","), "metrics,")
+	parts := strings.Split(keyValuePairsString, ",")
+	sample := AptibleMetric{}
+	for _, part := range parts {
+		logger.PrintVerbose(part)
+		pair := strings.Split(part, "=")
+		if len(pair) == 2 {
+			key := pair[0]
+			value := pair[1]
+			switch key {
+			case "app":
+				sample.App = value
+			case "container":
+				sample.Container = value
+			case "environment":
+				sample.Environment = value
+			case "host_name":
+				sample.HostName = value
+			case "service":
+				sample.Service = value
+			case "disk_read_iops":
+				sample.DiskReadIOPS = parseUint(value)
+			case "disk_read_kbps":
+				sample.DiskReadKBPS = parseUint(value)
+			case "disk_write_iops":
+				sample.DiskWriteIOPS = parseUint(value)
+			case "disk_write_kbps":
+				sample.DiskWriteKBPS = parseUint(value)
+			case "memory_limit_mb":
+				sample.MemoryLimitMB = parseUint(value)
+			case "memory_rss_mb":
+				sample.MemoryRssMB = parseUint(value)
+			case "memory_total_mb":
+				sample.MemoryTotalMB = parseUint(value)
+			case "milli_cpu_limit":
+				sample.MilliCpuLimit = parseUint(value)
+			case "milli_cpu_usage":
+				sample.MilliCpuUsage = parseUint(value)
+			case "pids_current":
+				sample.PidsCurrent = parseUint(value)
+			case "pids_limit":
+				sample.PidsLimit = parseUint(value)
+			case "running":
+				sample.Running = value == "true"
+			}
+		} else {
+			logger.PrintError("Metric parse error: %s\n", part)
+		}
+	}
+
 	if sample.Database != "healthie-staging-14" {
 		return
 	}
