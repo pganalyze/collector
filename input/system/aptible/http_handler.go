@@ -43,10 +43,10 @@ func SetupHttpHandler(ctx context.Context, wg *sync.WaitGroup, globalCollectionO
 			err := decoder.Decode(&logMessage)
 			if err != nil {
 				logger.PrintError("WARNING: Log message not parsed: %s\n", err)
-				return
+			} else {
+				HandleLogMessage(&logMessage, logger, servers, parsedLogStream)
 			}
 
-			HandleLogMessage(&logMessage, logger, servers, parsedLogStream)
 		}
 	})
 
@@ -63,10 +63,9 @@ func SetupHttpHandler(ctx context.Context, wg *sync.WaitGroup, globalCollectionO
 			err := decoder.Decode(&sample)
 			if err != nil {
 				logger.PrintWarning("WARNING: Metric message not parsed: %s\n", err)
-				return
+			} else {
+				HandleMetricMessage(ctx, &sample, globalCollectionOpts, logger, servers)
 			}
-
-			HandleMetricMessage(ctx, &sample, globalCollectionOpts, logger, servers)
 		}
 	})
 
