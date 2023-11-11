@@ -47,7 +47,6 @@ func HandleMetricMessage(ctx context.Context, message string, globalCollectionOp
 	parts := strings.Split(keyValuePairsString, ",")
 	sample := AptibleMetric{}
 	for _, part := range parts {
-		logger.PrintVerbose(part)
 		pair := strings.Split(part, "=")
 		if len(pair) == 2 {
 			key := pair[0]
@@ -91,7 +90,7 @@ func HandleMetricMessage(ctx context.Context, message string, globalCollectionOp
 				sample.Running = value == "true"
 			}
 		} else {
-			logger.PrintError("Metric parse error: %s\n", part)
+			// logger.PrintError("Metric parse error: %s\n", part)
 		}
 	}
 
@@ -104,6 +103,7 @@ func HandleMetricMessage(ctx context.Context, message string, globalCollectionOp
 			server.CollectionStatusMutex.Lock()
 			if server.CollectionStatus.CollectionDisabled {
 				server.CollectionStatusMutex.Unlock()
+				logger.PrintWarning("Metric collection disabled")
 				return
 			}
 			server.CollectionStatusMutex.Unlock()
