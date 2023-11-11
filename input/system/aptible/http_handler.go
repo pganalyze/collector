@@ -11,7 +11,7 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
-func httpOK(w http.ResponseWriter, r *http.Request) {
+func httpOK(w http.ResponseWriter) {
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	resp := make(map[string]string)
@@ -21,12 +21,19 @@ func httpOK(w http.ResponseWriter, r *http.Request) {
 }
 
 func SetupHttpHandler(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *util.Logger, servers []*state.Server, parsedLogStream chan state.ParsedLogStreamItem) {
+	logger.PrintVerbose(("Setting up aptible http handler"))
+
 	wg.Add(1)
+	server := http.NewServeMux()
 
-	http.HandleFunc("/", httpOK)
+	server.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		logger.PrintVerbose("Aptible http root handler: %s", r.URL.Path)
+		httpOK(w)
+	})
 
-	http.HandleFunc("/logs", func(w http.ResponseWriter, r *http.Request) {
-		httpOK(w, r)
+	server.HandleFunc("/logs", func(w http.ResponseWriter, r *http.Request) {
+		logger.PrintVerbose("Aptible http log handler: %s", r.URL.Path)
+		httpOK(w)
 
 		switch r.Method {
 		case http.MethodPost:
@@ -44,8 +51,9 @@ func SetupHttpHandler(ctx context.Context, wg *sync.WaitGroup, globalCollectionO
 	})
 
 	// Mimic influxdb v2
-	http.HandleFunc("/api/v2/write", func(w http.ResponseWriter, r *http.Request) {
-		httpOK(w, r)
+	server.HandleFunc("/api/v2/write", func(w http.ResponseWriter, r *http.Request) {
+		logger.PrintVerbose("Aptible http metric handler: %s", r.URL.Path)
+		httpOK(w)
 
 		switch r.Method {
 		case http.MethodPost:
@@ -64,6 +72,6 @@ func SetupHttpHandler(ctx context.Context, wg *sync.WaitGroup, globalCollectionO
 
 	go func() {
 		defer wg.Done()
-		http.ListenAndServe(":"+os.Getenv("PORT"), nil)
+		http.ListenAndServe(":"+os.Getenv("PORT"), server)
 	}()
 }
