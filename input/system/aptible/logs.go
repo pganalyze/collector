@@ -13,7 +13,7 @@ type AptibleLog struct {
 	Time     string `json:"time"`
 	Source   string `json:"source"`
 	Database string `json:"database"`
-	Offset   int    `json:"offset"`
+	Offset   uint64 `json:"offset"`
 	Log      string `json:"log"`
 }
 
