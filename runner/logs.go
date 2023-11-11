@@ -61,10 +61,7 @@ func SetupLogCollection(ctx context.Context, wg *sync.WaitGroup, servers []*stat
 		}
 	}
 	if hasAnyAptible {
-		aptible.SetupHttpHandlerLogs(ctx, wg, globalCollectionOpts, logger, servers, parsedLogStream)
-		for _, server := range servers {
-			EmitTestLogMsg(ctx, server, globalCollectionOpts, logger)
-		}
+		aptible.SetupHttpHandler(ctx, wg, globalCollectionOpts, logger, servers, parsedLogStream)
 	}
 	if hasAnyGoogleCloudSQL {
 		google_cloudsql.SetupLogSubscriber(ctx, wg, globalCollectionOpts, logger, servers, parsedLogStream)
