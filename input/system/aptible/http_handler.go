@@ -33,7 +33,6 @@ func SetupHttpHandler(ctx context.Context, wg *sync.WaitGroup, globalCollectionO
 	})
 
 	server.HandleFunc("/logs", func(w http.ResponseWriter, r *http.Request) {
-		logger.PrintVerbose("Aptible http log handler: %s", r.URL.Path)
 		httpOK(w)
 
 		switch r.Method {
@@ -53,7 +52,6 @@ func SetupHttpHandler(ctx context.Context, wg *sync.WaitGroup, globalCollectionO
 
 	// Mimic influxdb v2
 	server.HandleFunc("/api/v2/write", func(w http.ResponseWriter, r *http.Request) {
-		logger.PrintVerbose("Aptible http metric handler: %s", r.URL.Path)
 		httpOK(w)
 
 		switch r.Method {
