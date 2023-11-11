@@ -97,6 +97,8 @@ func HandleMetricMessage(ctx context.Context, sample *AptibleMetric, globalColle
 			if err != nil {
 				prefixedLogger.PrintError("Failed to upload/send compact metric snapshot: %s", err)
 				return
+			} else {
+				prefixedLogger.PrintVerbose("Submitting metric message")
 			}
 		}
 	}
