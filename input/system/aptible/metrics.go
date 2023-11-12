@@ -130,10 +130,16 @@ func HandleMetricMessage(ctx context.Context, line string, globalCollectionOpts 
 			system.Info.Type = state.SelfHostedSystem
 			system.Info.SystemID = server.Config.SystemID
 			system.Info.SystemScope = server.Config.SystemScope
-			system.Scheduler = state.Scheduler{
-				Loadavg1min:  float64(sample.MilliCpuUsage) / float64(sample.MilliCpuLimit),
-				Loadavg5min:  float64(sample.MilliCpuUsage) / float64(sample.MilliCpuLimit),
-				Loadavg15min: float64(sample.MilliCpuUsage) / float64(sample.MilliCpuLimit),
+			system.Info.SelfHosted = &state.SystemInfoSelfHosted{
+				Hostname: server.Config.DbHost,
+				Platform: "aptible",
+			}
+			system.CPUStats = make(state.CPUStatisticMap)
+			system.CPUStats["default"] = state.CPUStatistic{
+				DiffedOnInput: true,
+				DiffedValues: &state.DiffedSystemCPUStats{
+					UserPercent: float64(sample.MilliCpuUsage) / float64(sample.MilliCpuLimit),
+				},
 			}
 
 			system.Memory = state.Memory{
