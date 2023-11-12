@@ -41,7 +41,7 @@ func HandleLogMessage(logMessage *AptibleLog, logger *util.Logger, servers []*st
 				if err != nil {
 					prefixedLogger.Destination.Fatalf("Error happened time parsing. Err: %s\n", err)
 				}
-				logTrimLength := 25
+				logTrimLength := 50
 				logLength := len(logMessage.Log)
 				if logLength < logTrimLength {
 					logTrimLength = logLength
