@@ -43,14 +43,19 @@ func parseUint(str string) uint64 {
 }
 
 func parseLine(message string, logger *util.Logger) AptibleMetric {
-	keyValuePairsString := strings.TrimPrefix(strings.ReplaceAll(message, " ", ","), "metrics,")
-	parts := strings.Split(keyValuePairsString, ",")
 	sample := AptibleMetric{}
-	for _, part := range parts {
+	parts := strings.Split(message, " ")
+	if len(parts) != 3 {
+		logger.PrintError("Unknown metric message format: %s\n", message)
+	}
+	tags := strings.Split(strings.TrimPrefix(parts[0], "metrics,"), ",")
+	datapoints := strings.Split(parts[1], ",")
+	for _, part := range append(tags, datapoints...) {
 		pair := strings.Split(part, "=")
 		if len(pair) == 2 {
 			key := pair[0]
 			value := pair[1]
+
 			switch key {
 			case "app":
 				sample.App = value
@@ -126,9 +131,9 @@ func HandleMetricMessage(ctx context.Context, line string, globalCollectionOpts 
 			system.Info.SystemID = server.Config.SystemID
 			system.Info.SystemScope = server.Config.SystemScope
 			system.Scheduler = state.Scheduler{
-				Loadavg1min:  float64(sample.MilliCpuUsage / sample.MilliCpuLimit),
-				Loadavg5min:  float64(sample.MilliCpuUsage / sample.MilliCpuLimit),
-				Loadavg15min: float64(sample.MilliCpuUsage / sample.MilliCpuLimit),
+				Loadavg1min:  float64(sample.MilliCpuUsage) / float64(sample.MilliCpuLimit),
+				Loadavg5min:  float64(sample.MilliCpuUsage) / float64(sample.MilliCpuLimit),
+				Loadavg15min: float64(sample.MilliCpuUsage) / float64(sample.MilliCpuLimit),
 			}
 
 			system.Memory = state.Memory{
