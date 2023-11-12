@@ -142,7 +142,7 @@ func HandleMetricMessage(ctx context.Context, line string, globalCollectionOpts 
 			system.CPUStats["default"] = state.CPUStatistic{
 				DiffedOnInput: true,
 				DiffedValues: &state.DiffedSystemCPUStats{
-					UserPercent: float64(sample.MilliCpuUsage) / float64(sample.MilliCpuLimit),
+					UserPercent: float64(sample.MilliCpuUsage*100) / float64(sample.MilliCpuLimit),
 				},
 			}
 
