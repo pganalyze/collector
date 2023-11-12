@@ -46,7 +46,9 @@ func HandleMetricMessage(ctx context.Context, message string, globalCollectionOp
 	keyValuePairsString := strings.TrimPrefix(strings.ReplaceAll(message, " ", ","), "metrics,")
 	parts := strings.Split(keyValuePairsString, ",")
 	sample := AptibleMetric{}
+	logger.PrintVerbose("--------\n")
 	logger.PrintVerbose(keyValuePairsString)
+	logger.PrintVerbose("--------\n")
 	for _, part := range parts {
 		pair := strings.Split(part, "=")
 		if len(pair) == 2 {
