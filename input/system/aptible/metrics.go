@@ -42,7 +42,7 @@ func parseUint(str string) uint64 {
 	return number
 }
 
-func HandleMetricMessage(ctx context.Context, message string, globalCollectionOpts state.CollectionOpts, logger *util.Logger, servers []*state.Server) {
+func parseLine(message string, logger *util.Logger) *AptibleMetric {
 	keyValuePairsString := strings.TrimPrefix(strings.ReplaceAll(message, " ", ","), "metrics,")
 	parts := strings.Split(keyValuePairsString, ",")
 	sample := AptibleMetric{}
@@ -96,75 +96,83 @@ func HandleMetricMessage(ctx context.Context, message string, globalCollectionOp
 			// logger.PrintError("Metric parse error: %s\n", part)
 		}
 	}
+	return &sample
+}
 
-	if sample.Database != "healthie-staging-14" {
-		logger.PrintVerbose("No database match: %s", sample.Database)
-		return
-	}
+func HandleMetricMessage(ctx context.Context, message string, globalCollectionOpts state.CollectionOpts, logger *util.Logger, servers []*state.Server) {
+	lines := strings.Split(message, "\n")
+	for _, line := range lines {
+		sample := parseLine(line, logger)
 
-	logger.PrintVerbose("Database Match: %s", sample.Database)
+		if sample.Database != "healthie-staging-14" {
+			logger.PrintVerbose("No database match: %s", sample.Database)
+			return
+		}
 
-	for _, server := range servers {
-		logger.PrintVerbose("SectionName: %s", server.Config.SectionName)
-		if server.Config.SectionName == "healthie-staging-14" {
-			server.CollectionStatusMutex.Lock()
-			if server.CollectionStatus.CollectionDisabled {
+		logger.PrintVerbose("Database Match: %s", sample.Database)
+
+		for _, server := range servers {
+			logger.PrintVerbose("SectionName: %s", server.Config.SectionName)
+			if server.Config.SectionName == "healthie-staging-14" {
+				server.CollectionStatusMutex.Lock()
+				if server.CollectionStatus.CollectionDisabled {
+					server.CollectionStatusMutex.Unlock()
+					logger.PrintWarning("Metric collection disabled")
+					return
+				}
 				server.CollectionStatusMutex.Unlock()
-				logger.PrintWarning("Metric collection disabled")
-				return
-			}
-			server.CollectionStatusMutex.Unlock()
 
-			prefixedLogger := logger.WithPrefix(server.Config.SectionName)
+				prefixedLogger := logger.WithPrefix(server.Config.SectionName)
 
-			grant, err := grant.GetDefaultGrant(server, globalCollectionOpts, prefixedLogger)
-			if err != nil {
-				prefixedLogger.PrintError("Could not get default grant for system snapshot: %s", err)
-				return
-			}
+				grant, err := grant.GetDefaultGrant(server, globalCollectionOpts, prefixedLogger)
+				if err != nil {
+					prefixedLogger.PrintError("Could not get default grant for system snapshot: %s", err)
+					return
+				}
 
-			system := state.SystemState{}
-			system.Info.Type = state.SelfHostedSystem
-			system.Info.SystemID = server.Config.SystemID
-			system.Info.SystemScope = server.Config.SystemScope
-			system.Scheduler = state.Scheduler{
-				Loadavg1min:  float64(sample.MilliCpuUsage / sample.MilliCpuLimit),
-				Loadavg5min:  float64(sample.MilliCpuUsage / sample.MilliCpuLimit),
-				Loadavg15min: float64(sample.MilliCpuUsage / sample.MilliCpuLimit),
-			}
+				system := state.SystemState{}
+				system.Info.Type = state.SelfHostedSystem
+				system.Info.SystemID = server.Config.SystemID
+				system.Info.SystemScope = server.Config.SystemScope
+				system.Scheduler = state.Scheduler{
+					Loadavg1min:  float64(sample.MilliCpuUsage / sample.MilliCpuLimit),
+					Loadavg5min:  float64(sample.MilliCpuUsage / sample.MilliCpuLimit),
+					Loadavg15min: float64(sample.MilliCpuUsage / sample.MilliCpuLimit),
+				}
 
-			system.Memory = state.Memory{
-				ApplicationBytes: uint64(sample.MemoryRssMB * MB_TO_BYTE),
-				TotalBytes:       uint64(sample.MemoryTotalMB * MB_TO_BYTE),
-				FreeBytes:        uint64((sample.MemoryLimitMB - sample.MemoryRssMB) * MB_TO_BYTE),
-				CachedBytes:      uint64((sample.MemoryTotalMB - sample.MemoryRssMB) * MB_TO_BYTE),
-			}
+				system.Memory = state.Memory{
+					ApplicationBytes: uint64(sample.MemoryRssMB * MB_TO_BYTE),
+					TotalBytes:       uint64(sample.MemoryTotalMB * MB_TO_BYTE),
+					FreeBytes:        uint64((sample.MemoryLimitMB - sample.MemoryRssMB) * MB_TO_BYTE),
+					CachedBytes:      uint64((sample.MemoryTotalMB - sample.MemoryRssMB) * MB_TO_BYTE),
+				}
 
-			system.Disks = make(state.DiskMap)
-			system.Disks["default"] = state.Disk{}
+				system.Disks = make(state.DiskMap)
+				system.Disks["default"] = state.Disk{}
 
-			system.DiskPartitions = make(state.DiskPartitionMap)
-			system.DiskPartitions["/"] = state.DiskPartition{
-				DiskName:   "default",
-				UsedBytes:  uint64(sample.DiskUsageMB * MB_TO_BYTE),
-				TotalBytes: uint64(sample.DiskLimitMB * MB_TO_BYTE),
-			}
+				system.DiskPartitions = make(state.DiskPartitionMap)
+				system.DiskPartitions["/"] = state.DiskPartition{
+					DiskName:   "default",
+					UsedBytes:  uint64(sample.DiskUsageMB * MB_TO_BYTE),
+					TotalBytes: uint64(sample.DiskLimitMB * MB_TO_BYTE),
+				}
 
-			system.DiskStats = make(state.DiskStatsMap)
-			system.DiskStats["default"] = state.DiskStats{
-				DiffedOnInput: true,
-				DiffedValues: &state.DiffedDiskStats{
-					ReadOperationsPerSecond:  float64(sample.DiskReadIOPS),
-					WriteOperationsPerSecond: float64(sample.DiskWriteIOPS),
-				},
-			}
+				system.DiskStats = make(state.DiskStatsMap)
+				system.DiskStats["default"] = state.DiskStats{
+					DiffedOnInput: true,
+					DiffedValues: &state.DiffedDiskStats{
+						ReadOperationsPerSecond:  float64(sample.DiskReadIOPS),
+						WriteOperationsPerSecond: float64(sample.DiskWriteIOPS),
+					},
+				}
 
-			err = output.SubmitCompactSystemSnapshot(ctx, server, grant, globalCollectionOpts, prefixedLogger, system, time.Now())
-			if err != nil {
-				prefixedLogger.PrintError("Failed to upload/send compact metric snapshot: %s", err)
-				return
-			} else {
-				prefixedLogger.PrintVerbose("Submitting metric message")
+				err = output.SubmitCompactSystemSnapshot(ctx, server, grant, globalCollectionOpts, prefixedLogger, system, time.Now())
+				if err != nil {
+					prefixedLogger.PrintError("Failed to upload/send compact metric snapshot: %s", err)
+					return
+				} else {
+					prefixedLogger.PrintVerbose("Submitting metric message")
+				}
 			}
 		}
 	}
