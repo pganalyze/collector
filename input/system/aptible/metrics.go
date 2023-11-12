@@ -97,21 +97,13 @@ func parseLine(message string, logger *util.Logger) AptibleMetric {
 }
 
 func HandleMetricMessage(ctx context.Context, line string, globalCollectionOpts state.CollectionOpts, logger *util.Logger, servers []*state.Server) {
-	logger.PrintVerbose("--------\n")
-	logger.PrintVerbose(line)
-	logger.PrintVerbose("--------\n")
-
 	sample := parseLine(line, logger)
 
 	if sample.Database != "healthie-staging-14" {
-		logger.PrintVerbose("No database match: %s", sample.Database)
 		return
 	}
 
-	logger.PrintVerbose("Database Match: %s", sample.Database)
-
 	for _, server := range servers {
-		logger.PrintVerbose("SectionName: %s", server.Config.SectionName)
 		if server.Config.SectionName == "healthie-staging-14" {
 			server.CollectionStatusMutex.Lock()
 			if server.CollectionStatus.CollectionDisabled {
@@ -170,7 +162,7 @@ func HandleMetricMessage(ctx context.Context, line string, globalCollectionOpts 
 				prefixedLogger.PrintError("Failed to upload/send compact metric snapshot: %s", err)
 				return
 			} else {
-				prefixedLogger.PrintVerbose("Submitting metric message")
+				prefixedLogger.PrintVerbose("Submitting metric message: %v\n", system)
 			}
 		}
 	}
