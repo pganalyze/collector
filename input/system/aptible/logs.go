@@ -41,7 +41,13 @@ func HandleLogMessage(logMessage *AptibleLog, logger *util.Logger, servers []*st
 				if err != nil {
 					prefixedLogger.Destination.Fatalf("Error happened time parsing. Err: %s\n", err)
 				}
-				prefixedLogger.PrintVerbose("Submitting log message")
+				logTrimLength := 25
+				logLength := len(logMessage.Log)
+				if logLength < logTrimLength {
+					logTrimLength = logLength
+				}
+
+				prefixedLogger.PrintVerbose("Submitting log message: %s\n", logMessage.Log[0:logTrimLength])
 				logLine.OccurredAt = occurredAt
 				parsedLogStream <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: logLine}
 			}
