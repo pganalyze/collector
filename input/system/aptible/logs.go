@@ -27,7 +27,6 @@ func findServerByIdentifier(servers []*state.Server, identifier config.ServerIde
 }
 
 func HandleLogMessage(logMessage *AptibleLog, logger *util.Logger, servers []*state.Server, parsedLogStream chan state.ParsedLogStreamItem) {
-
 	if logMessage.Source != "database" || logMessage.Database != "healthie-staging-14" {
 		return
 	}

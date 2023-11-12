@@ -1,9 +1,9 @@
 package aptible
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
-	"io"
 	"net/http"
 	"os"
 	"sync"
@@ -56,8 +56,17 @@ func SetupHttpHandler(ctx context.Context, wg *sync.WaitGroup, globalCollectionO
 
 		switch r.Method {
 		case http.MethodPost:
-			rawMessage, _ := io.ReadAll(r.Body)
-			HandleMetricMessage(ctx, string(rawMessage), globalCollectionOpts, logger, servers)
+			scanner := bufio.NewScanner(r.Body)
+			defer r.Body.Close()
+
+			for scanner.Scan() {
+				line := scanner.Text()
+				HandleMetricMessage(ctx, line, globalCollectionOpts, logger, servers)
+			}
+
+			if err := scanner.Err(); err != nil {
+				logger.PrintError("Error reading request body: %v", err)
+			}
 		}
 	})
 
