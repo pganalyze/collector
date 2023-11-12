@@ -77,6 +77,10 @@ func parseLine(message string, logger *util.Logger) AptibleMetric {
 				sample.DiskWriteIOPS = parseUint(value)
 			case "disk_write_kbps":
 				sample.DiskWriteKBPS = parseUint(value)
+			case "disk_usage_mb":
+				sample.DiskUsageMB = parseUint(value)
+			case "disk_limit_mb":
+				sample.DiskLimitMB = parseUint(value)
 			case "memory_limit_mb":
 				sample.MemoryLimitMB = parseUint(value)
 			case "memory_rss_mb":
@@ -165,6 +169,8 @@ func HandleMetricMessage(ctx context.Context, line string, globalCollectionOpts 
 				DiffedValues: &state.DiffedDiskStats{
 					ReadOperationsPerSecond:  float64(sample.DiskReadIOPS),
 					WriteOperationsPerSecond: float64(sample.DiskWriteIOPS),
+					BytesReadPerSecond:       float64(sample.DiskReadKBPS * 1024),
+					BytesWrittenPerSecond:    float64(sample.DiskWriteKBPS * 1024),
 				},
 			}
 
