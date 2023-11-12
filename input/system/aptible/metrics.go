@@ -95,10 +95,14 @@ func HandleMetricMessage(ctx context.Context, message string, globalCollectionOp
 	}
 
 	if sample.Database != "healthie-staging-14" {
+		logger.PrintVerbose("No database match: %s", sample.Database)
 		return
 	}
 
+	logger.PrintVerbose("Database Match: %s", sample.Database)
+
 	for _, server := range servers {
+		logger.PrintVerbose("SectionName: %s", server.Config.SectionName)
 		if server.Config.SectionName == "healthie-staging-14" {
 			server.CollectionStatusMutex.Lock()
 			if server.CollectionStatus.CollectionDisabled {
