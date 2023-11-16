@@ -24,7 +24,7 @@ if [ "$1" = 'collector' ]; then
 fi
 
 if [ "$1" = 'collector-verbose' ]; then
-  eval $CMD_PREFIX /home/pganalyze/collector --verbose --statefile=/state/pganalyze-collector.state --no-log-timestamps
+  eval $CMD_PREFIX /home/pganalyze/collector --statefile=/state/pganalyze-collector.state --no-log-timestamps --verbose
 fi
 
 eval $CMD_PREFIX "$@"
