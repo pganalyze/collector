@@ -17,10 +17,7 @@ type startAndEndTimeTestPair struct {
 }
 
 func TestStartAndEndTime(t *testing.T) {
-	currentTime, err := time.Parse("2006-01-02", "2023-01-01")
-	if err != nil {
-		t.Fatalf("Failed to initialize object: %v", err)
-	}
+	currentTime := time.Date(2023, time.January, 1, 1, 2, 3, 456*1000*1000, time.UTC)
 	traceState := trace.TraceState{}
 	otelTraceState, err := traceState.Insert("ot", "p:8;r:62")
 	if err != nil {
