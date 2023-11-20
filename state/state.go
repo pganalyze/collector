@@ -11,10 +11,11 @@ import (
 )
 
 type SchemaStats struct {
-	RelationStats PostgresRelationStatsMap
-	ColumnStats   PostgresColumnStatsMap
-	IndexStats    PostgresIndexStatsMap
-	FunctionStats PostgresFunctionStatsMap
+	RelationStats       PostgresRelationStatsMap
+	ColumnStats         PostgresColumnStatsMap
+	ColumnStatsExtended PostgresColumnStatsExtendedMap
+	IndexStats          PostgresIndexStatsMap
+	FunctionStats       PostgresFunctionStatsMap
 }
 
 // PersistedState - State thats kept across collector runs to be used for diffs

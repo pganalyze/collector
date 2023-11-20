@@ -119,6 +119,27 @@ func transformPostgresRelations(s snapshot.FullSnapshot, newState state.Persiste
 			}
 			info.Columns = append(info.Columns, &sColumn)
 		}
+
+		if schemaStatsExist {
+			schemaStatsExtended, ok := schemaStats.ColumnStatsExtended[relation.Oid]
+			if ok {
+				for _, s := range schemaStatsExtended {
+					sExtendedStats := snapshot.RelationInformation_ExtendedStatistic{
+						StatisticsSchema: s.StatisticsSchema,
+						StatisticsName:   s.StatisticsName,
+						Columns:          s.Columns,
+						Expressions:      s.Expressions,
+						Kind:             s.Kind,
+						HasData:          s.Inherited.Valid, // Inherited is only set when we successfully joined against data
+						Inherited:        s.Inherited.Bool,
+						NDistinct:        &snapshot.NullString{Valid: s.NDistinct.Valid, Value: s.NDistinct.String},
+						Dependencies:     &snapshot.NullString{Valid: s.Dependencies.Valid, Value: s.Dependencies.String},
+					}
+					info.ExtendedStats = append(info.ExtendedStats, &sExtendedStats)
+				}
+			}
+		}
+
 		for _, constraint := range relation.Constraints {
 			sConstraint := snapshot.RelationInformation_Constraint{
 				Name:              constraint.Name,

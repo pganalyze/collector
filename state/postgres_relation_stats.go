@@ -64,6 +64,17 @@ type PostgresColumnStats struct {
 	Correlation null.Float
 }
 
+type PostgresColumnStatsExtended struct {
+	StatisticsSchema string
+	StatisticsName   string
+	Columns          []int32
+	Expressions      []string
+	Kind             []string
+	Inherited        null.Bool
+	NDistinct        null.String
+	Dependencies     null.String
+}
+
 // PostgresColumnStatsKey - Information that uniquely identifies column stats
 type PostgresColumnStatsKey struct {
 	SchemaName string
@@ -74,6 +85,7 @@ type PostgresColumnStatsKey struct {
 type PostgresRelationStatsMap map[Oid]PostgresRelationStats
 type PostgresIndexStatsMap map[Oid]PostgresIndexStats
 type PostgresColumnStatsMap map[PostgresColumnStatsKey][]PostgresColumnStats
+type PostgresColumnStatsExtendedMap map[Oid][]PostgresColumnStatsExtended
 
 type DiffedPostgresRelationStats PostgresRelationStats
 type DiffedPostgresIndexStats PostgresIndexStats
