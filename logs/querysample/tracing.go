@@ -5,7 +5,6 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 
@@ -44,10 +43,8 @@ func startAndEndTime(traceState trace.TraceState, sample state.PostgresQuerySamp
 			if strings.Contains(part, ":") {
 				keyAndValue := strings.SplitN(part, ":", 2)
 				if strings.TrimSpace(keyAndValue[0]) == "t" {
-					if startInSec, err := strconv.ParseFloat(keyAndValue[1], 64); err == nil {
-						startSec := int64(startInSec)
-						startNanoSec := int64(startInSec*1e9) - (startSec * 1e9)
-						startTime = time.Unix(startSec, startNanoSec).UTC()
+					if start, err := util.TimeFromStr(keyAndValue[1]); err == nil {
+						startTime = start
 						// With this, we're adding the query duration to the start time.
 						// This could result creating inaccurate spans, as the start time passed
 						// from the client side using tracestate is the time of the query is sent
@@ -61,7 +58,7 @@ func startAndEndTime(traceState trace.TraceState, sample state.PostgresQuerySamp
 			}
 		}
 	}
-	// Calculate start and end time based on sample data
+	// If no start time was found in the tracestate, calculate start and end time based on sample data
 	duration := time.Duration(sample.RuntimeMs) * time.Millisecond
 	startTime = sample.OccurredAt.Add(-1 * duration)
 	endTime = sample.OccurredAt

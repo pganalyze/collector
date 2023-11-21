@@ -23,12 +23,11 @@ func TestStartAndEndTime(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to initialize object: %v", err)
 	}
-	pganalyzeTraceStateWithoutT, err := traceState.Insert("pganalyze", "x:foo;y:bar")
+	pganalyzeTraceStateWithoutT, err := otelTraceState.Insert("pganalyze", "x:foo;y:bar")
 	if err != nil {
 		t.Fatalf("Failed to initialize object: %v", err)
 	}
-	// inserting the same key will update the value
-	pganalyzeTraceState, err := traceState.Insert("pganalyze", "t:1697666938.6297212")
+	pganalyzeTraceState, err := otelTraceState.Insert("pganalyze", "t:1697666938.6297212")
 	if err != nil {
 		t.Fatalf("Failed to initialize object: %v", err)
 	}
@@ -37,8 +36,6 @@ func TestStartAndEndTime(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to initialize object: %v", err)
 	}
-	// due to the limitation of the floating point, the result won't exactly like above, so tweaking to pass the test
-	pganalyzeTime = pganalyzeTime.Add(-1 * 112)
 
 	var startAndEndTimeTests = []startAndEndTimeTestPair{
 		{
