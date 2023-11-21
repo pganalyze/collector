@@ -141,6 +141,12 @@ func GetStatements(ctx context.Context, server *state.Server, logger *util.Logge
 
 	if globalCollectionOpts.TestRun && foundExtMinorVersion < extMinorVersion {
 		logger.PrintInfo("pg_stat_statements extension outdated (1.%d installed, 1.%d available). To update run `ALTER EXTENSION pg_stat_statements UPDATE`", foundExtMinorVersion, extMinorVersion)
+		if extMinorVersion >= 9 {
+			// Using the older version pgss with Postgres 14+ can cause the incorrect query stats
+			// when track = all is used + there are toplevel queries and nested queries
+			// https://github.com/pganalyze/collector/pull/472#discussion_r1399976152
+			logger.PrintError("Outdated pg_stat_statements may cause incorrect query statistics")
+		}
 	}
 
 	usingStatsHelper := false
