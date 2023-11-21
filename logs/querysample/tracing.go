@@ -50,7 +50,7 @@ func startAndEndTime(traceState trace.TraceState, sample state.PostgresQuerySamp
 						// from the client side using tracestate is the time of the query is sent
 						// from the client to the server.
 						// This means, we will ignore the network time between the client and the
-						// server, as well as the machine clock different between them.
+						// server, as well as the machine clock difference between them.
 						endTime = startTime.Add(time.Duration(sample.RuntimeMs) * time.Millisecond)
 						return
 					}
