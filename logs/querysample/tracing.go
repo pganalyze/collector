@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/pganalyze/collector/state"
@@ -32,6 +33,39 @@ func urlToSample(server *state.Server, grant state.GrantLogs, sample state.Postg
 	)
 }
 
+func startAndEndTime(traceState trace.TraceState, sample state.PostgresQuerySample) (startTime time.Time, endTime time.Time) {
+	if pganalyzeState := traceState.Get("pganalyze"); pganalyzeState != "" {
+		// A pganalyze traceState allows the client to pass the query start time (sent time)
+		// on the client side, in nano second precision, like pganalyze=t:1697666938.6297212
+		// If there are multiple values in a pganalzye traceState, they are separated by semicolon
+		// like pganalyze=t:1697666938.6297212;x=123
+		for _, part := range strings.Split(strings.TrimSpace(pganalyzeState), ";") {
+			if strings.Contains(part, ":") {
+				keyAndValue := strings.SplitN(part, ":", 2)
+				if strings.TrimSpace(keyAndValue[0]) == "t" {
+					if start, err := util.TimeFromStr(keyAndValue[1]); err == nil {
+						startTime = start
+						// With this, we're adding the query duration to the start time.
+						// This could result creating inaccurate spans, as the start time passed
+						// from the client side using tracestate is the time of the query is sent
+						// from the client to the server.
+						// This means, we will ignore the network time between the client and the
+						// server, as well as the machine clock difference between them.
+						endTime = startTime.Add(time.Duration(sample.RuntimeMs) * time.Millisecond)
+						return
+					}
+				}
+			}
+		}
+	}
+	// If no start time was found in the tracestate, calculate start and end time based on sample data
+	duration := time.Duration(sample.RuntimeMs) * time.Millisecond
+	startTime = sample.OccurredAt.Add(-1 * duration)
+	endTime = sample.OccurredAt
+
+	return
+}
+
 func ExportQuerySamplesAsTraceSpans(ctx context.Context, server *state.Server, logger *util.Logger, grant state.GrantLogs, samples []state.PostgresQuerySample) {
 	exportCount := 0
 	for _, sample := range samples {
@@ -49,9 +83,7 @@ func ExportQuerySamplesAsTraceSpans(ctx context.Context, server *state.Server, l
 				trace.WithInstrumentationVersion(util.CollectorVersion),
 				trace.WithSchemaURL(semconv.SchemaURL),
 			)
-			duration := -1 * time.Duration(sample.RuntimeMs) * time.Millisecond
-			startTime := sample.OccurredAt.Add(duration)
-			endTime := sample.OccurredAt
+			startTime, endTime := startAndEndTime(trace.SpanContextFromContext(ctx).TraceState(), sample)
 			_, span := tracer.Start(ctx, otelSpanName, trace.WithTimestamp(startTime))
 			// See https://opentelemetry.io/docs/specs/otel/trace/semantic_conventions/database/
 			// however note that "db.postgresql.plan" is non-standard.
