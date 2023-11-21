@@ -222,7 +222,7 @@ func (c *Client) GetLoadAverageMetrics() (*LoadAverageMetrics, error) {
 }
 
 func (c *Client) GetDiskUsageMetrics() (*DiskUsageMetrics, error) {
-	metricViews, err := c.getMetrics("load-average")
+	metricViews, err := c.getMetrics("disk-usage")
 	if err != nil {
 		return nil, err
 	}
