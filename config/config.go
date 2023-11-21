@@ -110,6 +110,7 @@ type ServerConfig struct {
 	GcpCredentialsFile    string `ini:"gcp_credentials_file"`
 
 	CrunchyBridgeClusterID string `ini:"crunchy_bridge_cluster_id"`
+	CrunchyBridgeAPIKey    string `ini:"crunchy_bridge_api_key"`
 
 	AivenProjectID string `ini:"aiven_project_id"`
 	AivenServiceID string `ini:"aiven_service_id"`

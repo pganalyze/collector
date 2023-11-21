@@ -39,9 +39,10 @@ type SystemInfo struct {
 	SystemScope string
 	SystemID    string
 
-	SelfHosted   *SystemInfoSelfHosted
-	AmazonRds    *SystemInfoAmazonRds
-	ResourceTags map[string]string
+	SelfHosted    *SystemInfoSelfHosted
+	AmazonRds     *SystemInfoAmazonRds
+	CrunchyBridge *SystemInfoCrunchyBridge
+	ResourceTags  map[string]string
 
 	BootTime time.Time
 }
@@ -91,6 +92,18 @@ type SystemInfoAmazonRds struct {
 	ParameterPgssEnabled        bool
 	ParameterAutoExplainEnabled bool
 	IsAuroraPostgres            bool
+}
+
+// SystemInfoCrunchyBridge - System information for Crunchy Bridge systems
+type SystemInfoCrunchyBridge struct {
+	ClusterName string
+	CreatedAt   time.Time
+	PlanID      string
+	ProviderID  string
+	RegionID    string
+	CPUUnits    int32
+	StorageGB   int32
+	MemoryGB    float32
 }
 
 // Scheduler - Information about the OS scheduler

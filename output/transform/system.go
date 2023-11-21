@@ -96,6 +96,9 @@ func transformSystem(systemState state.SystemState, diffState state.DiffState) *
 		system.SystemInformation.Type = snapshot.SystemInformation_AZURE_DATABASE_SYSTEM
 	} else if systemState.Info.Type == state.CrunchyBridgeSystem {
 		system.SystemInformation.Type = snapshot.SystemInformation_CRUNCHY_BRIDGE_SYSTEM
+		if systemState.Info.CrunchyBridge != nil {
+			// TODO have a special info for Crunchy Bridge (require snapshot update)
+		}
 	} else if systemState.Info.Type == state.AivenSystem {
 		system.SystemInformation.Type = snapshot.SystemInformation_AIVEN_SYSTEM
 	}

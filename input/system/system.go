@@ -5,6 +5,7 @@ import (
 
 	"github.com/pganalyze/collector/config"
 	"github.com/pganalyze/collector/input/postgres"
+	"github.com/pganalyze/collector/input/system/crunchy_bridge"
 	"github.com/pganalyze/collector/input/system/rds"
 	"github.com/pganalyze/collector/input/system/selfhosted"
 	"github.com/pganalyze/collector/state"
@@ -42,10 +43,7 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger, globalColle
 	} else if config.SystemType == "heroku" {
 		system.Info.Type = state.HerokuSystem
 	} else if config.SystemType == "crunchy_bridge" {
-		// We are assuming container apps are used, which means the collector
-		// runs on the database server itself and can gather local statistics
-		system = selfhosted.GetSystemState(config, logger)
-		system.Info.Type = state.CrunchyBridgeSystem
+		system = crunchy_bridge.GetSystemState(config, logger)
 	} else if config.SystemType == "aiven" {
 		system.Info.Type = state.AivenSystem
 	} else if dbHost == "" || dbHost == "localhost" || dbHost == "127.0.0.1" || config.AlwaysCollectSystemData {
