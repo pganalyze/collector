@@ -50,8 +50,18 @@ func CollectFull(ctx context.Context, server *state.Server, connection *sql.DB, 
 	}
 	ts.Statements, ts.StatementTexts, ps.StatementStats, err = postgres.GetStatements(ctx, server, logger, connection, globalCollectionOpts, ts.Version, true, systemType)
 	if err != nil {
-		err = fmt.Errorf("Error collecting pg_stat_statements: %s", err)
-		return
+		// Despite query performance data being an essential part of pganalyze, there are
+		// situations where it may not be available (or it timed out), so treat it as a
+		// non-fatal error, and continue snapshot collection.
+		//
+		// Importantly this also make sure that we may execute a pg_stat_statements_reset
+		// (if configured) despite pg_stat_statements data retrieval failing, allowing
+		// recovery from situations where the query text file got too large.
+		//
+		// Note that we do log it as an error, which gets added automatically to the snapshot's
+		// CollectorErrors information.
+		logger.PrintError("Error collecting pg_stat_statements: %s", err)
+		err = nil
 	}
 	err = postgres.SetDefaultStatementTimeout(ctx, connection, logger, server)
 	if err != nil {
@@ -64,15 +74,13 @@ func CollectFull(ctx context.Context, server *state.Server, connection *sql.DB, 
 		ps.StatementResetCounter = 0
 		err = postgres.ResetStatements(ctx, logger, connection, systemType)
 		if err != nil {
-			// This is a non-fatal error, so continue snapshot collection but do log it as an error
-			// (this gets automatically added to the snapshot's CollectorErrors information)
 			logger.PrintError("Error calling pg_stat_statements_reset() as requested: %s", err)
 			err = nil
 		} else {
 			_, _, ts.ResetStatementStats, err = postgres.GetStatements(ctx, server, logger, connection, globalCollectionOpts, ts.Version, false, systemType)
 			if err != nil {
-				err = fmt.Errorf("Error collecting pg_stat_statements: %s", err)
-				return
+				logger.PrintError("Error collecting pg_stat_statements: %s", err)
+				err = nil
 			}
 		}
 	}
