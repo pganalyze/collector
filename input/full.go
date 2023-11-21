@@ -3,11 +3,13 @@ package input
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/lib/pq"
 	"github.com/pganalyze/collector/input/postgres"
 	"github.com/pganalyze/collector/input/system"
 	"github.com/pganalyze/collector/state"
@@ -61,6 +63,11 @@ func CollectFull(ctx context.Context, server *state.Server, connection *sql.DB, 
 		// Note that we do log it as an error, which gets added automatically to the snapshot's
 		// CollectorErrors information.
 		logger.PrintError("Error collecting pg_stat_statements: %s", err)
+		var e *pq.Error
+		if errors.As(err, &e) && e.Code == "55000" && globalCollectionOpts.TestRun { // object_not_in_prerequisite_state
+			shared_preload_libraries, _ := postgres.GetPostgresSetting(ctx, "shared_preload_libraries", server, globalCollectionOpts, logger)
+			logger.PrintInfo("HINT - Current shared_preload_libraries setting: '%s'. Your Postgres server may need to be restarted for changes to take effect.", shared_preload_libraries)
+		}
 		err = nil
 	}
 	err = postgres.SetDefaultStatementTimeout(ctx, connection, logger, server)

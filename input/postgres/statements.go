@@ -185,15 +185,6 @@ func GetStatements(ctx context.Context, server *state.Server, logger *util.Logge
 
 	rows, err := stmt.QueryContext(ctx)
 	if err != nil {
-		var e *pq.Error
-		if errors.As(err, &e) && e.Code == "55000" { // object_not_in_prerequisite_state
-			if globalCollectionOpts.TestRun {
-				logger.PrintWarning("Could not collect query statistics: pg_stat_statements must be added to shared_preload_libraries")
-			}
-			// We intentionally don't return an error here, as we want the rest of
-			// processing to continue without requiring a reboot
-			return nil, nil, nil, nil
-		}
 		return nil, nil, nil, err
 	}
 	defer rows.Close()
