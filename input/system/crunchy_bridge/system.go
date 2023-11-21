@@ -76,6 +76,9 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger) (system sta
 	}
 
 	system.Scheduler.Loadavg1min = loadAverageMetrics.One
+	system.CPUInfo.SocketCount = 1
+	system.CPUInfo.LogicalCoreCount = clusterInfo.CPU
+	system.CPUInfo.PhysicalCoreCount = clusterInfo.CPU
 
 	diskUsageMetrics, err := client.GetDiskUsageMetrics()
 	if err != nil {
@@ -83,6 +86,7 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger) (system sta
 		return
 	}
 
+	system.DataDirectoryPartition = "/"
 	system.DiskPartitions = make(state.DiskPartitionMap)
 	system.DiskPartitions["/"] = state.DiskPartition{
 		DiskName:   "default",
