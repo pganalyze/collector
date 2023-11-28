@@ -97,7 +97,19 @@ func transformSystem(systemState state.SystemState, diffState state.DiffState) *
 	} else if systemState.Info.Type == state.CrunchyBridgeSystem {
 		system.SystemInformation.Type = snapshot.SystemInformation_CRUNCHY_BRIDGE_SYSTEM
 		if systemState.Info.CrunchyBridge != nil {
-			// TODO have a special info for Crunchy Bridge (require snapshot update)
+			createdAt := timestamppb.New(systemState.Info.CrunchyBridge.CreatedAt)
+			system.SystemInformation.Info = &snapshot.SystemInformation_CrunchyBridge{
+				CrunchyBridge: &snapshot.SystemInformationCrunchyBridge{
+					ClusterName: systemState.Info.CrunchyBridge.ClusterName,
+					CreatedAt:   createdAt,
+					PlanId:      systemState.Info.CrunchyBridge.PlanID,
+					ProviderId:  systemState.Info.CrunchyBridge.ProviderID,
+					RegionId:    systemState.Info.CrunchyBridge.RegionID,
+					CpuUnits:    systemState.Info.CrunchyBridge.CPUUnits,
+					StorageGb:   systemState.Info.CrunchyBridge.StorageGB,
+					MemoryGb:    float64(systemState.Info.CrunchyBridge.MemoryGB),
+				},
+			}
 		}
 	} else if systemState.Info.Type == state.AivenSystem {
 		system.SystemInformation.Type = snapshot.SystemInformation_AIVEN_SYSTEM
