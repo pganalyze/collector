@@ -55,8 +55,8 @@ type CPUMetrics struct {
 }
 
 type MemoryMetrics struct {
-	MemoryUsed float64
-	SwapUsed   float64
+	MemoryUsedPct float64
+	SwapUsedPct   float64
 }
 
 type IOPSMetrics struct {
@@ -70,6 +70,8 @@ type LoadAverageMetrics struct {
 
 type DiskUsageMetrics struct {
 	DatabaseSize uint64
+	LogSize      uint64
+	WalSize      uint64
 }
 
 func (c *Client) NewRequest(method string, path string) (*http.Request, error) {
@@ -170,15 +172,13 @@ func (c *Client) GetMemoryMetrics() (*MemoryMetrics, error) {
 		return nil, err
 	}
 
-	// Currently, it's returned as percentage which doesn't work well with the current structure
-	// Potentially we can calculate bytes based on the total memory bytes
 	metrics := MemoryMetrics{}
 	for _, series := range metricViews.Series {
 		switch series.Name {
 		case "memory_used":
-			metrics.MemoryUsed = average(series.Points)
+			metrics.MemoryUsedPct = average(series.Points)
 		case "swap_used":
-			metrics.SwapUsed = average(series.Points)
+			metrics.SwapUsedPct = average(series.Points)
 		}
 	}
 
@@ -232,6 +232,10 @@ func (c *Client) GetDiskUsageMetrics() (*DiskUsageMetrics, error) {
 		switch series.Name {
 		case "postgres_databases_size_bytes":
 			metrics.DatabaseSize = uint64(average(series.Points))
+		case "postgres_log_size_bytes":
+			metrics.LogSize = uint64(average(series.Points))
+		case "postgres_wal_size_bytes":
+			metrics.WalSize = uint64(average(series.Points))
 		}
 	}
 
@@ -239,7 +243,14 @@ func (c *Client) GetDiskUsageMetrics() (*DiskUsageMetrics, error) {
 }
 
 func average(points []MetricPoint) float64 {
+	// With metric-views endpoint, it returns metrics for the last 15 minutes
+	// The latest data point(s) often returns value 0 as there is some lag within the metrics collection on Crunchy side
+	// When calculating average, ignore last 3 data points
 	sum := 0.0
+	// If the metric point length is somehow shorter than 3, don't ignore any points
+	if len(points) > 3 {
+		points = points[:len(points)-3]
+	}
 	for _, point := range points {
 		sum += point.Value
 	}

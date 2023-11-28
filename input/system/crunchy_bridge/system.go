@@ -4,13 +4,20 @@ import (
 	"time"
 
 	"github.com/pganalyze/collector/config"
+	"github.com/pganalyze/collector/input/system/selfhosted"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
 )
 
 // GetSystemState - Gets system information about a Crunchy Bridge instance
 func GetSystemState(config config.ServerConfig, logger *util.Logger) (system state.SystemState) {
+	// With Crunchy Bridge, we are assuming that the collector is deployed on the Container Apps
+	// Most of the metrics can be obtained using the same way as the selfhosted
+	// (as the collector runs on the database server), except disk usage metrics
+	system = selfhosted.GetSystemState(config, logger)
 	system.Info.Type = state.CrunchyBridgeSystem
+
+	// When API key is provided, use API to obtain extra info including disk usage metrics
 	if config.CrunchyBridgeAPIKey == "" {
 		return
 	}
@@ -34,52 +41,6 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger) (system sta
 		system.Info.CrunchyBridge.CreatedAt = parsedCreatedAt
 	}
 
-	cpuMetrics, err := client.GetCPUMetrics()
-	if err != nil {
-		logger.PrintError("CrunchyBridge/System: Encountered error when getting cluster CPU metrics %v\n", err)
-		return
-	}
-
-	system.CPUStats = make(state.CPUStatisticMap)
-	system.CPUStats["all"] = state.CPUStatistic{
-		DiffedOnInput: true,
-		DiffedValues: &state.DiffedSystemCPUStats{
-			IowaitPercent: cpuMetrics.Iowait,
-			SystemPercent: cpuMetrics.System,
-			UserPercent:   cpuMetrics.User,
-			StealPercent:  cpuMetrics.Steal,
-		},
-	}
-
-	iopsMetrics, err := client.GetIOPSMetrics()
-	if err != nil {
-		logger.PrintError("CrunchyBridge/System: Encountered error when getting cluster IOPS metrics %v\n", err)
-		return
-	}
-
-	system.Disks = make(state.DiskMap)
-	system.Disks["default"] = state.Disk{}
-
-	system.DiskStats = make(state.DiskStatsMap)
-	system.DiskStats["default"] = state.DiskStats{
-		DiffedOnInput: true,
-		DiffedValues: &state.DiffedDiskStats{
-			ReadOperationsPerSecond:  iopsMetrics.Reads,
-			WriteOperationsPerSecond: iopsMetrics.Writes,
-		},
-	}
-
-	loadAverageMetrics, err := client.GetLoadAverageMetrics()
-	if err != nil {
-		logger.PrintError("CrunchyBridge/System: Encountered error when getting cluster load average metrics %v\n", err)
-		return
-	}
-
-	system.Scheduler.Loadavg1min = loadAverageMetrics.One
-	system.CPUInfo.SocketCount = 1
-	system.CPUInfo.LogicalCoreCount = clusterInfo.CPU
-	system.CPUInfo.PhysicalCoreCount = clusterInfo.CPU
-
 	diskUsageMetrics, err := client.GetDiskUsageMetrics()
 	if err != nil {
 		logger.PrintError("CrunchyBridge/System: Encountered error when getting cluster disk usage metrics %v\n", err)
@@ -89,11 +50,12 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger) (system sta
 	system.DataDirectoryPartition = "/"
 	system.DiskPartitions = make(state.DiskPartitionMap)
 	system.DiskPartitions["/"] = state.DiskPartition{
-		DiskName:      "default",
-		PartitionName: "default",
+		DiskName:      "data",
+		PartitionName: "data",
 		UsedBytes:     diskUsageMetrics.DatabaseSize,
 		TotalBytes:    uint64(clusterInfo.Storage) * 1024 * 1024 * 1024,
 	}
+	system.XlogUsedBytes = diskUsageMetrics.WalSize
 
 	return
 }
