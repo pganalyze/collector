@@ -49,6 +49,7 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger) (system sta
 
 	system.DataDirectoryPartition = "/"
 	system.DiskPartitions = make(state.DiskPartitionMap)
+	// Manually specify the disk name to "md0" as that's the main disk
 	system.DiskPartitions["/"] = state.DiskPartition{
 		DiskName:      "md0",
 		PartitionName: "md0",
