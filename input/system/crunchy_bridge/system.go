@@ -50,8 +50,8 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger) (system sta
 	system.DataDirectoryPartition = "/"
 	system.DiskPartitions = make(state.DiskPartitionMap)
 	system.DiskPartitions["/"] = state.DiskPartition{
-		DiskName:      "data",
-		PartitionName: "data",
+		DiskName:      "md0",
+		PartitionName: "md0",
 		UsedBytes:     diskUsageMetrics.DatabaseSize,
 		TotalBytes:    uint64(clusterInfo.Storage) * 1024 * 1024 * 1024,
 	}
