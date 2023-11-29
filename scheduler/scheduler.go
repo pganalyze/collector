@@ -73,6 +73,8 @@ func (group Group) ScheduleSecondary(ctx context.Context, runner func(context.Co
 	}()
 }
 
+const FullSnapshotsPerHour = 6
+
 func GetSchedulerGroups() (groups map[string]Group, err error) {
 	tenSecondInterval, err := cronexpr.Parse("*/10 * * * * * *")
 	if err != nil {
