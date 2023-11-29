@@ -12,6 +12,7 @@ import (
 	"github.com/lib/pq"
 	"github.com/pganalyze/collector/input/postgres"
 	"github.com/pganalyze/collector/input/system"
+	"github.com/pganalyze/collector/scheduler"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
 )
@@ -84,9 +85,10 @@ func CollectFull(ctx context.Context, server *state.Server, connection *sql.DB, 
 			logger.PrintError("Error calling pg_stat_statements_reset() as requested: %s", err)
 			err = nil
 		} else {
+			logger.PrintInfo("Successfully called pg_stat_statements_reset() for all queries, next reset in %d hours", server.Grant.Config.Features.StatementResetFrequency/scheduler.FullSnapshotsPerHour)
 			_, _, ts.ResetStatementStats, err = postgres.GetStatements(ctx, server, logger, connection, globalCollectionOpts, ts.Version, false, systemType)
 			if err != nil {
-				logger.PrintError("Error collecting pg_stat_statements: %s", err)
+				logger.PrintError("Error collecting pg_stat_statements after reset: %s", err)
 				err = nil
 			}
 		}
