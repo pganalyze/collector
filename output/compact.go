@@ -158,7 +158,7 @@ func submitCompactSnapshot(ctx context.Context, server *state.Server, collection
 					}
 				}
 				if len(details) > 0 {
-					logger.PrintInfo("Compact snapshots submitted: " + details)
+					logger.PrintInfo("Submitted compact snapshots successfully: " + details)
 				}
 				server.CompactLogTime = time.Now().Truncate(time.Minute)
 				server.CompactLogStats = make(map[string]uint8)

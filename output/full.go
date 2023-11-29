@@ -188,7 +188,7 @@ func submitSnapshot(ctx context.Context, server *state.Server, collectionOpts st
 	if len(msg) > 0 && collectionOpts.TestRun {
 		logger.PrintInfo("  %s", msg)
 	} else if !quiet {
-		logger.PrintInfo("Submitted snapshot successfully")
+		logger.PrintInfo("Submitted full snapshot successfully")
 	}
 
 	return nil
