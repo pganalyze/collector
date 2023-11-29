@@ -245,14 +245,19 @@ func (c *Client) GetDiskUsageMetrics() (*DiskUsageMetrics, error) {
 func average(points []MetricPoint) float64 {
 	// With metric-views endpoint, it returns metrics for the last 15 minutes
 	// The latest data point(s) often returns value 0 as there is some lag within the metrics collection on Crunchy side
-	// When calculating average, ignore last 3 data points
-	sum := 0.0
-	// If the metric point length is somehow shorter than 3, don't ignore any points
-	if len(points) > 3 {
-		points = points[:len(points)-3]
-	}
+	// When calculating average, ignore value 0
+	// Note that this will also ignore the actual 0 value too (e.g. load average),
+	// though average of such points should be close to zero anyways so ignore them to simplify
+	var sum float64
+	var count float64
 	for _, point := range points {
-		sum += point.Value
+		if point.Value != 0 {
+			sum += point.Value
+			count++
+		}
 	}
-	return sum / float64(len(points))
+	if count == 0 {
+		return 0
+	}
+	return sum / count
 }
