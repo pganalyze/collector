@@ -142,26 +142,27 @@ func submitCompactSnapshot(ctx context.Context, server *state.Server, collection
 		if server.CompactLogTime.IsZero() {
 			server.CompactLogTime = time.Now().Truncate(time.Minute)
 			server.CompactLogStats = make(map[string]uint8)
-		} else if time.Now().Sub(server.CompactLogTime) > time.Minute {
-			var keys []string
-			for k := range server.CompactLogStats {
-				keys = append(keys, k)
-			}
-			sort.Strings(keys)
-			details := ""
-			for i, kind := range keys {
-				details += fmt.Sprintf("%d %s", server.CompactLogStats[kind], kind)
-				if i < len(keys)-1 {
-					details += ", "
-				}
-			}
-			if len(details) > 0 {
-				logger.PrintInfo("Compact snapshots submitted: " + details)
-			}
-			server.CompactLogTime = time.Now().Truncate(time.Minute)
-			server.CompactLogStats = make(map[string]uint8)
 		} else {
 			server.CompactLogStats[kind] = server.CompactLogStats[kind] + 1
+			if time.Since(server.CompactLogTime) > time.Minute {
+				var keys []string
+				for k := range server.CompactLogStats {
+					keys = append(keys, k)
+				}
+				sort.Strings(keys)
+				details := ""
+				for i, kind := range keys {
+					details += fmt.Sprintf("%d %s", server.CompactLogStats[kind], kind)
+					if i < len(keys)-1 {
+						details += ", "
+					}
+				}
+				if len(details) > 0 {
+					logger.PrintInfo("Compact snapshots submitted: " + details)
+				}
+				server.CompactLogTime = time.Now().Truncate(time.Minute)
+				server.CompactLogStats = make(map[string]uint8)
+			}
 		}
 	}
 
