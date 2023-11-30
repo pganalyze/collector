@@ -221,6 +221,12 @@ func getDefaultConfig() *ServerConfig {
 	if gcpProjectID := os.Getenv("GCP_PROJECT_ID"); gcpProjectID != "" {
 		config.GcpProjectID = gcpProjectID
 	}
+	if crunchyBridgeClusterID := os.Getenv("CRUNCHY_BRIDGE_CLUSTER_ID"); crunchyBridgeClusterID != "" {
+		config.CrunchyBridgeClusterID = crunchyBridgeClusterID
+	}
+	if crunchyBridgeAPIKey := os.Getenv("CRUNCHY_BRIDGE_API_KEY"); crunchyBridgeAPIKey != "" {
+		config.CrunchyBridgeAPIKey = crunchyBridgeAPIKey
+	}
 	if logLocation := os.Getenv("LOG_LOCATION"); logLocation != "" {
 		config.LogLocation = logLocation
 	}
