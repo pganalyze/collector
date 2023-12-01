@@ -30,7 +30,7 @@ func parseTags(query string) map[string]string {
 			continue
 		}
 		for _, part := range strings.Split(strings.TrimSpace(comment), ",") {
-			if strings.Contains(part, "=") {
+			if sqlcommenterFormat(part) {
 				// Parse sqlcommenter format (key='value')
 				keyAndValue := strings.SplitN(part, "=", 2)
 				// Remove surrounding single quotes (if present)
@@ -51,6 +51,17 @@ func parseTags(query string) map[string]string {
 		}
 	}
 	return tags
+}
+
+func sqlcommenterFormat(str string) bool {
+	keyAndValue := strings.SplitN(str, "=", 2)
+	if len(keyAndValue) == 2 {
+		// With sqlcommenter format (key='value'), key shouldn't include ":"
+		if !strings.Contains(keyAndValue[0], ":") {
+			return true
+		}
+	}
+	return false
 }
 
 func decodeString(str string) string {
