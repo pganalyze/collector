@@ -91,6 +91,21 @@ var parseTagsTests = []parseTagsTestpair{
 			"thud thud%thud'": "'% %  ",
 		},
 	},
+	{
+		"Query tag with key:value (marginalia) shape, with traceparent and tracestate",
+		"SELECT 1 /* traceparent:00-7dd3a87ae5bdacc0c56f3ba452a22fed-b39c2eabd3993833-01,tracestate:pganalyze=t:1701420562.550783 */",
+		map[string]string{"traceparent": "00-7dd3a87ae5bdacc0c56f3ba452a22fed-b39c2eabd3993833-01", "tracestate": "pganalyze=t:1701420562.550783"},
+	},
+	{
+		"Query tag with key='value' (sqlcommenter) shape, with traceparent and tracestate",
+		"SELECT 1 /* traceparent='00-7dd3a87ae5bdacc0c56f3ba452a22fed-b39c2eabd3993833-01',tracestate='pganalyze=t:1701420562.550783' */",
+		map[string]string{"traceparent": "00-7dd3a87ae5bdacc0c56f3ba452a22fed-b39c2eabd3993833-01", "tracestate": "pganalyze=t:1701420562.550783"},
+	},
+	{
+		"Query tag with key='value' (sqlcommenter) shape, with traceparent and tracestate (URL escaped)",
+		"SELECT 1 /* traceparent='00-7dd3a87ae5bdacc0c56f3ba452a22fed-b39c2eabd3993833-01',tracestate='pganalyze%3Dt%3A1701420562.550783' */",
+		map[string]string{"traceparent": "00-7dd3a87ae5bdacc0c56f3ba452a22fed-b39c2eabd3993833-01", "tracestate": "pganalyze=t:1701420562.550783"},
+	},
 }
 
 func TestParseTags(t *testing.T) {
