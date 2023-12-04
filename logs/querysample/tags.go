@@ -55,13 +55,8 @@ func parseTags(query string) map[string]string {
 
 func sqlcommenterFormat(str string) bool {
 	keyAndValue := strings.SplitN(str, "=", 2)
-	if len(keyAndValue) == 2 {
-		// With sqlcommenter format (key='value'), key shouldn't include ":"
-		if !strings.Contains(keyAndValue[0], ":") {
-			return true
-		}
-	}
-	return false
+        // With sqlcommenter format (key='value'), key shouldn't include ":"
+        return len(keyAndValue) == 2 && !strings.Contains(keyAndValue[0], ":")
 }
 
 func decodeString(str string) string {
