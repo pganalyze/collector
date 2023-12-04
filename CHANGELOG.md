@@ -2,11 +2,12 @@
 
 ## 0.52.3      2023-11-30
 
-* Update the snapshot submission log format
-  - Previously, compact (activity and log) snapshots submission log were emitted
-    every time it's completed. This was causing lots of log lines as an activity
-    snapshot submission happens every 10 seconds
-  - With this update, we group the log and only emit once per minute
+* Reduce frequency of collector log generation
+  - Previously, real-time snapshots would generate log lines every 10 seconds,
+    which made errors hard to find
+  - Now, a single log line is printed once a minute with a summary of snapshots
+    submitted
+  - Note that `--verbose` will still log every snapshot as it's submitted
 * OpenTelemetry integration:
   - Support `pganalyze` tracestate to set start time of the span
   - Start time can be specified with `t` member key, the Unix time in second,
