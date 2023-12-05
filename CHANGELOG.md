@@ -2,12 +2,15 @@
 
 ## 0.52.3      2023-11-30
 
-* Reduce frequency of collector log generation
-  - Previously, real-time snapshots would generate log lines every 10 seconds,
-    which made errors hard to find
+* Collector log output: Reduce frequency of some snapshot log events
+  - Previously, near real-time "compact" snapshots would generate log lines
+    every 10 seconds, which made errors hard to find
   - Now, a single log line is printed once a minute with a summary of snapshots
     submitted
   - Note that `--verbose` will still log every snapshot as it's submitted
+* Collector log output: Add "full" prefix for full snapshots sent every 10 minutes
+  - This changes the "Submitted snapshot successfully" message to read
+    "Submitted full snapshot successfully" instead
 * OpenTelemetry integration:
   - Support `pganalyze` tracestate to set start time of the span
   - Start time can be specified with `t` member key as Unix time in seconds,
