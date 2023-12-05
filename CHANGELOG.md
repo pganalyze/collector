@@ -10,17 +10,17 @@
   - Note that `--verbose` will still log every snapshot as it's submitted
 * OpenTelemetry integration:
   - Support `pganalyze` tracestate to set start time of the span
-  - Start time can be specified with `t` member key, the Unix time in second,
-    allowing decimals to present up to nano seconds
-  - This allows to specify a better span start and end time in case the accurate
-    time is unable to be obtained through the log, like RDS
+  - Start time can be specified with `t` member key as Unix time in seconds,
+    with decimals to specify precision down to nano seconds
+  - This allows specifying a better span start and end time in case precise
+    timestamps are not present in the Postgres logs, like with Amazon RDS
 * Allow pg_stat_statements failures and continue snapshot processing
-  - Previously, when pg_stat_statements data collection was failing (e.g. a
-    timeout when the query text file got too large), the whole snapshot was
-    treated as failed and only reporting an error snapshot to pganalyze, without
-    any statistics
-  - Instead, treating pg_stat_statements errors as a collector error in the
-    snapshot, but continuing afterwards and report other statistics that were
+  - Previously, when pg_stat_statements data collection failed (e.g. a timeout
+    when the query text file got too large), the whole snapshot was treated as
+    failed and only reported an error snapshot to pganalyze, without any
+    statistics
+  - Instead, treat pg_stat_statements errors as a collector error in the
+    snapshot, but continue afterwards and report other statistics that were
     collected successfully
 
 ## 0.52.2      2023-10-26
