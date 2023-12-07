@@ -77,24 +77,7 @@ func getEventHubConsumerClient(config config.ServerConfig) (*azeventhubs.Consume
 			return nil, fmt.Errorf("failed to set up client secret Azure credentials: %s", err)
 		}
 	} else {
-		workloadIdentityCredential, err := azidentity.NewWorkloadIdentityCredential(nil)
-		if err != nil {
-			return nil, fmt.Errorf("failed to set up workload identity Azure credentials: %s", err)
-		}
-		var managedIdentityOptions *azidentity.ManagedIdentityCredentialOptions
-		if config.AzureADClientID != "" {
-			managedIdentityOptions = &azidentity.ManagedIdentityCredentialOptions{
-				ID: azidentity.ClientID(config.AzureADClientID),
-			}
-		}
-		managedIdentityCredential, err := azidentity.NewManagedIdentityCredential(managedIdentityOptions)
-		if err != nil {
-			return nil, fmt.Errorf("failed to set up managed identity Azure credentials: %s", err)
-		}
-		credential, err = azidentity.NewChainedTokenCredential([]azcore.TokenCredential{
-			workloadIdentityCredential,
-			managedIdentityCredential,
-		}, nil)
+		credential, err = azidentity.NewDefaultAzureCredential(nil)
 		if err != nil {
 			return nil, fmt.Errorf("failed to use default Azure credentials: %s", err)
 		}
