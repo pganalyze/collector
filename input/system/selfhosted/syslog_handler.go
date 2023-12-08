@@ -54,7 +54,7 @@ func setupSyslogHandler(ctx context.Context, config config.ServerConfig, out cha
 		}
 
 		tlsConfig := tls.Config{
-			ClientAuth:   tls.RequireAndVerifyClientCert,
+			ClientAuth:   tls.VerifyClientCertIfGiven,
 			Certificates: []tls.Certificate{tlsCert},
 			ClientCAs:    caPool,
 		}
