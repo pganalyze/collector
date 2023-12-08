@@ -2,29 +2,73 @@ package selfhosted
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
+	"fmt"
+	"os"
 	"regexp"
 	"strconv"
 	"time"
 
 	"gopkg.in/mcuadros/go-syslog.v2"
 
+	"github.com/pganalyze/collector/config"
 	"github.com/pganalyze/collector/util"
 )
 
 var logLinePartsRegexp = regexp.MustCompile(`^\[(\d+)-(\d+)\] (.*)`)
 var logLineNumberPartsRegexp = regexp.MustCompile(`^\[(\d+)-(\d+)\]$`)
 
-func setupSyslogHandler(ctx context.Context, logSyslogServer string, out chan<- SelfHostedLogStreamItem, prefixedLogger *util.Logger) error {
+func setupSyslogHandler(ctx context.Context, config config.ServerConfig, out chan<- SelfHostedLogStreamItem, prefixedLogger *util.Logger) error {
+	logSyslogServer := config.LogSyslogServer
 	channel := make(syslog.LogPartsChannel)
 	handler := syslog.NewChannelHandler(channel)
 
 	server := syslog.NewServer()
 	server.SetFormat(syslog.RFC5424)
 	server.SetHandler(handler)
-	err := server.ListenTCP(logSyslogServer)
-	if err != nil {
-		return err
+
+	if config.LogSyslogServerCertPath != "" {
+		caPool := x509.NewCertPool()
+		if config.LogSyslogServerCAPath != "" {
+			ca, err := os.ReadFile(config.LogSyslogServerCAPath)
+			if err != nil {
+				return fmt.Errorf("failed to read a Certificate Authority file: %s", err)
+			}
+			if ok := caPool.AppendCertsFromPEM(ca); !ok {
+				return fmt.Errorf("failed to append a Certificate Authority")
+			}
+		}
+
+		cert, err := os.ReadFile(config.LogSyslogServerCertPath)
+		if err != nil {
+			return fmt.Errorf("failed to read a certificate file: %s", err)
+		}
+		key, err := os.ReadFile(config.LogSyslogServerKeyPath)
+		if err != nil {
+			return fmt.Errorf("failed to read a key file: %s", err)
+		}
+		tlsCert, err := tls.X509KeyPair(cert, key)
+		if err != nil {
+			return err
+		}
+
+		tlsConfig := tls.Config{
+			ClientAuth:   tls.RequireAndVerifyClientCert,
+			Certificates: []tls.Certificate{tlsCert},
+			ClientCAs:    caPool,
+		}
+		err = server.ListenTCPTLS(logSyslogServer, &tlsConfig)
+		if err != nil {
+			return err
+		}
+	} else {
+		err := server.ListenTCP(logSyslogServer)
+		if err != nil {
+			return err
+		}
 	}
+
 	server.Boot()
 
 	go func(ctx context.Context, server *syslog.Server, channel syslog.LogPartsChannel) {

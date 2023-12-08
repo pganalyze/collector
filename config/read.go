@@ -233,6 +233,15 @@ func getDefaultConfig() *ServerConfig {
 	if logSyslogServer := os.Getenv("LOG_SYSLOG_SERVER"); logSyslogServer != "" {
 		config.LogSyslogServer = logSyslogServer
 	}
+	if logSyslogServerCAPath := os.Getenv("LOG_SYSLOG_SERVER_CA_PATH"); logSyslogServerCAPath != "" {
+		config.LogSyslogServerCAPath = logSyslogServerCAPath
+	}
+	if logSyslogServerCertPath := os.Getenv("LOG_SYSLOG_SERVER_CERT_PATH"); logSyslogServerCertPath != "" {
+		config.LogSyslogServerCertPath = logSyslogServerCertPath
+	}
+	if logSyslogServerKeyPath := os.Getenv("LOG_SYSLOG_SERVER_KEY_PATH"); logSyslogServerKeyPath != "" {
+		config.LogSyslogServerKeyPath = logSyslogServerKeyPath
+	}
 	if alwaysCollectSystemData := os.Getenv("PGA_ALWAYS_COLLECT_SYSTEM_DATA"); alwaysCollectSystemData != "" {
 		config.AlwaysCollectSystemData = parseConfigBool(alwaysCollectSystemData)
 	}
