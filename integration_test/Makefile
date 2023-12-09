@@ -200,6 +200,7 @@ citus:
 		exit 1; \
 	fi
 	jq '.queryInformations[].normalizedQuery' citus_2.json | sed -E 's/pgbench_branches_[0-9]+/pgbench_branches_XXXXX/' | sort --version-sort -f > citus.out
+	jq '.relationReferences[].relationName' citus_2.json | sort >> citus.out
 	diff -Naur citus.expected citus.out && echo 'success'
 
 # Test reload both with an empty config and a server present
