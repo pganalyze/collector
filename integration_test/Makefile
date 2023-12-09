@@ -183,7 +183,7 @@ citus:
 	$(docker_run_cmd_postgres)
 	sleep 10
 	docker exec pganalyze-collector-test pgbench -U postgres postgres -i
-	docker exec pganalyze-collector-test psql -U postgres postgres < citus-pgbench-ddl.sql
+	docker exec -i pganalyze-collector-test psql -U postgres postgres < citus-pgbench-ddl.sql
 	docker exec pganalyze-collector-test pgbench -U postgres postgres
 	docker exec pganalyze-collector-test sh -c "DB_USERNAME=postgres PGA_API_KEY=dummy PGA_DISABLE_ACTIVITY=1 IGNORE_SCHEMA_REGEXP=pgbench_history pganalyze-collector --dry-run --force-state-update -v" > citus_1.json
 	docker exec pganalyze-collector-test pgbench -U postgres postgres
@@ -199,7 +199,7 @@ citus:
 		jq '.relationReferences' citus_2.json; \
 		exit 1; \
 	fi
-	jq '.queryInformations[].normalizedQuery' citus_2.json | sort --version-sort -f > citus.out
+	jq '.queryInformations[].normalizedQuery' citus_2.json | sed -E 's/pgbench_branches_[0-9]+/pgbench_branches_XXXXX/' | sort --version-sort -f > citus.out
 	diff -Naur citus.expected citus.out && echo 'success'
 
 # Test reload both with an empty config and a server present
