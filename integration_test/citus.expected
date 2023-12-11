@@ -10,3 +10,7 @@
 "UPDATE pgbench_branches SET bbalance = bbalance + $1 WHERE bid = $2"
 "UPDATE pgbench_tellers SET tbalance = tbalance + $1 WHERE tid = $2"
 "<pganalyze-collector>"
+"pgbench_accounts"
+"pgbench_branches"
+"pgbench_tellers"
+"unindexed"

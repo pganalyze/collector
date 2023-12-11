@@ -87,6 +87,8 @@ WITH dist_idx_shard_stats_raw AS (
 		jsonb_array_elements(result::jsonb) AS shard_info
 	FROM
 		dist_idx_shard_stats_raw
+	WHERE
+		result <> ''
 )
 SELECT
 	pgc.oid,
