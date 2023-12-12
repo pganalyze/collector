@@ -27,6 +27,13 @@ func setupSyslogHandler(ctx context.Context, config config.ServerConfig, out cha
 	server := syslog.NewServer()
 	server.SetFormat(syslog.RFC5424)
 	server.SetHandler(handler)
+	// By default, go-syslog assumes that there will be the peer cert given by the client (of this syslog server) side
+	// as it's checking the PeerCertificates of the connection state.
+	// On the server side, this can be empty if Config.ClientAuth is not RequireAnyClientCert or
+	// RequireAndVerifyClientCert.
+	// https://github.com/mcuadros/go-syslog/blob/6f9fc1a03371148d69a5c32492cc902e3f8827bd/server.go#L82-L83
+	// https://pkg.go.dev/crypto/tls#ConnectionState
+	server.SetTlsPeerNameFunc(nil)
 
 	if config.LogSyslogServerCertFile != "" {
 		serverCaPool := x509.NewCertPool()
