@@ -233,14 +233,17 @@ func getDefaultConfig() *ServerConfig {
 	if logSyslogServer := os.Getenv("LOG_SYSLOG_SERVER"); logSyslogServer != "" {
 		config.LogSyslogServer = logSyslogServer
 	}
-	if logSyslogServerCAPath := os.Getenv("LOG_SYSLOG_SERVER_CA_PATH"); logSyslogServerCAPath != "" {
-		config.LogSyslogServerCAPath = logSyslogServerCAPath
+	if logSyslogServerCAFile := os.Getenv("LOG_SYSLOG_SERVER_CA_FILE"); logSyslogServerCAFile != "" {
+		config.LogSyslogServerCAFile = logSyslogServerCAFile
 	}
-	if logSyslogServerCertPath := os.Getenv("LOG_SYSLOG_SERVER_CERT_PATH"); logSyslogServerCertPath != "" {
-		config.LogSyslogServerCertPath = logSyslogServerCertPath
+	if logSyslogServerCertFile := os.Getenv("LOG_SYSLOG_SERVER_CERT_FILE"); logSyslogServerCertFile != "" {
+		config.LogSyslogServerCertFile = logSyslogServerCertFile
 	}
-	if logSyslogServerKeyPath := os.Getenv("LOG_SYSLOG_SERVER_KEY_PATH"); logSyslogServerKeyPath != "" {
-		config.LogSyslogServerKeyPath = logSyslogServerKeyPath
+	if logSyslogServerKeyFile := os.Getenv("LOG_SYSLOG_SERVER_KEY_FILE"); logSyslogServerKeyFile != "" {
+		config.LogSyslogServerKeyFile = logSyslogServerKeyFile
+	}
+	if logSyslogServerClientCAFile := os.Getenv("LOG_SYSLOG_SERVER_CLIENT_CA_FILE"); logSyslogServerClientCAFile != "" {
+		config.LogSyslogServerClientCAFile = logSyslogServerClientCAFile
 	}
 	if alwaysCollectSystemData := os.Getenv("PGA_ALWAYS_COLLECT_SYSTEM_DATA"); alwaysCollectSystemData != "" {
 		config.AlwaysCollectSystemData = parseConfigBool(alwaysCollectSystemData)

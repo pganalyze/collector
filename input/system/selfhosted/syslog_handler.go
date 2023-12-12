@@ -28,23 +28,33 @@ func setupSyslogHandler(ctx context.Context, config config.ServerConfig, out cha
 	server.SetFormat(syslog.RFC5424)
 	server.SetHandler(handler)
 
-	if config.LogSyslogServerCertPath != "" {
-		caPool := x509.NewCertPool()
-		if config.LogSyslogServerCAPath != "" {
-			ca, err := os.ReadFile(config.LogSyslogServerCAPath)
+	if config.LogSyslogServerCertFile != "" {
+		serverCaPool := x509.NewCertPool()
+		clientCaPool := x509.NewCertPool()
+		if config.LogSyslogServerCAFile != "" {
+			ca, err := os.ReadFile(config.LogSyslogServerCAFile)
 			if err != nil {
 				return fmt.Errorf("failed to read a Certificate Authority file: %s", err)
 			}
-			if ok := caPool.AppendCertsFromPEM(ca); !ok {
+			if ok := serverCaPool.AppendCertsFromPEM(ca); !ok {
 				return fmt.Errorf("failed to append a Certificate Authority")
 			}
 		}
+		if config.LogSyslogServerClientCAFile != "" {
+			ca, err := os.ReadFile(config.LogSyslogServerClientCAFile)
+			if err != nil {
+				return fmt.Errorf("failed to read a client Certificate Authority file: %s", err)
+			}
+			if ok := clientCaPool.AppendCertsFromPEM(ca); !ok {
+				return fmt.Errorf("failed to append a client Certificate Authority")
+			}
+		}
 
-		cert, err := os.ReadFile(config.LogSyslogServerCertPath)
+		cert, err := os.ReadFile(config.LogSyslogServerCertFile)
 		if err != nil {
 			return fmt.Errorf("failed to read a certificate file: %s", err)
 		}
-		key, err := os.ReadFile(config.LogSyslogServerKeyPath)
+		key, err := os.ReadFile(config.LogSyslogServerKeyFile)
 		if err != nil {
 			return fmt.Errorf("failed to read a key file: %s", err)
 		}
@@ -56,7 +66,8 @@ func setupSyslogHandler(ctx context.Context, config config.ServerConfig, out cha
 		tlsConfig := tls.Config{
 			ClientAuth:   tls.VerifyClientCertIfGiven,
 			Certificates: []tls.Certificate{tlsCert},
-			ClientCAs:    caPool,
+			RootCAs:      serverCaPool,
+			ClientCAs:    clientCaPool,
 		}
 		err = server.ListenTCPTLS(logSyslogServer, &tlsConfig)
 		if err != nil {
