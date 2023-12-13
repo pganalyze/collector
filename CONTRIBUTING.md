@@ -64,7 +64,8 @@ Note the integration tests require Docker, and will take a while to run through.
 3. Once a new tag is pushed, GitHub Action Release will be kicked and create a new release (this will take about 2 hours, due to the package build and test)
 4. Modify the newly created release's description to match to CHANGELOG.md
 5. Release docker images using `make docker_release` (this requires access to the Quay.io push key, as well as "docker buildx" with QEMU emulation support, see below)
-6. Sign and release packages using `make -C packages repo` (this requires access to the Keybase GPG key)
+6. Release a helm chart (see below)
+7. Sign and release packages using `make -C packages repo` (this requires access to the Keybase GPG key)
 
 To run step 5 from an Ubuntu 22.04 VM, do the following:
 
@@ -94,4 +95,25 @@ sudo docker login -u="REPLACE_ME" -p="REPLACE_ME" quay.io
 git clone https://github.com/pganalyze/collector.git
 cd collector
 sudo make docker_release
+```
+
+For step 6. This can be done within the same VM as step 5 too:
+
+```
+# Preparing for helm package release (if you continue doing this within the same VM as `make docker_release``)
+# Alternatively, you can do this part locally too https://helm.sh/docs/intro/install/
+curl https://baltocdn.com/helm/signing.asc | gpg --dearmor | sudo tee /usr/share/keyrings/helm.gpg > /dev/null
+sudo apt-get install apt-transport-https --yes
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/helm.gpg] https://baltocdn.com/helm/stable/debian/ all main" | sudo tee /etc/apt/sources.list.d/helm-stable-debian.list
+sudo apt-get update
+sudo apt-get install helm
+
+# Get credentials from Quay.io
+helm registry login quay.io
+
+# Create a package
+helm package contrib/helm/pganalyze-collector
+
+# Push a package (replace the version x.y.z to the created version one)
+helm push pganalyze-collector-x.y.z.tgz oci://quay.io/pganalyze
 ```
