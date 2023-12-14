@@ -77,9 +77,13 @@ func getEventHubConsumerClient(config config.ServerConfig) (*azeventhubs.Consume
 			return nil, fmt.Errorf("failed to set up client secret Azure credentials: %s", err)
 		}
 	} else {
+		var creds []azcore.TokenCredential
+		var errorMessages []string
 		workloadIdentityCredential, err := azidentity.NewWorkloadIdentityCredential(nil)
-		if err != nil {
-			return nil, fmt.Errorf("failed to set up workload identity Azure credentials: %s", err)
+		if err == nil {
+			creds = append(creds, workloadIdentityCredential)
+		} else {
+			errorMessages = append(errorMessages, "WorkloadIdentityCredential: "+err.Error())
 		}
 		var managedIdentityOptions *azidentity.ManagedIdentityCredentialOptions
 		if config.AzureADClientID != "" {
@@ -88,15 +92,18 @@ func getEventHubConsumerClient(config config.ServerConfig) (*azeventhubs.Consume
 			}
 		}
 		managedIdentityCredential, err := azidentity.NewManagedIdentityCredential(managedIdentityOptions)
-		if err != nil {
-			return nil, fmt.Errorf("failed to set up managed identity Azure credentials: %s", err)
+		if err == nil {
+			creds = append(creds, managedIdentityCredential)
+		} else {
+			errorMessages = append(errorMessages, "ManagedIdentityCredential: "+err.Error())
 		}
-		credential, err = azidentity.NewChainedTokenCredential([]azcore.TokenCredential{
-			workloadIdentityCredential,
-			managedIdentityCredential,
-		}, nil)
-		if err != nil {
-			return nil, fmt.Errorf("failed to use default Azure credentials: %s", err)
+		if len(creds) == 0 {
+			return nil, fmt.Errorf("failed to set up Azure credentials:\n\t" + strings.Join(errorMessages, "\n\t"))
+		} else {
+			credential, err = azidentity.NewChainedTokenCredential(creds, nil)
+			if err != nil {
+				return nil, fmt.Errorf("failed to use default Azure credentials: %s", err)
+			}
 		}
 	}
 
