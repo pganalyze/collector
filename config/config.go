@@ -141,10 +141,14 @@ type ServerConfig struct {
 	// on the specified "hostname:port" for Postgres log messages
 	LogSyslogServer string `ini:"db_log_syslog_server"`
 	// For TLS support for syslog server
-	LogSyslogServerCAFile       string `ini:"db_log_syslog_server_ca_file"`
-	LogSyslogServerCertFile     string `ini:"db_log_syslog_server_cert_file"`
-	LogSyslogServerKeyFile      string `ini:"db_log_syslog_server_key_file"`
-	LogSyslogServerClientCAFile string `ini:"db_log_syslog_server_client_ca_file"`
+	LogSyslogServerCAFile           string `ini:"db_log_syslog_server_ca_file"`
+	LogSyslogServerCertFile         string `ini:"db_log_syslog_server_cert_file"`
+	LogSyslogServerKeyFile          string `ini:"db_log_syslog_server_key_file"`
+	LogSyslogServerClientCAFile     string `ini:"db_log_syslog_server_client_ca_file"`
+	LogSyslogServerCAContents       string `ini:"db_log_syslog_server_ca_contents"`
+	LogSyslogServerCertContents     string `ini:"db_log_syslog_server_cert_contents"`
+	LogSyslogServerKeyContents      string `ini:"db_log_syslog_server_key_contents"`
+	LogSyslogServerClientCAContents string `ini:"db_log_syslog_server_client_ca_contents"`
 
 	// Configures the collector to use the "pg_read_file" (superuser) or
 	// "pganalyze.read_log_file" (helper) function to retrieve log data

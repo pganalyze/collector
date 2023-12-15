@@ -27,12 +27,8 @@ func setupSyslogHandler(ctx context.Context, config config.ServerConfig, out cha
 	server := syslog.NewServer()
 	server.SetFormat(syslog.RFC5424)
 	server.SetHandler(handler)
-	// By default, go-syslog assumes that there will be the peer cert given by the client (of this syslog server) side
-	// as it's checking the PeerCertificates of the connection state.
-	// On the server side, this can be empty if Config.ClientAuth is not RequireAnyClientCert or
-	// RequireAndVerifyClientCert.
-	// https://github.com/mcuadros/go-syslog/blob/6f9fc1a03371148d69a5c32492cc902e3f8827bd/server.go#L82-L83
-	// https://pkg.go.dev/crypto/tls#ConnectionState
+	// Peer name verification is already handled by crypto/tls and is not required at the go-syslog level
+	// The defaultTlsPeerName in go-syslog can lead to false verification failures, so set nil to bypass
 	server.SetTlsPeerNameFunc(nil)
 
 	if config.LogSyslogServerCertFile != "" {
@@ -41,7 +37,7 @@ func setupSyslogHandler(ctx context.Context, config config.ServerConfig, out cha
 		if config.LogSyslogServerCAFile != "" {
 			ca, err := os.ReadFile(config.LogSyslogServerCAFile)
 			if err != nil {
-				return fmt.Errorf("failed to read a Certificate Authority file: %s", err)
+				return fmt.Errorf("failed to read a Certificate Authority: %s", err)
 			}
 			if ok := serverCaPool.AppendCertsFromPEM(ca); !ok {
 				return fmt.Errorf("failed to append a Certificate Authority")
@@ -50,7 +46,7 @@ func setupSyslogHandler(ctx context.Context, config config.ServerConfig, out cha
 		if config.LogSyslogServerClientCAFile != "" {
 			ca, err := os.ReadFile(config.LogSyslogServerClientCAFile)
 			if err != nil {
-				return fmt.Errorf("failed to read a client Certificate Authority file: %s", err)
+				return fmt.Errorf("failed to read a client Certificate Authority: %s", err)
 			}
 			if ok := clientCaPool.AppendCertsFromPEM(ca); !ok {
 				return fmt.Errorf("failed to append a client Certificate Authority")
@@ -59,11 +55,11 @@ func setupSyslogHandler(ctx context.Context, config config.ServerConfig, out cha
 
 		cert, err := os.ReadFile(config.LogSyslogServerCertFile)
 		if err != nil {
-			return fmt.Errorf("failed to read a certificate file: %s", err)
+			return fmt.Errorf("failed to read a certificate: %s", err)
 		}
 		key, err := os.ReadFile(config.LogSyslogServerKeyFile)
 		if err != nil {
-			return fmt.Errorf("failed to read a key file: %s", err)
+			return fmt.Errorf("failed to read a key: %s", err)
 		}
 		tlsCert, err := tls.X509KeyPair(cert, key)
 		if err != nil {
