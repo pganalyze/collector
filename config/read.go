@@ -233,6 +233,30 @@ func getDefaultConfig() *ServerConfig {
 	if logSyslogServer := os.Getenv("LOG_SYSLOG_SERVER"); logSyslogServer != "" {
 		config.LogSyslogServer = logSyslogServer
 	}
+	if logSyslogServerCAFile := os.Getenv("LOG_SYSLOG_SERVER_CA_FILE"); logSyslogServerCAFile != "" {
+		config.LogSyslogServerCAFile = logSyslogServerCAFile
+	}
+	if logSyslogServerCertFile := os.Getenv("LOG_SYSLOG_SERVER_CERT_FILE"); logSyslogServerCertFile != "" {
+		config.LogSyslogServerCertFile = logSyslogServerCertFile
+	}
+	if logSyslogServerKeyFile := os.Getenv("LOG_SYSLOG_SERVER_KEY_FILE"); logSyslogServerKeyFile != "" {
+		config.LogSyslogServerKeyFile = logSyslogServerKeyFile
+	}
+	if logSyslogServerClientCAFile := os.Getenv("LOG_SYSLOG_SERVER_CLIENT_CA_FILE"); logSyslogServerClientCAFile != "" {
+		config.LogSyslogServerClientCAFile = logSyslogServerClientCAFile
+	}
+	if logSyslogServerCAContents := os.Getenv("LOG_SYSLOG_SERVER_CA_CONTENTS"); logSyslogServerCAContents != "" {
+		config.LogSyslogServerCAContents = logSyslogServerCAContents
+	}
+	if logSyslogServerCertContents := os.Getenv("LOG_SYSLOG_SERVER_CERT_CONTENTS"); logSyslogServerCertContents != "" {
+		config.LogSyslogServerCertContents = logSyslogServerCertContents
+	}
+	if logSyslogServerKeyContents := os.Getenv("LOG_SYSLOG_SERVER_KEY_CONTENTS"); logSyslogServerKeyContents != "" {
+		config.LogSyslogServerKeyContents = logSyslogServerKeyContents
+	}
+	if logSyslogServerClientCAContents := os.Getenv("LOG_SYSLOG_SERVER_CLIENT_CA_CONTENTS"); logSyslogServerClientCAContents != "" {
+		config.LogSyslogServerClientCAContents = logSyslogServerClientCAContents
+	}
 	if alwaysCollectSystemData := os.Getenv("PGA_ALWAYS_COLLECT_SYSTEM_DATA"); alwaysCollectSystemData != "" {
 		config.AlwaysCollectSystemData = parseConfigBool(alwaysCollectSystemData)
 	}
@@ -580,6 +604,34 @@ func preprocessConfig(config *ServerConfig) (*ServerConfig, error) {
 
 	if config.CrunchyBridgeClusterID != "" {
 		config.LogPgReadFile = true
+	}
+
+	if config.LogSyslogServerCAContents != "" {
+		config.LogSyslogServerCAFile, err = writeValueToTempfile(config.LogSyslogServerCAContents)
+		if err != nil {
+			return config, err
+		}
+	}
+
+	if config.LogSyslogServerCertContents != "" {
+		config.LogSyslogServerCertFile, err = writeValueToTempfile(config.LogSyslogServerCertContents)
+		if err != nil {
+			return config, err
+		}
+	}
+
+	if config.LogSyslogServerKeyContents != "" {
+		config.LogSyslogServerKeyFile, err = writeValueToTempfile(config.LogSyslogServerKeyContents)
+		if err != nil {
+			return config, err
+		}
+	}
+
+	if config.LogSyslogServerClientCAContents != "" {
+		config.LogSyslogServerClientCAFile, err = writeValueToTempfile(config.LogSyslogServerClientCAContents)
+		if err != nil {
+			return config, err
+		}
 	}
 
 	return config, nil

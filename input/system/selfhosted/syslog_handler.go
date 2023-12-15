@@ -2,29 +2,87 @@ package selfhosted
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
+	"fmt"
+	"os"
 	"regexp"
 	"strconv"
 	"time"
 
 	"gopkg.in/mcuadros/go-syslog.v2"
 
+	"github.com/pganalyze/collector/config"
 	"github.com/pganalyze/collector/util"
 )
 
 var logLinePartsRegexp = regexp.MustCompile(`^\[(\d+)-(\d+)\] (.*)`)
 var logLineNumberPartsRegexp = regexp.MustCompile(`^\[(\d+)-(\d+)\]$`)
 
-func setupSyslogHandler(ctx context.Context, logSyslogServer string, out chan<- SelfHostedLogStreamItem, prefixedLogger *util.Logger) error {
+func setupSyslogHandler(ctx context.Context, config config.ServerConfig, out chan<- SelfHostedLogStreamItem, prefixedLogger *util.Logger) error {
+	logSyslogServer := config.LogSyslogServer
 	channel := make(syslog.LogPartsChannel)
 	handler := syslog.NewChannelHandler(channel)
 
 	server := syslog.NewServer()
 	server.SetFormat(syslog.RFC5424)
 	server.SetHandler(handler)
-	err := server.ListenTCP(logSyslogServer)
-	if err != nil {
-		return err
+	// Peer name verification is already handled by crypto/tls and is not required at the go-syslog level
+	// The defaultTlsPeerName in go-syslog can lead to false verification failures, so set nil to bypass
+	server.SetTlsPeerNameFunc(nil)
+
+	if config.LogSyslogServerCertFile != "" {
+		serverCaPool := x509.NewCertPool()
+		clientCaPool := x509.NewCertPool()
+		if config.LogSyslogServerCAFile != "" {
+			ca, err := os.ReadFile(config.LogSyslogServerCAFile)
+			if err != nil {
+				return fmt.Errorf("failed to read a Certificate Authority: %s", err)
+			}
+			if ok := serverCaPool.AppendCertsFromPEM(ca); !ok {
+				return fmt.Errorf("failed to append a Certificate Authority")
+			}
+		}
+		if config.LogSyslogServerClientCAFile != "" {
+			ca, err := os.ReadFile(config.LogSyslogServerClientCAFile)
+			if err != nil {
+				return fmt.Errorf("failed to read a client Certificate Authority: %s", err)
+			}
+			if ok := clientCaPool.AppendCertsFromPEM(ca); !ok {
+				return fmt.Errorf("failed to append a client Certificate Authority")
+			}
+		}
+
+		cert, err := os.ReadFile(config.LogSyslogServerCertFile)
+		if err != nil {
+			return fmt.Errorf("failed to read a certificate: %s", err)
+		}
+		key, err := os.ReadFile(config.LogSyslogServerKeyFile)
+		if err != nil {
+			return fmt.Errorf("failed to read a key: %s", err)
+		}
+		tlsCert, err := tls.X509KeyPair(cert, key)
+		if err != nil {
+			return err
+		}
+
+		tlsConfig := tls.Config{
+			ClientAuth:   tls.VerifyClientCertIfGiven,
+			Certificates: []tls.Certificate{tlsCert},
+			RootCAs:      serverCaPool,
+			ClientCAs:    clientCaPool,
+		}
+		err = server.ListenTCPTLS(logSyslogServer, &tlsConfig)
+		if err != nil {
+			return err
+		}
+	} else {
+		err := server.ListenTCP(logSyslogServer)
+		if err != nil {
+			return err
+		}
 	}
+
 	server.Boot()
 
 	go func(ctx context.Context, server *syslog.Server, channel syslog.LogPartsChannel) {
