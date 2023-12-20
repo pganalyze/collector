@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.52.4      2023-12-21
+
+* Log Insights: Add support for receiving syslog over TLS
+  - You can configure a TLS certificate for the collector syslog server using
+    the following config settings:
+    - `db_log_syslog_server_cert_file` / `LOG_SYSLOG_SERVER_CERT_FILE` or
+      `db_log_syslog_server_cert_contents` / `LOG_SYSLOG_SERVER_CERT_CONTENTS`
+    - `db_log_syslog_server_key_file` / `LOG_SYSLOG_SERVER_KEY_FILE` or
+      `db_log_syslog_server_key_contents` / `LOG_SYSLOG_SERVER_KEY_CONTENTS`
+    - The Certificate Authority both on the server side and the client side also
+      can be specified via config settings
+* Azure: Fix managed identity credential creation in Log Insights
+  - This fixes a failure of obtaining logs from Azure when the managed identity
+    credential was used. This was with the "failed to set up workload identity
+    Azure credentials" error message
+* Citus: Avoid error collecting schema stats on tables with no indexes
+
+
 ## 0.52.3      2023-11-30
 
 * Collector log output: Reduce frequency of some snapshot log events
