@@ -50,14 +50,14 @@ func GetRelationStatsExtended(ctx context.Context, logger *util.Logger, db *sql.
 		inheritedField = extendedStatisticsSQLInheritedField
 	}
 
-	if StatsHelperExists(ctx, db, "get_column_stats_ext") {
-		logger.PrintVerbose("Found pganalyze.get_column_stats_ext() stats helper")
-		sourceTable = "pganalyze.get_column_stats_ext()"
+	if StatsHelperExists(ctx, db, "get_relation_stats_ext") {
+		logger.PrintVerbose("Found pganalyze.get_relation_stats_ext() stats helper")
+		sourceTable = "pganalyze.get_relation_stats_ext()"
 	} else {
 		if systemType != "heroku" && !connectedAsSuperUser(ctx, db, systemType) && globalCollectionOpts.TestRun {
-			logger.PrintInfo("Warning: Limited access to table column statistics detected in database %s. Please set up"+
-				" the monitoring helper function pganalyze.get_column_stats_ext (https://github.com/pganalyze/collector#setting-up-a-restricted-monitoring-user)"+
-				" or connect as superuser, to get column statistics for all tables.", dbName)
+			logger.PrintInfo("Warning: Limited access to extended table statistics detected in database %s. Please set up"+
+				" the monitoring helper function pganalyze.get_relation_stats_ext (https://github.com/pganalyze/collector#setting-up-a-restricted-monitoring-user)"+
+				" or connect as superuser, to get extended statistics for all tables.", dbName)
 		}
 		sourceTable = "pg_catalog.pg_stats_ext"
 	}
