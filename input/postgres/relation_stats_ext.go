@@ -33,7 +33,7 @@ SELECT c.oid,
  WHERE ($1 = '' OR (n.nspname || '.' || c.relname) !~* $1)
 `
 
-func GetRelationStatsExtended(ctx context.Context, logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion, server *state.Server, globalCollectionOpts state.CollectionOpts, systemType string, dbName string) (state.PostgresColumnStatsExtendedMap, error) {
+func GetRelationStatsExtended(ctx context.Context, logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion, server *state.Server, globalCollectionOpts state.CollectionOpts, systemType string, dbName string) (state.PostgresRelationStatsExtendedMap, error) {
 	var sourceTable string
 	var exprsField string
 	var inheritedField string
@@ -74,11 +74,11 @@ func GetRelationStatsExtended(ctx context.Context, logger *util.Logger, db *sql.
 	}
 	defer rows.Close()
 
-	var statsMap = make(state.PostgresColumnStatsExtendedMap)
+	var statsMap = make(state.PostgresRelationStatsExtendedMap)
 
 	for rows.Next() {
 		var tableOid state.Oid
-		var s state.PostgresColumnStatsExtended
+		var s state.PostgresRelationStatsExtended
 
 		err := rows.Scan(
 			&tableOid, &s.StatisticsSchema, &s.StatisticsName, pq.Array(&s.Columns), pq.Array(&s.Expressions), pq.Array(&s.Kind), &s.Inherited, &s.NDistinct, &s.Dependencies)
