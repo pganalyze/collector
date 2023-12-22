@@ -64,7 +64,7 @@ type PostgresColumnStats struct {
 	Correlation null.Float
 }
 
-type PostgresColumnStatsExtended struct {
+type PostgresRelationStatsExtended struct {
 	StatisticsSchema string
 	StatisticsName   string
 	Columns          []int32
@@ -85,7 +85,7 @@ type PostgresColumnStatsKey struct {
 type PostgresRelationStatsMap map[Oid]PostgresRelationStats
 type PostgresIndexStatsMap map[Oid]PostgresIndexStats
 type PostgresColumnStatsMap map[PostgresColumnStatsKey][]PostgresColumnStats
-type PostgresColumnStatsExtendedMap map[Oid][]PostgresColumnStatsExtended
+type PostgresRelationStatsExtendedMap map[Oid][]PostgresRelationStatsExtended
 
 type DiffedPostgresRelationStats PostgresRelationStats
 type DiffedPostgresIndexStats PostgresIndexStats
