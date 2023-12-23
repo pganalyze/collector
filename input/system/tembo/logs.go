@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/pganalyze/collector/logs"
 	"github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
@@ -96,7 +95,7 @@ func SetupWebsocketHandlerLogs(ctx context.Context, wg *sync.WaitGroup, logger *
 func setupWebsocketForServer(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *util.Logger, server *state.Server, parsedLogStream chan state.ParsedLogStreamItem) {
 	// Only ingest log lines that were written in the last minute before startup
 	linesNewerThan := time.Now().Add(-1 * time.Minute)
-	tz := server.GetLogTimezone()
+	logParser := server.GetLogParser()
 
 	wg.Add(1)
 	go func() {
@@ -149,7 +148,7 @@ func setupWebsocketForServer(ctx context.Context, wg *sync.WaitGroup, globalColl
 			}
 			for _, stream := range result.Streams {
 				for _, values := range stream.Values {
-					logLine, detailLine := logLineFromJsonlog(values[1], tz, logger)
+					logLine, detailLine := logLineFromJsonlog(values[1], logParser, logger)
 					// Ignore loglines which are outside our time window
 					if !logLine.OccurredAt.IsZero() && logLine.OccurredAt.Before(linesNewerThan) {
 						continue
@@ -164,7 +163,7 @@ func setupWebsocketForServer(ctx context.Context, wg *sync.WaitGroup, globalColl
 	}()
 }
 
-func logLineFromJsonlog(recordIn string, tz *time.Location, logger *util.Logger) (state.LogLine, *state.LogLine) {
+func logLineFromJsonlog(recordIn string, logParser state.LogParser, logger *util.Logger) (state.LogLine, *state.LogLine) {
 	var event JSONLogEvent
 	var logLine state.LogLine
 
@@ -179,7 +178,7 @@ func logLineFromJsonlog(recordIn string, tz *time.Location, logger *util.Logger)
 
 	for key, value := range event.Record {
 		if key == "log_time" {
-			logLine.OccurredAt = logs.GetOccurredAt(value, tz, false)
+			logLine.OccurredAt = logParser.GetOccurredAt(value)
 		}
 		if key == "user_name" {
 			logLine.Username = value

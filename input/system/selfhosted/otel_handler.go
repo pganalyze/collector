@@ -7,7 +7,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/pganalyze/collector/logs"
 	"github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
@@ -25,7 +24,7 @@ import (
 // Other variants (e.g. csvlog, or plain messages in a K8s context) are currently
 // not supported and will be ignored.
 
-func logLineFromJsonlog(record *common.KeyValueList, tz *time.Location) (state.LogLine, *state.LogLine) {
+func logLineFromJsonlog(record *common.KeyValueList, logParser state.LogParser) (state.LogLine, *state.LogLine) {
 	var logLine state.LogLine
 
 	// If a DETAIL line is set, we need to create an additional log line
@@ -33,7 +32,7 @@ func logLineFromJsonlog(record *common.KeyValueList, tz *time.Location) (state.L
 
 	for _, rv := range record.Values {
 		if rv.Key == "log_time" {
-			logLine.OccurredAt = logs.GetOccurredAt(rv.Value.GetStringValue(), tz, false)
+			logLine.OccurredAt = logParser.GetOccurredAt(rv.Value.GetStringValue())
 		}
 		if rv.Key == "user_name" {
 			logLine.Username = rv.Value.GetStringValue()
@@ -108,7 +107,7 @@ func skipDueToK8sFilter(kubernetes *common.KeyValueList, server *state.Server, p
 
 func setupOtelHandler(ctx context.Context, server *state.Server, rawLogStream chan<- SelfHostedLogStreamItem, parsedLogStream chan state.ParsedLogStreamItem, prefixedLogger *util.Logger) error {
 	otelLogServer := server.Config.LogOtelServer
-	tz := server.GetLogTimezone()
+	logParser := server.GetLogParser()
 	go func() {
 		http.HandleFunc("/v1/logs", func(w http.ResponseWriter, r *http.Request) {
 			b, err := io.ReadAll(r.Body)
@@ -144,7 +143,7 @@ func setupOtelHandler(ctx context.Context, server *state.Server, rawLogStream ch
 							// TODO: Support other logger names (this is only tested with CNPG)
 							if logger == "postgres" {
 								// jsonlog wrapped in K8s context (via fluentbit)
-								logLine, detailLine := logLineFromJsonlog(record, tz)
+								logLine, detailLine := logLineFromJsonlog(record, logParser)
 								if skipDueToK8sFilter(kubernetes, server, prefixedLogger) {
 									continue
 								}
@@ -155,7 +154,7 @@ func setupOtelHandler(ctx context.Context, server *state.Server, rawLogStream ch
 								}
 							} else if logger == "" && hasErrorSeverity {
 								// simple jsonlog (Postgres jsonlog has error_severity key)
-								logLine, detailLine := logLineFromJsonlog(l.Body.GetKvlistValue(), tz)
+								logLine, detailLine := logLineFromJsonlog(l.Body.GetKvlistValue(), logParser)
 								parsedLogStream <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: logLine}
 								if detailLine != nil {
 									parsedLogStream <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: *detailLine}

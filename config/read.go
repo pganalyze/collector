@@ -56,6 +56,13 @@ func parseConfigDisableCitusSchemaStats(value string) string {
 	return "all"
 }
 
+func parseConfigLogLinePrefix(value string) string {
+	if value == "legacy" {
+		return value
+	}
+	return "auto"
+}
+
 func getDefaultConfig() *ServerConfig {
 	config := &ServerConfig{
 		APIBaseURL:              DefaultAPIBaseURL,
@@ -300,6 +307,9 @@ func getDefaultConfig() *ServerConfig {
 	}
 	if logOtelK8SLabels := os.Getenv("LOG_OTEL_K8S_LABELS"); logOtelK8SLabels != "" {
 		config.LogOtelK8SLabels = logOtelK8SLabels
+	}
+	if logLinePrefix := os.Getenv("LOG_LINE_PREFIX"); logLinePrefix != "" {
+		config.LogLinePrefix = logLinePrefix
 	}
 	if alwaysCollectSystemData := os.Getenv("PGA_ALWAYS_COLLECT_SYSTEM_DATA"); alwaysCollectSystemData != "" {
 		config.AlwaysCollectSystemData = parseConfigBool(alwaysCollectSystemData)
@@ -708,6 +718,8 @@ func preprocessConfig(config *ServerConfig) (*ServerConfig, error) {
 	if config.DisableCitusSchemaStats != "" {
 		config.DisableCitusSchemaStats = parseConfigDisableCitusSchemaStats(config.DisableCitusSchemaStats)
 	}
+
+	config.LogLinePrefix = parseConfigLogLinePrefix(config.LogLinePrefix)
 
 	return config, nil
 }
