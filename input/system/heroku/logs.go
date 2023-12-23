@@ -119,6 +119,8 @@ func processSystemMetrics(ctx context.Context, timestamp time.Time, content []by
 	}
 }
 
+var HerokuLogParser = logs.NewLogParser(logs.LogPrefixHeroku2, nil, false, true)
+
 func logStreamItemToLogLine(ctx context.Context, item HttpSyslogMessage, servers []*state.Server, sourceToServer map[string]*state.Server, now time.Time, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (map[string]*state.Server, *state.LogLine, string) {
 	timestamp, err := time.Parse(time.RFC3339, item.HeaderTimestamp)
 	if err != nil {
@@ -156,7 +158,7 @@ func logStreamItemToLogLine(ctx context.Context, item HttpSyslogMessage, servers
 	logLineNumberChunk, _ := strconv.ParseInt(lineParts[3], 10, 32)
 	prefixedContent := lineParts[4]
 
-	logLine, _ := logs.ParseLogLineWithPrefix("", prefixedContent+"\n", nil)
+	logLine, _ := HerokuLogParser.ParseLine(prefixedContent + "\n")
 
 	sourceToServer = catchIdentifyServerLine(sourceName, logLine.Content, sourceToServer, servers)
 
