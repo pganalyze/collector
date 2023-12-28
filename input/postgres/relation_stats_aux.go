@@ -21,7 +21,7 @@ SELECT logicalrelid::oid,
  WHERE ($1 = '' OR (n.nspname || '.' || c.relname) !~* $1)
 `
 
-func handleRelationStatsExt(ctx context.Context, db *sql.DB, relStats state.PostgresRelationStatsMap, postgresVersion state.PostgresVersion, server *state.Server) (state.PostgresRelationStatsMap, error) {
+func handleRelationStatsAux(ctx context.Context, db *sql.DB, relStats state.PostgresRelationStatsMap, postgresVersion state.PostgresVersion, server *state.Server) (state.PostgresRelationStatsMap, error) {
 	if postgresVersion.IsCitus && !server.Config.DisableCitusSchemaStats {
 		stmt, err := db.PrepareContext(ctx, QueryMarkerSQL+citusRelationSizeSQL)
 		if err != nil {
@@ -105,7 +105,7 @@ GROUP BY
   oid;
 `
 
-func handleIndexStatsExt(ctx context.Context, db *sql.DB, idxStats state.PostgresIndexStatsMap, postgresVersion state.PostgresVersion, server *state.Server) (state.PostgresIndexStatsMap, error) {
+func handleIndexStatsAux(ctx context.Context, db *sql.DB, idxStats state.PostgresIndexStatsMap, postgresVersion state.PostgresVersion, server *state.Server) (state.PostgresIndexStatsMap, error) {
 	if postgresVersion.IsCitus && !server.Config.DisableCitusSchemaStats {
 		stmt, err := db.PrepareContext(ctx, QueryMarkerSQL+citusIndexSizeSQL)
 		if err != nil {
