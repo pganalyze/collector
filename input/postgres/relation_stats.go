@@ -195,7 +195,7 @@ func GetRelationStats(ctx context.Context, db *sql.DB, postgresVersion state.Pos
 		return
 	}
 
-	relStats, err = handleRelationStatsCitus(ctx, db, relStats, postgresVersion, server)
+	relStats, err = handleRelationStatsAux(ctx, db, relStats, postgresVersion, server)
 
 	return
 }
@@ -236,7 +236,7 @@ func GetIndexStats(ctx context.Context, db *sql.DB, postgresVersion state.Postgr
 		return
 	}
 
-	indexStats, err = handleIndexStatsCitus(ctx, db, indexStats, postgresVersion, server)
+	indexStats, err = handleIndexStatsAux(ctx, db, indexStats, postgresVersion, server)
 
 	return
 }
