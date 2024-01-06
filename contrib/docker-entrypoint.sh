@@ -12,7 +12,7 @@ if [ $(id -u) = 0 ]; then
 fi
 
 if [ "$1" = 'test' ]; then
-  eval $CMD_PREFIX /home/pganalyze/collector --test --no-log-timestamps
+  eval $CMD_PREFIX /home/pganalyze/collector --test --no-log-timestamps --no-reload
 fi
 
 if [ "$1" = 'test-explain' ]; then
