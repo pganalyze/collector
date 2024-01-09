@@ -276,9 +276,9 @@ type Server struct {
 	CollectionStatusMutex *sync.Mutex
 
 	// The time zone that logs are parsed in, synced from the setting log_timezone
-	// The StateMutex should be held while updating this
+	// The LogSettingsMutex should be held while updating this
 	LogTimezone      *time.Location
-	LogTimezoneMutex *sync.Mutex
+	LogSettingsMutex *sync.Mutex
 
 	// Boolean flags for which log lines should be ignored for processing
 	//
@@ -299,7 +299,7 @@ func MakeServer(config config.ServerConfig) *Server {
 		LogStateMutex:         &sync.Mutex{},
 		ActivityStateMutex:    &sync.Mutex{},
 		CollectionStatusMutex: &sync.Mutex{},
-		LogTimezoneMutex:      &sync.Mutex{},
+		LogSettingsMutex:      &sync.Mutex{},
 	}
 }
 
@@ -322,14 +322,14 @@ func (s *Server) SetLogIgnoreFlags(ignoreStatement bool, ignoreDuration bool) {
 func (s *Server) SetLogTimezone(settings []PostgresSetting) {
 	tz := getTimeZoneFromSettings(settings)
 
-	s.LogTimezoneMutex.Lock()
-	defer s.LogTimezoneMutex.Unlock()
+	s.LogSettingsMutex.Lock()
+	defer s.LogSettingsMutex.Unlock()
 	s.LogTimezone = tz
 }
 
 func (s *Server) GetLogTimezone() *time.Location {
-	s.LogTimezoneMutex.Lock()
-	defer s.LogTimezoneMutex.Unlock()
+	s.LogSettingsMutex.Lock()
+	defer s.LogSettingsMutex.Unlock()
 	if s.LogTimezone == nil {
 		return nil
 	}
