@@ -130,7 +130,7 @@ func transformPostgresRelations(s snapshot.FullSnapshot, newState state.Persiste
 						Columns:          s.Columns,
 						Expressions:      s.Expressions,
 						Kind:             s.Kind,
-						HasData:          s.Inherited.Valid, // Inherited is only set when we successfully joined against data
+						HasData:          s.Inherited.Valid || s.NDistinct.Valid || s.Dependencies.Valid, // Only has valid data when either of these are valid
 						Inherited:        s.Inherited.Bool,
 						NDistinct:        &snapshot.NullString{Valid: s.NDistinct.Valid, Value: s.NDistinct.String},
 						Dependencies:     &snapshot.NullString{Valid: s.Dependencies.Valid, Value: s.Dependencies.String},

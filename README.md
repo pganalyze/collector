@@ -74,10 +74,8 @@ $$ LANGUAGE sql VOLATILE SECURITY DEFINER;
 
 CREATE OR REPLACE FUNCTION pganalyze.get_relation_stats_ext() RETURNS SETOF pg_stats_ext AS
 $$
-  /* pganalyze-collector */ SELECT schemaname, tablename, statistics_schemaname, statistics_name, statistics_owner,
-  attnames, exprs, kinds, inherited, n_distinct, dependencies,
-  NULL::anyarray, most_common_val_nulls, most_common_freqs, most_common_base_freqs
-  FROM pg_catalog.pg_stats_ext;
+  /* pganalyze-collector */ SELECT row_to_json(se.*)::jsonb - 'most_common_vals'
+  FROM pg_catalog.pg_stats_ext se;
 $$ LANGUAGE sql VOLATILE SECURITY DEFINER;
 
 CREATE OR REPLACE FUNCTION pganalyze.get_stat_replication() RETURNS SETOF pg_stat_replication AS
