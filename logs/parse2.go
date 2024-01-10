@@ -152,22 +152,43 @@ var EscapeMatchers = map[rune]PrefixEscape{
 	},
 }
 
-func ParseLogLineWithPrefix2(prefix string, line string, tz *time.Location) (logLine state.LogLine, ok bool) {
-	if prefix == "" {
+type LogParser struct {
+	prefix   string
+	tz       *time.Location
+	isSyslog bool
+
+	lineRegexp     *regexp.Regexp
+	prefixElements []PrefixEscape
+}
+
+func NewLogParser(prefix string, tz *time.Location, isSyslog bool) *LogParser {
+	prefixRegexp, prefixElements := parsePrefix(prefix)
+	lineRegexp := regexp.MustCompile("(?ms)^" + prefixRegexp + `(\w+):\s+(.*\n?)$`)
+	return &LogParser{
+		prefix:   prefix,
+		tz:       tz,
+		isSyslog: isSyslog,
+
+		lineRegexp:     lineRegexp,
+		prefixElements: prefixElements,
+	}
+}
+
+func (lp *LogParser) ParseLine(line string) (logLine state.LogLine, ok bool) {
+	if lp.prefix == "" {
 		return logLine, false
 	}
-	prefixRegexp, prefixElements := parsePrefix(prefix)
-	fullRegexp := regexp.MustCompile("(?ms)^" + prefixRegexp + `(\w+):\s+(.*\n?)$`)
-	lineValues := fullRegexp.FindStringSubmatch(line)
+
+	lineValues := lp.lineRegexp.FindStringSubmatch(line)
 
 	if lineValues == nil {
 		return logLine, false
 	}
 
-	for i, elem := range prefixElements {
+	for i, elem := range lp.prefixElements {
 		if elem.ApplyValue != nil {
 			value := lineValues[i+1]
-			elem.ApplyValue(value, &logLine, tz)
+			elem.ApplyValue(value, &logLine, lp.tz)
 		}
 	}
 

@@ -592,7 +592,8 @@ var parse2Tests = []parseTestpair{
 
 func TestParseLogLineWithPrefix2(t *testing.T) {
 	for _, pair := range parse2Tests {
-		l, lOk := logs.ParseLogLineWithPrefix2(pair.prefixIn, pair.lineIn, pair.lineInTz)
+		parser := logs.NewLogParser(pair.prefixIn, pair.lineInTz, false)
+		l, lOk := parser.ParseLine(pair.lineIn)
 
 		cfg := pretty.CompareConfig
 		cfg.SkipZeroFields = true
