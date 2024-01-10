@@ -4352,7 +4352,6 @@ func (x *RelationInformation_Constraint) GetForeignMatchType() string {
 	return ""
 }
 
-// TODO: Should this be its own top-level item, with a reference back to the relation? (also possibly split this in reference, information and stats?)
 type RelationInformation_ExtendedStatistic struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
