@@ -182,6 +182,8 @@ func (lp *LogParser) ParseLine(line string) (logLine state.LogLine, ok bool) {
 	lineValues := lp.lineRegexp.FindStringSubmatch(line)
 
 	if lineValues == nil {
+		// If this is an unprefixed line, it may be a continuation of a previous line
+		logLine.Content = line
 		return logLine, false
 	}
 
@@ -255,4 +257,13 @@ func parsePrefix(prefix string) (string, []PrefixEscape) {
 	}
 
 	return resultRegexp.String(), escapes
+}
+
+func GetHerokuLogLinePrefix(logLine string) string {
+	if strings.Contains(logLine, "time_ms = ") {
+		return ` sql_error_code = %e time_ms = "%m" pid="%p" proc_start_time="%s" session_id="%c" vtid="%v" tid="%x" log_line="%l" %qdatabase="%d" connection_source="%r" user="%u" application_name="%a" `
+	} else {
+		// older prefix; we may be able to drop this at some point
+		return " sql_error_code = %e "
+	}
 }

@@ -64,7 +64,7 @@ var replaceTests = []replaceTestpair{
 func TestReplaceSecrets(t *testing.T) {
 	for _, pair := range replaceTests {
 		reader := bufio.NewReader(strings.NewReader(pair.input))
-		logLines, _ := logs.ParseAndAnalyzeBuffer(reader, time.Time{}, &state.Server{LogSettingsMutex: &sync.Mutex{}})
+		logLines, _ := logs.ParseAndAnalyzeBuffer(reader, time.Time{}, &state.Server{LogSettingsMutex: &sync.Mutex{}, LogLinePrefix: logs.LogPrefixAmazonRds})
 		output := logs.ReplaceSecrets([]byte(pair.input), logLines, state.ParseFilterLogSecret(pair.filterLogSecret))
 
 		cfg := pretty.CompareConfig

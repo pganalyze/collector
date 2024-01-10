@@ -155,8 +155,10 @@ func logStreamItemToLogLine(ctx context.Context, item HttpSyslogMessage, servers
 	logLineNumber, _ := strconv.ParseInt(lineParts[2], 10, 32)
 	logLineNumberChunk, _ := strconv.ParseInt(lineParts[3], 10, 32)
 	prefixedContent := lineParts[4]
+	prefix := logs.GetHerokuLogLinePrefix(prefixedContent)
+	parser := logs.NewLogParser(prefix, nil, false)
 
-	logLine, _ := logs.ParseLogLineWithPrefix("", prefixedContent+"\n", nil)
+	logLine, _ := parser.ParseLine(prefixedContent + "\n")
 
 	sourceToServer = catchIdentifyServerLine(sourceName, logLine.Content, sourceToServer, servers)
 

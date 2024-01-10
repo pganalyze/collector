@@ -41,21 +41,21 @@ func XidToXid8(xid Xid, currentXactId Xid8) Xid8 {
 	return Xid8(xidEpoch)<<32 | Xid8(xid)
 }
 
-func getTimeZoneFromSettings(settings []PostgresSetting) *time.Location {
+func getLogConfigFromSettings(settings []PostgresSetting) (tz *time.Location, prefix string) {
 	for _, setting := range settings {
-		if setting.Name != "log_timezone" {
+		if !setting.ResetValue.Valid {
 			continue
 		}
-		if !setting.ResetValue.Valid {
-			return nil
-		}
 
-		zoneStr := setting.ResetValue.String
-		zone, err := time.LoadLocation(zoneStr)
-		if err != nil {
-			return nil
+		if setting.Name == "log_timezone" {
+			zoneStr := setting.ResetValue.String
+			zone, err := time.LoadLocation(zoneStr)
+			if err == nil {
+				tz = zone
+			}
+		} else if setting.Name == "log_line_prefix" {
+			prefix = setting.ResetValue.String
 		}
-		return zone
 	}
-	return nil
+	return
 }

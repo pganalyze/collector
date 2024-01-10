@@ -187,12 +187,32 @@ func setupLogTransformer(ctx context.Context, wg *sync.WaitGroup, servers []*sta
 					return
 				}
 
+				var server *state.Server
+				var isAlloyDBCluster bool
+
+				for _, s := range servers {
+					if in.GcpProjectID == server.Config.GcpProjectID && in.GcpCloudSQLInstanceID != "" && in.GcpCloudSQLInstanceID == server.Config.GcpCloudSQLInstanceID {
+						server = s
+					}
+					if in.GcpProjectID == server.Config.GcpProjectID && in.GcpAlloyDBClusterID != "" && in.GcpAlloyDBClusterID == server.Config.GcpAlloyDBClusterID && in.GcpAlloyDBInstanceID != "" && in.GcpAlloyDBInstanceID == server.Config.GcpAlloyDBInstanceID {
+						server = s
+						isAlloyDBCluster = true
+					}
+				}
+
+				if server == nil {
+					continue
+				}
+
+				prefix, tz, isSyslog := server.GetLogSettings()
+				parser := logs.NewLogParser(prefix, tz, isSyslog)
+
 				// We ignore failures here since we want the per-backend stitching logic
 				// that runs later on (and any other parsing errors will just be ignored).
 				// Note that we need to restore the original trailing newlines since
 				// AnalyzeStreamInGroups expects them and they are not present in the GCP
 				// log stream.
-				logLine, _ := logs.ParseLogLineWithPrefix("", in.Content+"\n", nil)
+				logLine, _ := parser.ParseLine(in.Content + "\n")
 				logLine.OccurredAt = in.OccurredAt
 
 				// Ignore loglines which are outside our time window
@@ -200,18 +220,13 @@ func setupLogTransformer(ctx context.Context, wg *sync.WaitGroup, servers []*sta
 					continue
 				}
 
-				for _, server := range servers {
-					if in.GcpProjectID == server.Config.GcpProjectID && in.GcpCloudSQLInstanceID != "" && in.GcpCloudSQLInstanceID == server.Config.GcpCloudSQLInstanceID {
-						out <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: logLine}
+				if isAlloyDBCluster {
+					// AlloyDB adds a special [filename:lineno] prefix to all log lines (not part of log_line_prefix)
+					parts := regexp.MustCompile(`^\[[\w.-]+:\d+\]  (.*)`).FindStringSubmatch(string(logLine.Content))
+					if len(parts) == 2 {
+						logLine.Content = parts[1]
 					}
-					if in.GcpProjectID == server.Config.GcpProjectID && in.GcpAlloyDBClusterID != "" && in.GcpAlloyDBClusterID == server.Config.GcpAlloyDBClusterID && in.GcpAlloyDBInstanceID != "" && in.GcpAlloyDBInstanceID == server.Config.GcpAlloyDBInstanceID {
-						// AlloyDB adds a special [filename:lineno] prefix to all log lines (not part of log_line_prefix)
-						parts := regexp.MustCompile(`^\[[\w.-]+:\d+\]  (.*)`).FindStringSubmatch(string(logLine.Content))
-						if len(parts) == 2 {
-							logLine.Content = parts[1]
-						}
-						out <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: logLine}
-					}
+					out <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: logLine}
 				}
 			}
 		}

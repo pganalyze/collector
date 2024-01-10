@@ -374,7 +374,6 @@ func setupDockerTail(ctx context.Context, containerName string, out chan<- SelfH
 
 func setupLogTransformer(ctx context.Context, wg *sync.WaitGroup, server *state.Server, globalCollectionOpts state.CollectionOpts, prefixedLogger *util.Logger, parsedLogStream chan state.ParsedLogStreamItem) chan<- SelfHostedLogStreamItem {
 	logStream := make(chan SelfHostedLogStreamItem)
-	tz := server.GetLogTimezone()
 
 	wg.Add(1)
 	go func() {
@@ -393,13 +392,15 @@ func setupLogTransformer(ctx context.Context, wg *sync.WaitGroup, server *state.
 				if !ok {
 					return
 				}
+				prefix, tz, isSyslog := server.GetLogSettings()
+				logParser := logs.NewLogParser(prefix, tz, isSyslog)
 
 				// We ignore failures here since we want the per-backend stitching logic
 				// that runs later on (and any other parsing errors will just be ignored)
 				// Note that we need to restore the original trailing newlines since
 				// AnalyzeStreamInGroups expects them and they are not present in the tail
 				// log stream.
-				logLine, _ := logs.ParseLogLineWithPrefix("", item.Line+"\n", tz)
+				logLine, _ := logParser.ParseLine(item.Line + "\n")
 				logLine.CollectedAt = time.Now()
 				logLine.UUID = uuid.NewV4()
 
