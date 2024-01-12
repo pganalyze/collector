@@ -10,14 +10,16 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
+const extendedStatisticsSQLExprsField = "ARRAY[]::text[]"
+const extendedStatisticsSQLpg14ExprsField = "se ->> 'exprs'"
 const extendedStatisticsSQLInheritedField = "null"
 const extendedStatisticsSQLpg15InheritedField = "se ->> 'inherited'"
 
-// pg_get_statisticsobjdef_expressions(s.oid) provides pg_stats_ext.exprs without accessing pg_stats_ext
 const extendedStatisticsSQL = `
 WITH relation_stats_ext AS (
 	SELECT se ->> 'statistics_schemaname' statistics_schemaname,
 		   se ->> 'statistics_name' statistics_name,
+		   %s exprs,
 		   %s inherited,
 		   se ->> 'n_distinct' n_distinct,
 		   se ->> 'dependencies' dependencies
@@ -27,7 +29,7 @@ SELECT c.oid,
 	   n.nspname,
 	   s.stxname,
 	   (SELECT array_agg(k) FROM unnest(s.stxkeys) k) stxkeys,
-	   COALESCE(pg_get_statisticsobjdef_expressions(s.oid)::text[], ARRAY[]::text[]) exprs,
+	   sd.exprs,
 	   s.stxkind,
 	   sd.inherited,
 	   sd.n_distinct,
@@ -41,7 +43,14 @@ SELECT c.oid,
 
 func GetRelationStatsExtended(ctx context.Context, logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion, server *state.Server, globalCollectionOpts state.CollectionOpts, systemType string, dbName string) (state.PostgresRelationStatsExtendedMap, error) {
 	var sourceTable string
+	var exprsField string
 	var inheritedField string
+
+	if postgresVersion.Numeric >= state.PostgresVersion14 {
+		exprsField = extendedStatisticsSQLpg14ExprsField
+	} else {
+		exprsField = extendedStatisticsSQLExprsField
+	}
 
 	if postgresVersion.Numeric >= state.PostgresVersion15 {
 		inheritedField = extendedStatisticsSQLpg15InheritedField
@@ -61,7 +70,7 @@ func GetRelationStatsExtended(ctx context.Context, logger *util.Logger, db *sql.
 		sourceTable = "(SELECT row_to_json(pse.*)::jsonb se FROM pg_catalog.pg_stats_ext pse) _"
 	}
 
-	stmt, err := db.PrepareContext(ctx, QueryMarkerSQL+fmt.Sprintf(extendedStatisticsSQL, inheritedField, sourceTable))
+	stmt, err := db.PrepareContext(ctx, QueryMarkerSQL+fmt.Sprintf(extendedStatisticsSQL, exprsField, inheritedField, sourceTable))
 	if err != nil {
 		return nil, err
 	}
