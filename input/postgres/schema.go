@@ -143,7 +143,7 @@ func collectSchemaData(ctx context.Context, collectionOpts state.CollectionOpts,
 
 		newRelationStatsExtended, err := GetRelationStatsExtended(ctx, logger, db, postgresVersion, server, collectionOpts, systemType, dbName)
 		if err != nil {
-			return ps, ts, fmt.Errorf("error collecting extended column statistics: %s", err)
+			return ps, ts, fmt.Errorf("error collecting extended relation statistics: %s", err)
 		}
 		for k, v := range newRelationStatsExtended {
 			ps.SchemaStats[databaseOid].RelationStatsExtended[k] = v
