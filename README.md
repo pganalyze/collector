@@ -72,7 +72,7 @@ $$
   FROM pg_catalog.pg_stats;
 $$ LANGUAGE sql VOLATILE SECURITY DEFINER;
 
-CREATE OR REPLACE FUNCTION pganalyze.get_relation_stats_ext() RETURNS SETOF pg_stats_ext AS
+CREATE OR REPLACE FUNCTION pganalyze.get_relation_stats_ext() RETURNS SETOF jsonb AS
 $$
   /* pganalyze-collector */ SELECT row_to_json(se.*)::jsonb - 'most_common_vals'
   FROM pg_catalog.pg_stats_ext se;
