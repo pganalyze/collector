@@ -254,6 +254,11 @@ guided-setup:
 		cat guided-setup-snapshot.log.out; \
 		exit 1; \
 	fi
+	if grep -q -E '[0-9]{4}\/[0-9]{2}\/[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2} W ' guided-setup-snapshot.log.out; then \
+		echo "expected no warnings in collector log; test failed:"; \
+		cat guided-setup-snapshot.log.out; \
+		exit 1; \
+	fi
 	diff -Nau guided-setup.snapshot-subset.json.expected guided-setup.snapshot-subset.json.out && echo 'success'
 
 installer:
