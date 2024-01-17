@@ -10,34 +10,25 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
-const extendedStatisticsSQLExprsField = "ARRAY[]::text[]"
-const extendedStatisticsSQLpg14ExprsField = "se ->> 'exprs'"
+const extendedStatisticsSQLExprsField = "null"
+const extendedStatisticsSQLpg14ExprsField = "pg_get_statisticsobjdef_expressions(s.oid)::text[]"
 const extendedStatisticsSQLInheritedField = "null"
-const extendedStatisticsSQLpg15InheritedField = "se ->> 'inherited'"
+const extendedStatisticsSQLpg15InheritedField = "sd.inherited"
 
 const extendedStatisticsSQL = `
-WITH relation_stats_ext AS (
-	SELECT se ->> 'statistics_schemaname' statistics_schemaname,
-		   se ->> 'statistics_name' statistics_name,
-		   %s exprs,
-		   %s inherited,
-		   se ->> 'n_distinct' n_distinct,
-		   se ->> 'dependencies' dependencies
-	  FROM %s
-)
 SELECT c.oid,
 	   n.nspname,
 	   s.stxname,
 	   (SELECT array_agg(k) FROM unnest(s.stxkeys) k) stxkeys,
-	   sd.exprs,
+	   COALESCE(%s, ARRAY[]::text[]) exprs,
 	   s.stxkind,
-	   sd.inherited,
+	   %s,
 	   sd.n_distinct,
 	   sd.dependencies
   FROM pg_catalog.pg_statistic_ext s
   JOIN pg_class c ON (s.stxrelid = c.oid)
   JOIN pg_namespace n ON (s.stxnamespace = n.oid)
-  LEFT JOIN relation_stats_ext sd ON (sd.statistics_schemaname = n.nspname AND sd.statistics_name = s.stxname)
+  LEFT JOIN %s sd ON (sd.statistics_schemaname = n.nspname AND sd.statistics_name = s.stxname)
  WHERE ($1 = '' OR (n.nspname || '.' || c.relname) !~* $1)
 `
 
@@ -60,14 +51,14 @@ func GetRelationStatsExtended(ctx context.Context, logger *util.Logger, db *sql.
 
 	if StatsHelperExists(ctx, db, "get_relation_stats_ext") {
 		logger.PrintVerbose("Found pganalyze.get_relation_stats_ext() stats helper")
-		sourceTable = "pganalyze.get_relation_stats_ext() se"
+		sourceTable = "pganalyze.get_relation_stats_ext()"
 	} else {
 		if systemType != "heroku" && !connectedAsSuperUser(ctx, db, systemType) && globalCollectionOpts.TestRun {
 			logger.PrintInfo("Warning: Limited access to extended table statistics detected in database %s. Please set up"+
 				" the monitoring helper function pganalyze.get_relation_stats_ext (https://github.com/pganalyze/collector#setting-up-a-restricted-monitoring-user)"+
 				" or connect as superuser, to get extended statistics for all tables.", dbName)
 		}
-		sourceTable = "(SELECT row_to_json(pse.*)::jsonb se FROM pg_catalog.pg_stats_ext pse) _"
+		sourceTable = "pg_catalog.pg_stats_ext"
 	}
 
 	stmt, err := db.PrepareContext(ctx, QueryMarkerSQL+fmt.Sprintf(extendedStatisticsSQL, exprsField, inheritedField, sourceTable))

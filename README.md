@@ -72,9 +72,15 @@ $$
   FROM pg_catalog.pg_stats;
 $$ LANGUAGE sql VOLATILE SECURITY DEFINER;
 
-CREATE OR REPLACE FUNCTION pganalyze.get_relation_stats_ext() RETURNS SETOF jsonb AS
+CREATE OR REPLACE FUNCTION pganalyze.get_relation_stats_ext() RETURNS TABLE(
+  statistics_schemaname text, statistics_name text,
+  inherited boolean, n_distinct pg_ndistinct, dependencies pg_dependencies,
+  most_common_val_nulls boolean[], most_common_freqs float8[], most_common_base_freqs float8[]
+) AS
 $$
-  /* pganalyze-collector */ SELECT row_to_json(se.*)::jsonb - 'most_common_vals'
+  /* pganalyze-collector */ SELECT statistics_schemaname, statistics_name,
+  (row_to_json(se.*)::jsonb ->> 'inherited')::boolean AS inherited, n_distinct, dependencies,
+  most_common_val_nulls, most_common_freqs, most_common_base_freqs
   FROM pg_catalog.pg_stats_ext se;
 $$ LANGUAGE sql VOLATILE SECURITY DEFINER;
 
