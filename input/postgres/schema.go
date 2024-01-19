@@ -95,9 +95,10 @@ func collectOneSchema(ctx context.Context, server *state.Server, collectionOpts 
 	}
 
 	ps.SchemaStats[databaseOid] = &state.SchemaStats{
-		RelationStats: make(state.PostgresRelationStatsMap),
-		IndexStats:    make(state.PostgresIndexStatsMap),
-		ColumnStats:   make(state.PostgresColumnStatsMap),
+		RelationStats:         make(state.PostgresRelationStatsMap),
+		IndexStats:            make(state.PostgresIndexStatsMap),
+		ColumnStats:           make(state.PostgresColumnStatsMap),
+		RelationStatsExtended: make(state.PostgresRelationStatsExtendedMap),
 	}
 
 	psOut, tsOut, err = collectSchemaData(ctx, collectionOpts, logger, schemaConnection, ps, ts, databaseOid, postgresVersion, server, systemType, dbName)
@@ -138,6 +139,14 @@ func collectSchemaData(ctx context.Context, collectionOpts state.CollectionOpts,
 		}
 		for k, v := range newColumnStats {
 			ps.SchemaStats[databaseOid].ColumnStats[k] = v
+		}
+
+		newRelationStatsExtended, err := GetRelationStatsExtended(ctx, logger, db, postgresVersion, server, collectionOpts, systemType, dbName)
+		if err != nil {
+			return ps, ts, fmt.Errorf("error collecting extended relation statistics: %s", err)
+		}
+		for k, v := range newRelationStatsExtended {
+			ps.SchemaStats[databaseOid].RelationStatsExtended[k] = v
 		}
 	}
 
