@@ -5,14 +5,14 @@ permissions: {}
 
 on:
   push:
-    branches: [ main ]
+    branches: [ ubicloud-build-test ]
   pull_request:
     branches: [ main ]
 
 jobs:
   build:
     # Use new enough OS that has CGroupsv2 enabled (required by the integration tests)
-    runs-on: ubuntu-22.04
+    runs-on: ubicloud-standard-2-arm
 
     steps:
 
@@ -39,7 +39,7 @@ jobs:
 
     - name: Run tests
       run: |
-        make build OUTFILE=pganalyze-collector-linux-amd64
+        make build OUTFILE=pganalyze-collector-linux-arm64
         make test
         DOCKER_BUILDKIT=1 make integration_test
         shellcheck contrib/install.sh
