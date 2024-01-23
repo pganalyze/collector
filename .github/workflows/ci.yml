@@ -31,7 +31,7 @@ jobs:
     - name: Set up protoc
       uses: pganalyze/setup-protoc@52a53b4e2d968277c5c749dac537d0b14a6f5272
       with:
-        version: 14.0.x
+        version: 3.14
         repo-token: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Check out code
