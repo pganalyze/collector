@@ -45,6 +45,43 @@ jobs:
         name: pganalyze-collector-linux-amd64
         path: pganalyze-collector-linux-amd64
 
+  build_arm:
+    runs-on: ubicloud-standard-2-arm
+    permissions: {}
+    # ensure we don't release on create events for branches (only tags)
+    if: ${{ startsWith( github.ref, 'refs/tags' ) }}
+
+    steps:
+
+    - name: Set up Go 1.x
+      uses: actions/setup-go@v4
+      with:
+        go-version: 1.21
+      id: go
+
+    - name: Set up protoc
+      uses: pganalyze/setup-protoc@ab6203da1c3118e4406048171b09238ad31ad73e
+      with:
+        version: 3.14.0
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Check out code
+      uses: actions/checkout@v3
+      with:
+        submodules: true
+
+    - name: Runs tests
+      run: |
+        make build OUTFILE=pganalyze-collector-linux-arm64
+        make test
+        DOCKER_BUILDKIT=1 make integration_test
+
+    - name: Upload build
+      uses: actions/upload-artifact@v2
+      with:
+        name: pganalyze-collector-linux-arm64
+        path: pganalyze-collector-linux-arm64
+
   build_packages:
     # Use older Ubuntu release to ensure availability of CGroupsv1 (which are necessary
     # currently to support older systemd on some of the test containers)
@@ -83,7 +120,7 @@ jobs:
         if-no-files-found: error
 
   release:
-    needs: [build, build_packages]
+    needs: [build, build_arm, build_packages]
     runs-on: ubuntu-latest
     # ensure we don't release on create events for branches (only tags)
     if: ${{ startsWith( github.ref, 'refs/tags' ) }}
@@ -93,6 +130,11 @@ jobs:
       uses: actions/download-artifact@v3
       with:
         name: pganalyze-collector-linux-amd64
+
+    - name: Download arm build
+      uses: actions/download-artifact@v3
+      with:
+        name: pganalyze-collector-linux-arm64
 
     - name: Download build packages
       uses: actions/download-artifact@v3
@@ -125,6 +167,17 @@ jobs:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
         asset_path: ./pganalyze-collector-linux-amd64
         asset_name: pganalyze-collector-linux-amd64
+        asset_content_type: application/octet-stream
+
+    - name: Upload release build (arm)
+      id: upload-release-build-arm
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./pganalyze-collector-linux-arm64
+        asset_name: pganalyze-collector-linux-arm64
         asset_content_type: application/octet-stream
 
     - name: Upload release build package (RPM, x86-64)
