@@ -16,6 +16,12 @@ jobs:
 
     steps:
 
+    - name: Show OS info
+      run: lsb_release -a
+
+    - name: Show OS arch
+      run: uname -m
+
     - name: Set up Go 1.x
       uses: actions/setup-go@v4
       with:
