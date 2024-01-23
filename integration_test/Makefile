@@ -15,7 +15,7 @@ docker_run_cmd_postgres = $(call docker_run_cmd,postgres -c pg_stat_statements.t
 
 .PHONY: pg10 pg11 pg12 pg13 pg14 pg15 pg16 citus reload guided-setup installer
 
-all: pg10 pg11 pg12 pg13 pg14 pg15 pg16 citus reload guided-setup installer
+all: pg10 pg11 pg12 pg13 pg14 pg15 pg16 reload guided-setup installer
 
 pg10:
 	docker build -f Dockerfile.test-pg10 $(DOCKER_BUILD_OPTS)
