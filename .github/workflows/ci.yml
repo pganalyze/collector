@@ -29,7 +29,7 @@ jobs:
       id: go
 
     - name: Set up protoc
-      uses: pganalyze/setup-protoc@ab6203da1c3118e4406048171b09238ad31ad73e
+      uses: pganalyze/setup-protoc@52a53b4e2d968277c5c749dac537d0b14a6f5272
       with:
         version: 3.14.0
         repo-token: ${{ secrets.GITHUB_TOKEN }}
