@@ -13,9 +13,16 @@ docker_run_cmd = docker run --name pganalyze-collector-test \
   -d pganalyze-collector-test $(1)
 docker_run_cmd_postgres = $(call docker_run_cmd,postgres -c pg_stat_statements.track_utility=off)
 
-.PHONY: pg10 pg11 pg12 pg13 pg14 pg15 pg16 citus reload guided-setup installer
+TARGETS := pg10 pg11 pg12 pg13 pg14 pg15 pg16 reload guided-setup installer
 
-all: pg10 pg11 pg12 pg13 pg14 pg15 pg16 citus reload guided-setup installer
+# Citus doesn't release ARM images, thus skip on ARM
+ifneq ($(shell uname -p), arm)
+	TARGETS += citus
+endif
+
+.PHONY: all $(TARGETS)
+
+all: $(TARGETS)
 
 pg10:
 	docker build -f Dockerfile.test-pg10 $(DOCKER_BUILD_OPTS)
