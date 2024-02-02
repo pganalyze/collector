@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.53.0      2024-02-02
+
+* Track extended statistics created with `CREATE STATISTICS`
+  - This data helps having better statistic information, to be used by the
+    Index Advisor
+* Docker image: Don't reload when calling "test" command
+
+
 ## 0.52.4      2023-12-21
 
 * Log Insights: Add support for receiving syslog over TLS
