@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.53.0      2024-02-02
+
+* Track extended statistics created with `CREATE STATISTICS`
+  - This is utilized by pganalyze Index Advisor to better detect functional dependencies, and improve multi-column index recommendations
+  - To allow the collector to access external statistics data you need to create the new "get_relation_stats_ext" helper function (see https://github.com/pganalyze/collector?tab=readme-ov-file#setting-up-a-restricted-monitoring-user)
+* Docker image: Don't reload when calling "test" command
+
+
 ## 0.52.4      2023-12-21
 
 * Log Insights: Add support for receiving syslog over TLS
