@@ -16,7 +16,7 @@ docker_run_cmd_postgres = $(call docker_run_cmd,postgres -c pg_stat_statements.t
 TARGETS := pg10 pg11 pg12 pg13 pg14 pg15 pg16 reload guided-setup installer
 
 # Citus doesn't release ARM images, thus skip on ARM
-ifneq ($(shell uname -p), arm)
+ifeq ($(findstring $(shell uname -m),arm64 aarch64),)
 	TARGETS += citus
 endif
 
