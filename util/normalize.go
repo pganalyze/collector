@@ -1,7 +1,7 @@
 package util
 
 import (
-	pg_query "github.com/pganalyze/pg_query_go/v4"
+	pg_query "github.com/pganalyze/pg_query_go/v5"
 )
 
 // TruncatedQueryMarker - Added to queries that were truncated and caused a

@@ -303,10 +303,10 @@ github.com/ogier/pflag
 # github.com/papertrail/go-tail v0.0.0-20180509224916-973c153b0431
 ## explicit
 github.com/papertrail/go-tail/follower
-# github.com/pganalyze/pg_query_go/v4 v4.2.1
+# github.com/pganalyze/pg_query_go/v5 v5.1.0
 ## explicit; go 1.14
-github.com/pganalyze/pg_query_go/v4
-github.com/pganalyze/pg_query_go/v4/parser
+github.com/pganalyze/pg_query_go/v5
+github.com/pganalyze/pg_query_go/v5/parser
 # github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8
 ## explicit; go 1.14
 github.com/pkg/browser
@@ -569,8 +569,8 @@ google.golang.org/grpc/serviceconfig
 google.golang.org/grpc/stats
 google.golang.org/grpc/status
 google.golang.org/grpc/tap
-# google.golang.org/protobuf v1.31.0
-## explicit; go 1.11
+# google.golang.org/protobuf v1.32.0
+## explicit; go 1.17
 google.golang.org/protobuf/cmd/protoc-gen-go
 google.golang.org/protobuf/cmd/protoc-gen-go/internal_gengo
 google.golang.org/protobuf/compiler/protogen
