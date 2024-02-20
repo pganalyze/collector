@@ -81,13 +81,14 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 		}
 	}
 
-	// Avoid even running the scheduler when we already know its not needed
+	// Avoid even running the scheduler when we already know it's not needed
 	hasAnyLogsEnabled := false
 	hasAnyReportsEnabled := false
 	hasAnyActivityEnabled := false
 	hasAnyGoogleCloudSQL := false
 	hasAnyAzureDatabase := false
 	hasAnyHeroku := false
+	hasAnyTembo := false
 
 	serverConfigs := conf.Servers
 	for _, config := range serverConfigs {
@@ -112,6 +113,9 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 		}
 		if config.SystemType == "heroku" {
 			hasAnyHeroku = true
+		}
+		if config.SystemType == "tembo" {
+			hasAnyTembo = true
 		}
 	}
 
@@ -198,7 +202,7 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 	}
 
 	if globalCollectionOpts.DebugLogs {
-		runner.SetupLogCollection(ctx, wg, servers, globalCollectionOpts, logger, hasAnyHeroku, hasAnyGoogleCloudSQL, hasAnyAzureDatabase)
+		runner.SetupLogCollection(ctx, wg, servers, globalCollectionOpts, logger, hasAnyHeroku, hasAnyGoogleCloudSQL, hasAnyAzureDatabase, hasAnyTembo)
 
 		// Keep running but only running log processing
 		keepRunning = true
@@ -225,7 +229,7 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 	}
 
 	if hasAnyLogsEnabled {
-		runner.SetupLogCollection(ctx, wg, servers, globalCollectionOpts, logger, hasAnyHeroku, hasAnyGoogleCloudSQL, hasAnyAzureDatabase)
+		runner.SetupLogCollection(ctx, wg, servers, globalCollectionOpts, logger, hasAnyHeroku, hasAnyGoogleCloudSQL, hasAnyAzureDatabase, hasAnyTembo)
 	} else if os.Getenv("DYNO") != "" && os.Getenv("PORT") != "" {
 		// Even if logs are deactivated, Heroku still requires us to have a functioning web server
 		util.SetupHttpHandlerDummy()

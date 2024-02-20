@@ -3,6 +3,7 @@ package runner
 import (
 	"context"
 	"fmt"
+	"github.com/pganalyze/collector/input/system/tembo"
 	"io/ioutil"
 	"strings"
 	"sync"
@@ -31,7 +32,7 @@ const LogDownloadInterval time.Duration = 30 * time.Second
 const LogStreamingInterval time.Duration = 10 * time.Second
 
 // SetupLogCollection - Starts streaming or scheduled downloads for logs of the specified servers
-func SetupLogCollection(ctx context.Context, wg *sync.WaitGroup, servers []*state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger, hasAnyHeroku bool, hasAnyGoogleCloudSQL bool, hasAnyAzureDatabase bool) {
+func SetupLogCollection(ctx context.Context, wg *sync.WaitGroup, servers []*state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger, hasAnyHeroku bool, hasAnyGoogleCloudSQL bool, hasAnyAzureDatabase bool, hasAnyTembo bool) {
 	var hasAnyLogDownloads bool
 	var hasAnyLogTails bool
 
@@ -47,11 +48,14 @@ func SetupLogCollection(ctx context.Context, wg *sync.WaitGroup, servers []*stat
 	}
 
 	var parsedLogStream chan state.ParsedLogStreamItem
-	if hasAnyLogTails || hasAnyHeroku || hasAnyGoogleCloudSQL || hasAnyAzureDatabase {
+	if hasAnyLogTails || hasAnyHeroku || hasAnyGoogleCloudSQL || hasAnyAzureDatabase || hasAnyTembo {
 		parsedLogStream = setupLogStreamer(ctx, wg, globalCollectionOpts, logger, servers, nil, stream.LogTestNone)
 	}
 	if hasAnyLogTails {
 		selfhosted.SetupLogTails(ctx, wg, globalCollectionOpts, logger, servers, parsedLogStream)
+	}
+	if hasAnyTembo {
+		tembo.SetupWebsocketHandlerLogs()
 	}
 	if hasAnyHeroku {
 		heroku.SetupHttpHandlerLogs(ctx, wg, globalCollectionOpts, logger, servers, parsedLogStream)
