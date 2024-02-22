@@ -19,6 +19,8 @@ func DownloadLogFiles(ctx context.Context, server *state.Server, globalCollectio
 		if err != nil {
 			return
 		}
+	} else if server.Config.SystemType == "tembo" {
+		//TODO(ianstanton) - Implement tembo log file download for tembo
 	} else if server.Config.LogPgReadFile {
 		psl, files, querySamples, err = postgres.LogPgReadFile(ctx, server, globalCollectionOpts, logger)
 		if err != nil {
