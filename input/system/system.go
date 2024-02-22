@@ -2,6 +2,7 @@ package system
 
 import (
 	"context"
+	"github.com/pganalyze/collector/input/system/tembo"
 
 	"github.com/pganalyze/collector/config"
 	"github.com/pganalyze/collector/input/postgres"
@@ -20,7 +21,7 @@ func DownloadLogFiles(ctx context.Context, server *state.Server, globalCollectio
 			return
 		}
 	} else if server.Config.SystemType == "tembo" {
-		//TODO(ianstanton) - Implement tembo log file download for tembo
+		psl, files, querySamples, err = tembo.DownloadLogFiles(ctx, server, logger)
 	} else if server.Config.LogPgReadFile {
 		psl, files, querySamples, err = postgres.LogPgReadFile(ctx, server, globalCollectionOpts, logger)
 		if err != nil {

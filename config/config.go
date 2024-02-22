@@ -115,6 +115,8 @@ type ServerConfig struct {
 	AivenProjectID string `ini:"aiven_project_id"`
 	AivenServiceID string `ini:"aiven_service_id"`
 
+	TemboAPIToken string `ini:"tembo_api_token"`
+
 	SectionName string
 	Identifier  ServerIdentifier
 
