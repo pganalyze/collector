@@ -145,7 +145,6 @@ func downloadLogsForServer(ctx context.Context, server *state.Server, globalColl
 	if err != nil || !grant.Valid {
 		return server.LogPrevState, false, err
 	}
-
 	transientLogState := state.TransientLogState{CollectedAt: time.Now()}
 	defer transientLogState.Cleanup(logger)
 

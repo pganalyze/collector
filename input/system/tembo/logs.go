@@ -38,10 +38,14 @@ func DownloadLogFiles(ctx context.Context, server *state.Server, logger *util.Lo
 
 	// Construct URL for Tembo Logs API wss://api.data-1.use1.tembo.io/loki/api/v1/tail?query=$URL_ENCODED_QUERY
 	websocketUrl := "wss://api.data-1.use1.tembo.io/loki/api/v1/tail?query=" + encodedQuery
-	fmt.Println(websocketUrl)
+
+	// Set HTTP headers
+	headers := make(map[string][]string)
+	headers["Authorization"] = []string{"Bearer " + server.Config.TemboAPIToken}
+	headers["X-Scope-OrgId"] = []string{server.Config.TemboOrgID}
 
 	// Connect to websocket
-	conn, response, err := websocket.DefaultDialer.Dial(websocketUrl, nil)
+	conn, response, err := websocket.DefaultDialer.Dial(websocketUrl, headers)
 
 	// If there is an error connecting, return error
 	if err != nil {
