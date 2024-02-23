@@ -57,6 +57,8 @@ func DownloadLogFiles(ctx context.Context, server *state.Server, logger *util.Lo
 	}
 	logger.PrintInfo(fmt.Sprintf("TEMBO LOG: %s", line))
 
+	// TODO(ianstanton) Parse log lines
+
 	// Close connection
 	defer func(conn *websocket.Conn) {
 		err := conn.Close()
