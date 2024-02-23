@@ -141,12 +141,14 @@ func collectSchemaData(ctx context.Context, collectionOpts state.CollectionOpts,
 			ps.SchemaStats[databaseOid].ColumnStats[k] = v
 		}
 
-		newRelationStatsExtended, err := GetRelationStatsExtended(ctx, logger, db, postgresVersion, server, collectionOpts, systemType, dbName)
-		if err != nil {
-			return ps, ts, fmt.Errorf("error collecting extended relation statistics: %s", err)
-		}
-		for k, v := range newRelationStatsExtended {
-			ps.SchemaStats[databaseOid].RelationStatsExtended[k] = v
+		if postgresVersion.Numeric >= state.PostgresVersion12 {
+			newRelationStatsExtended, err := GetRelationStatsExtended(ctx, logger, db, postgresVersion, server, collectionOpts, systemType, dbName)
+			if err != nil {
+				return ps, ts, fmt.Errorf("error collecting extended relation statistics: %s", err)
+			}
+			for k, v := range newRelationStatsExtended {
+				ps.SchemaStats[databaseOid].RelationStatsExtended[k] = v
+			}
 		}
 	}
 
