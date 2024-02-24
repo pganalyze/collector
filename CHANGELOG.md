@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.54.0      2024-02-23
+
+* Update pg_query_go to v5 / Postgres 16 parser
+* Bugfix: Skip collecting extended statistics for Postgres 11 and below
+  - Since the system view `pg_stats_ext` was introduced starting with Postgres
+    12, this was causing the issue of collecting any schema data on Postgres 11
+    and below
+
+
 ## 0.53.0      2024-02-02
 
 * Track extended statistics created with `CREATE STATISTICS`
