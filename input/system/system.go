@@ -2,8 +2,6 @@ package system
 
 import (
 	"context"
-	"github.com/pganalyze/collector/input/system/tembo"
-
 	"github.com/pganalyze/collector/config"
 	"github.com/pganalyze/collector/input/postgres"
 	"github.com/pganalyze/collector/input/system/crunchy_bridge"
@@ -20,8 +18,6 @@ func DownloadLogFiles(ctx context.Context, server *state.Server, globalCollectio
 		if err != nil {
 			return
 		}
-	} else if server.Config.SystemType == "tembo" {
-		psl, files, querySamples, err = tembo.DownloadLogFiles(ctx, server, logger)
 	} else if server.Config.LogPgReadFile {
 		psl, files, querySamples, err = postgres.LogPgReadFile(ctx, server, globalCollectionOpts, logger)
 		if err != nil {

@@ -225,7 +225,7 @@ type ServerConfig struct {
 
 // SupportsLogDownload - Determines whether the specified config can download logs
 func (config ServerConfig) SupportsLogDownload() bool {
-	return config.AwsDbInstanceID != "" || config.AwsDbClusterID != "" || config.LogPgReadFile || config.SystemType == "tembo"
+	return config.AwsDbInstanceID != "" || config.AwsDbClusterID != "" || config.LogPgReadFile
 }
 
 // GetPqOpenString - Gets the database configuration as a string that can be passed to lib/pq for connecting
