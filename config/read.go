@@ -227,6 +227,15 @@ func getDefaultConfig() *ServerConfig {
 	if crunchyBridgeAPIKey := os.Getenv("CRUNCHY_BRIDGE_API_KEY"); crunchyBridgeAPIKey != "" {
 		config.CrunchyBridgeAPIKey = crunchyBridgeAPIKey
 	}
+	if temboAPIToken := os.Getenv("TEMBO_API_TOKEN"); temboAPIToken != "" {
+		config.TemboAPIToken = temboAPIToken
+	}
+	if temboInstanceID := os.Getenv("TEMBO_INSTANCE_ID"); temboInstanceID != "" {
+		config.TemboInstanceID = temboInstanceID
+	}
+	if temboOrgID := os.Getenv("TEMBO_ORG_ID"); temboOrgID != "" {
+		config.TemboOrgID = temboOrgID
+	}
 	if logLocation := os.Getenv("LOG_LOCATION"); logLocation != "" {
 		config.LogLocation = logLocation
 	}
