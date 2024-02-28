@@ -2,6 +2,7 @@ package system
 
 import (
 	"context"
+
 	"github.com/pganalyze/collector/config"
 	"github.com/pganalyze/collector/input/postgres"
 	"github.com/pganalyze/collector/input/system/crunchy_bridge"

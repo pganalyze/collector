@@ -3,7 +3,6 @@ package tembo
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"github.com/gorilla/websocket"
 	"github.com/pganalyze/collector/logs"
 	"github.com/pganalyze/collector/output/pganalyze_collector"
@@ -43,21 +42,6 @@ func SetupWebsocketHandlerLogs(ctx context.Context, wg *sync.WaitGroup, logger *
 	// Only ingest log lines that were written in the last minute before startup
 	linesNewerThan := time.Now().Add(-1 * time.Minute)
 	tz := server.GetLogTimezone()
-	// If tembo_api_token is not set, return an error
-	if server.Config.TemboAPIToken == "" {
-		logger.PrintError("tembo_api_token not set")
-		return
-	}
-	// If tembo_instance_id is not set, return an error
-	if server.Config.TemboInstanceID == "" {
-		logger.PrintError("tembo_instance_id not set")
-		return
-	}
-	// If tembo_org_id is not set, return an error
-	if server.Config.TemboOrgID == "" {
-		logger.PrintError("tembo_org_id not set")
-		return
-	}
 
 	// Construct query for Tembo Logs API
 	query := "{tembo_instance_id=\"" + server.Config.TemboInstanceID + "\"}"
@@ -79,6 +63,7 @@ func SetupWebsocketHandlerLogs(ctx context.Context, wg *sync.WaitGroup, logger *
 		logger.PrintError("Error connecting to Tembo logs websocket: %s %s", response.StatusCode, err)
 		return
 	}
+
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -105,10 +90,8 @@ func SetupWebsocketHandlerLogs(ctx context.Context, wg *sync.WaitGroup, logger *
 					if detailLine != nil {
 						parsedLogStream <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: *detailLine}
 					}
-					logger.PrintInfo(fmt.Sprintf("LOG LINE: %+v", logLine))
 				}
 			}
-			logger.PrintInfo(fmt.Sprintf("TEMBO LOG: %+v", result))
 		}
 	}()
 	go func() {
