@@ -117,6 +117,7 @@ type ServerConfig struct {
 
 	TemboAPIToken   string `ini:"tembo_api_token"`
 	TemboInstanceID string `ini:"tembo_instance_id"`
+	TemboNamespace  string `ini:"tembo_namespace"`
 	TemboOrgID      string `ini:"tembo_org_id"`
 
 	SectionName string

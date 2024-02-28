@@ -2,6 +2,7 @@ package system
 
 import (
 	"context"
+	"github.com/pganalyze/collector/input/system/tembo"
 
 	"github.com/pganalyze/collector/config"
 	"github.com/pganalyze/collector/input/postgres"
@@ -46,6 +47,9 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger, globalColle
 		system = crunchy_bridge.GetSystemState(config, logger)
 	} else if config.SystemType == "aiven" {
 		system.Info.Type = state.AivenSystem
+	} else if config.SystemType == "tembo" {
+		logger.PrintInfo("Tembo/System: Using Tembo system type")
+		system = tembo.GetSystemState(config, logger)
 	} else if dbHost == "" || dbHost == "localhost" || dbHost == "127.0.0.1" || config.AlwaysCollectSystemData {
 		system = selfhosted.GetSystemState(config, logger)
 	} else {

@@ -32,6 +32,7 @@ const (
 	AzureDatabaseSystem
 	CrunchyBridgeSystem
 	AivenSystem
+	TemboSystem
 )
 
 type SystemInfo struct {
