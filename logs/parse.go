@@ -470,7 +470,7 @@ func ParseLogLineWithPrefix(prefix string, line string, tz *time.Location) (logL
 	}
 
 	if timePart != "" {
-		occurredAt := getOccurredAt(timePart, tz, rsyslog)
+		occurredAt := GetOccurredAt(timePart, tz, rsyslog)
 		if occurredAt.IsZero() {
 			return
 		}
@@ -506,7 +506,7 @@ func ParseLogLineWithPrefix(prefix string, line string, tz *time.Location) (logL
 	return
 }
 
-func getOccurredAt(timePart string, tz *time.Location, rsyslog bool) time.Time {
+func GetOccurredAt(timePart string, tz *time.Location, rsyslog bool) time.Time {
 	if tz != nil && !rsyslog {
 		lastSpaceIdx := strings.LastIndex(timePart, " ")
 		if lastSpaceIdx == -1 {
