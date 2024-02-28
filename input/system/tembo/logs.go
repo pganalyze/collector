@@ -39,7 +39,7 @@ type JSONLogEvent struct {
 }
 
 // SetupWebsocketHandlerLogs - Sets up a websocket handler for Tembo logs
-func SetupWebsocketHandlerLogs(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *util.Logger, server *state.Server, parsedLogStream chan state.ParsedLogStreamItem) {
+func SetupWebsocketHandlerLogs(ctx context.Context, wg *sync.WaitGroup, logger *util.Logger, server *state.Server, parsedLogStream chan state.ParsedLogStreamItem) {
 	// Only ingest log lines that were written in the last minute before startup
 	linesNewerThan := time.Now().Add(-1 * time.Minute)
 	tz := server.GetLogTimezone()

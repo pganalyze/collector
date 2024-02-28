@@ -67,7 +67,7 @@ func SetupLogCollection(ctx context.Context, wg *sync.WaitGroup, servers []*stat
 		azure.SetupLogSubscriber(ctx, wg, globalCollectionOpts, logger, servers, parsedLogStream)
 	}
 	if hasAnyTembo {
-		tembo.SetupWebsocketHandlerLogs(ctx, wg, globalCollectionOpts, logger, servers[0], parsedLogStream)
+		tembo.SetupWebsocketHandlerLogs(ctx, wg, logger, servers[0], parsedLogStream)
 	}
 
 	if hasAnyLogDownloads {
