@@ -50,17 +50,20 @@ func SetupWebsocketHandlerLogs(ctx context.Context, wg *sync.WaitGroup, logger *
 	encodedQuery := url.QueryEscape(query)
 
 	// Construct URL for Tembo Logs API
-	websocketUrl := "wss://api.data-1.use1.cdb-dev.com/loki/api/v1/tail?query=" + encodedQuery
+	websocketUrl := "wss://api.data-1.use1.tembo.io/loki/api/v1/tail?query=" + encodedQuery
 
-	// Set HTTP headers
+	// Set headers
 	headers := make(map[string][]string)
 	headers["Authorization"] = []string{"Bearer " + server.Config.TemboAPIToken}
 	headers["X-Scope-OrgId"] = []string{server.Config.TemboOrgID}
 
 	// Connect to websocket
 	conn, response, err := websocket.DefaultDialer.Dial(websocketUrl, headers)
-	if err != nil {
-		logger.PrintError("Error connecting to Tembo logs websocket: %s %s", response.StatusCode, err)
+	if err != nil && response != nil {
+		logger.PrintError("Error connecting to Tembo logs websocket: %s", response.StatusCode, err)
+		return
+	} else if err != nil {
+		logger.PrintError("Error connecting to Tembo logs websocket: %s", err)
 		return
 	}
 
@@ -68,12 +71,22 @@ func SetupWebsocketHandlerLogs(ctx context.Context, wg *sync.WaitGroup, logger *
 	go func() {
 		defer wg.Done()
 		for {
-			_, line, err := conn.ReadMessage()
-			if err != nil {
-				logger.PrintError("Error reading message from websocket: %s", err)
-				// TODO(ianstanton) Separate case where the context is cancelled and intermittent connection issue
-				return
+			// Attempt to read message from websocket and retry if it fails
+			var line []byte
+			for i := 0; i < 3; i++ {
+				select {
+				case <-ctx.Done():
+					return
+				default:
+				}
+				_, line, err = conn.ReadMessage()
+				if err == nil {
+					break
+				}
+				logger.PrintError("Error reading from websocket attempt %v of 3: %v", i, err)
+				time.Sleep(1 * time.Second)
 			}
+
 			var result Result
 			err = json.Unmarshal(line, &result)
 			if err != nil {
