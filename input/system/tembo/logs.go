@@ -16,11 +16,6 @@ import (
 	"time"
 )
 
-type LogStreamItem struct {
-	OccurredAt time.Time
-	Content    string
-}
-
 type Result struct {
 	Streams []StreamSet `json:"streams"`
 }
@@ -45,8 +40,8 @@ type JSONLogEvent struct {
 
 // SetupWebsocketHandlerLogs - Sets up a websocket handler for Tembo logs
 func SetupWebsocketHandlerLogs(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *util.Logger, server *state.Server, parsedLogStream chan state.ParsedLogStreamItem) {
-	temboLogStream := make(chan LogStreamItem, state.LogStreamBufferLen)
-	setupLogTransformer(ctx, wg, server, temboLogStream, parsedLogStream, logger)
+	// Only ingest log lines that were written in the last minute before startup
+	linesNewerThan := time.Now().Add(-1 * time.Minute)
 	tz := server.GetLogTimezone()
 	// If tembo_api_token is not set, return an error
 	if server.Config.TemboAPIToken == "" {
@@ -78,32 +73,56 @@ func SetupWebsocketHandlerLogs(ctx context.Context, wg *sync.WaitGroup, globalCo
 	headers["Authorization"] = []string{"Bearer " + server.Config.TemboAPIToken}
 	headers["X-Scope-OrgId"] = []string{server.Config.TemboOrgID}
 
+	// Connect to websocket
+	conn, response, err := websocket.DefaultDialer.Dial(websocketUrl, headers)
+	if err != nil {
+		logger.PrintError("Error connecting to Tembo logs websocket: %s %s", response.StatusCode, err)
+		return
+	}
+	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		// Connect to websocket
-		conn, response, err := websocket.DefaultDialer.Dial(websocketUrl, headers)
-		if err != nil {
-			logger.PrintError("Error connecting to Tembo logs websocket: %s %s", response.StatusCode, err)
-			return
+		for {
+			_, line, err := conn.ReadMessage()
+			if err != nil {
+				logger.PrintError("Error reading message from websocket: %s", err)
+				// TODO(ianstanton) Separate case where the context is cancelled and intermittent connection issue
+				return
+			}
+			var result Result
+			err = json.Unmarshal(line, &result)
+			if err != nil {
+				logger.PrintError("Error unmarshalling JSON: %s", err)
+			}
+			for _, stream := range result.Streams {
+				for _, values := range stream.Values {
+					logLine, detailLine := logLineFromJsonlog(values[1], tz, logger)
+					// Ignore loglines which are outside our time window
+					if !logLine.OccurredAt.IsZero() && logLine.OccurredAt.Before(linesNewerThan) {
+						continue
+					}
+					parsedLogStream <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: logLine}
+					if detailLine != nil {
+						parsedLogStream <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: *detailLine}
+					}
+					logger.PrintInfo(fmt.Sprintf("LOG LINE: %+v", logLine))
+				}
+			}
+			logger.PrintInfo(fmt.Sprintf("TEMBO LOG: %+v", result))
 		}
-		_, line, err := conn.ReadMessage()
-		if err != nil {
-			logger.PrintError("Error reading message from websocket: %s", err)
-			return
-		}
-		var result Result
-		err = json.Unmarshal(line, &result)
-		if err != nil {
-			logger.PrintError("Error unmarshalling JSON: %s", err)
-			return
-		}
-		for _, stream := range result.Streams {
-			for _, values := range stream.Values {
-				logLine, _ := logLineFromJsonlog(values[1], tz, logger)
-				logger.PrintInfo(fmt.Sprintf("LOG LINE: %+v", logLine))
+	}()
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				err := conn.Close()
+				if err != nil {
+					logger.PrintError("Error closing websocket: %s", err)
+					return
+				}
+				return
 			}
 		}
-		logger.PrintInfo(fmt.Sprintf("TEMBO LOG: %+v", result))
 	}()
 }
 
@@ -113,7 +132,6 @@ func logLineFromJsonlog(recordIn string, tz *time.Location, logger *util.Logger)
 	logLine.CollectedAt = time.Now()
 	logLine.UUID = uuid.NewV4()
 
-	logger.PrintInfo(fmt.Sprintf("RECORD IN: %s", recordIn))
 	err := json.Unmarshal([]byte(recordIn), &event)
 	if err != nil {
 		logger.PrintError("Error unmarshalling JSON: %s", err)
@@ -162,43 +180,4 @@ func logLineFromJsonlog(recordIn string, tz *time.Location, logger *util.Logger)
 	}
 
 	return logLine, nil
-}
-
-func setupLogTransformer(ctx context.Context, wg *sync.WaitGroup, server *state.Server, in <-chan LogStreamItem, out chan state.ParsedLogStreamItem, logger *util.Logger) {
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-
-		// Only ingest log lines that were written in the last minute before startup
-		linesNewerThan := time.Now().Add(-1 * time.Minute)
-
-		for {
-			select {
-			case <-ctx.Done():
-				logger.PrintInfo("Context done")
-				return
-			case in, ok := <-in:
-				logger.PrintInfo("Case in")
-				if !ok {
-					return
-				}
-
-				// We ignore failures here since we want the per-backend stitching logic
-				// that runs later on (and any other parsing errors will just be ignored).
-				// Note that we need to restore the original trailing newlines since
-				// AnalyzeStreamInGroups expects them and they are not present in the GCP
-				// log stream.
-				logLine, _ := logs.ParseLogLineWithPrefix("", in.Content+"\n", nil)
-				logLine.OccurredAt = in.OccurredAt
-
-				// Ignore loglines which are outside our time window
-				if !logLine.OccurredAt.IsZero() && logLine.OccurredAt.Before(linesNewerThan) {
-					continue
-				}
-				logger.PrintInfo(fmt.Sprintf("IN: %s", in))
-				out <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: logLine}
-				logger.PrintInfo(fmt.Sprintf("OUT: %s", out))
-			}
-		}
-	}()
 }
