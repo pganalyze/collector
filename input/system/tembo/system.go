@@ -26,6 +26,15 @@ type Result struct {
 }
 
 type Metric struct {
+	Name                  string `json:"__name__"`
+	Endpoint              string `json:"endpoint"`
+	Instance              string `json:"instance"`
+	Job                   string `json:"job"`
+	MetricsPath           string `json:"metrics_path"`
+	Namespace             string `json:"namespace"`
+	Node                  string `json:"node"`
+	PersistentVolumeClaim string `json:"persistentvolumeclaim"`
+	Service               string `json:"service"`
 }
 
 // GetSystemState - Gets system information for a Tembo Cloud instance
@@ -69,6 +78,20 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger) (system sta
 	system.Memory.TotalBytes = memoryTotalBytes
 	system.Memory.AvailableBytes = memoryAvailableBytes
 	system.Memory.FreeBytes = memoryAvailableBytes
+
+	diskAvailable, err := getAvailableDisk("https://api.data-1.use1.cdb-dev.com/"+config.TemboNamespace+"/metrics/query?query=", client, headers, config.TemboNamespace, logger)
+	if err != nil {
+		logger.PrintError("Tembo/System: Encountered error when getting disk info %v\n", err)
+		return
+	}
+
+	system.DiskPartitions = make(state.DiskPartitionMap)
+	system.DiskPartitions["/"] = state.DiskPartition{
+		DiskName:      "md0",
+		PartitionName: "md0",
+		UsedBytes:     5 * 1024 * 1024 * 1024,
+		TotalBytes:    diskAvailable * 1024 * 1024 * 1024,
+	}
 
 	return
 }
@@ -149,4 +172,22 @@ func getSystemInfo(metricsUrl string, query string, client http.Client, headers 
 	}
 
 	return result, nil
+}
+
+func getAvailableDisk(metricsUrl string, client http.Client, headers map[string]string, namespace string, logger *util.Logger) (uint64, error) {
+	//TODO(ianstanton) Check if volume claim names differ in cases like HA
+	query := "kubelet_volume_stats_capacity_bytes{namespace=\"" + namespace + "\", persistentvolumeclaim=~\"" + namespace + "-1" + "\"}"
+
+	res, err := getSystemInfo(metricsUrl, query, client, headers, logger)
+	if err != nil {
+		return 0, err
+	}
+
+	// Get availableDisk from response
+	availableDiskStr := res.Data.Result[0].Value[1].(string)
+
+	// Convert availableDisk to uint64
+	availableDisk, err := strconv.ParseUint(availableDiskStr, 10, 64)
+
+	return availableDisk, nil
 }
