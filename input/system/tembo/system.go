@@ -79,17 +79,24 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger) (system sta
 	system.Memory.AvailableBytes = memoryAvailableBytes
 	system.Memory.FreeBytes = memoryAvailableBytes
 
-	diskAvailable, err := getAvailableDisk("https://api.data-1.use1.cdb-dev.com/"+config.TemboNamespace+"/metrics/query?query=", client, headers, config.TemboNamespace, logger)
+	diskCapacity, err := getDiskCapacity("https://api.data-1.use1.cdb-dev.com/"+config.TemboNamespace+"/metrics/query?query=", client, headers, config.TemboNamespace, logger)
 	if err != nil {
 		logger.PrintError("Tembo/System: Encountered error when getting disk info %v\n", err)
 		return
 	}
 
+	diskAvailable, err := getDiskAvailable("https://api.data-1.use1.cdb-dev.com/"+config.TemboNamespace+"/metrics/query?query=", client, headers, config.TemboNamespace, logger)
+	if err != nil {
+		logger.PrintError("Tembo/System: Encountered error when getting disk info %v\n", err)
+		return
+	}
+
+	diskUsed := diskCapacity - diskAvailable
 	system.DiskPartitions = make(state.DiskPartitionMap)
 	system.DiskPartitions["/"] = state.DiskPartition{
 		DiskName:      "md0",
 		PartitionName: "md0",
-		UsedBytes:     5 * 1024 * 1024 * 1024,
+		UsedBytes:     diskUsed,
 		TotalBytes:    diskAvailable,
 	}
 
@@ -174,7 +181,7 @@ func getSystemInfo(metricsUrl string, query string, client http.Client, headers 
 	return result, nil
 }
 
-func getAvailableDisk(metricsUrl string, client http.Client, headers map[string]string, namespace string, logger *util.Logger) (uint64, error) {
+func getDiskCapacity(metricsUrl string, client http.Client, headers map[string]string, namespace string, logger *util.Logger) (uint64, error) {
 	//TODO(ianstanton) Check if volume claim names differ in cases like HA
 	query := "kubelet_volume_stats_capacity_bytes{namespace=\"" + namespace + "\", persistentvolumeclaim=~\"" + namespace + "-1" + "\"}"
 
@@ -190,4 +197,22 @@ func getAvailableDisk(metricsUrl string, client http.Client, headers map[string]
 	availableDisk, err := strconv.ParseUint(availableDiskStr, 10, 64)
 
 	return availableDisk, nil
+}
+
+func getDiskAvailable(metricsUrl string, client http.Client, headers map[string]string, namespace string, logger *util.Logger) (uint64, error) {
+	//TODO(ianstanton) Check if volume claim names differ in cases like HA
+	query := "kubelet_volume_stats_available_bytes{namespace=\"" + namespace + "\", persistentvolumeclaim=~\"" + namespace + "-1" + "\"}"
+
+	res, err := getSystemInfo(metricsUrl, query, client, headers, logger)
+	if err != nil {
+		return 0, err
+	}
+
+	// Get usedDisk from response
+	usedDiskStr := res.Data.Result[0].Value[1].(string)
+
+	// Convert usedDisk to uint64
+	usedDisk, err := strconv.ParseUint(usedDiskStr, 10, 64)
+
+	return usedDisk, nil
 }
