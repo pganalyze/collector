@@ -48,7 +48,6 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger, globalColle
 	} else if config.SystemType == "aiven" {
 		system.Info.Type = state.AivenSystem
 	} else if config.SystemType == "tembo" {
-		logger.PrintInfo("Tembo/System: Using Tembo system type")
 		system = tembo.GetSystemState(config, logger)
 	} else if dbHost == "" || dbHost == "localhost" || dbHost == "127.0.0.1" || config.AlwaysCollectSystemData {
 		system = selfhosted.GetSystemState(config, logger)
