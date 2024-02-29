@@ -86,7 +86,8 @@ func GetSchedulerGroups() (groups map[string]Group, err error) {
 		return
 	}
 
-	tenMinuteInterval, err := cronexpr.Parse("0 */10 * * * * *")
+	// TODO(ianstanton) For local dev. Revert this change.
+	tenMinuteInterval, err := cronexpr.Parse("0 */1 * * * * *")
 	if err != nil {
 		return
 	}
