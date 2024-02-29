@@ -90,7 +90,7 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger) (system sta
 		DiskName:      "md0",
 		PartitionName: "md0",
 		UsedBytes:     5 * 1024 * 1024 * 1024,
-		TotalBytes:    diskAvailable * 1024 * 1024 * 1024,
+		TotalBytes:    diskAvailable,
 	}
 
 	return
