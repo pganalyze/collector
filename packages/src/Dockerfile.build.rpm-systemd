@@ -50,7 +50,7 @@ RUN cp $CODE_DIR/contrib/sslrootcert/* $SOURCE_DIR/usr/share/pganalyze-collector
 
 # Build the package
 WORKDIR $ROOT_DIR
-RUN scl enable rh-ruby27 -- fpm \
+RUN scl enable rh-ruby30 -- fpm \
   -n $NAME -v ${VERSION} -t rpm --rpm-os linux \
   --config-files /etc/pganalyze-collector.conf \
   --after-install $CODE_DIR/packages/src/rpm-systemd/post.sh \
