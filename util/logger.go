@@ -6,8 +6,6 @@ import (
 	"log"
 	"os"
 	"time"
-
-	"github.com/fatih/color"
 )
 
 type Logger struct {
@@ -65,45 +63,36 @@ func (logger *Logger) printJSON(logLevel string, format string, args ...interfac
 	return
 }
 
-var VerboseMarker = color.New(color.FgBlue).Sprintf("V")
-
 func (logger *Logger) PrintVerbose(format string, args ...interface{}) {
 	if logger.Quiet || !logger.Verbose {
 		return
 	}
 
-	logger.print(VerboseMarker, format, args...)
+	logger.print("V", format, args...)
 }
-
-// Info stays the default color
-var InfoMarker = "I"
 
 func (logger *Logger) PrintInfo(format string, args ...interface{}) {
 	if logger.Quiet {
 		return
 	}
 
-	logger.print(InfoMarker, format, args...)
+	logger.print("I", format, args...)
 }
-
-var WarningMarker = color.New(color.FgHiYellow).Sprintf("W")
 
 func (logger *Logger) PrintWarning(format string, args ...interface{}) {
 	if logger.Quiet {
 		return
 	}
 
-	logger.print(WarningMarker, format, args...)
+	logger.print("W", format, args...)
 }
-
-var ErrorMarker = color.New(color.FgRed).Sprintf("E")
 
 func (logger *Logger) PrintError(format string, args ...interface{}) {
 	if logger.RememberErrors {
 		logger.ErrorMessages = append(logger.ErrorMessages, fmt.Sprintf(format, args...))
 	}
 
-	logger.print(ErrorMarker, format, args...)
+	logger.print("E", format, args...)
 }
 
 type jsonLogEntry struct {
