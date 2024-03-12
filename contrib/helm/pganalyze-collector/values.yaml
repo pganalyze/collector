@@ -14,9 +14,12 @@ nameOverride: ""
 fullnameOverride: ""
 
 # -- Environment variables to be passed to the container
+# Config settings can be defined here, or can be defined via configMap + secret
 extraEnv: {}
+#   DB_HOST: your_database_host
 #   DB_NAME: your_database_name
-#   DB_ALL_NAMES: 1
+#   DB_ALL_NAMES: 1 (monitor all databases on the server)
+#   DB_USERNAME: your_monitoring_user
 
 configMap:
   # -- Specifies whether a config map should be created.
@@ -28,8 +31,10 @@ configMap:
   # -- Values to initialize the ConfigMap with.
   # Only applicable if create is true
   values: {}
+  #   DB_HOST: your_database_host
   #   DB_NAME: your_database_name
-  #   DB_ALL_NAMES: 1
+  #   DB_ALL_NAMES: 1 (monitor all databases on the server)
+  #   DB_USERNAME: your_monitoring_user
 
 secret:
   # -- Specifies whether a secret should be created.
