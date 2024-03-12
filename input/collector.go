@@ -1,12 +1,12 @@
 package input
 
 import (
+	"fmt"
 	"os"
 	"runtime"
 
 	"github.com/pganalyze/collector/config"
 	"github.com/pganalyze/collector/state"
-	"github.com/pganalyze/collector/util"
 	"github.com/shirou/gopsutil/host"
 	"github.com/shirou/gopsutil/process"
 )
@@ -42,14 +42,15 @@ func getCollectorStats() state.CollectorStats {
 	}
 }
 
-func getCollectorPlatform(globalCollectionOpts state.CollectionOpts, logger *util.Logger) state.CollectorPlatform {
+func getCollectorPlatform(server *state.Server, globalCollectionOpts state.CollectionOpts) state.CollectorPlatform {
 	hostInfo, err := host.Info()
 	if err != nil {
 		if globalCollectionOpts.TestRun {
-			logger.PrintVerbose("Could not get collector host information: %s", err)
+			server.SelfCheckMarkCollectorStatusError(fmt.Sprintf("could not get collector host information: %s", err))
 		}
 		return state.CollectorPlatform{}
 	}
+	server.SelfCheckMarkCollectorStatusOk()
 
 	var virtSystem string
 	if hostInfo.VirtualizationRole == "guest" {
