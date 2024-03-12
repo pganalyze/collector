@@ -17,6 +17,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/fatih/color"
 	"github.com/juju/syslog"
 	"github.com/pkg/errors"
 
@@ -173,6 +174,7 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 					doLogTest(ctx, servers, globalCollectionOpts, logger)
 				}
 
+				printAllTestSummary(servers, logger.Verbose)
 				success := allFullSuccessful && allActivitySuccessful
 				if success {
 					// in a dry run, we will not actually have URLs; avoid this output in that case
@@ -184,7 +186,6 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 						}
 					}
 					if hasURLs {
-						fmt.Fprintln(os.Stderr)
 						fmt.Fprintln(os.Stderr, "Test successful. View servers in pganalyze:")
 						for _, server := range servers {
 							if server.PGAnalyzeURL != "" {
@@ -574,9 +575,11 @@ func checkAllInitialCollectionStatus(ctx context.Context, servers []*state.Serve
 func checkOneInitialCollectionStatus(ctx context.Context, server *state.Server, opts state.CollectionOpts, logger *util.Logger) error {
 	conn, err := postgres.EstablishConnection(ctx, server, logger, opts, "")
 	if err != nil {
+		server.SelfCheckMarkMonitoringDbConnectionError(err.Error())
 		return errors.Wrap(err, "failed to connect to database")
 	}
 	defer conn.Close()
+	server.SelfCheckMarkMonitoringDbConnectionOk()
 
 	settings, err := postgres.GetSettings(ctx, conn)
 	if err != nil {
@@ -603,6 +606,7 @@ func checkOneInitialCollectionStatus(ctx context.Context, server *state.Server, 
 	}
 	if isIgnoredReplica {
 		logger.PrintInfo("All monitoring suspended for this server: %s", collectionDisabledReason)
+		server.SelfCheckMarkCollectionNotAvailable(fmt.Sprintf("all monitoring suspended for this server: %s", collectionDisabledReason))
 	} else if logsDisabled {
 		logger.PrintInfo("Log collection suspended for this server: %s", logsDisabledReason)
 	} else if logsIgnoreDuration {
@@ -699,4 +703,170 @@ func doLogTest(ctx context.Context, servers []*state.Server, globalCollectionOpt
 	}
 
 	return true
+}
+
+func printAllTestSummary(servers []*state.Server, verbose bool) {
+	fmt.Fprintln(os.Stderr)
+	for _, server := range servers {
+		printServerTestSummary(server, verbose)
+		fmt.Fprintln(os.Stderr)
+		fmt.Fprintln(os.Stderr)
+	}
+}
+
+var GreenCheck = color.New(color.FgHiGreen).Sprintf("✓")
+var RedX = color.New(color.FgHiRed).Sprintf("✗")
+var GrayDash = color.New(color.FgWhite).Sprintf("—")
+var GrayQuestion = color.New(color.FgWhite).Sprintf("?")
+
+func formatConfigSetting(setting string) string {
+	if os.Getenv("PGA_API_KEY") != "" {
+		// TODO: translate setting to appropriate format
+		return setting
+	} else {
+		return setting
+	}
+}
+
+func getStatusIcon(code state.CollectionStateCode) string {
+	switch code {
+	case state.CollectionStateUnchecked:
+		return GrayQuestion
+	case state.CollectionStateNotAvailable:
+		return GrayDash
+	case state.CollectionStateError:
+		return RedX
+	case state.CollectionStateOkay:
+		return GreenCheck
+	default:
+		return "#"
+	}
+}
+
+func printServerTestSummary(s *state.Server, verbose bool) {
+	config := s.Config
+	status := s.SelfCheck
+	serverName := color.New(color.FgCyan).Sprintf(config.SectionName)
+	fmt.Fprintf(os.Stderr, "Server %s (system ID %s):\n", serverName, config.SystemID)
+	fmt.Fprintln(os.Stderr)
+
+	fmt.Fprintf(os.Stderr,
+		"\t%s Overall collection:\t\t%s\n",
+		getStatusIcon(status.CollectionEnabled.State),
+		status.CollectionEnabled.Msg,
+	)
+
+	fmt.Fprintf(os.Stderr,
+		"\t%s Collector info:\t\t%s\n",
+		getStatusIcon(status.CollectorStatus.State),
+		status.CollectorStatus.Msg,
+	)
+
+	fmt.Fprintf(os.Stderr,
+		"\t%s System statistics:\t\t%s\n",
+		getStatusIcon(status.SystemStats.State),
+		status.SystemStats.Msg,
+	)
+
+	fmt.Fprintf(os.Stderr,
+		"\t%s Database connection:\t\t%s\n",
+		getStatusIcon(status.MonitoringDbConnection.State),
+		status.MonitoringDbConnection.Msg,
+	)
+
+	fmt.Fprintf(os.Stderr,
+		"\t%s pg_stat_statements:\t\t%s\n",
+		getStatusIcon(status.PgStatStatements.State),
+		status.PgStatStatements.Msg,
+	)
+
+	var firstSchemaInfoErrorDb string
+	var firstSchemaInfoErrorDbMsg string
+	var schemaInfoErrorCount = 0
+	for _, item := range status.SchemaInformation {
+		if item.State == state.CollectionStateError {
+			schemaInfoErrorCount++
+			if firstSchemaInfoErrorDb == "" {
+				firstSchemaInfoErrorDb = item.DbName
+				firstSchemaInfoErrorDbMsg = item.Msg
+			}
+		}
+	}
+	var allSchemaStatusOkay bool = len(status.SchemaInformation) > 0
+	for _, item := range status.SchemaInformation {
+		if item.State != state.CollectionStateOkay {
+			allSchemaStatusOkay = false
+			break
+		}
+	}
+	var schemaInfoIcon string
+	if allSchemaStatusOkay {
+		schemaInfoIcon = GreenCheck
+	} else {
+		schemaInfoIcon = RedX
+	}
+
+	var schemaInfoSummaryMsg string
+	if len(status.SchemaInformation) == 0 {
+		schemaInfoSummaryMsg = "could not check databases"
+	} else if schemaInfoErrorCount > 1 {
+		schemaInfoSummaryMsg = fmt.Sprintf("found integration problems in %s and %d other databases (see details with --verbose)", firstSchemaInfoErrorDb, schemaInfoErrorCount-1)
+	} else if schemaInfoErrorCount > 0 {
+		schemaInfoSummaryMsg = fmt.Sprintf("found integration problem in %s: %s", firstSchemaInfoErrorDb, firstSchemaInfoErrorDbMsg)
+	} else if len(status.SchemaInformation) > 1 {
+		schemaInfoSummaryMsg = fmt.Sprintf("ok in %s and %d other databases (see details with --verbose)", firstSchemaInfoErrorDb, len(status.SchemaInformation)-1)
+	} else {
+		schemaInfoSummaryMsg = fmt.Sprintf("ok in %s (no other databases are configured to be monitored)", status.SchemaInformation[0].DbName)
+	}
+
+	fmt.Fprintf(os.Stderr, "\t%s Schema information:\t\t%s\n", schemaInfoIcon, schemaInfoSummaryMsg)
+	if verbose {
+		for _, dbStatus := range status.SchemaInformation {
+			dbStatusIcon := getStatusIcon(dbStatus.State)
+			fmt.Fprintf(os.Stderr, "\t\t%s %s: %s\n", dbStatusIcon, dbStatus.DbName, dbStatus.Msg)
+		}
+	}
+
+	// summary should show, for each server (preceded by green ✓ or red ✗):
+	//  - detected system type / platform / id
+	//  - can collect system information? (or that not available on given system, or remote host specified and how to override)
+	//  - can connect to monitoring database?
+	//  - can access pg_stat_statements? (if yes, but old version, show error here)
+	//  - can collect schema information? (if not, which databases we could not monitor)
+	//  - can collect column stats? (if not, which databases have errors: first three with " and x more" or all with --verbose)
+	//  - can collect extended stats? (same as above: if not, which databases have errors)
+	//  - can collect log information? (whether disabled, and if not, status and how to disable, at least for Production plans)
+	//  - can collect explain plans?
+
+	// logger.PrintVerbose("Could not get collector host information: %s", checks.hostInfoError)
+
+	// logger.PrintError("Error collecting pg_stat_statements: %s", err)
+	//   logger.PrintInfo("HINT - Current shared_preload_libraries setting: '%s'. Your Postgres server may need to be restarted for changes to take effect.", shared_preload_libraries)
+
+	// logger.PrintInfo("Warning: Limited access to table column statistics detected in database %s. Please set up"+
+	//   " the monitoring helper function pganalyze.get_column_stats (https://github.com/pganalyze/collector#setting-up-a-restricted-monitoring-user)"+
+	//   " or connect as superuser, to get column statistics for all tables.", dbName)
+
+	// logger.PrintInfo("Warning: Limited access to extended table statistics detected in database %s. Please set up"+
+	//   " the monitoring helper function pganalyze.get_relation_stats_ext (https://github.com/pganalyze/collector#setting-up-a-restricted-monitoring-user)"+
+	//   " or connect as superuser, to get extended statistics for all tables.", dbName)
+
+	// warning := "Failed to collect schema metadata for database %s: %s"
+
+	// logger.PrintInfo("pg_stat_statements extension outdated (1.%d installed, 1.%d available). To update run `ALTER EXTENSION pg_stat_statements UPDATE`", foundExtMinorVersion, extMinorVersion)
+	// if extMinorVersion >= 9 {
+	//   // Using the older version pgss with Postgres 14+ can cause the incorrect query stats
+	//   // when track = all is used + there are toplevel queries and nested queries
+	//   // https://github.com/pganalyze/collector/pull/472#discussion_r1399976152
+	//   logger.PrintError("Outdated pg_stat_statements may cause incorrect query statistics")
+	// }
+
+	// logger.PrintInfo("Skipping collection of system state: remote host (%s) was specified for the database address. Consider enabling always_collect_system_data if the database is running on the same system as the collector", dbHost)
+
+	// prefixedLogger.PrintWarning("Skipping logs, could not setup log subscriber: %s", err)
+
+	// logger.PrintError("  Failed - Activity snapshots disabled by pganalyze")
+
+	// logger.PrintError("  Failed - Log Insights feature not available on this pganalyze plan, or log data limit exceeded. You may need to upgrade, see https://pganalyze.com/pricing")
+
 }

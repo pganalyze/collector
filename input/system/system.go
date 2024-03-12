@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/pganalyze/collector/input/system/tembo"
 
-	"github.com/pganalyze/collector/config"
 	"github.com/pganalyze/collector/input/postgres"
 	"github.com/pganalyze/collector/input/system/crunchy_bridge"
 	"github.com/pganalyze/collector/input/system/rds"
@@ -33,7 +32,8 @@ func DownloadLogFiles(ctx context.Context, server *state.Server, globalCollectio
 }
 
 // GetSystemState - Retrieves a system snapshot for this system and returns it
-func GetSystemState(config config.ServerConfig, logger *util.Logger, globalCollectionOpts state.CollectionOpts) (system state.SystemState) {
+func GetSystemState(server *state.Server, logger *util.Logger, globalCollectionOpts state.CollectionOpts) (system state.SystemState) {
+	config := server.Config
 	dbHost := config.GetDbHost()
 	if config.SystemType == "amazon_rds" {
 		system = rds.GetSystemState(config, logger)
@@ -52,6 +52,7 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger, globalColle
 	} else if dbHost == "" || dbHost == "localhost" || dbHost == "127.0.0.1" || config.AlwaysCollectSystemData {
 		system = selfhosted.GetSystemState(config, logger)
 	} else {
+		// system state is _available_ here, just not
 		if globalCollectionOpts.TestRun {
 			// Detected as self hosted, but not collecting system state as we
 			// didn't detect the collector is running on the same instance as
