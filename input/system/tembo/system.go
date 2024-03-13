@@ -45,7 +45,7 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger) (system sta
 	}
 
 	client := http.Client{}
-	metricsUrl := "https://" + config.TemboAPIURL + "/" + config.TemboMetricsNamespace + "/metrics/query?query="
+	metricsUrl := "https://" + config.TemboMetricsAPIURL + "/" + config.TemboMetricsNamespace + "/metrics/query?query="
 
 	// Get CPU usage percentage
 	query := "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{ namespace=\"" + config.TemboMetricsNamespace + "\"}) / sum(kube_pod_container_resource_requests{job=\"kube-state-metrics\",  namespace=\"" + config.TemboMetricsNamespace + "\", resource=\"cpu\"})"
