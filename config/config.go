@@ -115,10 +115,10 @@ type ServerConfig struct {
 	AivenProjectID string `ini:"aiven_project_id"`
 	AivenServiceID string `ini:"aiven_service_id"`
 
-	TemboAPIToken   string `ini:"tembo_api_token"`
-	TemboInstanceID string `ini:"tembo_instance_id"`
-	TemboNamespace  string `ini:"tembo_namespace"`
-	TemboOrgID      string `ini:"tembo_org_id"`
+	TemboAPIToken         string `ini:"tembo_api_token"`
+	TemboInstanceID       string `ini:"tembo_instance_id"`
+	TemboMetricsNamespace string `ini:"tembo_metrics_namespace"`
+	TemboOrgID            string `ini:"tembo_org_id"`
 
 	SectionName string
 	Identifier  ServerIdentifier

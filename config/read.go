@@ -233,8 +233,8 @@ func getDefaultConfig() *ServerConfig {
 	if temboInstanceID := os.Getenv("TEMBO_INSTANCE_ID"); temboInstanceID != "" {
 		config.TemboInstanceID = temboInstanceID
 	}
-	if temboNamespace := os.Getenv("TEMBO_NAMESPACE"); temboNamespace != "" {
-		config.TemboNamespace = temboNamespace
+	if temboMetricsNamespace := os.Getenv("TEMBO_METRICS_NAMESPACE"); temboMetricsNamespace != "" {
+		config.TemboMetricsNamespace = temboMetricsNamespace
 	}
 	if temboOrgID := os.Getenv("TEMBO_ORG_ID"); temboOrgID != "" {
 		config.TemboOrgID = temboOrgID
