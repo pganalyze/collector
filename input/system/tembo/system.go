@@ -103,10 +103,9 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger) (system sta
 	diskUsed := diskCapacity - diskAvailable
 	system.DiskPartitions = make(state.DiskPartitionMap)
 	system.DiskPartitions["/"] = state.DiskPartition{
-		DiskName:      "md0",
-		PartitionName: "md0",
-		UsedBytes:     diskUsed,
-		TotalBytes:    diskAvailable,
+		DiskName:   "default",
+		UsedBytes:  diskUsed,
+		TotalBytes: diskAvailable,
 	}
 
 	return
