@@ -230,6 +230,9 @@ func getDefaultConfig() *ServerConfig {
 	if temboAPIToken := os.Getenv("TEMBO_API_TOKEN"); temboAPIToken != "" {
 		config.TemboAPIToken = temboAPIToken
 	}
+	if temboAPIURL := os.Getenv("TEMBO_API_URL"); temboAPIURL != "" {
+		config.TemboAPIURL = temboAPIURL
+	}
 	if temboInstanceID := os.Getenv("TEMBO_INSTANCE_ID"); temboInstanceID != "" {
 		config.TemboInstanceID = temboInstanceID
 	}
