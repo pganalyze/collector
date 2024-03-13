@@ -3,16 +3,18 @@ package tembo
 import (
 	"context"
 	"encoding/json"
+	"net/url"
+	"strconv"
+	"strings"
+	"sync"
+	"time"
+
 	"github.com/gorilla/websocket"
 	"github.com/pganalyze/collector/logs"
 	"github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
 	uuid "github.com/satori/go.uuid"
-	"net/url"
-	"strconv"
-	"sync"
-	"time"
 )
 
 type Result struct {
@@ -37,11 +39,8 @@ type JSONLogEvent struct {
 	Record map[string]string `json:"record"`
 }
 
-// SetupWebsocketHandlerLogs - Sets up a websocket handler for Tembo logs
-func SetupWebsocketHandlerLogs(ctx context.Context, wg *sync.WaitGroup, logger *util.Logger, server *state.Server, parsedLogStream chan state.ParsedLogStreamItem) {
-	// Only ingest log lines that were written in the last minute before startup
-	linesNewerThan := time.Now().Add(-1 * time.Minute)
-	tz := server.GetLogTimezone()
+func connectWebsocket(ctx context.Context, logger *util.Logger, server *state.Server) (*websocket.Conn, context.CancelFunc, error) {
+	connCtx, cancelConn := context.WithCancel(ctx)
 
 	// Construct query for Tembo Logs API
 	query := "{tembo_instance_id=\"" + server.Config.TemboInstanceID + "\"}"
@@ -57,13 +56,40 @@ func SetupWebsocketHandlerLogs(ctx context.Context, wg *sync.WaitGroup, logger *
 	headers["Authorization"] = []string{"Bearer " + server.Config.TemboAPIToken}
 	headers["X-Scope-OrgId"] = []string{server.Config.TemboOrgID}
 
-	// Connect to websocket
-	conn, response, err := websocket.DefaultDialer.Dial(websocketUrl, headers)
+	conn, response, err := websocket.DefaultDialer.DialContext(connCtx, websocketUrl, headers)
 	if err != nil && response != nil {
-		logger.PrintError("Error connecting to Tembo logs websocket: %s", response.StatusCode, err)
-		return
+		logger.PrintError("Error connecting to Tembo logs websocket: %s (status %d)", err, response.StatusCode)
+		return nil, nil, err // Do we want this to return here? (or keep trying?)
 	} else if err != nil {
 		logger.PrintError("Error connecting to Tembo logs websocket: %s", err)
+		return nil, nil, err // Do we want this to return here? (or keep trying?)
+	}
+	go func() {
+		for {
+			select {
+			case <-connCtx.Done():
+				err := conn.Close()
+				if err != nil {
+					logger.PrintError("Error closing websocket: %s", err)
+					return
+				}
+				return
+			}
+		}
+	}()
+	return conn, cancelConn, nil
+}
+
+// SetupWebsocketHandlerLogs - Sets up a websocket handler for Tembo logs
+func SetupWebsocketHandlerLogs(ctx context.Context, wg *sync.WaitGroup, logger *util.Logger, server *state.Server, parsedLogStream chan state.ParsedLogStreamItem) {
+	// Only ingest log lines that were written in the last minute before startup
+	linesNewerThan := time.Now().Add(-1 * time.Minute)
+	tz := server.GetLogTimezone()
+
+	// Connect to websocket
+	conn, cancelConn, err := connectWebsocket(ctx, logger, server)
+	if err != nil {
+		// Should we retry if we get an error the first time we're connecting?
 		return
 	}
 
@@ -73,18 +99,22 @@ func SetupWebsocketHandlerLogs(ctx context.Context, wg *sync.WaitGroup, logger *
 		for {
 			// Attempt to read message from websocket and retry if it fails
 			var line []byte
-			for i := 0; i < 3; i++ {
-				select {
-				case <-ctx.Done():
+
+			_, line, err = conn.ReadMessage()
+			if err != nil {
+				if !(websocket.IsCloseError(err, websocket.CloseInternalServerErr) && strings.Contains(err.Error(), "reached tail max duration limit")) {
+					logger.PrintError("Error reading from websocket attempt, sleeping 1 second: %v", err)
+					time.Sleep(1 * time.Second)
+				}
+
+				// Reconnect
+				cancelConn()
+				conn, cancelConn, err = connectWebsocket(ctx, logger, server)
+				if err != nil {
+					// Should we wait longer and keep retrying?
 					return
-				default:
 				}
-				_, line, err = conn.ReadMessage()
-				if err == nil {
-					break
-				}
-				logger.PrintError("Error reading from websocket attempt %v of 3: %v", i, err)
-				time.Sleep(1 * time.Second)
+				continue
 			}
 
 			var result Result
@@ -104,19 +134,6 @@ func SetupWebsocketHandlerLogs(ctx context.Context, wg *sync.WaitGroup, logger *
 						parsedLogStream <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: *detailLine}
 					}
 				}
-			}
-		}
-	}()
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				err := conn.Close()
-				if err != nil {
-					logger.PrintError("Error closing websocket: %s", err)
-					return
-				}
-				return
 			}
 		}
 	}()
