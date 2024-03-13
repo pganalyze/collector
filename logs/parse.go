@@ -576,7 +576,8 @@ type LineReader interface {
 func ParseAndAnalyzeBuffer(logStream LineReader, linesNewerThan time.Time, server *state.Server) ([]state.LogLine, []state.PostgresQuerySample) {
 	var logLines []state.LogLine
 	var currentByteStart int64 = 0
-	var tz = server.GetLogTimezone()
+	prefix, tz, isSyslog := server.GetLogSettings()
+	parser := NewLogParser(prefix, tz, isSyslog)
 
 	for {
 		line, err := logStream.ReadString('\n')
@@ -592,7 +593,7 @@ func ParseAndAnalyzeBuffer(logStream LineReader, linesNewerThan time.Time, serve
 			break
 		}
 
-		logLine, ok := ParseLogLineWithPrefix("", line, tz)
+		logLine, ok := parser.ParseLine(line)
 		if !ok {
 			// Assume that a parsing error in a follow-on line means that we actually
 			// got additional data for the previous line

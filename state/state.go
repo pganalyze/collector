@@ -276,10 +276,12 @@ type Server struct {
 	CollectionStatus      CollectionStatus
 	CollectionStatusMutex *sync.Mutex
 
-	// The time zone that logs are parsed in, synced from the setting log_timezone
-	// The StateMutex should be held while updating this
+	// The time zone that logs are parsed in, synced from the setting log_timezone,
+	// and the log_line_prefix used to format log lines
+	// The LogSettingsMutex should be held while updating these
 	LogTimezone      *time.Location
-	LogTimezoneMutex *sync.Mutex
+	LogLinePrefix    string
+	LogSettingsMutex *sync.Mutex
 
 	// Boolean flags for which log lines should be ignored for processing
 	//
@@ -300,7 +302,7 @@ func MakeServer(config config.ServerConfig) *Server {
 		LogStateMutex:         &sync.Mutex{},
 		ActivityStateMutex:    &sync.Mutex{},
 		CollectionStatusMutex: &sync.Mutex{},
-		LogTimezoneMutex:      &sync.Mutex{},
+		LogSettingsMutex:      &sync.Mutex{},
 	}
 }
 
@@ -320,22 +322,27 @@ func (s *Server) SetLogIgnoreFlags(ignoreStatement bool, ignoreDuration bool) {
 	atomic.StoreUint32(&s.LogIgnoreFlags, newFlags)
 }
 
-func (s *Server) SetLogTimezone(settings []PostgresSetting) {
-	tz := getTimeZoneFromSettings(settings)
+func (s *Server) SetLogSettings(settings []PostgresSetting) {
+	tz, prefix := getLogConfigFromSettings(settings)
 
-	s.LogTimezoneMutex.Lock()
-	defer s.LogTimezoneMutex.Unlock()
+	s.LogSettingsMutex.Lock()
+	defer s.LogSettingsMutex.Unlock()
 	s.LogTimezone = tz
+	s.LogLinePrefix = prefix
 }
 
-func (s *Server) GetLogTimezone() *time.Location {
-	s.LogTimezoneMutex.Lock()
-	defer s.LogTimezoneMutex.Unlock()
-	if s.LogTimezone == nil {
-		return nil
+func (s *Server) GetLogSettings() (prefix string, tz *time.Location, isSyslog bool) {
+	s.LogSettingsMutex.Lock()
+	defer s.LogSettingsMutex.Unlock()
+
+	if s.LogTimezone != nil {
+		tempTz := *s.LogTimezone
+		tz = &tempTz
 	}
-	tz := *s.LogTimezone
-	return &tz
+	prefix = s.LogLinePrefix
+	isSyslog = s.Config.LogSyslogServer != ""
+
+	return
 }
 
 // IgnoreLogLine - helper function that lets callers determine whether a log
