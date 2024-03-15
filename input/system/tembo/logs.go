@@ -17,7 +17,7 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
-type Result struct {
+type StreamResult struct {
 	Streams []StreamSet `json:"streams"`
 }
 
@@ -117,7 +117,7 @@ func SetupWebsocketHandlerLogs(ctx context.Context, wg *sync.WaitGroup, logger *
 				continue
 			}
 
-			var result Result
+			var result StreamResult
 			err = json.Unmarshal(line, &result)
 			if err != nil {
 				logger.PrintError("Error unmarshalling JSON: %s", err)

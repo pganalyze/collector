@@ -16,11 +16,11 @@ type Response struct {
 }
 
 type Data struct {
-	ResultType string   `json:"resultType"`
-	Result     []Result `json:"result"`
+	ResultType string         `json:"resultType"`
+	Result     []MetricResult `json:"result"`
 }
 
-type Result struct {
+type MetricResult struct {
 	Metric Metric        `json:"metric"`
 	Value  []interface{} `json:"value"`
 }
