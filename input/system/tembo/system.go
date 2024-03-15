@@ -84,7 +84,7 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger) (system sta
 	system.Memory.FreeBytes = memoryAvailableBytes
 
 	// Get disk capacity
-	//TODO(ianstanton) Check if volume claim names differ in cases like HA
+	// Note this does not yet handle multiple volume claims in cases like HA
 	query = "kubelet_volume_stats_capacity_bytes{namespace=\"" + config.TemboMetricsNamespace + "\", persistentvolumeclaim=~\"" + config.TemboMetricsNamespace + "-1" + "\"}"
 	diskCapacity, err := getUint64(query, metricsUrl, client, headers)
 	if err != nil {
@@ -93,7 +93,7 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger) (system sta
 	}
 
 	// Get disk available
-	//TODO(ianstanton) Check if volume claim names differ in cases like HA
+	// Note this does not yet handle multiple volume claims in cases like HA
 	query = "kubelet_volume_stats_available_bytes{namespace=\"" + config.TemboMetricsNamespace + "\", persistentvolumeclaim=~\"" + config.TemboMetricsNamespace + "-1" + "\"}"
 	diskAvailable, err := getUint64(query, metricsUrl, client, headers)
 	if err != nil {
