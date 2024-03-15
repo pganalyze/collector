@@ -49,7 +49,8 @@ func connectWebsocket(ctx context.Context, logger *util.Logger, server *state.Se
 	encodedQuery := url.QueryEscape(query)
 
 	// Construct URL for Tembo Logs API
-	websocketUrl := "wss://api.data-1.use1.tembo.io/loki/api/v1/tail?query=" + encodedQuery
+	logsAPIURL := server.Config.TemboLogsAPIURL
+	websocketUrl := "wss://" + logsAPIURL + "/loki/api/v1/tail?query=" + encodedQuery
 
 	// Set headers
 	headers := make(map[string][]string)
