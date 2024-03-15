@@ -84,12 +84,11 @@ func identifySystem(config ServerConfig) (systemID string, systemType string, sy
 		}
 	} else if (config.TemboInstanceID != "") || systemType == "tembo" {
 		systemType = "tembo"
-		// TODO(ianstanton) These should be tembo specific
 		if systemID == "" {
-			systemID = selfManagedSystemID(config)
-			if systemScope == "" {
-				systemScope = selfManagedSystemScope(config)
-			}
+			systemID = config.TemboInstanceID
+		}
+		if systemScope == "" {
+			systemScope = config.TemboOrgID
 		}
 	} else {
 		systemType = "self_hosted"

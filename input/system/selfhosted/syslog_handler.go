@@ -16,7 +16,7 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
-var logLinePartsRegexp = regexp.MustCompile(`^\[(\d+)-(\d+)\] (.*)`)
+var logLinePartsRegexp = regexp.MustCompile(`^\s*\[(\d+)-(\d+)\] (.*)`)
 var logLineNumberPartsRegexp = regexp.MustCompile(`^\[(\d+)-(\d+)\]$`)
 
 func setupSyslogHandler(ctx context.Context, config config.ServerConfig, out chan<- SelfHostedLogStreamItem, prefixedLogger *util.Logger) error {

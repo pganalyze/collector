@@ -9,10 +9,12 @@ ENV ROOT_DIR /root
 ENV SOURCE_DIR /source
 
 # Packages required for both building and packaging
-RUN yum install -y centos-release-scl scl-utils tar make git rpmdevtools gcc && yum install -y rh-ruby27 rh-ruby27-ruby-devel
+#
+# This uses Ruby 3.0 since 2.7 (which still used for Debian builds) does not work with fpm: https://github.com/jordansissel/fpm/issues/2048#issuecomment-1972196104
+RUN yum install -y centos-release-scl scl-utils tar make git rpmdevtools gcc && yum install -y rh-ruby30 rh-ruby30-ruby-devel
 
 # FPM
-RUN source scl_source enable rh-ruby27 && gem install fpm -v 1.14.1
+RUN source scl_source enable rh-ruby30 && gem install fpm -v 1.14.1
 
 # Golang
 RUN curl -o go.tar.gz -sSL "https://go.dev/dl/go${GOVERSION}.linux-${TARGETARCH}.tar.gz"
@@ -48,7 +50,7 @@ RUN cp $CODE_DIR/contrib/sslrootcert/* $SOURCE_DIR/usr/share/pganalyze-collector
 
 # Build the package
 WORKDIR $ROOT_DIR
-RUN scl enable rh-ruby27 -- fpm \
+RUN scl enable rh-ruby30 -- fpm \
   -n $NAME -v ${VERSION} -t rpm --rpm-os linux \
   --config-files /etc/pganalyze-collector.conf \
   --after-install $CODE_DIR/packages/src/rpm-systemd/post.sh \
