@@ -18,8 +18,7 @@ func GetDefaultGrant(server *state.Server, globalCollectionOpts state.Collection
 
 	req.Header.Set("Pganalyze-Api-Key", server.Config.APIKey)
 	req.Header.Set("Pganalyze-System-Id", server.Config.SystemID)
-	// TODO(ianstanton) Placeholder for local dev
-	req.Header.Set("Pganalyze-System-Type", "self_hosted")
+	req.Header.Set("Pganalyze-System-Type", server.Config.SystemType)
 	req.Header.Set("Pganalyze-System-Scope", server.Config.SystemScope)
 	req.Header.Set("Pganalyze-System-Id-Fallback", server.Config.SystemIDFallback)
 	req.Header.Set("Pganalyze-System-Type-Fallback", server.Config.SystemTypeFallback)
