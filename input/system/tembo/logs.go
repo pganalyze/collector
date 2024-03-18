@@ -3,6 +3,7 @@ package tembo
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/url"
 	"strconv"
 	"strings"
@@ -59,11 +60,11 @@ func connectWebsocket(ctx context.Context, logger *util.Logger, server *state.Se
 
 	conn, response, err := websocket.DefaultDialer.DialContext(connCtx, websocketUrl, headers)
 	if err != nil && response != nil {
-		logger.PrintError("Error connecting to Tembo logs websocket: %s (status %d)", err, response.StatusCode)
-		return nil, nil, err // Do we want this to return here? (or keep trying?)
+		cancelConn()
+		return nil, nil, fmt.Errorf("%s (status %d)", err, response.StatusCode)
 	} else if err != nil {
-		logger.PrintError("Error connecting to Tembo logs websocket: %s", err)
-		return nil, nil, err // Do we want this to return here? (or keep trying?)
+		cancelConn()
+		return nil, nil, err
 	}
 	go func() {
 		for {
@@ -82,39 +83,58 @@ func connectWebsocket(ctx context.Context, logger *util.Logger, server *state.Se
 }
 
 // SetupWebsocketHandlerLogs - Sets up a websocket handler for Tembo logs
-func SetupWebsocketHandlerLogs(ctx context.Context, wg *sync.WaitGroup, logger *util.Logger, server *state.Server, parsedLogStream chan state.ParsedLogStreamItem) {
+func SetupWebsocketHandlerLogs(ctx context.Context, wg *sync.WaitGroup, logger *util.Logger, servers []*state.Server, globalCollectionOpts state.CollectionOpts, parsedLogStream chan state.ParsedLogStreamItem) {
+	for _, server := range servers {
+		prefixedLogger := logger.WithPrefix(server.Config.SectionName)
+
+		if server.Config.TemboLogsAPIURL != "" {
+			setupWebsocketForServer(ctx, wg, globalCollectionOpts, prefixedLogger, server, parsedLogStream)
+		}
+	}
+}
+
+func setupWebsocketForServer(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *util.Logger, server *state.Server, parsedLogStream chan state.ParsedLogStreamItem) {
 	// Only ingest log lines that were written in the last minute before startup
 	linesNewerThan := time.Now().Add(-1 * time.Minute)
 	tz := server.GetLogTimezone()
-
-	// Connect to websocket
-	conn, cancelConn, err := connectWebsocket(ctx, logger, server)
-	if err != nil {
-		// Should we retry if we get an error the first time we're connecting?
-		return
-	}
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		for {
-			// Attempt to read message from websocket and retry if it fails
+			var conn *websocket.Conn
+			var cancelConn context.CancelFunc
 			var line []byte
+			var err error
 
+			if conn == nil {
+				conn, cancelConn, err = connectWebsocket(ctx, logger, server)
+				if err != nil {
+					if globalCollectionOpts.TestRun {
+						logger.PrintError("Error connecting to Tembo logs websocket: %s", err)
+						return
+					}
+					logger.PrintError("Error connecting to Tembo logs websocket, sleeping 10 seconds: %s", err)
+					time.Sleep(10 * time.Second)
+					conn = nil
+					continue
+				}
+			}
+
+			// Attempt to read message from websocket and retry if it fails
 			_, line, err = conn.ReadMessage()
 			if err != nil {
+				if websocket.IsCloseError(err, websocket.CloseNormalClosure) {
+					// We closed the connection since the context was cancelled
+					return
+				}
 				if !(websocket.IsCloseError(err, websocket.CloseInternalServerErr) && strings.Contains(err.Error(), "reached tail max duration limit")) {
-					logger.PrintError("Error reading from websocket attempt, sleeping 1 second: %v", err)
+					logger.PrintError("Error reading from websocket, sleeping 1 second before reconnecting: %v", err)
 					time.Sleep(1 * time.Second)
 				}
 
-				// Reconnect
 				cancelConn()
-				conn, cancelConn, err = connectWebsocket(ctx, logger, server)
-				if err != nil {
-					// Should we wait longer and keep retrying?
-					return
-				}
+				conn = nil
 				continue
 			}
 

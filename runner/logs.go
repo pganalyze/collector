@@ -3,11 +3,12 @@ package runner
 import (
 	"context"
 	"fmt"
-	"github.com/pganalyze/collector/input/system/tembo"
 	"io/ioutil"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/pganalyze/collector/input/system/tembo"
 
 	"github.com/guregu/null"
 	"github.com/pganalyze/collector/config"
@@ -67,7 +68,7 @@ func SetupLogCollection(ctx context.Context, wg *sync.WaitGroup, servers []*stat
 		azure.SetupLogSubscriber(ctx, wg, globalCollectionOpts, logger, servers, parsedLogStream)
 	}
 	if hasAnyTembo {
-		tembo.SetupWebsocketHandlerLogs(ctx, wg, logger, servers[0], parsedLogStream)
+		tembo.SetupWebsocketHandlerLogs(ctx, wg, logger, servers, globalCollectionOpts, parsedLogStream)
 	}
 
 	if hasAnyLogDownloads {
