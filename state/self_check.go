@@ -32,7 +32,10 @@ type DbCollectionState struct {
 }
 
 type SelfCheckStatus struct {
-	CollectionEnabled      CollectionState
+	CollectionSuspended struct {
+		Value bool
+		Msg   string
+	}
 	CollectorStatus        CollectionState
 	SystemStats            CollectionState
 	MonitoringDbConnection CollectionState
@@ -44,27 +47,15 @@ type SelfCheckStatus struct {
 	AutomatedExplain       CollectionState
 }
 
-// collection
-
-func (s *Server) SelfCheckMarkCollectionOk() {
+// collection suspended (e.g., if replica)
+func (s *Server) SelfCheckMarkCollectionSuspended(msg string) {
 	s.selfCheckMutex.Lock()
 	defer s.selfCheckMutex.Unlock()
-	if s.SelfCheck.CollectionEnabled.State != CollectionStateUnchecked {
-		return
-	}
-	s.SelfCheck.CollectionEnabled.State = CollectionStateOkay
-	s.SelfCheck.CollectionEnabled.Msg = "ok"
-}
-
-func (s *Server) SelfCheckMarkCollectionNotAvailable(msg string) {
-	s.selfCheckMutex.Lock()
-	defer s.selfCheckMutex.Unlock()
-	s.SelfCheck.CollectionEnabled.State = CollectionStateNotAvailable
-	s.SelfCheck.CollectionEnabled.Msg = msg
+	s.SelfCheck.CollectionSuspended.Value = true
+	s.SelfCheck.CollectionSuspended.Msg = msg
 }
 
 // collector status
-
 func (s *Server) SelfCheckMarkCollectorStatusOk() {
 	s.selfCheckMutex.Lock()
 	defer s.selfCheckMutex.Unlock()
