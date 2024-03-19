@@ -44,6 +44,7 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.6.0
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.3.0
 	github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs v1.0.0
+	github.com/gorilla/websocket v1.5.1
 	github.com/pganalyze/pg_query_go/v5 v5.1.0
 	github.com/prometheus/procfs v0.7.3
 	go.opentelemetry.io/otel v1.19.0

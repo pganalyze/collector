@@ -230,17 +230,20 @@ func getDefaultConfig() *ServerConfig {
 	if temboAPIToken := os.Getenv("TEMBO_API_TOKEN"); temboAPIToken != "" {
 		config.TemboAPIToken = temboAPIToken
 	}
-	if temboMetricsAPIURL := os.Getenv("TEMBO_METRICS_API_URL"); temboMetricsAPIURL != "" {
-		config.TemboMetricsAPIURL = temboMetricsAPIURL
-	}
 	if temboInstanceID := os.Getenv("TEMBO_INSTANCE_ID"); temboInstanceID != "" {
 		config.TemboInstanceID = temboInstanceID
 	}
-	if temboMetricsNamespace := os.Getenv("TEMBO_METRICS_NAMESPACE"); temboMetricsNamespace != "" {
-		config.TemboMetricsNamespace = temboMetricsNamespace
-	}
 	if temboOrgID := os.Getenv("TEMBO_ORG_ID"); temboOrgID != "" {
 		config.TemboOrgID = temboOrgID
+	}
+	if temboLogsAPIURL := os.Getenv("TEMBO_LOGS_API_URL"); temboLogsAPIURL != "" {
+		config.TemboLogsAPIURL = temboLogsAPIURL
+	}
+	if temboMetricsAPIURL := os.Getenv("TEMBO_METRICS_API_URL"); temboMetricsAPIURL != "" {
+		config.TemboMetricsAPIURL = temboMetricsAPIURL
+	}
+	if temboMetricsNamespace := os.Getenv("TEMBO_METRICS_NAMESPACE"); temboMetricsNamespace != "" {
+		config.TemboMetricsNamespace = temboMetricsNamespace
 	}
 	if logLocation := os.Getenv("LOG_LOCATION"); logLocation != "" {
 		config.LogLocation = logLocation
