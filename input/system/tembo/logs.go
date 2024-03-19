@@ -102,9 +102,8 @@ func setupWebsocketForServer(ctx context.Context, wg *sync.WaitGroup, globalColl
 	go func() {
 		defer wg.Done()
 		var conn *websocket.Conn
-
+		var cancelConn context.CancelFunc
 		for {
-			var cancelConn context.CancelFunc
 			var line []byte
 			var err error
 
