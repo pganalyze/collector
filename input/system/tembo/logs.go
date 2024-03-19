@@ -102,6 +102,7 @@ func setupWebsocketForServer(ctx context.Context, wg *sync.WaitGroup, globalColl
 	go func() {
 		defer wg.Done()
 		var conn *websocket.Conn
+
 		for {
 			var cancelConn context.CancelFunc
 			var line []byte
@@ -114,6 +115,10 @@ func setupWebsocketForServer(ctx context.Context, wg *sync.WaitGroup, globalColl
 						logger.PrintError("Error connecting to Tembo logs websocket: %s", err)
 						return
 					}
+					if strings.Contains(err.Error(), "operation was canceled") {
+						// We closed the connection since the context was cancelled
+						return
+					}
 					logger.PrintError("Error connecting to Tembo logs websocket, sleeping 10 seconds: %s", err)
 					time.Sleep(10 * time.Second)
 					conn = nil
@@ -124,7 +129,7 @@ func setupWebsocketForServer(ctx context.Context, wg *sync.WaitGroup, globalColl
 			// Attempt to read message from websocket and retry if it fails
 			_, line, err = conn.ReadMessage()
 			if err != nil {
-				if websocket.IsCloseError(err, websocket.CloseNormalClosure) {
+				if strings.Contains(err.Error(), "use of closed network connection") {
 					// We closed the connection since the context was cancelled
 					return
 				}
