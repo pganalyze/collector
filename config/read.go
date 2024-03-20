@@ -55,7 +55,13 @@ func getDefaultConfig() *ServerConfig {
 	if apiKey := os.Getenv("PGA_API_KEY"); apiKey != "" {
 		config.APIKey = apiKey
 	}
+	// Since there used to be a discrepancy here between the config file key
+	// (api_base_url) and the env var key (PGA_API_BASEURL), also accept the old
+	// spelling (but prefer the new).
 	if apiBaseURL := os.Getenv("PGA_API_BASEURL"); apiBaseURL != "" {
+		config.APIBaseURL = apiBaseURL
+	}
+	if apiBaseURL := os.Getenv("PGA_API_BASE_URL"); apiBaseURL != "" {
 		config.APIBaseURL = apiBaseURL
 	}
 	if systemID := os.Getenv("PGA_API_SYSTEM_ID"); systemID != "" {
