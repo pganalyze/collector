@@ -275,6 +275,15 @@ func getDefaultConfig() *ServerConfig {
 	if logSyslogServerClientCAContents := os.Getenv("LOG_SYSLOG_SERVER_CLIENT_CA_CONTENTS"); logSyslogServerClientCAContents != "" {
 		config.LogSyslogServerClientCAContents = logSyslogServerClientCAContents
 	}
+	if logOtelServer := os.Getenv("LOG_OTEL_SERVER"); logOtelServer != "" {
+		config.LogOtelServer = logOtelServer
+	}
+	if logOtelK8SPod := os.Getenv("LOG_OTEL_K8S_POD"); logOtelK8SPod != "" {
+		config.LogOtelK8SPod = logOtelK8SPod
+	}
+	if logOtelK8SLabels := os.Getenv("LOG_OTEL_K8S_LABELS"); logOtelK8SLabels != "" {
+		config.LogOtelK8SLabels = logOtelK8SLabels
+	}
 	if alwaysCollectSystemData := os.Getenv("PGA_ALWAYS_COLLECT_SYSTEM_DATA"); alwaysCollectSystemData != "" {
 		config.AlwaysCollectSystemData = parseConfigBool(alwaysCollectSystemData)
 	}

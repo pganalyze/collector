@@ -1,7 +1,7 @@
 apiVersion: v2
 name: pganalyze-collector
 version: 0.54.0
-appVersion: "v0.54.0"
+appVersion: "k8s-helm-test"
 type: application
 description: pganalyze statistics collector
 home: https://pganalyze.com/
