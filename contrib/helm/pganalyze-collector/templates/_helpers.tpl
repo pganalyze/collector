@@ -82,3 +82,14 @@ Create the name of the service account to use
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
 {{- end }}
+
+{{/*
+Create the name of the service to use
+*/}}
+{{- define "pganalyze-collector.serviceName" -}}
+{{- if .Values.service.create }}
+{{- default (include "pganalyze-collector.fullname" .) .Values.service.name }}
+{{- else }}
+{{- default "default" .Values.service.name }}
+{{- end }}
+{{- end }}

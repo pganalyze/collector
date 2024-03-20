@@ -53,6 +53,16 @@ serviceAccount:
   # If not set and create is true, a name is generated using the fullname template
   name: ""
 
+service:
+  # -- Specifies whether a service should be created
+  create: false
+  # -- The name of the service to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: pganalyze-collector-otel-service
+  type: ClusterIP
+  port: 4318
+  targetPort: 4318
+
 podAnnotations: {}
 
 podSecurityContext:
