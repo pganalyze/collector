@@ -715,6 +715,7 @@ func printAllTestSummary(servers []*state.Server, verbose bool) {
 }
 
 var GreenCheck = color.New(color.FgHiGreen).Sprintf("✓")
+var YellowBang = color.New(color.FgHiYellow).Sprintf("!")
 var RedX = color.New(color.FgHiRed).Sprintf("✗")
 var GrayDash = color.New(color.FgWhite).Sprintf("—")
 var GrayQuestion = color.New(color.FgWhite).Sprintf("?")
@@ -739,8 +740,51 @@ func getStatusIcon(code state.CollectionStateCode) string {
 	case state.CollectionStateOkay:
 		return GreenCheck
 	default:
-		return "#"
+		return " "
 	}
+}
+
+func summarizeDbChecks(checks []state.DbCollectionState) (string, string) {
+	var firstErrorDb string
+	var firstErrorDbMsg string
+	var errorCount = 0
+	for _, item := range checks {
+		if item.State == state.CollectionStateError {
+			errorCount++
+			if firstErrorDb == "" {
+				firstErrorDb = item.DbName
+				firstErrorDbMsg = item.Msg
+			}
+		}
+	}
+	var allSchemaStatusOkay bool = len(checks) > 0
+	for _, item := range checks {
+		if item.State != state.CollectionStateOkay {
+			allSchemaStatusOkay = false
+			break
+		}
+	}
+	var icon string
+	if allSchemaStatusOkay {
+		icon = GreenCheck
+	} else {
+		icon = RedX
+	}
+
+	var summaryMsg string
+	if len(checks) == 0 {
+		summaryMsg = "could not check databases"
+	} else if errorCount > 1 {
+		summaryMsg = fmt.Sprintf("found integration problems in %s and %d other databases (see details with --verbose)", firstErrorDb, errorCount-1)
+	} else if errorCount > 0 {
+		summaryMsg = fmt.Sprintf("found integration problem in %s: %s", firstErrorDb, firstErrorDbMsg)
+	} else if len(checks) > 1 {
+		summaryMsg = fmt.Sprintf("ok in %s and %d other databases (see details with --verbose)", firstErrorDb, len(checks)-1)
+	} else {
+		summaryMsg = fmt.Sprintf("ok in %s (no other databases are configured to be monitored)", checks[0].DbName)
+	}
+
+	return icon, summaryMsg
 }
 
 func printServerTestSummary(s *state.Server, verbose bool) {
@@ -750,11 +794,14 @@ func printServerTestSummary(s *state.Server, verbose bool) {
 	fmt.Fprintf(os.Stderr, "Server %s (system ID %s):\n", serverName, config.SystemID)
 	fmt.Fprintln(os.Stderr)
 
-	fmt.Fprintf(os.Stderr,
-		"\t%s Overall collection:\t\t%s\n",
-		getStatusIcon(status.CollectionEnabled.State),
-		status.CollectionEnabled.Msg,
-	)
+	if status.CollectionSuspended.Value {
+		fmt.Fprintf(os.Stderr,
+			"\t%s Collection suspended:\t\t%s\n",
+			YellowBang,
+			status.CollectionSuspended.Msg,
+		)
+		return
+	}
 
 	fmt.Fprintf(os.Stderr,
 		"\t%s Collector info:\t\t%s\n",
@@ -780,45 +827,7 @@ func printServerTestSummary(s *state.Server, verbose bool) {
 		status.PgStatStatements.Msg,
 	)
 
-	var firstSchemaInfoErrorDb string
-	var firstSchemaInfoErrorDbMsg string
-	var schemaInfoErrorCount = 0
-	for _, item := range status.SchemaInformation {
-		if item.State == state.CollectionStateError {
-			schemaInfoErrorCount++
-			if firstSchemaInfoErrorDb == "" {
-				firstSchemaInfoErrorDb = item.DbName
-				firstSchemaInfoErrorDbMsg = item.Msg
-			}
-		}
-	}
-	var allSchemaStatusOkay bool = len(status.SchemaInformation) > 0
-	for _, item := range status.SchemaInformation {
-		if item.State != state.CollectionStateOkay {
-			allSchemaStatusOkay = false
-			break
-		}
-	}
-	var schemaInfoIcon string
-	if allSchemaStatusOkay {
-		schemaInfoIcon = GreenCheck
-	} else {
-		schemaInfoIcon = RedX
-	}
-
-	var schemaInfoSummaryMsg string
-	if len(status.SchemaInformation) == 0 {
-		schemaInfoSummaryMsg = "could not check databases"
-	} else if schemaInfoErrorCount > 1 {
-		schemaInfoSummaryMsg = fmt.Sprintf("found integration problems in %s and %d other databases (see details with --verbose)", firstSchemaInfoErrorDb, schemaInfoErrorCount-1)
-	} else if schemaInfoErrorCount > 0 {
-		schemaInfoSummaryMsg = fmt.Sprintf("found integration problem in %s: %s", firstSchemaInfoErrorDb, firstSchemaInfoErrorDbMsg)
-	} else if len(status.SchemaInformation) > 1 {
-		schemaInfoSummaryMsg = fmt.Sprintf("ok in %s and %d other databases (see details with --verbose)", firstSchemaInfoErrorDb, len(status.SchemaInformation)-1)
-	} else {
-		schemaInfoSummaryMsg = fmt.Sprintf("ok in %s (no other databases are configured to be monitored)", status.SchemaInformation[0].DbName)
-	}
-
+	schemaInfoIcon, schemaInfoSummaryMsg := summarizeDbChecks(status.SchemaInformation)
 	fmt.Fprintf(os.Stderr, "\t%s Schema information:\t\t%s\n", schemaInfoIcon, schemaInfoSummaryMsg)
 	if verbose {
 		for _, dbStatus := range status.SchemaInformation {
@@ -826,6 +835,51 @@ func printServerTestSummary(s *state.Server, verbose bool) {
 			fmt.Fprintf(os.Stderr, "\t\t%s %s: %s\n", dbStatusIcon, dbStatus.DbName, dbStatus.Msg)
 		}
 	}
+	colStatsIcon, colStatsSummaryMsg := summarizeDbChecks(status.ColumnStats)
+	fmt.Fprintf(os.Stderr, "\t%s Column stats helpers:\t\t%s\n", colStatsIcon, colStatsSummaryMsg)
+	if verbose {
+		for _, dbStatus := range status.ColumnStats {
+			dbStatusIcon := getStatusIcon(dbStatus.State)
+			fmt.Fprintf(os.Stderr, "\t\t%s %s: %s\n", dbStatusIcon, dbStatus.DbName, dbStatus.Msg)
+		}
+	}
+	extStatsIcon, extStatsSummaryMsg := summarizeDbChecks(status.ExtendedStats)
+	fmt.Fprintf(os.Stderr, "\t%s Extended stats helpers:\t%s\n", extStatsIcon, extStatsSummaryMsg)
+	if verbose {
+		for _, dbStatus := range status.ExtendedStats {
+			dbStatusIcon := getStatusIcon(dbStatus.State)
+			fmt.Fprintf(os.Stderr, "\t\t%s %s: %s\n", dbStatusIcon, dbStatus.DbName, dbStatus.Msg)
+		}
+	}
+
+	fmt.Fprintln(os.Stderr)
+
+	// TODO: fix these; they should derive their status icon from
+	fmt.Fprintf(os.Stderr,
+		"\t%s Query Performance:\t\t%s\n",
+		getStatusIcon(status.PgStatStatements.State),
+		status.PgStatStatements.Msg,
+	)
+	fmt.Fprintf(os.Stderr,
+		"\t%s Log Insights:\t\t%s\n",
+		getStatusIcon(status.PgStatStatements.State),
+		status.PgStatStatements.Msg,
+	)
+	fmt.Fprintf(os.Stderr,
+		"\t%s Automated EXPLAIN:\t\t%s\n",
+		getStatusIcon(status.PgStatStatements.State),
+		status.PgStatStatements.Msg,
+	)
+	fmt.Fprintf(os.Stderr,
+		"\t%s VACUUM Advisor:\t\t%s\n",
+		getStatusIcon(status.PgStatStatements.State),
+		status.PgStatStatements.Msg,
+	)
+	fmt.Fprintf(os.Stderr,
+		"\t%s Index Advisor:\t\t%s\n",
+		getStatusIcon(status.PgStatStatements.State),
+		status.PgStatStatements.Msg,
+	)
 
 	// summary should show, for each server (preceded by green ✓ or red ✗):
 	//  - detected system type / platform / id
