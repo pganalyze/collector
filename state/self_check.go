@@ -5,6 +5,7 @@ type CollectionStateCode int
 const (
 	CollectionStateUnchecked CollectionStateCode = iota
 	CollectionStateNotAvailable
+	CollectionStateWarning
 	CollectionStateError
 	CollectionStateOkay
 )
@@ -27,7 +28,8 @@ type CollectionState struct {
 //  - can use index advisor?
 
 type DbCollectionState struct {
-	CollectionState
+	State  CollectionStateCode
+	Msg    string
 	DbName string
 }
 
@@ -36,7 +38,7 @@ type SelfCheckStatus struct {
 		Value bool
 		Msg   string
 	}
-	CollectorStatus        CollectionState
+	CollectorStatistics    CollectionState
 	SystemStats            CollectionState
 	MonitoringDbConnection CollectionState
 	PgStatStatements       CollectionState
@@ -47,6 +49,20 @@ type SelfCheckStatus struct {
 	AutomatedExplain       CollectionState
 }
 
+func (s *Server) SelfCheckMarkMonitoredDb(dbName string) {
+	s.selfCheckMutex.Lock()
+	defer s.selfCheckMutex.Unlock()
+	s.SelfCheck.SchemaInformation = append(s.SelfCheck.SchemaInformation, DbCollectionState{
+		DbName: dbName,
+	})
+	s.SelfCheck.ColumnStats = append(s.SelfCheck.SchemaInformation, DbCollectionState{
+		DbName: dbName,
+	})
+	s.SelfCheck.ExtendedStats = append(s.SelfCheck.SchemaInformation, DbCollectionState{
+		DbName: dbName,
+	})
+}
+
 // collection suspended (e.g., if replica)
 func (s *Server) SelfCheckMarkCollectionSuspended(msg string) {
 	s.selfCheckMutex.Lock()
@@ -55,29 +71,28 @@ func (s *Server) SelfCheckMarkCollectionSuspended(msg string) {
 	s.SelfCheck.CollectionSuspended.Msg = msg
 }
 
-// collector status
-func (s *Server) SelfCheckMarkCollectorStatusOk() {
+// collector stats
+func (s *Server) SelfCheckMarkCollectorStatisticsOk() {
 	s.selfCheckMutex.Lock()
 	defer s.selfCheckMutex.Unlock()
-	if s.SelfCheck.CollectorStatus.State != CollectionStateUnchecked {
+	if s.SelfCheck.CollectorStatistics.State != CollectionStateUnchecked {
 		return
 	}
-	s.SelfCheck.CollectorStatus.State = CollectionStateOkay
-	s.SelfCheck.CollectorStatus.Msg = "ok"
+	s.SelfCheck.CollectorStatistics.State = CollectionStateOkay
+	s.SelfCheck.CollectorStatistics.Msg = "ok"
 }
 
-func (s *Server) SelfCheckMarkCollectorStatusError(msg string) {
+func (s *Server) SelfCheckMarkCollectorStatisticsError(msg string) {
 	s.selfCheckMutex.Lock()
 	defer s.selfCheckMutex.Unlock()
-	if s.SelfCheck.CollectorStatus.State != CollectionStateUnchecked {
+	if s.SelfCheck.CollectorStatistics.State != CollectionStateUnchecked {
 		return
 	}
-	s.SelfCheck.CollectorStatus.State = CollectionStateError
-	s.SelfCheck.CollectorStatus.Msg = msg
+	s.SelfCheck.CollectorStatistics.State = CollectionStateError
+	s.SelfCheck.CollectorStatistics.Msg = msg
 }
 
 // system stats
-
 func (s *Server) SelfCheckMarkSystemStatsOk() {
 	s.selfCheckMutex.Lock()
 	defer s.selfCheckMutex.Unlock()
@@ -99,11 +114,13 @@ func (s *Server) SelfCheckMarkSystemStatsError(msg string) {
 	s.selfCheckMutex.Lock()
 	defer s.selfCheckMutex.Unlock()
 	s.SelfCheck.SystemStats.State = CollectionStateNotAvailable
-	s.SelfCheck.SystemStats.Msg = msg
+	if s.SelfCheck.SystemStats.Msg != "" {
+		s.SelfCheck.SystemStats.Msg += "; "
+	}
+	s.SelfCheck.SystemStats.Msg += msg
 }
 
 // monitoring DB connection
-
 func (s *Server) SelfCheckMarkMonitoringDbConnectionOk() {
 	s.selfCheckMutex.Lock()
 	defer s.selfCheckMutex.Unlock()
@@ -119,7 +136,6 @@ func (s *Server) SelfCheckMarkMonitoringDbConnectionError(msg string) {
 }
 
 // pg_stat_statements
-
 func (s *Server) SelfCheckMarkPgStatStatementsOk() {
 	s.selfCheckMutex.Lock()
 	defer s.selfCheckMutex.Unlock()
@@ -135,85 +151,69 @@ func (s *Server) SelfCheckMarkPgStatStatementsError(msg string) {
 }
 
 // schema information
-
-func (s *Server) SelfCheckMarkSchemaInformationOk(dbName string) {
+func (s *Server) SelfCheckMarkSchemaOk(dbName string) {
 	s.selfCheckMutex.Lock()
 	defer s.selfCheckMutex.Unlock()
-	s.SelfCheck.SchemaInformation = append(s.SelfCheck.SchemaInformation, DbCollectionState{
-		DbName: dbName,
-		CollectionState: CollectionState{
-			State: CollectionStateOkay,
-			Msg:   "ok",
-		},
-	})
+	for i, info := range s.SelfCheck.SchemaInformation {
+		if info.DbName == dbName {
+			s.SelfCheck.SchemaInformation[i].State = CollectionStateOkay
+			s.SelfCheck.SchemaInformation[i].Msg = "ok"
+			return
+		}
+	}
 }
 
-func (s *Server) SelfCheckMarkSchemaInformationError(dbName, msg string) {
+func (s *Server) SelfCheckMarkSchemaError(dbName, msg string) {
 	s.selfCheckMutex.Lock()
 	defer s.selfCheckMutex.Unlock()
-	s.SelfCheck.SchemaInformation = append(s.SelfCheck.SchemaInformation, DbCollectionState{
-		DbName: dbName,
-		CollectionState: CollectionState{
-			State: CollectionStateOkay,
-			Msg:   msg,
-		},
-	})
+	for i, info := range s.SelfCheck.SchemaInformation {
+		if info.DbName == dbName {
+			s.SelfCheck.SchemaInformation[i].State = CollectionStateError
+			s.SelfCheck.SchemaInformation[i].Msg = msg
+			return
+		}
+	}
+}
+
+func (s *Server) SelfCheckMarkAllRemainingSchemaError(msg string) {
+	s.selfCheckMutex.Lock()
+	defer s.selfCheckMutex.Unlock()
+	for i, info := range s.SelfCheck.SchemaInformation {
+		if info.State == CollectionStateUnchecked {
+			s.SelfCheck.SchemaInformation[i].State = CollectionStateError
+			s.SelfCheck.SchemaInformation[i].Msg = msg
+			return
+		}
+	}
 }
 
 // column stats
-
 func (s *Server) SelfCheckMarkColumnStatsOk(dbName string) {
 	s.selfCheckMutex.Lock()
 	defer s.selfCheckMutex.Unlock()
-	s.SelfCheck.ColumnStats = append(s.SelfCheck.ColumnStats, DbCollectionState{
-		DbName: dbName,
-		CollectionState: CollectionState{
-			State: CollectionStateOkay,
-			Msg:   "ok",
-		},
-	})
+
 }
 
 func (s *Server) SelfCheckMarkColumnStatsError(dbName, msg string) {
 	s.selfCheckMutex.Lock()
 	defer s.selfCheckMutex.Unlock()
-	s.SelfCheck.ColumnStats = append(s.SelfCheck.ColumnStats, DbCollectionState{
-		DbName: dbName,
-		CollectionState: CollectionState{
-			State: CollectionStateOkay,
-			Msg:   msg,
-		},
-	})
+
 }
 
 // extended stats
-
 func (s *Server) SelfCheckMarkExtendedStatsOk(dbName string) {
 	s.selfCheckMutex.Lock()
 	defer s.selfCheckMutex.Unlock()
-	s.SelfCheck.ExtendedStats = append(s.SelfCheck.ExtendedStats, DbCollectionState{
-		DbName: dbName,
-		CollectionState: CollectionState{
-			State: CollectionStateOkay,
-			Msg:   "ok",
-		},
-	})
+
 }
 
 func (s *Server) SelfCheckMarkExtendedStatsError(dbName, msg string) {
 	s.selfCheckMutex.Lock()
 	defer s.selfCheckMutex.Unlock()
-	s.SelfCheck.ExtendedStats = append(s.SelfCheck.ExtendedStats, DbCollectionState{
-		DbName: dbName,
-		CollectionState: CollectionState{
-			State: CollectionStateOkay,
-			Msg:   msg,
-		},
-	})
+
 }
 
 // Log Insights
-
 func (s *Server) SelfCheckMarkLogInsightsOk() {
 	s.selfCheckMutex.Lock()
 	defer s.selfCheckMutex.Unlock()
@@ -236,7 +236,6 @@ func (s *Server) SelfCheckMarkLogInsightsError(msg string) {
 }
 
 // Automated EXPLAIN
-
 func (s *Server) SelfCheckMarkAutomatedExplainOk() {
 	s.selfCheckMutex.Lock()
 	defer s.selfCheckMutex.Unlock()
