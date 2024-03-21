@@ -746,6 +746,16 @@ func getStatusIcon(code state.CollectionStateCode) string {
 	}
 }
 
+func getMaxDbNameLen(checks []state.DbCollectionState) int {
+	var maxDbNameLen int
+	for _, item := range checks {
+		if thisNameLen := len(item.DbName); thisNameLen > maxDbNameLen {
+			maxDbNameLen = thisNameLen
+		}
+	}
+	return maxDbNameLen
+}
+
 func summarizeDbChecks(checks []state.DbCollectionState, isVerbose bool) (string, string) {
 	var firstErrorDb string
 	var firstErrorDbMsg string
@@ -794,6 +804,12 @@ func summarizeDbChecks(checks []state.DbCollectionState, isVerbose bool) (string
 	return icon, summaryMsg
 }
 
+func printDbStatus(dbStatus state.DbCollectionState, maxDbNameLen int) {
+	dbStatusIcon := getStatusIcon(dbStatus.State)
+	dbNameFmtString := fmt.Sprintf("%%%ds", maxDbNameLen-len(dbStatus.DbName))
+	fmt.Fprintf(os.Stderr, "\t\t%s %s:"+dbNameFmtString+"\t%s\n", dbStatusIcon, dbStatus.DbName, "", dbStatus.Msg)
+}
+
 func printServerTestSummary(s *state.Server, verbose bool) {
 	config := s.Config
 	status := s.SelfCheck
@@ -834,12 +850,12 @@ func printServerTestSummary(s *state.Server, verbose bool) {
 		status.PgStatStatements.Msg,
 	)
 
+	maxDbNameLen := getMaxDbNameLen(status.SchemaInformation)
 	schemaInfoIcon, schemaInfoSummaryMsg := summarizeDbChecks(status.SchemaInformation, verbose)
 	fmt.Fprintf(os.Stderr, "\t%s Schema information:\t\t%s\n", schemaInfoIcon, schemaInfoSummaryMsg)
 	if verbose {
 		for _, dbStatus := range status.SchemaInformation {
-			dbStatusIcon := getStatusIcon(dbStatus.State)
-			fmt.Fprintf(os.Stderr, "\t\t%s %s: %s\n", dbStatusIcon, dbStatus.DbName, dbStatus.Msg)
+			printDbStatus(dbStatus, maxDbNameLen)
 		}
 	}
 	colStatsIcon, colStatsSummaryMsg := summarizeDbChecks(status.ColumnStats, verbose)
