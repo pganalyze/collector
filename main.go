@@ -735,6 +735,8 @@ func getStatusIcon(code state.CollectionStateCode) string {
 		return GrayQuestion
 	case state.CollectionStateNotAvailable:
 		return GrayDash
+	case state.CollectionStateWarning:
+		return YellowBang
 	case state.CollectionStateError:
 		return RedX
 	case state.CollectionStateOkay:
@@ -744,7 +746,7 @@ func getStatusIcon(code state.CollectionStateCode) string {
 	}
 }
 
-func summarizeDbChecks(checks []state.DbCollectionState) (string, string) {
+func summarizeDbChecks(checks []state.DbCollectionState, isVerbose bool) (string, string) {
 	var firstErrorDb string
 	var firstErrorDbMsg string
 	var errorCount = 0
@@ -771,15 +773,20 @@ func summarizeDbChecks(checks []state.DbCollectionState) (string, string) {
 		icon = RedX
 	}
 
+	var verboseHint string
+	if !isVerbose {
+		verboseHint = " (see details with --verbose)"
+	}
+
 	var summaryMsg string
 	if len(checks) == 0 {
 		summaryMsg = "could not check databases"
 	} else if errorCount > 1 {
-		summaryMsg = fmt.Sprintf("found integration problems in %s and %d other databases (see details with --verbose)", firstErrorDb, errorCount-1)
+		summaryMsg = fmt.Sprintf("found integration problems in %s and %d other databases%s", firstErrorDb, errorCount-1, verboseHint)
 	} else if errorCount > 0 {
 		summaryMsg = fmt.Sprintf("found integration problem in %s: %s", firstErrorDb, firstErrorDbMsg)
 	} else if len(checks) > 1 {
-		summaryMsg = fmt.Sprintf("ok in %s and %d other databases (see details with --verbose)", firstErrorDb, len(checks)-1)
+		summaryMsg = fmt.Sprintf("ok in %s and %d other databases%s", checks[0].DbName, len(checks)-1, verboseHint)
 	} else {
 		summaryMsg = fmt.Sprintf("ok in %s (no other databases are configured to be monitored)", checks[0].DbName)
 	}
@@ -804,9 +811,9 @@ func printServerTestSummary(s *state.Server, verbose bool) {
 	}
 
 	fmt.Fprintf(os.Stderr,
-		"\t%s Collector info:\t\t%s\n",
-		getStatusIcon(status.CollectorStatus.State),
-		status.CollectorStatus.Msg,
+		"\t%s Collector statistics:\t\t%s\n",
+		getStatusIcon(status.CollectorStatistics.State),
+		status.CollectorStatistics.Msg,
 	)
 
 	fmt.Fprintf(os.Stderr,
@@ -827,7 +834,7 @@ func printServerTestSummary(s *state.Server, verbose bool) {
 		status.PgStatStatements.Msg,
 	)
 
-	schemaInfoIcon, schemaInfoSummaryMsg := summarizeDbChecks(status.SchemaInformation)
+	schemaInfoIcon, schemaInfoSummaryMsg := summarizeDbChecks(status.SchemaInformation, verbose)
 	fmt.Fprintf(os.Stderr, "\t%s Schema information:\t\t%s\n", schemaInfoIcon, schemaInfoSummaryMsg)
 	if verbose {
 		for _, dbStatus := range status.SchemaInformation {
@@ -835,7 +842,7 @@ func printServerTestSummary(s *state.Server, verbose bool) {
 			fmt.Fprintf(os.Stderr, "\t\t%s %s: %s\n", dbStatusIcon, dbStatus.DbName, dbStatus.Msg)
 		}
 	}
-	colStatsIcon, colStatsSummaryMsg := summarizeDbChecks(status.ColumnStats)
+	colStatsIcon, colStatsSummaryMsg := summarizeDbChecks(status.ColumnStats, verbose)
 	fmt.Fprintf(os.Stderr, "\t%s Column stats helpers:\t\t%s\n", colStatsIcon, colStatsSummaryMsg)
 	if verbose {
 		for _, dbStatus := range status.ColumnStats {
@@ -843,7 +850,7 @@ func printServerTestSummary(s *state.Server, verbose bool) {
 			fmt.Fprintf(os.Stderr, "\t\t%s %s: %s\n", dbStatusIcon, dbStatus.DbName, dbStatus.Msg)
 		}
 	}
-	extStatsIcon, extStatsSummaryMsg := summarizeDbChecks(status.ExtendedStats)
+	extStatsIcon, extStatsSummaryMsg := summarizeDbChecks(status.ExtendedStats, verbose)
 	fmt.Fprintf(os.Stderr, "\t%s Extended stats helpers:\t%s\n", extStatsIcon, extStatsSummaryMsg)
 	if verbose {
 		for _, dbStatus := range status.ExtendedStats {
