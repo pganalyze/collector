@@ -98,8 +98,8 @@ func skipDueToK8sFilter(kubernetes *common.KeyValueList, server *state.Server, p
 		}
 	}
 
-	if server.Config.LogOtelK8SPod != "" {
-		parts := strings.SplitN(server.Config.LogOtelK8SPod, "/", 2)
+	if server.Config.LogOtelK8SSkipPod != "" {
+		parts := strings.SplitN(server.Config.LogOtelK8SSkipPod, "/", 2)
 		if len(parts) == 2 {
 			if k8sNamespaceName != parts[0] || k8sPodName != parts[1] {
 				return true
@@ -114,8 +114,8 @@ func skipDueToK8sFilter(kubernetes *common.KeyValueList, server *state.Server, p
 		}
 	}
 
-	if server.Config.LogOtelK8SLabels != "" {
-		selectors := strings.Split(server.Config.LogOtelK8SLabels, ",")
+	if server.Config.LogOtelK8SSkipLabels != "" {
+		selectors := strings.Split(server.Config.LogOtelK8SSkipLabels, ",")
 		for _, selector := range selectors {
 			parts := k8sSelectorRegexp.FindStringSubmatch(selector)
 			if parts != nil {
@@ -132,6 +132,60 @@ func skipDueToK8sFilter(kubernetes *common.KeyValueList, server *state.Server, p
 			} else {
 				prefixedLogger.PrintWarning("Label selector for OTel server not valid: \"%s\", skipping log record\n", server.Config.LogOtelK8SLabels)
 				return true
+			}
+		}
+	}
+	return false
+}
+
+func handleWithK8sFilter(kubernetes *common.KeyValueList, server *state.Server) bool {
+	var k8sPodName string
+	var k8sNamespaceName string
+
+	k8sLabels := make(map[string]string)
+	for _, rv := range kubernetes.Values {
+		if rv.Key == "pod_name" {
+			k8sPodName = rv.Value.GetStringValue()
+		}
+		if rv.Key == "namespace_name" {
+			k8sNamespaceName = rv.Value.GetStringValue()
+		}
+		if rv.Key == "labels" {
+			for _, ll := range rv.Value.GetKvlistValue().Values {
+				k8sLabels[ll.Key] = ll.Value.GetStringValue()
+			}
+		}
+	}
+
+	if server.Config.LogOtelK8SPod != "" {
+		parts := strings.SplitN(server.Config.LogOtelK8SPod, "/", 2)
+		if len(parts) == 2 {
+			if k8sNamespaceName == parts[0] && k8sPodName == parts[1] {
+				return true
+			}
+		} else if len(parts) == 1 {
+			if k8sPodName == parts[0] {
+				return true
+			}
+		}
+	}
+
+	if server.Config.LogOtelK8SLabels != "" {
+		selectors := strings.Split(server.Config.LogOtelK8SLabels, ",")
+		for _, selector := range selectors {
+			parts := k8sSelectorRegexp.FindStringSubmatch(selector)
+			if parts != nil {
+				selKey := parts[1]
+				selEq := parts[2] == "=" || parts[2] == "=="
+				// Skip not equal label for now
+				// selNotEq := parts[2] == "!="
+				selValue := parts[3]
+				v, ok := k8sLabels[selKey]
+				if ok {
+					if selEq && v == selValue {
+						return true
+					}
+				}
 			}
 		}
 	}
@@ -157,6 +211,7 @@ func setupOtelHandler(ctx context.Context, server *state.Server, rawLogStream ch
 						var logger string
 						var record *common.KeyValueList
 						var kubernetes *common.KeyValueList
+						var log string
 						hasErrorSeverity := false
 						if l.Body.GetKvlistValue() != nil {
 							for _, v := range l.Body.GetKvlistValue().Values {
@@ -172,10 +227,21 @@ func setupOtelHandler(ctx context.Context, server *state.Server, rawLogStream ch
 								if v.Key == "error_severity" {
 									hasErrorSeverity = true
 								}
+								if v.Key == "log" {
+									log = v.Value.GetStringValue()
+								}
 							}
 							// TODO: Does the logger name need to be configurable? (this is tested with CNPG,
 							// but would the logger be different with other operators/container names?)
-							if logger == "postgres" {
+							if handleWithK8sFilter(kubernetes, server) {
+								prefixedLogger.PrintInfo("Received logs matching to the filter\n")
+								// handle log as plain log for now
+								// "log"=>"2024-03-22 09:40:37.089 UTC [320] [user=postgres,db=postgres,app=psql] LOG:  duration: 13013.199 ms  statement: select pg_sleep(13);"
+								item := SelfHostedLogStreamItem{}
+								item.Line = log
+								item.OccurredAt = time.Unix(0, int64(l.TimeUnixNano))
+								rawLogStream <- item
+							} else if logger == "postgres" {
 								// jsonlog wrapped in K8s context (via fluentbit)
 								logLine, detailLine := logLineFromJsonlog(record, tz)
 								if skipDueToK8sFilter(kubernetes, server, prefixedLogger) {

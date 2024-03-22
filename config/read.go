@@ -284,6 +284,12 @@ func getDefaultConfig() *ServerConfig {
 	if logOtelK8SLabels := os.Getenv("LOG_OTEL_K8S_LABELS"); logOtelK8SLabels != "" {
 		config.LogOtelK8SLabels = logOtelK8SLabels
 	}
+	if logOtelK8SSkipPod := os.Getenv("LOG_OTEL_K8S_SKIP_POD"); logOtelK8SSkipPod != "" {
+		config.LogOtelK8SSkipPod = logOtelK8SSkipPod
+	}
+	if logOtelK8SSkipLabels := os.Getenv("LOG_OTEL_K8S_SKIP_LABELS"); logOtelK8SSkipLabels != "" {
+		config.LogOtelK8SSkipLabels = logOtelK8SSkipLabels
+	}
 	if alwaysCollectSystemData := os.Getenv("PGA_ALWAYS_COLLECT_SYSTEM_DATA"); alwaysCollectSystemData != "" {
 		config.AlwaysCollectSystemData = parseConfigBool(alwaysCollectSystemData)
 	}
