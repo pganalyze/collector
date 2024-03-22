@@ -720,15 +720,6 @@ var RedX = color.New(color.FgHiRed).Sprintf("✗")
 var GrayDash = color.New(color.FgWhite).Sprintf("—")
 var GrayQuestion = color.New(color.FgWhite).Sprintf("?")
 
-func formatConfigSetting(setting string) string {
-	if os.Getenv("PGA_API_KEY") != "" {
-		// TODO: translate setting to appropriate format
-		return setting
-	} else {
-		return setting
-	}
-}
-
 func getStatusIcon(code state.CollectionStateCode) string {
 	switch code {
 	case state.CollectionStateUnchecked:
@@ -890,7 +881,6 @@ func printServerTestSummary(s *state.Server, verbose bool) {
 
 	fmt.Fprintln(os.Stderr)
 
-	// TODO: fix these; they should derive their status icon from
 	fmt.Fprintf(os.Stderr,
 		"\t%s Query Performance:\t\t%s\n",
 		getStatusIcon(status.PgStatStatements.State),
@@ -919,7 +909,6 @@ func printServerTestSummary(s *state.Server, verbose bool) {
 
 	// TODO:
 	//  - can collect system information? (or that not available on given system, or remote host specified and how to override)
-	//  - can collect column stats? (if not, which databases have errors: first three with " and x more" or all with --verbose)
 	//  - can collect log information? (whether disabled, and if not, status and how to disable, at least for Production plans)
 	//  - can collect explain plans?
 	//
@@ -940,14 +929,6 @@ func printServerTestSummary(s *state.Server, verbose bool) {
 
 	// logger.PrintError("Error collecting pg_stat_statements: %s", err)
 	//   logger.PrintInfo("HINT - Current shared_preload_libraries setting: '%s'. Your Postgres server may need to be restarted for changes to take effect.", shared_preload_libraries)
-
-	// logger.PrintInfo("Warning: Limited access to table column statistics detected in database %s. Please set up"+
-	//   " the monitoring helper function pganalyze.get_column_stats (https://github.com/pganalyze/collector#setting-up-a-restricted-monitoring-user)"+
-	//   " or connect as superuser, to get column statistics for all tables.", dbName)
-
-	// logger.PrintInfo("Warning: Limited access to extended table statistics detected in database %s. Please set up"+
-	//   " the monitoring helper function pganalyze.get_relation_stats_ext (https://github.com/pganalyze/collector#setting-up-a-restricted-monitoring-user)"+
-	//   " or connect as superuser, to get extended statistics for all tables.", dbName)
 
 	// warning := "Failed to collect schema metadata for database %s: %s"
 
