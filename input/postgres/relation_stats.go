@@ -8,7 +8,7 @@ import (
 	"github.com/pganalyze/collector/state"
 )
 
-const relationStatsSQLInsertsSinceVacuumFieldPg13 string = "s.n_ins_since_vacuum"
+const relationStatsSQLInsertsSinceVacuumFieldPg13 string = "pg_stat_get_ins_since_vacuum(c.oid)"
 const relationStatsSQLInsertsSinceVacuumFieldDefault string = "0"
 
 const relationStatsSQL = `
@@ -25,34 +25,34 @@ SELECT c.oid,
 			    FROM pg_catalog.pg_inherits
 				 WHERE inhparent = c.oid), 0) AS size_bytes,
 			 CASE c.reltoastrelid WHEN NULL THEN 0 ELSE COALESCE(pg_catalog.pg_total_relation_size(c.reltoastrelid), 0) END AS toast_bytes,
-			 COALESCE(s.seq_scan, 0),
-			 COALESCE(s.seq_tup_read, 0),
-			 COALESCE(s.idx_scan, 0),
-			 COALESCE(s.idx_tup_fetch, 0),
-			 COALESCE(s.n_tup_ins, 0),
-			 COALESCE(s.n_tup_upd, 0),
-			 COALESCE(s.n_tup_del, 0),
-			 COALESCE(s.n_tup_hot_upd, 0),
-			 COALESCE(s.n_live_tup, 0),
-			 COALESCE(s.n_dead_tup, 0),
-			 COALESCE(s.n_mod_since_analyze, 0),
-			 COALESCE(%s, 0),
-			 s.last_vacuum,
-			 s.last_autovacuum,
-			 s.last_analyze,
-			 s.last_autoanalyze,
-			 COALESCE(s.vacuum_count, 0),
-			 COALESCE(s.autovacuum_count, 0),
-			 COALESCE(s.analyze_count, 0),
-			 COALESCE(s.autoanalyze_count, 0),
-			 COALESCE(sio.heap_blks_read, 0),
-			 COALESCE(sio.heap_blks_hit, 0),
-			 COALESCE(sio.idx_blks_read, 0),
-			 COALESCE(sio.idx_blks_hit, 0),
-			 COALESCE(sio.toast_blks_read, 0),
-			 COALESCE(sio.toast_blks_hit, 0),
-			 COALESCE(sio.tidx_blks_read, 0),
-			 COALESCE(sio.tidx_blks_hit, 0),
+			 COALESCE(pg_stat_get_numscans(c.oid), 0) AS seq_scan,
+			 COALESCE(pg_stat_get_tuples_returned(c.oid), 0) AS seq_tup_read,
+			 COALESCE(i.idx_scan, 0) AS idx_scan,
+			 COALESCE(i.idx_tup_fetch + pg_stat_get_tuples_fetched(c.oid), 0) AS idx_tup_fetch,
+			 COALESCE(pg_stat_get_tuples_inserted(c.oid), 0) AS n_tup_ins,
+			 COALESCE(pg_stat_get_tuples_updated(c.oid), 0) AS n_tup_upd,
+			 COALESCE(pg_stat_get_tuples_deleted(c.oid), 0) AS n_tup_del,
+			 COALESCE(pg_stat_get_tuples_hot_updated(c.oid), 0) AS n_tup_hot_upd,
+			 COALESCE(pg_stat_get_live_tuples(c.oid), 0) AS n_live_tup,
+			 COALESCE(pg_stat_get_dead_tuples(c.oid), 0) AS n_dead_tup,
+			 COALESCE(pg_stat_get_mod_since_analyze(c.oid), 0) AS n_mod_since_analyze,
+			 COALESCE(%s, 0) AS n_ins_since_vacuum,
+			 pg_stat_get_last_vacuum_time(c.oid) AS last_vacuum,
+			 pg_stat_get_last_autovacuum_time(c.oid) AS last_autovacuum,
+			 pg_stat_get_last_analyze_time(c.oid) AS last_analyze,
+			 pg_stat_get_last_autoanalyze_time(c.oid) AS last_autoanalyze,
+			 COALESCE(pg_stat_get_vacuum_count(c.oid), 0) AS vacuum_count,
+			 COALESCE(pg_stat_get_autovacuum_count(c.oid), 0) AS autovacuum_count,
+			 COALESCE(pg_stat_get_analyze_count(c.oid), 0) AS analyze_count,
+			 COALESCE(pg_stat_get_autoanalyze_count(c.oid), 0) AS autoanalyze_count,
+			 COALESCE(pg_stat_get_blocks_fetched(c.oid) - pg_stat_get_blocks_hit(c.oid), 0) AS heap_blks_read,
+			 COALESCE(pg_stat_get_blocks_hit(c.oid), 0) AS heap_blks_hit,
+			 COALESCE(i.idx_blks_read, 0) AS idx_blks_read,
+			 COALESCE(i.idx_blks_hit, 0) AS idx_blks_hit,
+			 COALESCE(pg_stat_get_blocks_fetched(toast.oid) - pg_stat_get_blocks_hit(toast.oid), 0) AS toast_blks_read,
+			 COALESCE(pg_stat_get_blocks_hit(toast.oid), 0) AS toast_blks_hit,
+			 COALESCE(x.idx_blks_read, 0) AS tidx_blks_read,
+			 COALESCE(x.idx_blks_hit, 0) AS tidx_blks_hit,
 			 CASE WHEN c.relfrozenxid <> '0' THEN pg_catalog.age(c.relfrozenxid) ELSE 0 END AS relation_xid_age,
 			 CASE WHEN c.relminmxid <> '0' THEN pg_catalog.mxid_age(c.relminmxid) ELSE 0 END AS relation_mxid_age,
 			 c.relpages,
@@ -63,9 +63,19 @@ SELECT c.oid,
 			 COALESCE(toast.relpages, 0) AS toast_relpages
 	FROM pg_catalog.pg_class c
 	LEFT JOIN pg_catalog.pg_namespace n ON (n.oid = c.relnamespace)
-	LEFT JOIN pg_catalog.pg_stat_user_tables s ON (s.relid = c.oid)
-	LEFT JOIN pg_catalog.pg_statio_user_tables sio USING (relid)
 	LEFT JOIN pg_class toast ON (c.reltoastrelid = toast.oid AND toast.relkind = 't')
+	LEFT JOIN LATERAL (
+		SELECT sum(pg_stat_get_numscans(indexrelid))::bigint AS idx_scan,
+			   sum(pg_stat_get_tuples_fetched(indexrelid))::bigint AS idx_tup_fetch,
+			   sum(pg_stat_get_blocks_fetched(pg_index.indexrelid) - pg_stat_get_blocks_hit(pg_index.indexrelid))::bigint AS idx_blks_read,
+			   sum(pg_stat_get_blocks_hit(pg_index.indexrelid))::bigint AS idx_blks_hit
+		  FROM pg_index
+		 WHERE pg_index.indrelid = c.oid) i ON true
+	LEFT JOIN LATERAL (
+		SELECT sum(pg_stat_get_blocks_fetched(pg_index.indexrelid) - pg_stat_get_blocks_hit(pg_index.indexrelid))::bigint AS idx_blks_read,
+			   sum(pg_stat_get_blocks_hit(pg_index.indexrelid))::bigint AS idx_blks_hit
+		  FROM pg_index
+		 WHERE pg_index.indrelid = toast.oid) x ON true
  WHERE c.oid NOT IN (SELECT relid FROM locked_relids_with_parents)
        AND c.relkind IN ('r','v','m','p')
 			 AND c.relpersistence <> 't'
