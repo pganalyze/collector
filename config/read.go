@@ -736,7 +736,7 @@ func Read(logger *util.Logger, filename string) (Config, error) {
 			return conf, fmt.Errorf("Configuration file is empty, please edit %s and reload the collector", filename)
 		}
 	} else {
-		if os.Getenv("DYNO") != "" && os.Getenv("PORT") != "" {
+		if util.IsHeroku() {
 			for _, kv := range os.Environ() {
 				parts := strings.SplitN(kv, "=", 2)
 				parsedKey := parts[0]

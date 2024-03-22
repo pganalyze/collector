@@ -32,7 +32,9 @@ func ReadStateFile(servers []*Server, globalCollectionOpts CollectionOpts, logge
 
 	file, err := os.Open(globalCollectionOpts.StateFilename)
 	if err != nil {
-		logger.PrintVerbose("Did not open state file: %s", err)
+		if !util.IsHeroku() {
+			logger.PrintVerbose("Did not open state file: %s", err)
+		}
 		return
 	}
 	decoder := gob.NewDecoder(file)
