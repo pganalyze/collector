@@ -145,7 +145,7 @@ func collectSchemaData(ctx context.Context, collectionOpts state.CollectionOpts,
 			ps.SchemaStats[databaseOid].IndexStats[k] = v
 		}
 
-		newColumnStats, err := GetColumnStats(ctx, logger, db, collectionOpts, systemType, dbName)
+		newColumnStats, err := GetColumnStats(ctx, logger, db, collectionOpts, systemType, dbName, server)
 		if err != nil {
 			return ps, ts, fmt.Errorf("error collecting column statistics: %s", err)
 		}

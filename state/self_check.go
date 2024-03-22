@@ -38,7 +38,7 @@ type SelfCheckStatus struct {
 		Value bool
 		Msg   string
 	}
-	CollectorStatistics    CollectionState
+	CollectorTelemetry     CollectionState
 	SystemStats            CollectionState
 	MonitoringDbConnection CollectionState
 	PgStatStatements       CollectionState
@@ -75,21 +75,21 @@ func (s *Server) SelfCheckMarkCollectionSuspended(msg string) {
 func (s *Server) SelfCheckMarkCollectorStatisticsOk() {
 	s.selfCheckMutex.Lock()
 	defer s.selfCheckMutex.Unlock()
-	if s.SelfCheck.CollectorStatistics.State != CollectionStateUnchecked {
+	if s.SelfCheck.CollectorTelemetry.State != CollectionStateUnchecked {
 		return
 	}
-	s.SelfCheck.CollectorStatistics.State = CollectionStateOkay
-	s.SelfCheck.CollectorStatistics.Msg = "ok"
+	s.SelfCheck.CollectorTelemetry.State = CollectionStateOkay
+	s.SelfCheck.CollectorTelemetry.Msg = "ok"
 }
 
 func (s *Server) SelfCheckMarkCollectorStatisticsError(msg string) {
 	s.selfCheckMutex.Lock()
 	defer s.selfCheckMutex.Unlock()
-	if s.SelfCheck.CollectorStatistics.State != CollectionStateUnchecked {
+	if s.SelfCheck.CollectorTelemetry.State != CollectionStateUnchecked {
 		return
 	}
-	s.SelfCheck.CollectorStatistics.State = CollectionStateError
-	s.SelfCheck.CollectorStatistics.Msg = msg
+	s.SelfCheck.CollectorTelemetry.State = CollectionStateError
+	s.SelfCheck.CollectorTelemetry.Msg = msg
 }
 
 // system stats
@@ -139,14 +139,24 @@ func (s *Server) SelfCheckMarkMonitoringDbConnectionError(msg string) {
 func (s *Server) SelfCheckMarkPgStatStatementsOk() {
 	s.selfCheckMutex.Lock()
 	defer s.selfCheckMutex.Unlock()
+	if s.SelfCheck.PgStatStatements.State != CollectionStateUnchecked {
+		return
+	}
 	s.SelfCheck.PgStatStatements.State = CollectionStateOkay
 	s.SelfCheck.PgStatStatements.Msg = "ok"
+}
+
+func (s *Server) SelfCheckMarkPgStatStatementsWarning(msg string) {
+	s.selfCheckMutex.Lock()
+	defer s.selfCheckMutex.Unlock()
+	s.SelfCheck.PgStatStatements.State = CollectionStateWarning
+	s.SelfCheck.PgStatStatements.Msg = msg
 }
 
 func (s *Server) SelfCheckMarkPgStatStatementsError(msg string) {
 	s.selfCheckMutex.Lock()
 	defer s.selfCheckMutex.Unlock()
-	s.SelfCheck.PgStatStatements.State = CollectionStateNotAvailable
+	s.SelfCheck.PgStatStatements.State = CollectionStateError
 	s.SelfCheck.PgStatStatements.Msg = msg
 }
 
