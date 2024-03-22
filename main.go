@@ -757,6 +757,15 @@ func getMaxDbNameLen(checks []state.DbCollectionState) int {
 }
 
 func summarizeDbChecks(checks []state.DbCollectionState, isVerbose bool) (string, string) {
+	var firstUncheckedDb string
+	var anyChecked = false
+	for _, item := range checks {
+		if item.State != state.CollectionStateUnchecked {
+			anyChecked = true
+		} else if firstUncheckedDb == "" {
+			firstUncheckedDb = item.DbName
+		}
+	}
 	var firstErrorDb string
 	var firstErrorDbMsg string
 	var errorCount = 0
@@ -791,12 +800,18 @@ func summarizeDbChecks(checks []state.DbCollectionState, isVerbose bool) (string
 	var summaryMsg string
 	if len(checks) == 0 {
 		summaryMsg = "could not check databases"
+	} else if !anyChecked {
+		if len(checks) > 1 {
+			summaryMsg = fmt.Sprintf("could not check %s and %d other database(s)%s", firstUncheckedDb, len(checks)-1, verboseHint)
+		} else {
+			summaryMsg = fmt.Sprintf("could not check database %s", firstUncheckedDb)
+		}
 	} else if errorCount > 1 {
-		summaryMsg = fmt.Sprintf("found integration problems in %s and %d other databases%s", firstErrorDb, errorCount-1, verboseHint)
+		summaryMsg = fmt.Sprintf("found integration problems in %s and %d other database(s)%s", firstErrorDb, errorCount-1, verboseHint)
 	} else if errorCount > 0 {
-		summaryMsg = fmt.Sprintf("found integration problem in %s: %s", firstErrorDb, firstErrorDbMsg)
+		summaryMsg = fmt.Sprintf("found integration problem in database %s: %s", firstErrorDb, firstErrorDbMsg)
 	} else if len(checks) > 1 {
-		summaryMsg = fmt.Sprintf("ok in %s and %d other databases%s", checks[0].DbName, len(checks)-1, verboseHint)
+		summaryMsg = fmt.Sprintf("ok in %s and %d other database(s)%s", checks[0].DbName, len(checks)-1, verboseHint)
 	} else {
 		summaryMsg = fmt.Sprintf("ok in %s (no other databases are configured to be monitored)", checks[0].DbName)
 	}
@@ -862,16 +877,14 @@ func printServerTestSummary(s *state.Server, verbose bool) {
 	fmt.Fprintf(os.Stderr, "\t%s Column stats helpers:\t\t%s\n", colStatsIcon, colStatsSummaryMsg)
 	if verbose {
 		for _, dbStatus := range status.ColumnStats {
-			dbStatusIcon := getStatusIcon(dbStatus.State)
-			fmt.Fprintf(os.Stderr, "\t\t%s %s: %s\n", dbStatusIcon, dbStatus.DbName, dbStatus.Msg)
+			printDbStatus(dbStatus, maxDbNameLen)
 		}
 	}
 	extStatsIcon, extStatsSummaryMsg := summarizeDbChecks(status.ExtendedStats, verbose)
 	fmt.Fprintf(os.Stderr, "\t%s Extended stats helpers:\t%s\n", extStatsIcon, extStatsSummaryMsg)
 	if verbose {
 		for _, dbStatus := range status.ExtendedStats {
-			dbStatusIcon := getStatusIcon(dbStatus.State)
-			fmt.Fprintf(os.Stderr, "\t\t%s %s: %s\n", dbStatusIcon, dbStatus.DbName, dbStatus.Msg)
+			printDbStatus(dbStatus, maxDbNameLen)
 		}
 	}
 

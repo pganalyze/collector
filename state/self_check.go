@@ -55,10 +55,10 @@ func (s *Server) SelfCheckMarkMonitoredDb(dbName string) {
 	s.SelfCheck.SchemaInformation = append(s.SelfCheck.SchemaInformation, DbCollectionState{
 		DbName: dbName,
 	})
-	s.SelfCheck.ColumnStats = append(s.SelfCheck.SchemaInformation, DbCollectionState{
+	s.SelfCheck.ColumnStats = append(s.SelfCheck.ColumnStats, DbCollectionState{
 		DbName: dbName,
 	})
-	s.SelfCheck.ExtendedStats = append(s.SelfCheck.SchemaInformation, DbCollectionState{
+	s.SelfCheck.ExtendedStats = append(s.SelfCheck.ExtendedStats, DbCollectionState{
 		DbName: dbName,
 	})
 }
@@ -191,26 +191,50 @@ func (s *Server) SelfCheckMarkAllRemainingSchemaError(msg string) {
 func (s *Server) SelfCheckMarkColumnStatsOk(dbName string) {
 	s.selfCheckMutex.Lock()
 	defer s.selfCheckMutex.Unlock()
-
+	for i, info := range s.SelfCheck.ColumnStats {
+		if info.DbName == dbName {
+			s.SelfCheck.ColumnStats[i].State = CollectionStateOkay
+			s.SelfCheck.ColumnStats[i].Msg = "ok"
+			return
+		}
+	}
 }
 
 func (s *Server) SelfCheckMarkColumnStatsError(dbName, msg string) {
 	s.selfCheckMutex.Lock()
 	defer s.selfCheckMutex.Unlock()
-
+	for i, info := range s.SelfCheck.ColumnStats {
+		if info.DbName == dbName {
+			s.SelfCheck.ColumnStats[i].State = CollectionStateError
+			s.SelfCheck.ColumnStats[i].Msg = msg
+			return
+		}
+	}
 }
 
 // extended stats
 func (s *Server) SelfCheckMarkExtendedStatsOk(dbName string) {
 	s.selfCheckMutex.Lock()
 	defer s.selfCheckMutex.Unlock()
-
+	for i, info := range s.SelfCheck.ExtendedStats {
+		if info.DbName == dbName {
+			s.SelfCheck.ExtendedStats[i].State = CollectionStateOkay
+			s.SelfCheck.ExtendedStats[i].Msg = "ok"
+			return
+		}
+	}
 }
 
 func (s *Server) SelfCheckMarkExtendedStatsError(dbName, msg string) {
 	s.selfCheckMutex.Lock()
 	defer s.selfCheckMutex.Unlock()
-
+	for i, info := range s.SelfCheck.ExtendedStats {
+		if info.DbName == dbName {
+			s.SelfCheck.ExtendedStats[i].State = CollectionStateError
+			s.SelfCheck.ExtendedStats[i].Msg = msg
+			return
+		}
+	}
 }
 
 // Log Insights

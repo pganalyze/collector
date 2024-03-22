@@ -51,9 +51,11 @@ func GetRelationStatsExtended(ctx context.Context, logger *util.Logger, db *sql.
 
 	if StatsHelperExists(ctx, db, "get_relation_stats_ext") {
 		logger.PrintVerbose("Found pganalyze.get_relation_stats_ext() stats helper")
+		server.SelfCheckMarkExtendedStatsOk(dbName)
 		sourceTable = "pganalyze.get_relation_stats_ext()"
 	} else {
 		if systemType != "heroku" && !connectedAsSuperUser(ctx, db, systemType) && globalCollectionOpts.TestRun {
+			server.SelfCheckMarkExtendedStatsError(dbName, "monitoring helper function pganalyze.get_relation_stats_ext not found")
 			logger.PrintInfo("Warning: Limited access to extended table statistics detected in database %s. Please set up"+
 				" the monitoring helper function pganalyze.get_relation_stats_ext (https://github.com/pganalyze/collector#setting-up-a-restricted-monitoring-user)"+
 				" or connect as superuser, to get extended statistics for all tables.", dbName)
