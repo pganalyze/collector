@@ -157,6 +157,12 @@ type ServerConfig struct {
 	LogSyslogServerKeyContents      string `ini:"db_log_syslog_server_key_contents"`
 	LogSyslogServerClientCAContents string `ini:"db_log_syslog_server_client_ca_contents"`
 
+	// Configures the collector to start a built-in OTLP HTTP server that
+	// receives logs and optionally filters them by Kubernetes pod or labels
+	LogOtelServer    string `ini:"db_log_otel_server"`
+	LogOtelK8SPod    string `ini:"db_log_otel_k8s_pod"`
+	LogOtelK8SLabels string `ini:"db_log_otel_k8s_labels"`
+
 	// Configures the collector to use the "pg_read_file" (superuser) or
 	// "pganalyze.read_log_file" (helper) function to retrieve log data
 	// directly over the Postgres connection. This only works when superuser
