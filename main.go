@@ -802,16 +802,16 @@ func summarizeDbChecks(checks []state.DbCollectionState, isVerbose bool) (string
 		summaryMsg = "could not check databases"
 	} else if !anyChecked {
 		if len(checks) > 1 {
-			summaryMsg = fmt.Sprintf("could not check %s and %d other database(s)%s", firstUncheckedDb, len(checks)-1, verboseHint)
+			summaryMsg = fmt.Sprintf("could not check %s and %d other monitored database(s)%s", firstUncheckedDb, len(checks)-1, verboseHint)
 		} else {
 			summaryMsg = fmt.Sprintf("could not check database %s", firstUncheckedDb)
 		}
 	} else if errorCount > 1 {
-		summaryMsg = fmt.Sprintf("found integration problems in %s and %d other database(s)%s", firstErrorDb, errorCount-1, verboseHint)
+		summaryMsg = fmt.Sprintf("found integration problems in %s and %d other monitored database(s)%s", firstErrorDb, errorCount-1, verboseHint)
 	} else if errorCount > 0 {
 		summaryMsg = fmt.Sprintf("found integration problem in database %s: %s", firstErrorDb, firstErrorDbMsg)
 	} else if len(checks) > 1 {
-		summaryMsg = fmt.Sprintf("ok in %s and %d other database(s)%s", checks[0].DbName, len(checks)-1, verboseHint)
+		summaryMsg = fmt.Sprintf("ok in %s and %d other monitored database(s)%s", checks[0].DbName, len(checks)-1, verboseHint)
 	} else {
 		summaryMsg = fmt.Sprintf("ok in %s (no other databases are configured to be monitored)", checks[0].DbName)
 	}
@@ -842,9 +842,9 @@ func printServerTestSummary(s *state.Server, verbose bool) {
 	}
 
 	fmt.Fprintf(os.Stderr,
-		"\t%s Collector statistics:\t\t%s\n",
-		getStatusIcon(status.CollectorStatistics.State),
-		status.CollectorStatistics.Msg,
+		"\t%s Collector telemetry:\t\t%s\n",
+		getStatusIcon(status.CollectorTelemetry.State),
+		status.CollectorTelemetry.Msg,
 	)
 
 	fmt.Fprintf(os.Stderr,
@@ -897,7 +897,7 @@ func printServerTestSummary(s *state.Server, verbose bool) {
 		status.PgStatStatements.Msg,
 	)
 	fmt.Fprintf(os.Stderr,
-		"\t%s Log Insights:\t\t%s\n",
+		"\t%s Log Insights:\t\t\t%s\n",
 		getStatusIcon(status.PgStatStatements.State),
 		status.PgStatStatements.Msg,
 	)
@@ -916,6 +916,14 @@ func printServerTestSummary(s *state.Server, verbose bool) {
 		getStatusIcon(status.PgStatStatements.State),
 		status.PgStatStatements.Msg,
 	)
+
+	// TODO:
+	//  - can collect system information? (or that not available on given system, or remote host specified and how to override)
+	//  - can collect column stats? (if not, which databases have errors: first three with " and x more" or all with --verbose)
+	//  - can collect log information? (whether disabled, and if not, status and how to disable, at least for Production plans)
+	//  - can collect explain plans?
+	//
+	//  - then, translate these into what features work (and are supported on this plan)
 
 	// summary should show, for each server (preceded by green ✓ or red ✗):
 	//  - detected system type / platform / id
