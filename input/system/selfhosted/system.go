@@ -39,12 +39,12 @@ func GetSystemState(server *state.Server, logger *util.Logger) (system state.Sys
 
 	statusBytes, err := exec.Command("/usr/bin/pganalyze-collector-helper", "status", config.DbDataDirectory).Output()
 	if err != nil {
-		server.SelfTestMarkSystemStatsError(fmt.Sprintf("error running system stats helper process: %s ", err))
+		server.SelfCheckMarkSystemStatsError(fmt.Sprintf("error running system stats helper process: %s ", err))
 		logger.PrintVerbose("Selfhosted/System: Could not run helper process: %s", err)
 	} else {
 		err = json.Unmarshal(statusBytes, &status)
 		if err != nil {
-			server.SelfTestMarkSystemStatsError(fmt.Sprintf("error reading system stats helper output: %s ", err))
+			server.SelfCheckMarkSystemStatsError(fmt.Sprintf("error reading system stats helper output: %s ", err))
 			logger.PrintVerbose("Selfhosted/System: Could not unmarshal helper status: %s", err)
 		}
 
@@ -54,7 +54,7 @@ func GetSystemState(server *state.Server, logger *util.Logger) (system state.Sys
 
 	hostInfo, err := host.Info()
 	if err != nil {
-		server.SelfTestMarkSystemStatsError(fmt.Sprintf("error getting host information: %s ", err))
+		server.SelfCheckMarkSystemStatsError(fmt.Sprintf("error getting host information: %s ", err))
 		logger.PrintVerbose("Selfhosted/System: Failed to get host information: %s", err)
 	} else {
 		system.Info.BootTime = time.Unix(int64(hostInfo.BootTime), 0)
@@ -72,7 +72,7 @@ func GetSystemState(server *state.Server, logger *util.Logger) (system state.Sys
 
 	loadAvg, err := load.Avg()
 	if err != nil {
-		server.SelfTestMarkSystemStatsError(fmt.Sprintf("error getting load average: %s ", err))
+		server.SelfCheckMarkSystemStatsError(fmt.Sprintf("error getting load average: %s ", err))
 		logger.PrintVerbose("Selfhosted/System: Failed to get load average: %s", err)
 	} else {
 		system.Scheduler.Loadavg1min = loadAvg.Load1
@@ -82,7 +82,7 @@ func GetSystemState(server *state.Server, logger *util.Logger) (system state.Sys
 
 	memory, err := mem.VirtualMemory()
 	if err != nil {
-		server.SelfTestMarkSystemStatsError(fmt.Sprintf("error getting virtual memory stats: %s ", err))
+		server.SelfCheckMarkSystemStatsError(fmt.Sprintf("error getting virtual memory stats: %s ", err))
 		logger.PrintVerbose("Selfhosted/System: Failed to get virtual memory stats: %s", err)
 	} else {
 		system.Memory.TotalBytes = memory.Total
@@ -96,7 +96,7 @@ func GetSystemState(server *state.Server, logger *util.Logger) (system state.Sys
 
 	swap, err := mem.SwapMemory()
 	if err != nil {
-		server.SelfTestMarkSystemStatsError(fmt.Sprintf("error getting swap stats: %s ", err))
+		server.SelfCheckMarkSystemStatsError(fmt.Sprintf("error getting swap stats: %s ", err))
 		logger.PrintVerbose("Selfhosted/System: Failed to get swap stats: %s", err)
 	} else {
 		system.Memory.SwapUsedBytes = swap.Used
@@ -117,7 +117,7 @@ func GetSystemState(server *state.Server, logger *util.Logger) (system state.Sys
 
 	cpuInfos, err := cpu.Info()
 	if err != nil {
-		server.SelfTestMarkSystemStatsError(fmt.Sprintf("error getting CPU info: %s ", err))
+		server.SelfCheckMarkSystemStatsError(fmt.Sprintf("error getting CPU info: %s ", err))
 		logger.PrintVerbose("Selfhosted/System: Failed to get CPU info: %s", err)
 	} else if len(cpuInfos) > 0 {
 		system.CPUInfo.Model = cpuInfos[0].ModelName
@@ -136,7 +136,7 @@ func GetSystemState(server *state.Server, logger *util.Logger) (system state.Sys
 
 	cpuStats, err := cpu.Times(true)
 	if err != nil {
-		server.SelfTestMarkSystemStatsError(fmt.Sprintf("error getting CPU stats: %s ", err))
+		server.SelfCheckMarkSystemStatsError(fmt.Sprintf("error getting CPU stats: %s ", err))
 		logger.PrintVerbose("Selfhosted/System: Failed to get CPU stats: %s", err)
 	} else {
 		system.CPUInfo.LogicalCoreCount = int32(len(cpuStats))
@@ -161,7 +161,7 @@ func GetSystemState(server *state.Server, logger *util.Logger) (system state.Sys
 
 	netStats, err := net.IOCounters(true)
 	if err != nil {
-		server.SelfTestMarkSystemStatsError(fmt.Sprintf("error getting network stats: %s ", err))
+		server.SelfCheckMarkSystemStatsError(fmt.Sprintf("error getting network stats: %s ", err))
 		logger.PrintVerbose("Selfhosted/System: Failed to get network stats: %s", err)
 	} else {
 		system.NetworkStats = make(state.NetworkStatsMap)
@@ -180,7 +180,7 @@ func GetSystemState(server *state.Server, logger *util.Logger) (system state.Sys
 	system.Disks = make(state.DiskMap)
 	disks, err := disk.IOCounters()
 	if err != nil {
-		server.SelfTestMarkSystemStatsError(fmt.Sprintf("error getting disk I/O stats: %s ", err))
+		server.SelfCheckMarkSystemStatsError(fmt.Sprintf("error getting disk I/O stats: %s ", err))
 		logger.PrintVerbose("Selfhosted/System: Failed to get disk I/O stats: %s", err)
 
 		// We need to insert a dummy device, otherwise we can't attach the partitions anywhere
@@ -210,12 +210,12 @@ func GetSystemState(server *state.Server, logger *util.Logger) (system state.Sys
 	// Remember disk components for software RAID
 	fs, err := procfs.NewFS("/proc")
 	if err != nil {
-		server.SelfTestMarkSystemStatsError(fmt.Sprintf("error reading /proc: %s ", err))
+		server.SelfCheckMarkSystemStatsError(fmt.Sprintf("error reading /proc: %s ", err))
 		logger.PrintVerbose("Selfhosted/System: Could not access /proc: %s", err)
 	} else {
 		mdstats, err := fs.MDStat()
 		if err != nil {
-			server.SelfTestMarkSystemStatsError(fmt.Sprintf("error reading mdstat: %s ", err))
+			server.SelfCheckMarkSystemStatsError(fmt.Sprintf("error reading mdstat: %s ", err))
 			logger.PrintVerbose("Selfhosted/System: Failed to get mdstat: %s", err)
 		} else {
 			for _, mdstat := range mdstats {
@@ -234,7 +234,7 @@ func GetSystemState(server *state.Server, logger *util.Logger) (system state.Sys
 
 	diskPartitions, err := disk.Partitions(true)
 	if err != nil {
-		server.SelfTestMarkSystemStatsError(fmt.Sprintf("error reading disk partitions: %s ", err))
+		server.SelfCheckMarkSystemStatsError(fmt.Sprintf("error reading disk partitions: %s ", err))
 		logger.PrintVerbose("Selfhosted/System: Failed to get disk partitions: %s", err)
 	} else {
 		system.DiskPartitions = make(state.DiskPartitionMap)
@@ -256,7 +256,7 @@ func GetSystemState(server *state.Server, logger *util.Logger) (system state.Sys
 
 			diskUsage, err := disk.Usage(partition.Mountpoint)
 			if err != nil {
-				server.SelfTestMarkSystemStatsError(fmt.Sprintf("error reading partition usage stats for %s: %s ", partition.Mountpoint, err))
+				server.SelfCheckMarkSystemStatsError(fmt.Sprintf("error reading partition usage stats for %s: %s ", partition.Mountpoint, err))
 				logger.PrintVerbose("Selfhosted/System: Failed to get disk partition usage stats for %s: %s", partition.Mountpoint, err)
 			} else {
 				var diskName string
@@ -286,7 +286,7 @@ func GetSystemState(server *state.Server, logger *util.Logger) (system state.Sys
 		}
 	}
 
-	server.SelfTestMarkSystemStatsOk()
+	server.SelfCheckMarkSystemStatsOk()
 
 	return
 }

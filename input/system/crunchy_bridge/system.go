@@ -28,7 +28,7 @@ func GetSystemState(server *state.Server, logger *util.Logger) (system state.Sys
 
 	clusterInfo, err := client.GetClusterInfo()
 	if err != nil {
-		server.SelfTestMarkSystemStatsError(fmt.Sprintf("error getting cluster info: %s\n", err))
+		server.SelfCheckMarkSystemStatsError(fmt.Sprintf("error getting cluster info: %s\n", err))
 		logger.PrintError("CrunchyBridge/System: Encountered error when getting cluster info %v\n", err)
 		return
 	}
@@ -47,7 +47,7 @@ func GetSystemState(server *state.Server, logger *util.Logger) (system state.Sys
 
 	diskUsageMetrics, err := client.GetDiskUsageMetrics()
 	if err != nil {
-		server.SelfTestMarkSystemStatsError(fmt.Sprintf("error getting cluster disk usage metrics: %s\n", err))
+		server.SelfCheckMarkSystemStatsError(fmt.Sprintf("error getting cluster disk usage metrics: %s\n", err))
 		logger.PrintError("CrunchyBridge/System: Encountered error when getting cluster disk usage metrics %v\n", err)
 		return
 	}
@@ -63,7 +63,7 @@ func GetSystemState(server *state.Server, logger *util.Logger) (system state.Sys
 	}
 	system.XlogUsedBytes = diskUsageMetrics.WalSize
 
-	server.SelfTestMarkSystemStatsOk()
+	server.SelfCheckMarkSystemStatsOk()
 
 	return
 }

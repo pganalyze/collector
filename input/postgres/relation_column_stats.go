@@ -21,10 +21,10 @@ func GetColumnStats(ctx context.Context, logger *util.Logger, db *sql.DB, global
 	if StatsHelperExists(ctx, db, "get_column_stats") {
 		logger.PrintVerbose("Found pganalyze.get_column_stats() stats helper")
 		sourceTable = "pganalyze.get_column_stats()"
-		server.SelfTestMarkColumnStatsOk(dbName)
+		server.SelfCheckMarkColumnStatsOk(dbName)
 	} else {
 		if systemType != "heroku" && !connectedAsSuperUser(ctx, db, systemType) && globalCollectionOpts.TestRun {
-			server.SelfTestMarkColumnStatsError(dbName, "monitoring helper function pganalyze.get_column_stats not found")
+			server.SelfCheckMarkColumnStatsError(dbName, "monitoring helper function pganalyze.get_column_stats not found")
 			logger.PrintInfo("Warning: Limited access to table column statistics detected in database %s. Please set up"+
 				" the monitoring helper function pganalyze.get_column_stats (https://github.com/pganalyze/collector#setting-up-a-restricted-monitoring-user)"+
 				" or connect as superuser, to get column statistics for all tables.", dbName)
