@@ -45,7 +45,7 @@ func CollectAllSchemas(ctx context.Context, server *state.Server, collectionOpts
 			continue
 		}
 		if collectionOpts.TestRun {
-			server.SelfTestMarkMonitoredDb(dbName)
+			server.SelfCheckMarkMonitoredDb(dbName)
 		}
 
 		collected[dbName] = true
@@ -53,7 +53,7 @@ func CollectAllSchemas(ctx context.Context, server *state.Server, collectionOpts
 		if err != nil {
 			// If the outer context failed, return an error to the caller
 			if ctx.Err() != nil {
-				server.SelfTestMarkAllRemainingSchemaError(err.Error())
+				server.SelfCheckMarkAllRemainingSchemaError(err.Error())
 				return ps, ts, err
 			}
 			// If the schema context failed, stop doing any further collection.
@@ -62,7 +62,7 @@ func CollectAllSchemas(ctx context.Context, server *state.Server, collectionOpts
 			// we already collected.
 			if ctxSchema.Err() != nil {
 				logger.PrintWarning("Failed to collect schema metadata for database %s and all remaining databases: %s", dbName, err)
-				server.SelfTestMarkAllRemainingSchemaError(err.Error())
+				server.SelfCheckMarkAllRemainingSchemaError(err.Error())
 				return ps, ts, nil
 			}
 			warning := "Failed to collect schema metadata for database %s: %s"
@@ -72,7 +72,7 @@ func CollectAllSchemas(ctx context.Context, server *state.Server, collectionOpts
 				logger.PrintVerbose(warning, dbName, err)
 			}
 			if collectionOpts.TestRun {
-				server.SelfTestMarkSchemaError(dbName, err.Error())
+				server.SelfCheckMarkSchemaError(dbName, err.Error())
 			}
 			continue
 		}
@@ -80,7 +80,7 @@ func CollectAllSchemas(ctx context.Context, server *state.Server, collectionOpts
 		ts = tsNext
 		ts.DatabaseOidsWithLocalCatalog = append(ts.DatabaseOidsWithLocalCatalog, databaseOid)
 		if collectionOpts.TestRun {
-			server.SelfTestMarkSchemaOk(dbName)
+			server.SelfCheckMarkSchemaOk(dbName)
 		}
 	}
 	schemaTableLimit := server.Grant.Config.SchemaTableLimit
