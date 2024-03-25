@@ -908,7 +908,6 @@ func printServerTestSummary(s *state.Server, verbose bool) {
 	)
 
 	// TODO:
-	//  - can collect system information? (or that not available on given system, or remote host specified and how to override)
 	//  - can collect log information? (whether disabled, and if not, status and how to disable, at least for Production plans)
 	//  - can collect explain plans?
 	//
