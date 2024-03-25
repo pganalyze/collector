@@ -925,20 +925,8 @@ func printServerTestSummary(s *state.Server, verbose bool) {
 	//  - can collect log information? (whether disabled, and if not, status and how to disable, at least for Production plans)
 	//  - can collect explain plans?
 
-	// logger.PrintVerbose("Could not get collector host information: %s", checks.hostInfoError)
-
 	// logger.PrintError("Error collecting pg_stat_statements: %s", err)
 	//   logger.PrintInfo("HINT - Current shared_preload_libraries setting: '%s'. Your Postgres server may need to be restarted for changes to take effect.", shared_preload_libraries)
-
-	// warning := "Failed to collect schema metadata for database %s: %s"
-
-	// logger.PrintInfo("pg_stat_statements extension outdated (1.%d installed, 1.%d available). To update run `ALTER EXTENSION pg_stat_statements UPDATE`", foundExtMinorVersion, extMinorVersion)
-	// if extMinorVersion >= 9 {
-	//   // Using the older version pgss with Postgres 14+ can cause the incorrect query stats
-	//   // when track = all is used + there are toplevel queries and nested queries
-	//   // https://github.com/pganalyze/collector/pull/472#discussion_r1399976152
-	//   logger.PrintError("Outdated pg_stat_statements may cause incorrect query statistics")
-	// }
 
 	// logger.PrintInfo("Skipping collection of system state: remote host (%s) was specified for the database address. Consider enabling always_collect_system_data if the database is running on the same system as the collector", dbHost)
 
