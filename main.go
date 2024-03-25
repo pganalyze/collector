@@ -575,11 +575,11 @@ func checkAllInitialCollectionStatus(ctx context.Context, servers []*state.Serve
 func checkOneInitialCollectionStatus(ctx context.Context, server *state.Server, opts state.CollectionOpts, logger *util.Logger) error {
 	conn, err := postgres.EstablishConnection(ctx, server, logger, opts, "")
 	if err != nil {
-		server.SelfCheckMarkMonitoringDbConnectionError(err.Error())
+		server.SelfTestMarkMonitoringDbConnectionError(err.Error())
 		return errors.Wrap(err, "failed to connect to database")
 	}
 	defer conn.Close()
-	server.SelfCheckMarkMonitoringDbConnectionOk()
+	server.SelfTestMarkMonitoringDbConnectionOk()
 
 	settings, err := postgres.GetSettings(ctx, conn)
 	if err != nil {
@@ -606,7 +606,7 @@ func checkOneInitialCollectionStatus(ctx context.Context, server *state.Server, 
 	}
 	if isIgnoredReplica {
 		logger.PrintInfo("All monitoring suspended for this server: %s", collectionDisabledReason)
-		server.SelfCheckMarkCollectionSuspended(fmt.Sprintf("all monitoring suspended for this server: %s", collectionDisabledReason))
+		server.SelfTestMarkCollectionSuspended(fmt.Sprintf("all monitoring suspended for this server: %s", collectionDisabledReason))
 	} else if logsDisabled {
 		logger.PrintInfo("Log collection suspended for this server: %s", logsDisabledReason)
 	} else if logsIgnoreDuration {
@@ -818,7 +818,7 @@ func printDbStatus(dbStatus state.DbCollectionState, maxDbNameLen int) {
 
 func printServerTestSummary(s *state.Server, verbose bool) {
 	config := s.Config
-	status := s.SelfCheck
+	status := s.SelfTest
 	serverName := color.New(color.FgCyan).Sprintf(config.SectionName)
 	fmt.Fprintf(os.Stderr, "Server %s (system ID %s):\n", serverName, config.SystemID)
 	fmt.Fprintln(os.Stderr)
