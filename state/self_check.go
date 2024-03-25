@@ -72,7 +72,7 @@ func (s *Server) SelfCheckMarkCollectionSuspended(msg string) {
 }
 
 // collector stats
-func (s *Server) SelfCheckMarkCollectorStatisticsOk() {
+func (s *Server) SelfCheckMarkCollectorTelemetryOk() {
 	s.selfCheckMutex.Lock()
 	defer s.selfCheckMutex.Unlock()
 	if s.SelfCheck.CollectorTelemetry.State != CollectionStateUnchecked {
@@ -82,7 +82,7 @@ func (s *Server) SelfCheckMarkCollectorStatisticsOk() {
 	s.SelfCheck.CollectorTelemetry.Msg = "ok"
 }
 
-func (s *Server) SelfCheckMarkCollectorStatisticsError(msg string) {
+func (s *Server) SelfCheckMarkCollectorTelemetryError(msg string) {
 	s.selfCheckMutex.Lock()
 	defer s.selfCheckMutex.Unlock()
 	if s.SelfCheck.CollectorTelemetry.State != CollectionStateUnchecked {
@@ -103,17 +103,18 @@ func (s *Server) SelfCheckMarkSystemStatsOk() {
 	s.SelfCheck.SystemStats.Msg = "ok"
 }
 
-func (s *Server) SelfCheckMarkSystemStatsNotAvailable() {
+func (s *Server) SelfCheckMarkSystemStatsNotAvailable(msg string) {
 	s.selfCheckMutex.Lock()
 	defer s.selfCheckMutex.Unlock()
 	s.SelfCheck.SystemStats.State = CollectionStateNotAvailable
-	s.SelfCheck.SystemStats.Msg = "not available on this platform"
+	s.SelfCheck.SystemStats.Msg = msg
 }
 
 func (s *Server) SelfCheckMarkSystemStatsError(msg string) {
 	s.selfCheckMutex.Lock()
 	defer s.selfCheckMutex.Unlock()
-	s.SelfCheck.SystemStats.State = CollectionStateNotAvailable
+	s.SelfCheck.SystemStats.State = CollectionStateError
+	// note: here we can hit errors and proceed in some cases; collect all errors
 	if s.SelfCheck.SystemStats.Msg != "" {
 		s.SelfCheck.SystemStats.Msg += "; "
 	}
