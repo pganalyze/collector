@@ -276,8 +276,8 @@ type Server struct {
 	CollectionStatus      CollectionStatus
 	CollectionStatusMutex *sync.Mutex
 
-	SelfCheck      SelfCheckStatus
-	selfCheckMutex *sync.Mutex
+	SelfTest      SelfTestStatus
+	selfTestMutex *sync.Mutex
 
 	// The time zone that logs are parsed in, synced from the setting log_timezone
 	// The StateMutex should be held while updating this
@@ -304,7 +304,7 @@ func MakeServer(config config.ServerConfig) *Server {
 		ActivityStateMutex:    &sync.Mutex{},
 		CollectionStatusMutex: &sync.Mutex{},
 		LogTimezoneMutex:      &sync.Mutex{},
-		selfCheckMutex:        &sync.Mutex{},
+		selfTestMutex:         &sync.Mutex{},
 	}
 }
 
