@@ -813,7 +813,7 @@ func summarizeDbChecks(checks []state.DbCollectionState, isVerbose bool) (string
 func printDbStatus(dbStatus state.DbCollectionState, maxDbNameLen int) {
 	dbStatusIcon := getStatusIcon(dbStatus.State)
 	dbNameFmtString := fmt.Sprintf("%%%ds", maxDbNameLen-len(dbStatus.DbName))
-	fmt.Fprintf(os.Stderr, "\t\t%s %s:"+dbNameFmtString+"\t%s\n", dbStatusIcon, dbStatus.DbName, "", dbStatus.Msg)
+	fmt.Fprintf(os.Stderr, "\t\t%s %s:"+dbNameFmtString+"\t\t%s\n", dbStatusIcon, dbStatus.DbName, "", dbStatus.Msg)
 }
 
 func printServerTestSummary(s *state.Server, verbose bool) {
@@ -825,7 +825,7 @@ func printServerTestSummary(s *state.Server, verbose bool) {
 
 	if status.CollectionSuspended.Value {
 		fmt.Fprintf(os.Stderr,
-			"\t%s Collection suspended:\t\t%s\n",
+			"\t%s Collection suspended:\t%s\n",
 			YellowBang,
 			status.CollectionSuspended.Msg,
 		)
@@ -833,46 +833,46 @@ func printServerTestSummary(s *state.Server, verbose bool) {
 	}
 
 	fmt.Fprintf(os.Stderr,
-		"\t%s Collector telemetry:\t\t%s\n",
+		"\t%s Collector telemetry:\t%s\n",
 		getStatusIcon(status.CollectorTelemetry.State),
 		status.CollectorTelemetry.Msg,
 	)
 
 	fmt.Fprintf(os.Stderr,
-		"\t%s System statistics:\t\t%s\n",
+		"\t%s System statistics:\t%s\n",
 		getStatusIcon(status.SystemStats.State),
 		status.SystemStats.Msg,
 	)
 
 	fmt.Fprintf(os.Stderr,
-		"\t%s Database connection:\t\t%s\n",
+		"\t%s Database connection:\t%s\n",
 		getStatusIcon(status.MonitoringDbConnection.State),
 		status.MonitoringDbConnection.Msg,
 	)
 
 	fmt.Fprintf(os.Stderr,
-		"\t%s pg_stat_statements:\t\t%s\n",
+		"\t%s pg_stat_statements:\t%s\n",
 		getStatusIcon(status.PgStatStatements.State),
 		status.PgStatStatements.Msg,
 	)
 
 	maxDbNameLen := getMaxDbNameLen(status.SchemaInformation)
 	schemaInfoIcon, schemaInfoSummaryMsg := summarizeDbChecks(status.SchemaInformation, verbose)
-	fmt.Fprintf(os.Stderr, "\t%s Schema information:\t\t%s\n", schemaInfoIcon, schemaInfoSummaryMsg)
+	fmt.Fprintf(os.Stderr, "\t%s Schema information:\t%s\n", schemaInfoIcon, schemaInfoSummaryMsg)
 	if verbose {
 		for _, dbStatus := range status.SchemaInformation {
 			printDbStatus(dbStatus, maxDbNameLen)
 		}
 	}
 	colStatsIcon, colStatsSummaryMsg := summarizeDbChecks(status.ColumnStats, verbose)
-	fmt.Fprintf(os.Stderr, "\t%s Column stats helpers:\t\t%s\n", colStatsIcon, colStatsSummaryMsg)
+	fmt.Fprintf(os.Stderr, "\t%s Column stats:\t\t%s\n", colStatsIcon, colStatsSummaryMsg)
 	if verbose {
 		for _, dbStatus := range status.ColumnStats {
 			printDbStatus(dbStatus, maxDbNameLen)
 		}
 	}
 	extStatsIcon, extStatsSummaryMsg := summarizeDbChecks(status.ExtendedStats, verbose)
-	fmt.Fprintf(os.Stderr, "\t%s Extended stats helpers:\t%s\n", extStatsIcon, extStatsSummaryMsg)
+	fmt.Fprintf(os.Stderr, "\t%s Extended stats:\t%s\n", extStatsIcon, extStatsSummaryMsg)
 	if verbose {
 		for _, dbStatus := range status.ExtendedStats {
 			printDbStatus(dbStatus, maxDbNameLen)
@@ -881,28 +881,33 @@ func printServerTestSummary(s *state.Server, verbose bool) {
 
 	fmt.Fprintln(os.Stderr)
 
+	ssIcon, ssMsg := getSchemaStatisticsStatus(status)
 	fmt.Fprintf(os.Stderr,
-		"\t%s Query Performance:\t\t%s\n",
+		"\t%s Schema Statistics:\t%s\n",
+		ssIcon, ssMsg,
+	)
+	qpIcon, qpMsg := getQueryPerformanceStatus(status)
+	fmt.Fprintf(os.Stderr,
+		"\t%s Query Performance:\t%s\n",
+		qpIcon, qpMsg,
+	)
+	fmt.Fprintf(os.Stderr,
+		"\t%s Log Insights:\t%s\n",
+		getStatusIcon(status.LogInsights.State),
+		status.LogInsights.Msg,
+	)
+	fmt.Fprintf(os.Stderr,
+		"\t%s Automated EXPLAIN:\t%s\n",
 		getStatusIcon(status.PgStatStatements.State),
 		status.PgStatStatements.Msg,
 	)
 	fmt.Fprintf(os.Stderr,
-		"\t%s Log Insights:\t\t\t%s\n",
+		"\t%s VACUUM Advisor:\t%s\n",
 		getStatusIcon(status.PgStatStatements.State),
 		status.PgStatStatements.Msg,
 	)
 	fmt.Fprintf(os.Stderr,
-		"\t%s Automated EXPLAIN:\t\t%s\n",
-		getStatusIcon(status.PgStatStatements.State),
-		status.PgStatStatements.Msg,
-	)
-	fmt.Fprintf(os.Stderr,
-		"\t%s VACUUM Advisor:\t\t%s\n",
-		getStatusIcon(status.PgStatStatements.State),
-		status.PgStatStatements.Msg,
-	)
-	fmt.Fprintf(os.Stderr,
-		"\t%s Index Advisor:\t\t%s\n",
+		"\t%s Index Advisor:\t%s\n",
 		getStatusIcon(status.PgStatStatements.State),
 		status.PgStatStatements.Msg,
 	)
@@ -910,8 +915,6 @@ func printServerTestSummary(s *state.Server, verbose bool) {
 	// TODO:
 	//  - can collect log information? (whether disabled, and if not, status and how to disable, at least for Production plans)
 	//  - can collect explain plans?
-	//
-	//  - then, translate these into what features work (and are supported on this plan)
 
 	// summary should show, for each server (preceded by green ✓ or red ✗):
 	//  - detected system type / platform / id
@@ -933,6 +936,37 @@ func printServerTestSummary(s *state.Server, verbose bool) {
 
 	// logger.PrintError("  Failed - Activity snapshots disabled by pganalyze")
 
-	// logger.PrintError("  Failed - Log Insights feature not available on this pganalyze plan, or log data limit exceeded. You may need to upgrade, see https://pganalyze.com/pricing")
+}
 
+func getQueryPerformanceStatus(status state.SelfCheckStatus) (string, string) {
+	if status.MonitoringDbConnection.State != state.CollectionStateOkay {
+		return RedX, "database connection required"
+	}
+	if status.PgStatStatements.State != state.CollectionStateOkay {
+		return RedX, "pg_stat_statements required"
+	}
+	return GreenCheck, "ok; available in 20-30m"
+}
+
+func getSchemaStatisticsStatus(status state.SelfCheckStatus) (string, string) {
+	if status.MonitoringDbConnection.State != state.CollectionStateOkay {
+		return RedX, "database connection required"
+	}
+	allDbsOkay := true
+	someDbsOkay := false
+	for _, db := range status.SchemaInformation {
+		if db.State != state.CollectionStateOkay {
+			allDbsOkay = false
+			break
+		} else if !someDbsOkay {
+			someDbsOkay = true
+		}
+	}
+	if !someDbsOkay {
+		return RedX, "not available due to errors; see above"
+	}
+	if !allDbsOkay {
+		return YellowBang, "available for some databases"
+	}
+	return GreenCheck, "available in 5-10m"
 }
