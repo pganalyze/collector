@@ -96,7 +96,7 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 		if globalCollectionOpts.TestRun && globalCollectionOpts.TestSection != "" && globalCollectionOpts.TestSection != config.SectionName {
 			continue
 		}
-		servers = append(servers, state.MakeServer(config))
+		servers = append(servers, state.MakeServer(config, globalCollectionOpts.TestRun))
 		if config.EnableReports {
 			hasAnyReportsEnabled = true
 		}
@@ -421,7 +421,7 @@ func main() {
 		content := string(contentBytes)
 		reader := strings.NewReader(content)
 		logReader := logs.NewMaybeHerokuLogReader(reader)
-		logLines, samples := logs.ParseAndAnalyzeBuffer(logReader, time.Time{}, state.MakeServer(config.ServerConfig{}))
+		logLines, samples := logs.ParseAndAnalyzeBuffer(logReader, time.Time{}, state.MakeServer(config.ServerConfig{}, false))
 		logs.PrintDebugInfo(content, logLines, samples)
 		if analyzeDebugClassifications != "" {
 			classifications := strings.Split(analyzeDebugClassifications, ",")
@@ -817,6 +817,11 @@ func printDbStatus(dbStatus state.DbCollectionState, maxDbNameLen int) {
 }
 
 func printServerTestSummary(s *state.Server, verbose bool) {
+	err := s.SelfCheckWait()
+	if err != nil {
+		// ¯\_(ツ)_/¯
+	}
+
 	config := s.Config
 	status := s.SelfCheck
 	serverName := color.New(color.FgCyan).Sprintf(config.SectionName)
@@ -892,7 +897,7 @@ func printServerTestSummary(s *state.Server, verbose bool) {
 		qpIcon, qpMsg,
 	)
 	fmt.Fprintf(os.Stderr,
-		"\t%s Log Insights:\t%s\n",
+		"\t%s Log Insights:\t\t%s\n",
 		getStatusIcon(status.LogInsights.State),
 		status.LogInsights.Msg,
 	)

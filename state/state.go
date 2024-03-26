@@ -278,6 +278,7 @@ type Server struct {
 
 	SelfCheck      SelfCheckStatus
 	selfCheckMutex *sync.Mutex
+	selfCheckWg    *sync.WaitGroup
 
 	// The time zone that logs are parsed in, synced from the setting log_timezone
 	// The StateMutex should be held while updating this
@@ -296,8 +297,8 @@ type Server struct {
 	CompactLogTime  time.Time
 }
 
-func MakeServer(config config.ServerConfig) *Server {
-	return &Server{
+func MakeServer(config config.ServerConfig, testRun bool) *Server {
+	server := &Server{
 		Config:                config,
 		StateMutex:            &sync.Mutex{},
 		LogStateMutex:         &sync.Mutex{},
@@ -305,7 +306,12 @@ func MakeServer(config config.ServerConfig) *Server {
 		CollectionStatusMutex: &sync.Mutex{},
 		LogTimezoneMutex:      &sync.Mutex{},
 		selfCheckMutex:        &sync.Mutex{},
+		selfCheckWg:           &sync.WaitGroup{},
 	}
+	if testRun {
+		server.SelfCheckInit()
+	}
+	return server
 }
 
 const (
