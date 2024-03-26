@@ -706,6 +706,7 @@ func doLogTest(ctx context.Context, servers []*state.Server, globalCollectionOpt
 }
 
 func printAllTestSummary(servers []*state.Server, verbose bool) {
+	<-time.After(1 * time.Second)
 	fmt.Fprintln(os.Stderr)
 	for _, server := range servers {
 		printServerTestSummary(server, verbose)
@@ -817,11 +818,6 @@ func printDbStatus(dbStatus state.DbCollectionState, maxDbNameLen int) {
 }
 
 func printServerTestSummary(s *state.Server, verbose bool) {
-	err := s.SelfCheckWait()
-	if err != nil {
-		// ¯\_(ツ)_/¯
-	}
-
 	config := s.Config
 	status := s.SelfCheck
 	serverName := color.New(color.FgCyan).Sprintf(config.SectionName)
@@ -841,12 +837,6 @@ func printServerTestSummary(s *state.Server, verbose bool) {
 		"\t%s Collector telemetry:\t%s\n",
 		getStatusIcon(status.CollectorTelemetry.State),
 		status.CollectorTelemetry.Msg,
-	)
-
-	fmt.Fprintf(os.Stderr,
-		"\t%s System statistics:\t%s\n",
-		getStatusIcon(status.SystemStats.State),
-		status.SystemStats.Msg,
 	)
 
 	fmt.Fprintf(os.Stderr,
@@ -886,23 +876,13 @@ func printServerTestSummary(s *state.Server, verbose bool) {
 
 	fmt.Fprintln(os.Stderr)
 
-	ssIcon, ssMsg := getSchemaStatisticsStatus(status)
-	fmt.Fprintf(os.Stderr,
-		"\t%s Schema Statistics:\t%s\n",
-		ssIcon, ssMsg,
-	)
 	qpIcon, qpMsg := getQueryPerformanceStatus(status)
 	fmt.Fprintf(os.Stderr,
 		"\t%s Query Performance:\t%s\n",
 		qpIcon, qpMsg,
 	)
 	fmt.Fprintf(os.Stderr,
-		"\t%s Log Insights:\t\t%s\n",
-		getStatusIcon(status.LogInsights.State),
-		status.LogInsights.Msg,
-	)
-	fmt.Fprintf(os.Stderr,
-		"\t%s Automated EXPLAIN:\t%s\n",
+		"\t%s Index Advisor:\t%s\n",
 		getStatusIcon(status.PgStatStatements.State),
 		status.PgStatStatements.Msg,
 	)
@@ -912,9 +892,24 @@ func printServerTestSummary(s *state.Server, verbose bool) {
 		status.PgStatStatements.Msg,
 	)
 	fmt.Fprintf(os.Stderr,
-		"\t%s Index Advisor:\t%s\n",
+		"\t%s EXPLAIN Plans:\t%s\n",
 		getStatusIcon(status.PgStatStatements.State),
 		status.PgStatStatements.Msg,
+	)
+	ssIcon, ssMsg := getSchemaStatisticsStatus(status)
+	fmt.Fprintf(os.Stderr,
+		"\t%s Schema Statistics:\t%s\n",
+		ssIcon, ssMsg,
+	)
+	fmt.Fprintf(os.Stderr,
+		"\t%s Log Insights:\t\t%s\n",
+		getStatusIcon(status.Logs.State),
+		status.Logs.Msg,
+	)
+	fmt.Fprintf(os.Stderr,
+		"\t%s System:\t\t%s\n",
+		getStatusIcon(status.SystemStats.State),
+		status.SystemStats.Msg,
 	)
 
 	// TODO:
@@ -973,5 +968,5 @@ func getSchemaStatisticsStatus(status state.SelfCheckStatus) (string, string) {
 	if !allDbsOkay {
 		return YellowBang, "available for some databases"
 	}
-	return GreenCheck, "available in 5-10m"
+	return GreenCheck, "ok; available in 5-10m"
 }

@@ -1,11 +1,5 @@
 package state
 
-import (
-	"fmt"
-	"os"
-	"time"
-)
-
 type CollectionStateCode int
 
 const (
@@ -52,29 +46,12 @@ type SelfCheckStatus struct {
 	SchemaInformation      []DbCollectionState
 	ColumnStats            []DbCollectionState
 	ExtendedStats          []DbCollectionState
-	LogInsights            CollectionState
+	Logs                   CollectionState
 	AutomatedExplain       CollectionState
 }
 
 func (s *Server) SelfCheckInit() {
 	s.SelfCheck.enabled = true
-	// Need to wait for Log Insights
-	s.selfCheckWg.Add(1)
-}
-
-func (s *Server) SelfCheckWait() error {
-	ch := make(chan bool)
-	go func() {
-		s.selfCheckWg.Wait()
-		ch <- true
-	}()
-	select {
-	case <-ch:
-		return nil
-	case <-time.After(1 * time.Second):
-		return fmt.Errorf("timed out waiting for logs")
-	}
-
 }
 
 func (s *Server) SelfCheckMarkMonitoredDb(dbName string) {
@@ -280,43 +257,29 @@ func (s *Server) SelfCheckMarkExtendedStatsError(dbName, msg string) {
 }
 
 // Log Insights
-func (s *Server) SelfCheckMarkLogInsightsOk() {
+func (s *Server) SelfCheckMarkLogsOk() {
 	s.selfCheckMutex.Lock()
 	defer s.selfCheckMutex.Unlock()
-	fmt.Fprintf(os.Stderr, "marking %s ok\n", s.Config.SectionName)
-	if s.SelfCheck.LogInsights.State != CollectionStateUnchecked {
+	if s.SelfCheck.Logs.State != CollectionStateUnchecked {
 		return
 	}
 
-	s.SelfCheck.LogInsights.State = CollectionStateOkay
-	s.SelfCheck.LogInsights.Msg = "ok"
-	s.selfCheckWg.Done()
+	s.SelfCheck.Logs.State = CollectionStateOkay
+	s.SelfCheck.Logs.Msg = "ok; available in 5-10m"
 }
 
-func (s *Server) SelfCheckMarkLogInsightsNotAvailable(msg string) {
+func (s *Server) SelfCheckMarkLogsNotAvailable(msg string) {
 	s.selfCheckMutex.Lock()
 	defer s.selfCheckMutex.Unlock()
-	fmt.Fprintf(os.Stderr, "marking %s n/a\n", s.Config.SectionName)
-	origState := s.SelfCheck.LogInsights.State
-	s.SelfCheck.LogInsights.State = CollectionStateNotAvailable
-	s.SelfCheck.LogInsights.Msg = msg
-
-	if origState == CollectionStateUnchecked {
-		s.selfCheckWg.Done()
-	}
+	s.SelfCheck.Logs.State = CollectionStateNotAvailable
+	s.SelfCheck.Logs.Msg = msg
 }
 
-func (s *Server) SelfCheckMarkLogInsightsError(msg string) {
+func (s *Server) SelfCheckMarkLogsError(msg string) {
 	s.selfCheckMutex.Lock()
 	defer s.selfCheckMutex.Unlock()
-	fmt.Fprintf(os.Stderr, "marking %s error\n", s.Config.SectionName)
-	origState := s.SelfCheck.LogInsights.State
-	s.SelfCheck.LogInsights.State = CollectionStateError
-	s.SelfCheck.LogInsights.Msg = msg
-
-	if origState == CollectionStateUnchecked {
-		s.selfCheckWg.Done()
-	}
+	s.SelfCheck.Logs.State = CollectionStateError
+	s.SelfCheck.Logs.Msg = msg
 }
 
 // Automated EXPLAIN
