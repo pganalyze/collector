@@ -137,6 +137,9 @@ func submitCompactSnapshot(ctx context.Context, server *state.Server, collection
 
 	if len(msg) > 0 && collectionOpts.TestRun {
 		logger.PrintInfo("  %s", msg)
+		if kind == "logs" {
+			server.SelfCheckMarkLogInsightsOk()
+		}
 	} else if !quiet {
 		logger.PrintVerbose("Submitted compact %s snapshot successfully", kind)
 		if server.CompactLogTime.IsZero() {
