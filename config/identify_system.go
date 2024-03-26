@@ -82,13 +82,10 @@ func identifySystem(config ServerConfig) (systemID string, systemType string, sy
 		if systemScopeFallback == "" {
 			systemScopeFallback = selfManagedSystemScope(config)
 		}
-	} else if (config.TemboInstanceID != "") || systemType == "tembo" {
+	} else if (config.TemboNamespace != "") || systemType == "tembo" {
 		systemType = "tembo"
 		if systemID == "" {
-			systemID = config.TemboInstanceID
-		}
-		if systemScope == "" {
-			systemScope = config.TemboOrgID
+			systemID = config.TemboNamespace
 		}
 	} else {
 		systemType = "self_hosted"

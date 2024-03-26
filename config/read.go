@@ -233,23 +233,23 @@ func getDefaultConfig() *ServerConfig {
 	if crunchyBridgeAPIKey := os.Getenv("CRUNCHY_BRIDGE_API_KEY"); crunchyBridgeAPIKey != "" {
 		config.CrunchyBridgeAPIKey = crunchyBridgeAPIKey
 	}
-	if temboAPIToken := os.Getenv("TEMBO_API_TOKEN"); temboAPIToken != "" {
-		config.TemboAPIToken = temboAPIToken
+	if temboNamespace := os.Getenv("TEMBO_NAMESPACE"); temboNamespace != "" {
+		config.TemboNamespace = temboNamespace
+	}
+	if temboOrgID := os.Getenv("TEMBO_ORG_ID"); temboOrgID != "" {
+		config.TemboOrgID = temboOrgID
 	}
 	if temboInstanceID := os.Getenv("TEMBO_INSTANCE_ID"); temboInstanceID != "" {
 		config.TemboInstanceID = temboInstanceID
 	}
-	if temboOrgID := os.Getenv("TEMBO_ORG_ID"); temboOrgID != "" {
-		config.TemboOrgID = temboOrgID
+	if temboAPIToken := os.Getenv("TEMBO_API_TOKEN"); temboAPIToken != "" {
+		config.TemboAPIToken = temboAPIToken
 	}
 	if temboLogsAPIURL := os.Getenv("TEMBO_LOGS_API_URL"); temboLogsAPIURL != "" {
 		config.TemboLogsAPIURL = temboLogsAPIURL
 	}
 	if temboMetricsAPIURL := os.Getenv("TEMBO_METRICS_API_URL"); temboMetricsAPIURL != "" {
 		config.TemboMetricsAPIURL = temboMetricsAPIURL
-	}
-	if temboMetricsNamespace := os.Getenv("TEMBO_METRICS_NAMESPACE"); temboMetricsNamespace != "" {
-		config.TemboMetricsNamespace = temboMetricsNamespace
 	}
 	if logLocation := os.Getenv("LOG_LOCATION"); logLocation != "" {
 		config.LogLocation = logLocation

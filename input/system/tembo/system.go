@@ -2,12 +2,13 @@ package tembo
 
 import (
 	"encoding/json"
-	"github.com/pganalyze/collector/config"
-	"github.com/pganalyze/collector/state"
-	"github.com/pganalyze/collector/util"
 	"net/http"
 	"net/url"
 	"strconv"
+
+	"github.com/pganalyze/collector/config"
+	"github.com/pganalyze/collector/state"
+	"github.com/pganalyze/collector/util"
 )
 
 type Response struct {
@@ -45,10 +46,10 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger) (system sta
 	}
 
 	client := http.Client{}
-	metricsUrl := "https://" + config.TemboMetricsAPIURL + "/" + config.TemboMetricsNamespace + "/metrics/query?query="
+	metricsUrl := "https://" + config.TemboMetricsAPIURL + "/" + config.TemboNamespace + "/metrics/query?query="
 
 	// Get CPU usage percentage
-	query := "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{ namespace=\"" + config.TemboMetricsNamespace + "\"}) / sum(kube_pod_container_resource_requests{job=\"kube-state-metrics\",  namespace=\"" + config.TemboMetricsNamespace + "\", resource=\"cpu\"})"
+	query := "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{ namespace=\"" + config.TemboNamespace + "\"}) / sum(kube_pod_container_resource_requests{job=\"kube-state-metrics\",  namespace=\"" + config.TemboNamespace + "\", resource=\"cpu\"})"
 	cpuUsage, err := getFloat64(query, metricsUrl, client, headers)
 	if err != nil {
 		logger.PrintError("Tembo/System: Encountered error when getting CPU info %v\n", err)
@@ -64,7 +65,7 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger) (system sta
 	}
 
 	// Get total memory
-	query = "sum(max by(pod) (kube_pod_container_resource_requests{job=\"kube-state-metrics\", namespace=\"" + config.TemboMetricsNamespace + "\", resource=\"memory\"}))"
+	query = "sum(max by(pod) (kube_pod_container_resource_requests{job=\"kube-state-metrics\", namespace=\"" + config.TemboNamespace + "\", resource=\"memory\"}))"
 	memoryTotalBytes, err := getUint64(query, metricsUrl, client, headers)
 	if err != nil {
 		logger.PrintError("Tembo/System: Encountered error when getting memory info %v\n", err)
@@ -72,7 +73,7 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger) (system sta
 	}
 
 	// Get available memory
-	query = "sum(max by(pod) (kube_pod_container_resource_requests{job=\"kube-state-metrics\", namespace=\"" + config.TemboMetricsNamespace + "\", resource=\"memory\"})) - sum(container_memory_working_set_bytes{job=\"kubelet\", metrics_path=\"/metrics/cadvisor\", namespace=\"" + config.TemboMetricsNamespace + "\",container!=\"\", image!=\"\"})"
+	query = "sum(max by(pod) (kube_pod_container_resource_requests{job=\"kube-state-metrics\", namespace=\"" + config.TemboNamespace + "\", resource=\"memory\"})) - sum(container_memory_working_set_bytes{job=\"kubelet\", metrics_path=\"/metrics/cadvisor\", namespace=\"" + config.TemboNamespace + "\",container!=\"\", image!=\"\"})"
 	memoryAvailableBytes, err := getUint64(query, metricsUrl, client, headers)
 	if err != nil {
 		logger.PrintError("Tembo/System: Encountered error when getting memory info %v\n", err)
@@ -85,7 +86,7 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger) (system sta
 
 	// Get disk capacity
 	// Note this does not yet handle multiple volume claims in cases like HA
-	query = "kubelet_volume_stats_capacity_bytes{namespace=\"" + config.TemboMetricsNamespace + "\", persistentvolumeclaim=~\"" + config.TemboMetricsNamespace + "-1" + "\"}"
+	query = "kubelet_volume_stats_capacity_bytes{namespace=\"" + config.TemboNamespace + "\", persistentvolumeclaim=~\"" + config.TemboNamespace + "-1" + "\"}"
 	diskCapacity, err := getUint64(query, metricsUrl, client, headers)
 	if err != nil {
 		logger.PrintError("Tembo/System: Encountered error when getting disk info %v\n", err)
@@ -94,7 +95,7 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger) (system sta
 
 	// Get disk available
 	// Note this does not yet handle multiple volume claims in cases like HA
-	query = "kubelet_volume_stats_available_bytes{namespace=\"" + config.TemboMetricsNamespace + "\", persistentvolumeclaim=~\"" + config.TemboMetricsNamespace + "-1" + "\"}"
+	query = "kubelet_volume_stats_available_bytes{namespace=\"" + config.TemboNamespace + "\", persistentvolumeclaim=~\"" + config.TemboNamespace + "-1" + "\"}"
 	diskAvailable, err := getUint64(query, metricsUrl, client, headers)
 	if err != nil {
 		logger.PrintError("Tembo/System: Encountered error when getting disk info %v\n", err)
