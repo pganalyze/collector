@@ -230,7 +230,7 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 
 	if hasAnyLogsEnabled {
 		runner.SetupLogCollection(ctx, wg, servers, globalCollectionOpts, logger, hasAnyHeroku, hasAnyGoogleCloudSQL, hasAnyAzureDatabase, hasAnyTembo)
-	} else if os.Getenv("DYNO") != "" && os.Getenv("PORT") != "" {
+	} else if util.IsHeroku() {
 		// Even if logs are deactivated, Heroku still requires us to have a functioning web server
 		util.SetupHttpHandlerDummy()
 	}
@@ -630,6 +630,9 @@ func checkOneInitialCollectionStatus(ctx context.Context, server *state.Server, 
 }
 
 func Reload(logger *util.Logger) {
+	if util.IsHeroku() {
+		return
+	}
 	pid, err := util.Reload()
 	if err != nil {
 		logger.PrintError("Error: Failed to reload collector: %s\n", err)
