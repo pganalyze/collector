@@ -44,7 +44,8 @@ func connectWebsocket(ctx context.Context, logger *util.Logger, server *state.Se
 	connCtx, cancelConn := context.WithCancel(ctx)
 
 	// Construct query for Tembo Logs API
-	query := "{tembo_instance_id=\"" + server.Config.TemboInstanceID + "\"}"
+	// Note this does not yet handle multiple replicas in cases like HA
+	query := "{tembo_instance_id=\"" + server.Config.TemboInstanceID + "\", pod=\"" + server.Config.TemboNamespace + "-1" + "\"}"
 
 	// URI encode query
 	encodedQuery := url.QueryEscape(query)
