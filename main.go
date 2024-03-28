@@ -17,6 +17,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/fatih/color"
 	"github.com/juju/syslog"
 	"github.com/pkg/errors"
 
@@ -95,7 +96,7 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 		if globalCollectionOpts.TestRun && globalCollectionOpts.TestSection != "" && globalCollectionOpts.TestSection != config.SectionName {
 			continue
 		}
-		servers = append(servers, state.MakeServer(config))
+		servers = append(servers, state.MakeServer(config, globalCollectionOpts.TestRun))
 		if config.EnableReports {
 			hasAnyReportsEnabled = true
 		}
@@ -173,6 +174,7 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 					doLogTest(ctx, servers, globalCollectionOpts, logger)
 				}
 
+				printAllTestSummary(servers, logger.Verbose)
 				success := allFullSuccessful && allActivitySuccessful
 				if success {
 					// in a dry run, we will not actually have URLs; avoid this output in that case
@@ -184,7 +186,6 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 						}
 					}
 					if hasURLs {
-						fmt.Fprintln(os.Stderr)
 						fmt.Fprintln(os.Stderr, "Test successful. View servers in pganalyze:")
 						for _, server := range servers {
 							if server.PGAnalyzeURL != "" {
@@ -420,7 +421,7 @@ func main() {
 		content := string(contentBytes)
 		reader := strings.NewReader(content)
 		logReader := logs.NewMaybeHerokuLogReader(reader)
-		logLines, samples := logs.ParseAndAnalyzeBuffer(logReader, time.Time{}, state.MakeServer(config.ServerConfig{}))
+		logLines, samples := logs.ParseAndAnalyzeBuffer(logReader, time.Time{}, state.MakeServer(config.ServerConfig{}, false))
 		logs.PrintDebugInfo(content, logLines, samples)
 		if analyzeDebugClassifications != "" {
 			classifications := strings.Split(analyzeDebugClassifications, ",")
@@ -574,9 +575,11 @@ func checkAllInitialCollectionStatus(ctx context.Context, servers []*state.Serve
 func checkOneInitialCollectionStatus(ctx context.Context, server *state.Server, opts state.CollectionOpts, logger *util.Logger) error {
 	conn, err := postgres.EstablishConnection(ctx, server, logger, opts, "")
 	if err != nil {
+		server.SelfCheckMarkMonitoringDbConnectionError(err.Error())
 		return errors.Wrap(err, "failed to connect to database")
 	}
 	defer conn.Close()
+	server.SelfCheckMarkMonitoringDbConnectionOk()
 
 	settings, err := postgres.GetSettings(ctx, conn)
 	if err != nil {
@@ -603,6 +606,7 @@ func checkOneInitialCollectionStatus(ctx context.Context, server *state.Server, 
 	}
 	if isIgnoredReplica {
 		logger.PrintInfo("All monitoring suspended for this server: %s", collectionDisabledReason)
+		server.SelfCheckMarkCollectionSuspended("all monitoring suspended for this server: %s", collectionDisabledReason)
 	} else if logsDisabled {
 		logger.PrintInfo("Log collection suspended for this server: %s", logsDisabledReason)
 	} else if logsIgnoreDuration {
@@ -699,4 +703,270 @@ func doLogTest(ctx context.Context, servers []*state.Server, globalCollectionOpt
 	}
 
 	return true
+}
+
+func printAllTestSummary(servers []*state.Server, verbose bool) {
+	<-time.After(1 * time.Second)
+	fmt.Fprintln(os.Stderr)
+	for _, server := range servers {
+		printServerTestSummary(server, verbose)
+		fmt.Fprintln(os.Stderr)
+		fmt.Fprintln(os.Stderr)
+	}
+}
+
+var GreenCheck = color.New(color.FgHiGreen).Sprintf("✓")
+var YellowBang = color.New(color.FgHiYellow).Sprintf("!")
+var RedX = color.New(color.FgHiRed).Sprintf("✗")
+var GrayDash = color.New(color.FgWhite).Sprintf("—")
+var GrayQuestion = color.New(color.FgWhite).Sprintf("?")
+
+func getStatusIcon(code state.CollectionStateCode) string {
+	switch code {
+	case state.CollectionStateUnchecked:
+		return GrayQuestion
+	case state.CollectionStateNotAvailable:
+		return GrayDash
+	case state.CollectionStateWarning:
+		return YellowBang
+	case state.CollectionStateError:
+		return RedX
+	case state.CollectionStateOkay:
+		return GreenCheck
+	default:
+		return " "
+	}
+}
+
+func getMaxDbNameLen(checks []state.DbCollectionState) int {
+	var maxDbNameLen int
+	for _, item := range checks {
+		if thisNameLen := len(item.DbName); thisNameLen > maxDbNameLen {
+			maxDbNameLen = thisNameLen
+		}
+	}
+	return maxDbNameLen
+}
+
+func summarizeDbChecks(checks []state.DbCollectionState, isVerbose bool) (string, string) {
+	var firstUncheckedDb string
+	var anyChecked = false
+	for _, item := range checks {
+		if item.State != state.CollectionStateUnchecked {
+			anyChecked = true
+		} else if firstUncheckedDb == "" {
+			firstUncheckedDb = item.DbName
+		}
+	}
+	var firstErrorDb string
+	var firstErrorDbMsg string
+	var errorCount = 0
+	for _, item := range checks {
+		if item.State == state.CollectionStateError {
+			errorCount++
+			if firstErrorDb == "" {
+				firstErrorDb = item.DbName
+				firstErrorDbMsg = item.Msg
+			}
+		}
+	}
+	var allSchemaStatusOkay bool = len(checks) > 0
+	for _, item := range checks {
+		if item.State != state.CollectionStateOkay {
+			allSchemaStatusOkay = false
+			break
+		}
+	}
+	var icon string
+	if allSchemaStatusOkay {
+		icon = GreenCheck
+	} else {
+		icon = RedX
+	}
+
+	var verboseHint string
+	if !isVerbose {
+		verboseHint = " (see details with --verbose)"
+	}
+
+	var summaryMsg string
+	if len(checks) == 0 {
+		summaryMsg = "could not check databases"
+	} else if !anyChecked {
+		if len(checks) > 1 {
+			summaryMsg = fmt.Sprintf("could not check %s and %d other monitored database(s)%s", firstUncheckedDb, len(checks)-1, verboseHint)
+		} else {
+			summaryMsg = fmt.Sprintf("could not check database %s", firstUncheckedDb)
+		}
+	} else if errorCount > 1 {
+		summaryMsg = fmt.Sprintf("found integration problems in %s and %d other monitored database(s)%s", firstErrorDb, errorCount-1, verboseHint)
+	} else if errorCount > 0 {
+		summaryMsg = fmt.Sprintf("found integration problem in database %s: %s", firstErrorDb, firstErrorDbMsg)
+	} else if len(checks) > 1 {
+		summaryMsg = fmt.Sprintf("ok in %s and %d other monitored database(s)%s", checks[0].DbName, len(checks)-1, verboseHint)
+	} else {
+		summaryMsg = fmt.Sprintf("ok in %s (no other databases are configured to be monitored)", checks[0].DbName)
+	}
+
+	return icon, summaryMsg
+}
+
+func printDbStatus(dbStatus state.DbCollectionState, maxDbNameLen int) {
+	dbStatusIcon := getStatusIcon(dbStatus.State)
+	dbNameFmtString := fmt.Sprintf("%%%ds", maxDbNameLen-len(dbStatus.DbName))
+	fmt.Fprintf(os.Stderr, "\t\t%s %s:"+dbNameFmtString+"\t\t%s\n", dbStatusIcon, dbStatus.DbName, "", dbStatus.Msg)
+}
+
+func printServerTestSummary(s *state.Server, verbose bool) {
+	config := s.Config
+	status := s.SelfCheck
+	serverName := color.New(color.FgCyan).Sprintf(config.SectionName)
+	fmt.Fprintf(os.Stderr, "Server %s (system ID %s):\n", serverName, config.SystemID)
+	fmt.Fprintln(os.Stderr)
+
+	if status.CollectionSuspended.Value {
+		fmt.Fprintf(os.Stderr,
+			"\t%s Collection suspended:\t%s\n",
+			YellowBang,
+			status.CollectionSuspended.Msg,
+		)
+		return
+	}
+
+	fmt.Fprintf(os.Stderr,
+		"\t%s Collector telemetry:\t%s\n",
+		getStatusIcon(status.CollectorTelemetry.State),
+		status.CollectorTelemetry.Msg,
+	)
+
+	fmt.Fprintf(os.Stderr,
+		"\t%s Database connection:\t%s\n",
+		getStatusIcon(status.MonitoringDbConnection.State),
+		status.MonitoringDbConnection.Msg,
+	)
+
+	fmt.Fprintf(os.Stderr,
+		"\t%s pg_stat_statements:\t%s\n",
+		getStatusIcon(status.PgStatStatements.State),
+		status.PgStatStatements.Msg,
+	)
+
+	maxDbNameLen := getMaxDbNameLen(status.SchemaInformation)
+	schemaInfoIcon, schemaInfoSummaryMsg := summarizeDbChecks(status.SchemaInformation, verbose)
+	fmt.Fprintf(os.Stderr, "\t%s Schema information:\t%s\n", schemaInfoIcon, schemaInfoSummaryMsg)
+	if verbose {
+		for _, dbStatus := range status.SchemaInformation {
+			printDbStatus(dbStatus, maxDbNameLen)
+		}
+	}
+	colStatsIcon, colStatsSummaryMsg := summarizeDbChecks(status.ColumnStats, verbose)
+	fmt.Fprintf(os.Stderr, "\t%s Column stats:\t\t%s\n", colStatsIcon, colStatsSummaryMsg)
+	if verbose {
+		for _, dbStatus := range status.ColumnStats {
+			printDbStatus(dbStatus, maxDbNameLen)
+		}
+	}
+	extStatsIcon, extStatsSummaryMsg := summarizeDbChecks(status.ExtendedStats, verbose)
+	fmt.Fprintf(os.Stderr, "\t%s Extended stats:\t%s\n", extStatsIcon, extStatsSummaryMsg)
+	if verbose {
+		for _, dbStatus := range status.ExtendedStats {
+			printDbStatus(dbStatus, maxDbNameLen)
+		}
+	}
+
+	fmt.Fprintln(os.Stderr)
+
+	qpIcon, qpMsg := getQueryPerformanceStatus(status)
+	fmt.Fprintf(os.Stderr,
+		"\t%s Query Performance:\t%s\n",
+		qpIcon, qpMsg,
+	)
+	fmt.Fprintf(os.Stderr,
+		"\t%s Index Advisor:\t%s\n",
+		getStatusIcon(status.PgStatStatements.State),
+		status.PgStatStatements.Msg,
+	)
+	fmt.Fprintf(os.Stderr,
+		"\t%s VACUUM Advisor:\t%s\n",
+		getStatusIcon(status.PgStatStatements.State),
+		status.PgStatStatements.Msg,
+	)
+	fmt.Fprintf(os.Stderr,
+		"\t%s EXPLAIN Plans:\t%s\n",
+		getStatusIcon(status.PgStatStatements.State),
+		status.PgStatStatements.Msg,
+	)
+	ssIcon, ssMsg := getSchemaStatisticsStatus(status)
+	fmt.Fprintf(os.Stderr,
+		"\t%s Schema Statistics:\t%s\n",
+		ssIcon, ssMsg,
+	)
+	fmt.Fprintf(os.Stderr,
+		"\t%s Log Insights:\t\t%s\n",
+		getStatusIcon(status.Logs.State),
+		status.Logs.Msg,
+	)
+	fmt.Fprintf(os.Stderr,
+		"\t%s System:\t\t%s\n",
+		getStatusIcon(status.SystemStats.State),
+		status.SystemStats.Msg,
+	)
+
+	// TODO:
+	//  - can collect log information? (whether disabled, and if not, status and how to disable, at least for Production plans)
+	//  - can collect explain plans?
+
+	// summary should show, for each server (preceded by green ✓ or red ✗):
+	//  - detected system type / platform / id
+	//  - can collect system information? (or that not available on given system, or remote host specified and how to override)
+	//  - can connect to monitoring database?
+	//  - can access pg_stat_statements? (if yes, but old version, show error here)
+	//  - can collect schema information? (if not, which databases we could not monitor)
+	//  - can collect column stats? (if not, which databases have errors: first three with " and x more" or all with --verbose)
+	//  - can collect extended stats? (same as above: if not, which databases have errors)
+	//  - can collect log information? (whether disabled, and if not, status and how to disable, at least for Production plans)
+	//  - can collect explain plans?
+
+	// logger.PrintError("Error collecting pg_stat_statements: %s", err)
+	//   logger.PrintInfo("HINT - Current shared_preload_libraries setting: '%s'. Your Postgres server may need to be restarted for changes to take effect.", shared_preload_libraries)
+
+	// logger.PrintInfo("Skipping collection of system state: remote host (%s) was specified for the database address. Consider enabling always_collect_system_data if the database is running on the same system as the collector", dbHost)
+
+	// prefixedLogger.PrintWarning("Skipping logs, could not setup log subscriber: %s", err)
+
+	// logger.PrintError("  Failed - Activity snapshots disabled by pganalyze")
+
+}
+
+func getQueryPerformanceStatus(status state.SelfCheckStatus) (string, string) {
+	if status.MonitoringDbConnection.State != state.CollectionStateOkay {
+		return RedX, "database connection required"
+	}
+	if status.PgStatStatements.State != state.CollectionStateOkay {
+		return RedX, "pg_stat_statements required"
+	}
+	return GreenCheck, "ok; available in 20-30m"
+}
+
+func getSchemaStatisticsStatus(status state.SelfCheckStatus) (string, string) {
+	if status.MonitoringDbConnection.State != state.CollectionStateOkay {
+		return RedX, "database connection required"
+	}
+	allDbsOkay := true
+	someDbsOkay := false
+	for _, db := range status.SchemaInformation {
+		if db.State != state.CollectionStateOkay {
+			allDbsOkay = false
+			break
+		} else if !someDbsOkay {
+			someDbsOkay = true
+		}
+	}
+	if !someDbsOkay {
+		return RedX, "not available due to errors; see above"
+	}
+	if !allDbsOkay {
+		return YellowBang, "available for some databases"
+	}
+	return GreenCheck, "ok; available in 5-10m"
 }

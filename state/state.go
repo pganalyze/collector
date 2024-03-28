@@ -276,6 +276,9 @@ type Server struct {
 	CollectionStatus      CollectionStatus
 	CollectionStatusMutex *sync.Mutex
 
+	SelfCheck      SelfCheckStatus
+	selfCheckMutex *sync.Mutex
+
 	// The time zone that logs are parsed in, synced from the setting log_timezone
 	// The StateMutex should be held while updating this
 	LogTimezone      *time.Location
@@ -293,15 +296,20 @@ type Server struct {
 	CompactLogTime  time.Time
 }
 
-func MakeServer(config config.ServerConfig) *Server {
-	return &Server{
+func MakeServer(config config.ServerConfig, testRun bool) *Server {
+	server := &Server{
 		Config:                config,
 		StateMutex:            &sync.Mutex{},
 		LogStateMutex:         &sync.Mutex{},
 		ActivityStateMutex:    &sync.Mutex{},
 		CollectionStatusMutex: &sync.Mutex{},
 		LogTimezoneMutex:      &sync.Mutex{},
+		selfCheckMutex:        &sync.Mutex{},
 	}
+	if testRun {
+		server.SelfCheckInit()
+	}
+	return server
 }
 
 const (
@@ -350,4 +358,74 @@ func (s *Server) IgnoreLogLine(content string) bool {
 
 	return (flags&LOG_IGNORE_STATEMENT != 0 && (strings.HasPrefix(content, "statement: ") || strings.HasPrefix(content, "execute ") || strings.HasPrefix(content, "parameters: "))) ||
 		(flags&LOG_IGNORE_DURATION != 0 && strings.HasPrefix(content, "duration: ") && !strings.Contains(content, " ms  plan:\n"))
+}
+
+type TestRunChecks struct {
+	HostInfoError        error
+	SelfHostedRemoteHost string
+
+	PgssError                    error
+	SharedPreloadLibraries       string
+	PgssInstalledOutdatedVersion string
+	PgssAvailableVersion         string
+
+	DbsWithFailedSchemaCollection []string
+	DbsMissingColumnStatsAccess   []string
+	DbsMissingExtendedStatsAccess []string
+
+	AzureLogSubscriptionError  error
+	AzureLogsUnknownServerName string
+
+	GcpLogSubscriptionError error
+
+	ActivitySnapshotsDisabledByPganalyze bool
+}
+
+func (checks *TestRunChecks) FailHostInfo(err error) {
+	checks.HostInfoError = err
+}
+
+func (checks *TestRunChecks) FailPgStatStatementsQuery(err error) {
+	checks.PgssError = err
+}
+
+func (checks *TestRunChecks) FailPgStatStatementsNotReady(sharedPreloadLibraries string) {
+	checks.SharedPreloadLibraries = sharedPreloadLibraries
+}
+
+func (checks *TestRunChecks) FailMissingColumnStatsAccess(dbname string) {
+	checks.DbsMissingColumnStatsAccess = append(checks.DbsMissingColumnStatsAccess, dbname)
+}
+
+func (checks *TestRunChecks) FailMissingExtendedStatsAccess(dbname string) {
+	checks.DbsMissingExtendedStatsAccess = append(checks.DbsMissingExtendedStatsAccess, dbname)
+}
+
+func (checks *TestRunChecks) FailSchemaCollection(dbname string) {
+	checks.DbsWithFailedSchemaCollection = append(checks.DbsWithFailedSchemaCollection, dbname)
+}
+
+func (checks *TestRunChecks) FailPgssOutdatedVersion(installedVersion string, availableVersion string) {
+	checks.PgssInstalledOutdatedVersion = installedVersion
+	checks.PgssAvailableVersion = availableVersion
+}
+
+func (checks *TestRunChecks) FailSelfHostedRemoteHost(host string) {
+	checks.SelfHostedRemoteHost = host
+}
+
+func (checks *TestRunChecks) FailAzureLogSubscriptionError(err error) {
+	checks.AzureLogSubscriptionError = err
+}
+
+func (checks *TestRunChecks) FailAzureLogUnknownServerName(name string) {
+	checks.AzureLogsUnknownServerName = name
+}
+
+func (checks *TestRunChecks) FailGcpLogSubscriptionError(err error) {
+	checks.GcpLogSubscriptionError = err
+}
+
+func (checks *TestRunChecks) FailActivitySnapshotDisabledByPganalyze() {
+	checks.ActivitySnapshotsDisabledByPganalyze = true
 }
