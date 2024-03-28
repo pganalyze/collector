@@ -73,6 +73,9 @@ func (s *Server) SelfCheckMarkMonitoredDb(dbName string) {
 
 // collection suspended (e.g., if replica)
 func (s *Server) SelfCheckMarkCollectionSuspended(msg string) {
+	if !s.SelfCheck.enabled {
+		return
+	}
 	s.selfCheckMutex.Lock()
 	defer s.selfCheckMutex.Unlock()
 	s.SelfCheck.CollectionSuspended.Value = true
@@ -81,6 +84,9 @@ func (s *Server) SelfCheckMarkCollectionSuspended(msg string) {
 
 // collector stats
 func (s *Server) SelfCheckMarkCollectorTelemetryOk() {
+	if !s.SelfCheck.enabled {
+		return
+	}
 	s.selfCheckMutex.Lock()
 	defer s.selfCheckMutex.Unlock()
 	if s.SelfCheck.CollectorTelemetry.State != CollectionStateUnchecked {
@@ -91,6 +97,9 @@ func (s *Server) SelfCheckMarkCollectorTelemetryOk() {
 }
 
 func (s *Server) SelfCheckMarkCollectorTelemetryError(msg string) {
+	if !s.SelfCheck.enabled {
+		return
+	}
 	s.selfCheckMutex.Lock()
 	defer s.selfCheckMutex.Unlock()
 	if s.SelfCheck.CollectorTelemetry.State != CollectionStateUnchecked {
@@ -102,6 +111,9 @@ func (s *Server) SelfCheckMarkCollectorTelemetryError(msg string) {
 
 // system stats
 func (s *Server) SelfCheckMarkSystemStatsOk() {
+	if !s.SelfCheck.enabled {
+		return
+	}
 	s.selfCheckMutex.Lock()
 	defer s.selfCheckMutex.Unlock()
 	if s.SelfCheck.SystemStats.State != CollectionStateUnchecked {
@@ -112,6 +124,9 @@ func (s *Server) SelfCheckMarkSystemStatsOk() {
 }
 
 func (s *Server) SelfCheckMarkSystemStatsNotAvailable(msg string) {
+	if !s.SelfCheck.enabled {
+		return
+	}
 	s.selfCheckMutex.Lock()
 	defer s.selfCheckMutex.Unlock()
 	s.SelfCheck.SystemStats.State = CollectionStateNotAvailable
@@ -119,6 +134,9 @@ func (s *Server) SelfCheckMarkSystemStatsNotAvailable(msg string) {
 }
 
 func (s *Server) SelfCheckMarkSystemStatsError(msg string) {
+	if !s.SelfCheck.enabled {
+		return
+	}
 	s.selfCheckMutex.Lock()
 	defer s.selfCheckMutex.Unlock()
 	s.SelfCheck.SystemStats.State = CollectionStateError
@@ -131,6 +149,9 @@ func (s *Server) SelfCheckMarkSystemStatsError(msg string) {
 
 // monitoring DB connection
 func (s *Server) SelfCheckMarkMonitoringDbConnectionOk() {
+	if !s.SelfCheck.enabled {
+		return
+	}
 	s.selfCheckMutex.Lock()
 	defer s.selfCheckMutex.Unlock()
 	s.SelfCheck.MonitoringDbConnection.State = CollectionStateOkay
@@ -138,6 +159,9 @@ func (s *Server) SelfCheckMarkMonitoringDbConnectionOk() {
 }
 
 func (s *Server) SelfCheckMarkMonitoringDbConnectionError(msg string) {
+	if !s.SelfCheck.enabled {
+		return
+	}
 	s.selfCheckMutex.Lock()
 	defer s.selfCheckMutex.Unlock()
 	s.SelfCheck.MonitoringDbConnection.State = CollectionStateNotAvailable
@@ -146,6 +170,9 @@ func (s *Server) SelfCheckMarkMonitoringDbConnectionError(msg string) {
 
 // pg_stat_statements
 func (s *Server) SelfCheckMarkPgStatStatementsOk() {
+	if !s.SelfCheck.enabled {
+		return
+	}
 	s.selfCheckMutex.Lock()
 	defer s.selfCheckMutex.Unlock()
 	if s.SelfCheck.PgStatStatements.State != CollectionStateUnchecked {
@@ -156,6 +183,9 @@ func (s *Server) SelfCheckMarkPgStatStatementsOk() {
 }
 
 func (s *Server) SelfCheckMarkPgStatStatementsWarning(msg string) {
+	if !s.SelfCheck.enabled {
+		return
+	}
 	s.selfCheckMutex.Lock()
 	defer s.selfCheckMutex.Unlock()
 	s.SelfCheck.PgStatStatements.State = CollectionStateWarning
@@ -163,6 +193,9 @@ func (s *Server) SelfCheckMarkPgStatStatementsWarning(msg string) {
 }
 
 func (s *Server) SelfCheckMarkPgStatStatementsError(msg string) {
+	if !s.SelfCheck.enabled {
+		return
+	}
 	s.selfCheckMutex.Lock()
 	defer s.selfCheckMutex.Unlock()
 	s.SelfCheck.PgStatStatements.State = CollectionStateError
@@ -171,6 +204,9 @@ func (s *Server) SelfCheckMarkPgStatStatementsError(msg string) {
 
 // schema information
 func (s *Server) SelfCheckMarkSchemaOk(dbName string) {
+	if !s.SelfCheck.enabled {
+		return
+	}
 	s.selfCheckMutex.Lock()
 	defer s.selfCheckMutex.Unlock()
 	for i, info := range s.SelfCheck.SchemaInformation {
@@ -183,6 +219,9 @@ func (s *Server) SelfCheckMarkSchemaOk(dbName string) {
 }
 
 func (s *Server) SelfCheckMarkSchemaError(dbName, msg string) {
+	if !s.SelfCheck.enabled {
+		return
+	}
 	s.selfCheckMutex.Lock()
 	defer s.selfCheckMutex.Unlock()
 	for i, info := range s.SelfCheck.SchemaInformation {
@@ -195,6 +234,9 @@ func (s *Server) SelfCheckMarkSchemaError(dbName, msg string) {
 }
 
 func (s *Server) SelfCheckMarkAllRemainingSchemaError(msg string) {
+	if !s.SelfCheck.enabled {
+		return
+	}
 	s.selfCheckMutex.Lock()
 	defer s.selfCheckMutex.Unlock()
 	for i, info := range s.SelfCheck.SchemaInformation {
@@ -208,6 +250,9 @@ func (s *Server) SelfCheckMarkAllRemainingSchemaError(msg string) {
 
 // column stats
 func (s *Server) SelfCheckMarkColumnStatsOk(dbName string) {
+	if !s.SelfCheck.enabled {
+		return
+	}
 	s.selfCheckMutex.Lock()
 	defer s.selfCheckMutex.Unlock()
 	for i, info := range s.SelfCheck.ColumnStats {
@@ -220,6 +265,9 @@ func (s *Server) SelfCheckMarkColumnStatsOk(dbName string) {
 }
 
 func (s *Server) SelfCheckMarkColumnStatsError(dbName, msg string) {
+	if !s.SelfCheck.enabled {
+		return
+	}
 	s.selfCheckMutex.Lock()
 	defer s.selfCheckMutex.Unlock()
 	for i, info := range s.SelfCheck.ColumnStats {
@@ -233,6 +281,9 @@ func (s *Server) SelfCheckMarkColumnStatsError(dbName, msg string) {
 
 // extended stats
 func (s *Server) SelfCheckMarkExtendedStatsOk(dbName string) {
+	if !s.SelfCheck.enabled {
+		return
+	}
 	s.selfCheckMutex.Lock()
 	defer s.selfCheckMutex.Unlock()
 	for i, info := range s.SelfCheck.ExtendedStats {
@@ -245,6 +296,9 @@ func (s *Server) SelfCheckMarkExtendedStatsOk(dbName string) {
 }
 
 func (s *Server) SelfCheckMarkExtendedStatsError(dbName, msg string) {
+	if !s.SelfCheck.enabled {
+		return
+	}
 	s.selfCheckMutex.Lock()
 	defer s.selfCheckMutex.Unlock()
 	for i, info := range s.SelfCheck.ExtendedStats {
@@ -258,6 +312,9 @@ func (s *Server) SelfCheckMarkExtendedStatsError(dbName, msg string) {
 
 // Log Insights
 func (s *Server) SelfCheckMarkLogsOk() {
+	if !s.SelfCheck.enabled {
+		return
+	}
 	s.selfCheckMutex.Lock()
 	defer s.selfCheckMutex.Unlock()
 	if s.SelfCheck.Logs.State != CollectionStateUnchecked {
@@ -269,6 +326,9 @@ func (s *Server) SelfCheckMarkLogsOk() {
 }
 
 func (s *Server) SelfCheckMarkLogsNotAvailable(msg string) {
+	if !s.SelfCheck.enabled {
+		return
+	}
 	s.selfCheckMutex.Lock()
 	defer s.selfCheckMutex.Unlock()
 	s.SelfCheck.Logs.State = CollectionStateNotAvailable
@@ -276,6 +336,9 @@ func (s *Server) SelfCheckMarkLogsNotAvailable(msg string) {
 }
 
 func (s *Server) SelfCheckMarkLogsError(msg string) {
+	if !s.SelfCheck.enabled {
+		return
+	}
 	s.selfCheckMutex.Lock()
 	defer s.selfCheckMutex.Unlock()
 	s.SelfCheck.Logs.State = CollectionStateError
@@ -284,6 +347,9 @@ func (s *Server) SelfCheckMarkLogsError(msg string) {
 
 // Automated EXPLAIN
 func (s *Server) SelfCheckMarkAutomatedExplainOk() {
+	if !s.SelfCheck.enabled {
+		return
+	}
 	s.selfCheckMutex.Lock()
 	defer s.selfCheckMutex.Unlock()
 	s.SelfCheck.AutomatedExplain.State = CollectionStateOkay
@@ -291,6 +357,9 @@ func (s *Server) SelfCheckMarkAutomatedExplainOk() {
 }
 
 func (s *Server) SelfCheckMarkAutomatedExplainNotAvailable(msg string) {
+	if !s.SelfCheck.enabled {
+		return
+	}
 	s.selfCheckMutex.Lock()
 	defer s.selfCheckMutex.Unlock()
 	s.SelfCheck.AutomatedExplain.State = CollectionStateNotAvailable
@@ -298,6 +367,9 @@ func (s *Server) SelfCheckMarkAutomatedExplainNotAvailable(msg string) {
 }
 
 func (s *Server) SelfCheckMarkAutomatedExplainError(msg string) {
+	if !s.SelfCheck.enabled {
+		return
+	}
 	s.selfCheckMutex.Lock()
 	defer s.selfCheckMutex.Unlock()
 	s.SelfCheck.AutomatedExplain.State = CollectionStateError
