@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.55.0      2024-03-27
+
+* Add integration with Tembo
+  - Supports Log Insights (via log streaming) and system metrics download
+  - This integration is mainly intended for direct use by the Tembo Postgres
+    provider (the collector is deployed by Tembo, if enabled)
+* Heroku integration
+  - Avoid unnecessary error messages related to state file and reload mechanism
+* Accept PGA_API_BASE_URL env var in addition to PGA_API_BASEURL
+  - Going forward we recommend using `PGA_API_BASE_URL` when configuring the
+    collector for sending to pganalyze Enterprise Server installations
+* Syslog handler: Allow leading spaces before parts regexp
+  - When configuring rsyslogd for RFC5424 output with the
+    RSYSLOG_SyslogProtocol23Format template, it adds a leading space that we
+    didn't anticipate correctly.
+* Relation stats: Call pg_stat_get_* directly instead of using system views
+  - The collecror now calls the underlying pg_stat_get* functions directly,
+    which has the same effect as querying the pg_stat_all_tables and
+    pg_statio_all_tables views (as they are simple views without any security
+    barrier), but results in better performance when a table filter
+    (`ignore_schema_regexp` / `IGNORE_SCHEMA_REGEXP`) is active
+
+
 ## 0.54.0      2024-02-23
 
 * Update pg_query_go to v5 / Postgres 16 parser
