@@ -40,6 +40,8 @@ type Metric struct {
 
 // GetSystemState - Gets system information for a Tembo Cloud instance
 func GetSystemState(config config.ServerConfig, logger *util.Logger) (system state.SystemState) {
+	system.Info.Type = state.TemboSystem
+
 	headers := map[string]string{
 		"Authorization": "Bearer " + config.TemboAPIToken,
 		"accept":        "application/json",
