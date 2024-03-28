@@ -119,8 +119,17 @@ func getFloat64(query string, metricsUrl string, client http.Client, headers map
 		return 0, err
 	}
 
+	// Check if res.Data.Result is empty
+	if len(res.Data.Result) == 0 {
+		return 0, nil
+	}
+
 	strValue := res.Data.Result[0].Value[1].(string)
 	value, err := strconv.ParseFloat(strValue, 64)
+
+	if err != nil {
+		return 0, err
+	}
 
 	return value, nil
 }
@@ -131,8 +140,17 @@ func getUint64(query string, metricsUrl string, client http.Client, headers map[
 		return 0, err
 	}
 
+	// Check if res.Data.Result is empty
+	if len(res.Data.Result) == 0 {
+		return 0, nil
+	}
+
 	strValue := res.Data.Result[0].Value[1].(string)
 	value, err := strconv.ParseUint(strValue, 10, 64)
+
+	if err != nil {
+		return 0, err
+	}
 
 	return value, nil
 }
