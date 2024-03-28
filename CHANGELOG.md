@@ -2,10 +2,12 @@
 
 ## 0.55.0      2024-03-27
 
-* Integration with Tembo
+* Add integration with Tembo
   - Supports Log Insights (via log streaming) and system metrics download
   - This integration is mainly intended for direct use by the Tembo Postgres
     provider (the collector is deployed by Tembo, if enabled)
+* Heroku integration
+  - Avoid unnecessary error messages related to state file and reload mechanism
 * Accept PGA_API_BASE_URL env var in addition to PGA_API_BASEURL
   - Going forward we recommend using `PGA_API_BASE_URL` when configuring the
     collector for sending to pganalyze Enterprise Server installations
