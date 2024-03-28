@@ -1,5 +1,7 @@
 package state
 
+import "fmt"
+
 type CollectionStateCode int
 
 const (
@@ -72,7 +74,8 @@ func (s *Server) SelfCheckMarkMonitoredDb(dbName string) {
 }
 
 // collection suspended (e.g., if replica)
-func (s *Server) SelfCheckMarkCollectionSuspended(msg string) {
+func (s *Server) SelfCheckMarkCollectionSuspended(format string, args ...any) {
+	msg := fmt.Sprintf(format+"\n", args...)
 	if !s.SelfCheck.enabled {
 		return
 	}
@@ -96,7 +99,8 @@ func (s *Server) SelfCheckMarkCollectorTelemetryOk() {
 	s.SelfCheck.CollectorTelemetry.Msg = "ok"
 }
 
-func (s *Server) SelfCheckMarkCollectorTelemetryError(msg string) {
+func (s *Server) SelfCheckMarkCollectorTelemetryError(format string, args ...any) {
+	msg := fmt.Sprintf(format+"\n", args...)
 	if !s.SelfCheck.enabled {
 		return
 	}
@@ -123,7 +127,8 @@ func (s *Server) SelfCheckMarkSystemStatsOk() {
 	s.SelfCheck.SystemStats.Msg = "ok"
 }
 
-func (s *Server) SelfCheckMarkSystemStatsNotAvailable(msg string) {
+func (s *Server) SelfCheckMarkSystemStatsNotAvailable(format string, args ...any) {
+	msg := fmt.Sprintf(format+"\n", args...)
 	if !s.SelfCheck.enabled {
 		return
 	}
@@ -133,7 +138,8 @@ func (s *Server) SelfCheckMarkSystemStatsNotAvailable(msg string) {
 	s.SelfCheck.SystemStats.Msg = msg
 }
 
-func (s *Server) SelfCheckMarkSystemStatsError(msg string) {
+func (s *Server) SelfCheckMarkSystemStatsError(format string, args ...any) {
+	msg := fmt.Sprintf(format+"\n", args...)
 	if !s.SelfCheck.enabled {
 		return
 	}
@@ -158,7 +164,8 @@ func (s *Server) SelfCheckMarkMonitoringDbConnectionOk() {
 	s.SelfCheck.MonitoringDbConnection.Msg = "ok"
 }
 
-func (s *Server) SelfCheckMarkMonitoringDbConnectionError(msg string) {
+func (s *Server) SelfCheckMarkMonitoringDbConnectionError(format string, args ...any) {
+	msg := fmt.Sprintf(format+"\n", args...)
 	if !s.SelfCheck.enabled {
 		return
 	}
@@ -182,7 +189,8 @@ func (s *Server) SelfCheckMarkPgStatStatementsOk() {
 	s.SelfCheck.PgStatStatements.Msg = "ok"
 }
 
-func (s *Server) SelfCheckMarkPgStatStatementsWarning(msg string) {
+func (s *Server) SelfCheckMarkPgStatStatementsWarning(format string, args ...any) {
+	msg := fmt.Sprintf(format+"\n", args...)
 	if !s.SelfCheck.enabled {
 		return
 	}
@@ -192,7 +200,8 @@ func (s *Server) SelfCheckMarkPgStatStatementsWarning(msg string) {
 	s.SelfCheck.PgStatStatements.Msg = msg
 }
 
-func (s *Server) SelfCheckMarkPgStatStatementsError(msg string) {
+func (s *Server) SelfCheckMarkPgStatStatementsError(format string, args ...any) {
+	msg := fmt.Sprintf(format+"\n", args...)
 	if !s.SelfCheck.enabled {
 		return
 	}
@@ -233,7 +242,8 @@ func (s *Server) SelfCheckMarkSchemaError(dbName, msg string) {
 	}
 }
 
-func (s *Server) SelfCheckMarkAllRemainingSchemaError(msg string) {
+func (s *Server) SelfCheckMarkAllRemainingSchemaError(format string, args ...any) {
+	msg := fmt.Sprintf(format+"\n", args...)
 	if !s.SelfCheck.enabled {
 		return
 	}
@@ -325,7 +335,8 @@ func (s *Server) SelfCheckMarkLogsOk() {
 	s.SelfCheck.Logs.Msg = "ok; available in 5-10m"
 }
 
-func (s *Server) SelfCheckMarkLogsNotAvailable(msg string) {
+func (s *Server) SelfCheckMarkLogsNotAvailable(format string, args ...any) {
+	msg := fmt.Sprintf(format+"\n", args...)
 	if !s.SelfCheck.enabled {
 		return
 	}
@@ -335,7 +346,8 @@ func (s *Server) SelfCheckMarkLogsNotAvailable(msg string) {
 	s.SelfCheck.Logs.Msg = msg
 }
 
-func (s *Server) SelfCheckMarkLogsError(msg string) {
+func (s *Server) SelfCheckMarkLogsError(format string, args ...any) {
+	msg := fmt.Sprintf(format+"\n", args...)
 	if !s.SelfCheck.enabled {
 		return
 	}
@@ -356,7 +368,8 @@ func (s *Server) SelfCheckMarkAutomatedExplainOk() {
 	s.SelfCheck.AutomatedExplain.Msg = "ok"
 }
 
-func (s *Server) SelfCheckMarkAutomatedExplainNotAvailable(msg string) {
+func (s *Server) SelfCheckMarkAutomatedExplainNotAvailable(format string, args ...any) {
+	msg := fmt.Sprintf(format+"\n", args...)
 	if !s.SelfCheck.enabled {
 		return
 	}
@@ -366,7 +379,8 @@ func (s *Server) SelfCheckMarkAutomatedExplainNotAvailable(msg string) {
 	s.SelfCheck.AutomatedExplain.Msg = msg
 }
 
-func (s *Server) SelfCheckMarkAutomatedExplainError(msg string) {
+func (s *Server) SelfCheckMarkAutomatedExplainError(format string, args ...any) {
+	msg := fmt.Sprintf(format+"\n", args...)
 	if !s.SelfCheck.enabled {
 		return
 	}

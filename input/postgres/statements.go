@@ -116,7 +116,7 @@ func GetStatements(ctx context.Context, server *state.Server, logger *util.Logge
 		logger.PrintInfo("pg_stat_statements does not exist, trying to create extension...")
 		_, err = db.ExecContext(ctx, QueryMarkerSQL+"CREATE EXTENSION IF NOT EXISTS pg_stat_statements SCHEMA public")
 		if err != nil {
-			server.SelfCheckMarkPgStatStatementsError(fmt.Sprintf("extension does not exist in database %s and could not be created: %s", server.Config.DbName, err.Error()))
+			server.SelfCheckMarkPgStatStatementsError("extension does not exist in database %s and could not be created: %s", server.Config.DbName, err)
 			logger.PrintInfo("HINT - if you expect the extension to already be installed, please review the pganalyze documentation: https://pganalyze.com/docs/install/troubleshooting/pg_stat_statements")
 			return nil, nil, nil, err
 		}
@@ -131,7 +131,7 @@ func GetStatements(ctx context.Context, server *state.Server, logger *util.Logge
 	} else if foundExtMinorVersion >= 3 {
 		optionalFields = statementSQLOptionalFieldsMinorVersion3
 	} else {
-		server.SelfCheckMarkPgStatStatementsError(fmt.Sprintf("extension version not supported (1.%d installed, 1.3+ supported)", foundExtMinorVersion))
+		server.SelfCheckMarkPgStatStatementsError("extension version not supported (1.%d installed, 1.3+ supported)", foundExtMinorVersion)
 		return nil, nil, nil, fmt.Errorf("pg_stat_statements extension not supported (1.%d installed, 1.3+ supported). To update run `ALTER EXTENSION pg_stat_statements UPDATE`", foundExtMinorVersion)
 	}
 

@@ -1,7 +1,6 @@
 package crunchy_bridge
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/pganalyze/collector/input/system/selfhosted"
@@ -28,7 +27,7 @@ func GetSystemState(server *state.Server, logger *util.Logger) (system state.Sys
 
 	clusterInfo, err := client.GetClusterInfo()
 	if err != nil {
-		server.SelfCheckMarkSystemStatsError(fmt.Sprintf("error getting cluster info: %s\n", err))
+		server.SelfCheckMarkSystemStatsError("error getting cluster info: %s", err)
 		logger.PrintError("CrunchyBridge/System: Encountered error when getting cluster info %v\n", err)
 		return
 	}
@@ -47,7 +46,7 @@ func GetSystemState(server *state.Server, logger *util.Logger) (system state.Sys
 
 	diskUsageMetrics, err := client.GetDiskUsageMetrics()
 	if err != nil {
-		server.SelfCheckMarkSystemStatsError(fmt.Sprintf("error getting cluster disk usage metrics: %s\n", err))
+		server.SelfCheckMarkSystemStatsError("error getting cluster disk usage metrics: %s", err)
 		logger.PrintError("CrunchyBridge/System: Encountered error when getting cluster disk usage metrics %v\n", err)
 		return
 	}

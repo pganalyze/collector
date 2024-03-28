@@ -606,7 +606,7 @@ func checkOneInitialCollectionStatus(ctx context.Context, server *state.Server, 
 	}
 	if isIgnoredReplica {
 		logger.PrintInfo("All monitoring suspended for this server: %s", collectionDisabledReason)
-		server.SelfCheckMarkCollectionSuspended(fmt.Sprintf("all monitoring suspended for this server: %s", collectionDisabledReason))
+		server.SelfCheckMarkCollectionSuspended("all monitoring suspended for this server: %s", collectionDisabledReason)
 	} else if logsDisabled {
 		logger.PrintInfo("Log collection suspended for this server: %s", logsDisabledReason)
 	} else if logsIgnoreDuration {
