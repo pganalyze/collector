@@ -1,7 +1,6 @@
 package input
 
 import (
-	"fmt"
 	"os"
 	"runtime"
 
@@ -46,7 +45,7 @@ func getCollectorPlatform(server *state.Server, globalCollectionOpts state.Colle
 	hostInfo, err := host.Info()
 	if err != nil {
 		if globalCollectionOpts.TestRun {
-			server.SelfCheckMarkCollectorTelemetryError(fmt.Sprintf("could not get collector host information: %s", err))
+			server.SelfCheckMarkCollectorTelemetryError("could not get collector host information: %s", err)
 		}
 		return state.CollectorPlatform{}
 	}

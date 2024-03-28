@@ -2,7 +2,6 @@ package system
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/pganalyze/collector/input/system/tembo"
 
@@ -64,7 +63,7 @@ func GetSystemState(server *state.Server, logger *util.Logger, globalCollectionO
 			// didn't detect the collector is running on the same instance as
 			// the database server.
 			// Leave logs for if this is a test run.
-			server.SelfCheckMarkSystemStatsNotAvailable(fmt.Sprintf("remote host (%s) was specified for the database address", dbHost))
+			server.SelfCheckMarkSystemStatsNotAvailable("remote host (%s) was specified for the database address", dbHost)
 			logger.PrintInfo("Skipping collection of system state: remote host (%s) was specified for the database address. Consider enabling always_collect_system_data if the database is running on the same system as the collector", dbHost)
 		}
 	}

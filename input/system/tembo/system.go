@@ -2,7 +2,6 @@ package tembo
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -54,7 +53,7 @@ func GetSystemState(server *state.Server, logger *util.Logger) (system state.Sys
 	query := "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{ namespace=\"" + config.TemboNamespace + "\"}) / sum(kube_pod_container_resource_requests{job=\"kube-state-metrics\",  namespace=\"" + config.TemboNamespace + "\", resource=\"cpu\"})"
 	cpuUsage, err := getFloat64(query, metricsUrl, client, headers)
 	if err != nil {
-		server.SelfCheckMarkSystemStatsError(fmt.Sprintf("error getting CPU info: %v", err))
+		server.SelfCheckMarkSystemStatsError("error getting CPU info: %v", err)
 		logger.PrintError("Tembo/System: Encountered error when getting CPU info %v\n", err)
 		return
 	}
@@ -71,7 +70,7 @@ func GetSystemState(server *state.Server, logger *util.Logger) (system state.Sys
 	query = "sum(max by(pod) (kube_pod_container_resource_requests{job=\"kube-state-metrics\", namespace=\"" + config.TemboNamespace + "\", resource=\"memory\"}))"
 	memoryTotalBytes, err := getUint64(query, metricsUrl, client, headers)
 	if err != nil {
-		server.SelfCheckMarkSystemStatsError(fmt.Sprintf("error getting memory info: %v", err))
+		server.SelfCheckMarkSystemStatsError("error getting memory info: %v", err)
 		logger.PrintError("Tembo/System: Encountered error when getting memory info %v\n", err)
 		return
 	}
@@ -80,7 +79,7 @@ func GetSystemState(server *state.Server, logger *util.Logger) (system state.Sys
 	query = "sum(max by(pod) (kube_pod_container_resource_requests{job=\"kube-state-metrics\", namespace=\"" + config.TemboNamespace + "\", resource=\"memory\"})) - sum(container_memory_working_set_bytes{job=\"kubelet\", metrics_path=\"/metrics/cadvisor\", namespace=\"" + config.TemboNamespace + "\",container!=\"\", image!=\"\"})"
 	memoryAvailableBytes, err := getUint64(query, metricsUrl, client, headers)
 	if err != nil {
-		server.SelfCheckMarkSystemStatsError(fmt.Sprintf("error getting memory info: %v", err))
+		server.SelfCheckMarkSystemStatsError("error getting memory info: %v", err)
 		logger.PrintError("Tembo/System: Encountered error when getting memory info %v\n", err)
 		return
 	}
@@ -94,7 +93,7 @@ func GetSystemState(server *state.Server, logger *util.Logger) (system state.Sys
 	query = "kubelet_volume_stats_capacity_bytes{namespace=\"" + config.TemboNamespace + "\", persistentvolumeclaim=~\"" + config.TemboNamespace + "-1" + "\"}"
 	diskCapacity, err := getUint64(query, metricsUrl, client, headers)
 	if err != nil {
-		server.SelfCheckMarkSystemStatsError(fmt.Sprintf("error getting disk info: %v", err))
+		server.SelfCheckMarkSystemStatsError("error getting disk info: %v", err)
 		logger.PrintError("Tembo/System: Encountered error when getting disk info %v\n", err)
 		return
 	}
@@ -104,7 +103,7 @@ func GetSystemState(server *state.Server, logger *util.Logger) (system state.Sys
 	query = "kubelet_volume_stats_available_bytes{namespace=\"" + config.TemboNamespace + "\", persistentvolumeclaim=~\"" + config.TemboNamespace + "-1" + "\"}"
 	diskAvailable, err := getUint64(query, metricsUrl, client, headers)
 	if err != nil {
-		server.SelfCheckMarkSystemStatsError(fmt.Sprintf("error getting disk info: %v", err))
+		server.SelfCheckMarkSystemStatsError("error getting disk info: %v", err)
 		logger.PrintError("Tembo/System: Encountered error when getting disk info %v\n", err)
 		return
 	}

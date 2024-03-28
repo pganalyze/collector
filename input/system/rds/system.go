@@ -24,7 +24,7 @@ func GetSystemState(server *state.Server, logger *util.Logger) (system state.Sys
 
 	sess, err := awsutil.GetAwsSession(config)
 	if err != nil {
-		server.SelfCheckMarkSystemStatsError(fmt.Sprintf("error getting session: %v\n", err))
+		server.SelfCheckMarkSystemStatsError("error getting session: %v", err)
 		logger.PrintError("Rds/System: Encountered error getting session: %v\n", err)
 		return
 	}
@@ -33,7 +33,7 @@ func GetSystemState(server *state.Server, logger *util.Logger) (system state.Sys
 
 	instance, err := awsutil.FindRdsInstance(config, sess)
 	if err != nil {
-		server.SelfCheckMarkSystemStatsError(fmt.Sprintf("error finding instance: %v\n", err))
+		server.SelfCheckMarkSystemStatsError("error finding instance: %v", err)
 		logger.PrintError("Rds/System: Encountered error when looking for instance: %v\n", err)
 		return
 	}
@@ -81,7 +81,7 @@ func GetSystemState(server *state.Server, logger *util.Logger) (system state.Sys
 
 	pgssParam, err := awsutil.GetRdsParameter(group, "shared_preload_libraries", rdsSvc)
 	if err != nil {
-		server.SelfCheckMarkSystemStatsError(fmt.Sprintf("error getting RDS parameter: %v\n", err))
+		server.SelfCheckMarkSystemStatsError("error getting RDS parameter: %v", err)
 		logger.PrintVerbose("Could not get RDS parameter: %s", err)
 	}
 	if pgssParam != nil && pgssParam.ParameterValue != nil {
@@ -132,7 +132,7 @@ func GetSystemState(server *state.Server, logger *util.Logger) (system state.Sys
 
 		resp, err := svc.GetLogEvents(params)
 		if err != nil {
-			server.SelfCheckMarkSystemStatsError(fmt.Sprintf("error getting system state: %v\n", err))
+			server.SelfCheckMarkSystemStatsError("error getting system state: %v", err)
 			fmt.Printf("Error: %v\n", err)
 			return
 		}
@@ -144,7 +144,7 @@ func GetSystemState(server *state.Server, logger *util.Logger) (system state.Sys
 				var osSnapshot RdsOsSnapshot
 				err = json.Unmarshal([]byte(*str), &osSnapshot)
 				if err != nil {
-					server.SelfCheckMarkSystemStatsError(fmt.Sprintf("error decoding system state: %v\n", err))
+					server.SelfCheckMarkSystemStatsError("error decoding system state: %v", err)
 					fmt.Printf("Error: %v\n", err)
 					return
 				}
