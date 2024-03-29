@@ -892,14 +892,13 @@ func printServerTestSummary(s *state.Server, verbose bool) {
 	qpIcon, qpMsg := getQueryPerformanceStatus(status)
 	fmt.Fprintf(os.Stderr, "\t%s Query Performance:\t%s\n", qpIcon, qpMsg)
 
-	// TODO: fix these; they mostly use pgss status right now
 	iaIcon, iaMsg := getIndexAdvisorStatus(status)
 	fmt.Fprintf(os.Stderr, "\t%s Index Advisor:\t%s\n", iaIcon, iaMsg)
 
-	vaIcon, vaMsg := getAspectStatus(status, state.CollectionAspectPgStatStatements)
+	vaIcon, vaMsg := getVACUUMAdvisorStatus(status)
 	fmt.Fprintf(os.Stderr, "\t%s VACUUM Advisor:\t%s\n", vaIcon, vaMsg)
 
-	explainIcon, explainMsg := getAspectStatus(status, state.CollectionAspectPgStatStatements)
+	explainIcon, explainMsg := getAutomatedExplainStatus(status)
 	fmt.Fprintf(os.Stderr, "\t%s EXPLAIN Plans:\t%s\n", explainIcon, explainMsg)
 
 	ssIcon, ssMsg := getSchemaStatisticsStatus(status)
@@ -1016,4 +1015,29 @@ func getIndexAdvisorStatus(status *state.SelfCheckStatus) (string, string) {
 	}
 
 	return GreenCheck, "ok; available in 24-48h"
+}
+
+func getVACUUMAdvisorStatus(status *state.SelfCheckStatus) (string, string) {
+	if s := status.GetCollectionAspectStatus(state.CollectionAspectMonitoringDbConnection); s == nil || s.State != state.CollectionStateOkay {
+		return RedX, "database connection required"
+	}
+
+	if s := status.GetCollectionAspectStatus(state.CollectionAspectLogs); s == nil || s.State != state.CollectionStateOkay {
+		return RedX, "Log Insights required"
+	}
+
+	return GreenCheck, "ok; available in 20-30m"
+}
+
+func getAutomatedExplainStatus(status *state.SelfCheckStatus) (string, string) {
+	if s := status.GetCollectionAspectStatus(state.CollectionAspectMonitoringDbConnection); s == nil || s.State != state.CollectionStateOkay {
+		return RedX, "database connection required"
+	}
+
+	if s := status.GetCollectionAspectStatus(state.CollectionAspectLogs); s == nil || s.State != state.CollectionStateOkay {
+		return RedX, "Log Insights required"
+	}
+
+	// Right now, we don't have a test for this in the collector
+	return GrayQuestion, "unknown; check pganalyze EXPLAIN Plans page"
 }
