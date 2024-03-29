@@ -40,18 +40,18 @@ func GetSystemState(server *state.Server, logger *util.Logger, globalCollectionO
 		system = rds.GetSystemState(server, logger)
 	} else if config.SystemType == "google_cloudsql" {
 		system.Info.Type = state.GoogleCloudSQLSystem
-		server.SelfCheckMarkSystemStatsNotAvailable("not available on this platform")
+		server.SelfCheck.MarkCollectionAspectNotAvailable(state.CollectionAspectSystemStats, "not available on this platform")
 	} else if config.SystemType == "azure_database" {
 		system.Info.Type = state.AzureDatabaseSystem
-		server.SelfCheckMarkSystemStatsNotAvailable("not available on this platform")
+		server.SelfCheck.MarkCollectionAspectNotAvailable(state.CollectionAspectSystemStats, "not available on this platform")
 	} else if config.SystemType == "heroku" {
 		system.Info.Type = state.HerokuSystem
-		server.SelfCheckMarkSystemStatsNotAvailable("not available on this platform")
+		server.SelfCheck.MarkCollectionAspectNotAvailable(state.CollectionAspectSystemStats, "not available on this platform")
 	} else if config.SystemType == "crunchy_bridge" {
 		system = crunchy_bridge.GetSystemState(server, logger)
 	} else if config.SystemType == "aiven" {
 		system.Info.Type = state.AivenSystem
-		server.SelfCheckMarkSystemStatsNotAvailable("not available on this platform")
+		server.SelfCheck.MarkCollectionAspectNotAvailable(state.CollectionAspectSystemStats, "not available on this platform")
 	} else if config.SystemType == "tembo" {
 		system = tembo.GetSystemState(server, logger)
 	} else if dbHost == "" || dbHost == "localhost" || dbHost == "127.0.0.1" || config.AlwaysCollectSystemData {
@@ -63,7 +63,7 @@ func GetSystemState(server *state.Server, logger *util.Logger, globalCollectionO
 			// didn't detect the collector is running on the same instance as
 			// the database server.
 			// Leave logs for if this is a test run.
-			server.SelfCheckMarkSystemStatsNotAvailable("remote host (%s) was specified for the database address", dbHost)
+			server.SelfCheck.MarkCollectionAspectNotAvailable(state.CollectionAspectSystemStats, "remote host (%s) was specified for the database address", dbHost)
 			logger.PrintInfo("Skipping collection of system state: remote host (%s) was specified for the database address. Consider enabling always_collect_system_data if the database is running on the same system as the collector", dbHost)
 		}
 	}

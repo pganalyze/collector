@@ -247,7 +247,7 @@ func processLogStream(ctx context.Context, server *state.Server, logLines []stat
 	}
 
 	if globalCollectionOpts.TestRun {
-		server.SelfCheckMarkLogsOk()
+		server.SelfCheck.MarkCollectionAspectOk(state.CollectionAspectLogs)
 		logTestFunc(server, logFile, logTestSucceeded)
 
 		return tooFreshLogLines
@@ -278,13 +278,13 @@ func processLogStream(ctx context.Context, server *state.Server, logLines []stat
 func getLogsGrant(server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (logGrant state.GrantLogs, err error) {
 	logGrant, err = grant.GetLogsGrant(server, globalCollectionOpts, logger)
 	if err != nil {
-		server.SelfCheckMarkLogsError("error getting log grant: %s", err)
+		server.SelfCheck.MarkCollectionAspectError(state.CollectionAspectLogs, "error getting log grant: %s", err)
 		return state.GrantLogs{Valid: false}, errors.Wrap(err, "could not get log grant")
 	}
 
 	if !logGrant.Valid {
 		if globalCollectionOpts.TestRun {
-			server.SelfCheckMarkLogsNotAvailable("Log Insights not available on this plan")
+			server.SelfCheck.MarkCollectionAspectError(state.CollectionAspectLogs, "Log Insights not available on this plan")
 			logger.PrintError("  Failed - Log Insights feature not available on this pganalyze plan, or log data limit exceeded. You may need to upgrade, see https://pganalyze.com/pricing")
 		} else {
 			logger.PrintVerbose("Skipping log data: Feature not available on this pganalyze plan, or log data limit exceeded")
@@ -348,7 +348,7 @@ func postprocessAndSendLogs(ctx context.Context, server *state.Server, globalCol
 
 	err = output.UploadAndSendLogs(ctx, server, grant, globalCollectionOpts, logger, transientLogState)
 	if err != nil {
-		server.SelfCheckMarkLogsError("error sending logs: %s", err)
+		server.SelfCheck.MarkCollectionAspectError(state.CollectionAspectLogs, "error sending logs: %s", err)
 		return errors.Wrap(err, "failed to upload/send logs")
 	}
 
@@ -434,7 +434,7 @@ func testLocalLogTail(ctx context.Context, wg *sync.WaitGroup, server *state.Ser
 
 	err := selfhosted.SetupLogTailForServer(ctx, wg, globalCollectionOpts, logger, server, parsedLogStream)
 	if err != nil {
-		server.SelfCheckMarkLogsError("error tailing logs for server: %s", err)
+		server.SelfCheck.MarkCollectionAspectError(state.CollectionAspectLogs, "error tailing logs for server: %s", err)
 		logger.PrintError("ERROR - Could not tail logs for server: %s", err)
 		return false
 	}
@@ -457,9 +457,12 @@ func testLogDownload(ctx context.Context, wg *sync.WaitGroup, server *state.Serv
 	prefixedLogger.PrintInfo("Testing log download...")
 	_, _, err := downloadLogsForServer(ctx, server, globalCollectionOpts, prefixedLogger)
 	if err != nil {
+		server.SelfCheck.MarkCollectionAspectError(state.CollectionAspectLogs, err.Error())
 		printLogDownloadError(server, err, prefixedLogger)
 		return false
 	}
+
+	server.SelfCheck.MarkCollectionAspectOk(state.CollectionAspectLogs)
 
 	prefixedLogger.PrintInfo("  Log test successful")
 	return true

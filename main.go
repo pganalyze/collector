@@ -575,11 +575,11 @@ func checkAllInitialCollectionStatus(ctx context.Context, servers []*state.Serve
 func checkOneInitialCollectionStatus(ctx context.Context, server *state.Server, opts state.CollectionOpts, logger *util.Logger) error {
 	conn, err := postgres.EstablishConnection(ctx, server, logger, opts, "")
 	if err != nil {
-		server.SelfCheckMarkMonitoringDbConnectionError(err.Error())
+		server.SelfCheck.MarkCollectionAspectError(state.CollectionAspectMonitoringDbConnection, err.Error())
 		return errors.Wrap(err, "failed to connect to database")
 	}
 	defer conn.Close()
-	server.SelfCheckMarkMonitoringDbConnectionOk()
+	server.SelfCheck.MarkCollectionAspectOk(state.CollectionAspectMonitoringDbConnection)
 
 	settings, err := postgres.GetSettings(ctx, conn)
 	if err != nil {
@@ -606,7 +606,7 @@ func checkOneInitialCollectionStatus(ctx context.Context, server *state.Server, 
 	}
 	if isIgnoredReplica {
 		logger.PrintInfo("All monitoring suspended for this server: %s", collectionDisabledReason)
-		server.SelfCheckMarkCollectionSuspended("all monitoring suspended for this server: %s", collectionDisabledReason)
+		server.SelfCheck.MarkCollectionSuspended("all monitoring suspended for this server: %s", collectionDisabledReason)
 	} else if logsDisabled {
 		logger.PrintInfo("Log collection suspended for this server: %s", logsDisabledReason)
 	} else if logsIgnoreDuration {
@@ -738,47 +738,53 @@ func getStatusIcon(code state.CollectionStateCode) string {
 	}
 }
 
-func getMaxDbNameLen(checks []state.DbCollectionState) int {
+func getMaxDbNameLen(dbNames []string) int {
 	var maxDbNameLen int
-	for _, item := range checks {
-		if thisNameLen := len(item.DbName); thisNameLen > maxDbNameLen {
+	for _, dbName := range dbNames {
+		if thisNameLen := len(dbName); thisNameLen > maxDbNameLen {
 			maxDbNameLen = thisNameLen
 		}
 	}
 	return maxDbNameLen
 }
 
-func summarizeDbChecks(checks []state.DbCollectionState, isVerbose bool) (string, string) {
+func summarizeDbChecks(status *state.SelfCheckStatus, aspect state.DbCollectionAspect, isVerbose bool) (string, string) {
+	dbNames := status.MonitoredDbs
+	checks := status.AspectDbStatuses[aspect]
+	var firstDb string
+	if len(dbNames) > 0 {
+		firstDb = dbNames[0]
+	}
 	var firstUncheckedDb string
 	var anyChecked = false
-	for _, item := range checks {
-		if item.State != state.CollectionStateUnchecked {
+	for _, dbName := range dbNames {
+		if item, ok := checks[dbName]; ok && item.State != state.CollectionStateUnchecked {
 			anyChecked = true
 		} else if firstUncheckedDb == "" {
-			firstUncheckedDb = item.DbName
+			firstUncheckedDb = dbName
 		}
 	}
 	var firstErrorDb string
 	var firstErrorDbMsg string
 	var errorCount = 0
-	for _, item := range checks {
-		if item.State == state.CollectionStateError {
+	for _, dbName := range dbNames {
+		if item, ok := checks[dbName]; ok && item.State == state.CollectionStateError {
 			errorCount++
 			if firstErrorDb == "" {
-				firstErrorDb = item.DbName
+				firstErrorDb = dbName
 				firstErrorDbMsg = item.Msg
 			}
 		}
 	}
-	var allSchemaStatusOkay bool = len(checks) > 0
-	for _, item := range checks {
-		if item.State != state.CollectionStateOkay {
-			allSchemaStatusOkay = false
+	var allStateOkay bool = len(dbNames) > 0
+	for _, dbName := range dbNames {
+		if item, ok := checks[dbName]; !ok || item.State != state.CollectionStateOkay {
+			allStateOkay = false
 			break
 		}
 	}
 	var icon string
-	if allSchemaStatusOkay {
+	if allStateOkay {
 		icon = GreenCheck
 	} else {
 		icon = RedX
@@ -803,18 +809,33 @@ func summarizeDbChecks(checks []state.DbCollectionState, isVerbose bool) (string
 	} else if errorCount > 0 {
 		summaryMsg = fmt.Sprintf("found integration problem in database %s: %s", firstErrorDb, firstErrorDbMsg)
 	} else if len(checks) > 1 {
-		summaryMsg = fmt.Sprintf("ok in %s and %d other monitored database(s)%s", checks[0].DbName, len(checks)-1, verboseHint)
+		summaryMsg = fmt.Sprintf("ok in %s and %d other monitored database(s)%s", firstDb, len(checks)-1, verboseHint)
 	} else {
-		summaryMsg = fmt.Sprintf("ok in %s (no other databases are configured to be monitored)", checks[0].DbName)
+		summaryMsg = fmt.Sprintf("ok in %s (no other databases are configured to be monitored)", firstDb)
 	}
 
 	return icon, summaryMsg
 }
 
-func printDbStatus(dbStatus state.DbCollectionState, maxDbNameLen int) {
-	dbStatusIcon := getStatusIcon(dbStatus.State)
-	dbNameFmtString := fmt.Sprintf("%%%ds", maxDbNameLen-len(dbStatus.DbName))
-	fmt.Fprintf(os.Stderr, "\t\t%s %s:"+dbNameFmtString+"\t\t%s\n", dbStatusIcon, dbStatus.DbName, "", dbStatus.Msg)
+func printDbStatus(dbName string, dbStatus *state.CollectionAspectStatus, maxDbNameLen int) {
+	var dbStatusIcon, dbMsg string
+	if dbStatus == nil {
+		dbStatusIcon = getStatusIcon(state.CollectionStateUnchecked)
+	} else {
+		dbStatusIcon = getStatusIcon(dbStatus.State)
+		dbMsg = dbStatus.Msg
+	}
+
+	dbNameFmtString := fmt.Sprintf("%%%ds", maxDbNameLen-len(dbName))
+	fmt.Fprintf(os.Stderr, "\t\t%s %s:"+dbNameFmtString+"\t\t%s\n", dbStatusIcon, dbName, "", dbMsg)
+}
+
+func getAspectStatus(status *state.SelfCheckStatus, aspect state.CollectionAspect) (icon string, msg string) {
+	aspectStatus := status.GetCollectionAspectStatus(aspect)
+	if aspectStatus == nil {
+		return getStatusIcon(state.CollectionStateUnchecked), ""
+	}
+	return getStatusIcon(aspectStatus.State), aspectStatus.Msg
 }
 
 func printServerTestSummary(s *state.Server, verbose bool) {
@@ -825,92 +846,70 @@ func printServerTestSummary(s *state.Server, verbose bool) {
 	fmt.Fprintln(os.Stderr)
 
 	if status.CollectionSuspended.Value {
-		fmt.Fprintf(os.Stderr,
-			"\t%s Collection suspended:\t%s\n",
-			YellowBang,
-			status.CollectionSuspended.Msg,
-		)
+		fmt.Fprintf(os.Stderr, "\t%s Collection suspended:\t%s\n", YellowBang, status.CollectionSuspended.Msg)
 		return
 	}
 
-	fmt.Fprintf(os.Stderr,
-		"\t%s Collector telemetry:\t%s\n",
-		getStatusIcon(status.CollectorTelemetry.State),
-		status.CollectorTelemetry.Msg,
-	)
+	telemetryIcon, telemetryMsg := getAspectStatus(status, state.CollectionAspectTelemetry)
+	fmt.Fprintf(os.Stderr, "\t%s Collector telemetry:\t%s\n", telemetryIcon, telemetryMsg)
 
-	fmt.Fprintf(os.Stderr,
-		"\t%s Database connection:\t%s\n",
-		getStatusIcon(status.MonitoringDbConnection.State),
-		status.MonitoringDbConnection.Msg,
-	)
+	monitoringConnIcon, monitoringConnMsg := getAspectStatus(status, state.CollectionAspectMonitoringDbConnection)
+	fmt.Fprintf(os.Stderr, "\t%s Database connection:\t%s\n", monitoringConnIcon, monitoringConnMsg)
 
-	fmt.Fprintf(os.Stderr,
-		"\t%s pg_stat_statements:\t%s\n",
-		getStatusIcon(status.PgStatStatements.State),
-		status.PgStatStatements.Msg,
-	)
+	pgssIcon, pgssMsg := getAspectStatus(status, state.CollectionAspectPgStatStatements)
+	fmt.Fprintf(os.Stderr, "\t%s pg_stat_statements:\t%s\n", pgssIcon, pgssMsg)
 
-	maxDbNameLen := getMaxDbNameLen(status.SchemaInformation)
-	schemaInfoIcon, schemaInfoSummaryMsg := summarizeDbChecks(status.SchemaInformation, verbose)
+	maxDbNameLen := getMaxDbNameLen(status.MonitoredDbs)
+	schemaInfoIcon, schemaInfoSummaryMsg := summarizeDbChecks(status, state.CollectionAspectSchemaInformation, verbose)
 	fmt.Fprintf(os.Stderr, "\t%s Schema information:\t%s\n", schemaInfoIcon, schemaInfoSummaryMsg)
 	if verbose {
-		for _, dbStatus := range status.SchemaInformation {
-			printDbStatus(dbStatus, maxDbNameLen)
+		for _, dbName := range status.MonitoredDbs {
+			dbStatus := status.GetCollectionAspectDbStatus(dbName, state.CollectionAspectSchemaInformation)
+
+			printDbStatus(dbName, dbStatus, maxDbNameLen)
 		}
 	}
-	colStatsIcon, colStatsSummaryMsg := summarizeDbChecks(status.ColumnStats, verbose)
+	colStatsIcon, colStatsSummaryMsg := summarizeDbChecks(status, state.CollectionAspectColumnStats, verbose)
 	fmt.Fprintf(os.Stderr, "\t%s Column stats:\t\t%s\n", colStatsIcon, colStatsSummaryMsg)
 	if verbose {
-		for _, dbStatus := range status.ColumnStats {
-			printDbStatus(dbStatus, maxDbNameLen)
+		for _, dbName := range status.MonitoredDbs {
+			dbStatus := status.GetCollectionAspectDbStatus(dbName, state.CollectionAspectColumnStats)
+
+			printDbStatus(dbName, dbStatus, maxDbNameLen)
 		}
 	}
-	extStatsIcon, extStatsSummaryMsg := summarizeDbChecks(status.ExtendedStats, verbose)
+	extStatsIcon, extStatsSummaryMsg := summarizeDbChecks(status, state.CollectionAspectExtendedStats, verbose)
 	fmt.Fprintf(os.Stderr, "\t%s Extended stats:\t%s\n", extStatsIcon, extStatsSummaryMsg)
 	if verbose {
-		for _, dbStatus := range status.ExtendedStats {
-			printDbStatus(dbStatus, maxDbNameLen)
+		for _, dbName := range status.MonitoredDbs {
+			dbStatus := status.GetCollectionAspectDbStatus(dbName, state.CollectionAspectExtendedStats)
+
+			printDbStatus(dbName, dbStatus, maxDbNameLen)
 		}
 	}
-
 	fmt.Fprintln(os.Stderr)
 
 	qpIcon, qpMsg := getQueryPerformanceStatus(status)
-	fmt.Fprintf(os.Stderr,
-		"\t%s Query Performance:\t%s\n",
-		qpIcon, qpMsg,
-	)
-	fmt.Fprintf(os.Stderr,
-		"\t%s Index Advisor:\t%s\n",
-		getStatusIcon(status.PgStatStatements.State),
-		status.PgStatStatements.Msg,
-	)
-	fmt.Fprintf(os.Stderr,
-		"\t%s VACUUM Advisor:\t%s\n",
-		getStatusIcon(status.PgStatStatements.State),
-		status.PgStatStatements.Msg,
-	)
-	fmt.Fprintf(os.Stderr,
-		"\t%s EXPLAIN Plans:\t%s\n",
-		getStatusIcon(status.PgStatStatements.State),
-		status.PgStatStatements.Msg,
-	)
+	fmt.Fprintf(os.Stderr, "\t%s Query Performance:\t%s\n", qpIcon, qpMsg)
+
+	// TODO: fix these; they mostly use pgss status right now
+	iaIcon, iaMsg := getAspectStatus(status, state.CollectionAspectPgStatStatements)
+	fmt.Fprintf(os.Stderr, "\t%s Index Advisor:\t%s\n", iaIcon, iaMsg)
+
+	vaIcon, vaMsg := getAspectStatus(status, state.CollectionAspectPgStatStatements)
+	fmt.Fprintf(os.Stderr, "\t%s VACUUM Advisor:\t%s\n", vaIcon, vaMsg)
+
+	explainIcon, explainMsg := getAspectStatus(status, state.CollectionAspectPgStatStatements)
+	fmt.Fprintf(os.Stderr, "\t%s EXPLAIN Plans:\t%s\n", explainIcon, explainMsg)
+
 	ssIcon, ssMsg := getSchemaStatisticsStatus(status)
-	fmt.Fprintf(os.Stderr,
-		"\t%s Schema Statistics:\t%s\n",
-		ssIcon, ssMsg,
-	)
-	fmt.Fprintf(os.Stderr,
-		"\t%s Log Insights:\t\t%s\n",
-		getStatusIcon(status.Logs.State),
-		status.Logs.Msg,
-	)
-	fmt.Fprintf(os.Stderr,
-		"\t%s System:\t\t%s\n",
-		getStatusIcon(status.SystemStats.State),
-		status.SystemStats.Msg,
-	)
+	fmt.Fprintf(os.Stderr, "\t%s Schema Statistics:\t%s\n", ssIcon, ssMsg)
+
+	logsIcon, logMsg := getAspectStatus(status, state.CollectionAspectLogs)
+	fmt.Fprintf(os.Stderr, "\t%s Log Insights:\t\t%s\n", logsIcon, logMsg)
+
+	sysIcon, sysMsg := getAspectStatus(status, state.CollectionAspectSystemStats)
+	fmt.Fprintf(os.Stderr, "\t%s System:\t\t%s\n", sysIcon, sysMsg)
 
 	// TODO:
 	//  - can collect log information? (whether disabled, and if not, status and how to disable, at least for Production plans)
@@ -938,24 +937,25 @@ func printServerTestSummary(s *state.Server, verbose bool) {
 
 }
 
-func getQueryPerformanceStatus(status state.SelfCheckStatus) (string, string) {
-	if status.MonitoringDbConnection.State != state.CollectionStateOkay {
+func getQueryPerformanceStatus(status *state.SelfCheckStatus) (string, string) {
+	if s := status.GetCollectionAspectStatus(state.CollectionAspectMonitoringDbConnection); s == nil || s.State != state.CollectionStateOkay {
 		return RedX, "database connection required"
 	}
-	if status.PgStatStatements.State != state.CollectionStateOkay {
+	if s := status.GetCollectionAspectStatus(state.CollectionAspectPgStatStatements); s == nil || s.State != state.CollectionStateOkay {
 		return RedX, "pg_stat_statements required"
 	}
 	return GreenCheck, "ok; available in 20-30m"
 }
 
-func getSchemaStatisticsStatus(status state.SelfCheckStatus) (string, string) {
-	if status.MonitoringDbConnection.State != state.CollectionStateOkay {
+func getSchemaStatisticsStatus(status *state.SelfCheckStatus) (string, string) {
+	if s := status.GetCollectionAspectStatus(state.CollectionAspectMonitoringDbConnection); s == nil || s.State != state.CollectionStateOkay {
 		return RedX, "database connection required"
 	}
 	allDbsOkay := true
 	someDbsOkay := false
-	for _, db := range status.SchemaInformation {
-		if db.State != state.CollectionStateOkay {
+	for _, dbName := range status.MonitoredDbs {
+		dbStatus := status.GetCollectionAspectDbStatus(dbName, state.CollectionAspectSchemaInformation)
+		if dbStatus == nil || dbStatus.State != state.CollectionStateOkay {
 			allDbsOkay = false
 			break
 		} else if !someDbsOkay {

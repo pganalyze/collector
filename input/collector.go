@@ -45,11 +45,11 @@ func getCollectorPlatform(server *state.Server, globalCollectionOpts state.Colle
 	hostInfo, err := host.Info()
 	if err != nil {
 		if globalCollectionOpts.TestRun {
-			server.SelfCheckMarkCollectorTelemetryError("could not get collector host information: %s", err)
+			server.SelfCheck.MarkCollectionAspectError(state.CollectionAspectTelemetry, "could not get collector host information: %s", err)
 		}
 		return state.CollectorPlatform{}
 	}
-	server.SelfCheckMarkCollectorTelemetryOk()
+	server.SelfCheck.MarkCollectionAspectOk(state.CollectionAspectTelemetry)
 
 	var virtSystem string
 	if hostInfo.VirtualizationRole == "guest" {

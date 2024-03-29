@@ -1,6 +1,16 @@
 package state
 
-import "fmt"
+import (
+	"fmt"
+	"sync"
+)
+
+// What do users care about?
+//  - does feature X work? If not, what can I do to fix it?
+// How can we tell them that?
+//  - identify whether all the subsystems necessary for a feature to work are working correctly
+//  - check whether errors match common errors with known causes and easy-to-communicate fixes
+//  - summarize the information about subsystems in terms of the features that depend on them
 
 type CollectionStateCode int
 
@@ -12,9 +22,10 @@ const (
 	CollectionStateOkay
 )
 
-type CollectionState struct {
+type CollectionAspectStatus struct {
 	State CollectionStateCode
 	Msg   string
+	Hint  string
 }
 
 // summary should show, for each server (preceded by green ✓ or red ✗):
@@ -29,363 +40,236 @@ type CollectionState struct {
 //  - can collect explain plans?
 //  - can use index advisor?
 
-type DbCollectionState struct {
-	State  CollectionStateCode
-	Msg    string
-	DbName string
-}
+type CollectionAspect int
+
+const (
+	CollectionAspectTelemetry CollectionAspect = iota
+	CollectionAspectSystemStats
+	CollectionAspectMonitoringDbConnection
+	CollectionAspectPgStatStatements
+	CollectionAspectLogs
+	CollectionAspectExplain
+)
+
+type DbCollectionAspect int
+
+const (
+	CollectionAspectSchemaInformation DbCollectionAspect = iota
+	CollectionAspectColumnStats
+	CollectionAspectExtendedStats
+)
 
 type SelfCheckStatus struct {
-	enabled             bool
+	mutex               *sync.Mutex
 	CollectionSuspended struct {
 		Value bool
 		Msg   string
 	}
-	CollectorTelemetry     CollectionState
-	SystemStats            CollectionState
-	MonitoringDbConnection CollectionState
-	PgStatStatements       CollectionState
-	SchemaInformation      []DbCollectionState
-	ColumnStats            []DbCollectionState
-	ExtendedStats          []DbCollectionState
-	Logs                   CollectionState
-	AutomatedExplain       CollectionState
+	MonitoredDbs     []string
+	AspectStatuses   map[CollectionAspect]*CollectionAspectStatus
+	AspectDbStatuses map[DbCollectionAspect](map[string]*CollectionAspectStatus)
 }
 
-func (s *Server) SelfCheckInit() {
-	s.SelfCheck.enabled = true
-}
-
-func (s *Server) SelfCheckMarkMonitoredDb(dbName string) {
-	if !s.SelfCheck.enabled {
-		return
+func MakeSelfCheck() (s *SelfCheckStatus) {
+	return &SelfCheckStatus{
+		mutex:            &sync.Mutex{},
+		AspectStatuses:   make(map[CollectionAspect]*CollectionAspectStatus),
+		AspectDbStatuses: make(map[DbCollectionAspect](map[string]*CollectionAspectStatus)),
 	}
-	s.selfCheckMutex.Lock()
-	defer s.selfCheckMutex.Unlock()
-	s.SelfCheck.SchemaInformation = append(s.SelfCheck.SchemaInformation, DbCollectionState{
-		DbName: dbName,
-	})
-	s.SelfCheck.ColumnStats = append(s.SelfCheck.ColumnStats, DbCollectionState{
-		DbName: dbName,
-	})
-	s.SelfCheck.ExtendedStats = append(s.SelfCheck.ExtendedStats, DbCollectionState{
-		DbName: dbName,
-	})
 }
 
 // collection suspended (e.g., if replica)
-func (s *Server) SelfCheckMarkCollectionSuspended(format string, args ...any) {
+func (s *SelfCheckStatus) MarkCollectionSuspended(format string, args ...any) {
+	if s == nil {
+		return
+	}
 	msg := fmt.Sprintf(format+"\n", args...)
-	if !s.SelfCheck.enabled {
-		return
-	}
-	s.selfCheckMutex.Lock()
-	defer s.selfCheckMutex.Unlock()
-	s.SelfCheck.CollectionSuspended.Value = true
-	s.SelfCheck.CollectionSuspended.Msg = msg
+
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	s.CollectionSuspended.Value = true
+	s.CollectionSuspended.Msg = msg
 }
 
-// collector stats
-func (s *Server) SelfCheckMarkCollectorTelemetryOk() {
-	if !s.SelfCheck.enabled {
-		return
-	}
-	s.selfCheckMutex.Lock()
-	defer s.selfCheckMutex.Unlock()
-	if s.SelfCheck.CollectorTelemetry.State != CollectionStateUnchecked {
-		return
-	}
-	s.SelfCheck.CollectorTelemetry.State = CollectionStateOkay
-	s.SelfCheck.CollectorTelemetry.Msg = "ok"
+func skipUpdate(recordedState, incomingState CollectionStateCode) bool {
+	// Always stick with the first error, unless we're overriding an okay state
+	// with another state (we may have marked things okay prematurely), or we're
+	// escalating a warning to an error
+	doUpdate := (recordedState == CollectionStateUnchecked) ||
+		(recordedState == CollectionStateOkay && incomingState != CollectionStateOkay) ||
+		(recordedState == CollectionStateWarning && incomingState == CollectionStateError)
+	return !doUpdate
 }
 
-func (s *Server) SelfCheckMarkCollectorTelemetryError(format string, args ...any) {
+func skipHintUpdate(recordedHint, _incomingHint string) bool {
+	// If a hint is already set, don't override it; this matches the behavior
+	// above (okay states can be overriden, but they should not have hints
+	// because there's nothing to hint about)
+	return recordedHint != ""
+}
+
+func (s *SelfCheckStatus) MarkCollectionAspectOk(aspect CollectionAspect) {
+	s.MarkCollectionAspect(aspect, CollectionStateOkay, "ok")
+}
+
+func (s *SelfCheckStatus) MarkCollectionAspectNotAvailable(aspect CollectionAspect, format string, args ...any) {
+	s.MarkCollectionAspect(aspect, CollectionStateNotAvailable, format, args...)
+}
+
+func (s *SelfCheckStatus) MarkCollectionAspectWarning(aspect CollectionAspect, format string, args ...any) {
+	s.MarkCollectionAspect(aspect, CollectionStateWarning, format, args...)
+}
+
+func (s *SelfCheckStatus) MarkCollectionAspectError(aspect CollectionAspect, format string, args ...any) {
+	s.MarkCollectionAspect(aspect, CollectionStateError, format, args...)
+}
+
+func (s *SelfCheckStatus) MarkCollectionAspect(aspect CollectionAspect, state CollectionStateCode, format string, args ...any) {
+	if s == nil {
+		return
+	}
 	msg := fmt.Sprintf(format+"\n", args...)
-	if !s.SelfCheck.enabled {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	aspectState, ok := s.AspectStatuses[aspect]
+	if !ok {
+		aspectState = &CollectionAspectStatus{}
+		s.AspectStatuses[aspect] = aspectState
+	}
+	if skipUpdate(aspectState.State, state) {
 		return
 	}
-	s.selfCheckMutex.Lock()
-	defer s.selfCheckMutex.Unlock()
-	if s.SelfCheck.CollectorTelemetry.State != CollectionStateUnchecked {
-		return
-	}
-	s.SelfCheck.CollectorTelemetry.State = CollectionStateError
-	s.SelfCheck.CollectorTelemetry.Msg = msg
+	aspectState.State = state
+	aspectState.Msg = msg
 }
 
-// system stats
-func (s *Server) SelfCheckMarkSystemStatsOk() {
-	if !s.SelfCheck.enabled {
+func (s *SelfCheckStatus) HintCollectionAspect(aspect CollectionAspect, format string, args ...any) {
+	if s == nil {
 		return
 	}
-	s.selfCheckMutex.Lock()
-	defer s.selfCheckMutex.Unlock()
-	if s.SelfCheck.SystemStats.State != CollectionStateUnchecked {
+	hint := fmt.Sprintf(format+"\n", args...)
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	aspectState, ok := s.AspectStatuses[aspect]
+	if !ok {
+		aspectState = &CollectionAspectStatus{}
+		s.AspectStatuses[aspect] = aspectState
+	}
+	if skipHintUpdate(aspectState.Hint, hint) {
 		return
 	}
-	s.SelfCheck.SystemStats.State = CollectionStateOkay
-	s.SelfCheck.SystemStats.Msg = "ok"
+	aspectState.Hint = hint
 }
 
-func (s *Server) SelfCheckMarkSystemStatsNotAvailable(format string, args ...any) {
+func (s *SelfCheckStatus) GetCollectionAspectStatus(aspect CollectionAspect) *CollectionAspectStatus {
+	return s.AspectStatuses[aspect]
+}
+
+func (s *SelfCheckStatus) MarkMonitoredDb(dbName string) {
+	if s == nil {
+		return
+	}
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	s.MonitoredDbs = append(s.MonitoredDbs, dbName)
+}
+
+func (s *SelfCheckStatus) MarkDbCollectionAspectOk(dbName string, aspect DbCollectionAspect) {
+	s.MarkDbCollectionAspect(dbName, aspect, CollectionStateOkay, "ok")
+}
+
+func (s *SelfCheckStatus) MarkDbCollectionAspectNotAvailable(dbName string, aspect DbCollectionAspect, format string, args ...any) {
+	s.MarkDbCollectionAspect(dbName, aspect, CollectionStateNotAvailable, format, args...)
+}
+
+func (s *SelfCheckStatus) MarkDbCollectionAspectWarning(dbName string, aspect DbCollectionAspect, format string, args ...any) {
+	s.MarkDbCollectionAspect(dbName, aspect, CollectionStateWarning, format, args...)
+}
+
+func (s *SelfCheckStatus) MarkDbCollectionAspectError(dbName string, aspect DbCollectionAspect, format string, args ...any) {
+	s.MarkDbCollectionAspect(dbName, aspect, CollectionStateError, format, args...)
+}
+
+func (s *SelfCheckStatus) MarkDbCollectionAspect(dbName string, aspect DbCollectionAspect, state CollectionStateCode, format string, args ...any) {
+	if s == nil {
+		return
+	}
 	msg := fmt.Sprintf(format+"\n", args...)
-	if !s.SelfCheck.enabled {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	aspectDbStates, ok := s.AspectDbStatuses[aspect]
+	if !ok {
+		aspectDbStates = make(map[string]*CollectionAspectStatus)
+		s.AspectDbStatuses[aspect] = aspectDbStates
+	}
+
+	aspectDbState, ok := aspectDbStates[dbName]
+	if !ok {
+		aspectDbState = &CollectionAspectStatus{}
+		aspectDbStates[dbName] = aspectDbState
+	}
+
+	if skipUpdate(aspectDbState.State, state) {
 		return
 	}
-	s.selfCheckMutex.Lock()
-	defer s.selfCheckMutex.Unlock()
-	s.SelfCheck.SystemStats.State = CollectionStateNotAvailable
-	s.SelfCheck.SystemStats.Msg = msg
+
+	aspectDbState.State = state
+	aspectDbState.Msg = msg
 }
 
-func (s *Server) SelfCheckMarkSystemStatsError(format string, args ...any) {
+func (s *SelfCheckStatus) MarkRemainingDbCollectionAspectError(aspect DbCollectionAspect, format string, args ...any) {
+	if s == nil {
+		return
+	}
 	msg := fmt.Sprintf(format+"\n", args...)
-	if !s.SelfCheck.enabled {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	aspectDbStates, ok := s.AspectDbStatuses[aspect]
+	if !ok {
+		// nothing to do
 		return
 	}
-	s.selfCheckMutex.Lock()
-	defer s.selfCheckMutex.Unlock()
-	s.SelfCheck.SystemStats.State = CollectionStateError
-	// note: here we can hit errors and proceed in some cases; collect all errors
-	if s.SelfCheck.SystemStats.Msg != "" {
-		s.SelfCheck.SystemStats.Msg += "; "
-	}
-	s.SelfCheck.SystemStats.Msg += msg
-}
 
-// monitoring DB connection
-func (s *Server) SelfCheckMarkMonitoringDbConnectionOk() {
-	if !s.SelfCheck.enabled {
-		return
-	}
-	s.selfCheckMutex.Lock()
-	defer s.selfCheckMutex.Unlock()
-	s.SelfCheck.MonitoringDbConnection.State = CollectionStateOkay
-	s.SelfCheck.MonitoringDbConnection.Msg = "ok"
-}
-
-func (s *Server) SelfCheckMarkMonitoringDbConnectionError(format string, args ...any) {
-	msg := fmt.Sprintf(format+"\n", args...)
-	if !s.SelfCheck.enabled {
-		return
-	}
-	s.selfCheckMutex.Lock()
-	defer s.selfCheckMutex.Unlock()
-	s.SelfCheck.MonitoringDbConnection.State = CollectionStateNotAvailable
-	s.SelfCheck.MonitoringDbConnection.Msg = msg
-}
-
-// pg_stat_statements
-func (s *Server) SelfCheckMarkPgStatStatementsOk() {
-	if !s.SelfCheck.enabled {
-		return
-	}
-	s.selfCheckMutex.Lock()
-	defer s.selfCheckMutex.Unlock()
-	if s.SelfCheck.PgStatStatements.State != CollectionStateUnchecked {
-		return
-	}
-	s.SelfCheck.PgStatStatements.State = CollectionStateOkay
-	s.SelfCheck.PgStatStatements.Msg = "ok"
-}
-
-func (s *Server) SelfCheckMarkPgStatStatementsWarning(format string, args ...any) {
-	msg := fmt.Sprintf(format+"\n", args...)
-	if !s.SelfCheck.enabled {
-		return
-	}
-	s.selfCheckMutex.Lock()
-	defer s.selfCheckMutex.Unlock()
-	s.SelfCheck.PgStatStatements.State = CollectionStateWarning
-	s.SelfCheck.PgStatStatements.Msg = msg
-}
-
-func (s *Server) SelfCheckMarkPgStatStatementsError(format string, args ...any) {
-	msg := fmt.Sprintf(format+"\n", args...)
-	if !s.SelfCheck.enabled {
-		return
-	}
-	s.selfCheckMutex.Lock()
-	defer s.selfCheckMutex.Unlock()
-	s.SelfCheck.PgStatStatements.State = CollectionStateError
-	s.SelfCheck.PgStatStatements.Msg = msg
-}
-
-// schema information
-func (s *Server) SelfCheckMarkSchemaOk(dbName string) {
-	if !s.SelfCheck.enabled {
-		return
-	}
-	s.selfCheckMutex.Lock()
-	defer s.selfCheckMutex.Unlock()
-	for i, info := range s.SelfCheck.SchemaInformation {
-		if info.DbName == dbName {
-			s.SelfCheck.SchemaInformation[i].State = CollectionStateOkay
-			s.SelfCheck.SchemaInformation[i].Msg = "ok"
-			return
+	for _, aspectDbState := range aspectDbStates {
+		if skipUpdate(aspectDbState.State, CollectionStateError) {
+			continue
 		}
+		aspectDbState.State = CollectionStateError
+		aspectDbState.Msg = msg
 	}
 }
 
-func (s *Server) SelfCheckMarkSchemaError(dbName, msg string) {
-	if !s.SelfCheck.enabled {
+func (s *SelfCheckStatus) HintDbCollectionAspect(dbName string, aspect DbCollectionAspect, state CollectionStateCode, format string, args ...any) {
+	if s == nil {
 		return
 	}
-	s.selfCheckMutex.Lock()
-	defer s.selfCheckMutex.Unlock()
-	for i, info := range s.SelfCheck.SchemaInformation {
-		if info.DbName == dbName {
-			s.SelfCheck.SchemaInformation[i].State = CollectionStateError
-			s.SelfCheck.SchemaInformation[i].Msg = msg
-			return
-		}
+	hint := fmt.Sprintf(format+"\n", args...)
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	aspectDbStates, ok := s.AspectDbStatuses[aspect]
+	if !ok {
+		aspectDbStates = make(map[string]*CollectionAspectStatus)
+		s.AspectDbStatuses[aspect] = aspectDbStates
 	}
+
+	aspectDbState, ok := aspectDbStates[dbName]
+	if !ok {
+		aspectDbState = &CollectionAspectStatus{}
+		aspectDbStates[dbName] = aspectDbState
+	}
+
+	if skipHintUpdate(aspectDbState.Hint, hint) {
+		return
+	}
+
+	aspectDbState.Hint = hint
 }
 
-func (s *Server) SelfCheckMarkAllRemainingSchemaError(format string, args ...any) {
-	msg := fmt.Sprintf(format+"\n", args...)
-	if !s.SelfCheck.enabled {
-		return
-	}
-	s.selfCheckMutex.Lock()
-	defer s.selfCheckMutex.Unlock()
-	for i, info := range s.SelfCheck.SchemaInformation {
-		if info.State == CollectionStateUnchecked {
-			s.SelfCheck.SchemaInformation[i].State = CollectionStateError
-			s.SelfCheck.SchemaInformation[i].Msg = msg
-			return
-		}
-	}
-}
-
-// column stats
-func (s *Server) SelfCheckMarkColumnStatsOk(dbName string) {
-	if !s.SelfCheck.enabled {
-		return
-	}
-	s.selfCheckMutex.Lock()
-	defer s.selfCheckMutex.Unlock()
-	for i, info := range s.SelfCheck.ColumnStats {
-		if info.DbName == dbName {
-			s.SelfCheck.ColumnStats[i].State = CollectionStateOkay
-			s.SelfCheck.ColumnStats[i].Msg = "ok"
-			return
-		}
-	}
-}
-
-func (s *Server) SelfCheckMarkColumnStatsError(dbName, msg string) {
-	if !s.SelfCheck.enabled {
-		return
-	}
-	s.selfCheckMutex.Lock()
-	defer s.selfCheckMutex.Unlock()
-	for i, info := range s.SelfCheck.ColumnStats {
-		if info.DbName == dbName {
-			s.SelfCheck.ColumnStats[i].State = CollectionStateError
-			s.SelfCheck.ColumnStats[i].Msg = msg
-			return
-		}
-	}
-}
-
-// extended stats
-func (s *Server) SelfCheckMarkExtendedStatsOk(dbName string) {
-	if !s.SelfCheck.enabled {
-		return
-	}
-	s.selfCheckMutex.Lock()
-	defer s.selfCheckMutex.Unlock()
-	for i, info := range s.SelfCheck.ExtendedStats {
-		if info.DbName == dbName {
-			s.SelfCheck.ExtendedStats[i].State = CollectionStateOkay
-			s.SelfCheck.ExtendedStats[i].Msg = "ok"
-			return
-		}
-	}
-}
-
-func (s *Server) SelfCheckMarkExtendedStatsError(dbName, msg string) {
-	if !s.SelfCheck.enabled {
-		return
-	}
-	s.selfCheckMutex.Lock()
-	defer s.selfCheckMutex.Unlock()
-	for i, info := range s.SelfCheck.ExtendedStats {
-		if info.DbName == dbName {
-			s.SelfCheck.ExtendedStats[i].State = CollectionStateError
-			s.SelfCheck.ExtendedStats[i].Msg = msg
-			return
-		}
-	}
-}
-
-// Log Insights
-func (s *Server) SelfCheckMarkLogsOk() {
-	if !s.SelfCheck.enabled {
-		return
-	}
-	s.selfCheckMutex.Lock()
-	defer s.selfCheckMutex.Unlock()
-	if s.SelfCheck.Logs.State != CollectionStateUnchecked {
-		return
+func (s *SelfCheckStatus) GetCollectionAspectDbStatus(dbName string, aspect DbCollectionAspect) *CollectionAspectStatus {
+	aspectDbStates, ok := s.AspectDbStatuses[aspect]
+	if !ok {
+		return &CollectionAspectStatus{}
 	}
 
-	s.SelfCheck.Logs.State = CollectionStateOkay
-	s.SelfCheck.Logs.Msg = "ok; available in 5-10m"
-}
-
-func (s *Server) SelfCheckMarkLogsNotAvailable(format string, args ...any) {
-	msg := fmt.Sprintf(format+"\n", args...)
-	if !s.SelfCheck.enabled {
-		return
-	}
-	s.selfCheckMutex.Lock()
-	defer s.selfCheckMutex.Unlock()
-	s.SelfCheck.Logs.State = CollectionStateNotAvailable
-	s.SelfCheck.Logs.Msg = msg
-}
-
-func (s *Server) SelfCheckMarkLogsError(format string, args ...any) {
-	msg := fmt.Sprintf(format+"\n", args...)
-	if !s.SelfCheck.enabled {
-		return
-	}
-	s.selfCheckMutex.Lock()
-	defer s.selfCheckMutex.Unlock()
-	s.SelfCheck.Logs.State = CollectionStateError
-	s.SelfCheck.Logs.Msg = msg
-}
-
-// Automated EXPLAIN
-func (s *Server) SelfCheckMarkAutomatedExplainOk() {
-	if !s.SelfCheck.enabled {
-		return
-	}
-	s.selfCheckMutex.Lock()
-	defer s.selfCheckMutex.Unlock()
-	s.SelfCheck.AutomatedExplain.State = CollectionStateOkay
-	s.SelfCheck.AutomatedExplain.Msg = "ok"
-}
-
-func (s *Server) SelfCheckMarkAutomatedExplainNotAvailable(format string, args ...any) {
-	msg := fmt.Sprintf(format+"\n", args...)
-	if !s.SelfCheck.enabled {
-		return
-	}
-	s.selfCheckMutex.Lock()
-	defer s.selfCheckMutex.Unlock()
-	s.SelfCheck.AutomatedExplain.State = CollectionStateNotAvailable
-	s.SelfCheck.AutomatedExplain.Msg = msg
-}
-
-func (s *Server) SelfCheckMarkAutomatedExplainError(format string, args ...any) {
-	msg := fmt.Sprintf(format+"\n", args...)
-	if !s.SelfCheck.enabled {
-		return
-	}
-	s.selfCheckMutex.Lock()
-	defer s.selfCheckMutex.Unlock()
-	s.SelfCheck.AutomatedExplain.State = CollectionStateError
-	s.SelfCheck.AutomatedExplain.Msg = msg
+	return aspectDbStates[dbName]
 }
