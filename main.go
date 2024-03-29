@@ -893,7 +893,7 @@ func printServerTestSummary(s *state.Server, verbose bool) {
 	fmt.Fprintf(os.Stderr, "\t%s Query Performance:\t%s\n", qpIcon, qpMsg)
 
 	// TODO: fix these; they mostly use pgss status right now
-	iaIcon, iaMsg := getAspectStatus(status, state.CollectionAspectPgStatStatements)
+	iaIcon, iaMsg := getIndexAdvisorStatus(status)
 	fmt.Fprintf(os.Stderr, "\t%s Index Advisor:\t%s\n", iaIcon, iaMsg)
 
 	vaIcon, vaMsg := getAspectStatus(status, state.CollectionAspectPgStatStatements)
@@ -969,4 +969,51 @@ func getSchemaStatisticsStatus(status *state.SelfCheckStatus) (string, string) {
 		return YellowBang, "available for some databases"
 	}
 	return GreenCheck, "ok; available in 5-10m"
+}
+
+func getIndexAdvisorStatus(status *state.SelfCheckStatus) (string, string) {
+	if s := status.GetCollectionAspectStatus(state.CollectionAspectMonitoringDbConnection); s == nil || s.State != state.CollectionStateOkay {
+		return RedX, "database connection required"
+	}
+	if len(status.MonitoredDbs) == 0 {
+		return RedX, "could not check databases"
+	}
+	allDbsSchemaOk := true
+	someDbsSchemaOk := false
+	allDbsColStatsOk := true
+	allDbsExtStatsOk := true
+	for _, dbName := range status.MonitoredDbs {
+		dbStatus := status.GetCollectionAspectDbStatus(dbName, state.CollectionAspectSchemaInformation)
+		if dbStatus == nil || dbStatus.State != state.CollectionStateOkay {
+			allDbsSchemaOk = false
+			break
+		} else if !someDbsSchemaOk {
+			someDbsSchemaOk = true
+		}
+		dbColStatsStatus := status.GetCollectionAspectDbStatus(dbName, state.CollectionAspectColumnStats)
+		if dbColStatsStatus == nil || dbColStatsStatus.State != state.CollectionStateOkay {
+			allDbsColStatsOk = false
+			break
+		}
+		allDbsExtStatsStatus := status.GetCollectionAspectDbStatus(dbName, state.CollectionAspectExtendedStats)
+		if allDbsExtStatsStatus == nil || allDbsExtStatsStatus.State != state.CollectionStateOkay {
+			allDbsExtStatsOk = false
+			break
+		}
+
+	}
+	if !someDbsSchemaOk {
+		return RedX, "not available due to schema monitoring errors; see above"
+	}
+	if !allDbsSchemaOk {
+		return YellowBang, "schema monitoring errors in some databases; see above"
+	}
+	if !allDbsColStatsOk {
+		return YellowBang, "column stats helper missing in some databases; see above"
+	}
+	if !allDbsExtStatsOk {
+		return YellowBang, "extended stats helper missing in some databases; see above"
+	}
+
+	return GreenCheck, "ok; available in 24-48h"
 }
