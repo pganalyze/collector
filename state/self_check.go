@@ -5,12 +5,9 @@ import (
 	"sync"
 )
 
-// What do users care about?
-//  - does feature X work? If not, what can I do to fix it?
-// How can we tell them that?
-//  - identify whether all the subsystems necessary for a feature to work are working correctly
-//  - check whether errors match common errors with known causes and easy-to-communicate fixes
-//  - summarize the information about subsystems in terms of the features that depend on them
+// The self-check mechanism is intended to catch errors and potenttial problems
+// encountered during a test surface them to users in a test summary, and
+// communicate how these errors will impact the various features of pganalyze.
 
 type CollectionStateCode int
 
@@ -27,18 +24,6 @@ type CollectionAspectStatus struct {
 	Msg   string
 	Hint  string
 }
-
-// summary should show, for each server (preceded by green ✓ or red ✗):
-//  - detected system type / platform / id
-//  - can collect system information? (or that not available on given system, or remote host specified and how to override)
-//  - can connect to monitoring database?
-//  - can access pg_stat_statements? (if yes, but old version, show error here)
-//  - can collect schema information? (if not, which databases we could not monitor)
-//  - can collect column stats? (if not, which databases have errors: first three with " and x more" or all with --verbose)
-//  - can collect extended stats? (same as above: if not, which databases have errors)
-//  - can collect log information? (whether disabled, and if not, status and how to disable, at least for Production plans)
-//  - can collect explain plans?
-//  - can use index advisor?
 
 type CollectionAspect int
 
