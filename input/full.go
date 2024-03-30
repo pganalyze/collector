@@ -158,7 +158,7 @@ func CollectFull(ctx context.Context, server *state.Server, connection *sql.DB, 
 
 	ps.CollectorStats = getCollectorStats()
 	ts.CollectorConfig = getCollectorConfig(server.Config)
-	ts.CollectorPlatform = getCollectorPlatform(server, globalCollectionOpts)
+	ts.CollectorPlatform = getCollectorPlatform(server, globalCollectionOpts, logger)
 
 	return
 }

@@ -6,6 +6,7 @@ import (
 
 	"github.com/pganalyze/collector/config"
 	"github.com/pganalyze/collector/state"
+	"github.com/pganalyze/collector/util"
 	"github.com/shirou/gopsutil/host"
 	"github.com/shirou/gopsutil/process"
 )
@@ -41,11 +42,12 @@ func getCollectorStats() state.CollectorStats {
 	}
 }
 
-func getCollectorPlatform(server *state.Server, globalCollectionOpts state.CollectionOpts) state.CollectorPlatform {
+func getCollectorPlatform(server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) state.CollectorPlatform {
 	hostInfo, err := host.Info()
 	if err != nil {
+		server.SelfCheck.MarkCollectionAspectError(state.CollectionAspectTelemetry, "could not get collector host information: %s", err)
 		if globalCollectionOpts.TestRun {
-			server.SelfCheck.MarkCollectionAspectError(state.CollectionAspectTelemetry, "could not get collector host information: %s", err)
+			logger.PrintVerbose("Could not get collector host information: %s", err)
 		}
 		return state.CollectorPlatform{}
 	}
