@@ -46,6 +46,8 @@ const (
 	CollectionAspectTelemetry CollectionAspect = iota
 	CollectionAspectSystemStats
 	CollectionAspectMonitoringDbConnection
+	CollectionAspectPgVersion
+	CollectionAspectApiConnection
 	CollectionAspectPgStatStatements
 	CollectionAspectLogs
 	CollectionAspectExplain
@@ -128,7 +130,7 @@ func (s *SelfCheckStatus) MarkCollectionAspect(aspect CollectionAspect, state Co
 	if s == nil {
 		return
 	}
-	msg := fmt.Sprintf(format+"\n", args...)
+	msg := fmt.Sprintf(format, args...)
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	aspectState, ok := s.AspectStatuses[aspect]
@@ -194,7 +196,7 @@ func (s *SelfCheckStatus) MarkDbCollectionAspect(dbName string, aspect DbCollect
 	if s == nil {
 		return
 	}
-	msg := fmt.Sprintf(format+"\n", args...)
+	msg := fmt.Sprintf(format, args...)
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	aspectDbStates, ok := s.AspectDbStatuses[aspect]

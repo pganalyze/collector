@@ -826,6 +826,7 @@ func printDbStatus(dbName string, dbStatus *state.CollectionAspectStatus, maxDbN
 		dbMsg = dbStatus.Msg
 	}
 
+	// Ensure that database names of different lengths line up
 	dbNameFmtString := fmt.Sprintf("%%%ds", maxDbNameLen-len(dbName))
 	fmt.Fprintf(os.Stderr, "\t\t%s %s:"+dbNameFmtString+"\t\t%s\n", dbStatusIcon, dbName, "", dbMsg)
 }
@@ -842,19 +843,33 @@ func printServerTestSummary(s *state.Server, verbose bool) {
 	config := s.Config
 	status := s.SelfCheck
 	serverName := color.New(color.FgCyan).Sprintf(config.SectionName)
-	fmt.Fprintf(os.Stderr, "Server %s (system ID %s):\n", serverName, config.SystemID)
+	fmt.Fprintf(os.Stderr, "Server %s:\n", serverName)
 	fmt.Fprintln(os.Stderr)
+
+	fmt.Fprintf(os.Stderr, "\t%s System Type:\t\t%s\n", GreenCheck, config.SystemType)
+	fmt.Fprintf(os.Stderr, "\t%s System Scope:\t\t%s\n", GreenCheck, config.SystemScope)
+	fmt.Fprintf(os.Stderr, "\t%s System ID:\t\t%s\n", GreenCheck, config.SystemID)
 
 	if status.CollectionSuspended.Value {
 		fmt.Fprintf(os.Stderr, "\t%s Collection suspended:\t%s\n", YellowBang, status.CollectionSuspended.Msg)
 		return
 	}
-
+	apiIcon, apiMsg := getAspectStatus(status, state.CollectionAspectApiConnection)
+	fmt.Fprintf(os.Stderr, "\t%s pganalyze connection:\t%s\n", apiIcon, apiMsg)
 	telemetryIcon, telemetryMsg := getAspectStatus(status, state.CollectionAspectTelemetry)
 	fmt.Fprintf(os.Stderr, "\t%s Collector telemetry:\t%s\n", telemetryIcon, telemetryMsg)
 
+	if s.PGAnalyzeURL != "" {
+		fmt.Fprintf(os.Stderr, "\t  View in pganalyze:\t%s\n", s.PGAnalyzeURL)
+	}
+
+	fmt.Fprintln(os.Stderr)
+
 	monitoringConnIcon, monitoringConnMsg := getAspectStatus(status, state.CollectionAspectMonitoringDbConnection)
 	fmt.Fprintf(os.Stderr, "\t%s Database connection:\t%s\n", monitoringConnIcon, monitoringConnMsg)
+
+	pgVersionIcon, pgVersionMsg := getAspectStatus(status, state.CollectionAspectPgVersion)
+	fmt.Fprintf(os.Stderr, "\t%s Postgres version:\t%s\n", pgVersionIcon, pgVersionMsg)
 
 	pgssIcon, pgssMsg := getAspectStatus(status, state.CollectionAspectPgStatStatements)
 	fmt.Fprintf(os.Stderr, "\t%s pg_stat_statements:\t%s\n", pgssIcon, pgssMsg)
@@ -868,6 +883,7 @@ func printServerTestSummary(s *state.Server, verbose bool) {
 
 			printDbStatus(dbName, dbStatus, maxDbNameLen)
 		}
+		fmt.Fprintln(os.Stderr)
 	}
 	colStatsIcon, colStatsSummaryMsg := summarizeDbChecks(status, state.CollectionAspectColumnStats, verbose)
 	fmt.Fprintf(os.Stderr, "\t%s Column stats:\t\t%s\n", colStatsIcon, colStatsSummaryMsg)
@@ -877,6 +893,7 @@ func printServerTestSummary(s *state.Server, verbose bool) {
 
 			printDbStatus(dbName, dbStatus, maxDbNameLen)
 		}
+		fmt.Fprintln(os.Stderr)
 	}
 	extStatsIcon, extStatsSummaryMsg := summarizeDbChecks(status, state.CollectionAspectExtendedStats, verbose)
 	fmt.Fprintf(os.Stderr, "\t%s Extended stats:\t%s\n", extStatsIcon, extStatsSummaryMsg)
@@ -886,6 +903,7 @@ func printServerTestSummary(s *state.Server, verbose bool) {
 
 			printDbStatus(dbName, dbStatus, maxDbNameLen)
 		}
+		fmt.Fprintln(os.Stderr)
 	}
 	fmt.Fprintln(os.Stderr)
 
@@ -904,36 +922,11 @@ func printServerTestSummary(s *state.Server, verbose bool) {
 	ssIcon, ssMsg := getSchemaStatisticsStatus(status)
 	fmt.Fprintf(os.Stderr, "\t%s Schema Statistics:\t%s\n", ssIcon, ssMsg)
 
-	logsIcon, logMsg := getAspectStatus(status, state.CollectionAspectLogs)
+	logsIcon, logMsg := getLogInsightsStatus(status)
 	fmt.Fprintf(os.Stderr, "\t%s Log Insights:\t\t%s\n", logsIcon, logMsg)
 
 	sysIcon, sysMsg := getAspectStatus(status, state.CollectionAspectSystemStats)
 	fmt.Fprintf(os.Stderr, "\t%s System:\t\t%s\n", sysIcon, sysMsg)
-
-	// TODO:
-	//  - can collect log information? (whether disabled, and if not, status and how to disable, at least for Production plans)
-	//  - can collect explain plans?
-
-	// summary should show, for each server (preceded by green ✓ or red ✗):
-	//  - detected system type / platform / id
-	//  - can collect system information? (or that not available on given system, or remote host specified and how to override)
-	//  - can connect to monitoring database?
-	//  - can access pg_stat_statements? (if yes, but old version, show error here)
-	//  - can collect schema information? (if not, which databases we could not monitor)
-	//  - can collect column stats? (if not, which databases have errors: first three with " and x more" or all with --verbose)
-	//  - can collect extended stats? (same as above: if not, which databases have errors)
-	//  - can collect log information? (whether disabled, and if not, status and how to disable, at least for Production plans)
-	//  - can collect explain plans?
-
-	// logger.PrintError("Error collecting pg_stat_statements: %s", err)
-	//   logger.PrintInfo("HINT - Current shared_preload_libraries setting: '%s'. Your Postgres server may need to be restarted for changes to take effect.", shared_preload_libraries)
-
-	// logger.PrintInfo("Skipping collection of system state: remote host (%s) was specified for the database address. Consider enabling always_collect_system_data if the database is running on the same system as the collector", dbHost)
-
-	// prefixedLogger.PrintWarning("Skipping logs, could not setup log subscriber: %s", err)
-
-	// logger.PrintError("  Failed - Activity snapshots disabled by pganalyze")
-
 }
 
 func getQueryPerformanceStatus(status *state.SelfCheckStatus) (string, string) {
@@ -1027,6 +1020,16 @@ func getVACUUMAdvisorStatus(status *state.SelfCheckStatus) (string, string) {
 	}
 
 	return GreenCheck, "ok; available in 20-30m"
+}
+
+func getLogInsightsStatus(status *state.SelfCheckStatus) (string, string) {
+	logsIcon, logsMsg := getAspectStatus(status, state.CollectionAspectLogs)
+	actualLogMsg := logsMsg
+	if logsIcon == GreenCheck {
+		actualLogMsg += "; available in 5-10m"
+	}
+
+	return logsIcon, logsMsg
 }
 
 func getAutomatedExplainStatus(status *state.SelfCheckStatus) (string, string) {

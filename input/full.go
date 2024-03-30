@@ -24,14 +24,18 @@ func CollectFull(ctx context.Context, server *state.Server, connection *sql.DB, 
 
 	ts.Version, err = postgres.GetPostgresVersion(ctx, logger, connection)
 	if err != nil {
+		server.SelfCheck.MarkCollectionAspectError(state.CollectionAspectPgVersion, err.Error())
 		logger.PrintError("Error collecting Postgres Version: %s", err)
 		return
 	}
 
 	if ts.Version.Numeric < state.MinRequiredPostgresVersion {
+		server.SelfCheck.MarkCollectionAspectError(state.CollectionAspectPgVersion, "PostgreSQL server version (%s) is too old, 10 or newer is required.", ts.Version.Short)
 		err = fmt.Errorf("Error: Your PostgreSQL server version (%s) is too old, 10 or newer is required.", ts.Version.Short)
 		return
 	}
+
+	server.SelfCheck.MarkCollectionAspect(state.CollectionAspectPgVersion, state.CollectionStateOkay, ts.Version.Short)
 
 	ts.Roles, err = postgres.GetRoles(ctx, logger, connection, ts.Version)
 	if err != nil {
