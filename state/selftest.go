@@ -5,7 +5,7 @@ import (
 	"sync"
 )
 
-// The self-check mechanism is intended to catch errors and potenttial problems
+// The self-test mechanism is intended to catch errors and potential problems
 // encountered during a test surface them to users in a test summary, and
 // communicate how these errors will impact the various features of pganalyze.
 
@@ -46,7 +46,7 @@ const (
 	CollectionAspectExtendedStats
 )
 
-type SelfCheckStatus struct {
+type SelfTestStatus struct {
 	mutex               *sync.Mutex
 	CollectionSuspended struct {
 		Value bool
@@ -57,8 +57,8 @@ type SelfCheckStatus struct {
 	AspectDbStatuses map[DbCollectionAspect](map[string]*CollectionAspectStatus)
 }
 
-func MakeSelfCheck() (s *SelfCheckStatus) {
-	return &SelfCheckStatus{
+func MakeSelfTest() (s *SelfTestStatus) {
+	return &SelfTestStatus{
 		mutex:            &sync.Mutex{},
 		AspectStatuses:   make(map[CollectionAspect]*CollectionAspectStatus),
 		AspectDbStatuses: make(map[DbCollectionAspect](map[string]*CollectionAspectStatus)),
@@ -66,7 +66,7 @@ func MakeSelfCheck() (s *SelfCheckStatus) {
 }
 
 // collection suspended (e.g., if replica)
-func (s *SelfCheckStatus) MarkCollectionSuspended(format string, args ...any) {
+func (s *SelfTestStatus) MarkCollectionSuspended(format string, args ...any) {
 	if s == nil {
 		return
 	}
@@ -95,23 +95,23 @@ func skipHintUpdate(recordedHint, _incomingHint string) bool {
 	return recordedHint != ""
 }
 
-func (s *SelfCheckStatus) MarkCollectionAspectOk(aspect CollectionAspect) {
+func (s *SelfTestStatus) MarkCollectionAspectOk(aspect CollectionAspect) {
 	s.MarkCollectionAspect(aspect, CollectionStateOkay, "ok")
 }
 
-func (s *SelfCheckStatus) MarkCollectionAspectNotAvailable(aspect CollectionAspect, format string, args ...any) {
+func (s *SelfTestStatus) MarkCollectionAspectNotAvailable(aspect CollectionAspect, format string, args ...any) {
 	s.MarkCollectionAspect(aspect, CollectionStateNotAvailable, format, args...)
 }
 
-func (s *SelfCheckStatus) MarkCollectionAspectWarning(aspect CollectionAspect, format string, args ...any) {
+func (s *SelfTestStatus) MarkCollectionAspectWarning(aspect CollectionAspect, format string, args ...any) {
 	s.MarkCollectionAspect(aspect, CollectionStateWarning, format, args...)
 }
 
-func (s *SelfCheckStatus) MarkCollectionAspectError(aspect CollectionAspect, format string, args ...any) {
+func (s *SelfTestStatus) MarkCollectionAspectError(aspect CollectionAspect, format string, args ...any) {
 	s.MarkCollectionAspect(aspect, CollectionStateError, format, args...)
 }
 
-func (s *SelfCheckStatus) MarkCollectionAspect(aspect CollectionAspect, state CollectionStateCode, format string, args ...any) {
+func (s *SelfTestStatus) MarkCollectionAspect(aspect CollectionAspect, state CollectionStateCode, format string, args ...any) {
 	if s == nil {
 		return
 	}
@@ -130,7 +130,7 @@ func (s *SelfCheckStatus) MarkCollectionAspect(aspect CollectionAspect, state Co
 	aspectState.Msg = msg
 }
 
-func (s *SelfCheckStatus) HintCollectionAspect(aspect CollectionAspect, format string, args ...any) {
+func (s *SelfTestStatus) HintCollectionAspect(aspect CollectionAspect, format string, args ...any) {
 	if s == nil {
 		return
 	}
@@ -148,11 +148,11 @@ func (s *SelfCheckStatus) HintCollectionAspect(aspect CollectionAspect, format s
 	aspectState.Hint = hint
 }
 
-func (s *SelfCheckStatus) GetCollectionAspectStatus(aspect CollectionAspect) *CollectionAspectStatus {
+func (s *SelfTestStatus) GetCollectionAspectStatus(aspect CollectionAspect) *CollectionAspectStatus {
 	return s.AspectStatuses[aspect]
 }
 
-func (s *SelfCheckStatus) MarkMonitoredDb(dbName string) {
+func (s *SelfTestStatus) MarkMonitoredDb(dbName string) {
 	if s == nil {
 		return
 	}
@@ -161,23 +161,23 @@ func (s *SelfCheckStatus) MarkMonitoredDb(dbName string) {
 	s.MonitoredDbs = append(s.MonitoredDbs, dbName)
 }
 
-func (s *SelfCheckStatus) MarkDbCollectionAspectOk(dbName string, aspect DbCollectionAspect) {
+func (s *SelfTestStatus) MarkDbCollectionAspectOk(dbName string, aspect DbCollectionAspect) {
 	s.MarkDbCollectionAspect(dbName, aspect, CollectionStateOkay, "ok")
 }
 
-func (s *SelfCheckStatus) MarkDbCollectionAspectNotAvailable(dbName string, aspect DbCollectionAspect, format string, args ...any) {
+func (s *SelfTestStatus) MarkDbCollectionAspectNotAvailable(dbName string, aspect DbCollectionAspect, format string, args ...any) {
 	s.MarkDbCollectionAspect(dbName, aspect, CollectionStateNotAvailable, format, args...)
 }
 
-func (s *SelfCheckStatus) MarkDbCollectionAspectWarning(dbName string, aspect DbCollectionAspect, format string, args ...any) {
+func (s *SelfTestStatus) MarkDbCollectionAspectWarning(dbName string, aspect DbCollectionAspect, format string, args ...any) {
 	s.MarkDbCollectionAspect(dbName, aspect, CollectionStateWarning, format, args...)
 }
 
-func (s *SelfCheckStatus) MarkDbCollectionAspectError(dbName string, aspect DbCollectionAspect, format string, args ...any) {
+func (s *SelfTestStatus) MarkDbCollectionAspectError(dbName string, aspect DbCollectionAspect, format string, args ...any) {
 	s.MarkDbCollectionAspect(dbName, aspect, CollectionStateError, format, args...)
 }
 
-func (s *SelfCheckStatus) MarkDbCollectionAspect(dbName string, aspect DbCollectionAspect, state CollectionStateCode, format string, args ...any) {
+func (s *SelfTestStatus) MarkDbCollectionAspect(dbName string, aspect DbCollectionAspect, state CollectionStateCode, format string, args ...any) {
 	if s == nil {
 		return
 	}
@@ -204,7 +204,7 @@ func (s *SelfCheckStatus) MarkDbCollectionAspect(dbName string, aspect DbCollect
 	aspectDbState.Msg = msg
 }
 
-func (s *SelfCheckStatus) MarkRemainingDbCollectionAspectError(aspect DbCollectionAspect, format string, args ...any) {
+func (s *SelfTestStatus) MarkRemainingDbCollectionAspectError(aspect DbCollectionAspect, format string, args ...any) {
 	if s == nil {
 		return
 	}
@@ -226,7 +226,7 @@ func (s *SelfCheckStatus) MarkRemainingDbCollectionAspectError(aspect DbCollecti
 	}
 }
 
-func (s *SelfCheckStatus) HintDbCollectionAspect(dbName string, aspect DbCollectionAspect, state CollectionStateCode, format string, args ...any) {
+func (s *SelfTestStatus) HintDbCollectionAspect(dbName string, aspect DbCollectionAspect, state CollectionStateCode, format string, args ...any) {
 	if s == nil {
 		return
 	}
@@ -252,7 +252,7 @@ func (s *SelfCheckStatus) HintDbCollectionAspect(dbName string, aspect DbCollect
 	aspectDbState.Hint = hint
 }
 
-func (s *SelfCheckStatus) GetCollectionAspectDbStatus(dbName string, aspect DbCollectionAspect) *CollectionAspectStatus {
+func (s *SelfTestStatus) GetCollectionAspectDbStatus(dbName string, aspect DbCollectionAspect) *CollectionAspectStatus {
 	aspectDbStates, ok := s.AspectDbStatuses[aspect]
 	if !ok {
 		return &CollectionAspectStatus{}

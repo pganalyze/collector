@@ -575,11 +575,11 @@ func checkAllInitialCollectionStatus(ctx context.Context, servers []*state.Serve
 func checkOneInitialCollectionStatus(ctx context.Context, server *state.Server, opts state.CollectionOpts, logger *util.Logger) error {
 	conn, err := postgres.EstablishConnection(ctx, server, logger, opts, "")
 	if err != nil {
-		server.SelfCheck.MarkCollectionAspectError(state.CollectionAspectMonitoringDbConnection, err.Error())
+		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectMonitoringDbConnection, err.Error())
 		return errors.Wrap(err, "failed to connect to database")
 	}
 	defer conn.Close()
-	server.SelfCheck.MarkCollectionAspectOk(state.CollectionAspectMonitoringDbConnection)
+	server.SelfTest.MarkCollectionAspectOk(state.CollectionAspectMonitoringDbConnection)
 
 	settings, err := postgres.GetSettings(ctx, conn)
 	if err != nil {
@@ -606,7 +606,7 @@ func checkOneInitialCollectionStatus(ctx context.Context, server *state.Server, 
 	}
 	if isIgnoredReplica {
 		logger.PrintInfo("All monitoring suspended for this server: %s", collectionDisabledReason)
-		server.SelfCheck.MarkCollectionSuspended("all monitoring suspended for this server: %s", collectionDisabledReason)
+		server.SelfTest.MarkCollectionSuspended("all monitoring suspended for this server: %s", collectionDisabledReason)
 	} else if logsDisabled {
 		logger.PrintInfo("Log collection suspended for this server: %s", logsDisabledReason)
 	} else if logsIgnoreDuration {
@@ -748,7 +748,7 @@ func getMaxDbNameLen(dbNames []string) int {
 	return maxDbNameLen
 }
 
-func summarizeDbChecks(status *state.SelfCheckStatus, aspect state.DbCollectionAspect, isVerbose bool) (string, string) {
+func summarizeDbChecks(status *state.SelfTestStatus, aspect state.DbCollectionAspect, isVerbose bool) (string, string) {
 	dbNames := status.MonitoredDbs
 	checks := status.AspectDbStatuses[aspect]
 	var firstDb string
@@ -831,7 +831,7 @@ func printDbStatus(dbName string, dbStatus *state.CollectionAspectStatus, maxDbN
 	fmt.Fprintf(os.Stderr, "\t\t%s %s:"+dbNameFmtString+"\t\t%s\n", dbStatusIcon, dbName, "", dbMsg)
 }
 
-func getAspectStatus(status *state.SelfCheckStatus, aspect state.CollectionAspect) (icon string, msg string) {
+func getAspectStatus(status *state.SelfTestStatus, aspect state.CollectionAspect) (icon string, msg string) {
 	aspectStatus := status.GetCollectionAspectStatus(aspect)
 	if aspectStatus == nil {
 		return getStatusIcon(state.CollectionStateUnchecked), ""
@@ -841,7 +841,7 @@ func getAspectStatus(status *state.SelfCheckStatus, aspect state.CollectionAspec
 
 func printServerTestSummary(s *state.Server, verbose bool) {
 	config := s.Config
-	status := s.SelfCheck
+	status := s.SelfTest
 	serverName := color.New(color.FgCyan).Sprintf(config.SectionName)
 	fmt.Fprintf(os.Stderr, "Server %s:\n", serverName)
 	fmt.Fprintln(os.Stderr)
@@ -929,7 +929,7 @@ func printServerTestSummary(s *state.Server, verbose bool) {
 	fmt.Fprintf(os.Stderr, "\t%s System:\t\t%s\n", sysIcon, sysMsg)
 }
 
-func getQueryPerformanceStatus(status *state.SelfCheckStatus) (string, string) {
+func getQueryPerformanceStatus(status *state.SelfTestStatus) (string, string) {
 	if s := status.GetCollectionAspectStatus(state.CollectionAspectMonitoringDbConnection); s == nil || s.State != state.CollectionStateOkay {
 		return RedX, "database connection required"
 	}
@@ -939,7 +939,7 @@ func getQueryPerformanceStatus(status *state.SelfCheckStatus) (string, string) {
 	return GreenCheck, "ok; available in 20-30m"
 }
 
-func getSchemaStatisticsStatus(status *state.SelfCheckStatus) (string, string) {
+func getSchemaStatisticsStatus(status *state.SelfTestStatus) (string, string) {
 	if s := status.GetCollectionAspectStatus(state.CollectionAspectMonitoringDbConnection); s == nil || s.State != state.CollectionStateOkay {
 		return RedX, "database connection required"
 	}
@@ -963,7 +963,7 @@ func getSchemaStatisticsStatus(status *state.SelfCheckStatus) (string, string) {
 	return GreenCheck, "ok; available in 5-10m"
 }
 
-func getIndexAdvisorStatus(status *state.SelfCheckStatus) (string, string) {
+func getIndexAdvisorStatus(status *state.SelfTestStatus) (string, string) {
 	if s := status.GetCollectionAspectStatus(state.CollectionAspectMonitoringDbConnection); s == nil || s.State != state.CollectionStateOkay {
 		return RedX, "database connection required"
 	}
@@ -1010,7 +1010,7 @@ func getIndexAdvisorStatus(status *state.SelfCheckStatus) (string, string) {
 	return GreenCheck, "ok; available in 24-48h"
 }
 
-func getVACUUMAdvisorStatus(status *state.SelfCheckStatus) (string, string) {
+func getVACUUMAdvisorStatus(status *state.SelfTestStatus) (string, string) {
 	if s := status.GetCollectionAspectStatus(state.CollectionAspectMonitoringDbConnection); s == nil || s.State != state.CollectionStateOkay {
 		return RedX, "database connection required"
 	}
@@ -1022,7 +1022,7 @@ func getVACUUMAdvisorStatus(status *state.SelfCheckStatus) (string, string) {
 	return GreenCheck, "ok; available in 20-30m"
 }
 
-func getLogInsightsStatus(status *state.SelfCheckStatus) (string, string) {
+func getLogInsightsStatus(status *state.SelfTestStatus) (string, string) {
 	logsIcon, logsMsg := getAspectStatus(status, state.CollectionAspectLogs)
 	actualLogMsg := logsMsg
 	if logsIcon == GreenCheck {
@@ -1032,7 +1032,7 @@ func getLogInsightsStatus(status *state.SelfCheckStatus) (string, string) {
 	return logsIcon, logsMsg
 }
 
-func getAutomatedExplainStatus(status *state.SelfCheckStatus) (string, string) {
+func getAutomatedExplainStatus(status *state.SelfTestStatus) (string, string) {
 	if s := status.GetCollectionAspectStatus(state.CollectionAspectMonitoringDbConnection); s == nil || s.State != state.CollectionStateOkay {
 		return RedX, "database connection required"
 	}

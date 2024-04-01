@@ -44,14 +44,14 @@ func CollectAllSchemas(ctx context.Context, server *state.Server, collectionOpts
 		if _, ok := collected[dbName]; ok {
 			continue
 		}
-		server.SelfCheck.MarkMonitoredDb(dbName)
+		server.SelfTest.MarkMonitoredDb(dbName)
 
 		collected[dbName] = true
 		psNext, tsNext, databaseOid, err := collectOneSchema(ctxSchema, server, collectionOpts, logger, ps, ts, ts.Version, systemType, dbName)
 		if err != nil {
 			// If the outer context failed, return an error to the caller
 			if ctx.Err() != nil {
-				server.SelfCheck.MarkRemainingDbCollectionAspectError(state.CollectionAspectSchemaInformation, err.Error())
+				server.SelfTest.MarkRemainingDbCollectionAspectError(state.CollectionAspectSchemaInformation, err.Error())
 				return ps, ts, err
 			}
 			// If the schema context failed, stop doing any further collection.
@@ -60,7 +60,7 @@ func CollectAllSchemas(ctx context.Context, server *state.Server, collectionOpts
 			// we already collected.
 			if ctxSchema.Err() != nil {
 				logger.PrintWarning("Failed to collect schema metadata for database %s and all remaining databases: %s", dbName, err)
-				server.SelfCheck.MarkRemainingDbCollectionAspectError(state.CollectionAspectSchemaInformation, err.Error())
+				server.SelfTest.MarkRemainingDbCollectionAspectError(state.CollectionAspectSchemaInformation, err.Error())
 				return ps, ts, nil
 			}
 			warning := "Failed to collect schema metadata for database %s: %s"
@@ -69,14 +69,14 @@ func CollectAllSchemas(ctx context.Context, server *state.Server, collectionOpts
 			} else {
 				logger.PrintVerbose(warning, dbName, err)
 			}
-			server.SelfCheck.MarkDbCollectionAspectError(dbName, state.CollectionAspectSchemaInformation, err.Error())
+			server.SelfTest.MarkDbCollectionAspectError(dbName, state.CollectionAspectSchemaInformation, err.Error())
 
 			continue
 		}
 		ps = psNext
 		ts = tsNext
 		ts.DatabaseOidsWithLocalCatalog = append(ts.DatabaseOidsWithLocalCatalog, databaseOid)
-		server.SelfCheck.MarkDbCollectionAspectOk(dbName, state.CollectionAspectSchemaInformation)
+		server.SelfTest.MarkDbCollectionAspectOk(dbName, state.CollectionAspectSchemaInformation)
 	}
 	schemaTableLimit := server.Grant.Config.SchemaTableLimit
 	if schemaTableLimit == 0 {
