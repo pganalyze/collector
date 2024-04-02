@@ -9,6 +9,7 @@ import (
 
 	"github.com/guregu/null"
 	"github.com/lib/pq"
+	"github.com/pganalyze/collector/selftest"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
 )
@@ -169,8 +170,8 @@ func GetStatements(ctx context.Context, server *state.Server, logger *util.Logge
 		if systemType != "heroku" && !connectedAsSuperUser(ctx, db, systemType) && !connectedAsMonitoringRole(ctx, db) && globalCollectionOpts.TestRun {
 			server.SelfTest.MarkCollectionAspectWarning(state.CollectionAspectPgStatStatements, "monitoring user may have insufficient permissions to capture all queries")
 			server.SelfTest.HintCollectionAspect(state.CollectionAspectPgStatStatements, "Please set up"+
-				" the monitoring helper functions (https://github.com/pganalyze/collector#setting-up-a-restricted-monitoring-user)"+
-				" or connect as superuser to get query statistics for all roles.")
+				" the monitoring helper functions (%s)"+
+				" or connect as superuser to get query statistics for all roles.", selftest.URLPrinter.Sprint("https://github.com/pganalyze/collector#setting-up-a-restricted-monitoring-user"))
 			logger.PrintInfo("Warning: You are not connecting as superuser. Please setup" +
 				" the monitoring helper functions (https://github.com/pganalyze/collector#setting-up-a-restricted-monitoring-user)" +
 				" or connect as superuser, to get query statistics for all roles.")

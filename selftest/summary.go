@@ -22,11 +22,14 @@ func PrintSummary(servers []*state.Server, verbose bool) {
 	}
 }
 
-var GreenCheck = color.New(color.FgHiGreen).Sprintf("✓")
-var YellowBang = color.New(color.FgHiYellow).Sprintf("!")
-var RedX = color.New(color.FgHiRed).Sprintf("✗")
-var GrayDash = color.New(color.FgWhite).Sprintf("—")
-var GrayQuestion = color.New(color.FgWhite).Sprintf("?")
+var GreenCheck = color.New(color.FgHiGreen).Sprint("✓")
+var YellowBang = color.New(color.FgHiYellow).Sprint("!")
+var RedX = color.New(color.FgHiRed).Sprint("✗")
+var GrayDash = color.New(color.FgWhite).Sprint("—")
+var GrayQuestion = color.New(color.FgWhite).Sprint("?")
+
+var ServerPrinter = color.New(color.FgCyan)
+var URLPrinter = color.New(color.Underline)
 
 func getStatusIcon(code state.CollectionStateCode) string {
 	switch code {
@@ -149,7 +152,7 @@ func getAspectStatus(status *state.SelfTestStatus, aspect state.CollectionAspect
 func printServerTestSummary(s *state.Server, verbose bool) {
 	config := s.Config
 	status := s.SelfTest
-	serverName := color.New(color.FgCyan).Sprintf(config.SectionName)
+	serverName := ServerPrinter.Sprintf(config.SectionName)
 	fmt.Fprintf(os.Stderr, "Server %s:\n", serverName)
 	fmt.Fprintln(os.Stderr)
 
@@ -167,7 +170,7 @@ func printServerTestSummary(s *state.Server, verbose bool) {
 	fmt.Fprintf(os.Stderr, "\t%s Collector telemetry:\t%s\n", telemetryIcon, telemetryMsg)
 
 	if s.PGAnalyzeURL != "" {
-		fmt.Fprintf(os.Stderr, "\t  View in pganalyze:\t%s\n", s.PGAnalyzeURL)
+		fmt.Fprintf(os.Stderr, "\t  View in pganalyze:\t%s\n", URLPrinter.Sprint(s.PGAnalyzeURL))
 	}
 
 	fmt.Fprintln(os.Stderr)
@@ -349,5 +352,5 @@ func getAutomatedExplainStatus(status *state.SelfTestStatus) (string, string) {
 	}
 
 	// Right now, we don't have a test for this in the collector
-	return GrayQuestion, "unknown; check pganalyze EXPLAIN Plans page"
+	return GrayQuestion, "check pganalyze EXPLAIN Plans page"
 }

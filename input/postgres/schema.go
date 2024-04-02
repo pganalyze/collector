@@ -83,6 +83,9 @@ func CollectAllSchemas(ctx context.Context, server *state.Server, collectionOpts
 		schemaTableLimit = defaultSchemaTableLimit
 	}
 	if relCount := len(ps.Relations); relCount > schemaTableLimit {
+		// TODO: this is a global limit on the collection: individual dbs can be
+		// okay, but this can still fail. How should we express this in the
+		// self-test output?
 		logger.PrintWarning("Too many tables: got %d, but only %d can be monitored per server; schema information will not be sent; learn more at https://pganalyze.com/docs/collector/settings#schema-filter-settings", relCount, schemaTableLimit)
 	}
 

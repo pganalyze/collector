@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/lib/pq"
+	"github.com/pganalyze/collector/selftest"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
 )
@@ -57,8 +58,8 @@ func GetRelationStatsExtended(ctx context.Context, logger *util.Logger, db *sql.
 		if systemType != "heroku" && !connectedAsSuperUser(ctx, db, systemType) && globalCollectionOpts.TestRun {
 			server.SelfTest.MarkDbCollectionAspectError(dbName, state.CollectionAspectExtendedStats, "monitoring helper function pganalyze.get_relation_stats_ext not found")
 			server.SelfTest.HintDbCollectionAspect(dbName, state.CollectionAspectExtendedStats, "Limited access to extended table statistics detected. Please set up"+
-				" the monitoring helper function pganalyze.get_relation_stats_ext (https://github.com/pganalyze/collector#setting-up-a-restricted-monitoring-user)"+
-				" or connect as superuser, to get extended statistics for all tables.")
+				" the monitoring helper function pganalyze.get_relation_stats_ext (%s)"+
+				" or connect as superuser, to get extended statistics for all tables.", selftest.URLPrinter.Sprint("https://github.com/pganalyze/collector#setting-up-a-restricted-monitoring-user"))
 			logger.PrintInfo("Warning: Limited access to extended table statistics detected in database %s. Please set up"+
 				" the monitoring helper function pganalyze.get_relation_stats_ext (https://github.com/pganalyze/collector#setting-up-a-restricted-monitoring-user)"+
 				" or connect as superuser, to get extended statistics for all tables.", dbName)
