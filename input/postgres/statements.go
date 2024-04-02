@@ -152,6 +152,7 @@ func GetStatements(ctx context.Context, server *state.Server, logger *util.Logge
 			pgssMsg += "; outdated pg_stat_statements may cause incorrect query statistics"
 		}
 		server.SelfTest.MarkCollectionAspectWarning(state.CollectionAspectPgStatStatements, pgssMsg)
+		server.SelfTest.HintCollectionAspect(state.CollectionAspectPgStatStatements, "To update run `ALTER EXTENSION pg_stat_statements UPDATE`")
 	}
 
 	usingStatsHelper := false
@@ -167,6 +168,9 @@ func GetStatements(ctx context.Context, server *state.Server, logger *util.Logge
 	} else {
 		if systemType != "heroku" && !connectedAsSuperUser(ctx, db, systemType) && !connectedAsMonitoringRole(ctx, db) && globalCollectionOpts.TestRun {
 			server.SelfTest.MarkCollectionAspectWarning(state.CollectionAspectPgStatStatements, "monitoring user may have insufficient permissions to capture all queries")
+			server.SelfTest.HintCollectionAspect(state.CollectionAspectPgStatStatements, "Please set up"+
+				" the monitoring helper functions (https://github.com/pganalyze/collector#setting-up-a-restricted-monitoring-user)"+
+				" or connect as superuser to get query statistics for all roles.")
 			logger.PrintInfo("Warning: You are not connecting as superuser. Please setup" +
 				" the monitoring helper functions (https://github.com/pganalyze/collector#setting-up-a-restricted-monitoring-user)" +
 				" or connect as superuser, to get query statistics for all roles.")

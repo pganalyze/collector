@@ -48,6 +48,7 @@ func processActivityForServer(ctx context.Context, server *state.Server, globalC
 
 		if !newGrant.Config.EnableActivity {
 			if globalCollectionOpts.TestRun {
+				// TODO: not sure where to hint regarding this
 				logger.PrintError("  Failed - Activity snapshots disabled by pganalyze")
 			} else {
 				logger.PrintVerbose("Activity snapshots disabled by pganalyze, skipping")

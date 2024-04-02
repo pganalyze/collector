@@ -64,12 +64,12 @@ func CollectAllSchemas(ctx context.Context, server *state.Server, collectionOpts
 				return ps, ts, nil
 			}
 			warning := "Failed to collect schema metadata for database %s: %s"
+			server.SelfTest.MarkDbCollectionAspectError(dbName, state.CollectionAspectSchemaInformation, err.Error())
 			if collectionOpts.TestRun {
 				logger.PrintWarning(warning, dbName, err)
 			} else {
 				logger.PrintVerbose(warning, dbName, err)
 			}
-			server.SelfTest.MarkDbCollectionAspectError(dbName, state.CollectionAspectSchemaInformation, err.Error())
 
 			continue
 		}

@@ -64,6 +64,7 @@ func GetSystemState(server *state.Server, logger *util.Logger, globalCollectionO
 			// the database server.
 			// Leave logs for if this is a test run.
 			server.SelfTest.MarkCollectionAspectNotAvailable(state.CollectionAspectSystemStats, "remote host (%s) was specified for the database address", dbHost)
+			server.SelfTest.HintCollectionAspect(state.CollectionAspectSystemStats, "Consider enabling always_collect_system_data if the database is running on the same system as the collector")
 			logger.PrintInfo("Skipping collection of system state: remote host (%s) was specified for the database address. Consider enabling always_collect_system_data if the database is running on the same system as the collector", dbHost)
 		}
 	}

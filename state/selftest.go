@@ -226,7 +226,7 @@ func (s *SelfTestStatus) MarkRemainingDbCollectionAspectError(aspect DbCollectio
 	}
 }
 
-func (s *SelfTestStatus) HintDbCollectionAspect(dbName string, aspect DbCollectionAspect, state CollectionStateCode, format string, args ...any) {
+func (s *SelfTestStatus) HintDbCollectionAspect(dbName string, aspect DbCollectionAspect, format string, args ...any) {
 	if s == nil {
 		return
 	}

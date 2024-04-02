@@ -285,6 +285,7 @@ func getLogsGrant(server *state.Server, globalCollectionOpts state.CollectionOpt
 	if !logGrant.Valid {
 		if globalCollectionOpts.TestRun {
 			server.SelfTest.MarkCollectionAspectError(state.CollectionAspectLogs, "Log Insights not available on this plan")
+			server.SelfTest.HintCollectionAspect(state.CollectionAspectLogs, "You may need to upgrade, see https://pganalyze.com/pricing")
 			logger.PrintError("  Failed - Log Insights feature not available on this pganalyze plan, or log data limit exceeded. You may need to upgrade, see https://pganalyze.com/pricing")
 		} else {
 			logger.PrintVerbose("Skipping log data: Feature not available on this pganalyze plan, or log data limit exceeded")
