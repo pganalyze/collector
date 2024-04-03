@@ -276,7 +276,7 @@ type Server struct {
 	CollectionStatus      CollectionStatus
 	CollectionStatusMutex *sync.Mutex
 
-	SelfTest *SelfTestStatus
+	SelfTest *SelfTestResult
 
 	// The time zone that logs are parsed in, synced from the setting log_timezone
 	// The StateMutex should be held while updating this

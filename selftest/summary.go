@@ -76,9 +76,9 @@ func getMaxDbNameLen(dbNames []string) int {
 	return maxDbNameLen
 }
 
-func summarizeDbChecks(status *state.SelfTestStatus, aspect state.DbCollectionAspect, isVerbose bool) (string, string) {
+func summarizeDbChecks(status *state.SelfTestResult, aspect state.DbCollectionAspect, isVerbose bool) (string, string) {
 	dbNames := status.MonitoredDbs
-	checks := status.AspectDbStatuses[aspect]
+	checks := status.AllDbAspectStatuses[aspect]
 	var firstDb string
 	if len(dbNames) > 0 {
 		firstDb = dbNames[0]
@@ -159,7 +159,7 @@ func printDbStatus(dbName string, dbStatus *state.CollectionAspectStatus, maxDbN
 	fmt.Fprintf(os.Stderr, "\t\t%s %s:"+dbNameFmtString+"\t\t%s\n", dbStatusIcon, dbName, "", dbMsg)
 }
 
-func getAspectStatus(status *state.SelfTestStatus, aspect state.CollectionAspect) (icon string, msg string) {
+func getAspectStatus(status *state.SelfTestResult, aspect state.CollectionAspect) (icon string, msg string) {
 	aspectStatus := status.GetCollectionAspectStatus(aspect)
 	if aspectStatus == nil {
 		return getStatusIcon(state.CollectionStateUnchecked), ""
@@ -263,7 +263,7 @@ func printServerTestSummary(s *state.Server, verbosity SummaryVerbosity) {
 	fmt.Fprintf(os.Stderr, "\t%s System:\t\t%s\n", sysIcon, sysMsg)
 }
 
-func checkAllAspectsOk(status *state.SelfTestStatus) bool {
+func checkAllAspectsOk(status *state.SelfTestResult) bool {
 	for _, aspect := range state.CollectionAspects {
 		status := status.GetCollectionAspectStatus(aspect)
 		if status.State != state.CollectionStateOkay {
@@ -281,7 +281,7 @@ func checkAllAspectsOk(status *state.SelfTestStatus) bool {
 	return true
 }
 
-func getQueryPerformanceStatus(status *state.SelfTestStatus) (string, string) {
+func getQueryPerformanceStatus(status *state.SelfTestResult) (string, string) {
 	if s := status.GetCollectionAspectStatus(state.CollectionAspectMonitoringDbConnection); s == nil || s.State != state.CollectionStateOkay {
 		return RedX, "database connection required"
 	}
@@ -291,7 +291,7 @@ func getQueryPerformanceStatus(status *state.SelfTestStatus) (string, string) {
 	return GreenCheck, "ok; available in 20-30m"
 }
 
-func getSchemaStatisticsStatus(status *state.SelfTestStatus) (string, string) {
+func getSchemaStatisticsStatus(status *state.SelfTestResult) (string, string) {
 	if s := status.GetCollectionAspectStatus(state.CollectionAspectMonitoringDbConnection); s == nil || s.State != state.CollectionStateOkay {
 		return RedX, "database connection required"
 	}
@@ -315,7 +315,7 @@ func getSchemaStatisticsStatus(status *state.SelfTestStatus) (string, string) {
 	return GreenCheck, "ok; available in 5-10m"
 }
 
-func getIndexAdvisorStatus(status *state.SelfTestStatus) (string, string) {
+func getIndexAdvisorStatus(status *state.SelfTestResult) (string, string) {
 	if s := status.GetCollectionAspectStatus(state.CollectionAspectMonitoringDbConnection); s == nil || s.State != state.CollectionStateOkay {
 		return RedX, "database connection required"
 	}
@@ -362,7 +362,7 @@ func getIndexAdvisorStatus(status *state.SelfTestStatus) (string, string) {
 	return GreenCheck, "ok; available in 24-48h"
 }
 
-func getVACUUMAdvisorStatus(status *state.SelfTestStatus) (string, string) {
+func getVACUUMAdvisorStatus(status *state.SelfTestResult) (string, string) {
 	if s := status.GetCollectionAspectStatus(state.CollectionAspectMonitoringDbConnection); s == nil || s.State != state.CollectionStateOkay {
 		return RedX, "database connection required"
 	}
@@ -374,7 +374,7 @@ func getVACUUMAdvisorStatus(status *state.SelfTestStatus) (string, string) {
 	return GreenCheck, "ok; available in 20-30m"
 }
 
-func getLogInsightsStatus(status *state.SelfTestStatus) (string, string) {
+func getLogInsightsStatus(status *state.SelfTestResult) (string, string) {
 	logsIcon, logsMsg := getAspectStatus(status, state.CollectionAspectLogs)
 	actualLogMsg := logsMsg
 	if logsIcon == GreenCheck {
@@ -384,7 +384,7 @@ func getLogInsightsStatus(status *state.SelfTestStatus) (string, string) {
 	return logsIcon, logsMsg
 }
 
-func getAutomatedExplainStatus(status *state.SelfTestStatus) (string, string) {
+func getAutomatedExplainStatus(status *state.SelfTestResult) (string, string) {
 	if s := status.GetCollectionAspectStatus(state.CollectionAspectMonitoringDbConnection); s == nil || s.State != state.CollectionStateOkay {
 		return RedX, "database connection required"
 	}

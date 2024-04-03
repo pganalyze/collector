@@ -63,27 +63,27 @@ var DbCollectionAspects = []DbCollectionAspect{
 	CollectionAspectExtendedStats,
 }
 
-type SelfTestStatus struct {
+type SelfTestResult struct {
 	mutex               *sync.Mutex
 	CollectionSuspended struct {
 		Value bool
 		Msg   string
 	}
-	MonitoredDbs     []string
-	AspectStatuses   map[CollectionAspect]*CollectionAspectStatus
-	AspectDbStatuses map[DbCollectionAspect](map[string]*CollectionAspectStatus)
+	MonitoredDbs        []string
+	AspectStatuses      map[CollectionAspect]*CollectionAspectStatus
+	AllDbAspectStatuses map[DbCollectionAspect](map[string]*CollectionAspectStatus)
 }
 
-func MakeSelfTest() (s *SelfTestStatus) {
-	return &SelfTestStatus{
-		mutex:            &sync.Mutex{},
-		AspectStatuses:   make(map[CollectionAspect]*CollectionAspectStatus),
-		AspectDbStatuses: make(map[DbCollectionAspect](map[string]*CollectionAspectStatus)),
+func MakeSelfTest() (s *SelfTestResult) {
+	return &SelfTestResult{
+		mutex:               &sync.Mutex{},
+		AspectStatuses:      make(map[CollectionAspect]*CollectionAspectStatus),
+		AllDbAspectStatuses: make(map[DbCollectionAspect](map[string]*CollectionAspectStatus)),
 	}
 }
 
 // collection suspended (e.g., if replica)
-func (s *SelfTestStatus) MarkCollectionSuspended(format string, args ...any) {
+func (s *SelfTestResult) MarkCollectionSuspended(format string, args ...any) {
 	if s == nil {
 		return
 	}
@@ -112,64 +112,64 @@ func skipHintUpdate(recordedHint, _incomingHint string) bool {
 	return recordedHint != ""
 }
 
-func (s *SelfTestStatus) MarkCollectionAspectOk(aspect CollectionAspect) {
+func (s *SelfTestResult) MarkCollectionAspectOk(aspect CollectionAspect) {
 	s.MarkCollectionAspect(aspect, CollectionStateOkay, "ok")
 }
 
-func (s *SelfTestStatus) MarkCollectionAspectNotAvailable(aspect CollectionAspect, format string, args ...any) {
+func (s *SelfTestResult) MarkCollectionAspectNotAvailable(aspect CollectionAspect, format string, args ...any) {
 	s.MarkCollectionAspect(aspect, CollectionStateNotAvailable, format, args...)
 }
 
-func (s *SelfTestStatus) MarkCollectionAspectWarning(aspect CollectionAspect, format string, args ...any) {
+func (s *SelfTestResult) MarkCollectionAspectWarning(aspect CollectionAspect, format string, args ...any) {
 	s.MarkCollectionAspect(aspect, CollectionStateWarning, format, args...)
 }
 
-func (s *SelfTestStatus) MarkCollectionAspectError(aspect CollectionAspect, format string, args ...any) {
+func (s *SelfTestResult) MarkCollectionAspectError(aspect CollectionAspect, format string, args ...any) {
 	s.MarkCollectionAspect(aspect, CollectionStateError, format, args...)
 }
 
-func (s *SelfTestStatus) MarkCollectionAspect(aspect CollectionAspect, state CollectionStateCode, format string, args ...any) {
+func (s *SelfTestResult) MarkCollectionAspect(aspect CollectionAspect, state CollectionStateCode, format string, args ...any) {
 	if s == nil {
 		return
 	}
 	msg := fmt.Sprintf(format, args...)
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-	aspectState, ok := s.AspectStatuses[aspect]
+	aspectStatus, ok := s.AspectStatuses[aspect]
 	if !ok {
-		aspectState = &CollectionAspectStatus{}
-		s.AspectStatuses[aspect] = aspectState
+		aspectStatus = &CollectionAspectStatus{}
+		s.AspectStatuses[aspect] = aspectStatus
 	}
-	if skipUpdate(aspectState.State, state) {
+	if skipUpdate(aspectStatus.State, state) {
 		return
 	}
-	aspectState.State = state
-	aspectState.Msg = msg
+	aspectStatus.State = state
+	aspectStatus.Msg = msg
 }
 
-func (s *SelfTestStatus) HintCollectionAspect(aspect CollectionAspect, format string, args ...any) {
+func (s *SelfTestResult) HintCollectionAspect(aspect CollectionAspect, format string, args ...any) {
 	if s == nil {
 		return
 	}
-	hint := fmt.Sprintf(format+"\n", args...)
+	hint := fmt.Sprintf(format, args...)
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-	aspectState, ok := s.AspectStatuses[aspect]
+	aspectStatus, ok := s.AspectStatuses[aspect]
 	if !ok {
-		aspectState = &CollectionAspectStatus{}
-		s.AspectStatuses[aspect] = aspectState
+		aspectStatus = &CollectionAspectStatus{}
+		s.AspectStatuses[aspect] = aspectStatus
 	}
-	if skipHintUpdate(aspectState.Hint, hint) {
+	if skipHintUpdate(aspectStatus.Hint, hint) {
 		return
 	}
-	aspectState.Hint = hint
+	aspectStatus.Hint = hint
 }
 
-func (s *SelfTestStatus) GetCollectionAspectStatus(aspect CollectionAspect) *CollectionAspectStatus {
+func (s *SelfTestResult) GetCollectionAspectStatus(aspect CollectionAspect) *CollectionAspectStatus {
 	return s.AspectStatuses[aspect]
 }
 
-func (s *SelfTestStatus) MarkMonitoredDb(dbName string) {
+func (s *SelfTestResult) MarkMonitoredDb(dbName string) {
 	if s == nil {
 		return
 	}
@@ -178,102 +178,102 @@ func (s *SelfTestStatus) MarkMonitoredDb(dbName string) {
 	s.MonitoredDbs = append(s.MonitoredDbs, dbName)
 }
 
-func (s *SelfTestStatus) MarkDbCollectionAspectOk(dbName string, aspect DbCollectionAspect) {
+func (s *SelfTestResult) MarkDbCollectionAspectOk(dbName string, aspect DbCollectionAspect) {
 	s.MarkDbCollectionAspect(dbName, aspect, CollectionStateOkay, "ok")
 }
 
-func (s *SelfTestStatus) MarkDbCollectionAspectNotAvailable(dbName string, aspect DbCollectionAspect, format string, args ...any) {
+func (s *SelfTestResult) MarkDbCollectionAspectNotAvailable(dbName string, aspect DbCollectionAspect, format string, args ...any) {
 	s.MarkDbCollectionAspect(dbName, aspect, CollectionStateNotAvailable, format, args...)
 }
 
-func (s *SelfTestStatus) MarkDbCollectionAspectWarning(dbName string, aspect DbCollectionAspect, format string, args ...any) {
+func (s *SelfTestResult) MarkDbCollectionAspectWarning(dbName string, aspect DbCollectionAspect, format string, args ...any) {
 	s.MarkDbCollectionAspect(dbName, aspect, CollectionStateWarning, format, args...)
 }
 
-func (s *SelfTestStatus) MarkDbCollectionAspectError(dbName string, aspect DbCollectionAspect, format string, args ...any) {
+func (s *SelfTestResult) MarkDbCollectionAspectError(dbName string, aspect DbCollectionAspect, format string, args ...any) {
 	s.MarkDbCollectionAspect(dbName, aspect, CollectionStateError, format, args...)
 }
 
-func (s *SelfTestStatus) MarkDbCollectionAspect(dbName string, aspect DbCollectionAspect, state CollectionStateCode, format string, args ...any) {
+func (s *SelfTestResult) MarkDbCollectionAspect(dbName string, aspect DbCollectionAspect, state CollectionStateCode, format string, args ...any) {
 	if s == nil {
 		return
 	}
 	msg := fmt.Sprintf(format, args...)
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-	aspectDbStates, ok := s.AspectDbStatuses[aspect]
+	dbAspectStatuses, ok := s.AllDbAspectStatuses[aspect]
 	if !ok {
-		aspectDbStates = make(map[string]*CollectionAspectStatus)
-		s.AspectDbStatuses[aspect] = aspectDbStates
+		dbAspectStatuses = make(map[string]*CollectionAspectStatus)
+		s.AllDbAspectStatuses[aspect] = dbAspectStatuses
 	}
 
-	aspectDbState, ok := aspectDbStates[dbName]
+	dbAspectStatus, ok := dbAspectStatuses[dbName]
 	if !ok {
-		aspectDbState = &CollectionAspectStatus{}
-		aspectDbStates[dbName] = aspectDbState
+		dbAspectStatus = &CollectionAspectStatus{}
+		dbAspectStatuses[dbName] = dbAspectStatus
 	}
 
-	if skipUpdate(aspectDbState.State, state) {
+	if skipUpdate(dbAspectStatus.State, state) {
 		return
 	}
 
-	aspectDbState.State = state
-	aspectDbState.Msg = msg
+	dbAspectStatus.State = state
+	dbAspectStatus.Msg = msg
 }
 
-func (s *SelfTestStatus) MarkRemainingDbCollectionAspectError(aspect DbCollectionAspect, format string, args ...any) {
+func (s *SelfTestResult) MarkRemainingDbCollectionAspectError(aspect DbCollectionAspect, format string, args ...any) {
 	if s == nil {
 		return
 	}
 	msg := fmt.Sprintf(format+"\n", args...)
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-	aspectDbStates, ok := s.AspectDbStatuses[aspect]
+	dbAspectStatuses, ok := s.AllDbAspectStatuses[aspect]
 	if !ok {
 		// nothing to do
 		return
 	}
 
-	for _, aspectDbState := range aspectDbStates {
-		if skipUpdate(aspectDbState.State, CollectionStateError) {
+	for _, dbAspectStatus := range dbAspectStatuses {
+		if skipUpdate(dbAspectStatus.State, CollectionStateError) {
 			continue
 		}
-		aspectDbState.State = CollectionStateError
-		aspectDbState.Msg = msg
+		dbAspectStatus.State = CollectionStateError
+		dbAspectStatus.Msg = msg
 	}
 }
 
-func (s *SelfTestStatus) HintDbCollectionAspect(dbName string, aspect DbCollectionAspect, format string, args ...any) {
+func (s *SelfTestResult) HintDbCollectionAspect(dbName string, aspect DbCollectionAspect, format string, args ...any) {
 	if s == nil {
 		return
 	}
-	hint := fmt.Sprintf(format+"\n", args...)
+	hint := fmt.Sprintf(format, args...)
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-	aspectDbStates, ok := s.AspectDbStatuses[aspect]
+	aspectDbStatuses, ok := s.AllDbAspectStatuses[aspect]
 	if !ok {
-		aspectDbStates = make(map[string]*CollectionAspectStatus)
-		s.AspectDbStatuses[aspect] = aspectDbStates
+		aspectDbStatuses = make(map[string]*CollectionAspectStatus)
+		s.AllDbAspectStatuses[aspect] = aspectDbStatuses
 	}
 
-	aspectDbState, ok := aspectDbStates[dbName]
+	aspectDbStatus, ok := aspectDbStatuses[dbName]
 	if !ok {
-		aspectDbState = &CollectionAspectStatus{}
-		aspectDbStates[dbName] = aspectDbState
+		aspectDbStatus = &CollectionAspectStatus{}
+		aspectDbStatuses[dbName] = aspectDbStatus
 	}
 
-	if skipHintUpdate(aspectDbState.Hint, hint) {
+	if skipHintUpdate(aspectDbStatus.Hint, hint) {
 		return
 	}
 
-	aspectDbState.Hint = hint
+	aspectDbStatus.Hint = hint
 }
 
-func (s *SelfTestStatus) GetDbCollectionAspectStatus(dbName string, aspect DbCollectionAspect) *CollectionAspectStatus {
-	aspectDbStates, ok := s.AspectDbStatuses[aspect]
+func (s *SelfTestResult) GetDbCollectionAspectStatus(dbName string, aspect DbCollectionAspect) *CollectionAspectStatus {
+	aspectDbStatuses, ok := s.AllDbAspectStatuses[aspect]
 	if !ok {
 		return &CollectionAspectStatus{}
 	}
 
-	return aspectDbStates[dbName]
+	return aspectDbStatuses[dbName]
 }
