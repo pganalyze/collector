@@ -266,14 +266,14 @@ func printServerTestSummary(s *state.Server, verbosity SummaryVerbosity) {
 func checkAllAspectsOk(status *state.SelfTestResult) bool {
 	for _, aspect := range state.CollectionAspects {
 		status := status.GetCollectionAspectStatus(aspect)
-		if status.State != state.CollectionStateOkay {
+		if status == nil || status.State != state.CollectionStateOkay {
 			return false
 		}
 	}
 	for _, aspect := range state.DbCollectionAspects {
 		for _, dbName := range status.MonitoredDbs {
 			status := status.GetDbCollectionAspectStatus(dbName, aspect)
-			if status.State != state.CollectionStateOkay {
+			if status == nil || status.State != state.CollectionStateOkay {
 				return false
 			}
 		}
