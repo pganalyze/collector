@@ -288,7 +288,7 @@ func getQueryPerformanceStatus(status *state.SelfTestResult) (string, string) {
 	if s := status.GetCollectionAspectStatus(state.CollectionAspectPgStatStatements); s == nil || s.State != state.CollectionStateOkay {
 		return RedX, "pg_stat_statements required"
 	}
-	return GreenCheck, "ok; available in 20-30m"
+	return GreenCheck, "ok"
 }
 
 func getSchemaStatisticsStatus(status *state.SelfTestResult) (string, string) {
@@ -312,7 +312,7 @@ func getSchemaStatisticsStatus(status *state.SelfTestResult) (string, string) {
 	if !allDbsOkay {
 		return YellowBang, "available for some databases"
 	}
-	return GreenCheck, "ok; available in 5-10m"
+	return GreenCheck, "ok"
 }
 
 func getIndexAdvisorStatus(status *state.SelfTestResult) (string, string) {
@@ -359,7 +359,7 @@ func getIndexAdvisorStatus(status *state.SelfTestResult) (string, string) {
 		return YellowBang, "extended stats helper missing in some databases; see above"
 	}
 
-	return GreenCheck, "ok; available in 24-48h"
+	return GreenCheck, "ok"
 }
 
 func getVACUUMAdvisorStatus(status *state.SelfTestResult) (string, string) {
@@ -371,17 +371,11 @@ func getVACUUMAdvisorStatus(status *state.SelfTestResult) (string, string) {
 		return RedX, "Log Insights required"
 	}
 
-	return GreenCheck, "ok; available in 20-30m"
+	return GreenCheck, "ok"
 }
 
 func getLogInsightsStatus(status *state.SelfTestResult) (string, string) {
-	logsIcon, logsMsg := getAspectStatus(status, state.CollectionAspectLogs)
-	actualLogMsg := logsMsg
-	if logsIcon == GreenCheck {
-		actualLogMsg += "; available in 5-10m"
-	}
-
-	return logsIcon, logsMsg
+	return getAspectStatus(status, state.CollectionAspectLogs)
 }
 
 func getAutomatedExplainStatus(status *state.SelfTestResult) (string, string) {
