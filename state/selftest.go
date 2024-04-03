@@ -38,6 +38,17 @@ const (
 	CollectionAspectExplain
 )
 
+var CollectionAspects = []CollectionAspect{
+	CollectionAspectTelemetry,
+	CollectionAspectSystemStats,
+	CollectionAspectMonitoringDbConnection,
+	CollectionAspectPgVersion,
+	CollectionAspectApiConnection,
+	CollectionAspectPgStatStatements,
+	CollectionAspectLogs,
+	CollectionAspectExplain,
+}
+
 type DbCollectionAspect int
 
 const (
@@ -45,6 +56,12 @@ const (
 	CollectionAspectColumnStats
 	CollectionAspectExtendedStats
 )
+
+var DbCollectionAspects = []DbCollectionAspect{
+	CollectionAspectSchemaInformation,
+	CollectionAspectColumnStats,
+	CollectionAspectExtendedStats,
+}
 
 type SelfTestStatus struct {
 	mutex               *sync.Mutex
@@ -252,7 +269,7 @@ func (s *SelfTestStatus) HintDbCollectionAspect(dbName string, aspect DbCollecti
 	aspectDbState.Hint = hint
 }
 
-func (s *SelfTestStatus) GetCollectionAspectDbStatus(dbName string, aspect DbCollectionAspect) *CollectionAspectStatus {
+func (s *SelfTestStatus) GetDbCollectionAspectStatus(dbName string, aspect DbCollectionAspect) *CollectionAspectStatus {
 	aspectDbStates, ok := s.AspectDbStatuses[aspect]
 	if !ok {
 		return &CollectionAspectStatus{}
