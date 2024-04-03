@@ -133,9 +133,9 @@ func summarizeDbChecks(status *state.SelfTestResult, aspect state.DbCollectionAs
 			summaryMsg = fmt.Sprintf("could not check database %s", firstUncheckedDb)
 		}
 	} else if errorCount > 1 {
-		summaryMsg = fmt.Sprintf("found integration problems in %s and %d other monitored database(s)%s", firstErrorDb, errorCount-1, verboseHint)
+		summaryMsg = fmt.Sprintf("found problems in %s and %d other monitored database(s)%s", firstErrorDb, errorCount-1, verboseHint)
 	} else if errorCount > 0 {
-		summaryMsg = fmt.Sprintf("found integration problem in database %s: %s", firstErrorDb, firstErrorDbMsg)
+		summaryMsg = fmt.Sprintf("found problem in database %s: %s", firstErrorDb, firstErrorDbMsg)
 	} else if len(checks) > 1 {
 		summaryMsg = fmt.Sprintf("ok in %s and %d other monitored database(s)%s", firstDb, len(checks)-1, verboseHint)
 	} else {
