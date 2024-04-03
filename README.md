@@ -323,33 +323,15 @@ The script will also have the following environment variables set:
 Helm Chart
 ----------
 
-The pganalyze collector uses the OCI ([Open Container Initiative](https://opencontainers.org/)) registry to publish the Helm chart.
 You can install the Helm chart for the collector like the following:
 
 ```bash
-helm install pga-collector oci://quay.io/pganalyze/pganalyze-collector --values=myvalues.yml
+helm repo add pganalyze https://charts.pganalyze.com/
+helm install my-collector pganalyze/pganalyze-collector --values=myvalues.yml
 ```
 
-Note that this [requires the Helm CLI v3.8.0 and above](https://helm.sh/docs/topics/registries/#enabling-oci-support).
-
-You can find values for this chart using `helm show values oci://quay.io/pganalyze/pganalyze-collector`,
+You can find values for this chart using `helm show values pganalyze/pganalyze-collector`,
 or you can also find in the [README in the Helm chart directory](/contrib/helm/pganalyze-collector/README.md).
-
-You can also use the Terraform `helm_release` like the following:
-
-```
-resource "helm_release" "example" {
-  name        = "pga-collector"
-  namespace   = "pganalyze"
-  repository  = "oci://quay.io/pganalyze"
-  version     = "0.x.x"
-  chart       = "pganalyze-collector"
-
-  values = [
-    "${file("myvalues.yaml")}"
-  ]
-}
-```
 
 License
 -------
