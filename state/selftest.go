@@ -52,13 +52,13 @@ var CollectionAspects = []CollectionAspect{
 type DbCollectionAspect int
 
 const (
-	CollectionAspectSchemaInformation DbCollectionAspect = iota
+	CollectionAspectSchema DbCollectionAspect = iota
 	CollectionAspectColumnStats
 	CollectionAspectExtendedStats
 )
 
 var DbCollectionAspects = []DbCollectionAspect{
-	CollectionAspectSchemaInformation,
+	CollectionAspectSchema,
 	CollectionAspectColumnStats,
 	CollectionAspectExtendedStats,
 }

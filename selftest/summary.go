@@ -212,11 +212,11 @@ func printServerTestSummary(s *state.Server, verbosity SummaryVerbosity) {
 	fmt.Fprintf(os.Stderr, "\t%s pg_stat_statements:\t%s\n", pgssIcon, pgssMsg)
 
 	maxDbNameLen := getMaxDbNameLen(status.MonitoredDbs)
-	schemaInfoIcon, schemaInfoSummaryMsg := summarizeDbChecks(status, state.CollectionAspectSchemaInformation, verbose)
+	schemaInfoIcon, schemaInfoSummaryMsg := summarizeDbChecks(status, state.CollectionAspectSchema, verbose)
 	fmt.Fprintf(os.Stderr, "\t%s Schema information:\t%s\n", schemaInfoIcon, schemaInfoSummaryMsg)
 	if verbose {
 		for _, dbName := range status.MonitoredDbs {
-			dbStatus := status.GetDbCollectionAspectStatus(dbName, state.CollectionAspectSchemaInformation)
+			dbStatus := status.GetDbCollectionAspectStatus(dbName, state.CollectionAspectSchema)
 
 			printDbStatus(dbName, dbStatus, maxDbNameLen)
 		}
@@ -303,7 +303,7 @@ func getSchemaStatisticsStatus(status *state.SelfTestResult) (string, string) {
 	allDbsOkay := true
 	someDbsOkay := false
 	for _, dbName := range status.MonitoredDbs {
-		dbStatus := status.GetDbCollectionAspectStatus(dbName, state.CollectionAspectSchemaInformation)
+		dbStatus := status.GetDbCollectionAspectStatus(dbName, state.CollectionAspectSchema)
 		if dbStatus == nil || dbStatus.State != state.CollectionStateOkay {
 			allDbsOkay = false
 			break
@@ -332,7 +332,7 @@ func getIndexAdvisorStatus(status *state.SelfTestResult) (string, string) {
 	allDbsColStatsOk := true
 	allDbsExtStatsOk := true
 	for _, dbName := range status.MonitoredDbs {
-		dbStatus := status.GetDbCollectionAspectStatus(dbName, state.CollectionAspectSchemaInformation)
+		dbStatus := status.GetDbCollectionAspectStatus(dbName, state.CollectionAspectSchema)
 		if dbStatus == nil || dbStatus.State != state.CollectionStateOkay {
 			allDbsSchemaOk = false
 			break
