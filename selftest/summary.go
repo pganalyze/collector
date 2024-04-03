@@ -266,6 +266,11 @@ func printServerTestSummary(s *state.Server, verbosity SummaryVerbosity) {
 func checkAllAspectsOk(status *state.SelfTestResult) bool {
 	for _, aspect := range state.CollectionAspects {
 		status := status.GetCollectionAspectStatus(aspect)
+		if aspect == state.CollectionAspectExplain && (status == nil || status.State == state.CollectionStateUnchecked) {
+			// We don't have a mechanism to verify this yet; so ignore it for the
+			// purpose of this check
+			continue
+		}
 		if status == nil || status.State != state.CollectionStateOkay {
 			return false
 		}
