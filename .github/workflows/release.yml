@@ -119,8 +119,32 @@ jobs:
           packages/tmp/pganalyze-collector_*_arm64.deb
         if-no-files-found: error
 
+  build_charts:
+    runs-on: ubuntu-latest
+    # ensure we don't release on create events for branches (only tags)
+    if: ${{ startsWith( github.ref, 'refs/tags' ) }}
+
+    steps:
+    - name: Install Helm
+      uses: azure/setup-helm@v4
+
+    - name: Check out code
+      uses: actions/checkout@v3
+      with:
+        submodules: true
+
+    - name: Create helm package
+      run: helm package contrib/helm/pganalyze-collector
+
+    - name: Upload packages as artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: packages
+        path: packages/tmp/pganalyze-collector-*.tgz
+        if-no-files-found: error
+
   release:
-    needs: [build, build_arm, build_packages]
+    needs: [build, build_arm, build_packages, build_charts]
     runs-on: ubuntu-latest
     # ensure we don't release on create events for branches (only tags)
     if: ${{ startsWith( github.ref, 'refs/tags' ) }}
@@ -218,4 +242,14 @@ jobs:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
         asset_path: ./pganalyze-collector_${{ steps.get_version.outputs.version }}_arm64.deb
         asset_name: pganalyze-collector_${{ steps.get_version.outputs.version }}_arm64.deb
+        asset_content_type: application/octet-stream
+
+    - name: Upload helm package
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./pganalyze-collector-${{ steps.get_version.outputs.version }}.tgz
+        asset_name: pganalyze-collector-${{ steps.get_version.outputs.version }}.tgz
         asset_content_type: application/octet-stream
