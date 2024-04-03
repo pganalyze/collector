@@ -145,6 +145,22 @@ func summarizeDbChecks(status *state.SelfTestResult, aspect state.DbCollectionAs
 	return icon, summaryMsg
 }
 
+func summarizeDbHints(status *state.SelfTestResult, aspect state.DbCollectionAspect) []string {
+	hintsSet := make(map[string]bool)
+	dbAspectStatuses := status.AllDbAspectStatuses[aspect]
+	if dbAspectStatuses == nil || len(dbAspectStatuses) == 0 {
+		return nil
+	}
+	for _, status := range dbAspectStatuses {
+		hintsSet[status.Hint] = true
+	}
+	var allHints []string
+	for hint := range hintsSet {
+		allHints = append(allHints, hint)
+	}
+	return allHints
+}
+
 func printDbStatus(dbName string, dbStatus *state.CollectionAspectStatus, maxDbNameLen int) {
 	var dbStatusIcon, dbMsg string
 	if dbStatus == nil {
@@ -159,12 +175,28 @@ func printDbStatus(dbName string, dbStatus *state.CollectionAspectStatus, maxDbN
 	fmt.Fprintf(os.Stderr, "\t\t%s %s:"+dbNameFmtString+"\t\t%s\n", dbStatusIcon, dbName, "", dbMsg)
 }
 
-func getAspectStatus(status *state.SelfTestResult, aspect state.CollectionAspect) (icon string, msg string) {
+func getAspectStatus(status *state.SelfTestResult, aspect state.CollectionAspect) (icon string, msg string, hint string) {
 	aspectStatus := status.GetCollectionAspectStatus(aspect)
 	if aspectStatus == nil {
-		return getStatusIcon(state.CollectionStateUnchecked), ""
+		return getStatusIcon(state.CollectionStateUnchecked), "", ""
 	}
-	return getStatusIcon(aspectStatus.State), aspectStatus.Msg
+	return getStatusIcon(aspectStatus.State), aspectStatus.Msg, aspectStatus.Hint
+}
+
+func printAspectStatus(status *state.SelfTestResult, aspect state.CollectionAspect, label string) {
+	const maxLabelLen = len("pganalyze connection")
+	icon, msg, hint := getAspectStatus(status, aspect)
+
+	// Ensure that status labels names of different lengths line up
+	labelFmtString := fmt.Sprintf("%%%ds", maxLabelLen-len(label))
+	fmt.Fprintf(os.Stderr, "\t%s %s:"+labelFmtString+"\t%s\n", icon, label, "", msg)
+	printHint(hint)
+}
+
+func printHint(hint string) {
+	if hint != "" {
+		fmt.Fprintf(os.Stderr, "\t   HINT:\t%s\n", hint)
+	}
 }
 
 func printServerTestSummary(s *state.Server, verbosity SummaryVerbosity) {
@@ -184,10 +216,8 @@ func printServerTestSummary(s *state.Server, verbosity SummaryVerbosity) {
 		return
 	}
 
-	apiIcon, apiMsg := getAspectStatus(status, state.CollectionAspectApiConnection)
-	fmt.Fprintf(os.Stderr, "\t%s pganalyze connection:\t%s\n", apiIcon, apiMsg)
-	telemetryIcon, telemetryMsg := getAspectStatus(status, state.CollectionAspectTelemetry)
-	fmt.Fprintf(os.Stderr, "\t%s Collector telemetry:\t%s\n", telemetryIcon, telemetryMsg)
+	printAspectStatus(status, state.CollectionAspectApiConnection, "pganalyze connection")
+	printAspectStatus(status, state.CollectionAspectTelemetry, "Collector telemetry")
 
 	if s.PGAnalyzeURL != "" {
 		fmt.Fprintf(os.Stderr, "\t  View in pganalyze:\t%s\n", URLPrinter.Sprint(s.PGAnalyzeURL))
@@ -202,18 +232,13 @@ func printServerTestSummary(s *state.Server, verbosity SummaryVerbosity) {
 		}
 	}
 
-	monitoringConnIcon, monitoringConnMsg := getAspectStatus(status, state.CollectionAspectMonitoringDbConnection)
-	fmt.Fprintf(os.Stderr, "\t%s Database connection:\t%s\n", monitoringConnIcon, monitoringConnMsg)
-
-	pgVersionIcon, pgVersionMsg := getAspectStatus(status, state.CollectionAspectPgVersion)
-	fmt.Fprintf(os.Stderr, "\t%s Postgres version:\t%s\n", pgVersionIcon, pgVersionMsg)
-
-	pgssIcon, pgssMsg := getAspectStatus(status, state.CollectionAspectPgStatStatements)
-	fmt.Fprintf(os.Stderr, "\t%s pg_stat_statements:\t%s\n", pgssIcon, pgssMsg)
+	printAspectStatus(status, state.CollectionAspectMonitoringDbConnection, "Database connection")
+	printAspectStatus(status, state.CollectionAspectPgVersion, "Postgres version")
+	printAspectStatus(status, state.CollectionAspectPgStatStatements, "pg_stat_statements")
 
 	maxDbNameLen := getMaxDbNameLen(status.MonitoredDbs)
-	schemaInfoIcon, schemaInfoSummaryMsg := summarizeDbChecks(status, state.CollectionAspectSchema, verbose)
-	fmt.Fprintf(os.Stderr, "\t%s Schema information:\t%s\n", schemaInfoIcon, schemaInfoSummaryMsg)
+	schemaIcon, schemaSummaryMsg := summarizeDbChecks(status, state.CollectionAspectSchema, verbose)
+	fmt.Fprintf(os.Stderr, "\t%s Schema information:\t%s\n", schemaIcon, schemaSummaryMsg)
 	if verbose {
 		for _, dbName := range status.MonitoredDbs {
 			dbStatus := status.GetDbCollectionAspectStatus(dbName, state.CollectionAspectSchema)
@@ -221,6 +246,11 @@ func printServerTestSummary(s *state.Server, verbosity SummaryVerbosity) {
 			printDbStatus(dbName, dbStatus, maxDbNameLen)
 		}
 	}
+	schemaHints := summarizeDbHints(status, state.CollectionAspectSchema)
+	for _, hint := range schemaHints {
+		printHint(hint)
+	}
+
 	colStatsIcon, colStatsSummaryMsg := summarizeDbChecks(status, state.CollectionAspectColumnStats, verbose)
 	fmt.Fprintf(os.Stderr, "\t%s Column stats:\t\t%s\n", colStatsIcon, colStatsSummaryMsg)
 	if verbose {
@@ -230,6 +260,11 @@ func printServerTestSummary(s *state.Server, verbosity SummaryVerbosity) {
 			printDbStatus(dbName, dbStatus, maxDbNameLen)
 		}
 	}
+	colStatsHints := summarizeDbHints(status, state.CollectionAspectColumnStats)
+	for _, hint := range colStatsHints {
+		printHint(hint)
+	}
+
 	extStatsIcon, extStatsSummaryMsg := summarizeDbChecks(status, state.CollectionAspectExtendedStats, verbose)
 	fmt.Fprintf(os.Stderr, "\t%s Extended stats:\t%s\n", extStatsIcon, extStatsSummaryMsg)
 	if verbose {
@@ -239,28 +274,37 @@ func printServerTestSummary(s *state.Server, verbosity SummaryVerbosity) {
 			printDbStatus(dbName, dbStatus, maxDbNameLen)
 		}
 	}
+	extStatsHints := summarizeDbHints(status, state.CollectionAspectExtendedStats)
+	for _, hint := range extStatsHints {
+		printHint(hint)
+	}
 	fmt.Fprintln(os.Stderr)
 
-	qpIcon, qpMsg := getQueryPerformanceStatus(status)
+	qpIcon, qpMsg, qpHint := getQueryPerformanceStatus(status)
 	fmt.Fprintf(os.Stderr, "\t%s Query Performance:\t%s\n", qpIcon, qpMsg)
+	printHint(qpHint)
 
-	iaIcon, iaMsg := getIndexAdvisorStatus(status)
+	iaIcon, iaMsg, iaHint := getIndexAdvisorStatus(status)
 	fmt.Fprintf(os.Stderr, "\t%s Index Advisor:\t%s\n", iaIcon, iaMsg)
+	printHint(iaHint)
 
-	vaIcon, vaMsg := getVACUUMAdvisorStatus(status)
+	vaIcon, vaMsg, vaHint := getVACUUMAdvisorStatus(status)
 	fmt.Fprintf(os.Stderr, "\t%s VACUUM Advisor:\t%s\n", vaIcon, vaMsg)
+	printHint(vaHint)
 
-	explainIcon, explainMsg := getAutomatedExplainStatus(status)
+	explainIcon, explainMsg, explainHint := getAutomatedExplainStatus(status)
 	fmt.Fprintf(os.Stderr, "\t%s EXPLAIN Plans:\t%s\n", explainIcon, explainMsg)
+	printHint(explainHint)
 
-	ssIcon, ssMsg := getSchemaStatisticsStatus(status)
+	ssIcon, ssMsg, ssHint := getSchemaStatisticsStatus(status)
 	fmt.Fprintf(os.Stderr, "\t%s Schema Statistics:\t%s\n", ssIcon, ssMsg)
+	printHint(ssHint)
 
-	logsIcon, logMsg := getLogInsightsStatus(status)
+	logsIcon, logMsg, logHint := getLogInsightsStatus(status)
 	fmt.Fprintf(os.Stderr, "\t%s Log Insights:\t\t%s\n", logsIcon, logMsg)
+	printHint(logHint)
 
-	sysIcon, sysMsg := getAspectStatus(status, state.CollectionAspectSystemStats)
-	fmt.Fprintf(os.Stderr, "\t%s System:\t\t%s\n", sysIcon, sysMsg)
+	printAspectStatus(status, state.CollectionAspectSystemStats, "System")
 }
 
 func checkAllAspectsOk(status *state.SelfTestResult) bool {
@@ -286,19 +330,19 @@ func checkAllAspectsOk(status *state.SelfTestResult) bool {
 	return true
 }
 
-func getQueryPerformanceStatus(status *state.SelfTestResult) (string, string) {
+func getQueryPerformanceStatus(status *state.SelfTestResult) (icon string, msg string, hint string) {
 	if s := status.GetCollectionAspectStatus(state.CollectionAspectMonitoringDbConnection); s == nil || s.State != state.CollectionStateOkay {
-		return RedX, "database connection required"
+		return RedX, "database connection required", ""
 	}
 	if s := status.GetCollectionAspectStatus(state.CollectionAspectPgStatStatements); s == nil || s.State != state.CollectionStateOkay {
-		return RedX, "pg_stat_statements required"
+		return RedX, "pg_stat_statements required", ""
 	}
-	return GreenCheck, "ok"
+	return GreenCheck, "ok", ""
 }
 
-func getSchemaStatisticsStatus(status *state.SelfTestResult) (string, string) {
+func getSchemaStatisticsStatus(status *state.SelfTestResult) (icon string, msg string, hint string) {
 	if s := status.GetCollectionAspectStatus(state.CollectionAspectMonitoringDbConnection); s == nil || s.State != state.CollectionStateOkay {
-		return RedX, "database connection required"
+		return RedX, "database connection required", ""
 	}
 	allDbsOkay := true
 	someDbsOkay := false
@@ -312,20 +356,20 @@ func getSchemaStatisticsStatus(status *state.SelfTestResult) (string, string) {
 		}
 	}
 	if !someDbsOkay {
-		return RedX, "not available due to errors; see above"
+		return RedX, "not available due to errors; see above", ""
 	}
 	if !allDbsOkay {
-		return YellowBang, "available for some databases"
+		return YellowBang, "available for some databases", ""
 	}
-	return GreenCheck, "ok"
+	return GreenCheck, "ok", ""
 }
 
-func getIndexAdvisorStatus(status *state.SelfTestResult) (string, string) {
+func getIndexAdvisorStatus(status *state.SelfTestResult) (string, string, string) {
 	if s := status.GetCollectionAspectStatus(state.CollectionAspectMonitoringDbConnection); s == nil || s.State != state.CollectionStateOkay {
-		return RedX, "database connection required"
+		return RedX, "database connection required", ""
 	}
 	if len(status.MonitoredDbs) == 0 {
-		return RedX, "could not check databases"
+		return RedX, "could not check databases", ""
 	}
 	allDbsSchemaOk := true
 	someDbsSchemaOk := false
@@ -352,46 +396,46 @@ func getIndexAdvisorStatus(status *state.SelfTestResult) (string, string) {
 
 	}
 	if !someDbsSchemaOk {
-		return RedX, "not available due to schema monitoring errors; see above"
+		return RedX, "not available due to schema monitoring errors; see above", ""
 	}
 	if !allDbsSchemaOk {
-		return YellowBang, "schema monitoring errors in some databases; see above"
+		return YellowBang, "schema monitoring errors in some databases; see above", "Schema information is required for Index Advisor"
 	}
 	if !allDbsColStatsOk {
-		return YellowBang, "column stats helper missing in some databases; see above"
+		return YellowBang, "column stats helper missing in some databases; see above", "Column stats can improve index recommendations"
 	}
 	if !allDbsExtStatsOk {
-		return YellowBang, "extended stats helper missing in some databases; see above"
+		return YellowBang, "extended stats helper missing in some databases; see above", "Extended stats can improve index recommendations"
 	}
 
-	return GreenCheck, "ok"
+	return GreenCheck, "ok", ""
 }
 
-func getVACUUMAdvisorStatus(status *state.SelfTestResult) (string, string) {
+func getVACUUMAdvisorStatus(status *state.SelfTestResult) (string, string, string) {
 	if s := status.GetCollectionAspectStatus(state.CollectionAspectMonitoringDbConnection); s == nil || s.State != state.CollectionStateOkay {
-		return RedX, "database connection required"
+		return RedX, "database connection required", ""
 	}
 
 	if s := status.GetCollectionAspectStatus(state.CollectionAspectLogs); s == nil || s.State != state.CollectionStateOkay {
-		return RedX, "Log Insights required"
+		return RedX, "Log Insights required", ""
 	}
 
-	return GreenCheck, "ok"
+	return GreenCheck, "ok", ""
 }
 
-func getLogInsightsStatus(status *state.SelfTestResult) (string, string) {
+func getLogInsightsStatus(status *state.SelfTestResult) (string, string, string) {
 	return getAspectStatus(status, state.CollectionAspectLogs)
 }
 
-func getAutomatedExplainStatus(status *state.SelfTestResult) (string, string) {
+func getAutomatedExplainStatus(status *state.SelfTestResult) (string, string, string) {
 	if s := status.GetCollectionAspectStatus(state.CollectionAspectMonitoringDbConnection); s == nil || s.State != state.CollectionStateOkay {
-		return RedX, "database connection required"
+		return RedX, "database connection required", ""
 	}
 
 	if s := status.GetCollectionAspectStatus(state.CollectionAspectLogs); s == nil || s.State != state.CollectionStateOkay {
-		return RedX, "Log Insights required"
+		return RedX, "Log Insights required", ""
 	}
 
 	// Right now, we don't have a test for this in the collector
-	return GrayQuestion, "check pganalyze EXPLAIN Plans page"
+	return GrayQuestion, "check pganalyze EXPLAIN Plans page", ""
 }
