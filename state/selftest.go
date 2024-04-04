@@ -28,23 +28,25 @@ type CollectionAspectStatus struct {
 type CollectionAspect int
 
 const (
-	CollectionAspectTelemetry CollectionAspect = iota
+	CollectionAspectApiConnection CollectionAspect = iota
+	CollectionAspectTelemetry
 	CollectionAspectSystemStats
 	CollectionAspectMonitoringDbConnection
 	CollectionAspectPgVersion
-	CollectionAspectApiConnection
 	CollectionAspectPgStatStatements
+	CollectionAspectActivity
 	CollectionAspectLogs
 	CollectionAspectExplain
 )
 
 var CollectionAspects = []CollectionAspect{
+	CollectionAspectApiConnection,
 	CollectionAspectTelemetry,
 	CollectionAspectSystemStats,
 	CollectionAspectMonitoringDbConnection,
 	CollectionAspectPgVersion,
-	CollectionAspectApiConnection,
 	CollectionAspectPgStatStatements,
+	CollectionAspectActivity,
 	CollectionAspectLogs,
 	CollectionAspectExplain,
 }

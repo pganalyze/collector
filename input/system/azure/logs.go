@@ -325,7 +325,6 @@ func setupLogTransformer(ctx context.Context, wg *sync.WaitGroup, servers []*sta
 				}
 
 				if !foundServer && globalCollectionOpts.TestRun {
-					// TODO: not sure how to translate this hint into the new format, since it's not specific to any server
 					logger.PrintVerbose("Discarding log line because of unknown server (did you set the correct azure_db_server_name?): %s", azureDbServerName)
 				}
 			}

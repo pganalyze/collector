@@ -195,7 +195,7 @@ func printAspectStatus(status *state.SelfTestResult, aspect state.CollectionAspe
 
 func printHint(hint string) {
 	if hint != "" {
-		fmt.Fprintf(os.Stderr, "\t   HINT:\t%s\n", hint)
+		fmt.Fprintf(os.Stderr, "\t\tHINT:\t%s\n", hint)
 	}
 }
 
@@ -300,9 +300,13 @@ func printServerTestSummary(s *state.Server, verbosity SummaryVerbosity) {
 	fmt.Fprintf(os.Stderr, "\t%s Schema Statistics:\t%s\n", ssIcon, ssMsg)
 	printHint(ssHint)
 
-	logsIcon, logMsg, logHint := getLogInsightsStatus(status)
-	fmt.Fprintf(os.Stderr, "\t%s Log Insights:\t\t%s\n", logsIcon, logMsg)
-	printHint(logHint)
+	logsIcon, logsMsg, logsHint := getLogInsightsStatus(status)
+	fmt.Fprintf(os.Stderr, "\t%s Log Insights:\t\t%s\n", logsIcon, logsMsg)
+	printHint(logsHint)
+
+	connsIcon, connsMsg, connsHint := getConnectionsStatus(status)
+	fmt.Fprintf(os.Stderr, "\t%s Connections:\t\t%s\n", connsIcon, connsMsg)
+	printHint(connsHint)
 
 	printAspectStatus(status, state.CollectionAspectSystemStats, "System")
 }
@@ -416,6 +420,11 @@ func getVACUUMAdvisorStatus(status *state.SelfTestResult) (string, string, strin
 		return RedX, "database connection required", ""
 	}
 
+	// See note in getLogInsightsStatus
+	if s := status.GetCollectionAspectStatus(state.CollectionAspectActivity); s != nil && s.State == state.CollectionStateNotAvailable {
+		return getAspectStatus(status, state.CollectionAspectActivity)
+	}
+
 	if s := status.GetCollectionAspectStatus(state.CollectionAspectLogs); s == nil || s.State != state.CollectionStateOkay {
 		return RedX, "Log Insights required", ""
 	}
@@ -424,12 +433,29 @@ func getVACUUMAdvisorStatus(status *state.SelfTestResult) (string, string, strin
 }
 
 func getLogInsightsStatus(status *state.SelfTestResult) (string, string, string) {
+	// N.B.: We check the activity status here, because we don't check the Logs
+	// grant on most platform, but we know if activity snapshots are not
+	// available, log snapshots are not available either based on our current
+	// plans
+	if s := status.GetCollectionAspectStatus(state.CollectionAspectActivity); s != nil && s.State == state.CollectionStateNotAvailable {
+		return getAspectStatus(status, state.CollectionAspectActivity)
+	}
+
 	return getAspectStatus(status, state.CollectionAspectLogs)
+}
+
+func getConnectionsStatus(status *state.SelfTestResult) (string, string, string) {
+	return getAspectStatus(status, state.CollectionAspectActivity)
 }
 
 func getAutomatedExplainStatus(status *state.SelfTestResult) (string, string, string) {
 	if s := status.GetCollectionAspectStatus(state.CollectionAspectMonitoringDbConnection); s == nil || s.State != state.CollectionStateOkay {
 		return RedX, "database connection required", ""
+	}
+
+	// See note in getLogInsightsStatus
+	if s := status.GetCollectionAspectStatus(state.CollectionAspectActivity); s != nil && s.State == state.CollectionStateNotAvailable {
+		return getAspectStatus(status, state.CollectionAspectActivity)
 	}
 
 	if s := status.GetCollectionAspectStatus(state.CollectionAspectLogs); s == nil || s.State != state.CollectionStateOkay {
