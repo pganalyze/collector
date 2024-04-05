@@ -148,8 +148,11 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 					if err != nil {
 						prefixedLogger.PrintError("Failed to run test explain: %s", err)
 						success = false
+					} else {
+						prefixedLogger.PrintInfo("Emitted test explain; check pganalyze EXPLAIN Plans page for result")
 					}
 				}
+
 				testRunSuccess <- success
 			} else if globalCollectionOpts.TestRunLogs {
 				success := doLogTest(ctx, servers, globalCollectionOpts, logger)

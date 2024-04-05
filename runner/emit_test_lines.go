@@ -2,6 +2,7 @@ package runner
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 
 	"github.com/pganalyze/collector/input/postgres"
@@ -31,14 +32,32 @@ func EmitTestExplain(ctx context.Context, server *state.Server, globalCollection
 	//
 	// Note that we intentionally don't use the pganalyze collector query marker here,
 	// since we want the EXPLAIN plan to show up in the pganalyze user interface
-	_, err = db.ExecContext(ctx, `WITH naptime(value) AS (
+	var naptime float64
+	var setting string
+	if server.Config.EnableLogExplain {
+		setting = "log_min_duration_statement"
+	} else {
+		setting = "auto_explain.log_min_duration"
+	}
+	err = db.QueryRowContext(ctx, `WITH naptime(value) AS (
 SELECT
 	COALESCE(pg_catalog.max(setting::float), 0) / 1000 * 1.2
 FROM
 	pg_settings
 WHERE
-	name IN ('log_min_duration_statement', 'auto_explain.log_min_duration')
+	name = $1
+), nap AS (
+	SELECT pg_catalog.pg_sleep(value) FROM naptime WHERE value >= 0
 )
-SELECT pg_catalog.pg_sleep(value) FROM naptime WHERE value > 0`)
-	return err
+SELECT value FROM naptime`, setting).Scan(&naptime)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return fmt.Errorf("could not check current value for setting '%s'", setting)
+		}
+		return err
+	}
+	if naptime < 0 {
+		return fmt.Errorf("setting '%s' disabled; could not generate EXPLAIN plan", setting)
+	}
+	return nil
 }
