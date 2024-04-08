@@ -9,6 +9,12 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
+const vacuumProgressSQLmaxDeadTuplesField = `v.max_dead_tuples`
+const vacuumProgressSQLpg17maxDeadTuplesField = `v.max_dead_tuple_bytes`
+
+const vacuumProgressSQLdeadTuplesField = `v.num_dead_tuples`
+const vacuumProgressSQLpg17deadTuplesField = `v.dead_tuple_bytes`
+
 const vacuumProgressSQLDefault string = `
 WITH activity AS (
 	SELECT pg_catalog.to_char(pid, 'FM0000000') AS padded_pid,
@@ -40,8 +46,8 @@ SELECT (query_start_epoch || padded_pid)::bigint AS vacuum_identity,
 			 COALESCE(v.heap_blks_scanned, 0) AS heap_blks_scanned,
 			 COALESCE(v.heap_blks_vacuumed, 0) AS heap_blks_vacuumed,
 			 COALESCE(v.index_vacuum_count, 0) AS index_vacuum_count,
-			 COALESCE(v.max_dead_tuples, 0) AS max_dead_tuples,
-			 COALESCE(v.num_dead_tuples, 0) AS num_dead_tuples
+			 COALESCE(%s, 0) AS max_dead_tuples,
+			 COALESCE(%s, 0) AS num_dead_tuples
 	FROM %s v
 			 JOIN activity a USING (pid)
 			 LEFT JOIN pg_catalog.pg_class c ON (c.oid = v.relid)
@@ -59,13 +65,27 @@ func GetVacuumProgress(ctx context.Context, logger *util.Logger, db *sql.DB, pos
 		activitySourceTable = "pg_catalog.pg_stat_activity"
 	}
 
+	var maxDeadTuplesField string
+	if postgresVersion.Numeric >= state.PostgresVersion17 {
+		maxDeadTuplesField = vacuumProgressSQLpg17maxDeadTuplesField
+	} else {
+		maxDeadTuplesField = vacuumProgressSQLmaxDeadTuplesField
+	}
+
+	var deadTuplesField string
+	if postgresVersion.Numeric >= state.PostgresVersion17 {
+		deadTuplesField = vacuumProgressSQLpg17deadTuplesField
+	} else {
+		deadTuplesField = vacuumProgressSQLdeadTuplesField
+	}
+
 	var vacuumSourceTable string
 	if StatsHelperExists(ctx, db, "get_stat_progress_vacuum") {
 		vacuumSourceTable = "pganalyze.get_stat_progress_vacuum()"
 	} else {
 		vacuumSourceTable = "pg_catalog.pg_stat_progress_vacuum"
 	}
-	sql = fmt.Sprintf(vacuumProgressSQLDefault, activitySourceTable, vacuumSourceTable)
+	sql = fmt.Sprintf(vacuumProgressSQLDefault, activitySourceTable, maxDeadTuplesField, deadTuplesField, vacuumSourceTable)
 
 	stmt, err := db.PrepareContext(ctx, QueryMarkerSQL+sql)
 	if err != nil {
