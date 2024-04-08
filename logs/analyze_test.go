@@ -1815,6 +1815,62 @@ var tests = []testpair{
 	},
 	{
 		[]state.LogLine{{
+			Content: `automatic vacuum of table "postgres.public.test": index scans: 0
+	pages: 0 removed, 442496 remain, 442496 scanned (100.00% of total)
+	tuples: 0 removed, 100000000 remain, 0 are dead but not yet removable
+	removable cutoff: 768, which was 0 XIDs old when operation ended
+	frozen: 0 pages from table (0.00% of total) had 0 tuples frozen
+	index scan not needed: 0 pages from table (0.00% of total) had 0 dead item identifiers removed
+	avg read rate: 24.523 MB/s, avg write rate: 24.641 MB/s
+	buffer usage: 444687 hits, 440385 misses, 442496 dirtied
+	WAL usage: 442479 records, 14 full page images, 26221148 bytes
+	system usage: CPU: user: 14.23 s, system: 10.10 s, elapsed: 140.29 s`,
+			LogLevel: pganalyze_collector.LogLineInformation_LOG,
+		}},
+		[]state.LogLine{{
+			Classification: pganalyze_collector.LogLineInformation_AUTOVACUUM_COMPLETED,
+			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
+			Database:       "postgres",
+			SchemaName:     "public",
+			RelationName:   "test",
+			Details: map[string]interface{}{
+				"aggressive":               false,
+				"anti_wraparound":          false,
+				"num_index_scans":          0,
+				"pages_removed":            0,
+				"rel_pages":                442496,
+				"scanned_pages":            442496,
+				"scanned_pages_percent":    100,
+				"tuples_deleted":           0,
+				"new_rel_tuples":           100000000,
+				"new_dead_tuples":          0,
+				"oldest_xmin":              768,
+				"oldest_xmin_age":          0,
+				"frozen_pages":             0,
+				"frozen_page_percent":      0,
+				"tuples_frozen":            0,
+				"vacuum_page_hit":          444687,
+				"vacuum_page_miss":         440385,
+				"vacuum_page_dirty":        442496,
+				"read_rate_mb":             24.523,
+				"write_rate_mb":            24.641,
+				"rusage_kernel":            10.1,
+				"rusage_user":              14.23,
+				"elapsed_secs":             140.29,
+				"wal_bytes":                26221148,
+				"wal_fpi":                  14,
+				"wal_records":              442479,
+				"lpdead_index_scan":        "not needed",
+				"lpdead_item_pages":        0,
+				"lpdead_item_page_percent": 0,
+				"lpdead_items":             0,
+			},
+			ReviewedForSecrets: true,
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
 			Content:  "automatic analyze of table \"postgres.public.pgbench_branches\" system usage: CPU 1.02s/2.08u sec elapsed 108.25 sec",
 			LogLevel: pganalyze_collector.LogLineInformation_LOG,
 		}},

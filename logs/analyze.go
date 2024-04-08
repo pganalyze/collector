@@ -86,6 +86,7 @@ var autoVacuum = analyzeGroup{
 			`(?:removable cutoff: (\d+), which was (\d+) XIDs old when operation ended)?,?\s*` + // Postgres 15+
 			`(?:new relfrozenxid: (\d+), which is (\d+) XIDs ahead of previous value)?,?\s*` + // Postgres 15+
 			`(?:new relminmxid: (\d+), which is (\d+) MXIDs ahead of previous value)?,?\s*` + // Postgres 15+
+			`(?:frozen: (\d+) pages from table \(([\d.]+)% of total\) had (\d+) tuples frozen)?,?\s*` + // Postgres 16+
 			`(?:index scan (not needed|needed|bypassed|bypassed by failsafe): (\d+) pages from table \(([\d.]+)% of total\) (?:have|had) (\d+) dead item identifiers(?: removed)?)?,?\s*` + // Postgres 14+
 			`((?:index ".+?": pages: \d+ in total, \d+ newly deleted, \d+ currently deleted, \d+ reusable,?\s*)*)?` + // Postgres 14+
 			`(?:I/O timings: read: ([\d.]+) ms, write: ([\d.]+) ms)?,?\s*` + // Postgres 14+
@@ -94,7 +95,7 @@ var autoVacuum = analyzeGroup{
 			`(?:avg read rate: ([\d.]+) MB/s, avg write rate: ([\d.]+) MB/s)?,?\s*` + // Postgres 13 and older
 			`(?:WAL usage: (\d+) records, (\d+) full page images, (\d+) bytes)?,?\s*` + // Postgres 14+
 			`system usage: CPU(?:(?: ([\d.]+)s/([\d.]+)u sec elapsed ([\d.]+) sec)|(?:: user: ([\d.]+) s, system: ([\d.]+) s, elapsed: ([\d.]+) s))`),
-		secrets: []state.LogSecretKind{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+		secrets: []state.LogSecretKind{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 	},
 }
 var autoAnalyze = analyzeGroup{
@@ -1618,7 +1619,7 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 	}
 	if matchesPrefix(logLine, autoVacuum.primary.prefixes) {
 		logLine, parts = matchLogLine(logLine, autoVacuum.primary)
-		if len(parts) == 46 {
+		if len(parts) == 49 {
 			var readRatePart, writeRatePart, kernelPart, userPart, elapsedPart string
 
 			aggressiveVacuum := parts[1] == "aggressive "
@@ -1649,32 +1650,33 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 			newDeadTuples, _ := strconv.ParseInt(parts[13], 10, 64)
 
 			// Parts 14 to 22 (missed dead tuples, OldestXmin, frozenxid and minmxid advancement) are version dependent and dealt with later
-			// Parts 23 to 29 (Index scan info, I/O read/write timings) are only present on Postgres 14+ and dealt with later
+			// Parts 23 to 25 (frozen pages information) is only present on Postgres 16+ and dealt with later
+			// Parts 26 to 32 (index scan info, I/O read/write timings) are only present on Postgres 14+ and dealt with later
 
-			if parts[30] != "" { // Postgres 14+, with I/O information before buffers
-				readRatePart = parts[30]
-				writeRatePart = parts[31]
+			if parts[33] != "" { // Postgres 14+, with I/O information before buffers
+				readRatePart = parts[33]
+				writeRatePart = parts[34]
 			} else { // Postgres 13 and older
-				readRatePart = parts[35]
-				writeRatePart = parts[36]
+				readRatePart = parts[38]
+				writeRatePart = parts[39]
 			}
 			readRateMb, _ := strconv.ParseFloat(readRatePart, 64)
 			writeRateMb, _ := strconv.ParseFloat(writeRatePart, 64)
 
-			vacuumPageHit, _ := strconv.ParseInt(parts[32], 10, 64)
-			vacuumPageMiss, _ := strconv.ParseInt(parts[33], 10, 64)
-			vacuumPageDirty, _ := strconv.ParseInt(parts[34], 10, 64)
+			vacuumPageHit, _ := strconv.ParseInt(parts[35], 10, 64)
+			vacuumPageMiss, _ := strconv.ParseInt(parts[36], 10, 64)
+			vacuumPageDirty, _ := strconv.ParseInt(parts[37], 10, 64)
 
-			// Parts 37 to 39 (WAL Usage) are only present on Postgres 13+ and dealt with later
+			// Parts 40 to 42 (WAL Usage) are only present on Postgres 13+ and dealt with later
 
-			if parts[40] != "" {
-				kernelPart = parts[40]
-				userPart = parts[41]
-				elapsedPart = parts[42]
-			} else {
-				userPart = parts[43]
-				kernelPart = parts[44]
+			if parts[43] != "" {
+				kernelPart = parts[43]
+				userPart = parts[44]
 				elapsedPart = parts[45]
+			} else {
+				userPart = parts[46]
+				kernelPart = parts[47]
+				elapsedPart = parts[48]
 			}
 			rusageKernelMode, _ := strconv.ParseFloat(kernelPart, 64)
 			rusageUserMode, _ := strconv.ParseFloat(userPart, 64)
@@ -1692,13 +1694,13 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 			}
 			// List anti-wraparound status either if the message indicates that it is, or if
 			// our Postgres version is new enough (13+) as determined by the presence of WAL
-			// record information (parts[37])
+			// record information (parts[40])
 			//
 			// Note that Postgres 12 is the odd one out, because it already had anti-wraparound
 			// status displayed, but we have no way to distinguish it from versions that didn't
 			// have it - there, only include the case when the vacuum indeed is a anti-wraparound
 			// vacuum.
-			if parts[2] != "" || parts[37] != "" {
+			if parts[2] != "" || parts[40] != "" {
 				antiWraparound := parts[2] == "to prevent wraparound "
 				logLine.Details["anti_wraparound"] = antiWraparound
 			}
@@ -1740,17 +1742,25 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 				logLine.Details["new_relminmxid"] = newRelminMxid
 				logLine.Details["new_relminmxid_diff"] = newRelminMxidDiff
 			}
-			if parts[23] != "" {
-				lpdeadItemPages, _ := strconv.ParseInt(parts[24], 10, 64)
-				lpdeadItemPagePercent, _ := strconv.ParseFloat(parts[25], 64)
-				lpdeadItems, _ := strconv.ParseInt(parts[26], 10, 64)
-				logLine.Details["lpdead_index_scan"] = parts[23] // not needed / needed / bypassed / bypassed by failsafe
+			if parts[23] != "" { // Postgres 16+
+				frozenPages, _ := strconv.ParseInt(parts[23], 10, 64)
+				frozenPagePercent, _ := strconv.ParseFloat(parts[24], 64)
+				tuplesFrozen, _ := strconv.ParseInt(parts[25], 10, 64)
+				logLine.Details["frozen_pages"] = frozenPages
+				logLine.Details["frozen_page_percent"] = frozenPagePercent
+				logLine.Details["tuples_frozen"] = tuplesFrozen
+			}
+			if parts[26] != "" {
+				lpdeadItemPages, _ := strconv.ParseInt(parts[27], 10, 64)
+				lpdeadItemPagePercent, _ := strconv.ParseFloat(parts[28], 64)
+				lpdeadItems, _ := strconv.ParseInt(parts[29], 10, 64)
+				logLine.Details["lpdead_index_scan"] = parts[26] // not needed / needed / bypassed / bypassed by failsafe
 				logLine.Details["lpdead_item_pages"] = lpdeadItemPages
 				logLine.Details["lpdead_item_page_percent"] = lpdeadItemPagePercent
 				logLine.Details["lpdead_items"] = lpdeadItems
 			}
-			if parts[27] != "" {
-				indexParts := autoVacuumIndexRegexp.FindAllStringSubmatch(parts[27], -1)
+			if parts[30] != "" {
+				indexParts := autoVacuumIndexRegexp.FindAllStringSubmatch(parts[30], -1)
 				index_vacuums := make(map[string]interface{})
 				for _, p := range indexParts {
 					numPages, _ := strconv.ParseInt(p[2], 10, 64)
@@ -1766,16 +1776,16 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 				}
 				logLine.Details["index_vacuums"] = index_vacuums
 			}
-			if parts[28] != "" {
-				blkReadTime, _ := strconv.ParseFloat(parts[28], 64)
-				blkWriteTime, _ := strconv.ParseFloat(parts[29], 64)
+			if parts[31] != "" {
+				blkReadTime, _ := strconv.ParseFloat(parts[31], 64)
+				blkWriteTime, _ := strconv.ParseFloat(parts[32], 64)
 				logLine.Details["blk_read_time"] = blkReadTime
 				logLine.Details["blk_write_time"] = blkWriteTime
 			}
-			if parts[37] != "" {
-				walRecords, _ := strconv.ParseInt(parts[37], 10, 64)
-				walFpi, _ := strconv.ParseInt(parts[38], 10, 64)
-				walBytes, _ := strconv.ParseInt(parts[39], 10, 64)
+			if parts[40] != "" {
+				walRecords, _ := strconv.ParseInt(parts[40], 10, 64)
+				walFpi, _ := strconv.ParseInt(parts[41], 10, 64)
+				walBytes, _ := strconv.ParseInt(parts[42], 10, 64)
 				logLine.Details["wal_records"] = walRecords
 				logLine.Details["wal_fpi"] = walFpi
 				logLine.Details["wal_bytes"] = walBytes
