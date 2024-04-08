@@ -14,21 +14,27 @@ import (
 )
 
 // pg_stat_statements 1.3+ (Postgres 9.5+)
-const statementSQLOptionalFieldsMinorVersion3 = "queryid, min_time, max_time, mean_time, stddev_time, NULL"
 const statementSQLTotalTimeFieldDefault = "total_time"
+const statementSQLIoTimeFieldsDefault = "blk_read_time, blk_write_time"
+const statementSQLOptionalFieldsMinorVersion3 = "min_time, max_time, mean_time, stddev_time, NULL"
 
 // pg_stat_statements 1.8+ (Postgres 13+)
-const statementSQLOptionalFieldsMinorVersion8 = "queryid, min_exec_time, max_exec_time, mean_exec_time, stddev_exec_time, NULL"
 const statementSQLTotalTimeFieldMinorVersion8 = "total_exec_time"
+const statementSQLOptionalFieldsMinorVersion8 = "min_exec_time, max_exec_time, mean_exec_time, stddev_exec_time, NULL"
 
 // pg_stat_statements 1.9+ (Postgres 14+)
-const statementSQLOptionalFieldsMinorVersion9 = "queryid, min_exec_time, max_exec_time, mean_exec_time, stddev_exec_time, toplevel"
+const statementSQLOptionalFieldsMinorVersion9 = "min_exec_time, max_exec_time, mean_exec_time, stddev_exec_time, toplevel"
+
+// pg_stat_statements 1.11+ (Postgres 17+)
+const statementSQLIoTimeFieldsMinorVersion11 = "shared_blk_read_time + local_blk_read_time + temp_blk_read_time, shared_blk_write_time + local_blk_write_time + temp_blk_write_time"
 
 const statementSQL string = `
 SELECT dbid, userid, query, calls, %s, rows, shared_blks_hit, shared_blks_read,
 			 shared_blks_dirtied, shared_blks_written, local_blks_hit, local_blks_read,
 			 local_blks_dirtied, local_blks_written, temp_blks_read, temp_blks_written,
-			 blk_read_time, blk_write_time, %s
+			 %s,
+			 queryid,
+			 %s
 	FROM %s`
 
 const statementStatsHelperSQL string = `
@@ -93,13 +99,16 @@ func ResetStatements(ctx context.Context, logger *util.Logger, db *sql.DB, syste
 func GetStatements(ctx context.Context, server *state.Server, logger *util.Logger, db *sql.DB, globalCollectionOpts state.CollectionOpts, postgresVersion state.PostgresVersion, showtext bool, systemType string) (state.PostgresStatementMap, state.PostgresStatementTextMap, state.PostgresStatementStatsMap, error) {
 	var err error
 	var totalTimeField string
+	var ioTimeFields string
 	var optionalFields string
 	var sourceTable string
 	var extSchema string
 	var extMinorVersion int16
 	var foundExtMinorVersion int16
 
-	if postgresVersion.Numeric >= state.PostgresVersion14 {
+	if postgresVersion.Numeric >= state.PostgresVersion17 {
+		extMinorVersion = 11
+	} else if postgresVersion.Numeric >= state.PostgresVersion14 {
 		extMinorVersion = 9
 	} else if postgresVersion.Numeric >= state.PostgresVersion13 {
 		extMinorVersion = 8
@@ -123,6 +132,18 @@ func GetStatements(ctx context.Context, server *state.Server, logger *util.Logge
 		foundExtMinorVersion = extMinorVersion
 	}
 
+	if foundExtMinorVersion >= 8 {
+		totalTimeField = statementSQLTotalTimeFieldMinorVersion8
+	} else {
+		totalTimeField = statementSQLTotalTimeFieldDefault
+	}
+
+	if foundExtMinorVersion >= 11 {
+		ioTimeFields = statementSQLIoTimeFieldsMinorVersion11
+	} else {
+		ioTimeFields = statementSQLIoTimeFieldsDefault
+	}
+
 	if foundExtMinorVersion >= 9 {
 		optionalFields = statementSQLOptionalFieldsMinorVersion9
 	} else if foundExtMinorVersion >= 8 {
@@ -131,12 +152,6 @@ func GetStatements(ctx context.Context, server *state.Server, logger *util.Logge
 		optionalFields = statementSQLOptionalFieldsMinorVersion3
 	} else {
 		return nil, nil, nil, fmt.Errorf("pg_stat_statements extension not supported (1.%d installed, 1.3+ supported). To update run `ALTER EXTENSION pg_stat_statements UPDATE`", foundExtMinorVersion)
-	}
-
-	if foundExtMinorVersion >= 8 {
-		totalTimeField = statementSQLTotalTimeFieldMinorVersion8
-	} else {
-		totalTimeField = statementSQLTotalTimeFieldDefault
 	}
 
 	if globalCollectionOpts.TestRun && foundExtMinorVersion < extMinorVersion {
@@ -172,7 +187,7 @@ func GetStatements(ctx context.Context, server *state.Server, logger *util.Logge
 		}
 	}
 
-	querySql := QueryMarkerSQL + fmt.Sprintf(statementSQL, totalTimeField, optionalFields, sourceTable)
+	querySql := QueryMarkerSQL + fmt.Sprintf(statementSQL, totalTimeField, ioTimeFields, optionalFields, sourceTable)
 
 	stmt, err := db.PrepareContext(ctx, querySql)
 	if err != nil {
