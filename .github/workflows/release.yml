@@ -119,8 +119,33 @@ jobs:
           packages/tmp/pganalyze-collector_*_arm64.deb
         if-no-files-found: error
 
+  build_charts:
+    runs-on: ubuntu-latest
+    # ensure we don't release on create events for branches (only tags)
+    if: ${{ startsWith( github.ref, 'refs/tags' ) }}
+
+    steps:
+    - name: Install Helm
+      uses: azure/setup-helm@v4
+
+    - name: Check out code
+      uses: actions/checkout@v3
+      with:
+        submodules: true
+
+    - name: Create helm package
+      run: helm package contrib/helm/pganalyze-collector
+
+    - name: Upload packages as artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: charts
+        path: |
+          pganalyze-collector-*.tgz
+        if-no-files-found: error
+
   release:
-    needs: [build, build_arm, build_packages]
+    needs: [build, build_arm, build_packages, build_charts]
     runs-on: ubuntu-latest
     # ensure we don't release on create events for branches (only tags)
     if: ${{ startsWith( github.ref, 'refs/tags' ) }}
@@ -140,6 +165,11 @@ jobs:
       uses: actions/download-artifact@v3
       with:
         name: packages
+
+    - name: Download helm package
+      uses: actions/download-artifact@v3
+      with:
+        name: charts
 
     - name: Get version and git version from tag
       id: get_version
@@ -219,3 +249,41 @@ jobs:
         asset_path: ./pganalyze-collector_${{ steps.get_version.outputs.version }}_arm64.deb
         asset_name: pganalyze-collector_${{ steps.get_version.outputs.version }}_arm64.deb
         asset_content_type: application/octet-stream
+
+  release_charts:
+    needs: [release]
+    runs-on: ubuntu-latest
+    # ensure we don't release on create events for branches (only tags)
+    if: ${{ startsWith( github.ref, 'refs/tags' ) }}
+
+    steps:
+    - name: Download helm package
+      uses: actions/download-artifact@v3
+      with:
+        name: charts
+
+    - name: Install Helm
+      uses: azure/setup-helm@v4
+
+    - name: Get version from tag
+      id: get_version
+      run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+    - name: Load the current index.yaml
+      run: curl -o index.yaml https://charts.pganalyze.com/index.yaml
+      continue-on-error: true
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: arn:aws:iam::793741702295:role/CollectorChartsPackage
+        aws-region: us-east-1
+
+    - name: Upload package to S3
+      run: aws s3 cp pganalyze-collector-${{ steps.get_version.outputs.version }}.tgz s3://charts.pganalyze.com/pganalyze-collector-${{ steps.get_version.outputs.version }}.tgz
+
+    - name: Create or update index.yaml
+      run: helm repo index . --merge index.yaml --url https://charts.pganalyze.com/
+
+    - name: Upload index.yaml to S3
+      run: aws s3 cp index.yaml s3://charts.pganalyze.com/index.yaml

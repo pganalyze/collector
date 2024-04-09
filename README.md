@@ -320,6 +320,19 @@ The script will also have the following environment variables set:
 * PGA_ERROR_MESSAGE (error message, in the case of the error callback)
 
 
+Helm Chart
+----------
+
+You can install the Helm chart for the collector like the following:
+
+```bash
+helm repo add pganalyze https://charts.pganalyze.com/
+helm install my-collector pganalyze/pganalyze-collector --values=myvalues.yml
+```
+
+You can find values for this chart using `helm show values pganalyze/pganalyze-collector`,
+or you can also find in the [README in the Helm chart directory](/contrib/helm/pganalyze-collector/README.md).
+
 License
 -------
 
