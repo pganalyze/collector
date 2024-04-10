@@ -57,7 +57,6 @@ func GetSystemState(server *state.Server, logger *util.Logger, globalCollectionO
 	} else if dbHost == "" || dbHost == "localhost" || dbHost == "127.0.0.1" || config.AlwaysCollectSystemData {
 		system = selfhosted.GetSystemState(server, logger)
 	} else {
-		// system state is _available_ here, just not
 		if globalCollectionOpts.TestRun {
 			// Detected as self hosted, but not collecting system state as we
 			// didn't detect the collector is running on the same instance as
