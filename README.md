@@ -139,34 +139,6 @@ $$
 $$ LANGUAGE sql VOLATILE SECURITY DEFINER;
 ```
 
-Setting up log pg_read_file helper
-----------------------------------
-
-Create the following helper as a superuser (note this needs to be an actual
-superuser, i.e. not available on systems like Amazon RDS), to read logs using the
-`pg_read_file` function with the restricted monitoring user:
-
-```sql
-CREATE OR REPLACE FUNCTION pganalyze.read_log_file(log_filename text, read_offset bigint, read_length bigint) RETURNS text AS
-$$
-DECLARE
-  result text;
-BEGIN
-  IF log_filename !~ '\A[\w\.-]+\Z' THEN
-    RAISE EXCEPTION 'invalid log filename';
-  END IF;
-
-  SELECT pg_catalog.pg_read_file(
-    pg_catalog.current_setting('data_directory') || '/' || pg_catalog.current_setting('log_directory') || '/' || log_filename,
-    read_offset,
-    read_length
-  ) INTO result;
-
-  RETURN result;
-END
-$$ LANGUAGE plpgsql VOLATILE SECURITY DEFINER;
-```
-
 
 Example output
 --------------
