@@ -415,6 +415,15 @@ func (config ServerConfig) GetDbPort() int {
 	return config.DbPort
 }
 
+// GetDbPortOrDefault - Gets the database port from the given configuration, otherwise returns the default Postgres port (5432)
+func (config ServerConfig) GetDbPortOrDefault() int {
+	port := config.GetDbPort()
+	if port == 0 {
+		port = 5432
+	}
+	return port
+}
+
 // GetDbUsername - Gets the database hostname from the given configuration
 func (config ServerConfig) GetDbUsername() string {
 	if config.DbURL != "" {
