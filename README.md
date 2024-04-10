@@ -83,15 +83,6 @@ $$
   most_common_val_nulls, most_common_freqs, most_common_base_freqs
   FROM pg_catalog.pg_stats_ext se;
 $$ LANGUAGE sql VOLATILE SECURITY DEFINER;
-
-CREATE OR REPLACE FUNCTION pganalyze.get_stat_replication() RETURNS SETOF pg_stat_replication AS
-$$
-  /* pganalyze-collector */ SELECT * FROM pg_catalog.pg_stat_replication;
-$$ LANGUAGE sql VOLATILE SECURITY DEFINER;
-
-CREATE USER pganalyze WITH PASSWORD 'mypassword' CONNECTION LIMIT 5;
-REVOKE ALL ON SCHEMA public FROM pganalyze;
-GRANT USAGE ON SCHEMA pganalyze TO pganalyze;
 ```
 
 Note that these statements must be run as a superuser (to create the `SECURITY DEFINER` function),
