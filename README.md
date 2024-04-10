@@ -58,11 +58,6 @@ CREATE OR REPLACE FUNCTION pganalyze.get_stat_statements(showtext boolean = true
 $$
   /* pganalyze-collector */ SELECT * FROM public.pg_stat_statements(showtext);
 $$ LANGUAGE sql VOLATILE SECURITY DEFINER;
-
-CREATE OR REPLACE FUNCTION pganalyze.get_stat_activity() RETURNS SETOF pg_stat_activity AS
-$$
-  /* pganalyze-collector */ SELECT * FROM pg_catalog.pg_stat_activity;
-$$ LANGUAGE sql VOLATILE SECURITY DEFINER;
 ```
 
 Note that these statements must be run as a superuser (to create the `SECURITY DEFINER` function),
