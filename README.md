@@ -53,11 +53,6 @@ CREATE SCHEMA pganalyze;
 GRANT USAGE ON SCHEMA pganalyze TO pganalyze;
 
 CREATE EXTENSION IF NOT EXISTS pg_stat_statements WITH SCHEMA public;
-
-CREATE OR REPLACE FUNCTION pganalyze.get_stat_statements(showtext boolean = true) RETURNS SETOF pg_stat_statements AS
-$$
-  /* pganalyze-collector */ SELECT * FROM public.pg_stat_statements(showtext);
-$$ LANGUAGE sql VOLATILE SECURITY DEFINER;
 ```
 
 Note that these statements must be run as a superuser (to create the `SECURITY DEFINER` function),
