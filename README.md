@@ -130,15 +130,6 @@ $$
 $$ LANGUAGE sql VOLATILE SECURITY DEFINER;
 ```
 
-If you enabled the optional reset mode (usually not required), you will also need this helper method:
-
-```sql
-CREATE OR REPLACE FUNCTION pganalyze.reset_stat_statements() RETURNS SETOF void AS
-$$
-  /* pganalyze-collector */ SELECT * FROM public.pg_stat_statements_reset();
-$$ LANGUAGE sql VOLATILE SECURITY DEFINER;
-```
-
 
 Example output
 --------------
