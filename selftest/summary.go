@@ -84,12 +84,12 @@ func summarizeDbChecks(status *state.SelfTestResult, aspect state.DbCollectionAs
 		firstDb = dbNames[0]
 	}
 	var firstUncheckedDb string
-	var anyChecked = false
+	var allChecked = true
 	for _, dbName := range dbNames {
-		if item, ok := checks[dbName]; ok && item.State != state.CollectionStateUnchecked {
-			anyChecked = true
-		} else if firstUncheckedDb == "" {
+		if item, ok := checks[dbName]; ok && item.State == state.CollectionStateUnchecked {
+			allChecked = false
 			firstUncheckedDb = dbName
+			break
 		}
 	}
 	var firstErrorDb string
@@ -124,9 +124,9 @@ func summarizeDbChecks(status *state.SelfTestResult, aspect state.DbCollectionAs
 	}
 
 	var summaryMsg string
-	if len(checks) == 0 {
+	if len(dbNames) == 0 || len(checks) == 0 {
 		summaryMsg = "could not check databases"
-	} else if !anyChecked {
+	} else if !allChecked {
 		if len(checks) > 1 {
 			summaryMsg = fmt.Sprintf("could not check %s and %d other monitored database(s)%s", firstUncheckedDb, len(checks)-1, verboseHint)
 		} else {
@@ -148,7 +148,7 @@ func summarizeDbChecks(status *state.SelfTestResult, aspect state.DbCollectionAs
 func summarizeDbHints(status *state.SelfTestResult, aspect state.DbCollectionAspect) []string {
 	hintsSet := make(map[string]bool)
 	dbAspectStatuses := status.AllDbAspectStatuses[aspect]
-	if dbAspectStatuses == nil || len(dbAspectStatuses) == 0 {
+	if len(dbAspectStatuses) == 0 {
 		return nil
 	}
 	for _, status := range dbAspectStatuses {
