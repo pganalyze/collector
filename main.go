@@ -177,23 +177,8 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 				selftest.PrintSummary(servers, logger.Verbose)
 				success := allFullSuccessful && allActivitySuccessful
 				if success {
-					// in a dry run, we will not actually have URLs; avoid this output in that case
-					var hasURLs bool
-					for _, server := range servers {
-						if server.PGAnalyzeURL != "" {
-							hasURLs = true
-							break
-						}
-					}
-					if hasURLs {
-						fmt.Fprintln(os.Stderr, "Test successful. View servers in pganalyze:")
-						for _, server := range servers {
-							if server.PGAnalyzeURL != "" {
-								fmt.Fprintf(os.Stderr, " - [%s]: %s\n", server.Config.SectionName, server.PGAnalyzeURL)
-							}
-						}
-						fmt.Fprintln(os.Stderr)
-					}
+					fmt.Fprintln(os.Stderr, "Test successful")
+					fmt.Fprintln(os.Stderr)
 				}
 				testRunSuccess <- success
 			}
