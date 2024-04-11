@@ -38,29 +38,11 @@ Adjust the values in that file by adding your API key (found in the pganalyze da
 
 You can repeat the configuration block with a different `[name]` if you have multiple servers to monitor.
 
-See https://pganalyze.com/docs for further details.
+See https://pganalyze.com/docs/install for further details.
 
 
-Setting up a Restricted Monitoring User
----------------------------------------
-
-By default pg_stat_statements does not allow viewing queries run by other users,
-unless you are a database superuser. Since you probably don't want monitoring
-to run as a superuser, you can setup a separate monitoring user like this:
-
-```sql
-CREATE SCHEMA pganalyze;
-GRANT USAGE ON SCHEMA pganalyze TO pganalyze;
-
-CREATE EXTENSION IF NOT EXISTS pg_stat_statements WITH SCHEMA public;
-```
-
-Note that these statements must be run as a superuser (to create the `SECURITY DEFINER` function),
-but from here onwards you can use the `pganalyze` user instead.
-
-The collector will automatically use the helper methods
-if they exist in the `pganalyze` schema - otherwise data will be fetched directly.
-
+Additional Setup
+----------------
 If you are using the Buffer Cache report in pganalyze, you will also need to create this additional helper method:
 
 ```sql
