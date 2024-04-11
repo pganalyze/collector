@@ -104,7 +104,7 @@ func FindRdsInstance(config config.ServerConfig, sess *session.Session) (*rds.DB
 	// If neither instance ID or cluster ID were specified, but we still have
 	// an RDS system type, attempt to find the instance based on the hostname
 	// (this is a long shot, but there are some cases where this helps)
-	return findRdsInstanceByHostAndPort(config.GetDbHost(), int64(config.GetDbPort()), svc)
+	return findRdsInstanceByHostAndPort(config.GetDbHost(), int64(config.GetDbPortOrDefault()), svc)
 }
 
 func GetRdsParameter(group *rds.DBParameterGroupStatus, name string, svc *rds.RDS) (parameter *rds.Parameter, err error) {

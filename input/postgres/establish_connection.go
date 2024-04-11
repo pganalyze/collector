@@ -53,7 +53,7 @@ func connectToDb(ctx context.Context, config config.ServerConfig, logger *util.L
 			return nil, err
 		}
 		if dbToken, err := rdsutils.BuildAuthToken(
-			fmt.Sprintf("%s:%d", config.GetDbHost(), config.GetDbPort()),
+			fmt.Sprintf("%s:%d", config.GetDbHost(), config.GetDbPortOrDefault()),
 			config.AwsRegion,
 			config.GetDbUsername(),
 			sess.Config.Credentials,
