@@ -1,12 +1,15 @@
-// Copyright 2018 The Go Authors. All rights reserved.
+// Copyright 2024 The Go Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-syntax = "proto2";
+edition = "2023";
 
-package goproto.protoc.proto2;
+package goproto.protoc.protoeditions;
 
-option go_package = "google.golang.org/protobuf/cmd/protoc-gen-go/testdata/proto2";
+import "types/gofeaturespb/go_features.proto";
+
+option go_package = "google.golang.org/protobuf/cmd/protoc-gen-go/testdata/protoeditions";
+option features.enum_type = CLOSED;
 
 // EnumType1 comment.
 enum EnumType1 {
@@ -22,14 +25,14 @@ enum EnumType2 {
   duplicate1 = 1;
   duplicate2 = 1;
 
-  reserved "RESERVED1";
-  reserved "RESERVED2";
+  reserved RESERVED1;
+  reserved RESERVED2;
   reserved 2, 3;
 }
 
 message EnumContainerMessage1 {
-  optional EnumType2 default_duplicate1 = 1 [default = duplicate1];
-  optional EnumType2 default_duplicate2 = 2 [default = duplicate2];
+  EnumType2 default_duplicate1 = 1 [default = duplicate1];
+  EnumType2 default_duplicate2 = 2 [default = duplicate2];
 
   // NestedEnumType1A comment.
   enum NestedEnumType1A {
@@ -52,4 +55,12 @@ message EnumContainerMessage1 {
       NESTED_2B_VALUE = 0;
     }
   }
+}
+
+enum LegacyUnmarshalJSONTest {
+  option features.(google.protobuf.go).legacy_unmarshal_json_enum = true;
+
+  FOO = 0;
+  BAR = 1;
+  BAZ = 4;
 }

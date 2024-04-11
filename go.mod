@@ -35,7 +35,7 @@ require (
 	golang.org/x/crypto v0.17.0 // indirect
 	golang.org/x/net v0.17.0
 	google.golang.org/api v0.143.0
-	google.golang.org/protobuf v1.32.0
+	google.golang.org/protobuf v1.33.0
 	gopkg.in/ini.v1 v1.62.0 // indirect
 	gopkg.in/mcuadros/go-syslog.v2 v2.3.0
 )
