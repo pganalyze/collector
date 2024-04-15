@@ -24,14 +24,18 @@ func CollectFull(ctx context.Context, server *state.Server, connection *sql.DB, 
 
 	ts.Version, err = postgres.GetPostgresVersion(ctx, logger, connection)
 	if err != nil {
+		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectPgVersion, err.Error())
 		logger.PrintError("Error collecting Postgres Version: %s", err)
 		return
 	}
 
 	if ts.Version.Numeric < state.MinRequiredPostgresVersion {
+		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectPgVersion, "PostgreSQL server version (%s) is too old, 10 or newer is required.", ts.Version.Short)
 		err = fmt.Errorf("Error: Your PostgreSQL server version (%s) is too old, 10 or newer is required.", ts.Version.Short)
 		return
 	}
+
+	server.SelfTest.MarkCollectionAspect(state.CollectionAspectPgVersion, state.CollectionStateOkay, ts.Version.Short)
 
 	ts.Roles, err = postgres.GetRoles(ctx, logger, connection, ts.Version)
 	if err != nil {
@@ -68,6 +72,7 @@ func CollectFull(ctx context.Context, server *state.Server, connection *sql.DB, 
 		if errors.As(err, &e) && e.Code == "55000" && globalCollectionOpts.TestRun { // object_not_in_prerequisite_state
 			shared_preload_libraries, _ := postgres.GetPostgresSetting(ctx, "shared_preload_libraries", server, globalCollectionOpts, logger)
 			logger.PrintInfo("HINT - Current shared_preload_libraries setting: '%s'. Your Postgres server may need to be restarted for changes to take effect.", shared_preload_libraries)
+			server.SelfTest.HintCollectionAspect(state.CollectionAspectPgStatStatements, "Current shared_preload_libraries setting: '%s'. Your Postgres server may need to be restarted for changes to take effect.", shared_preload_libraries)
 		}
 		err = nil
 	}
@@ -147,14 +152,14 @@ func CollectFull(ctx context.Context, server *state.Server, connection *sql.DB, 
 	}
 
 	if globalCollectionOpts.CollectSystemInformation {
-		ps.System = system.GetSystemState(server.Config, logger, globalCollectionOpts)
+		ps.System = system.GetSystemState(server, logger, globalCollectionOpts)
 	}
 
 	server.SetLogTimezone(ts.Settings)
 
 	ps.CollectorStats = getCollectorStats()
 	ts.CollectorConfig = getCollectorConfig(server.Config)
-	ts.CollectorPlatform = getCollectorPlatform(globalCollectionOpts, logger)
+	ts.CollectorPlatform = getCollectorPlatform(server, globalCollectionOpts, logger)
 
 	return
 }

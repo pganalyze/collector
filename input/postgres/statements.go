@@ -9,6 +9,7 @@ import (
 
 	"github.com/guregu/null"
 	"github.com/lib/pq"
+	"github.com/pganalyze/collector/selftest"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
 )
@@ -125,6 +126,7 @@ func GetStatements(ctx context.Context, server *state.Server, logger *util.Logge
 		logger.PrintInfo("pg_stat_statements does not exist, trying to create extension...")
 		_, err = db.ExecContext(ctx, QueryMarkerSQL+"CREATE EXTENSION IF NOT EXISTS pg_stat_statements SCHEMA public")
 		if err != nil {
+			server.SelfTest.MarkCollectionAspectError(state.CollectionAspectPgStatStatements, "extension does not exist in database %s and could not be created: %s", server.Config.DbName, err)
 			logger.PrintInfo("HINT - if you expect the extension to already be installed, please review the pganalyze documentation: https://pganalyze.com/docs/install/troubleshooting/pg_stat_statements")
 			return nil, nil, nil, err
 		}
@@ -151,17 +153,22 @@ func GetStatements(ctx context.Context, server *state.Server, logger *util.Logge
 	} else if foundExtMinorVersion >= 3 {
 		optionalFields = statementSQLOptionalFieldsMinorVersion3
 	} else {
+		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectPgStatStatements, "extension version not supported (1.%d installed, 1.3+ supported)", foundExtMinorVersion)
 		return nil, nil, nil, fmt.Errorf("pg_stat_statements extension not supported (1.%d installed, 1.3+ supported). To update run `ALTER EXTENSION pg_stat_statements UPDATE`", foundExtMinorVersion)
 	}
 
 	if globalCollectionOpts.TestRun && foundExtMinorVersion < extMinorVersion {
-		logger.PrintInfo("pg_stat_statements extension outdated (1.%d installed, 1.%d available). To update run `ALTER EXTENSION pg_stat_statements UPDATE`", foundExtMinorVersion, extMinorVersion)
+		pgssMsg := fmt.Sprintf("extension outdated (1.%d installed, 1.%d available)", foundExtMinorVersion, extMinorVersion)
+		logger.PrintInfo("pg_stat_statements %s. To update run `ALTER EXTENSION pg_stat_statements UPDATE`", pgssMsg)
 		if extMinorVersion >= 9 {
 			// Using the older version pgss with Postgres 14+ can cause the incorrect query stats
 			// when track = all is used + there are toplevel queries and nested queries
 			// https://github.com/pganalyze/collector/pull/472#discussion_r1399976152
 			logger.PrintError("Outdated pg_stat_statements may cause incorrect query statistics")
+			pgssMsg += "; outdated pg_stat_statements may cause incorrect query statistics"
 		}
+		server.SelfTest.MarkCollectionAspectWarning(state.CollectionAspectPgStatStatements, pgssMsg)
+		server.SelfTest.HintCollectionAspect(state.CollectionAspectPgStatStatements, "To update run `ALTER EXTENSION pg_stat_statements UPDATE`")
 	}
 
 	usingStatsHelper := false
@@ -176,6 +183,10 @@ func GetStatements(ctx context.Context, server *state.Server, logger *util.Logge
 		}
 	} else {
 		if systemType != "heroku" && !connectedAsSuperUser(ctx, db, systemType) && !connectedAsMonitoringRole(ctx, db) && globalCollectionOpts.TestRun {
+			server.SelfTest.MarkCollectionAspectWarning(state.CollectionAspectPgStatStatements, "monitoring user may have insufficient permissions to capture all queries")
+			server.SelfTest.HintCollectionAspect(state.CollectionAspectPgStatStatements, "Please set up"+
+				" the monitoring helper functions (%s)"+
+				" or connect as superuser to get query statistics for all roles.", selftest.URLPrinter.Sprint("https://github.com/pganalyze/collector#setting-up-a-restricted-monitoring-user"))
 			logger.PrintInfo("Warning: You are not connecting as superuser. Please setup" +
 				" the monitoring helper functions (https://github.com/pganalyze/collector#setting-up-a-restricted-monitoring-user)" +
 				" or connect as superuser, to get query statistics for all roles.")
@@ -248,6 +259,8 @@ func GetStatements(ctx context.Context, server *state.Server, logger *util.Logge
 	if err = rows.Err(); err != nil {
 		return nil, nil, nil, err
 	}
+
+	server.SelfTest.MarkCollectionAspectOk(state.CollectionAspectPgStatStatements)
 
 	statements := make(state.PostgresStatementMap)
 	statementTextsByFp := make(state.PostgresStatementTextMap)

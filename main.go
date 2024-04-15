@@ -29,6 +29,7 @@ import (
 	"github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/runner"
 	"github.com/pganalyze/collector/scheduler"
+	"github.com/pganalyze/collector/selftest"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
 
@@ -95,7 +96,7 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 		if globalCollectionOpts.TestRun && globalCollectionOpts.TestSection != "" && globalCollectionOpts.TestSection != config.SectionName {
 			continue
 		}
-		servers = append(servers, state.MakeServer(config))
+		servers = append(servers, state.MakeServer(config, globalCollectionOpts.TestRun))
 		if config.EnableReports {
 			hasAnyReportsEnabled = true
 		}
@@ -176,26 +177,11 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 					doLogTest(ctx, servers, globalCollectionOpts, logger)
 				}
 
+				selftest.PrintSummary(servers, logger.Verbose)
 				success := allFullSuccessful && allActivitySuccessful
 				if success {
-					// in a dry run, we will not actually have URLs; avoid this output in that case
-					var hasURLs bool
-					for _, server := range servers {
-						if server.PGAnalyzeURL != "" {
-							hasURLs = true
-							break
-						}
-					}
-					if hasURLs {
-						fmt.Fprintln(os.Stderr)
-						fmt.Fprintln(os.Stderr, "Test successful. View servers in pganalyze:")
-						for _, server := range servers {
-							if server.PGAnalyzeURL != "" {
-								fmt.Fprintf(os.Stderr, " - [%s]: %s\n", server.Config.SectionName, server.PGAnalyzeURL)
-							}
-						}
-						fmt.Fprintln(os.Stderr)
-					}
+					fmt.Fprintln(os.Stderr, "Test successful")
+					fmt.Fprintln(os.Stderr)
 				}
 				testRunSuccess <- success
 			}
@@ -423,7 +409,7 @@ func main() {
 		content := string(contentBytes)
 		reader := strings.NewReader(content)
 		logReader := logs.NewMaybeHerokuLogReader(reader)
-		logLines, samples := logs.ParseAndAnalyzeBuffer(logReader, time.Time{}, state.MakeServer(config.ServerConfig{}))
+		logLines, samples := logs.ParseAndAnalyzeBuffer(logReader, time.Time{}, state.MakeServer(config.ServerConfig{}, false))
 		logs.PrintDebugInfo(content, logLines, samples)
 		if analyzeDebugClassifications != "" {
 			classifications := strings.Split(analyzeDebugClassifications, ",")
@@ -577,9 +563,11 @@ func checkAllInitialCollectionStatus(ctx context.Context, servers []*state.Serve
 func checkOneInitialCollectionStatus(ctx context.Context, server *state.Server, opts state.CollectionOpts, logger *util.Logger) error {
 	conn, err := postgres.EstablishConnection(ctx, server, logger, opts, "")
 	if err != nil {
+		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectMonitoringDbConnection, err.Error())
 		return errors.Wrap(err, "failed to connect to database")
 	}
 	defer conn.Close()
+	server.SelfTest.MarkCollectionAspectOk(state.CollectionAspectMonitoringDbConnection)
 
 	settings, err := postgres.GetSettings(ctx, conn)
 	if err != nil {
@@ -606,6 +594,7 @@ func checkOneInitialCollectionStatus(ctx context.Context, server *state.Server, 
 	}
 	if isIgnoredReplica {
 		logger.PrintInfo("All monitoring suspended for this server: %s", collectionDisabledReason)
+		server.SelfTest.MarkCollectionSuspended("all monitoring suspended for this server: %s", collectionDisabledReason)
 	} else if logsDisabled {
 		logger.PrintInfo("Log collection suspended for this server: %s", logsDisabledReason)
 	} else if logsIgnoreDuration {

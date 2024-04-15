@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pganalyze/collector/config"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
 	"github.com/prometheus/procfs"
@@ -28,7 +27,8 @@ type helperStatus struct {
 }
 
 // GetSystemState - Gets system information about a self-hosted (physical/virtual) system
-func GetSystemState(config config.ServerConfig, logger *util.Logger) (system state.SystemState) {
+func GetSystemState(server *state.Server, logger *util.Logger) (system state.SystemState) {
+	config := server.Config
 	var status helperStatus
 
 	system.Info.Type = state.SelfHostedSystem
@@ -38,10 +38,12 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger) (system sta
 
 	statusBytes, err := exec.Command("/usr/bin/pganalyze-collector-helper", "status", config.DbDataDirectory).Output()
 	if err != nil {
+		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectSystemStats, "error running system stats helper process: %s", err)
 		logger.PrintVerbose("Selfhosted/System: Could not run helper process: %s", err)
 	} else {
 		err = json.Unmarshal(statusBytes, &status)
 		if err != nil {
+			server.SelfTest.MarkCollectionAspectError(state.CollectionAspectSystemStats, "error reading system stats helper output: %s", err)
 			logger.PrintVerbose("Selfhosted/System: Could not unmarshal helper status: %s", err)
 		}
 
@@ -51,6 +53,7 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger) (system sta
 
 	hostInfo, err := host.Info()
 	if err != nil {
+		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectSystemStats, "error getting host information: %s", err)
 		logger.PrintVerbose("Selfhosted/System: Failed to get host information: %s", err)
 	} else {
 		system.Info.BootTime = time.Unix(int64(hostInfo.BootTime), 0)
@@ -68,6 +71,7 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger) (system sta
 
 	loadAvg, err := load.Avg()
 	if err != nil {
+		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectSystemStats, "error getting load average: %s", err)
 		logger.PrintVerbose("Selfhosted/System: Failed to get load average: %s", err)
 	} else {
 		system.Scheduler.Loadavg1min = loadAvg.Load1
@@ -77,6 +81,7 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger) (system sta
 
 	memory, err := mem.VirtualMemory()
 	if err != nil {
+		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectSystemStats, "error getting virtual memory stats: %s", err)
 		logger.PrintVerbose("Selfhosted/System: Failed to get virtual memory stats: %s", err)
 	} else {
 		system.Memory.TotalBytes = memory.Total
@@ -90,6 +95,7 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger) (system sta
 
 	swap, err := mem.SwapMemory()
 	if err != nil {
+		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectSystemStats, "error getting swap stats: %s", err)
 		logger.PrintVerbose("Selfhosted/System: Failed to get swap stats: %s", err)
 	} else {
 		system.Memory.SwapUsedBytes = swap.Used
@@ -110,6 +116,7 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger) (system sta
 
 	cpuInfos, err := cpu.Info()
 	if err != nil {
+		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectSystemStats, "error getting CPU info: %s", err)
 		logger.PrintVerbose("Selfhosted/System: Failed to get CPU info: %s", err)
 	} else if len(cpuInfos) > 0 {
 		system.CPUInfo.Model = cpuInfos[0].ModelName
@@ -128,6 +135,7 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger) (system sta
 
 	cpuStats, err := cpu.Times(true)
 	if err != nil {
+		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectSystemStats, "error getting CPU stats: %s", err)
 		logger.PrintVerbose("Selfhosted/System: Failed to get CPU stats: %s", err)
 	} else {
 		system.CPUInfo.LogicalCoreCount = int32(len(cpuStats))
@@ -152,6 +160,7 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger) (system sta
 
 	netStats, err := net.IOCounters(true)
 	if err != nil {
+		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectSystemStats, "error getting network stats: %s", err)
 		logger.PrintVerbose("Selfhosted/System: Failed to get network stats: %s", err)
 	} else {
 		system.NetworkStats = make(state.NetworkStatsMap)
@@ -170,6 +179,7 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger) (system sta
 	system.Disks = make(state.DiskMap)
 	disks, err := disk.IOCounters()
 	if err != nil {
+		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectSystemStats, "error getting disk I/O stats: %s", err)
 		logger.PrintVerbose("Selfhosted/System: Failed to get disk I/O stats: %s", err)
 
 		// We need to insert a dummy device, otherwise we can't attach the partitions anywhere
@@ -199,10 +209,12 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger) (system sta
 	// Remember disk components for software RAID
 	fs, err := procfs.NewFS("/proc")
 	if err != nil {
+		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectSystemStats, "error reading /proc: %s", err)
 		logger.PrintVerbose("Selfhosted/System: Could not access /proc: %s", err)
 	} else {
 		mdstats, err := fs.MDStat()
 		if err != nil {
+			server.SelfTest.MarkCollectionAspectError(state.CollectionAspectSystemStats, "error reading mdstat: %s", err)
 			logger.PrintVerbose("Selfhosted/System: Failed to get mdstat: %s", err)
 		} else {
 			for _, mdstat := range mdstats {
@@ -221,6 +233,7 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger) (system sta
 
 	diskPartitions, err := disk.Partitions(true)
 	if err != nil {
+		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectSystemStats, "error reading disk partitions: %s", err)
 		logger.PrintVerbose("Selfhosted/System: Failed to get disk partitions: %s", err)
 	} else {
 		system.DiskPartitions = make(state.DiskPartitionMap)
@@ -242,6 +255,7 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger) (system sta
 
 			diskUsage, err := disk.Usage(partition.Mountpoint)
 			if err != nil {
+				server.SelfTest.MarkCollectionAspectError(state.CollectionAspectSystemStats, "error reading partition usage stats for %s: %s", partition.Mountpoint, err)
 				logger.PrintVerbose("Selfhosted/System: Failed to get disk partition usage stats for %s: %s", partition.Mountpoint, err)
 			} else {
 				var diskName string
@@ -270,6 +284,8 @@ func GetSystemState(config config.ServerConfig, logger *util.Logger) (system sta
 			}
 		}
 	}
+
+	server.SelfTest.MarkCollectionAspectOk(state.CollectionAspectSystemStats)
 
 	return
 }

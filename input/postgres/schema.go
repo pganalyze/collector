@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/pganalyze/collector/selftest"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
 )
@@ -44,11 +45,14 @@ func CollectAllSchemas(ctx context.Context, server *state.Server, collectionOpts
 		if _, ok := collected[dbName]; ok {
 			continue
 		}
+		server.SelfTest.MarkMonitoredDb(dbName)
+
 		collected[dbName] = true
 		psNext, tsNext, databaseOid, err := collectOneSchema(ctxSchema, server, collectionOpts, logger, ps, ts, ts.Version, systemType, dbName)
 		if err != nil {
 			// If the outer context failed, return an error to the caller
 			if ctx.Err() != nil {
+				server.SelfTest.MarkRemainingDbCollectionAspectError(state.CollectionAspectSchema, err.Error())
 				return ps, ts, err
 			}
 			// If the schema context failed, stop doing any further collection.
@@ -57,25 +61,36 @@ func CollectAllSchemas(ctx context.Context, server *state.Server, collectionOpts
 			// we already collected.
 			if ctxSchema.Err() != nil {
 				logger.PrintWarning("Failed to collect schema metadata for database %s and all remaining databases: %s", dbName, err)
+				server.SelfTest.MarkRemainingDbCollectionAspectError(state.CollectionAspectSchema, err.Error())
 				return ps, ts, nil
 			}
 			warning := "Failed to collect schema metadata for database %s: %s"
+			server.SelfTest.MarkDbCollectionAspectError(dbName, state.CollectionAspectSchema, err.Error())
 			if collectionOpts.TestRun {
 				logger.PrintWarning(warning, dbName, err)
 			} else {
 				logger.PrintVerbose(warning, dbName, err)
 			}
+
 			continue
 		}
 		ps = psNext
 		ts = tsNext
 		ts.DatabaseOidsWithLocalCatalog = append(ts.DatabaseOidsWithLocalCatalog, databaseOid)
+		server.SelfTest.MarkDbCollectionAspectOk(dbName, state.CollectionAspectSchema)
 	}
 	schemaTableLimit := server.Grant.Config.SchemaTableLimit
 	if schemaTableLimit == 0 {
 		schemaTableLimit = defaultSchemaTableLimit
 	}
 	if relCount := len(ps.Relations); relCount > schemaTableLimit {
+		// technically this is a server problem, but we can report it at the database level
+		if collectionOpts.TestRun {
+			for _, dbName := range server.SelfTest.MonitoredDbs {
+				server.SelfTest.MarkDbCollectionAspectError(dbName, state.CollectionAspectSchema, "too many total tables")
+				server.SelfTest.HintDbCollectionAspect(dbName, state.CollectionAspectSchema, "Too many total tables: got %d, but only %d can be monitored per server; schema information will not be sent; learn more at %s", relCount, schemaTableLimit, selftest.URLPrinter.Sprint("https://pganalyze.com/docs/collector/settings#schema-filter-settings"))
+			}
+		}
 		logger.PrintWarning("Too many tables: got %d, but only %d can be monitored per server; schema information will not be sent; learn more at https://pganalyze.com/docs/collector/settings#schema-filter-settings", relCount, schemaTableLimit)
 	}
 
@@ -133,7 +148,7 @@ func collectSchemaData(ctx context.Context, collectionOpts state.CollectionOpts,
 			ps.SchemaStats[databaseOid].IndexStats[k] = v
 		}
 
-		newColumnStats, err := GetColumnStats(ctx, logger, db, collectionOpts, systemType, dbName)
+		newColumnStats, err := GetColumnStats(ctx, logger, db, collectionOpts, systemType, dbName, server)
 		if err != nil {
 			return ps, ts, fmt.Errorf("error collecting column statistics: %s", err)
 		}

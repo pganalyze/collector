@@ -42,14 +42,16 @@ func getCollectorStats() state.CollectorStats {
 	}
 }
 
-func getCollectorPlatform(globalCollectionOpts state.CollectionOpts, logger *util.Logger) state.CollectorPlatform {
+func getCollectorPlatform(server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) state.CollectorPlatform {
 	hostInfo, err := host.Info()
 	if err != nil {
+		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectTelemetry, "could not get collector host information: %s", err)
 		if globalCollectionOpts.TestRun {
 			logger.PrintVerbose("Could not get collector host information: %s", err)
 		}
 		return state.CollectorPlatform{}
 	}
+	server.SelfTest.MarkCollectionAspectOk(state.CollectionAspectTelemetry)
 
 	var virtSystem string
 	if hostInfo.VirtualizationRole == "guest" {

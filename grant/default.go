@@ -13,6 +13,7 @@ import (
 func GetDefaultGrant(server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.Grant, error) {
 	req, err := http.NewRequest("GET", server.Config.APIBaseURL+"/v2/snapshots/grant", nil)
 	if err != nil {
+		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectApiConnection, err.Error())
 		return state.Grant{}, err
 	}
 
@@ -28,25 +29,32 @@ func GetDefaultGrant(server *state.Server, globalCollectionOpts state.Collection
 
 	resp, err := server.Config.HTTPClientWithRetry.Do(req)
 	if err != nil {
-		return state.Grant{}, util.CleanHTTPError(err)
+		cleanErr := util.CleanHTTPError(err)
+		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectApiConnection, "error contacting API: %s", cleanErr)
+		return state.Grant{}, cleanErr
 	}
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
+		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectApiConnection, "error contacting API: %s", err)
 		return state.Grant{}, err
 	}
 
 	if resp.StatusCode != http.StatusOK || len(body) == 0 {
+		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectApiConnection, "error contacting API: %s", body)
 		return state.Grant{}, fmt.Errorf("Error when getting grant: %s", body)
 	}
 
 	grant := state.Grant{}
 	err = json.Unmarshal(body, &grant)
 	if err != nil {
+		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectApiConnection, "error deserializing API response: %s", err)
 		return state.Grant{}, err
 	}
 	grant.Valid = true
+
+	server.SelfTest.MarkCollectionAspectOk(state.CollectionAspectApiConnection)
 
 	return grant, nil
 }

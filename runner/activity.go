@@ -11,6 +11,7 @@ import (
 	"github.com/pganalyze/collector/grant"
 	"github.com/pganalyze/collector/input/postgres"
 	"github.com/pganalyze/collector/output"
+	"github.com/pganalyze/collector/selftest"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
 	"github.com/pkg/errors"
@@ -48,6 +49,8 @@ func processActivityForServer(ctx context.Context, server *state.Server, globalC
 
 		if !newGrant.Config.EnableActivity {
 			if globalCollectionOpts.TestRun {
+				server.SelfTest.MarkCollectionAspectNotAvailable(state.CollectionAspectActivity, "not available on this plan")
+				server.SelfTest.HintCollectionAspect(state.CollectionAspectActivity, "Compare plans at %s", selftest.URLPrinter.Sprint("https://pganalyze.com/pricing"))
 				logger.PrintError("  Failed - Activity snapshots disabled by pganalyze")
 			} else {
 				logger.PrintVerbose("Activity snapshots disabled by pganalyze, skipping")
@@ -112,7 +115,10 @@ func CollectActivityFromAllServers(ctx context.Context, servers []*state.Server,
 	allSuccessful = true
 
 	for idx := range servers {
-		if servers[idx].Config.DisableActivity || (servers[idx].Grant.Valid && !servers[idx].Grant.Config.EnableActivity) {
+		server := servers[idx]
+		if server.Config.DisableActivity || (server.Grant.Valid && !server.Grant.Config.EnableActivity) {
+			server.SelfTest.MarkCollectionAspectNotAvailable(state.CollectionAspectActivity, "not available on this plan")
+			server.SelfTest.HintCollectionAspect(state.CollectionAspectActivity, "Compare plans at %s", selftest.URLPrinter.Sprint("https://pganalyze.com/pricing"))
 			continue
 		}
 
@@ -128,6 +134,7 @@ func CollectActivityFromAllServers(ctx context.Context, servers []*state.Server,
 			newState, success, err := processActivityForServer(ctx, server, globalCollectionOpts, prefixedLogger)
 			if err != nil {
 				server.ActivityStateMutex.Unlock()
+				server.SelfTest.MarkCollectionAspectError(state.CollectionAspectActivity, err.Error())
 
 				server.CollectionStatusMutex.Lock()
 				isIgnoredReplica := err == state.ErrReplicaCollectionDisabled
@@ -152,6 +159,9 @@ func CollectActivityFromAllServers(ctx context.Context, servers []*state.Server,
 					}
 				}
 			} else {
+				if success {
+					server.SelfTest.MarkCollectionAspectOk(state.CollectionAspectActivity)
+				}
 				server.ActivityPrevState = newState
 				server.ActivityStateMutex.Unlock()
 				if success && server.Config.SuccessCallback != "" {
@@ -159,7 +169,7 @@ func CollectActivityFromAllServers(ctx context.Context, servers []*state.Server,
 				}
 			}
 			wg.Done()
-		}(servers[idx])
+		}(server)
 	}
 
 	wg.Wait()
