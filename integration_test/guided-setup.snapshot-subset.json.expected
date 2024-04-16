@@ -1,10 +1,4 @@
 {
-  "fns": [
-    {
-      "schemaName": "pganalyze",
-      "functionName": "get_stat_replication"
-    }
-  ],
   "roles": {
     "name": "pganalyze"
   }
