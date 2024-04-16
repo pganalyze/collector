@@ -186,9 +186,9 @@ func GetStatements(ctx context.Context, server *state.Server, logger *util.Logge
 			server.SelfTest.MarkCollectionAspectWarning(state.CollectionAspectPgStatStatements, "monitoring user may have insufficient permissions to capture all queries")
 			server.SelfTest.HintCollectionAspect(state.CollectionAspectPgStatStatements, "Please set up"+
 				" the monitoring helper functions (%s)"+
-				" or connect as superuser to get query statistics for all roles.", selftest.URLPrinter.Sprint("https://github.com/pganalyze/collector#setting-up-a-restricted-monitoring-user"))
+				" or connect as superuser to get query statistics for all roles.", selftest.URLPrinter.Sprint("https://pganalyze.com/docs/install/aiven/03_create_pg_stat_statements_helpers"))
 			logger.PrintInfo("Warning: You are not connecting as superuser. Please setup" +
-				" the monitoring helper functions (https://github.com/pganalyze/collector#setting-up-a-restricted-monitoring-user)" +
+				" the monitoring helper functions (https://pganalyze.com/docs/install/aiven/03_create_pg_stat_statements_helpers)" +
 				" or connect as superuser, to get query statistics for all roles.")
 		}
 		if !showtext {

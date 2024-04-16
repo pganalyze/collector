@@ -7,7 +7,6 @@ import (
 	survey "github.com/AlecAivazis/survey/v2"
 	"github.com/lib/pq"
 	s "github.com/pganalyze/collector/setup/state"
-	"github.com/pganalyze/collector/setup/util"
 )
 
 var EnsurePganalyzeSchema = &s.Step{
@@ -33,13 +32,6 @@ var EnsurePganalyzeSchema = &s.Step{
 		}
 		hasUsage := row.GetBool(0)
 		if !hasUsage {
-			return false, nil
-		}
-		valid, err := util.ValidateHelperFunction(util.GetStatReplicationHelper, state.QueryRunner)
-		if err != nil {
-			return false, err
-		}
-		if !valid {
 			return false, nil
 		}
 
@@ -78,7 +70,7 @@ var EnsurePganalyzeSchema = &s.Step{
 			fmt.Sprintf(
 				`CREATE SCHEMA IF NOT EXISTS pganalyze; GRANT USAGE ON SCHEMA pganalyze TO %s;`,
 				pq.QuoteIdentifier(pgaUser),
-			) + util.GetStatReplicationHelper.GetDefinition(),
+			),
 		)
 	},
 }

@@ -262,8 +262,8 @@ func GetBloatStats(ctx context.Context, logger *util.Logger, db *sql.DB, systemT
 		columnStatsSourceTable = "(SELECT * FROM pganalyze.get_column_stats()) pg_stats"
 	} else {
 		if !connectedAsSuperUser(ctx, db, systemType) && !connectedAsMonitoringRole(ctx, db) {
-			logger.PrintInfo("Warning: You are not connecting as superuser. Please setup" +
-				" the monitoring helper functions (https://github.com/pganalyze/collector#setting-up-a-restricted-monitoring-user)" +
+			logger.PrintInfo("Warning: You are not connecting as superuser. Please set up" +
+				" the monitoring helper functions (https://pganalyze.com/docs/install/troubleshooting/column_stats_helper)" +
 				" or connect as superuser to run the bloat report.")
 		}
 		columnStatsSourceTable = "pg_catalog.pg_stats"

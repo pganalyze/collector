@@ -66,13 +66,6 @@ END`,
 	tail: "$$ LANGUAGE plpgsql VOLATILE SECURITY DEFINER;",
 }
 
-var GetStatReplicationHelper = PGHelperFn{
-	name: "get_stat_replication",
-	head: "CREATE OR REPLACE FUNCTION pganalyze.get_stat_replication() RETURNS SETOF pg_stat_replication AS $$",
-	body: "/* pganalyze-collector */ SELECT * FROM pg_catalog.pg_stat_replication;",
-	tail: "$$ LANGUAGE sql VOLATILE SECURITY DEFINER;",
-}
-
 func ValidateHelperFunction(fn PGHelperFn, runner *query.Runner) (bool, error) {
 	row, err := runner.QueryRow(
 		fmt.Sprintf(

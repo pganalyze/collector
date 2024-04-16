@@ -93,7 +93,7 @@ func GetReplication(ctx context.Context, logger *util.Logger, db *sql.DB, postgr
 	} else {
 		if systemType != "heroku" && !connectedAsSuperUser(ctx, db, systemType) && !connectedAsMonitoringRole(ctx, db) {
 			logger.PrintInfo("Warning: You are not connecting as superuser. Please setup" +
-				" the monitoring helper functions (https://github.com/pganalyze/collector#setting-up-a-restricted-monitoring-user)" +
+				" the monitoring helper functions (https://pganalyze.com/docs/install/aiven/01_create_monitoring_user)" +
 				" or connect as superuser, to get replication statistics.")
 		}
 		sourceTable = "pg_stat_replication"
