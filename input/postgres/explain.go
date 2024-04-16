@@ -72,7 +72,7 @@ func RunExplain(ctx context.Context, server *state.Server, inputs []state.Postgr
 		}
 		if hasPermErr && !connectedAsSuperUser(ctx, db, server.Config.SystemType) {
 			logger.PrintInfo("Warning: pganalyze.explain() helper function not found in database \"%s\". Please set up"+
-				" the monitoring helper functions (https://github.com/pganalyze/collector#setting-up-a-restricted-monitoring-user)"+
+				" the monitoring helper functions (https://pganalyze.com/docs/explain/setup/log_explain/01_create_helper_functions)"+
 				" in every database you want to monitor to avoid permissions issues when running log-based EXPLAIN.", dbName)
 		}
 

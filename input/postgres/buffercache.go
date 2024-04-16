@@ -78,8 +78,8 @@ func GetBuffercache(ctx context.Context, logger *util.Logger, db *sql.DB, system
 		sourceTable = "pganalyze.get_buffercache()"
 	} else {
 		if !connectedAsSuperUser(ctx, db, systemType) && !connectedAsMonitoringRole(ctx, db) {
-			logger.PrintInfo("Warning: You are not connecting as superuser. Please setup" +
-				" the monitoring helper functions (https://github.com/pganalyze/collector#setting-up-a-restricted-monitoring-user)" +
+			logger.PrintInfo("Warning: You are not connecting as superuser. Please set up" +
+				" the additional monitoring helper functions (https://github.com/pganalyze/collector/?tab=readme-ov-file#additional-setup)" +
 				" or connect as superuser to run the buffercache report.")
 		}
 		sourceTable = "public.pg_buffercache"

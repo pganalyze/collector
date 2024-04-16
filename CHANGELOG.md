@@ -36,7 +36,7 @@
 
 * Track extended statistics created with `CREATE STATISTICS`
   - This is utilized by pganalyze Index Advisor to better detect functional dependencies, and improve multi-column index recommendations
-  - To allow the collector to access extended statistics data you need to create the new "get_relation_stats_ext" helper function (see https://github.com/pganalyze/collector?tab=readme-ov-file#setting-up-a-restricted-monitoring-user)
+  - To allow the collector to access extended statistics data you need to create the new "get_relation_stats_ext" helper function (see https://pganalyze.com/docs/install/troubleshooting/ext_stats_helper)
 * Docker image: Don't reload when calling "test" command
 
 
@@ -879,7 +879,7 @@
 * Add helper for log-based EXPLAIN access and use if available
   - This lets us avoid granting the pganalyze user any access to the data to follow
     the principle of least privilege
-  - See https://github.com/pganalyze/collector#setting-up-log-explain-helper
+  - See https://pganalyze.com/docs/explain/setup/log_explain
 * Avoid corrupted snapshots when OIDs get reused across databases
   - This would have shown as data not being visible in pganalyze,
     particularly for servers with many databases where tables were
