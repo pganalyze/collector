@@ -38,68 +38,11 @@ Adjust the values in that file by adding your API key (found in the pganalyze da
 
 You can repeat the configuration block with a different `[name]` if you have multiple servers to monitor.
 
-See https://pganalyze.com/docs for further details.
+See https://pganalyze.com/docs/install for further details.
 
 
-Setting up a Restricted Monitoring User
----------------------------------------
-
-By default pg_stat_statements does not allow viewing queries run by other users,
-unless you are a database superuser. Since you probably don't want monitoring
-to run as a superuser, you can setup a separate monitoring user like this:
-
-```sql
-CREATE SCHEMA pganalyze;
-GRANT USAGE ON SCHEMA pganalyze TO pganalyze;
-
-CREATE EXTENSION IF NOT EXISTS pg_stat_statements WITH SCHEMA public;
-
-CREATE OR REPLACE FUNCTION pganalyze.get_stat_statements(showtext boolean = true) RETURNS SETOF pg_stat_statements AS
-$$
-  /* pganalyze-collector */ SELECT * FROM public.pg_stat_statements(showtext);
-$$ LANGUAGE sql VOLATILE SECURITY DEFINER;
-
-CREATE OR REPLACE FUNCTION pganalyze.get_stat_activity() RETURNS SETOF pg_stat_activity AS
-$$
-  /* pganalyze-collector */ SELECT * FROM pg_catalog.pg_stat_activity;
-$$ LANGUAGE sql VOLATILE SECURITY DEFINER;
-
-CREATE OR REPLACE FUNCTION pganalyze.get_column_stats() RETURNS SETOF pg_stats AS
-$$
-  /* pganalyze-collector */ SELECT schemaname, tablename, attname, inherited, null_frac, avg_width,
-  n_distinct, NULL::anyarray, most_common_freqs, NULL::anyarray, correlation, NULL::anyarray,
-  most_common_elem_freqs, elem_count_histogram
-  FROM pg_catalog.pg_stats;
-$$ LANGUAGE sql VOLATILE SECURITY DEFINER;
-
-CREATE OR REPLACE FUNCTION pganalyze.get_relation_stats_ext() RETURNS TABLE(
-  statistics_schemaname text, statistics_name text,
-  inherited boolean, n_distinct pg_ndistinct, dependencies pg_dependencies,
-  most_common_val_nulls boolean[], most_common_freqs float8[], most_common_base_freqs float8[]
-) AS
-$$
-  /* pganalyze-collector */ SELECT statistics_schemaname::text, statistics_name::text,
-  (row_to_json(se.*)::jsonb ->> 'inherited')::boolean AS inherited, n_distinct, dependencies,
-  most_common_val_nulls, most_common_freqs, most_common_base_freqs
-  FROM pg_catalog.pg_stats_ext se;
-$$ LANGUAGE sql VOLATILE SECURITY DEFINER;
-
-CREATE OR REPLACE FUNCTION pganalyze.get_stat_replication() RETURNS SETOF pg_stat_replication AS
-$$
-  /* pganalyze-collector */ SELECT * FROM pg_catalog.pg_stat_replication;
-$$ LANGUAGE sql VOLATILE SECURITY DEFINER;
-
-CREATE USER pganalyze WITH PASSWORD 'mypassword' CONNECTION LIMIT 5;
-REVOKE ALL ON SCHEMA public FROM pganalyze;
-GRANT USAGE ON SCHEMA pganalyze TO pganalyze;
-```
-
-Note that these statements must be run as a superuser (to create the `SECURITY DEFINER` function),
-but from here onwards you can use the `pganalyze` user instead.
-
-The collector will automatically use the helper methods
-if they exist in the `pganalyze` schema - otherwise data will be fetched directly.
-
+Additional Setup
+----------------
 If you are using the Buffer Cache report in pganalyze, you will also need to create this additional helper method:
 
 ```sql
@@ -128,92 +71,6 @@ $$
   /* pganalyze-collector */ SELECT last_value, start_value, increment_by, max_value, min_value, cache_size, cycle
     FROM pg_sequences WHERE schemaname = schema_name AND sequencename = sequence_name;
 $$ LANGUAGE sql VOLATILE SECURITY DEFINER;
-```
-
-If you enabled the optional reset mode (usually not required), you will also need this helper method:
-
-```sql
-CREATE OR REPLACE FUNCTION pganalyze.reset_stat_statements() RETURNS SETOF void AS
-$$
-  /* pganalyze-collector */ SELECT * FROM public.pg_stat_statements_reset();
-$$ LANGUAGE sql VOLATILE SECURITY DEFINER;
-```
-
-Setting up Log EXPLAIN helper
------------------------------
-
-This section is relevant only if you use the `enable_log_explain`
-setting; if you use the recommended autoexplain extension, or if you
-do not plan to use EXPLAIN plan collection, you can skip it.
-
-If you use `enable_log_explain`, use a superuser connection to create
-the pganalyze schema and this function on each database where EXPLAIN
-should run:
-
-```sql
-CREATE OR REPLACE FUNCTION pganalyze.explain(query text, params text[]) RETURNS text AS
-$$
-DECLARE
-  prepared_query text;
-  prepared_params text;
-  result text;
-BEGIN
-  SELECT regexp_replace(query, ';+\s*\Z', '') INTO prepared_query;
-  IF prepared_query LIKE '%;%' THEN
-    RAISE EXCEPTION 'cannot run EXPLAIN when query contains semicolon';
-  END IF;
-
-  IF array_length(params, 1) > 0 THEN
-    SELECT string_agg(quote_literal(param) || '::unknown', ',') FROM unnest(params) p(param) INTO prepared_params;
-
-    EXECUTE 'PREPARE pganalyze_explain AS ' || prepared_query;
-    BEGIN
-      EXECUTE 'EXPLAIN (VERBOSE, FORMAT JSON) EXECUTE pganalyze_explain(' || prepared_params || ')' INTO STRICT result;
-    EXCEPTION WHEN OTHERS THEN
-      DEALLOCATE pganalyze_explain;
-      RAISE;
-    END;
-    DEALLOCATE pganalyze_explain;
-  ELSE
-    EXECUTE 'EXPLAIN (VERBOSE, FORMAT JSON) ' || prepared_query INTO STRICT result;
-  END IF;
-
-  RETURN result;
-END
-$$ LANGUAGE plpgsql VOLATILE SECURITY DEFINER;
-```
-
-Note that this function contains a check for semicolons in the query
-text. This is to minimize collector access to your data: it ensures
-that the collector cannot piggyback other queries that could
-exfiltrate data.
-
-Setting up log pg_read_file helper
-----------------------------------
-
-Create the following helper as a superuser (note this needs to be an actual
-superuser, i.e. not available on systems like Amazon RDS), to read logs using the
-`pg_read_file` function with the restricted monitoring user:
-
-```sql
-CREATE OR REPLACE FUNCTION pganalyze.read_log_file(log_filename text, read_offset bigint, read_length bigint) RETURNS text AS
-$$
-DECLARE
-  result text;
-BEGIN
-  IF log_filename !~ '\A[\w\.-]+\Z' THEN
-    RAISE EXCEPTION 'invalid log filename';
-  END IF;
-
-  SELECT pg_catalog.pg_read_file(
-    pg_catalog.current_setting('data_directory') || '/' || pg_catalog.current_setting('log_directory') || '/' || log_filename,
-    read_offset,
-    read_length
-  ) INTO result;
-
-  RETURN result;
-END
-$$ LANGUAGE plpgsql VOLATILE SECURITY DEFINER;
 ```
 
 
