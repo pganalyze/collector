@@ -41,6 +41,12 @@ You can repeat the configuration block with a different `[name]` if you have mul
 See https://pganalyze.com/docs/install for further details.
 
 
+Setting up a Restricted Monitoring User
+---------------------------------------
+See https://pganalyze.com/docs/install/self_managed/01_create_monitoring_user (or the corresponding
+instructions for your platform) for details.
+
+
 Additional Setup
 ----------------
 If you are using the Buffer Cache report in pganalyze, you will also need to create this additional helper method:
