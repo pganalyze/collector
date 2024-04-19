@@ -18,15 +18,11 @@ const defaultSchemaTableLimit = 5000
 // timeout than a full collection interval (10 minutes)
 const schemaCollectionTimeout = 8 * time.Minute
 
-func CollectAllSchemas(ctx context.Context, server *state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, ps state.PersistedState, ts state.TransientState, systemType string) (state.PersistedState, state.TransientState, error) {
+func GetDatabasesToCollect(server *state.Server, databases []state.PostgresDatabase) []string {
 	schemaDbNames := []string{}
-
-	ctxSchema, cancel := context.WithTimeout(ctx, schemaCollectionTimeout)
-	defer cancel()
-
 	if server.Config.DbAllNames {
-		for _, database := range ts.Databases {
-			if !database.IsTemplate && database.AllowConnections && !isCloudInternalDatabase(systemType, database.Name) {
+		for _, database := range databases {
+			if !database.IsTemplate && database.AllowConnections && !isCloudInternalDatabase(server.Config.SystemType, database.Name) {
 				schemaDbNames = append(schemaDbNames, database.Name)
 			}
 		}
@@ -34,6 +30,12 @@ func CollectAllSchemas(ctx context.Context, server *state.Server, collectionOpts
 		schemaDbNames = append(schemaDbNames, server.Config.DbName)
 		schemaDbNames = append(schemaDbNames, server.Config.DbExtraNames...)
 	}
+	return schemaDbNames
+}
+
+func CollectAllSchemas(ctx context.Context, server *state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, ps state.PersistedState, ts state.TransientState) (state.PersistedState, state.TransientState, error) {
+	ctxSchema, cancel := context.WithTimeout(ctx, schemaCollectionTimeout)
+	defer cancel()
 
 	ps.Relations = []state.PostgresRelation{}
 
@@ -41,14 +43,14 @@ func CollectAllSchemas(ctx context.Context, server *state.Server, collectionOpts
 	ps.Functions = []state.PostgresFunction{}
 
 	collected := make(map[string]bool)
-	for _, dbName := range schemaDbNames {
+	for _, dbName := range GetDatabasesToCollect(server, ts.Databases) {
 		if _, ok := collected[dbName]; ok {
 			continue
 		}
 		server.SelfTest.MarkMonitoredDb(dbName)
 
 		collected[dbName] = true
-		psNext, tsNext, databaseOid, err := collectOneSchema(ctxSchema, server, collectionOpts, logger, ps, ts, ts.Version, systemType, dbName)
+		psNext, tsNext, databaseOid, err := collectOneSchema(ctxSchema, server, collectionOpts, logger, ps, ts, ts.Version, server.Config.SystemType, dbName)
 		if err != nil {
 			// If the outer context failed, return an error to the caller
 			if ctx.Err() != nil {

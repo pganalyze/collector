@@ -127,7 +127,7 @@ func CollectFull(ctx context.Context, server *state.Server, connection *sql.DB, 
 		return
 	}
 
-	ps, ts, err = postgres.CollectAllSchemas(ctx, server, globalCollectionOpts, logger, ps, ts, systemType)
+	ps, ts, err = postgres.CollectAllSchemas(ctx, server, globalCollectionOpts, logger, ps, ts)
 	if err != nil {
 		logger.PrintError("Error collecting schema information: %s", err)
 		return

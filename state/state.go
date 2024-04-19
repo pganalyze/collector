@@ -197,14 +197,15 @@ type CollectionOpts struct {
 
 	DiffStatements bool
 
-	SubmitCollectedData bool
-	TestRun             bool
-	TestReport          string
-	TestRunLogs         bool
-	TestExplain         bool
-	TestSection         string
-	DebugLogs           bool
-	DiscoverLogLocation bool
+	SubmitCollectedData    bool
+	TestRun                bool
+	TestReport             string
+	TestRunLogs            bool
+	TestExplain            bool
+	TestSection            string
+	GenerateStatsHelperSql string
+	DebugLogs              bool
+	DiscoverLogLocation    bool
 
 	StateFilename    string
 	WriteStateUpdate bool
