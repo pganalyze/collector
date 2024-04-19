@@ -10,7 +10,7 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
-var helpers = []string{
+var statsHelpers = []string{
 	// Column stats
 	`CREATE OR REPLACE FUNCTION pganalyze.get_column_stats() RETURNS SETOF pg_stats AS
 $$
@@ -33,7 +33,7 @@ $$
   FROM pg_catalog.pg_stats_ext se;
 $$ LANGUAGE sql VOLATILE SECURITY DEFINER;`}
 
-func GenerateHelperSql(ctx context.Context, server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (string, error) {
+func GenerateStatsHelperSql(ctx context.Context, server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (string, error) {
 	db, err := postgres.EstablishConnection(ctx, server, logger, globalCollectionOpts, "")
 	if err != nil {
 		return "", err
@@ -55,7 +55,7 @@ func GenerateHelperSql(ctx context.Context, server *state.Server, globalCollecti
 		output += fmt.Sprintf("\\c %s\n", pq.QuoteIdentifier(dbName))
 		output += "CREATE SCHEMA IF NOT EXISTS pganalyze;\n"
 		output += fmt.Sprintf("GRANT USAGE ON SCHEMA pganalyze TO %s;\n", server.Config.GetDbUsername())
-		for _, helper := range helpers {
+		for _, helper := range statsHelpers {
 			output += helper + "\n"
 		}
 		output += "\n"
