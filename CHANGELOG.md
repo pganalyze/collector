@@ -1,5 +1,38 @@
 # Changelog
 
+## 0.56.0      2024-04-19
+
+* Improve the collector test output
+  - In addition to the existing test output, the new summary is added to provide
+    a consolidated result showing the state of the collector setup
+  - Add more verbose output for the `--test-explain` flag
+* Amazon RDS/Aurora: Use 5432 as a default DB port
+  - Previously IAM authentication would fail with "PAM authentication failed"
+    when the port was not explicitly set in the collector configuration
+* Update pg_stat_statements logic
+  - Support updated fields in Postgres 17
+* Autovacuum:
+  - Add support for updated log format (frozen:) in Postgres 16+
+* Publish Helm Chart package
+  - The Helm Chart repository can be accessed via https://charts.pganalyze.com/
+  - The collector chart is available at `pganalyze/pganalyze-collector`
+  - The oldest available package version is 0.55.0
+* Docker image: Support taking additional arguments for `test`, `test-explain`, `collector`
+  - Previously, adding the verbose flag like `test -v` wasn't working. With this
+    update, the additional arguments are now correctly passed to the process and
+    `test -v` will run the test with verbose mode
+* Docker image: Update the internal collector config file location
+  - When the Docker container is passed the `CONFIG_CONTENTS` environment variable,
+    the file used to be written to `/home/pganalyze/.pganalyze_collector.conf`
+    location, and then read by the collector
+  - Instead, this file is now written to the `/config/pganalyze-collector.conf`
+    location - this fixes problems when having a read-only root filesystem
+* Add `--generate-stats-helper-sql` helper command
+  - This command generates a SQL script that can be passed to `psql` to install
+    stats helpers (e.g. for collecting column stats) on all configured databases
+    for the specified server
+
+
 ## 0.55.0      2024-03-27
 
 * Add integration with Tembo
