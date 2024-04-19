@@ -3,6 +3,7 @@ package runner
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/lib/pq"
 	"github.com/pganalyze/collector/input/postgres"
@@ -50,16 +51,16 @@ func GenerateStatsHelperSql(ctx context.Context, server *state.Server, globalCol
 		return "", fmt.Errorf("error collecting pg_databases: %s", err)
 	}
 
-	output := ""
+	output := strings.Builder{}
 	for _, dbName := range postgres.GetDatabasesToCollect(server, databases) {
-		output += fmt.Sprintf("\\c %s\n", pq.QuoteIdentifier(dbName))
-		output += "CREATE SCHEMA IF NOT EXISTS pganalyze;\n"
-		output += fmt.Sprintf("GRANT USAGE ON SCHEMA pganalyze TO %s;\n", server.Config.GetDbUsername())
+		output.WriteString(fmt.Sprintf("\\c %s\n", pq.QuoteIdentifier(dbName)))
+		output.WriteString("CREATE SCHEMA IF NOT EXISTS pganalyze;\n")
+		output.WriteString(fmt.Sprintf("GRANT USAGE ON SCHEMA pganalyze TO %s;\n", server.Config.GetDbUsername()))
 		for _, helper := range statsHelpers {
-			output += helper + "\n"
+			output.WriteString(helper + "\n")
 		}
-		output += "\n"
+		output.WriteString("\n")
 	}
 
-	return output, nil
+	return output.String(), nil
 }
