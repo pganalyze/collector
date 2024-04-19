@@ -203,6 +203,7 @@ type CollectionOpts struct {
 	TestRunLogs         bool
 	TestExplain         bool
 	TestSection         string
+	GenerateHelperSql   string
 	DebugLogs           bool
 	DiscoverLogLocation bool
 

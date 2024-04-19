@@ -120,6 +120,34 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 		}
 	}
 
+	if globalCollectionOpts.GenerateHelperSql != "" {
+		wg.Add(1)
+		testRunSuccess = make(chan bool)
+		go func() {
+			var matchingServer *state.Server
+			for _, server := range servers {
+				if globalCollectionOpts.GenerateHelperSql == server.Config.SectionName {
+					matchingServer = server
+				}
+			}
+			if matchingServer == nil {
+				fmt.Fprintf(os.Stderr, "ERROR - Specified configuration section name '%s' not known\n", globalCollectionOpts.GenerateHelperSql)
+				testRunSuccess <- false
+			} else {
+				output, err := runner.GenerateHelperSql(ctx, matchingServer, globalCollectionOpts, logger.WithPrefix(matchingServer.Config.SectionName))
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "ERROR - %s\n", err)
+					testRunSuccess <- false
+				} else {
+					fmt.Println(output)
+					testRunSuccess <- true
+				}
+			}
+			wg.Done()
+		}()
+		return
+	}
+
 	state.ReadStateFile(servers, globalCollectionOpts, logger)
 
 	writeStateFile = func() {
@@ -260,6 +288,7 @@ func main() {
 	var testRunLogs bool
 	var testExplain bool
 	var testSection string
+	var generateHelperSql string
 	var forceStateUpdate bool
 	var configFilename string
 	var stateFilename string
@@ -284,6 +313,7 @@ func main() {
 	flag.BoolVar(&testRunLogs, "test-logs", false, "Tests whether log collection works (does not test privilege dropping for local log collection, use --test for that)")
 	flag.BoolVar(&testExplain, "test-explain", false, "Tests whether EXPLAIN collection works by issuing a dummy query (ensure log collection works first)")
 	flag.StringVar(&testSection, "test-section", "", "Tests a particular section of the config file, i.e. a specific server, and ignores all other config sections")
+	flag.StringVar(&generateHelperSql, "generate-helper-sql", "", "Generates a SQL script for the given server (name of section in the config file), that can be run with \"psql -f\" for installing the collector helpers on all configured databases")
 	flag.BoolVar(&reloadRun, "reload", false, "Reloads the collector daemon thats running on the host")
 	flag.BoolVar(&noReload, "no-reload", false, "Disables automatic config reloading during a test run")
 	flag.BoolVarP(&logger.Verbose, "verbose", "v", false, "Outputs additional debugging information, use this if you're encoutering errors or other problems")
@@ -353,7 +383,7 @@ func main() {
 		}
 	}
 
-	if testReport != "" || testRunLogs || testRunAndTrace || testExplain {
+	if testReport != "" || testRunLogs || testRunAndTrace || testExplain || generateHelperSql != "" {
 		testRun = true
 	}
 
@@ -365,6 +395,7 @@ func main() {
 		TestRunLogs:              testRunLogs || dryRunLogs,
 		TestExplain:              testExplain,
 		TestSection:              testSection,
+		GenerateHelperSql:        generateHelperSql,
 		DebugLogs:                debugLogs,
 		DiscoverLogLocation:      discoverLogLocation,
 		CollectPostgresRelations: !noPostgresRelations,
