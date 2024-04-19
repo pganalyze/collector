@@ -3,8 +3,8 @@
 ## 0.56.0      2024-04-19
 
 * Improve the collector test output
-  - In addition to the existing test output, the new format is added to provide
-    the consolidated result of showing the state of the collector setup
+  - In addition to the existing test output, the new summary is added to provide
+    a consolidated result showing the state of the collector setup
   - Add more verbose output for the `--test-explain` flag
 * Amazon RDS/Aurora: Use 5432 as a default DB port
   - Previously IAM authentication would fail with "PAM authentication failed"
@@ -14,19 +14,19 @@
 * Autovacuum:
   - Add support for updated log format (frozen:) in Postgres 16+
 * Publish Helm Chart package
-  - Now Helm Chart repo can be accessed via https://charts.pganalyze.com/ and
-    `pganalyze/pganalyze-collector` is available
+  - The Helm Chart repository can be accessed via https://charts.pganalyze.com/
+  - The collector chart is available at `pganalyze/pganalyze-collector`
   - The oldest available package version is 0.55.0
 * Docker image: Support taking additional arguments for `test`, `test-explain`, `collector`
-  - Previously, adding verbose flag like `test -v` wasn't working. With this
-    update, the additional arguments will correctly passed to the process and
+  - Previously, adding the verbose flag like `test -v` wasn't working. With this
+    update, the additional arguments are now correctly passed to the process and
     `test -v` will run the test with verbose mode
-* Docker image: Update the collector config file location
-  - The config file is generated with Docker when `CONFIG_CONTENTS` env var is
-    passed
-  - The location is updated from `/home/pganalyze/.pganalyze_collector.conf`
-    to `/config/pganalyze-collector.conf`
-  - This fixes the issue of using `CONFIG_CONTENTS` env var with Helm chart
+* Docker image: Update the internal collector config file location
+  - When the Docker container is passed the `CONFIG_CONTENTS` environment variable,
+    the file used to be written to `/home/pganalyze/.pganalyze_collector.conf`
+    location, and then read by the collector
+  - Instead, this file is now written to the `/config/pganalyze-collector.conf`
+    location - this fixes problems when having a read-only root filesystem
 * Add `--generate-stats-helper-sql` helper command
   - This command generates a SQL script that can be passed to `psql` to install
     stats helpers (e.g. for collecting column stats) on all configured databases
