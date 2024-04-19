@@ -12,15 +12,14 @@ if [ $(id -u) = 0 ]; then
 fi
 
 if [ "$1" = 'test' ]; then
-  eval $CMD_PREFIX /home/pganalyze/collector --test --no-log-timestamps --no-reload
+  shift
+  eval $CMD_PREFIX /home/pganalyze/collector --test --no-log-timestamps --no-reload "$@"
+elif [ "$1" = 'test-explain' ]; then
+  shift
+  eval $CMD_PREFIX /home/pganalyze/collector --test-explain --no-log-timestamps "$@"
+elif  [ "$1" = 'collector' ]; then
+  shift
+  eval $CMD_PREFIX /home/pganalyze/collector --statefile=/state/pganalyze-collector.state --no-log-timestamps "$@"
+else
+  eval $CMD_PREFIX "$@"
 fi
-
-if [ "$1" = 'test-explain' ]; then
-  eval $CMD_PREFIX /home/pganalyze/collector --test-explain --no-log-timestamps
-fi
-
-if [ "$1" = 'collector' ]; then
-  eval $CMD_PREFIX /home/pganalyze/collector --statefile=/state/pganalyze-collector.state --no-log-timestamps
-fi
-
-eval $CMD_PREFIX "$@"

@@ -286,7 +286,7 @@ func main() {
 	flag.StringVar(&testSection, "test-section", "", "Tests a particular section of the config file, i.e. a specific server, and ignores all other config sections")
 	flag.BoolVar(&reloadRun, "reload", false, "Reloads the collector daemon thats running on the host")
 	flag.BoolVar(&noReload, "no-reload", false, "Disables automatic config reloading during a test run")
-	flag.BoolVarP(&logger.Verbose, "verbose", "v", false, "Outputs additional debugging information, use this if you're encoutering errors or other problems")
+	flag.BoolVarP(&logger.Verbose, "verbose", "v", false, "Outputs additional debugging information, use this if you're encountering errors or other problems")
 	flag.BoolVarP(&logger.Quiet, "quiet", "q", false, "Only outputs error messages to the logs and hides informational and warning messages")
 	flag.BoolVar(&logToSyslog, "syslog", false, "Write all log output to syslog instead of stderr (disabled by default)")
 	flag.BoolVar(&logToJSON, "json-logs", false, "Write all log output to stderr as newline delimited json (disabled by default, ignored if --syslog is set)")
