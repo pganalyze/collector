@@ -1,5 +1,6 @@
 FROM golang:1.21-alpine as base
 MAINTAINER team@pganalyze.com
+LABEL org.opencontainers.image.authors="team@pganalyze.com"
 
 ENV GOPATH /go
 ENV HOME_DIR /home/pganalyze
@@ -11,7 +12,7 @@ RUN apk add --no-cache --virtual .build-deps make curl libc-dev gcc git tar \
 COPY . $CODE_DIR
 WORKDIR $CODE_DIR
 
-RUN  make build_dist_alpine OUTFILE=$HOME_DIR/collector 
+RUN make build_dist_alpine OUTFILE=$HOME_DIR/collector
 
 RUN mkdir -p /usr/share/pganalyze-collector/sslrootcert/
 COPY contrib/sslrootcert/rds-ca-global.pem /usr/share/pganalyze-collector/sslrootcert/
@@ -22,14 +23,16 @@ FROM alpine:3.18 as slim
 
 RUN apk add --no-cache ca-certificates tzdata
 
-RUN adduser -D pganalyze pganalyze \ 
+RUN adduser -D pganalyze pganalyze \
   && mkdir /state  \
-  && chown pganalyze:pganalyze /state 
+  && chown pganalyze:pganalyze /state \
+  && mkdir /config \
+  && chown pganalyze:pganalyze /config
 
 COPY --from=base --chown=pganalyze:pganalyze /home/pganalyze/docker-entrypoint.sh /home/pganalyze/collector /home/pganalyze/
 COPY --from=base /usr/share/pganalyze-collector/sslrootcert/ /usr/share/pganalyze-collector/sslrootcert/
 
-VOLUME ["/state"]
+VOLUME ["/state", "/config"]
 
 USER pganalyze
 
