@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/lib/pq"
 	"github.com/pganalyze/collector/input/postgres"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
@@ -41,7 +42,6 @@ func GenerateHelperSql(ctx context.Context, server *state.Server, globalCollecti
 
 	version, err := postgres.GetPostgresVersion(ctx, logger, db)
 	if err != nil {
-		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectPgVersion, err.Error())
 		return "", fmt.Errorf("error collecting Postgres version: %s", err)
 	}
 
@@ -52,7 +52,7 @@ func GenerateHelperSql(ctx context.Context, server *state.Server, globalCollecti
 
 	output := ""
 	for _, dbName := range postgres.GetDatabasesToCollect(server, databases) {
-		output += fmt.Sprintf("\\c \"%s\"\n", dbName)
+		output += fmt.Sprintf("\\c %s\n", pq.QuoteIdentifier(dbName))
 		output += "CREATE SCHEMA IF NOT EXISTS pganalyze;\n"
 		output += fmt.Sprintf("GRANT USAGE ON SCHEMA pganalyze TO %s;\n", server.Config.GetDbUsername())
 		for _, helper := range helpers {
