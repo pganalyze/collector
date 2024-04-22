@@ -47,39 +47,6 @@ See https://pganalyze.com/docs/install/self_managed/01_create_monitoring_user (o
 instructions for your platform) for details.
 
 
-Additional Setup
-----------------
-If you are using the Buffer Cache report in pganalyze, you will also need to create this additional helper method:
-
-```sql
-CREATE EXTENSION IF NOT EXISTS pg_buffercache WITH SCHEMA public;
-CREATE OR REPLACE FUNCTION pganalyze.get_buffercache() RETURNS SETOF public.pg_buffercache AS
-$$
-  /* pganalyze-collector */ SELECT * FROM public.pg_buffercache;
-$$ LANGUAGE sql VOLATILE SECURITY DEFINER;
-```
-
-If you are using the Sequence report in pganalyze, you will also need these helper methods:
-
-```sql
-CREATE OR REPLACE FUNCTION pganalyze.get_sequence_oid_for_column(table_name text, column_name text) RETURNS oid AS
-$$
-  /* pganalyze-collector */ SELECT pg_get_serial_sequence(table_name, column_name)::regclass::oid;
-$$ LANGUAGE sql VOLATILE SECURITY DEFINER;
-
---- The following is needed for Postgres 10+:
-
-CREATE OR REPLACE FUNCTION pganalyze.get_sequence_state(schema_name text, sequence_name text) RETURNS TABLE(
-  last_value bigint, start_value bigint, increment_by bigint,
-  max_value bigint, min_value bigint, cache_size bigint, cycle boolean
-) AS
-$$
-  /* pganalyze-collector */ SELECT last_value, start_value, increment_by, max_value, min_value, cache_size, cycle
-    FROM pg_sequences WHERE schemaname = schema_name AND sequencename = sequence_name;
-$$ LANGUAGE sql VOLATILE SECURITY DEFINER;
-```
-
-
 Example output
 --------------
 
