@@ -84,7 +84,6 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 
 	// Avoid even running the scheduler when we already know its not needed
 	hasAnyLogsEnabled := false
-	hasAnyReportsEnabled := false
 	hasAnyActivityEnabled := false
 	hasAnyGoogleCloudSQL := false
 	hasAnyAzureDatabase := false
@@ -97,9 +96,6 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 			continue
 		}
 		servers = append(servers, state.MakeServer(config, globalCollectionOpts.TestRun))
-		if config.EnableReports {
-			hasAnyReportsEnabled = true
-		}
 		if !config.DisableLogs {
 			hasAnyLogsEnabled = true
 		}
@@ -166,10 +162,7 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 		wg.Add(1)
 		testRunSuccess = make(chan bool)
 		go func() {
-			if globalCollectionOpts.TestReport != "" {
-				runner.RunTestReport(ctx, servers, globalCollectionOpts, logger)
-				testRunSuccess <- true
-			} else if globalCollectionOpts.TestExplain {
+			if globalCollectionOpts.TestExplain {
 				success := true
 				for _, server := range servers {
 					prefixedLogger := logger.WithPrefix(server.Config.SectionName)
@@ -237,14 +230,6 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 		wg.Done()
 	}, logger, "full snapshot of all servers")
 
-	if hasAnyReportsEnabled {
-		schedulerGroups["reports"].Schedule(ctx, func(ctx context.Context) {
-			wg.Add(1)
-			runner.RunRequestedReports(ctx, servers, globalCollectionOpts, logger)
-			wg.Done()
-		}, logger, "requested reports for all servers")
-	}
-
 	if hasAnyLogsEnabled {
 		runner.SetupLogCollection(ctx, wg, servers, globalCollectionOpts, logger, hasAnyHeroku, hasAnyGoogleCloudSQL, hasAnyAzureDatabase, hasAnyTembo)
 	} else if util.IsHeroku() {
@@ -284,7 +269,6 @@ func main() {
 	var debugLogs bool
 	var discoverLogLocation bool
 	var testRun bool
-	var testReport string
 	var testRunLogs bool
 	var testExplain bool
 	var testSection string
@@ -309,7 +293,6 @@ func main() {
 
 	flag.BoolVarP(&showVersion, "version", "", false, "Shows current version of the collector and exits")
 	flag.BoolVarP(&testRun, "test", "t", false, "Tests data collection (including logs), submits it to the server, and reloads the collector daemon (disable with --no-reload)")
-	flag.StringVar(&testReport, "test-report", "", "Tests a particular report and returns its output as JSON")
 	flag.BoolVar(&testRunLogs, "test-logs", false, "Tests whether log collection works (does not test privilege dropping for local log collection, use --test for that)")
 	flag.BoolVar(&testExplain, "test-explain", false, "Tests whether EXPLAIN collection works by issuing a dummy query (ensure log collection works first)")
 	flag.StringVar(&testSection, "test-section", "", "Tests a particular section of the config file, i.e. a specific server, and ignores all other config sections")
@@ -383,7 +366,7 @@ func main() {
 		}
 	}
 
-	if testReport != "" || testRunLogs || testRunAndTrace || testExplain || generateStatsHelperSql != "" {
+	if testRunLogs || testRunAndTrace || testExplain || generateStatsHelperSql != "" {
 		testRun = true
 	}
 
@@ -391,7 +374,6 @@ func main() {
 		StartedAt:                time.Now(),
 		SubmitCollectedData:      !benchmark && true,
 		TestRun:                  testRun,
-		TestReport:               testReport,
 		TestRunLogs:              testRunLogs || dryRunLogs,
 		TestExplain:              testExplain,
 		TestSection:              testSection,
@@ -423,9 +405,8 @@ func main() {
 		globalCollectionOpts.TestRun = true
 	}
 
-	if globalCollectionOpts.TestRun || globalCollectionOpts.TestReport != "" ||
-		globalCollectionOpts.TestRunLogs || globalCollectionOpts.DebugLogs ||
-		globalCollectionOpts.DiscoverLogLocation {
+	if globalCollectionOpts.TestRun || globalCollectionOpts.TestRunLogs ||
+		globalCollectionOpts.DebugLogs || globalCollectionOpts.DiscoverLogLocation {
 		globalCollectionOpts.CollectorApplicationName = "pganalyze_test_run"
 	} else {
 		globalCollectionOpts.CollectorApplicationName = "pganalyze_collector"

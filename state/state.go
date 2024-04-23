@@ -199,7 +199,6 @@ type CollectionOpts struct {
 
 	SubmitCollectedData    bool
 	TestRun                bool
-	TestReport             string
 	TestRunLogs            bool
 	TestExplain            bool
 	TestSection            string
