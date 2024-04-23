@@ -253,6 +253,8 @@ jobs:
   release_charts:
     needs: [release]
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write # for AWS credentials
     # ensure we don't release on create events for branches (only tags)
     if: ${{ startsWith( github.ref, 'refs/tags' ) }}
 
