@@ -76,9 +76,6 @@ func getDefaultConfig() *ServerConfig {
 	if systemScopeFallback := os.Getenv("PGA_API_SYSTEM_SCOPE_FALLBACK"); systemScopeFallback != "" {
 		config.SystemScopeFallback = systemScopeFallback
 	}
-	if enableReports := os.Getenv("PGA_ENABLE_REPORTS"); enableReports != "" {
-		config.EnableReports = parseConfigBool(enableReports)
-	}
 	if disableLogs := os.Getenv("PGA_DISABLE_LOGS"); disableLogs != "" {
 		config.DisableLogs = parseConfigBool(disableLogs)
 	}

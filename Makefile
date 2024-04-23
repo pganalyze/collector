@@ -1,5 +1,5 @@
 OUTFILE := pganalyze-collector
-PROTOBUF_FILES := $(wildcard protobuf/*.proto) $(wildcard protobuf/reports/*.proto)
+PROTOBUF_FILES := $(wildcard protobuf/*.proto)
 
 PATH := $(PWD)/protoc/bin:$(PWD)/bin:$(PATH)
 SHELL := env PATH=$(PATH) /bin/sh

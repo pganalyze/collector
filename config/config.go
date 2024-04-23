@@ -42,7 +42,6 @@ type ServerConfig struct {
 	ErrorCallback   string `ini:"error_callback"`
 	SuccessCallback string `ini:"success_callback"`
 
-	EnableReports    bool `ini:"enable_reports"`
 	DisableLogs      bool `ini:"disable_logs"`
 	DisableActivity  bool `ini:"disable_activity"`
 	EnableLogExplain bool `ini:"enable_log_explain"`
