@@ -253,6 +253,8 @@ jobs:
   release_charts:
     needs: [release]
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write # for AWS credentials
     # ensure we don't release on create events for branches (only tags)
     if: ${{ startsWith( github.ref, 'refs/tags' ) }}
 
@@ -280,10 +282,14 @@ jobs:
         aws-region: us-east-1
 
     - name: Upload package to S3
-      run: aws s3 cp pganalyze-collector-${{ steps.get_version.outputs.version }}.tgz s3://charts.pganalyze.com/pganalyze-collector-${{ steps.get_version.outputs.version }}.tgz
+      run: |
+        aws s3 cp --acl public-read \
+        pganalyze-collector-${{ steps.get_version.outputs.version }}.tgz s3://charts.pganalyze.com/pganalyze-collector-${{ steps.get_version.outputs.version }}.tgz
 
     - name: Create or update index.yaml
       run: helm repo index . --merge index.yaml --url https://charts.pganalyze.com/
 
     - name: Upload index.yaml to S3
-      run: aws s3 cp index.yaml s3://charts.pganalyze.com/index.yaml
+      run: |
+        aws s3 cp --acl public-read --content-type application/yaml --cache-control no-cache \
+          index.yaml s3://charts.pganalyze.com/index.yaml
