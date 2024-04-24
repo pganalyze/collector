@@ -54,11 +54,21 @@ func transformExplainJSONToQuerySample(logLine state.LogLine, explainText string
 }
 
 var autoExplainTextPlanDetailsRegexp = regexp.MustCompile(`^Query Text: (.+)\s+([\s\S]+)`)
+var herokuAutoExplainWithTabRegexp = regexp.MustCompile(`^Query Text: ([^\t]+)\t([\s\S]+)`)
 
 func transformExplainTextToQuerySample(logLine state.LogLine, explainText string, queryRuntimeMs float64) (state.PostgresQuerySample, error) {
 	explainParts := autoExplainTextPlanDetailsRegexp.FindStringSubmatch(explainText)
 	if len(explainParts) != 3 {
 		return state.PostgresQuerySample{}, fmt.Errorf("auto_explain output doesn't match expected format")
+	}
+	// If EXPLAIN output's first char is not a capital letter (e.g. not something like "Update on" or "Index Scan"),
+	// likely it's hitting the Heroku's newline break in "Query Text:" chunk
+	// Handle the separation of the query and the explain output text with the tab for these cases
+	explainOutputFirstChar := explainParts[2][0]
+	if !(explainOutputFirstChar >= 'A' && explainOutputFirstChar <= 'Z') {
+		if parts := herokuAutoExplainWithTabRegexp.FindStringSubmatch(explainText); len(parts) == 3 {
+			explainParts = parts
+		}
 	}
 	return state.PostgresQuerySample{
 		Query:             strings.TrimSpace(explainParts[1]),
