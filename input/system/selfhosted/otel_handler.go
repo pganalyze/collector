@@ -173,8 +173,7 @@ func setupOtelHandler(ctx context.Context, server *state.Server, rawLogStream ch
 									hasErrorSeverity = true
 								}
 							}
-							// TODO: Does the logger name need to be configurable? (this is tested with CNPG,
-							// but would the logger be different with other operators/container names?)
+							// TODO: Support other logger names (this is only tested with CNPG)
 							if logger == "postgres" {
 								// jsonlog wrapped in K8s context (via fluentbit)
 								logLine, detailLine := logLineFromJsonlog(record, tz)

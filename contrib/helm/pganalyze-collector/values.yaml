@@ -60,6 +60,8 @@ serviceAccount:
 
 service:
   # -- Specifies whether a service should be created for receiving logs via OpenTelemtry
+  # This service is used when Postgres is running within the cluster and Postgres logs
+  # are sent out to the collector using log collectors like Fluent Bit
   create: false
   # -- The name of the service to use.
   # If not set and create is true, a name is generated using the fullname template.
