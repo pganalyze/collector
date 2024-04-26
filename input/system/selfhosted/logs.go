@@ -162,6 +162,10 @@ func SetupLogTails(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts
 				prefixedLogger.PrintError("ERROR - %s", err)
 			}
 		} else if server.Config.LogOtelServer != "" {
+			if globalCollectionOpts.DebugLogs || globalCollectionOpts.TestRun {
+				prefixedLogger.PrintInfo("Setting up OTLP HTTP server receiving logs with %s", server.Config.LogOtelServer)
+			}
+
 			logStream := setupLogTransformer(ctx, wg, server, globalCollectionOpts, prefixedLogger, parsedLogStream)
 			err := setupOtelHandler(ctx, server, logStream, parsedLogStream, prefixedLogger)
 			if err != nil {
