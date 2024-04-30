@@ -11,6 +11,7 @@ import (
 	"github.com/pganalyze/collector/logs/util"
 	"github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
+	cUtil "github.com/pganalyze/collector/util"
 )
 
 func TransformAutoExplainToQuerySample(logLine state.LogLine, explainText string, queryRuntime string) (state.PostgresQuerySample, error) {
@@ -65,7 +66,7 @@ func transformExplainTextToQuerySample(logLine state.LogLine, explainText string
 	// likely it's hitting the Heroku's newline break in "Query Text:" chunk
 	// Handle the separation of the query and the explain output text with the tab for these cases
 	explainOutputFirstChar := explainParts[2][0]
-	if !(explainOutputFirstChar >= 'A' && explainOutputFirstChar <= 'Z') {
+	if cUtil.IsHeroku() && !(explainOutputFirstChar >= 'A' && explainOutputFirstChar <= 'Z') {
 		if parts := herokuAutoExplainWithTabRegexp.FindStringSubmatch(explainText); len(parts) == 3 {
 			explainParts = parts
 		}
