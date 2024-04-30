@@ -4196,3 +4196,62 @@ func TestAnalyzeLogLines(t *testing.T) {
 		}
 	}
 }
+
+var testsHeroku = []testpair{{ // Heroku text explain + new line in Query Text (due to the query being too long)
+	[]state.LogLine{{
+		Content: "duration: 1681.452 ms  plan:\n" +
+			"\tQuery Text: UPDATE pgbench_branches SET bbalance = bbalance +\n 2656 WHERE bid = 59;\n" +
+			"\tUpdate on public.pgbench_branches  (cost=0.27..8.29 rows=1 width=370) (actual rows=0 loops=1)\n" +
+			"\t  Buffers: shared hit=7\n" +
+			"\t  ->  Index Scan using pgbench_branches_pkey on public.pgbench_branches  (cost=0.27..8.29 rows=1 width=370) (actual rows=1 loops=1)\n" +
+			"\t        Output: bid, (bbalance + 2656), filler, ctid\n" +
+			"\t        Index Cond: (pgbench_branches.bid = 59)",
+	}},
+	[]state.LogLine{{
+		Query:              "UPDATE pgbench_branches SET bbalance = bbalance +\n 2656 WHERE bid = 59;",
+		Classification:     pganalyze_collector.LogLineInformation_STATEMENT_AUTO_EXPLAIN,
+		ReviewedForSecrets: true,
+		SecretMarkers: []state.LogSecretMarker{{
+			ByteStart: 30,
+			ByteEnd:   469,
+			Kind:      state.StatementTextLogSecret,
+		}},
+	}},
+	[]state.PostgresQuerySample{{
+		Query:         "UPDATE pgbench_branches SET bbalance = bbalance +\n 2656 WHERE bid = 59;",
+		RuntimeMs:     1681.452,
+		HasExplain:    true,
+		ExplainSource: pganalyze_collector.QuerySample_AUTO_EXPLAIN_EXPLAIN_SOURCE,
+		ExplainFormat: pganalyze_collector.QuerySample_TEXT_EXPLAIN_FORMAT,
+		ExplainOutputText: "Update on public.pgbench_branches  (cost=0.27..8.29 rows=1 width=370) (actual rows=0 loops=1)\n" +
+			"\t  Buffers: shared hit=7\n" +
+			"\t  ->  Index Scan using pgbench_branches_pkey on public.pgbench_branches  (cost=0.27..8.29 rows=1 width=370) (actual rows=1 loops=1)\n" +
+			"\t        Output: bid, (bbalance + 2656), filler, ctid\n" +
+			"\t        Index Cond: (pgbench_branches.bid = 59)",
+	}},
+},
+}
+
+func TestAnalyzeLogLinesHeroku(t *testing.T) {
+	t.Setenv("DYNO", "dummy")
+	t.Setenv("PORT", "dummy")
+	for _, pair := range testsHeroku {
+		l, s := logs.AnalyzeLogLines(pair.logLinesIn)
+
+		cfg := pretty.CompareConfig
+		cfg.SkipZeroFields = true
+
+		if diff := cfg.Compare(pair.logLinesOut, l); diff != "" {
+			t.Errorf("For %v: log lines diff: (-want +got)\n%s", pair.logLinesIn, diff)
+		}
+		if diff := cfg.Compare(pair.samplesOut, s); diff != "" {
+			t.Errorf("For %v: query samples diff: (-want +got)\n%s", pair.samplesOut, diff)
+		}
+
+		for idx, line := range pair.logLinesOut {
+			if !line.ReviewedForSecrets && line.LogLevel != pganalyze_collector.LogLineInformation_STATEMENT && line.LogLevel != pganalyze_collector.LogLineInformation_QUERY {
+				t.Errorf("Missing secret review for:\n%s %s\n", pair.logLinesIn[idx].LogLevel, pair.logLinesIn[idx].Content)
+			}
+		}
+	}
+}
