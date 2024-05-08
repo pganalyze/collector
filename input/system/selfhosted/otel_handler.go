@@ -186,7 +186,7 @@ func setupOtelHandler(ctx context.Context, server *state.Server, rawLogStream ch
 									parsedLogStream <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: *detailLine}
 								}
 							} else if logger == "" && hasErrorSeverity {
-								// simple jsonlog
+								// simple jsonlog (Postgres jsonlog has error_severity key)
 								logLine, detailLine := logLineFromJsonlog(l.Body.GetKvlistValue(), tz)
 								parsedLogStream <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: logLine}
 								if detailLine != nil {
