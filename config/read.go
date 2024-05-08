@@ -664,6 +664,31 @@ func preprocessConfig(config *ServerConfig) (*ServerConfig, error) {
 		}
 	}
 
+	if config.LogOtelServer != "" {
+		if config.LogOtelK8SPod != "" {
+			parts := strings.SplitN(config.LogOtelK8SPod, "/", 2)
+			if len(parts) == 2 {
+				config.LogOtelK8SPodNamespace = parts[0]
+				config.LogOtelK8SPodName = parts[1]
+			} else if len(parts) == 1 {
+				config.LogOtelK8SPodName = parts[0]
+			} else {
+				return config, fmt.Errorf("pod specification for OTel server not valid (need zero or one / separator): \"%s\"", config.LogOtelK8SPod)
+			}
+		}
+
+		if config.LogOtelK8SLabels != "" {
+			selectors := strings.Split(config.LogOtelK8SLabels, ",")
+			for _, selector := range selectors {
+				parts := util.K8sSelectorRegexp.FindStringSubmatch(selector)
+				if parts == nil {
+					return config, fmt.Errorf("label selector for OTel server not valid: \"%s\"", config.LogOtelK8SLabels)
+				}
+				config.LogOtelK8SLabelSelectors = append(config.LogOtelK8SLabelSelectors, selector)
+			}
+		}
+	}
+
 	return config, nil
 }
 
