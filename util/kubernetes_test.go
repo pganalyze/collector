@@ -29,12 +29,21 @@ var checkLabelSelectorMismatchTests = []struct {
 		false,
 	},
 	{
+		[]string{"app = myapp"},
+		false,
+	},
+	{
 		[]string{"app==myapp"},
 		false,
 	},
 	{
 		[]string{"app!=myapp"},
 		true,
+	},
+	{
+		// false due to the wrong format
+		[]string{"app!==myapp"},
+		false,
 	},
 	{
 		[]string{"app=myapp", "component=server"},

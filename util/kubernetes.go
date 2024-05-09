@@ -4,9 +4,11 @@ import (
 	"regexp"
 )
 
-var K8sSelectorRegexp = regexp.MustCompile(`\s*([^!=\s]+)\s*([!=]+)\s*([^\s]+)\s*`)
+var K8sSelectorRegexp = regexp.MustCompile(`\s*([^!=\s]+)\s*(=|==|!=)\s*([^!=\s]+)\s*`)
 
 // CheckLabelSelectorMismatch checks if selectors do not match the given labels
+// It uses Kubernetes Label selectors with Equality-based requirement:
+// https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors
 func CheckLabelSelectorMismatch(labels map[string]string, selectors []string) bool {
 	// Potentially refactor this and selector regexp with
 	// https://github.com/kubernetes/apimachinery/blob/master/pkg/labels/selector.go
