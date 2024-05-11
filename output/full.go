@@ -80,7 +80,7 @@ func submitFull(ctx context.Context, s snapshot.FullSnapshot, server *state.Serv
 
 	s3Location, err := uploadSnapshot(ctx, server.Config.HTTPClientWithRetry, server.Grant, logger, compressedData, snapshotUUID.String())
 	if err != nil {
-		logger.PrintError("Error uploading to S3: %s", err)
+		logger.PrintError("Error uploading snapshot: %s", err)
 		return err
 	}
 
