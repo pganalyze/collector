@@ -4,9 +4,7 @@ import (
 	"context"
 	"io"
 	"net/http"
-	"regexp"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/pganalyze/collector/logs"
@@ -27,8 +25,6 @@ import (
 //
 // Other variants (e.g. csvlog, or plain messages in a K8s context) are currently
 // not supported and will be ignored.
-
-var k8sSelectorRegexp = regexp.MustCompile(`\s*([^!=\s]+)\s*([!=]+)\s*([^\s]+)\s*`)
 
 func logLineFromJsonlog(record *common.KeyValueList, tz *time.Location) (state.LogLine, *state.LogLine) {
 	var logLine state.LogLine
@@ -99,41 +95,16 @@ func skipDueToK8sFilter(kubernetes *common.KeyValueList, server *state.Server, p
 	}
 
 	if server.Config.LogOtelK8SPod != "" {
-		parts := strings.SplitN(server.Config.LogOtelK8SPod, "/", 2)
-		if len(parts) == 2 {
-			if k8sNamespaceName != parts[0] || k8sPodName != parts[1] {
-				return true
-			}
-		} else if len(parts) == 1 {
-			if k8sPodName != parts[0] {
-				return true
-			}
-		} else {
-			prefixedLogger.PrintWarning("Pod specification for OTel server not valid (need zero or one / separator): \"%s\", skipping log record\n", server.Config.LogOtelK8SPod)
+		if server.Config.LogOtelK8SPodNamespace != "" && server.Config.LogOtelK8SPodNamespace != k8sNamespaceName {
+			return true
+		}
+		if server.Config.LogOtelK8SPodName != k8sPodName {
 			return true
 		}
 	}
 
 	if server.Config.LogOtelK8SLabels != "" {
-		selectors := strings.Split(server.Config.LogOtelK8SLabels, ",")
-		for _, selector := range selectors {
-			parts := k8sSelectorRegexp.FindStringSubmatch(selector)
-			if parts != nil {
-				selKey := parts[1]
-				selEq := parts[2] == "=" || parts[2] == "=="
-				selNotEq := parts[2] == "!="
-				selValue := parts[3]
-				v, ok := k8sLabels[selKey]
-				if ok {
-					if (selEq && v != selValue) || (selNotEq && v == selValue) {
-						return true
-					}
-				}
-			} else {
-				prefixedLogger.PrintWarning("Label selector for OTel server not valid: \"%s\", skipping log record\n", server.Config.LogOtelK8SLabels)
-				return true
-			}
-		}
+		return util.CheckLabelSelectorMismatch(k8sLabels, server.Config.LogOtelK8SLabelSelectors)
 	}
 	return false
 }
