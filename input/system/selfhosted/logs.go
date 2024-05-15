@@ -134,6 +134,15 @@ func SetupLogTailForServer(ctx context.Context, wg *sync.WaitGroup, globalCollec
 	return setupLogLocationTail(ctx, server.Config.LogLocation, logStream, logger)
 }
 
+func SetupOtelHandlerForServer(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *util.Logger, server *state.Server, parsedLogStream chan state.ParsedLogStreamItem) error {
+	if globalCollectionOpts.DebugLogs || globalCollectionOpts.TestRun {
+		logger.PrintInfo("Setting up OTLP HTTP server receiving logs with %s", server.Config.LogOtelServer)
+	}
+
+	logStream := setupLogTransformer(ctx, wg, server, globalCollectionOpts, logger, parsedLogStream)
+	return setupOtelHandler(ctx, server, logStream, parsedLogStream, logger)
+}
+
 // SetupLogTails - Sets up continuously running log tails for all servers with a
 // local log directory or file specified
 func SetupLogTails(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *util.Logger, servers []*state.Server, parsedLogStream chan state.ParsedLogStreamItem) {
@@ -162,12 +171,7 @@ func SetupLogTails(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts
 				prefixedLogger.PrintError("ERROR - %s", err)
 			}
 		} else if server.Config.LogOtelServer != "" {
-			if globalCollectionOpts.DebugLogs || globalCollectionOpts.TestRun {
-				prefixedLogger.PrintInfo("Setting up OTLP HTTP server receiving logs with %s", server.Config.LogOtelServer)
-			}
-
-			logStream := setupLogTransformer(ctx, wg, server, globalCollectionOpts, prefixedLogger, parsedLogStream)
-			err := setupOtelHandler(ctx, server, logStream, parsedLogStream, prefixedLogger)
+			err := SetupOtelHandlerForServer(ctx, wg, globalCollectionOpts, logger, server, parsedLogStream)
 			if err != nil {
 				prefixedLogger.PrintError("ERROR - %s", err)
 			}
