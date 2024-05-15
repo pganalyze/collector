@@ -26,7 +26,11 @@ spec:
       labels:
         {{- include "pganalyze-collector.selectorLabels" . | nindent 8 }}
     spec:
+      {{- if .Values.service.create }}
+      enableServiceLinks: true
+      {{- else }}
       enableServiceLinks: false
+      {{- end }}
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
@@ -65,6 +69,10 @@ spec:
           {{- with .Values.volumeMounts }}
           volumeMounts:
             {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- if .Values.service.create }}
+          ports:
+            - containerPort: {{ .Values.service.targetPort }}
           {{- end }}
       {{- with .Values.volumes }}
       volumes:

@@ -58,6 +58,24 @@ serviceAccount:
   # If not set and create is true, a name is generated using the fullname template
   name: ""
 
+service:
+  # -- Specifies whether a service should be created for receiving logs via OpenTelemtry
+  # This service is used when Postgres is running within the cluster and Postgres logs
+  # are sent out to the collector using log collectors like Fluent Bit
+  create: false
+  # -- The name of the service to use.
+  # If not set and create is true, a name is generated using the fullname template.
+  # This is the name referenced by the log sender like Fluent Bit
+  name: pganalyze-collector-otel-service
+  # -- The type of service to create.
+  type: ClusterIP
+  # -- The port of service.
+  # This is the port referenced by the log sender like Fluent Bit
+  port: 4318
+  # -- The target port of the log OTEL server port.
+  # This should match to the port number specified with db_log_otel_server
+  targetPort: 4318
+
 podAnnotations: {}
 
 podSecurityContext:
