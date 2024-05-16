@@ -549,6 +549,7 @@ func testOtelLog(ctx context.Context, wg *sync.WaitGroup, server *state.Server, 
 		break
 	case <-time.After(10 * time.Second):
 		logger.PrintError("ERROR - OpenTelemetry log tail timed out after 10 seconds - did not find expected log event in stream")
+		logger.PrintInfo("HINT - This error may be a false positive if the collector is also running in the background and receiving logs")
 		return false
 	}
 
