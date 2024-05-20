@@ -100,11 +100,11 @@ then
   pkg=deb
   distribution=ubuntu
   version=$(grep VERSION_CODENAME /etc/os-release | cut -d= -f2)
-  if [ "$version" != jammy ] && [ "$version" != focal ];
+  if [ "$version" != noble ] && [ "$version" != jammy ] && [ "$version" != focal ];
   then
-    if confirm "Unsupported Ubuntu version; try Ubuntu Jammy (22.04) package?";
+    if confirm "Unsupported Ubuntu version; try Ubuntu Noble (24.04) package?";
     then
-      version=jammy
+      version=noble
     else
       fail "unrecognized Ubuntu version: ${version}"
     fi
