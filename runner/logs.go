@@ -416,6 +416,8 @@ func TestLogsForAllServers(ctx context.Context, servers []*state.Server, globalC
 			}
 		} else if server.Config.GcpCloudSQLInstanceID != "" && server.Config.GcpPubsubSubscription != "" {
 			success = testGoogleCloudsqlLogStream(ctx, &wg, server, globalCollectionOpts, prefixedLogger)
+		} else if server.Config.LogOtelServer != "" {
+			success = testOtelLog(ctx, &wg, server, globalCollectionOpts, prefixedLogger)
 		}
 
 		if !success {
@@ -520,6 +522,34 @@ func testGoogleCloudsqlLogStream(ctx context.Context, wg *sync.WaitGroup, server
 	case <-time.After(10 * time.Second):
 		logger.PrintError("ERROR - Google Cloud Pub/Sub log tail timed out after 10 seconds - did not find expected log event in stream")
 		logger.PrintInfo("HINT - This error may be a false positive if the collector is also running in the background and consumes the same Google Cloud Pub/Sub stream")
+		return false
+	}
+
+	logger.PrintInfo("  Log test successful")
+	return true
+}
+
+func testOtelLog(ctx context.Context, wg *sync.WaitGroup, server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) bool {
+	logger.PrintInfo("Testing log collection (OpenTelemetry Log receiving)...")
+
+	logTestSucceeded := make(chan bool, 1)
+	parsedLogStream := setupLogStreamer(ctx, wg, globalCollectionOpts, logger, []*state.Server{server}, logTestSucceeded, stream.LogTestCollectorIdentify)
+
+	err := selfhosted.SetupOtelHandlerForServer(ctx, wg, globalCollectionOpts, logger, server, parsedLogStream)
+	if err != nil {
+		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectLogs, "error setting up OTLP HTTP server for server: %s", err)
+		logger.PrintError("ERROR - Could not set up OTLP HTTP server for server: %s", err)
+		return false
+	}
+
+	EmitTestLogMsg(ctx, server, globalCollectionOpts, logger)
+
+	select {
+	case <-logTestSucceeded:
+		break
+	case <-time.After(10 * time.Second):
+		logger.PrintError("ERROR - OpenTelemetry log tail timed out after 10 seconds - did not find expected log event in stream")
+		logger.PrintInfo("HINT - This error may be a false positive if the collector is also running in the background and receiving logs")
 		return false
 	}
 
