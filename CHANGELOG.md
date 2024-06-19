@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.57.0      2024-06-19
+
+* Log Insights: Add support for receiving logs via OpenTelemetry
+  - The collector can now start a built-in OTLP HTTP server that receives logs
+    at a specified local address via `db_log_otel_server` / `LOG_OTEL_SERVER`
+  - This can be used with self-managed servers running in a Kubernetes cluster,
+    combined with a telemetry agent like Fluent Bit
+* Exclude internal Postgres tables from stats helper functions
+  - With Amazon RDS/Aurora, stats collection could fail with "permission denied
+    for attribute pg_subscription.subconninfo"
+  - Update stats helper functions to explicitly exclude references causing this
+    issue
+* Log Insights: Improve parsing with Heroku auto_explain logs
+  - With auto_explain logs of Heroku Postgres, new lines in the middle of the
+    EXPLAIN query are observed, which has been preventing the log parser from
+    correctly handling these EXPLAIN queries
+  - Add a workaround to mitigate this issue when such unexpected new lines are
+    detected
+* Add packages for Ubuntu 24.04
+* Remove "report" functionality
+  - This has long been deprecated. Removing the code as a cleanup
+
+
 ## 0.56.0      2024-04-19
 
 * Improve the collector test output
