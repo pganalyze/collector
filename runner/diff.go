@@ -210,8 +210,8 @@ func diffServerIoStats(new state.PostgresServerIoStatsMap, prev state.PostgresSe
 			s = stats.DiffSince(state.PostgresServerIoStats{})
 		}
 		// Skip over empty diffs (which can occur either because there was no activity, or for fixed entries that never saw activity)
-		if s.Reads != 0 || s.Writes != 0 || s.Extends != 0 ||
-			s.Evictions != 0 || s.Reuses != 0 || s.Fsyncs != 0 {
+		if s.Reads != 0 || s.Writes != 0 || s.Writebacks != 0 || s.Extends != 0 ||
+			s.Hits != 0 || s.Evictions != 0 || s.Reuses != 0 || s.Fsyncs != 0 {
 			diff[k] = s
 		}
 	}
