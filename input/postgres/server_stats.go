@@ -73,13 +73,20 @@ const ioStatisticSQLPg16 string = `
 SELECT backend_type,
 	   object,
 	   context,
-	   reads,
-	   writes,
-	   extends,
-	   op_bytes,
-	   evictions,
-	   reuses,
-	   fsyncs
+	   coalesce(reads, 0),
+	   coalesce(read_time, 0),
+	   coalesce(writes, 0),
+	   coalesce(write_time, 0),
+	   coalesce(writebacks, 0),
+	   coalesce(writeback_time, 0),
+	   coalesce(extends, 0),
+	   coalesce(extend_time, 0),
+	   coalesce(op_bytes, 0),
+	   coalesce(hits, 0),
+	   coalesce(evictions, 0),
+	   coalesce(reuses, 0),
+	   coalesce(fsyncs, 0),
+	   coalesce(fsync_time, 0)
   FROM pg_stat_io
 `
 
@@ -137,8 +144,10 @@ func GetServerStats(ctx context.Context, logger *util.Logger, db *sql.DB, postgr
 			var s state.PostgresServerIoStats
 
 			err := rows.Scan(&k.BackendType, &k.IoObject, &k.IoContext,
-				&s.Reads, &s.Writes, &s.Extends, &s.OpBytes,
-				&s.Evictions, &s.Reuses, &s.Fsyncs,
+				&s.Reads, &s.ReadTime, &s.Writes, &s.WriteTime,
+				&s.Writebacks, &s.WritebackTime, &s.Extends,
+				&s.ExtendTime, &s.OpBytes, &s.Hits,
+				&s.Evictions, &s.Reuses, &s.Fsyncs, &s.FsyncTime,
 			)
 			if err != nil {
 				return stats, ioStats, err
@@ -162,11 +171,18 @@ type PostgresServerIoStatsKey struct {
 }
 
 type PostgresServerIoStats struct {
-	Reads     int64
-	Writes    int64
-	Extends   int64
-	OpBytes   int64
-	Evictions int64
-	Reuses    int64
-	Fsyncs    int64
+	Reads         int64
+	ReadTime      float64
+	Writes        int64
+	WriteTime     float64
+	Writebacks    int64
+	WritebackTime float64
+	Extends       int64
+	ExtendTime    float64
+	OpBytes       int64
+	Hits          int64
+	Evictions     int64
+	Reuses        int64
+	Fsyncs        int64
+	FsyncTime     float64
 }

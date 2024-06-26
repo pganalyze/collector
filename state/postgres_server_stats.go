@@ -1,7 +1,5 @@
 package state
 
-import "github.com/guregu/null"
-
 // PostgresServerStats - Statistics for a Postgres server.
 type PostgresServerStats struct {
 	CurrentXactId   Xid8
@@ -46,13 +44,20 @@ type PostgresServerIoStatsKey struct {
 }
 
 type PostgresServerIoStats struct {
-	Reads     null.Int
-	Writes    null.Int
-	Extends   null.Int
-	OpBytes   int64
-	Evictions null.Int
-	Reuses    null.Int
-	Fsyncs    null.Int
+	Reads         int64
+	ReadTime      float64
+	Writes        int64
+	WriteTime     float64
+	Writebacks    int64
+	WritebackTime float64
+	Extends       int64
+	ExtendTime    float64
+	OpBytes       int64
+	Hits          int64
+	Evictions     int64
+	Reuses        int64
+	Fsyncs        int64
+	FsyncTime     float64
 }
 
 type PostgresServerIoStatsMap map[PostgresServerIoStatsKey]PostgresServerIoStats
@@ -64,23 +69,18 @@ type HistoricPostgresServerIoStatsMap map[PostgresStatementStatsTimeKey]DiffedPo
 
 func (curr PostgresServerIoStats) DiffSince(prev PostgresServerIoStats) DiffedPostgresServerIoStats {
 	diff := DiffedPostgresServerIoStats{OpBytes: curr.OpBytes}
-	if curr.Reads.Valid && prev.Reads.Valid {
-		diff.Reads = null.IntFrom(curr.Reads.Int64 - prev.Reads.Int64)
-	}
-	if curr.Writes.Valid && prev.Writes.Valid {
-		diff.Writes = null.IntFrom(curr.Writes.Int64 - prev.Writes.Int64)
-	}
-	if curr.Extends.Valid && prev.Extends.Valid {
-		diff.Extends = null.IntFrom(curr.Extends.Int64 - prev.Extends.Int64)
-	}
-	if curr.Evictions.Valid && prev.Evictions.Valid {
-		diff.Evictions = null.IntFrom(curr.Evictions.Int64 - prev.Evictions.Int64)
-	}
-	if curr.Reuses.Valid && prev.Reuses.Valid {
-		diff.Reuses = null.IntFrom(curr.Reuses.Int64 - prev.Reuses.Int64)
-	}
-	if curr.Fsyncs.Valid && prev.Fsyncs.Valid {
-		diff.Fsyncs = null.IntFrom(curr.Fsyncs.Int64 - prev.Fsyncs.Int64)
-	}
+	diff.Reads = curr.Reads - prev.Reads
+	diff.ReadTime = curr.ReadTime - prev.ReadTime
+	diff.Writes = curr.Writes - prev.Writes
+	diff.WriteTime = curr.WriteTime - prev.WriteTime
+	diff.Writebacks = curr.Writebacks - prev.Writebacks
+	diff.WritebackTime = curr.WritebackTime - prev.WritebackTime
+	diff.Extends = curr.Extends - prev.Extends
+	diff.ExtendTime = curr.ExtendTime - prev.ExtendTime
+	diff.Hits = curr.Hits - prev.Hits
+	diff.Evictions = curr.Evictions - prev.Evictions
+	diff.Reuses = curr.Reuses - prev.Reuses
+	diff.Fsyncs = curr.Fsyncs - prev.Fsyncs
+	diff.FsyncTime = curr.FsyncTime - prev.FsyncTime
 	return diff
 }

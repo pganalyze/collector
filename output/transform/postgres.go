@@ -178,43 +178,25 @@ func transformPostgresServerStats(s snapshot.FullSnapshot, diffState state.DiffS
 		h.CollectedIntervalSecs = timeKey.CollectedIntervalSecs
 
 		for k, stats := range diffedStats {
-			statsOut := &snapshot.ServerIoStatistic{
-				BackendType: k.BackendType,
-				IoObject:    k.IoObject,
-				IoContext:   k.IoContext,
-				OpBytes:     stats.OpBytes,
-			}
-			if stats.Reads.Valid {
-				statsOut.Reads = stats.Reads.Int64
-			} else {
-				statsOut.Reads = -1
-			}
-			if stats.Writes.Valid {
-				statsOut.Writes = stats.Writes.Int64
-			} else {
-				statsOut.Writes = -1
-			}
-			if stats.Extends.Valid {
-				statsOut.Extends = stats.Extends.Int64
-			} else {
-				statsOut.Extends = -1
-			}
-			if stats.Evictions.Valid {
-				statsOut.Evictions = stats.Evictions.Int64
-			} else {
-				statsOut.Evictions = -1
-			}
-			if stats.Reuses.Valid {
-				statsOut.Reuses = stats.Reuses.Int64
-			} else {
-				statsOut.Reuses = -1
-			}
-			if stats.Fsyncs.Valid {
-				statsOut.Fsyncs = stats.Fsyncs.Int64
-			} else {
-				statsOut.Fsyncs = -1
-			}
-			h.Statistics = append(h.Statistics, statsOut)
+			h.Statistics = append(h.Statistics, &snapshot.ServerIoStatistic{
+				BackendType:   k.BackendType,
+				IoObject:      k.IoObject,
+				IoContext:     k.IoContext,
+				Reads:         stats.Reads,
+				ReadTime:      stats.ReadTime,
+				Writes:        stats.Writes,
+				WriteTime:     stats.WriteTime,
+				Writebacks:    stats.Writebacks,
+				WritebackTime: stats.WritebackTime,
+				Extends:       stats.Extends,
+				ExtendTime:    stats.ExtendTime,
+				OpBytes:       stats.OpBytes,
+				Hits:          stats.Hits,
+				Evictions:     stats.Evictions,
+				Reuses:        stats.Reuses,
+				Fsyncs:        stats.Fsyncs,
+				FsyncTime:     stats.FsyncTime,
+			})
 		}
 		s.HistoricServerIoStatistics = append(s.HistoricServerIoStatistics, &h)
 	}
