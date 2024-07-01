@@ -1232,7 +1232,6 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 		checkConstraintViolation3,
 		checkConstraintViolation4,
 		exclusionConstraintViolation,
-		syntaxError,
 		columnMissingFromGroupBy,
 		columnDoesNotExist,
 		columnDoesNotExistOnTable,
@@ -1275,6 +1274,22 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 				contextLine = matchOtherContextLogLine(contextLine)
 				return logLine, statementLine, detailLine, contextLine, hintLine, samples
 			}
+		}
+	}
+
+	// Syntax error
+	if matchesPrefix(logLine, syntaxError.primary.prefixes) {
+		logLine, parts = matchLogLine(logLine, syntaxError.primary)
+		if parts != nil {
+			logLine.Classification = syntaxError.classification
+			// The statement already has a LogSecretMarker, but we add another one so it's
+			// redacted for both `statement_text` and `parsing_error` log filters.
+			statementLine.SecretMarkers = append(statementLine.SecretMarkers, state.LogSecretMarker{
+				ByteStart: statementLine.SecretMarkers[0].ByteStart,
+				ByteEnd:   statementLine.SecretMarkers[0].ByteEnd,
+				Kind:      state.ParsingErrorLogSecret,
+			})
+			return logLine, statementLine, detailLine, contextLine, hintLine, samples
 		}
 	}
 

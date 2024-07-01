@@ -2950,10 +2950,16 @@ var tests = []testpair{
 			LogLevel:           pganalyze_collector.LogLineInformation_STATEMENT,
 			ParentUUID:         uuid.UUID{1},
 			ReviewedForSecrets: true,
-			SecretMarkers: []state.LogSecretMarker{{
-				ByteEnd: 36,
-				Kind:    state.StatementTextLogSecret,
-			}},
+			SecretMarkers: []state.LogSecretMarker{
+				{
+					ByteEnd: 36,
+					Kind:    state.StatementTextLogSecret,
+				},
+				{
+					ByteEnd: 36,
+					Kind:    state.ParsingErrorLogSecret,
+				},
+			},
 		}},
 		nil,
 	},
@@ -2976,10 +2982,16 @@ var tests = []testpair{
 			LogLevel:           pganalyze_collector.LogLineInformation_STATEMENT,
 			ParentUUID:         uuid.UUID{1},
 			ReviewedForSecrets: true,
-			SecretMarkers: []state.LogSecretMarker{{
-				ByteEnd: 23,
-				Kind:    state.StatementTextLogSecret,
-			}},
+			SecretMarkers: []state.LogSecretMarker{
+				{
+					ByteEnd: 23,
+					Kind:    state.StatementTextLogSecret,
+				},
+				{
+					ByteEnd: 23,
+					Kind:    state.ParsingErrorLogSecret,
+				},
+			},
 		}},
 		nil,
 	},
