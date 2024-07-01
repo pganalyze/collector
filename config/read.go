@@ -318,6 +318,8 @@ func getDefaultConfig() *ServerConfig {
 	}
 	if filterLogSecret := os.Getenv("FILTER_LOG_SECRET"); filterLogSecret != "" {
 		config.FilterLogSecret = filterLogSecret
+	} else {
+		config.FilterLogSecret = "credential,parsing_error,unidentified"
 	}
 	if filterQuerySample := os.Getenv("FILTER_QUERY_SAMPLE"); filterQuerySample != "" {
 		config.FilterQuerySample = filterQuerySample
