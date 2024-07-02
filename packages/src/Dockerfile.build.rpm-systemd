@@ -15,9 +15,16 @@ RUN sed -i s/^#.*baseurl=http/baseurl=http/g /etc/yum.repos.d/*.repo
 RUN sed -i s/^mirrorlist=http/#mirrorlist=http/g /etc/yum.repos.d/*.repo
 
 # Packages required for both building and packaging
-#
+RUN yum install -y centos-release-scl scl-utils tar make git rpmdevtools gcc
+
+# Workaround for mirrorlist.centos.org
+# https://serverfault.com/questions/1161816/mirrorlist-centos-org-no-longer-resolve
+RUN sed -i s/mirror.centos.org/vault.centos.org/g /etc/yum.repos.d/*.repo
+RUN sed -i s/^#.*baseurl=http/baseurl=http/g /etc/yum.repos.d/*.repo
+RUN sed -i s/^mirrorlist=http/#mirrorlist=http/g /etc/yum.repos.d/*.repo
+
 # This uses Ruby 3.0 since 2.7 (which still used for Debian builds) does not work with fpm: https://github.com/jordansissel/fpm/issues/2048#issuecomment-1972196104
-RUN yum install -y centos-release-scl scl-utils tar make git rpmdevtools gcc rh-ruby30 rh-ruby30-ruby-devel
+RUN yum install -y rh-ruby30 rh-ruby30-ruby-devel
 
 # FPM
 RUN source scl_source enable rh-ruby30 && gem install fpm -v 1.14.1
