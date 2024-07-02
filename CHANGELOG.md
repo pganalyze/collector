@@ -21,6 +21,11 @@
 * Add packages for Ubuntu 24.04
 * Remove "report" functionality
   - This has long been deprecated. Removing the code as a cleanup
+* Enable log filtering by default to avoid storing database secrets
+  - `filter_log_secret` now defaults to `credential,parsing_error,unidentified`
+* Improve log filtering for syntax errors
+  - Previously when `filter_log_secret: syntax_error` is set, the full statement
+    would still be included in the logs. It's now properly redacted.
 
 
 ## 0.56.0      2024-04-19
