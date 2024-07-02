@@ -11,6 +11,12 @@ ENV RPM_DIR /rpm
 RUN mkdir -p $RPM_DIR
 RUN mkdir -p $RPM_DIR/systemd
 
+# Workaround for mirrorlist.centos.org
+# https://serverfault.com/questions/1161816/mirrorlist-centos-org-no-longer-resolve
+RUN sed -i s/mirror.centos.org/vault.centos.org/g /etc/yum.repos.d/*.repo
+RUN sed -i s/^#.*baseurl=http/baseurl=http/g /etc/yum.repos.d/*.repo
+RUN sed -i s/^mirrorlist=http/#mirrorlist=http/g /etc/yum.repos.d/*.repo
+
 RUN yum install -y -q rpm-sign createrepo
 
 RUN echo "%_gpg_name team@pganalyze.com" > /root/.rpmmacros
