@@ -1,6 +1,9 @@
 package transform
 
 import (
+	"time"
+
+	"github.com/golang/protobuf/ptypes"
 	snapshot "github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
 )
@@ -14,7 +17,7 @@ func transformPostgres(s snapshot.FullSnapshot, newState state.PersistedState, d
 
 	s = transformPostgresVersion(s, transientState)
 	s = transformPostgresConfig(s, transientState)
-	s = transformPostgresServerStats(s, transientState)
+	s = transformPostgresServerStats(s, diffState, transientState)
 	s = transformPostgresReplication(s, transientState, roleOidToIdx)
 	s = transformPostgresStatements(s, newState, diffState, transientState, roleOidToIdx, databaseOidToIdx)
 	s = transformPostgresRelations(s, newState, diffState, databaseOidToIdx, typeOidToIdx, s.ServerStatistic.CurrentXactId)
@@ -152,7 +155,7 @@ func transformPostgresVersion(s snapshot.FullSnapshot, transientState state.Tran
 	return s
 }
 
-func transformPostgresServerStats(s snapshot.FullSnapshot, transientState state.TransientState) snapshot.FullSnapshot {
+func transformPostgresServerStats(s snapshot.FullSnapshot, diffState state.DiffState, transientState state.TransientState) snapshot.FullSnapshot {
 	s.ServerStatistic = &snapshot.ServerStatistic{
 		CurrentXactId:                     int64(transientState.ServerStats.CurrentXactId),
 		NextMultiXactId:                   int64(transientState.ServerStats.NextMultiXactId),
@@ -161,6 +164,41 @@ func transformPostgresServerStats(s snapshot.FullSnapshot, transientState state.
 		XminHorizonReplicationSlotCatalog: transientState.ServerStats.FullXminHorizonReplicationSlotCatalog(),
 		XminHorizonPreparedXact:           transientState.ServerStats.FullXminHorizonPreparedXact(),
 		XminHorizonStandby:                transientState.ServerStats.FullXminHorizonStandby(),
+	}
+
+	for timeKey, diffedStats := range transientState.HistoricServerIoStats {
+		// Ignore any data older than an hour, as a safety measure in case of many
+		// failed full snapshot runs (which don't reset state)
+		if time.Since(timeKey.CollectedAt).Hours() >= 1 {
+			continue
+		}
+
+		h := snapshot.HistoricServerIoStatistics{}
+		h.CollectedAt, _ = ptypes.TimestampProto(timeKey.CollectedAt)
+		h.CollectedIntervalSecs = timeKey.CollectedIntervalSecs
+
+		for k, stats := range diffedStats {
+			h.Statistics = append(h.Statistics, &snapshot.ServerIoStatistic{
+				BackendType:   k.BackendType,
+				IoObject:      k.IoObject,
+				IoContext:     k.IoContext,
+				Reads:         stats.Reads,
+				ReadTime:      stats.ReadTime,
+				Writes:        stats.Writes,
+				WriteTime:     stats.WriteTime,
+				Writebacks:    stats.Writebacks,
+				WritebackTime: stats.WritebackTime,
+				Extends:       stats.Extends,
+				ExtendTime:    stats.ExtendTime,
+				OpBytes:       stats.OpBytes,
+				Hits:          stats.Hits,
+				Evictions:     stats.Evictions,
+				Reuses:        stats.Reuses,
+				Fsyncs:        stats.Fsyncs,
+				FsyncTime:     stats.FsyncTime,
+			})
+		}
+		s.HistoricServerIoStatistics = append(s.HistoricServerIoStatistics, &h)
 	}
 
 	return s
