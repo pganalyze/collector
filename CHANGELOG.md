@@ -18,14 +18,20 @@
     correctly handling these EXPLAIN queries
   - Add a workaround to mitigate this issue when such unexpected new lines are
     detected
-* Add packages for Ubuntu 24.04
-* Remove "report" functionality
-  - This has long been deprecated. Removing the code as a cleanup
 * Enable log filtering by default to avoid storing database secrets
   - `filter_log_secret` now defaults to `credential,parsing_error,unidentified`
 * Improve log filtering for syntax errors
   - Previously when `filter_log_secret: syntax_error` is set, the full statement
     would still be included in the logs. It's now properly redacted.
+* AWS: Allow setting both assume role and web identity/role ARN
+  - Previously when both of them are set, web identity/role ARN were ignored
+  - With the change, we now first retrieve credentials via web identity, and
+    then assume the role specified as `aws_assume_role` / `AWS_ASSUME_ROLE`
+  - This helps with cross-account configurations on AWS in combination with the
+    collector running in EKS
+* Add packages for Ubuntu 24.04
+* Remove "report" functionality
+  - This has long been deprecated. Removing the code as a cleanup
 
 
 ## 0.56.0      2024-04-19
