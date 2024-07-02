@@ -76,10 +76,23 @@ func GetAwsSession(cfg config.ServerConfig) (*session.Session, error) {
 		if err != nil {
 			return nil, err
 		}
-		if cfg.AwsAssumeRole != "" {
-			creds = stscreds.NewCredentials(sess, cfg.AwsAssumeRole)
-		} else if cfg.AwsWebIdentityTokenFile != "" && cfg.AwsRoleArn != "" {
+		if cfg.AwsWebIdentityTokenFile != "" && cfg.AwsRoleArn != "" {
 			creds = stscreds.NewWebIdentityCredentials(sess, cfg.AwsRoleArn, "", cfg.AwsWebIdentityTokenFile)
+			if cfg.AwsAssumeRole != "" {
+				sess, err := session.NewSession(&aws.Config{
+					Credentials:                   creds,
+					CredentialsChainVerboseErrors: aws.Bool(true),
+					Region:                        aws.String(cfg.AwsRegion),
+					HTTPClient:                    cfg.HTTPClient,
+					EndpointResolver:              endpoints.ResolverFunc(customResolver),
+				})
+				if err != nil {
+					return nil, err
+				}
+				creds = stscreds.NewCredentials(sess, cfg.AwsAssumeRole)
+			}
+		} else if cfg.AwsAssumeRole != "" {
+			creds = stscreds.NewCredentials(sess, cfg.AwsAssumeRole)
 		}
 	}
 
