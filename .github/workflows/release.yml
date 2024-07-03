@@ -29,7 +29,7 @@ jobs:
         repo-token: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Check out code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         submodules: true
 
@@ -66,7 +66,7 @@ jobs:
         repo-token: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Check out code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         submodules: true
 
@@ -93,12 +93,12 @@ jobs:
     steps:
 
     - name: Check out code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         submodules: true
 
     - name: Set up QEMU
-      uses: docker/setup-qemu-action@v2
+      uses: docker/setup-qemu-action@v3
 
     - name: Build packages
       run: |
@@ -129,7 +129,7 @@ jobs:
       uses: azure/setup-helm@v4
 
     - name: Check out code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         submodules: true
 
