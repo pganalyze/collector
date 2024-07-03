@@ -1,7 +1,5 @@
 FROM amazonlinux:2
 
-# Replace with ARM base image when building on ARM
-
 # Build arguments
 ARG VERSION
 ENV NAME pganalyze-collector
