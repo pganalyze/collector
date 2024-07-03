@@ -32,6 +32,9 @@
 * Add packages for Ubuntu 24.04
 * Remove "report" functionality
   - This has long been deprecated. Removing the code as a cleanup
+* Stop building packages for CentOS 7 / RHEL 7
+  * CentOS 7 / RHEL 7 is end of life. The minimum required glibc version for RPM packages is
+    now 2.26 (e.g. Amazon Linux 2)
 
 
 ## 0.56.0      2024-04-19
