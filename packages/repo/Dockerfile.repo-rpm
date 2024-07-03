@@ -1,7 +1,6 @@
-FROM centos:7
+FROM amazonlinux:2
 
-# Replace with ARM base image when building on ARM:
-#FROM arm64v8/centos:7
+# Replace with ARM base image when building on ARM
 
 # Build arguments
 ARG VERSION
@@ -10,12 +9,6 @@ ENV NAME pganalyze-collector
 ENV RPM_DIR /rpm
 RUN mkdir -p $RPM_DIR
 RUN mkdir -p $RPM_DIR/systemd
-
-# Workaround for mirrorlist.centos.org
-# https://serverfault.com/questions/1161816/mirrorlist-centos-org-no-longer-resolve
-RUN sed -i s/mirror.centos.org/vault.centos.org/g /etc/yum.repos.d/*.repo
-RUN sed -i s/^#.*baseurl=http/baseurl=http/g /etc/yum.repos.d/*.repo
-RUN sed -i s/^mirrorlist=http/#mirrorlist=http/g /etc/yum.repos.d/*.repo
 
 RUN yum install -y -q rpm-sign createrepo
 

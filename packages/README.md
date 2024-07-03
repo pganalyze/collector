@@ -31,8 +31,8 @@ When changing the initial package build step one needs to be careful to not incr
 
 Currently the following minimum glibc versions apply:
 
-* RPM, systemd: glibc 2.17 (CentOS 7)
-* DEB, systemd: glibc 2.19 (Debian Jessie)
+* RPM, systemd: glibc 2.26 (Amazon Linux 2)
+* DEB, systemd: glibc 2.31 (Debian Bullseye)
 
 
 Requirements
