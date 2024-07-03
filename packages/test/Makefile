@@ -9,7 +9,8 @@ docker_test_and_clean = docker exec pga-collector-test /root/systemd_test.sh && 
 
 # Note: The default list excludes rockylinux9 since there is an open issue with
 # /sbin/init not being present, see https://github.com/rocky-linux/sig-cloud-instance-images/issues/39
-DISTROS=centos7 rhel8 rockylinux8 rhel9 fedora36 fedora37 amazonlinux2 amazonlinux2023 ubuntu-focal ubuntu-jammy ubuntu-noble debian-bullseye debian-bookworm
+# Note: The default list also excludes centos7 since it's EOL, we will drop the support near future
+DISTROS=rhel8 rockylinux8 rhel9 fedora36 fedora37 amazonlinux2 amazonlinux2023 ubuntu-focal ubuntu-jammy ubuntu-noble debian-bullseye debian-bookworm
 
 .PHONY: all $(DISTROS)
 

@@ -1,7 +1,4 @@
-FROM centos:7
-
-# Replace with ARM base image when building on ARM:
-#FROM arm64v8/centos:7
+FROM amazonlinux:2
 
 # Build arguments
 ARG VERSION
