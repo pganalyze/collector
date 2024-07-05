@@ -206,7 +206,7 @@ func setupLogTransformer(ctx context.Context, wg *sync.WaitGroup, servers []*sta
 					}
 					if in.GcpProjectID == server.Config.GcpProjectID && in.GcpAlloyDBClusterID != "" && in.GcpAlloyDBClusterID == server.Config.GcpAlloyDBClusterID && in.GcpAlloyDBInstanceID != "" && in.GcpAlloyDBInstanceID == server.Config.GcpAlloyDBInstanceID {
 						// AlloyDB adds a special [filename:lineno] prefix to all log lines (not part of log_line_prefix)
-						parts := regexp.MustCompile(`^\[[\w.-]+:\d+\]  (.*)`).FindStringSubmatch(string(logLine.Content))
+						parts := regexp.MustCompile(`(?s)^\[[\w.-]+:\d+\]  (.*)`).FindStringSubmatch(string(logLine.Content))
 						if len(parts) == 2 {
 							logLine.Content = parts[1]
 						}
