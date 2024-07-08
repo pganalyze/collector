@@ -17,7 +17,7 @@ jobs:
     steps:
 
     - name: Set up Go 1.x
-      uses: actions/setup-go@v4
+      uses: actions/setup-go@v5
       with:
         go-version: 1.21
       id: go
@@ -29,7 +29,7 @@ jobs:
         repo-token: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Check out code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         submodules: true
 
@@ -40,7 +40,7 @@ jobs:
         DOCKER_BUILDKIT=1 make integration_test
 
     - name: Upload build
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       with:
         name: pganalyze-collector-linux-amd64
         path: pganalyze-collector-linux-amd64
@@ -54,7 +54,7 @@ jobs:
     steps:
 
     - name: Set up Go 1.x
-      uses: actions/setup-go@v4
+      uses: actions/setup-go@v5
       with:
         go-version: 1.21
       id: go
@@ -66,7 +66,7 @@ jobs:
         repo-token: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Check out code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         submodules: true
 
@@ -77,7 +77,7 @@ jobs:
         DOCKER_BUILDKIT=1 make integration_test
 
     - name: Upload build
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       with:
         name: pganalyze-collector-linux-arm64
         path: pganalyze-collector-linux-arm64
@@ -93,12 +93,12 @@ jobs:
     steps:
 
     - name: Check out code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         submodules: true
 
     - name: Set up QEMU
-      uses: docker/setup-qemu-action@v2
+      uses: docker/setup-qemu-action@v3
 
     - name: Build packages
       run: |
@@ -109,7 +109,7 @@ jobs:
         DOCKER_BUILDKIT=1 make -C packages test
 
     - name: Upload packages as artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: packages
         path: |
@@ -129,7 +129,7 @@ jobs:
       uses: azure/setup-helm@v4
 
     - name: Check out code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         submodules: true
 
@@ -137,7 +137,7 @@ jobs:
       run: helm package contrib/helm/pganalyze-collector
 
     - name: Upload packages as artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: charts
         path: |
@@ -152,22 +152,22 @@ jobs:
 
     steps:
     - name: Download build
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: pganalyze-collector-linux-amd64
 
     - name: Download arm build
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: pganalyze-collector-linux-arm64
 
     - name: Download build packages
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: packages
 
     - name: Download helm package
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: charts
 
@@ -260,7 +260,7 @@ jobs:
 
     steps:
     - name: Download helm package
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: charts
 
