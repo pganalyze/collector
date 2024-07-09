@@ -106,7 +106,7 @@ GROUP BY
 `
 
 func handleIndexStatsAux(ctx context.Context, db *sql.DB, idxStats state.PostgresIndexStatsMap, postgresVersion state.PostgresVersion, server *state.Server) (state.PostgresIndexStatsMap, error) {
-	if postgresVersion.IsCitus && !server.Config.DisableCitusSchemaStats {
+	if postgresVersion.IsCitus && !server.Config.DisableCitusSchemaStats && !server.Config.DisableCitusIndexStats {
 		stmt, err := db.PrepareContext(ctx, QueryMarkerSQL+citusIndexSizeSQL)
 		if err != nil {
 			return idxStats, fmt.Errorf("IndexStatsExt/Prepare: %s", err)

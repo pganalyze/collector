@@ -133,6 +133,7 @@ type ServerConfig struct {
 
 	AlwaysCollectSystemData bool `ini:"always_collect_system_data"`
 	DisableCitusSchemaStats bool `ini:"disable_citus_schema_stats"`
+	DisableCitusIndexStats  bool `ini:"disable_citus_index_stats"`
 
 	// Configures the location where logfiles are - this can either be a directory,
 	// or a file - needs to readable by the regular pganalyze user
