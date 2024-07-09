@@ -21,37 +21,43 @@ SELECT logicalrelid::oid,
  WHERE ($1 = '' OR (n.nspname || '.' || c.relname) !~* $1)
 `
 
+func collectCitusRelationStats(postgresVersion state.PostgresVersion, server *state.Server) bool {
+	return postgresVersion.IsCitus && server.Config.DisableCitusSchemaStats != "all"
+}
+
 func handleRelationStatsAux(ctx context.Context, db *sql.DB, relStats state.PostgresRelationStatsMap, postgresVersion state.PostgresVersion, server *state.Server) (state.PostgresRelationStatsMap, error) {
-	if postgresVersion.IsCitus && !server.Config.DisableCitusSchemaStats {
-		stmt, err := db.PrepareContext(ctx, QueryMarkerSQL+citusRelationSizeSQL)
+	if !collectCitusRelationStats(postgresVersion, server) {
+		return relStats, nil
+	}
+
+	stmt, err := db.PrepareContext(ctx, QueryMarkerSQL+citusRelationSizeSQL)
+	if err != nil {
+		return relStats, fmt.Errorf("RelationStatsExt/Prepare: %s", err)
+	}
+	defer stmt.Close()
+
+	rows, err := stmt.QueryContext(ctx, server.Config.IgnoreSchemaRegexp)
+	if err != nil {
+		return relStats, fmt.Errorf("RelationStatsExt/Query: %s", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var oid state.Oid
+		var sizeBytes int64
+
+		err = rows.Scan(&oid, &sizeBytes)
 		if err != nil {
-			return relStats, fmt.Errorf("RelationStatsExt/Prepare: %s", err)
+			return relStats, fmt.Errorf("RelationStatsExt/Scan: %s", err)
 		}
-		defer stmt.Close()
+		s := relStats[oid]
+		s.SizeBytes = sizeBytes
+		s.ToastSizeBytes = 0
+		relStats[oid] = s
+	}
 
-		rows, err := stmt.QueryContext(ctx, server.Config.IgnoreSchemaRegexp)
-		if err != nil {
-			return relStats, fmt.Errorf("RelationStatsExt/Query: %s", err)
-		}
-		defer rows.Close()
-
-		for rows.Next() {
-			var oid state.Oid
-			var sizeBytes int64
-
-			err = rows.Scan(&oid, &sizeBytes)
-			if err != nil {
-				return relStats, fmt.Errorf("RelationStatsExt/Scan: %s", err)
-			}
-			s := relStats[oid]
-			s.SizeBytes = sizeBytes
-			s.ToastSizeBytes = 0
-			relStats[oid] = s
-		}
-
-		if err = rows.Err(); err != nil {
-			return relStats, fmt.Errorf("RelationStatsExt/Rows: %s", err)
-		}
+	if err = rows.Err(); err != nil {
+		return relStats, fmt.Errorf("RelationStatsExt/Rows: %s", err)
 	}
 
 	return relStats, nil
@@ -105,36 +111,42 @@ GROUP BY
   oid;
 `
 
+func collectCitusIndexStats(postgresVersion state.PostgresVersion, server *state.Server) bool {
+	return postgresVersion.IsCitus && server.Config.DisableCitusSchemaStats != "all" && server.Config.DisableCitusSchemaStats != "index"
+}
+
 func handleIndexStatsAux(ctx context.Context, db *sql.DB, idxStats state.PostgresIndexStatsMap, postgresVersion state.PostgresVersion, server *state.Server) (state.PostgresIndexStatsMap, error) {
-	if postgresVersion.IsCitus && !server.Config.DisableCitusSchemaStats && !server.Config.DisableCitusIndexStats {
-		stmt, err := db.PrepareContext(ctx, QueryMarkerSQL+citusIndexSizeSQL)
+	if !collectCitusIndexStats(postgresVersion, server) {
+		return idxStats, nil
+	}
+
+	stmt, err := db.PrepareContext(ctx, QueryMarkerSQL+citusIndexSizeSQL)
+	if err != nil {
+		return idxStats, fmt.Errorf("IndexStatsExt/Prepare: %s", err)
+	}
+	defer stmt.Close()
+
+	rows, err := stmt.QueryContext(ctx, server.Config.IgnoreSchemaRegexp)
+	if err != nil {
+		return idxStats, fmt.Errorf("IndexStatsExt/Query: %s", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var oid state.Oid
+		var sizeBytes int64
+
+		err = rows.Scan(&oid, &sizeBytes)
 		if err != nil {
-			return idxStats, fmt.Errorf("IndexStatsExt/Prepare: %s", err)
+			return idxStats, fmt.Errorf("IndexStatsExt/Scan: %s", err)
 		}
-		defer stmt.Close()
+		s := idxStats[oid]
+		s.SizeBytes = sizeBytes
+		idxStats[oid] = s
+	}
 
-		rows, err := stmt.QueryContext(ctx, server.Config.IgnoreSchemaRegexp)
-		if err != nil {
-			return idxStats, fmt.Errorf("IndexStatsExt/Query: %s", err)
-		}
-		defer rows.Close()
-
-		for rows.Next() {
-			var oid state.Oid
-			var sizeBytes int64
-
-			err = rows.Scan(&oid, &sizeBytes)
-			if err != nil {
-				return idxStats, fmt.Errorf("IndexStatsExt/Scan: %s", err)
-			}
-			s := idxStats[oid]
-			s.SizeBytes = sizeBytes
-			idxStats[oid] = s
-		}
-
-		if err = rows.Err(); err != nil {
-			return idxStats, fmt.Errorf("IndexStatsExt/Rows: %s", err)
-		}
+	if err = rows.Err(); err != nil {
+		return idxStats, fmt.Errorf("IndexStatsExt/Rows: %s", err)
 	}
 
 	return idxStats, nil

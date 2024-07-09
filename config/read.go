@@ -42,6 +42,20 @@ func parseConfigBool(value string) bool {
 	return true
 }
 
+func parseConfigDisableCitusSchemaStats(value string) string {
+	// this setting was previously boolean, but now supports several enum values;
+	// map the old boolean values to the enum values for backward compatibility
+	var val = strings.ToLower(value)
+	if val == "none" || val == "" || val == "0" || val == "off" || val == "false" || val == "no" || val == "f" || val == "n" {
+		return "none"
+	}
+	if val == "index" {
+		return "index"
+	}
+	// any other values are considered as "all"
+	return "all"
+}
+
 func getDefaultConfig() *ServerConfig {
 	config := &ServerConfig{
 		APIBaseURL:              DefaultAPIBaseURL,
@@ -291,10 +305,7 @@ func getDefaultConfig() *ServerConfig {
 		config.AlwaysCollectSystemData = parseConfigBool(alwaysCollectSystemData)
 	}
 	if disableCitusSchemaStats := os.Getenv("DISABLE_CITUS_SCHEMA_STATS"); disableCitusSchemaStats != "" {
-		config.DisableCitusSchemaStats = parseConfigBool(disableCitusSchemaStats)
-	}
-	if disableCitusIndexStats := os.Getenv("DISABLE_CITUS_INDEX_STATS"); disableCitusIndexStats != "" {
-		config.DisableCitusIndexStats = parseConfigBool(disableCitusIndexStats)
+		config.DisableCitusSchemaStats = parseConfigDisableCitusSchemaStats(disableCitusSchemaStats)
 	}
 	if logPgReadFile := os.Getenv("LOG_PG_READ_FILE"); logPgReadFile != "" {
 		config.LogPgReadFile = parseConfigBool(logPgReadFile)
