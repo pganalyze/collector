@@ -131,8 +131,8 @@ type ServerConfig struct {
 	SystemTypeFallback  string `ini:"api_system_type_fallback"`
 	SystemScopeFallback string `ini:"api_system_scope_fallback"`
 
-	AlwaysCollectSystemData bool `ini:"always_collect_system_data"`
-	DisableCitusSchemaStats bool `ini:"disable_citus_schema_stats"`
+	AlwaysCollectSystemData bool   `ini:"always_collect_system_data"`
+	DisableCitusSchemaStats string `ini:"disable_citus_schema_stats"` // none/all/index
 
 	// Configures the location where logfiles are - this can either be a directory,
 	// or a file - needs to readable by the regular pganalyze user
