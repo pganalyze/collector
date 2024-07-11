@@ -96,7 +96,7 @@ func processServer(ctx context.Context, server *state.Server, globalCollectionOp
 
 	if !globalCollectionOpts.ForceEmptyGrant {
 		// Note: In case of server errors, we should reuse the old grant if its still recent (i.e. less than 50 minutes ago)
-		newGrant, err = grant.GetDefaultGrant(server, globalCollectionOpts, logger)
+		newGrant, err = grant.GetDefaultGrant(ctx, server, globalCollectionOpts, logger)
 		if err != nil {
 			if server.Grant.Valid {
 				logger.PrintVerbose("Could not acquire snapshot grant, reusing previous grant: %s", err)

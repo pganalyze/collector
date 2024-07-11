@@ -42,7 +42,7 @@ func processActivityForServer(ctx context.Context, server *state.Server, globalC
 	}
 
 	if !globalCollectionOpts.ForceEmptyGrant {
-		newGrant, err = grant.GetDefaultGrant(server, globalCollectionOpts, logger)
+		newGrant, err = grant.GetDefaultGrant(ctx, server, globalCollectionOpts, logger)
 		if err != nil {
 			return newState, false, errors.Wrap(err, "could not get default grant for activity snapshot")
 		}

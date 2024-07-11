@@ -1,6 +1,7 @@
 package crunchy_bridge
 
 import (
+	"context"
 	"time"
 
 	"github.com/pganalyze/collector/input/system/selfhosted"
@@ -9,7 +10,7 @@ import (
 )
 
 // GetSystemState - Gets system information about a Crunchy Bridge instance
-func GetSystemState(server *state.Server, logger *util.Logger) (system state.SystemState) {
+func GetSystemState(ctx context.Context, server *state.Server, logger *util.Logger) (system state.SystemState) {
 	config := server.Config
 	// With Crunchy Bridge, we are assuming that the collector is deployed on Container Apps,
 	// which run directly on the database server. Most of the metrics can be obtained
@@ -25,7 +26,7 @@ func GetSystemState(server *state.Server, logger *util.Logger) (system state.Sys
 	}
 	client := Client{Client: *config.HTTPClientWithRetry, BaseURL: apiBaseURL, BearerToken: config.CrunchyBridgeAPIKey, ClusterID: config.CrunchyBridgeClusterID}
 
-	clusterInfo, err := client.GetClusterInfo()
+	clusterInfo, err := client.GetClusterInfo(ctx)
 	if err != nil {
 		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectSystemStats, "error getting cluster info: %s", err)
 		logger.PrintError("CrunchyBridge/System: Encountered error when getting cluster info %v\n", err)
@@ -44,7 +45,7 @@ func GetSystemState(server *state.Server, logger *util.Logger) (system state.Sys
 		system.Info.CrunchyBridge.CreatedAt = parsedCreatedAt
 	}
 
-	diskUsageMetrics, err := client.GetDiskUsageMetrics()
+	diskUsageMetrics, err := client.GetDiskUsageMetrics(ctx)
 	if err != nil {
 		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectSystemStats, "error getting cluster disk usage metrics: %s", err)
 		logger.PrintError("CrunchyBridge/System: Encountered error when getting cluster disk usage metrics %v\n", err)
