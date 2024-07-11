@@ -200,7 +200,9 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 					doLogTest(ctx, servers, globalCollectionOpts, logger)
 				}
 
-				selftest.PrintSummary(servers, logger.Verbose)
+				if ctx.Err() == nil {
+					selftest.PrintSummary(servers, logger.Verbose)
+				}
 				success := allFullSuccessful && allActivitySuccessful
 				if success {
 					fmt.Fprintln(os.Stderr, "Test successful")
