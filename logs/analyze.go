@@ -1284,11 +1284,13 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 			logLine.Classification = syntaxError.classification
 			// The statement already has a LogSecretMarker, but we add another one so it's
 			// redacted for both `statement_text` and `parsing_error` log filters.
-			statementLine.SecretMarkers = append(statementLine.SecretMarkers, state.LogSecretMarker{
-				ByteStart: statementLine.SecretMarkers[0].ByteStart,
-				ByteEnd:   statementLine.SecretMarkers[0].ByteEnd,
-				Kind:      state.ParsingErrorLogSecret,
-			})
+			if len(statementLine.SecretMarkers) > 0 {
+				statementLine.SecretMarkers = append(statementLine.SecretMarkers, state.LogSecretMarker{
+					ByteStart: statementLine.SecretMarkers[0].ByteStart,
+					ByteEnd:   statementLine.SecretMarkers[0].ByteEnd,
+					Kind:      state.ParsingErrorLogSecret,
+				})
+			}
 			return logLine, statementLine, detailLine, contextLine, hintLine, samples
 		}
 	}
