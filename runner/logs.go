@@ -147,7 +147,7 @@ func downloadLogsForServerWithLocksAndCallbacks(ctx context.Context, wg *sync.Wa
 }
 
 func downloadLogsForServer(ctx context.Context, server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.PersistedLogState, bool, error) {
-	grant, err := getLogsGrant(server, globalCollectionOpts, logger)
+	grant, err := getLogsGrant(ctx, server, globalCollectionOpts, logger)
 	if err != nil || !grant.Valid {
 		return server.LogPrevState, false, err
 	}
@@ -254,7 +254,7 @@ func processLogStream(ctx context.Context, server *state.Server, logLines []stat
 		return tooFreshLogLines
 	}
 
-	grant, err := getLogsGrant(server, globalCollectionOpts, logger)
+	grant, err := getLogsGrant(ctx, server, globalCollectionOpts, logger)
 	if err != nil {
 		// Note we intentionally discard log lines here (and in the other
 		// error case below), because the HTTP client already retries to work
@@ -276,8 +276,8 @@ func processLogStream(ctx context.Context, server *state.Server, logLines []stat
 	return tooFreshLogLines
 }
 
-func getLogsGrant(server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (logGrant state.GrantLogs, err error) {
-	logGrant, err = grant.GetLogsGrant(server, globalCollectionOpts, logger)
+func getLogsGrant(ctx context.Context, server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (logGrant state.GrantLogs, err error) {
+	logGrant, err = grant.GetLogsGrant(ctx, server, globalCollectionOpts, logger)
 	if err != nil {
 		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectLogs, "error getting log grant: %s", err)
 		return state.GrantLogs{Valid: false}, errors.Wrap(err, "could not get log grant")

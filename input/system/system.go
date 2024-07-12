@@ -33,7 +33,7 @@ func DownloadLogFiles(ctx context.Context, server *state.Server, globalCollectio
 }
 
 // GetSystemState - Retrieves a system snapshot for this system and returns it
-func GetSystemState(server *state.Server, logger *util.Logger, globalCollectionOpts state.CollectionOpts) (system state.SystemState) {
+func GetSystemState(ctx context.Context, server *state.Server, logger *util.Logger, globalCollectionOpts state.CollectionOpts) (system state.SystemState) {
 	config := server.Config
 	dbHost := config.GetDbHost()
 	if config.SystemType == "amazon_rds" {
@@ -48,12 +48,12 @@ func GetSystemState(server *state.Server, logger *util.Logger, globalCollectionO
 		system.Info.Type = state.HerokuSystem
 		server.SelfTest.MarkCollectionAspectNotAvailable(state.CollectionAspectSystemStats, "not available on this platform")
 	} else if config.SystemType == "crunchy_bridge" {
-		system = crunchy_bridge.GetSystemState(server, logger)
+		system = crunchy_bridge.GetSystemState(ctx, server, logger)
 	} else if config.SystemType == "aiven" {
 		system.Info.Type = state.AivenSystem
 		server.SelfTest.MarkCollectionAspectNotAvailable(state.CollectionAspectSystemStats, "not available on this platform")
 	} else if config.SystemType == "tembo" {
-		system = tembo.GetSystemState(server, logger)
+		system = tembo.GetSystemState(ctx, server, logger)
 	} else if dbHost == "" || dbHost == "localhost" || dbHost == "127.0.0.1" || config.AlwaysCollectSystemData {
 		system = selfhosted.GetSystemState(server, logger)
 	} else {

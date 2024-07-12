@@ -1,6 +1,7 @@
 package crunchy_bridge
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -74,8 +75,8 @@ type DiskUsageMetrics struct {
 	WalSize      uint64
 }
 
-func (c *Client) NewRequest(method string, path string) (*http.Request, error) {
-	req, err := http.NewRequest(method, c.BaseURL+path, nil)
+func (c *Client) NewRequest(ctx context.Context, method string, path string) (*http.Request, error) {
+	req, err := http.NewRequestWithContext(ctx, method, c.BaseURL+path, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -86,8 +87,8 @@ func (c *Client) NewRequest(method string, path string) (*http.Request, error) {
 	return req, nil
 }
 
-func (c *Client) GetClusterInfo() (*ClusterInfo, error) {
-	req, err := c.NewRequest("GET", "/clusters/"+c.ClusterID)
+func (c *Client) GetClusterInfo(ctx context.Context) (*ClusterInfo, error) {
+	req, err := c.NewRequest(ctx, "GET", "/clusters/"+c.ClusterID)
 	if err != nil {
 		return nil, err
 	}
@@ -114,8 +115,8 @@ func (c *Client) GetClusterInfo() (*ClusterInfo, error) {
 	return &clusterInfo, err
 }
 
-func (c *Client) getMetrics(name string) (*MetricViews, error) {
-	req, err := c.NewRequest("GET", fmt.Sprintf("/metric-views/%s?cluster_id=%s&period=15m", name, c.ClusterID))
+func (c *Client) getMetrics(ctx context.Context, name string) (*MetricViews, error) {
+	req, err := c.NewRequest(ctx, "GET", fmt.Sprintf("/metric-views/%s?cluster_id=%s&period=15m", name, c.ClusterID))
 	if err != nil {
 		return nil, err
 	}
@@ -143,8 +144,8 @@ func (c *Client) getMetrics(name string) (*MetricViews, error) {
 	return &metricViews, nil
 }
 
-func (c *Client) GetCPUMetrics() (*CPUMetrics, error) {
-	metricViews, err := c.getMetrics("cpu")
+func (c *Client) GetCPUMetrics(ctx context.Context) (*CPUMetrics, error) {
+	metricViews, err := c.getMetrics(ctx, "cpu")
 	if err != nil {
 		return nil, err
 	}
@@ -166,8 +167,8 @@ func (c *Client) GetCPUMetrics() (*CPUMetrics, error) {
 	return &metrics, err
 }
 
-func (c *Client) GetMemoryMetrics() (*MemoryMetrics, error) {
-	metricViews, err := c.getMetrics("memory")
+func (c *Client) GetMemoryMetrics(ctx context.Context) (*MemoryMetrics, error) {
+	metricViews, err := c.getMetrics(ctx, "memory")
 	if err != nil {
 		return nil, err
 	}
@@ -185,8 +186,8 @@ func (c *Client) GetMemoryMetrics() (*MemoryMetrics, error) {
 	return &metrics, err
 }
 
-func (c *Client) GetIOPSMetrics() (*IOPSMetrics, error) {
-	metricViews, err := c.getMetrics("iops")
+func (c *Client) GetIOPSMetrics(ctx context.Context) (*IOPSMetrics, error) {
+	metricViews, err := c.getMetrics(ctx, "iops")
 	if err != nil {
 		return nil, err
 	}
@@ -204,8 +205,8 @@ func (c *Client) GetIOPSMetrics() (*IOPSMetrics, error) {
 	return &metrics, err
 }
 
-func (c *Client) GetLoadAverageMetrics() (*LoadAverageMetrics, error) {
-	metricViews, err := c.getMetrics("load-average")
+func (c *Client) GetLoadAverageMetrics(ctx context.Context) (*LoadAverageMetrics, error) {
+	metricViews, err := c.getMetrics(ctx, "load-average")
 	if err != nil {
 		return nil, err
 	}
@@ -221,8 +222,8 @@ func (c *Client) GetLoadAverageMetrics() (*LoadAverageMetrics, error) {
 	return &metrics, err
 }
 
-func (c *Client) GetDiskUsageMetrics() (*DiskUsageMetrics, error) {
-	metricViews, err := c.getMetrics("disk-usage")
+func (c *Client) GetDiskUsageMetrics(ctx context.Context) (*DiskUsageMetrics, error) {
+	metricViews, err := c.getMetrics(ctx, "disk-usage")
 	if err != nil {
 		return nil, err
 	}
