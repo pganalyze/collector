@@ -305,7 +305,7 @@ func getDefaultConfig() *ServerConfig {
 		config.AlwaysCollectSystemData = parseConfigBool(alwaysCollectSystemData)
 	}
 	if disableCitusSchemaStats := os.Getenv("DISABLE_CITUS_SCHEMA_STATS"); disableCitusSchemaStats != "" {
-		config.DisableCitusSchemaStats = parseConfigDisableCitusSchemaStats(disableCitusSchemaStats)
+		config.DisableCitusSchemaStats = disableCitusSchemaStats
 	}
 	if logPgReadFile := os.Getenv("LOG_PG_READ_FILE"); logPgReadFile != "" {
 		config.LogPgReadFile = parseConfigBool(logPgReadFile)
@@ -703,6 +703,10 @@ func preprocessConfig(config *ServerConfig) (*ServerConfig, error) {
 				config.LogOtelK8SLabelSelectors = append(config.LogOtelK8SLabelSelectors, selector)
 			}
 		}
+	}
+
+	if config.DisableCitusSchemaStats != "" {
+		config.DisableCitusSchemaStats = parseConfigDisableCitusSchemaStats(config.DisableCitusSchemaStats)
 	}
 
 	return config, nil
