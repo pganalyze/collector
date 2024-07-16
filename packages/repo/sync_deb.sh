@@ -31,9 +31,9 @@ reprepro --basedir /repo/debian/bookworm includedeb stable /deb/systemd/$DEB_PAC
 reprepro --basedir /repo/debian/bookworm includedeb stable /deb/systemd/$DEB_PACKAGE_ARM64
 
 # Verify signatures
-apt-key add /repo/pganalyze_signing_key.asc
-gpgv --keyring /etc/apt/trusted.gpg /repo/ubuntu/focal/dists/stable/InRelease
-gpgv --keyring /etc/apt/trusted.gpg /repo/ubuntu/jammy/dists/stable/InRelease
-gpgv --keyring /etc/apt/trusted.gpg /repo/ubuntu/noble/dists/stable/InRelease
-gpgv --keyring /etc/apt/trusted.gpg /repo/debian/bullseye/dists/stable/InRelease
-gpgv --keyring /etc/apt/trusted.gpg /repo/debian/bookworm/dists/stable/InRelease
+gpg --dearmor -o /repo/pganalyze_signing_key.gpg /repo/pganalyze_signing_key.asc
+gpgv --keyring /repo/pganalyze_signing_key.gpg /repo/ubuntu/focal/dists/stable/InRelease
+gpgv --keyring /repo/pganalyze_signing_key.gpg /repo/ubuntu/jammy/dists/stable/InRelease
+gpgv --keyring /repo/pganalyze_signing_key.gpg /repo/ubuntu/noble/dists/stable/InRelease
+gpgv --keyring /repo/pganalyze_signing_key.gpg /repo/debian/bullseye/dists/stable/InRelease
+gpgv --keyring /repo/pganalyze_signing_key.gpg /repo/debian/bookworm/dists/stable/InRelease

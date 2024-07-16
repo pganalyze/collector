@@ -162,26 +162,14 @@ metadata_expire=300" | $maybe_sudo tee -a /etc/yum.repos.d/pganalyze_collector.r
   $maybe_sudo yum $yum_opts install pganalyze-collector <$user_input
 elif [ "$pkg" = deb ];
 then
-  # on Debian, gnupg, required for apt-key add, is not installed by default, so install
-  # it before trying to invoke it if necessary
-  if ! dpkg --verify gnupg 2>/dev/null && ! dpkg --verify gnupg1 2>/dev/null && ! dpkg --verify gnupg2 2>/dev/null;
-  then
-    if confirm "The gnupg package is required to verify the collector package signature; install it now?";
-    then
-      $maybe_sudo apt-get $apt_opts update <$user_input
-      $maybe_sudo apt-get $apt_opts install gnupg <$user_input
-    else
-      fail "cannot install without gnupg"
-    fi
-  fi
   if [ "$arch" = 'x86_64' ];
   then
-    apt_source="deb [arch=amd64] https://packages.pganalyze.com/${distribution}/${version}/ stable main"
+    apt_source="deb [arch=amd64 signed-by=/etc/apt/keyrings/pganalyze_signing_key.asc] https://packages.pganalyze.com/${distribution}/${version}/ stable main"
   elif [ "$arch" = 'arm64' ] || [ "$arch" = 'aarch64' ];
   then
-    apt_source="deb [arch=arm64] https://packages.pganalyze.com/${distribution}/${version}/ stable main"
+    apt_source="deb [arch=arm64 signed-by=/etc/apt/keyrings/pganalyze_signing_key.asc] https://packages.pganalyze.com/${distribution}/${version}/ stable main"
   fi
-  curl -s -L https://packages.pganalyze.com/pganalyze_signing_key.asc | $maybe_sudo apt-key add -
+  $maybe_sudo curl -L https://packages.pganalyze.com/pganalyze_signing_key.asc -o /etc/apt/keyrings/pganalyze_signing_key.asc
   echo "$apt_source" | $maybe_sudo tee /etc/apt/sources.list.d/pganalyze_collector.list
   $maybe_sudo apt-get $apt_opts update <$user_input
   $maybe_sudo apt-get $apt_opts install pganalyze-collector <$user_input
