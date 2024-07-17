@@ -301,7 +301,7 @@ func main() {
 	flag.BoolVar(&testExplain, "test-explain", false, "Tests whether EXPLAIN collection works by issuing a dummy query (ensure log collection works first)")
 	flag.StringVar(&testSection, "test-section", "", "Tests a particular section of the config file, i.e. a specific server, and ignores all other config sections")
 	flag.StringVar(&generateStatsHelperSql, "generate-stats-helper-sql", "", "Generates a SQL script for the given server (name of section in the config file, or \"default\" for env variables), that can be run with \"psql -f\" for installing the collector stats helpers on all configured databases")
-	flag.BoolVar(&reloadRun, "reload", false, "Reloads the collector daemon thats running on the host")
+	flag.BoolVar(&reloadRun, "reload", false, "Reloads the collector daemon that's running on the host")
 	flag.BoolVar(&noReload, "no-reload", false, "Disables automatic config reloading during a test run")
 	flag.BoolVarP(&logger.Verbose, "verbose", "v", false, "Outputs additional debugging information, use this if you're encountering errors or other problems")
 	flag.BoolVarP(&logger.Quiet, "quiet", "q", false, "Only outputs error messages to the logs and hides informational and warning messages")
