@@ -169,6 +169,7 @@ then
   then
     apt_source="deb [arch=arm64 signed-by=/etc/apt/keyrings/pganalyze_signing_key.asc] https://packages.pganalyze.com/${distribution}/${version}/ stable main"
   fi
+  $maybe_sudo mkdir -p /etc/apt/keyrings
   $maybe_sudo curl -L https://packages.pganalyze.com/pganalyze_signing_key.asc -o /etc/apt/keyrings/pganalyze_signing_key.asc
   echo "$apt_source" | $maybe_sudo tee /etc/apt/sources.list.d/pganalyze_collector.list
   $maybe_sudo apt-get $apt_opts update <$user_input
