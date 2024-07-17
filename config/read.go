@@ -768,7 +768,7 @@ func Read(logger *util.Logger, filename string) (Config, error) {
 					}
 				}
 				if skip {
-					logger.PrintError("Skipping config section %s, detected as duplicate. Note: to montior multiple databases in the same server, db_name accepts a comma-separated list.", config.SectionName)
+					logger.PrintError("Skipping config section %s, detected as duplicate. Note: To monitor multiple databases on the same server, db_name accepts a comma-separated list.", config.SectionName)
 				} else {
 					conf.Servers = append(conf.Servers, *config)
 				}
