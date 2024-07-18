@@ -4,14 +4,12 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	"io/ioutil"
 	"strings"
 	"time"
 
 	"github.com/pganalyze/collector/logs"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
-	uuid "github.com/satori/go.uuid"
 )
 
 const LogFileSql = "SELECT name FROM pg_catalog.pg_ls_logdir() WHERE modification > pg_catalog.now() - '2 minute'::interval"
@@ -96,13 +94,11 @@ func LogPgReadFile(ctx context.Context, server *state.Server, globalCollectionOp
 		}
 
 		var logFile state.LogFile
-		logFile.UUID = uuid.NewV4()
-		logFile.TmpFile, err = ioutil.TempFile("", "")
+		logFile, err = state.NewLogFile(nil, fileName)
 		if err != nil {
-			err = fmt.Errorf("Error allocating tempfile for logs: %s", err)
+			err = fmt.Errorf("error initializing log file: %s", err)
 			goto ErrorCleanup
 		}
-		logFile.OriginalName = fileName
 
 		_, err := logFile.TmpFile.WriteString(logData)
 		if err != nil {

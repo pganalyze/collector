@@ -2,7 +2,6 @@ package stream
 
 import (
 	"fmt"
-	"io/ioutil"
 	"sort"
 	"strings"
 	"time"
@@ -11,7 +10,6 @@ import (
 	"github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
-	uuid "github.com/satori/go.uuid"
 )
 
 // This file handles stream-based log collection. This is used in multiple cases:
@@ -163,12 +161,9 @@ func isAdditionalLineLevel(str pganalyze_collector.LogLineInformation_LogLevel) 
 
 // writeTmpLogFile - Setup temporary file that will be used for encryption
 func writeTmpLogFile(readyLogLines []state.LogLine, logger *util.Logger) (state.LogFile, error) {
-	var logFile state.LogFile
-	var err error
-	logFile.UUID = uuid.NewV4()
-	logFile.TmpFile, err = ioutil.TempFile("", "")
+	logFile, err := state.NewLogFile(nil, "")
 	if err != nil {
-		return state.LogFile{}, fmt.Errorf("Could not allocate tempfile for logs: %s", err)
+		return state.LogFile{}, fmt.Errorf("could not initialize log file: %s", err)
 	}
 
 	currentByteStart := int64(0)
