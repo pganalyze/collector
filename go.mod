@@ -10,7 +10,6 @@ require (
 	github.com/aws/aws-sdk-go v1.36.10
 	github.com/certifi/gocertifi v0.0.0-20210507211836-431795d63e8d // indirect
 	github.com/fsnotify/fsnotify v1.4.9
-	github.com/gedex/inflector v0.0.0-20161103042756-046f2c312046
 	github.com/getsentry/raven-go v0.0.0-20161115135411-3f7439d3e74d
 	github.com/go-ini/ini v1.62.0
 	github.com/go-ole/go-ole v0.0.0-20160708033836-be49f7c07711 // indirect
@@ -19,7 +18,7 @@ require (
 	github.com/gopherjs/gopherjs v0.0.0-20181103185306-d547d1d9531e // indirect
 	github.com/gorhill/cronexpr v0.0.0-20160318121724-f0984319b442
 	github.com/guregu/null v0.0.0-20160228005316-41961cea0328
-	github.com/hashicorp/go-retryablehttp v0.7.0
+	github.com/hashicorp/go-retryablehttp v0.7.7
 	github.com/jtolds/gls v4.2.0+incompatible // indirect
 	github.com/juju/syslog v0.0.0-20150205155936-6be94e8b7187
 	github.com/kr/logfmt v0.0.0-20140226030751-b84e30acd515
@@ -74,7 +73,7 @@ require (
 	github.com/googleapis/enterprise-certificate-proxy v0.3.1 // indirect
 	github.com/googleapis/gax-go/v2 v2.12.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.16.0 // indirect
-	github.com/hashicorp/go-cleanhttp v0.5.1 // indirect
+	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
@@ -87,7 +86,7 @@ require (
 	go.opentelemetry.io/otel/metric v1.19.0 // indirect
 	golang.org/x/oauth2 v0.12.0 // indirect
 	golang.org/x/sync v0.3.0 // indirect
-	golang.org/x/sys v0.18.0 // indirect
+	golang.org/x/sys v0.20.0 // indirect
 	golang.org/x/term v0.18.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	google.golang.org/appengine v1.6.8 // indirect
