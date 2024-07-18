@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
-	uuid "github.com/satori/go.uuid"
 )
 
 const LogPrefixAmazonRds string = "%t:%r:%u@%d:[%p]:"
@@ -620,7 +620,11 @@ func ParseAndAnalyzeBuffer(logStream LineReader, linesNewerThan time.Time, serve
 		logLine.ByteEnd = byteStart + int64(len(line))
 
 		// Generate unique ID that can be used to reference this line
-		logLine.UUID = uuid.NewV4()
+		logLine.UUID, err = uuid.NewRandom()
+		if err != nil {
+			fmt.Printf("Failed to generate log line UUID: %s", err)
+			continue
+		}
 
 		logLines = append(logLines, logLine)
 	}

@@ -8,12 +8,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/kylelemons/godebug/pretty"
 	"github.com/pganalyze/collector/logs/stream"
 	"github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
-	uuid "github.com/satori/go.uuid"
 )
 
 type streamTestpair struct {

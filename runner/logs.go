@@ -11,6 +11,7 @@ import (
 	"github.com/pganalyze/collector/input/system/tembo"
 	"github.com/pganalyze/collector/selftest"
 
+	"github.com/google/uuid"
 	"github.com/guregu/null"
 	"github.com/pganalyze/collector/config"
 	"github.com/pganalyze/collector/grant"
@@ -27,7 +28,6 @@ import (
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
 	"github.com/pkg/errors"
-	uuid "github.com/satori/go.uuid"
 )
 
 const LogDownloadInterval time.Duration = 30 * time.Second
@@ -211,12 +211,17 @@ func setupLogStreamer(ctx context.Context, wg *sync.WaitGroup, globalCollectionO
 					logLinesByServer[identifier] = processLogStream(ctx, server, logLinesByServer[identifier], t, globalCollectionOpts, prefixedLogger, logTestSucceeded, logTestFunc)
 				}
 			case in, ok := <-parsedLogStream:
+				var err error
 				if !ok {
 					return
 				}
 
 				in.LogLine.CollectedAt = time.Now()
-				in.LogLine.UUID = uuid.NewV4()
+				in.LogLine.UUID, err = uuid.NewRandom()
+				if err != nil {
+					logger.PrintError("Could not generate log line UUID: %s", err)
+					continue
+				}
 				logLinesByServer[in.Identifier] = append(logLinesByServer[in.Identifier], in.LogLine)
 			}
 		}

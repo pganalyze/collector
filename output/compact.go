@@ -13,10 +13,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
-	uuid "github.com/satori/go.uuid"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -26,7 +26,11 @@ func uploadAndSubmitCompactSnapshot(ctx context.Context, s pganalyze_collector.C
 	var err error
 	var data []byte
 
-	snapshotUUID := uuid.NewV4()
+	snapshotUUID, err := uuid.NewRandom()
+	if err != nil {
+		logger.PrintError("Error generating snapshot UUID: %s", err)
+		return err
+	}
 
 	s.SnapshotVersionMajor = 1
 	s.SnapshotVersionMinor = 0

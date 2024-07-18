@@ -3,12 +3,12 @@ package logs_test
 import (
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/guregu/null"
 	"github.com/kylelemons/godebug/pretty"
 	"github.com/pganalyze/collector/logs"
 	"github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
-	uuid "github.com/satori/go.uuid"
 )
 
 type testpair struct {

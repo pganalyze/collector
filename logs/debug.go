@@ -7,9 +7,9 @@ import (
 	"io"
 	"regexp"
 
+	"github.com/google/uuid"
 	"github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
-	uuid "github.com/satori/go.uuid"
 )
 
 func PrintDebugInfo(logFileContents string, logLines []state.LogLine, samples []state.PostgresQuerySample) {
