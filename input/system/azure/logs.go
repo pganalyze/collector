@@ -15,7 +15,6 @@ import (
 	"github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
-	uuid "github.com/satori/go.uuid"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
@@ -317,8 +316,6 @@ func setupLogTransformer(ctx context.Context, wg *sync.WaitGroup, servers []*sta
 						foundServer = true
 
 						for _, logLine := range logLines {
-							logLine.CollectedAt = time.Now()
-							logLine.UUID = uuid.NewV4()
 							out <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: logLine}
 						}
 					}

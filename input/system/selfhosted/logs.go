@@ -23,7 +23,6 @@ import (
 	"github.com/pganalyze/collector/logs"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
-	uuid "github.com/satori/go.uuid"
 )
 
 type SelfHostedLogStreamItem struct {
@@ -414,8 +413,6 @@ func setupLogTransformer(ctx context.Context, wg *sync.WaitGroup, server *state.
 				// AnalyzeStreamInGroups expects them and they are not present in the tail
 				// log stream.
 				logLine, _ := logs.ParseLogLineWithPrefix("", item.Line+"\n", tz)
-				logLine.CollectedAt = time.Now()
-				logLine.UUID = uuid.NewV4()
 
 				if logLine.OccurredAt.IsZero() && !item.OccurredAt.IsZero() {
 					logLine.OccurredAt = item.OccurredAt
