@@ -15,7 +15,6 @@ import (
 	"github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
-	uuid "github.com/satori/go.uuid"
 )
 
 type StreamResult struct {
@@ -168,8 +167,6 @@ func setupWebsocketForServer(ctx context.Context, wg *sync.WaitGroup, globalColl
 func logLineFromJsonlog(recordIn string, tz *time.Location, logger *util.Logger) (state.LogLine, *state.LogLine) {
 	var event JSONLogEvent
 	var logLine state.LogLine
-	logLine.CollectedAt = time.Now()
-	logLine.UUID = uuid.NewV4()
 
 	err := json.Unmarshal([]byte(recordIn), &event)
 	if err != nil {

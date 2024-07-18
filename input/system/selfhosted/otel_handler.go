@@ -11,7 +11,6 @@ import (
 	"github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
-	uuid "github.com/satori/go.uuid"
 	common "go.opentelemetry.io/proto/otlp/common/v1"
 	otlpLogs "go.opentelemetry.io/proto/otlp/logs/v1"
 	"google.golang.org/protobuf/proto"
@@ -28,8 +27,6 @@ import (
 
 func logLineFromJsonlog(record *common.KeyValueList, tz *time.Location) (state.LogLine, *state.LogLine) {
 	var logLine state.LogLine
-	logLine.CollectedAt = time.Now()
-	logLine.UUID = uuid.NewV4()
 
 	// If a DETAIL line is set, we need to create an additional log line
 	detailLineContent := ""
