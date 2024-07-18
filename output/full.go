@@ -47,7 +47,7 @@ func submitFull(ctx context.Context, s snapshot.FullSnapshot, server *state.Serv
 	var err error
 	var data []byte
 
-	snapshotUUID, err := uuid.NewRandom()
+	snapshotUUID, err := uuid.NewV7()
 	if err != nil {
 		logger.PrintError("Error generating snapshot UUID: %s", err)
 		return err
