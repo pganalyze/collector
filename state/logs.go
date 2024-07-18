@@ -1,6 +1,8 @@
 package state
 
 import (
+	"fmt"
+	"io/ioutil"
 	"os"
 	"strings"
 	"time"
@@ -179,6 +181,21 @@ type LogLine struct {
 
 	ReviewedForSecrets bool
 	SecretMarkers      []LogSecretMarker
+}
+
+func NewLogFile(tmpFile *os.File, originalName string) (LogFile, error) {
+	var err error
+	if tmpFile == nil {
+		tmpFile, err = ioutil.TempFile("", "")
+		if err != nil {
+			return LogFile{}, fmt.Errorf("error allocating tempfile for logs: %s", err)
+		}
+	}
+	return LogFile{
+		UUID:         uuid.NewV4(),
+		TmpFile:      tmpFile,
+		OriginalName: originalName,
+	}, nil
 }
 
 func (logFile *LogFile) Cleanup(logger *util.Logger) {

@@ -11,14 +11,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/rds"
 	"github.com/pganalyze/collector/config"
 	"github.com/pganalyze/collector/logs"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
 	"github.com/pganalyze/collector/util/awsutil"
-	uuid "github.com/satori/go.uuid"
+
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/rds"
 )
 
 // DownloadLogFiles - Gets log files for an Amazon RDS instance
@@ -105,10 +105,14 @@ func DownloadLogFiles(ctx context.Context, server *state.Server, logger *util.Lo
 		fileContent := bufio.NewReader(strings.NewReader(string(buf)))
 		newLogLines, newSamples := logs.ParseAndAnalyzeBuffer(fileContent, linesNewerThan, server)
 
+		// Pass responsibility to LogFile for cleaning up the temp file
 		var logFile state.LogFile
-		logFile.UUID = uuid.NewV4()
-		logFile.TmpFile = tmpFile // Pass responsibility to LogFile for cleaning up the temp file
-		logFile.OriginalName = *rdsLogFile.LogFileName
+		logFile, err = state.NewLogFile(tmpFile, *rdsLogFile.LogFileName)
+		if err != nil {
+			err = fmt.Errorf("error initializing log file: %s", err)
+			util.CleanUpTmpFile(tmpFile, logger)
+			goto ErrorCleanup
+		}
 		logFile.LogLines = append(logFile.LogLines, newLogLines...)
 		samples = append(samples, newSamples...)
 
