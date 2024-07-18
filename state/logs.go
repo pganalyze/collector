@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/pganalyze/collector/config"
 	"github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/util"
-	uuid "github.com/satori/go.uuid"
 )
 
 type GrantLogs struct {
@@ -191,8 +191,12 @@ func NewLogFile(tmpFile *os.File, originalName string) (LogFile, error) {
 			return LogFile{}, fmt.Errorf("error allocating tempfile for logs: %s", err)
 		}
 	}
+	uuid, err := uuid.NewRandom()
+	if err != nil {
+		return LogFile{}, fmt.Errorf("error generating log file UUID: %s", err)
+	}
 	return LogFile{
-		UUID:         uuid.NewV4(),
+		UUID:         uuid,
 		TmpFile:      tmpFile,
 		OriginalName: originalName,
 	}, nil

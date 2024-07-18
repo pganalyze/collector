@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/guregu/null"
 	"github.com/pganalyze/collector/output/pganalyze_collector"
-	uuid "github.com/satori/go.uuid"
 )
 
 type ExplainPlanTrigger struct {
