@@ -191,7 +191,7 @@ func NewLogFile(tmpFile *os.File, originalName string) (LogFile, error) {
 			return LogFile{}, fmt.Errorf("error allocating tempfile for logs: %s", err)
 		}
 	}
-	uuid, err := uuid.NewRandom()
+	uuid, err := uuid.NewV7()
 	if err != nil {
 		return LogFile{}, fmt.Errorf("error generating log file UUID: %s", err)
 	}

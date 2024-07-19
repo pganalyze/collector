@@ -620,7 +620,7 @@ func ParseAndAnalyzeBuffer(logStream LineReader, linesNewerThan time.Time, serve
 		logLine.ByteEnd = byteStart + int64(len(line))
 
 		// Generate unique ID that can be used to reference this line
-		logLine.UUID, err = uuid.NewRandom()
+		logLine.UUID, err = uuid.NewV7()
 		if err != nil {
 			fmt.Printf("Failed to generate log line UUID: %s", err)
 			continue

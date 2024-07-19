@@ -217,7 +217,7 @@ func setupLogStreamer(ctx context.Context, wg *sync.WaitGroup, globalCollectionO
 				}
 
 				in.LogLine.CollectedAt = time.Now()
-				in.LogLine.UUID, err = uuid.NewRandom()
+				in.LogLine.UUID, err = uuid.NewV7()
 				if err != nil {
 					logger.PrintError("Could not generate log line UUID: %s", err)
 					continue
