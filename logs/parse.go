@@ -1,6 +1,7 @@
 package logs
 
 import (
+	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
@@ -277,9 +278,62 @@ func (lp *LogParser) GetOccurredAt(timePart string) time.Time {
 	return ts
 }
 
+func parseSyslogLine(line string, tz *time.Location) (logLine state.LogLine, ok bool) {
+	parts := RsyslogRegexp.FindStringSubmatch(line)
+	if len(parts) == 0 {
+		return
+	}
+
+	timePart := fmt.Sprintf("%d %s", time.Now().Year(), parts[1])
+	// ignore syslog hostname
+	// ignore syslog process name
+	pidPart := parts[4]
+	// ignore syslog postgres sequence and split number
+	levelPart := parts[6]
+	contentPart := strings.Replace(parts[7], "#011", "\t", -1)
+
+	parts = LogPrefixNoTimestampUserDatabaseAppRegexp.FindStringSubmatch(contentPart)
+	if len(parts) == 6 {
+		userPart := parts[1]
+		dbPart := parts[2]
+		appPart := parts[3]
+		levelPart = parts[4]
+		contentPart = parts[5]
+
+		if userPart != "[unknown]" {
+			logLine.Username = userPart
+		}
+		if dbPart != "[unknown]" {
+			logLine.Database = dbPart
+		}
+		if appPart != "[unknown]" {
+			logLine.Application = appPart
+		}
+	}
+
+	occurredAt := GetOccurredAt(timePart, tz, true)
+	if occurredAt.IsZero() {
+		return
+	}
+
+	logLine.OccurredAt = occurredAt
+
+	logLine.LogLevel = pganalyze_collector.LogLineInformation_LogLevel(pganalyze_collector.LogLineInformation_LogLevel_value[levelPart])
+
+	backendPid, _ := strconv.ParseInt(pidPart, 10, 32)
+	logLine.BackendPid = int32(backendPid)
+	logLine.Content = contentPart
+
+	ok = true
+	return
+}
+
 func (lp *LogParser) ParseLine(line string) (logLine state.LogLine, ok bool) {
 	if lp.useLegacyFallback {
 		return ParseLogLineWithPrefix("", line, lp.tz)
+	}
+	if lp.isSyslog {
+		return parseSyslogLine(line, lp.tz)
 	}
 
 	if lp.prefix == "" {
