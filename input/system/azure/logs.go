@@ -307,7 +307,7 @@ func setupLogTransformer(ctx context.Context, wg *sync.WaitGroup, servers []*sta
 					if globalCollectionOpts.TestRun {
 						logger.PrintVerbose("Discarding log line because of unknown server (did you set the correct azure_db_server_name?): %s", azureDbServerName)
 					}
-					return
+					continue
 				}
 				parser := server.GetLogParser()
 				logLines, err := ParseRecordToLogLines(in, parser)
