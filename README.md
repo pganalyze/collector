@@ -84,7 +84,7 @@ To get better data quality for server metrics, enable "Enhanced Monitoring" in y
 
 We currently require one Docker container per RDS instance monitored.
 
-If you have multiple databases on the same RDS instance, you can monitor them all by specifying DB_ALL_NAMES=1 as an environment variable.
+If you have multiple databases on the same RDS instance, you can monitor them all by specifying DB_ALL_NAMES=true as an environment variable.
 
 Docker Container (non-RDS)
 --------------------------
