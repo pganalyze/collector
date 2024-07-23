@@ -9,7 +9,7 @@
   - Avoid collector hanging, and don't print summary
   - Allow HTTP clients to be cancelled to avoid shutdown delays
 * Add option to avoid collecting distributed index stats for Citus
-  - This allows setting the DISABLE_CITUS_SCHEMA_STATS / disable_citus_schema_stats
+  - This allows setting the `DISABLE_CITUS_SCHEMA_STATS` / `disable_citus_schema_stats`
     setting to the "index" value, which will cause the collector to
     skip collecting index statistics for Citus distributed tables
     (which can time out when there is a significant count of indexes)
