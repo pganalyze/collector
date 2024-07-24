@@ -18,7 +18,7 @@ fullnameOverride: ""
 extraEnv: {}
 #   DB_HOST: your_database_host
 #   DB_NAME: your_database_name
-#   DB_ALL_NAMES: 1 (monitor all databases on the server)
+#   DB_ALL_NAMES: true (monitor all databases on the server)
 #   DB_USERNAME: your_monitoring_user
 
 configMap:
@@ -33,7 +33,7 @@ configMap:
   values: {}
   #   DB_HOST: your_database_host
   #   DB_NAME: your_database_name
-  #   DB_ALL_NAMES: 1 (monitor all databases on the server)
+  #   DB_ALL_NAMES: true (monitor all databases on the server)
   #   DB_USERNAME: your_monitoring_user
 
 secret:

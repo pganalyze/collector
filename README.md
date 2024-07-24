@@ -84,7 +84,7 @@ To get better data quality for server metrics, enable "Enhanced Monitoring" in y
 
 We currently require one Docker container per RDS instance monitored.
 
-If you have multiple databases on the same RDS instance, you can monitor them all by specifying DB_ALL_NAMES=1 as an environment variable.
+If you have multiple databases on the same RDS instance, you can monitor them all by specifying DB_ALL_NAMES=true as an environment variable.
 
 Docker Container (non-RDS)
 --------------------------
@@ -104,7 +104,7 @@ collector_config.env needs to look like this:
 
 ```sh
 PGA_API_KEY=$YOUR_API_KEY
-PGA_ALWAYS_COLLECT_SYSTEM_DATA=1
+PGA_ALWAYS_COLLECT_SYSTEM_DATA=true
 DB_NAME=your_database_name
 DB_USERNAME=your_database_user
 DB_PASSWORD=your_database_password
