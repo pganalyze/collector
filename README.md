@@ -104,7 +104,7 @@ collector_config.env needs to look like this:
 
 ```sh
 PGA_API_KEY=$YOUR_API_KEY
-PGA_ALWAYS_COLLECT_SYSTEM_DATA=1
+PGA_ALWAYS_COLLECT_SYSTEM_DATA=true
 DB_NAME=your_database_name
 DB_USERNAME=your_database_user
 DB_PASSWORD=your_database_password
