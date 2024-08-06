@@ -318,13 +318,18 @@ func parseSyslogLine(line string, tz *time.Location) (logLine state.LogLine, ok 
 
 	logLine.OccurredAt = occurredAt
 
-	logLine.LogLevel = pganalyze_collector.LogLineInformation_LogLevel(pganalyze_collector.LogLineInformation_LogLevel_value[levelPart])
-
 	backendPid, _ := strconv.ParseInt(pidPart, 10, 32)
 	logLine.BackendPid = int32(backendPid)
 	logLine.Content = contentPart
 
+	// This is actually a continuation of a previous line
+	if levelPart == "" {
+		return
+	}
+
+	logLine.LogLevel = pganalyze_collector.LogLineInformation_LogLevel(pganalyze_collector.LogLineInformation_LogLevel_value[levelPart])
 	ok = true
+
 	return
 }
 
