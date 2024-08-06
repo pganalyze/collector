@@ -12,7 +12,7 @@ import (
 
 var parse2Tests = []parseTestpair{
 	// rsyslog format
-	/*{
+	{
 		"",
 		"Feb  1 21:48:31 ip-172-31-14-41 postgres[9076]: [3-1] LOG:  database system is ready to accept connections",
 		nil,
@@ -49,7 +49,7 @@ var parse2Tests = []parseTestpair{
 			Content:    "connection received: host=[local]",
 		},
 		true,
-	},*/
+	},
 	// Amazon RDS format
 	{
 		logs.LogPrefixAmazonRds,
@@ -592,7 +592,11 @@ var parse2Tests = []parseTestpair{
 
 func TestLogParser(t *testing.T) {
 	for _, pair := range parse2Tests {
-		parser := logs.NewLogParser(pair.prefixIn, pair.lineInTz, false, false)
+		// Syslog format has a separate, fixed prefix, so the prefix argument is
+		// ignored by the parser in that case. We use an empty string to indicate
+		// that this is a syslog test case.
+		isSyslog := pair.prefixIn == ""
+		parser := logs.NewLogParser(pair.prefixIn, pair.lineInTz, isSyslog, false)
 		l, lOk := parser.ParseLine(pair.lineIn)
 
 		cfg := pretty.CompareConfig
