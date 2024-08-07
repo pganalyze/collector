@@ -120,6 +120,23 @@ var parse2Tests = []parseTestpair{
 		},
 		true,
 	},
+	// Custom 2 format
+	{
+		logs.LogPrefixCustom2,
+		"2018-09-28 07:37:59 UTC [331-1] postgres@postgres LOG:  connection received: host=[local]",
+		nil,
+		state.LogLine{
+			OccurredAt:    time.Date(2018, time.September, 28, 7, 37, 59, 0, time.UTC),
+			Username:      "postgres",
+			Database:      "postgres",
+			LogLevel:      pganalyze_collector.LogLineInformation_LOG,
+			BackendPid:    331,
+			LogLineNumber: 1,
+			Application:   "",
+			Content:       "connection received: host=[local]",
+		},
+		true,
+	},
 	// Custom 3 format
 	{
 		logs.LogPrefixCustom3,
