@@ -1,0 +1,244 @@
+syntax = "proto3";
+
+import "google/protobuf/timestamp.proto";
+import "shared.proto";
+
+package pganalyze.collector;
+option go_package = "github.com/pganalyze/collector/output/pganalyze_collector";
+
+message CompactLogSnapshot {
+  repeated LogFileReference log_file_references = 1;
+  repeated LogLineInformation log_line_informations = 2;
+  repeated QuerySample query_samples = 3;
+}
+
+message LogFileReference {
+  string uuid = 1;
+  string s3_location = 2;
+  string s3_cek_algo = 3;
+  string s3_cmk_key_id = 4;
+
+  int64 byte_size = 5;
+  string original_name = 6;
+
+  enum LogSecretKind {
+    CREDENTIAL_LOG_SECRET = 0;
+    PARSING_ERROR_LOG_SECRET = 1;
+    STATEMENT_TEXT_LOG_SECRET = 2;
+    STATEMENT_PARAMETER_LOG_SECRET = 3;
+    TABLE_DATA_LOG_SECRET = 4;
+    OPS_LOG_SECRET = 5;
+    UNIDENTIFIED_LOG_SECRET = 6;
+  }
+
+  repeated LogSecretKind filter_log_secret = 10;
+}
+
+message LogLineInformation {
+  int32 log_file_idx = 1;
+
+  string uuid = 2;
+  string parent_uuid = 3; // optional
+
+  int64 byte_start = 4;
+  int64 byte_content_start = 5;
+  int64 byte_end = 6;
+
+  bool has_role_idx = 7;
+  int32 role_idx = 8;
+
+  bool has_database_idx = 9;
+  int32 database_idx = 10;
+
+  bool has_query_idx = 11;
+  int32 query_idx = 12;
+
+  google.protobuf.Timestamp occurred_at = 13;
+  int32 backend_pid = 14;
+
+  enum LogLevel {
+    UNKNOWN = 0;
+
+    // Postgres log levels https://www.postgresql.org/docs/9.6/static/runtime-config-logging.html#RUNTIME-CONFIG-SEVERITY-LEVELS
+    DEBUG = 1; // Provides successively-more-detailed information for use by developers.
+    INFO = 2; // Provides information implicitly requested by the user, e.g., output from VACUUM VERBOSE.
+    NOTICE = 3; // Provides information that might be helpful to users, e.g., notice of truncation of long identifiers.
+    WARNING = 4; // Provides warnings of likely problems, e.g., COMMIT outside a transaction block.
+    ERROR = 5; // Reports an error that caused the current command to abort.
+    LOG = 6; // Reports information of interest to administrators, e.g., checkpoint activity.
+    FATAL = 7; // Reports an error that caused the current session to abort.
+    PANIC = 8; // Reports an error that caused all database sessions to abort.
+
+    // These levels are typically only used in additional lines for context
+    DETAIL = 9;
+    HINT = 10;
+    CONTEXT = 11;
+    STATEMENT = 12;
+    QUERY = 13; // This is specific to PL/pgSQL
+  }
+
+  LogLevel level = 15;
+
+  enum LogClassification {
+    UNKNOWN_LOG_CLASSIFICATION = 0;
+
+    // Server events
+    SERVER_CRASHED = 1; // "Segmentation fault", "was terminated by signal 6", "was terminated by signal 11"
+    SERVER_START = 2; // "database system is ready", "entering standby mode", "database system was shut down"
+    SERVER_START_RECOVERING = 3; // "database system was interrupted", "database system was not properly shut down"
+    SERVER_SHUTDOWN = 4; // "received ... shutdown request", "aborting any active transactions"
+    SERVER_OUT_OF_MEMORY = 5; // "out of memory"
+    SERVER_INVALID_CHECKSUM = 6; // "page verification failed", "invalid page in block"
+    SERVER_TEMP_FILE_CREATED = 7; // "temporary file: "
+    SERVER_MISC = 8; // "could not open usermap file", "could not link file", "unexpected pageaddr"
+    SERVER_RELOAD = 9; // "received SIGHUP, reloading configuration files", config change related messages
+    SERVER_PROCESS_EXITED = 10; // "worker process: parallel worker for PID ... (PID ...) exited with exit code ..."
+    SERVER_STATS_COLLECTOR_TIMEOUT = 11; // "using stale statistics instead of current ones because stats collector is not responding", "pgstat wait timeout"
+
+    // Connection-related
+    CONNECTION_RECEIVED = 20; // "connection received: "
+    CONNECTION_AUTHORIZED = 21; // "connection authorized: "
+    CONNECTION_REJECTED = 22; // "pg_hba.conf rejects connection", "is not currently accepting connections", "password authentication failed", "role ... is not permitted to log in"
+    CONNECTION_DISCONNECTED = 23; // "disconnection: "
+    CONNECTION_CLIENT_FAILED_TO_CONNECT = 24; // "incomplete startup packet"
+    CONNECTION_LOST = 25; // "connection to client lost", "could not receive data from client", "terminating connection because protocol synchronization was lost", "could not send data to client"
+    CONNECTION_LOST_OPEN_TX = 26; // "unexpected EOF on client connection with an open transaction"
+    CONNECTION_TERMINATED = 27; // "terminating connection due to administrator command"
+    OUT_OF_CONNECTIONS = 28; // "remaining connection slots are reserved for non-replication superuser connections"
+    TOO_MANY_CONNECTIONS_ROLE = 29; // "too many connections for role"
+    COULD_NOT_ACCEPT_SSL_CONNECTION = 30; // "could not accept SSL connection: ..."
+    PROTOCOL_ERROR_UNSUPPORTED_VERSION = 31; // "unsupported frontend protocol ...: server supports ... to ..."
+    PROTOCOL_ERROR_INCOMPLETE_MESSAGE = 32; // "incomplete message from client"
+    TOO_MANY_CONNECTIONS_DATABASE = 33; // "too many connections for database"
+
+    // Checkpointer related
+    CHECKPOINT_STARTING = 40; // "checkpoint starting: "
+    CHECKPOINT_COMPLETE = 41; // "checkpoint complete: "
+    CHECKPOINT_TOO_FREQUENT = 42; // "checkpoints are occurring too frequently"
+    RESTARTPOINT_STARTING = 43; // "restartpoint starting: "
+    RESTARTPOINT_COMPLETE = 44; // "restartpoint complete: "
+    RESTARTPOINT_AT = 45; // "recovery restart point at"
+
+    // WAL/Archiving
+    WAL_INVALID_RECORD_LENGTH = 50; // "invalid record length"
+    WAL_REDO = 51; // "redo "
+    WAL_ARCHIVE_COMMAND_FAILED = 52; // "archive command failed"
+    WAL_BASE_BACKUP_COMPLETE = 53; // "pg_stop_backup complete, all required WAL segments have been archived"
+
+    // Autovacuum
+    AUTOVACUUM_CANCEL = 60; // "canceling autovacuum task"
+    TXID_WRAPAROUND_WARNING = 61; // "database * must be vacuumed within"
+    TXID_WRAPAROUND_ERROR = 62; // "database is not accepting commands to avoid wraparound data loss"
+    AUTOVACUUM_LAUNCHER_STARTED = 63; // "autovacuum launcher started"
+    AUTOVACUUM_LAUNCHER_SHUTTING_DOWN = 64; // "autovacuum launcher shutting down", "terminating autovacuum process due to administrator command"
+    AUTOVACUUM_COMPLETED = 65; // "automatic vacuum of table"
+    AUTOANALYZE_COMPLETED = 66; // "automatic analyze of table"
+    SKIPPING_VACUUM_LOCK_NOT_AVAILABLE = 67; // "skipping vacuum of ... --- lock not available"
+    SKIPPING_ANALYZE_LOCK_NOT_AVAILABLE = 68; // "skipping analyze of ... --- lock not available"
+
+    // Locks
+    LOCK_ACQUIRED = 70; // "acquired *Lock"
+    LOCK_WAITING = 71; // "still waiting for *Lock"
+    LOCK_TIMEOUT = 72; // "canceling statement due to lock timeout"
+    LOCK_DEADLOCK_DETECTED = 73; // "process * detected deadlock while waiting"
+    LOCK_DEADLOCK_AVOIDED = 74; // "process * avoided deadlock for *Lock"
+
+    // Notices about statement execution
+    STATEMENT_DURATION = 80; // "duration: "
+    STATEMENT_CANCELED_TIMEOUT = 81; // "canceling statement due to statement timeout"
+    STATEMENT_CANCELED_USER = 82; // "canceling statement due to user request"
+    STATEMENT_LOG = 83; // "statement: ", "execute ...:"
+    STATEMENT_AUTO_EXPLAIN = 84; // "duration: ... plan: ..."
+
+    // Standby
+    STANDBY_RESTORED_WAL_FROM_ARCHIVE = 90; // "restored log file * from archive"
+    STANDBY_STARTED_STREAMING = 91; // "started streaming WAL"
+    STANDBY_STREAMING_INTERRUPTED = 92; // "could not receive data from WAL stream"
+    STANDBY_STOPPED_STREAMING = 93; // "terminating walreceiver process"
+    STANDBY_CONSISTENT_RECOVERY_STATE = 94; // "consistent recovery state reached at"
+    STANDBY_STATEMENT_CANCELED = 95; // "canceling statement due to conflict with recovery"
+    STANDBY_INVALID_TIMELINE = 96; // "according to history file, WAL location ... belongs to timeline X, but previous recovered WAL file came from timeline Y"
+
+    // Constraint violations
+    UNIQUE_CONSTRAINT_VIOLATION = 100; // "duplicate key value violates unique constraint"
+    FOREIGN_KEY_CONSTRAINT_VIOLATION = 101; // "update or delete on table ... violates foreign key constraint"
+    NOT_NULL_CONSTRAINT_VIOLATION = 102; // "null value in column ... violates not-null constraint"
+    CHECK_CONSTRAINT_VIOLATION = 103; // "new row for relation ... violates check constraint"
+    EXCLUSION_CONSTRAINT_VIOLATION = 104; // "conflicting key value violates exclusion constraint"
+
+    // Application errors
+    SYNTAX_ERROR = 110; // "syntax error at or near"
+    INVALID_INPUT_SYNTAX = 111; // "invalid input syntax"
+    VALUE_TOO_LONG_FOR_TYPE = 112; // "value too long for type"
+    INVALID_VALUE = 113; // "invalid value ... for ..."
+    MALFORMED_ARRAY_LITERAL = 114; // "malformed array literal"
+    SUBQUERY_MISSING_ALIAS = 115; // "subquery in FROM must have an alias"
+    INSERT_TARGET_COLUMN_MISMATCH = 116; // "INSERT has more expressions than target columns"
+    ANY_ALL_REQUIRES_ARRAY = 117; // "op ANY/ALL (array) requires array on right side"
+    COLUMN_MISSING_FROM_GROUP_BY = 118; // "column ... must appear in the GROUP BY clause or be used in an aggregate function"
+    RELATION_DOES_NOT_EXIST = 119; // "relation ... does not exist"
+    COLUMN_DOES_NOT_EXIST = 120; // "column ... does not exist"
+    OPERATOR_DOES_NOT_EXIST = 121; // "operator does not exist"
+    COLUMN_REFERENCE_AMBIGUOUS = 122; // "column reference ... is ambiguous"
+    PERMISSION_DENIED = 123; // "permission denied for ..."
+    TRANSACTION_IS_ABORTED = 124; // "current transaction is aborted, commands ignored until end of transaction block"
+    ON_CONFLICT_NO_CONSTRAINT_MATCH = 125; // "there is no unique or exclusion constraint matching the ON CONFLICT specification"
+    ON_CONFLICT_ROW_AFFECTED_TWICE = 126; // "ON CONFLICT DO UPDATE command cannot affect row a second time"
+    COLUMN_CANNOT_BE_CAST = 127; // "column ... cannot be cast to type ..."
+    DIVISION_BY_ZERO = 128; // "division by zero"
+    CANNOT_DROP = 129; // "cannot drop ... because other objects depend on it"
+    INTEGER_OUT_OF_RANGE = 130; // "integer out of range"
+    INVALID_REGEXP = 131; // "invalid regular expression: ..."
+    PARAM_MISSING = 132; // "there is no parameter $.. at character ..."
+    FUNCTION_DOES_NOT_EXIST = 133; // "function ... does not exist"
+    NO_SUCH_SAVEPOINT = 134; // "no such savepoint"
+    UNTERMINATED_QUOTED_STRING = 135; // "unterminated quoted string at or near ..."
+    UNTERMINATED_QUOTED_IDENTIFIER = 136; // "unterminated quoted identifier at or near ..."
+    INVALID_BYTE_SEQUENCE = 137; // "invalid byte sequence for encoding"
+    COULD_NOT_SERIALIZE_REPEATABLE_READ = 138; // "could not serialize access due to concurrent update"
+    COULD_NOT_SERIALIZE_SERIALIZABLE = 139; // "could not serialize access due to read/write dependencies among transactions"
+    INCONSISTENT_RANGE_BOUNDS = 140; // "range lower bound must be less than or equal to range upper bound"
+
+    // Collector internal events
+    PGA_COLLECTOR_IDENTIFY = 1000; // "pganalyze-collector-identify: server1"
+  }
+
+  LogClassification classification = 16;
+
+  string details_json = 17; // JSON-encoded additional details about this log line
+
+  bool has_relation_idx = 18;
+  int32 relation_idx = 19;
+
+  repeated int32 related_pids = 20; // Other PIDs that are related to this log line (mentioned in some way)
+}
+
+message QuerySample {
+  int32 query_idx = 1;
+  google.protobuf.Timestamp occurred_at = 2;
+  double runtime_ms = 3;
+  string query_text = 4;
+  repeated string parameters_legacy = 5; // Deprecated as of Dec 2020, but may still used by older versions of the app
+  repeated NullString parameters = 6;
+
+  string log_line_uuid = 10;
+
+  // Note: For historic reasons this contains an inline version of QueryExplainInformation
+  bool has_explain = 20;
+  string explain_output = 21;
+  string explain_error = 22;
+
+  enum ExplainFormat {
+    TEXT_EXPLAIN_FORMAT = 0;
+    JSON_EXPLAIN_FORMAT = 1;
+  }
+  ExplainFormat explain_format = 23;
+
+  enum ExplainSource {
+    STATEMENT_LOG_EXPLAIN_SOURCE = 0; // Generated based on statement log (log_min_duration_statement)
+    AUTO_EXPLAIN_EXPLAIN_SOURCE = 1; // Generated by auto_explain
+    EXTERNAL_EXPLAIN_SOURCE = 2; // EXPLAIN generated through external process (e.g. operator running EXPLAIN)
+    GENERIC_EXPLAIN_SOURCE = 3; // EXPLAIN generated based on unknown constant parameters
+  }
+  ExplainSource explain_source = 24;
+}
