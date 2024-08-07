@@ -620,6 +620,11 @@ func checkOneInitialCollectionStatus(ctx context.Context, server *state.Server, 
 	}
 
 	logs.SyncLogParser(server, settings)
+	parser := server.GetLogParser()
+	prefixErr := parser.ValidatePrefix()
+	if prefixErr != nil {
+		logger.PrintWarning("Checking log_line_prefix: %d", prefixErr)
+	}
 
 	server.CollectionStatusMutex.Lock()
 	defer server.CollectionStatusMutex.Unlock()

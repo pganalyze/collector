@@ -1,6 +1,7 @@
 package logs
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -209,6 +210,26 @@ func SyncLogParser(server *state.Server, settings []state.PostgresSetting) {
 	defer server.LogParseMutex.Unlock()
 
 	server.LogParser = NewLogParser(prefix, tz, isSyslog, useLegacyFallback)
+}
+
+func (lp *LogParser) ValidatePrefix() error {
+	dbInPrefix, err := regexp.MatchString("(?:^|[^%])%d", lp.prefix)
+	if err != nil {
+		return fmt.Errorf("could not check: %s", err)
+	}
+	userInPrefix, err := regexp.MatchString("(?:^|[^%])%u", lp.prefix)
+	if err != nil {
+		return fmt.Errorf("could not check: %s", err)
+	}
+	if !dbInPrefix && !userInPrefix {
+		return errors.New("database (%d) and user (%u) not found: pganalyze will not be able to correctly classify some log lines")
+	} else if !dbInPrefix {
+		return errors.New("database (%d) not found: pganalyze will not be able to correctly classify some log lines")
+	} else if !userInPrefix {
+		return errors.New("user (%u) not found: pganalyze will not be able to correctly classify some log lines")
+	} else {
+		return nil
+	}
 }
 
 func (lp *LogParser) Matches(prefix string, tz *time.Location, isSyslog bool) bool {
