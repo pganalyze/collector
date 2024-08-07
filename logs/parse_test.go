@@ -175,6 +175,21 @@ var parse2Tests = []parseTestpair{
 		},
 		true,
 	},
+	{
+		logs.LogPrefixCustom3,
+		"2018-09-27 06:57:02.779 UTC [20194] [user=postgres,db=postgres,app=sidekiq 1.2.3 queues:something[0 of 50 busy]] LOG:  duration: 3000.019 ms  statement: SELECT pg_sleep(3);",
+		nil,
+		state.LogLine{
+			OccurredAt:  time.Date(2018, time.September, 27, 6, 57, 2, 779*1000*1000, time.UTC),
+			Username:    "postgres",
+			Database:    "postgres",
+			Application: "sidekiq 1.2.3 queues:something[0 of 50 busy]",
+			LogLevel:    pganalyze_collector.LogLineInformation_LOG,
+			BackendPid:  20194,
+			Content:     "duration: 3000.019 ms  statement: SELECT pg_sleep(3);",
+		},
+		true,
+	},
 	// Custom 4 format
 	{
 		logs.LogPrefixCustom4,
