@@ -320,6 +320,7 @@ type LogParser interface {
 	Matches(prefix string, tz *time.Location, isSyslog bool) bool
 	GetOccurredAt(timePart string) time.Time
 	ParseLine(line string) (logLine LogLine, ok bool)
+	ValidatePrefix() error
 }
 
 func (s *Server) SetLogIgnoreFlags(ignoreStatement bool, ignoreDuration bool) {
