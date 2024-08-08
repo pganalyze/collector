@@ -1,0 +1,626 @@
+syntax = "proto3";
+
+import "google/protobuf/timestamp.proto";
+import "shared.proto";
+
+package pganalyze.collector;
+option go_package = "github.com/pganalyze/collector/output/pganalyze_collector";
+
+// Format Version: 1.0.0
+
+message FullSnapshot {
+  // Basic information about this snapshot
+  int32 snapshot_version_major = 1;
+  int32 snapshot_version_minor = 2;
+  string collector_version = 3;
+  bool failed_run = 4; // failed runs are submitted so we can provide more context in the UI
+
+  string snapshot_uuid = 10;
+  google.protobuf.Timestamp collected_at = 11;
+  uint32 collected_interval_secs = 12;
+  CollectorConfig config = 13;
+
+  CollectorStatistic collector_statistic = 20;
+  repeated string collector_errors = 21; // log error messages that happened during the collector run
+  google.protobuf.Timestamp collector_started_at = 22;
+  string collector_hostname = 23;
+  string collector_architecture = 24;
+  string collector_operating_system = 25;
+  string collector_platform = 26;
+  string collector_platform_family = 27;
+  string collector_platform_version = 28;
+  string collector_virtualization_system = 29; // Name of the virtualization system (only if we're a guest)
+  string collector_kernel_version = 30;
+  bool collector_log_snapshot_disabled = 31;
+  string collector_log_snapshot_disabled_reason = 32;
+
+  // Per server (and hence snapshot)
+  System system = 100;
+  PostgresVersion postgres_version = 101;
+
+  repeated RoleReference role_references = 102;
+  repeated DatabaseReference database_references = 103;
+
+  repeated RoleInformation role_informations = 110;
+  repeated DatabaseInformation database_informations = 111;
+  repeated DatabaseStatistic database_statictics = 112;
+  ServerStatistic server_statistic = 113;
+
+  reserved 120;
+  reserved 121; // This used to be backends before we moved them to their own compact snapshot
+  repeated Setting settings = 122;
+  Replication replication = 123;
+  repeated BackendCountStatistic backend_count_statistics = 124;
+
+  repeated TablespaceReference tablespace_references = 130;
+  repeated TablespaceInformation tablespace_informations = 131;
+
+  // Per database
+  repeated QueryReference query_references = 200;
+  repeated RelationReference relation_references = 201;
+  repeated IndexReference index_references = 202;
+  repeated FunctionReference function_references = 203;
+
+  repeated QueryInformation query_informations = 210;
+  repeated QueryStatistic query_statistics = 211;
+
+  repeated HistoricQueryStatistics historic_query_statistics = 213;
+
+  repeated QueryExplainInformation query_explains = 214;
+
+  repeated RelationInformation relation_informations = 220;
+  repeated RelationStatistic relation_statistics = 221;
+  reserved 222;
+  repeated RelationEvent relation_events = 223;
+
+  repeated IndexInformation index_informations = 224;
+  repeated IndexStatistic index_statistics = 225;
+  reserved 226;
+
+  repeated FunctionInformation function_informations = 227;
+  repeated FunctionStatistic function_statistics = 228;
+
+  repeated CustomTypeInformation custom_type_informations = 229;
+
+  repeated Extension extensions = 230;
+}
+
+// PER SERVER
+
+message CollectorStatistic {
+  string go_version = 10;
+
+  // Statistics from after the collection input step
+  uint64 memory_heap_allocated_bytes = 13; // Bytes allocated and not yet freed
+  uint64 memory_heap_objects = 14;         // Total number of allocated objects
+  uint64 memory_system_bytes = 15;         // Bytes obtained from system (sum of heap and fixed-size structures)
+  uint64 memory_rss_bytes = 16;            // Memory allocated in bytes as seen by the OS
+
+  int32 active_goroutines = 20;            // Number of active Go routines
+
+  // Diff-ed statistics between two runs
+  int64 cgo_calls = 30;
+}
+
+message RoleInformation {
+  int32 role_idx = 1;
+
+  bool inherit = 2;           // Role automatically inherits privileges of roles it is a member of
+  bool login = 3;             // Role can log in. That is, this role can be given as the initial session authorization identifier
+  bool create_db = 4;         // Role can create databases
+  bool create_role = 5;       // Role can create more roles
+  bool super_user = 6;        // Role has superuser privileges
+  bool replication = 7;       // Role can initiate streaming replication and put the system in and out of backup mode.
+  bool bypass_rls = 8;        // Role bypasses every row level security policy, see https://www.postgresql.org/docs/9.5/static/ddl-rowsecurity.html
+  int32 connection_limit = 9; // For roles that can log in, this sets maximum number of concurrent connections this role can make. -1 means no limit.
+
+  NullTimestamp password_valid_until = 10; // Password expiry time (only used for password authentication); null if no expiration
+  repeated string config = 11;             // Role-specific defaults for run-time configuration variables
+  repeated int32 member_of = 12;           // List of roles that this role is a member of (i.e. whose permissions it inherits)
+}
+
+message DatabaseInformation {
+  int32 database_idx = 1;
+
+  int32 owner_role_idx = 2;   // Owner of the database, usually the user who created it
+  string encoding = 3;        // Character encoding for this database
+  string collate = 4;         // LC_COLLATE for this database
+  string c_type = 5;          // LC_CTYPE for this database
+  bool is_template = 6;       // If true, then this database can be cloned by any user with CREATEDB privileges; if false, then only superusers or the owner of the database can clone it.
+  bool allow_connections = 7; // If false then no one can connect to this database. This is used to protect the template0 database from being altered.
+  int32 connection_limit = 8; // Sets maximum number of concurrent connections that can be made to this database. -1 means no limit.
+
+  // All transaction IDs before this one have been replaced with a permanent ("frozen") transaction ID in this database.
+	// This is used to track whether the database needs to be vacuumed in order to prevent transaction ID wraparound or to
+	// allow pg_clog to be shrunk. It is the minimum of the per-table pg_class.relfrozenxid values.
+  uint32 frozen_xid = 9;
+
+  // All multixact IDs before this one have been replaced with a transaction ID in this database.
+	// This is used to track whether the database needs to be vacuumed in order to prevent multixact ID wraparound or to
+	// allow pg_multixact to be shrunk. It is the minimum of the per-table pg_class.relminmxid values.
+  uint32 minimum_multixact_xid = 10;
+
+  // Whether the collector was able to connect to this database and fetch local catalog data (e.g. schema)
+  bool collected_local_catalog_data = 11;
+}
+
+message DatabaseStatistic {
+  int32 database_idx = 1;
+
+  int32 frozenxid_age = 2; // The age of frozen xact ID for this database (relative to latest stable xid)
+  int32 minmxid_age = 3; // The age of minimum multixact ID for this database (relative to latest stable mxid)
+  int32 xact_commit = 4; // Number of transactions in this database that have been committed
+  int32 xact_rollback = 5; // Number of transactions in this database that have been rolled back
+}
+
+// Postgres server statistic
+// See System for server system statistic
+message ServerStatistic {
+  int64 current_xact_id = 1; // Current transaction ID in xid8 (64-bit FullTransactionId) for this server
+  int64 next_multi_xact_id = 2; // Next multixact ID in xid8 (64-bit FullTransactionId) for this server
+
+  int64 xmin_horizon_backend = 3; // The oldest xmin for backends in xid8 (64-bit FullTransactionId)
+  int64 xmin_horizon_replication_slot = 4; // The oldest xmin for replication slots in xid8 (64-bit FullTransactionId)
+  int64 xmin_horizon_replication_slot_catalog = 5; // The oldest catalog_xmin for replication slots in xid8 (64-bit FullTransactionId)
+  int64 xmin_horizon_prepared_xact = 6; // The oldest xmin for prepared transactions in xid8 (64-bit FullTransactionId)
+  int64 xmin_horizon_standby = 7; // The oldest xmin for standbys in xid8 (64-bit FullTransactionId)
+}
+
+message Setting {
+  string name = 1;
+  string current_value = 2;
+  NullString unit = 3;
+  NullString boot_value = 4;
+  NullString reset_value = 5;
+  NullString source = 6;
+  NullString source_file = 7;
+  NullString source_line = 8;
+}
+
+message Extension {
+  int32 database_idx = 1;
+  string extension_name = 2;
+  string schema_name = 3;
+  string version = 4;
+}
+
+message Replication {
+  // Are we the primary, or a standby?
+  bool in_recovery = 1;
+
+  // Primary information
+  string current_xlog_location = 10;
+  repeated StandbyReference standby_references = 11;
+  repeated StandbyInformation standby_informations = 12;
+  repeated StandbyStatistic standby_statistics = 13;
+
+  // Standby information
+  bool is_streaming = 20;
+  string receive_location = 21;
+  string replay_location = 22;
+  int64 apply_byte_lag = 23;
+  google.protobuf.Timestamp replay_timestamp = 24;
+  int64 replay_timestamp_age = 25; // in seconds
+}
+
+message StandbyReference {
+  string client_addr = 1;
+}
+
+message StandbyInformation {
+  int32 standby_idx = 1;
+  int32 role_idx = 2;
+
+  int64 pid = 3;
+  string application_name = 4;
+  string client_hostname = 5;
+  int32 client_port = 6;
+  google.protobuf.Timestamp backend_start = 7;
+  int32 sync_priority = 8;
+  string sync_state = 9;
+}
+
+message StandbyStatistic {
+  int32 standby_idx = 1;
+
+  string state = 2;
+  string sent_location = 3;
+  string write_location = 4;
+  string flush_location = 5;
+  string replay_location = 6;
+  int64 remote_byte_lag = 7;
+  int64 local_byte_lag = 8;
+}
+
+message BackendCountStatistic {
+  // ! When changing this, also update mappings/backend_state.json
+  enum BackendState {
+    UNKNOWN_STATE = 0;               // unknown
+    ACTIVE = 1;                      // active
+    IDLE = 2;                        // idle
+    IDLE_IN_TRANSACTION = 3;         // idle in transaction
+    IDLE_IN_TRANSACTION_ABORTED = 4; // idle in transaction (aborted)
+    FASTPATH_FUNCTION_CALL = 5;      // fastpath function call
+    DISABLED = 6;                    // disabled
+  }
+
+  // ! When changing this, also update mappings/backend_type.json
+  enum BackendType {
+    UNKNOWN_TYPE = 0;        // unknown
+    AUTOVACUUM_LAUNCHER = 1; // autovacuum launcher
+    AUTOVACUUM_WORKER = 2;   // autovacuum worker
+    BACKGROUND_WORKER = 3;   // background worker
+    BACKGROUND_WRITER = 4;   // background writer
+    CLIENT_BACKEND = 5;      // client backend
+    CHECKPOINTER = 6;        // checkpointer
+    STARTUP = 7;             // startup
+    WALRECEIVER = 8;         // walreceiver
+    WALSENDER = 9;           // walsender
+    WALWRITER = 10;          // walwriter
+  }
+
+  bool has_role_idx = 1;
+  int32 role_idx = 2;
+
+  bool has_database_idx = 3;
+  int32 database_idx = 4;
+
+  BackendState state = 5;
+  BackendType backend_type = 6;
+  bool waiting_for_lock = 7;
+  int32 count = 8;
+}
+
+message TablespaceReference {
+  string name = 1; // Tablespace name
+}
+
+message TablespaceInformation {
+  int32 tablespace_idx = 1;
+
+  int32 disk_partition_idx = 2; // Disk partition that this tablespace resides on (-1 if unknown)
+  int32 role_idx = 3;           // Owner of the tablespace, usually the user who created it
+  repeated string config = 4;   // Tablespace-level options, as "keyword=value" strings
+}
+
+message CollectorConfig {
+  string section_name = 1;
+
+  bool disable_logs = 2;
+  bool disable_activity = 3;
+  bool enable_log_explain = 4;
+
+  string db_name = 14;
+  string db_username = 15;
+  string db_host = 16;
+  int32 db_port = 17;
+  string db_sslmode = 18;
+  bool db_has_sslrootcert = 19;
+  bool db_has_sslcert = 20;
+  bool db_has_sslkey = 21;
+  string db_url = 22;
+
+  repeated string db_extra_names = 31;
+  bool db_all_names = 32;
+
+  string aws_region = 42;
+  string aws_db_instance_id = 43;
+  bool aws_has_access_key_id = 44;
+  bool aws_has_assume_role = 45;
+  bool aws_has_account_id = 46;
+  bool aws_has_web_identity_token_file = 47;
+  bool aws_has_role_arn = 48;
+  string aws_db_cluster_id = 49;
+  bool aws_db_cluster_readonly = 50;
+
+  string azure_db_server_name = 54;
+  string azure_eventhub_namespace = 55;
+  string azure_eventhub_name = 56;
+  string azure_ad_tenant_id = 57;
+  string azure_ad_client_id = 58;
+  bool azure_has_ad_certificate = 59;
+
+  string gcp_cloudsql_instance_id = 69;
+  string gcp_pubsub_subscription = 70;
+  bool gcp_has_credentials_file = 71;
+  string gcp_project_id = 72;
+  string gcp_alloydb_cluster_id = 73;
+  string gcp_alloydb_instance_id = 74;
+
+  string crunchy_bridge_cluster_id = 75;
+
+  string aiven_project_id = 79;
+  string aiven_service_id = 80;
+
+  string api_system_id = 82;
+  string api_system_type = 83;
+  string api_system_scope = 84;
+  string api_system_scope_fallback = 85;
+  string api_system_id_fallback = 86;
+  string api_system_type_fallback = 87;
+
+  string db_log_location = 94;
+  string db_log_docker_tail = 95;
+  string db_log_syslog_server = 96;
+  bool db_log_pg_read_file = 97;
+
+  string ignore_table_pattern = 105;
+  string ignore_schema_regexp = 106;
+
+  int32 query_stats_interval = 116;
+  int32 max_collector_connections = 117;
+  bool skip_if_replica = 118;
+
+  string filter_log_secret = 127;
+  string filter_query_sample = 128;
+  bool has_proxy = 129;
+  bool config_from_env = 130;
+  string filter_query_text = 131;
+
+  string otel_exporter_otlp_endpoint = 140;
+}
+
+// PER DATABASE
+
+message QueryStatistic {
+  int32 query_idx = 1;
+
+  int64 calls = 2;
+  double total_time = 3;
+  int64 rows = 4;
+  int64 shared_blks_hit = 5;
+  int64 shared_blks_read = 6;
+  int64 shared_blks_dirtied = 7;
+  int64 shared_blks_written = 8;
+  int64 local_blks_hit = 9;
+  int64 local_blks_read = 10;
+  int64 local_blks_dirtied = 11;
+  int64 local_blks_written = 12;
+  int64 temp_blks_read = 13;
+  int64 temp_blks_written = 14;
+  double blk_read_time = 15;
+  double blk_write_time = 16;
+}
+
+message HistoricQueryStatistics {
+  google.protobuf.Timestamp collected_at = 1;
+  uint32 collected_interval_secs = 2;
+  repeated QueryStatistic statistics = 3;
+}
+
+message RelationInformation {
+  int32 relation_idx = 1;
+
+  string relation_type = 2;
+  NullString view_definition = 3;
+
+  repeated Column columns = 4;
+  repeated Constraint constraints = 5;
+
+  string persistence_type = 6;
+  int32 fillfactor = 7;
+  bool has_oids = 8;
+  bool has_inheritance_children = 9;
+  bool has_toast = 10;
+
+  reserved 11; // frozen_xid, deprecated in favor of relfrozenxid in RelationStatistic
+  reserved 12; // minimum_multixact_xid, deprecated in favor of relminmxid in RelationStatistic
+
+  // True if another process is currently holding an AccessExclusiveLock on this
+  // relation, this also means we won't have columns/index/constraints information
+  bool exclusively_locked = 13;
+
+  map<string, string> options = 14;
+
+  int32 parent_relation_idx = 15;
+  bool has_parent_relation = 16;
+
+  string partition_boundary = 17;
+
+  enum PartitionStrategy {
+    UNKNOWN = 0;
+    RANGE = 1;
+    LIST = 2;
+    HASH = 3;
+  }
+
+  PartitionStrategy partition_strategy = 18;
+  repeated int32 partition_columns = 19; // list of either column index (when corresponding partition field is a column) or 0 (when expression)
+  string partitioned_by = 20;
+
+  NullString toast_name = 21;
+
+  repeated ExtendedStatistic extended_stats = 22;
+
+  message Column {
+    string name = 2;
+    string data_type = 3;
+    NullString default_value = 4;
+    bool not_null = 5;
+    int32 position = 6;
+    repeated ColumnStatistic statistics = 7;
+    NullInt32 data_type_custom_idx = 8;
+  }
+
+  message ColumnStatistic {
+    bool inherited = 1;
+    double null_frac = 2;
+    int32 avg_width = 3;
+    double n_distinct = 4;
+    NullDouble correlation = 5;
+  }
+
+  message Constraint {
+    int32 foreign_relation_idx = 1;     // If a foreign key, the referenced table
+
+    string name = 2;                    // Constraint name (not necessarily unique!)
+    string type = 3;                    // c = check constraint, f = foreign key constraint, p = primary key constraint, u = unique constraint, t = constraint trigger, x = exclusion constraint
+    string constraint_def = 4;          // Human-readable representation of the expression
+    repeated int32 columns = 5;         // If a table constraint (including foreign keys, but not constraint triggers), list of the constrained columns
+    repeated int32 foreign_columns = 6; // If a foreign key, list of the referenced columns
+    string foreign_update_type = 7;     // Foreign key update action code: a = no action, r = restrict, c = cascade, n = set null, d = set default
+    string foreign_delete_type = 8;     // Foreign key deletion action code: a = no action, r = restrict, c = cascade, n = set null, d = set default
+    string foreign_match_type = 9;      // Foreign key match type: f = full, p = partial, s = simple
+  }
+
+  message ExtendedStatistic {
+    string statistics_schema = 1;    // Schema this statistics object is located in (may be different than the table's schema)
+    string statistics_name = 2;      // Name of the statistics object (must be unique within the schema)
+    repeated int32 columns = 3;      // Columns that are analyzed for this statistics object
+    repeated string expressions = 4; // Expressions (represented as SQL) that are analyzed for this statistics object
+    repeated string kind = 5;        // Enabled statistics kinds: d = n-distinct statistics, f = functional dependency statistics, m = most common values (MCV) list statistics, e = expression statistics
+    bool has_data = 6;               // Whether data was retrieved successfully - ANALYZE must have been run, and we must have had enough permissions to read data
+
+    // Fields only set when data was retrieved successfully
+    bool inherited = 10;
+    NullString n_distinct = 11;
+    NullString dependencies = 12;
+  }
+}
+
+message RelationStatistic {
+  int32 relation_idx = 1;
+
+  int64 size_bytes = 2;           // On-disk size including FSM and VM, plus TOAST table if any, excluding indices
+  int64 seq_scan = 3;             // Number of sequential scans initiated on this table
+  int64 seq_tup_read = 4;         // Number of live rows fetched by sequential scans
+  int64 idx_scan = 5;             // Number of index scans initiated on this table
+  int64 idx_tup_fetch = 6;        // Number of live rows fetched by index scans
+  int64 n_tup_ins = 7;            // Number of rows inserted
+  int64 n_tup_upd = 8;            // Number of rows updated
+  int64 n_tup_del = 9;            // Number of rows deleted
+  int64 n_tup_hot_upd = 10;       // Number of rows HOT updated (i.e., with no separate index update required)
+  int64 n_live_tup = 11;          // Estimated number of live rows
+  int64 n_dead_tup = 12;          // Estimated number of dead rows
+  int64 n_mod_since_analyze = 13; // Estimated number of rows modified since this table was last analyzed
+  int64 n_ins_since_vacuum = 14;  // Estimated number of rows inserted since this table was last vacuumed
+  int64 heap_blks_read = 18;      // Number of disk blocks read from this table
+  int64 heap_blks_hit = 19;       // Number of buffer hits in this table
+  int64 idx_blks_read = 20;       // Number of disk blocks read from all indexes on this table
+  int64 idx_blks_hit = 21;        // Number of buffer hits in all indexes on this table
+  int64 toast_blks_read = 22;     // Number of disk blocks read from this table's TOAST table (if any)
+  int64 toast_blks_hit = 23;      // Number of buffer hits in this table's TOAST table (if any)
+  int64 tidx_blks_read = 24;      // Number of disk blocks read from this table's TOAST table indexes (if any)
+  int64 tidx_blks_hit = 25;       // Number of buffer hits in this table's TOAST table indexes (if any)
+  int64 toast_size_bytes = 26;    // TOAST table and TOAST index size (included in size_bytes as well)
+  NullTimestamp analyzed_at = 27;
+
+  int32 frozenxid_age = 30; // The age of frozen xact ID for this relation (relative to latest stable xid)
+  int32 minmxid_age = 31; // The age of minimum multixact ID for this relation (relative to latest stable mxid)
+
+  // Statistics that are infrequently updated (e.g. by VACUUM, ANALYZE, and a few DDL commands)
+  int32 relpages = 40;                 // Size of the on-disk representation of this table in pages (of size BLCKSZ)
+  float reltuples = 41;                // Number of live rows in the table. -1 indicating that the row count is unknown
+  int32 relallvisible = 42;            // Number of pages that are marked all-visible in the table's visibility map
+  int64 relfrozenxid = 43;             // All transaction IDs before this one have been replaced with a permanent (“frozen”) transaction ID in this table, in xid8 (64-bit FullTransactionId)
+  int64 relminmxid = 44;               // All multixact IDs before this one have been replaced by a transaction ID in this table
+  NullTimestamp last_vacuum = 45;      // Last time at which this table was manually vacuumed (not counting VACUUM FULL)
+  NullTimestamp last_autovacuum = 46;  // Last time at which this table was vacuumed by the autovacuum daemon
+  NullTimestamp last_analyze = 47;     // Last time at which this table was manually analyzed
+  NullTimestamp last_autoanalyze = 48; // Last time at which this table was analyzed by the autovacuum daemon
+  float toast_reltuples = 49;          // Number of live rows in the TOAST table. -1 indicating that the row count is unknown
+  int32 toast_relpages = 50;           // Size of the on-disk representation of the TOAST table in pages (of size BLCKSZ)
+}
+
+message RelationEvent {
+  enum EventType {
+    MANUAL_VACUUM = 0;  // Manually vacuumed (not counting VACUUM FULL)
+    AUTO_VACUUM = 1;    // Vacuumed by the autovacuum daemon
+    MANUAL_ANALYZE = 2; // Manually analyzed
+    AUTO_ANALYZE = 3;   // Analyzed by the autovacuum daemon
+  }
+
+  int32 relation_idx = 1;
+  EventType type = 2;
+  google.protobuf.Timestamp occurred_at = 3;
+  bool approximate_occurred_at = 4; // In case the "occurred_at" field is approximate, because more than one kind of this event happened during the snapshot
+}
+
+message IndexInformation {
+  int32 index_idx = 1;
+  int32 relation_idx = 2;
+
+  repeated int32 columns = 3;
+  string index_def = 4;
+  NullString constraint_def = 5;
+
+  bool is_primary = 6;
+  bool is_unique = 7;
+  bool is_valid = 8;
+  int32 fillfactor = 9;
+  string index_type = 10;
+}
+
+message IndexStatistic {
+  int32 index_idx = 1;
+
+  int64 size_bytes = 2;
+  int64 idx_scan = 3;
+  int64 idx_tup_read = 4;
+  int64 idx_tup_fetch = 6;
+  int64 idx_blks_read = 7;
+  int64 idx_blks_hit = 8;
+}
+
+message FunctionInformation {
+  int32 function_idx = 1;
+
+  string language = 3;
+  string source = 4;
+  string source_bin = 5;
+  repeated string config = 6;
+  string result = 8;
+
+  bool aggregate = 9;
+  bool window = 10;
+  bool security_definer = 11;
+  bool leakproof = 12;
+  bool strict = 13;
+  bool returns_set = 14;
+  string volatile = 15;
+  enum FunctionKind {
+    UNKNOWN = 0;
+    FUNCTION = 1;
+    AGGREGATE = 2;
+    WINDOW = 3;
+    PROCEDURE = 4;
+  }
+  FunctionKind kind = 16;
+}
+
+message FunctionStatistic {
+  int32 function_idx = 1;
+
+  int64 calls = 2;
+  double total_time = 3;
+  double self_time = 4;
+}
+
+message CustomTypeInformation {
+  int32 database_idx = 1;
+  string schema_name = 2;
+  string name = 3;
+  Type type = 4;
+  string domain_type = 5;
+  bool domain_not_null = 6;
+  string domain_default = 7;
+  reserved 8; // domain_constraint, deprecated in favor of domain_constraints, field 11
+  repeated string enum_values = 9;
+  repeated CompositeAttr composite_attrs = 10;
+  repeated string domain_constraints = 11;
+
+  enum Type {
+    ENUM = 0;
+    DOMAIN = 1;
+    COMPOSITE = 2;
+    BASE = 3;
+    PSEUDO = 4;
+    RANGE = 5;
+    MULTIRANGE = 6;
+  }
+
+  message CompositeAttr {
+    string name = 1;
+    string type = 2;
+  }
+}

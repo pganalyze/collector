@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+import "google/protobuf/timestamp.proto";
+
+import "compact_activity_snapshot.proto";
+import "compact_log_snapshot.proto";
+import "compact_system_snapshot.proto";
+import "shared.proto";
+
+package pganalyze.collector;
+option go_package = "github.com/pganalyze/collector/output/pganalyze_collector";
+
+// Format Version: 1.0.0
+
+message CompactSnapshot {
+  // Basic information about this snapshot
+  int32 snapshot_version_major = 1;
+  int32 snapshot_version_minor = 2;
+  string collector_version = 3;
+  string snapshot_uuid = 4;
+  google.protobuf.Timestamp collected_at = 5;
+
+  message BaseRefs {
+    repeated RoleReference role_references = 1;
+    repeated DatabaseReference database_references = 2;
+    repeated QueryReference query_references = 3;
+    repeated QueryInformation query_informations = 4;
+    repeated RelationReference relation_references = 5;
+  }
+
+  BaseRefs base_refs = 6;
+
+  oneof data {
+    CompactLogSnapshot log_snapshot = 10;
+    CompactSystemSnapshot system_snapshot = 11;
+    CompactActivitySnapshot activity_snapshot = 12;
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "": 0,
+  "LWLockNamed": 1,
+  "LWLockTranche": 2,
+  "Lock": 3,
+  "BufferPin": 4,
+  "LWLock": 5,
+  "Activity": 6,
+  "Client": 7,
+  "Extension": 8,
+  "IPC": 9,
+  "Timeout": 10,
+  "IO": 11
+}

@@ -1,0 +1,13 @@
+{
+  "unknown": 0,
+  "autovacuum launcher": 1,
+  "autovacuum worker": 2,
+  "background worker": 3,
+  "background writer": 4,
+  "client backend": 5,
+  "checkpointer": 6,
+  "startup": 7,
+  "walreceiver": 8,
+  "walsender": 9,
+  "walwriter": 10
+}

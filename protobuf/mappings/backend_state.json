@@ -1,0 +1,10 @@
+{
+  "": 0,
+  "unknown": 0,
+  "active": 1,
+  "idle": 2,
+  "idle in transaction": 3,
+  "idle in transaction (aborted)": 4,
+  "fastpath function call": 5,
+  "disabled": 6
+}
