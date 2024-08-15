@@ -82,6 +82,11 @@ func submitFull(ctx context.Context, s snapshot.FullSnapshot, server *state.Serv
 		return nil
 	}
 
+	if server.WebSocket != nil {
+		server.SnapshotStream <- compressedData.Bytes()
+		return nil
+	}
+
 	s3Location, err := uploadSnapshot(ctx, server.Config.HTTPClientWithRetry, server.Grant, logger, compressedData, snapshotUUID.String())
 	if err != nil {
 		logger.PrintError("Error uploading snapshot: %s", err)

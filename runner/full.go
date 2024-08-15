@@ -89,13 +89,19 @@ func processServer(ctx context.Context, server *state.Server, globalCollectionOp
 	var collectionStatus state.CollectionStatus
 	var err error
 
+	if server.Pause.Pause == true {
+		logger.PrintWarning("Snapshot processing disabled by pganalyze server: %s", server.Pause.Reason)
+		return newState, newGrant, collectionStatus, nil
+	}
+
 	err = checkReplicaCollectionDisabled(ctx, server, globalCollectionOpts, logger)
 	if err != nil {
 		return state.PersistedState{}, state.Grant{}, state.CollectionStatus{}, err
 	}
 
-	if !globalCollectionOpts.ForceEmptyGrant {
-		// Note: In case of server errors, we should reuse the old grant if its still recent (i.e. less than 50 minutes ago)
+	if server.WebSocket != nil {
+		newGrant = server.Grant
+	} else if !globalCollectionOpts.ForceEmptyGrant {
 		newGrant, err = grant.GetDefaultGrant(ctx, server, globalCollectionOpts, logger)
 		if err != nil {
 			if server.Grant.Valid {
@@ -110,7 +116,7 @@ func processServer(ctx context.Context, server *state.Server, globalCollectionOp
 
 	var sentryClient *raven.Client
 	if server.Grant.Config.SentryDsn != "" {
-		sentryClient, err = raven.NewWithTags(server.Grant.Config.SentryDsn, map[string]string{"server_id": server.Grant.Config.ServerID})
+		sentryClient, err = raven.NewWithTags(server.Grant.Config.SentryDsn, map[string]string{"server_id": server.Grant.Config.ServerId})
 		if err != nil {
 			logger.PrintVerbose("Failed to setup Sentry client: %s", err)
 		} else {

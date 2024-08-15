@@ -255,6 +255,8 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 		wg.Done()
 	}, logger, "high frequency query statistics of all servers", schedulerGroups["stats"])
 
+	runner.SetupWebsocketForAllServers(ctx, servers, globalCollectionOpts, logger)
+
 	keepRunning = true
 	return
 }

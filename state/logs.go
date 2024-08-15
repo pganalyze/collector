@@ -15,10 +15,10 @@ import (
 
 type GrantLogs struct {
 	Valid         bool
-	Config        GrantConfig            `json:"config"`
-	Logdata       GrantS3                `json:"logdata"`
-	Snapshot      GrantS3                `json:"snapshot"`
-	EncryptionKey GrantLogsEncryptionKey `json:"encryption_key"`
+	Config        pganalyze_collector.ServerMessage_Config `json:"config"`
+	Logdata       GrantS3                                  `json:"logdata"`
+	Snapshot      GrantS3                                  `json:"snapshot"`
+	EncryptionKey GrantLogsEncryptionKey                   `json:"encryption_key"`
 }
 
 type GrantLogsEncryptionKey struct {

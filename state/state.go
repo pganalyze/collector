@@ -7,7 +7,9 @@ import (
 	"time"
 
 	raven "github.com/getsentry/raven-go"
+	"github.com/gorilla/websocket"
 	"github.com/pganalyze/collector/config"
+	"github.com/pganalyze/collector/output/pganalyze_collector"
 )
 
 type SchemaStats struct {
@@ -213,33 +215,12 @@ type CollectionOpts struct {
 	OutputAsJson bool
 }
 
-type GrantConfig struct {
-	ServerID  string `json:"server_id"`
-	ServerURL string `json:"server_url"`
-	SentryDsn string `json:"sentry_dsn"`
-
-	Features GrantFeatures `json:"features"`
-
-	EnableActivity bool `json:"enable_activity"`
-	EnableLogs     bool `json:"enable_logs"`
-
-	SchemaTableLimit int `json:"schema_table_limit"` // Maximum number of tables that can be monitored per server
-}
-
-type GrantFeatures struct {
-	Logs bool `json:"logs"`
-
-	StatementResetFrequency     int   `json:"statement_reset_frequency"`
-	StatementTimeoutMs          int32 `json:"statement_timeout_ms"`            // Statement timeout for all SQL statements sent to the database (defaults to 30s)
-	StatementTimeoutMsQueryText int32 `json:"statement_timeout_ms_query_text"` // Statement timeout for pg_stat_statements query text requests (defaults to 120s)
-}
-
 type Grant struct {
 	Valid    bool
-	Config   GrantConfig       `json:"config"`
-	S3URL    string            `json:"s3_url"`
-	S3Fields map[string]string `json:"s3_fields"`
-	LocalDir string            `json:"local_dir"`
+	Config   pganalyze_collector.ServerMessage_Config `json:"config"`
+	S3URL    string                                   `json:"s3_url"`
+	S3Fields map[string]string                        `json:"s3_fields"`
+	LocalDir string                                   `json:"local_dir"`
 }
 
 func (g Grant) S3() GrantS3 {
@@ -278,6 +259,10 @@ type Server struct {
 
 	SelfTest *SelfTestResult
 
+	WebSocket      *websocket.Conn
+	SnapshotStream chan []byte
+	Pause          pganalyze_collector.ServerMessage_Pause
+
 	// The time zone that logs are parsed in, synced from the setting log_timezone
 	// The StateMutex should be held while updating this
 	LogTimezone      *time.Location
@@ -303,7 +288,10 @@ func MakeServer(config config.ServerConfig, testRun bool) *Server {
 		ActivityStateMutex:    &sync.Mutex{},
 		CollectionStatusMutex: &sync.Mutex{},
 		LogTimezoneMutex:      &sync.Mutex{},
+		SnapshotStream:        make(chan []byte),
 	}
+	server.Pause = pganalyze_collector.ServerMessage_Pause{Pause: false}
+	server.Grant.Config.Features = &pganalyze_collector.ServerMessage_Features{}
 	if testRun {
 		server.SelfTest = MakeSelfTest()
 	}

@@ -25,7 +25,7 @@ func urlToSample(server *state.Server, grant state.GrantLogs, sample state.Postg
 
 	return fmt.Sprintf(
 		"%s/databases/%s/queries/%s/samples/%d?role=%s",
-		grant.Config.ServerURL,
+		grant.Config.ServerUrl,
 		sample.Database,
 		hex.EncodeToString(fpBin),
 		sample.OccurredAt.Unix(),

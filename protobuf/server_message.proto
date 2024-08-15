@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+package pganalyze.collector;
+option go_package = "github.com/pganalyze/collector/output/pganalyze_collector";
+
+message ServerMessage {
+  oneof message {
+    // Collector configuration
+    Config config = 1;
+    // Server request to pause collection of data (e.g. in case of duplicate collectors)
+    Pause pause = 2;
+    // Request for the collector to generate an explain plan for a query
+    ExplainRun explain_run = 3;
+  }
+
+  message Config {
+    string server_id = 1;
+    string server_url = 2;
+    string sentry_dsn = 3;
+    Features features = 4;
+    bool enable_activity = 5;
+    bool enable_logs = 6;
+    // Maximum number of tables that can be monitored per server
+    int32 schema_table_limit = 7;
+  }
+
+  message Features {
+    // How often the collector should run pg_stat_statements_reset()
+    int32 statement_reset_frequency = 1;
+    // Statement timeout for all SQL statements sent to the database (defaults to 30s)
+    int32 statement_timeout_ms = 2;
+    // Statement timeout for pg_stat_statements query text requests (defaults to 120s)
+    int32 statement_timeout_ms_query_text = 3;
+  }
+
+  message Pause {
+    bool pause = 1;
+    string reason = 2;
+  }
+
+  message ExplainRun {
+    int64 explain_query_id = 1;
+    int64 explain_parameter_set_id = 2;
+    string database_name = 3;
+    string query_text = 4;
+  }
+}

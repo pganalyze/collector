@@ -83,7 +83,7 @@ func CollectFull(ctx context.Context, server *state.Server, connection *sql.DB, 
 	}
 
 	ps.StatementResetCounter = server.PrevState.StatementResetCounter + 1
-	if server.Grant.Config.Features.StatementResetFrequency != 0 && ps.StatementResetCounter >= server.Grant.Config.Features.StatementResetFrequency {
+	if server.Grant.Config.Features.StatementResetFrequency != 0 && ps.StatementResetCounter >= int(server.Grant.Config.Features.StatementResetFrequency) {
 		ps.StatementResetCounter = 0
 		err = postgres.ResetStatements(ctx, logger, connection, systemType)
 		if err != nil {

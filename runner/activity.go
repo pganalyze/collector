@@ -25,6 +25,11 @@ func processActivityForServer(ctx context.Context, server *state.Server, globalC
 
 	newState := server.ActivityPrevState
 
+	if server.Pause.Pause == true {
+		logger.PrintWarning("Snapshot processing disabled by pganalyze server: %s", server.Pause.Reason)
+		return newState, false, nil
+	}
+
 	if server.Config.SkipIfReplica {
 		connection, err = postgres.EstablishConnection(ctx, server, logger, globalCollectionOpts, "")
 		if err != nil {
@@ -41,7 +46,9 @@ func processActivityForServer(ctx context.Context, server *state.Server, globalC
 		}
 	}
 
-	if !globalCollectionOpts.ForceEmptyGrant {
+	if server.WebSocket != nil {
+		newGrant = server.Grant
+	} else if !globalCollectionOpts.ForceEmptyGrant {
 		newGrant, err = grant.GetDefaultGrant(ctx, server, globalCollectionOpts, logger)
 		if err != nil {
 			return newState, false, errors.Wrap(err, "could not get default grant for activity snapshot")
