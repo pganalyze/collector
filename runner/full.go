@@ -15,6 +15,7 @@ import (
 	"github.com/pganalyze/collector/input/postgres"
 	"github.com/pganalyze/collector/logs"
 	"github.com/pganalyze/collector/output"
+	"github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
 )
@@ -88,6 +89,7 @@ func processServer(ctx context.Context, server *state.Server, globalCollectionOp
 	var newState state.PersistedState
 	var collectionStatus state.CollectionStatus
 	var err error
+	newGrant.Config.Features = &pganalyze_collector.ServerMessage_Features{}
 
 	if server.Pause.Pause == true {
 		logger.PrintWarning("Snapshot processing disabled by pganalyze server: %s", server.Pause.Reason)
@@ -96,7 +98,7 @@ func processServer(ctx context.Context, server *state.Server, globalCollectionOp
 
 	err = checkReplicaCollectionDisabled(ctx, server, globalCollectionOpts, logger)
 	if err != nil {
-		return state.PersistedState{}, state.Grant{}, state.CollectionStatus{}, err
+		return newState, newGrant, collectionStatus, err
 	}
 
 	if server.WebSocket != nil {
@@ -107,7 +109,7 @@ func processServer(ctx context.Context, server *state.Server, globalCollectionOp
 			if server.Grant.Valid {
 				logger.PrintVerbose("Could not acquire snapshot grant, reusing previous grant: %s", err)
 			} else {
-				return state.PersistedState{}, state.Grant{}, state.CollectionStatus{}, err
+				return newState, newGrant, collectionStatus, err
 			}
 		} else {
 			server.Grant = newGrant
