@@ -67,7 +67,7 @@ func connect(ctx context.Context, server *state.Server, globalCollectionOpts sta
 				server.WebSocket = nil
 				return
 			case snapshot := <-server.SnapshotStream:
-				logger.PrintError("Sending snapshot")
+				logger.PrintVerbose("Uploading snapshot to websocket")
 				server.WebSocket.WriteMessage(websocket.BinaryMessage, snapshot)
 			}
 		}

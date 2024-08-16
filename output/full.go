@@ -84,6 +84,7 @@ func submitFull(ctx context.Context, s snapshot.FullSnapshot, server *state.Serv
 
 	if server.WebSocket != nil {
 		server.SnapshotStream <- compressedData.Bytes()
+		logger.PrintInfo("Submitted full snapshot successfully")
 		return nil
 	}
 
