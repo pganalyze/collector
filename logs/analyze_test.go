@@ -4145,6 +4145,54 @@ var tests = []testpair{
 				"          Index Cond: (pgbench_branches.bid = 59)",
 		}},
 	},
+	{
+		[]state.LogLine{{
+			Content: "duration: 0.006 ms  plan:\n" +
+				"\t{\n" +
+				"\t  \"Query Text\": \"PREPARE show_values (text, uuid, integer, text) AS SELECT $1, $2, $3, $4;\",\n" +
+				"\t  \"Query Parameters\": \"$1 = 'o''clock', $2 = '13f82cb8-a0cf-424e-903a-6f8d7db83191', $3 = '1234', $4 = NULL\",\n" +
+				"\t  \"Plan\": {\n" +
+				"\t    \"Node Type\": \"Result\",\n" +
+				"\t    \"Parallel Aware\": false,\n" +
+				"\t    \"Async Capable\": false,\n" +
+				"\t    \"Startup Cost\": 0.00,\n" +
+				"\t    \"Total Cost\": 0.01,\n" +
+				"\t    \"Plan Rows\": 1,\n" +
+				"\t    \"Plan Width\": 84\n" +
+				"\t  }\n" +
+				"\t}\n",
+		}},
+		[]state.LogLine{{
+			Query:              "PREPARE show_values (text, uuid, integer, text) AS SELECT $1, $2, $3, $4;",
+			Classification:     pganalyze_collector.LogLineInformation_STATEMENT_AUTO_EXPLAIN,
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 27,
+				ByteEnd:   436,
+				Kind:      state.StatementTextLogSecret,
+			}},
+		}},
+		[]state.PostgresQuerySample{{
+			Query:         "PREPARE show_values (text, uuid, integer, text) AS SELECT $1, $2, $3, $4;",
+			RuntimeMs:     0.006,
+			HasExplain:    true,
+			ExplainSource: pganalyze_collector.QuerySample_AUTO_EXPLAIN_EXPLAIN_SOURCE,
+			ExplainFormat: pganalyze_collector.QuerySample_JSON_EXPLAIN_FORMAT,
+			Parameters:    []null.String{null.StringFrom("o''clock"), null.StringFrom("13f82cb8-a0cf-424e-903a-6f8d7db83191"), null.StringFrom("1234"), null.NewString("", false)},
+			ExplainOutputJSON: &state.ExplainPlanContainer{
+				Plan: []byte("{\n" +
+					"\t    \"Node Type\": \"Result\",\n" +
+					"\t    \"Parallel Aware\": false,\n" +
+					"\t    \"Async Capable\": false,\n" +
+					"\t    \"Startup Cost\": 0.00,\n" +
+					"\t    \"Total Cost\": 0.01,\n" +
+					"\t    \"Plan Rows\": 1,\n" +
+					"\t    \"Plan Width\": 84\n" +
+					"\t  }"),
+				QueryParameters: "$1 = 'o''clock', $2 = '13f82cb8-a0cf-424e-903a-6f8d7db83191', $3 = '1234', $4 = NULL",
+			},
+		}},
+	},
 	// pganalyze-collector-identify
 	{
 		[]state.LogLine{{

@@ -33,6 +33,7 @@ type ExplainPlanContainer struct {
 	QueryText       string                `json:"Query Text,omitempty"`
 	Settings        *map[string]string    `json:"Settings,omitempty"`
 	Triggers        *[]ExplainPlanTrigger `json:"Triggers,omitempty"`
+	QueryParameters string                `json:"Query Parameters,omitempty"`
 }
 
 type PostgresQuerySample struct {

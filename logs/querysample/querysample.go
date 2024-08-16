@@ -39,6 +39,18 @@ func transformExplainJSONToQuerySample(logLine state.LogLine, explainText string
 	// Remove query text from EXPLAIN itself, to avoid duplication and match EXPLAIN (FORMAT JSON)
 	sampleQueryText := strings.TrimSpace(explainJSONOutput.QueryText)
 	explainJSONOutput.QueryText = ""
+	// Handle Query Parameters (available from Postgres 16+)
+	var parameters []null.String
+	// Regular expression to find all values in single quotes or NULL
+	// Query Parameters example: $1 = 'foo', $2 = '123', $3 = NULL, $4 = 'bo''o'
+	re := regexp.MustCompile(`'((?:[^']|'')*)'|NULL`)
+	for _, part := range re.FindAllString(explainJSONOutput.QueryParameters, -1) {
+		if part == "NULL" {
+			parameters = append(parameters, null.NewString("", false))
+		} else {
+			parameters = append(parameters, null.StringFrom(strings.Trim(part, "'")))
+		}
+	}
 
 	return state.PostgresQuerySample{
 		Query:             sampleQueryText,
@@ -51,6 +63,7 @@ func transformExplainJSONToQuerySample(logLine state.LogLine, explainText string
 		ExplainSource:     pganalyze_collector.QuerySample_AUTO_EXPLAIN_EXPLAIN_SOURCE,
 		ExplainFormat:     pganalyze_collector.QuerySample_JSON_EXPLAIN_FORMAT,
 		ExplainOutputJSON: &explainJSONOutput,
+		Parameters:        parameters,
 	}, nil
 }
 
