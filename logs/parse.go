@@ -20,6 +20,8 @@ type PrefixEscape struct {
 	Optional bool
 }
 
+// This is a map of the various log_line_prefix format strings; see
+// https://www.postgresql.org/docs/current/runtime-config-logging.html#GUC-LOG-LINE-PREFIX
 // not included: %q and %%, which are easier to handle by special-casing
 var EscapeMatchers = map[rune]PrefixEscape{
 	// Application name
