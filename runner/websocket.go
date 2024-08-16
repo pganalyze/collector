@@ -55,6 +55,7 @@ func connect(ctx context.Context, server *state.Server, globalCollectionOpts sta
 		return
 	}
 	server.WebSocket = conn
+	server.Pause.Pause = false
 	go func() {
 		for {
 			select {
