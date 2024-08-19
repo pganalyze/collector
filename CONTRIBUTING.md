@@ -1,10 +1,14 @@
 ## Contributing Instructions
 
-Pull the project with submodules.
+Pull the project.
 
 ```sh
-git clone --recursive https://github.com/pganalyze/collector
+git clone https://github.com/pganalyze/collector
 ```
+
+Make sure you have `gcc` installed and in your $PATH: parts of the collector's
+dependencies rely on [cgo](https://pkg.go.dev/cmd/cgo) and will be skipped if
+a C compiler is not available, causing the collector build to fail.
 
 ### Setup
 
