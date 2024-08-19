@@ -50,7 +50,6 @@ func connect(ctx context.Context, server *state.Server, globalCollectionOpts sta
 	conn, response, err := websocket.DefaultDialer.DialContext(connCtx, url.String(), headers)
 	if err != nil {
 		cancelConn()
-		time.Sleep(10 * time.Second)
 		logger.PrintError("Error starting websocket: %s %v", err, response)
 		return
 	}
@@ -97,7 +96,7 @@ func connect(ctx context.Context, server *state.Server, globalCollectionOpts sta
 			} else if message.GetPause() != nil {
 				server.Pause = *message.GetPause()
 			} else if message.GetExplainRun() != nil {
-				logger.PrintError("ExplainRun: %v", message.GetExplainRun()) // TODO
+				logger.PrintVerbose("ExplainRun: %v", message.GetExplainRun()) // TODO
 			}
 		}
 	}()
