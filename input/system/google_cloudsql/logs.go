@@ -190,10 +190,10 @@ func setupLogTransformer(ctx context.Context, wg *sync.WaitGroup, servers []*sta
 				var isAlloyDBCluster bool
 
 				for _, s := range servers {
-					if in.GcpProjectID == server.Config.GcpProjectID && in.GcpCloudSQLInstanceID != "" && in.GcpCloudSQLInstanceID == server.Config.GcpCloudSQLInstanceID {
+					if in.GcpProjectID == s.Config.GcpProjectID && in.GcpCloudSQLInstanceID != "" && in.GcpCloudSQLInstanceID == s.Config.GcpCloudSQLInstanceID {
 						server = s
 					}
-					if in.GcpProjectID == server.Config.GcpProjectID && in.GcpAlloyDBClusterID != "" && in.GcpAlloyDBClusterID == server.Config.GcpAlloyDBClusterID && in.GcpAlloyDBInstanceID != "" && in.GcpAlloyDBInstanceID == server.Config.GcpAlloyDBInstanceID {
+					if in.GcpProjectID == s.Config.GcpProjectID && in.GcpAlloyDBClusterID != "" && in.GcpAlloyDBClusterID == s.Config.GcpAlloyDBClusterID && in.GcpAlloyDBInstanceID != "" && in.GcpAlloyDBInstanceID == s.Config.GcpAlloyDBInstanceID {
 						server = s
 						isAlloyDBCluster = true
 					}
@@ -224,8 +224,8 @@ func setupLogTransformer(ctx context.Context, wg *sync.WaitGroup, servers []*sta
 					if len(parts) == 2 {
 						logLine.Content = parts[1]
 					}
-					out <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: logLine}
 				}
+				out <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: logLine}
 			}
 		}
 	}()
