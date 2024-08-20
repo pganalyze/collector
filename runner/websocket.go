@@ -68,7 +68,12 @@ func connect(ctx context.Context, server *state.Server, globalCollectionOpts sta
 				return
 			case snapshot := <-server.SnapshotStream:
 				logger.PrintVerbose("Uploading snapshot to websocket")
-				server.WebSocket.WriteMessage(websocket.BinaryMessage, snapshot)
+				err = server.WebSocket.WriteMessage(websocket.BinaryMessage, snapshot)
+				if err != nil {
+					logger.PrintError("Error uploading snapshot: %s", err)
+					server.WebSocket = nil
+					return
+				}
 			}
 		}
 	}()
@@ -76,6 +81,7 @@ func connect(ctx context.Context, server *state.Server, globalCollectionOpts sta
 		for {
 			_, compressedData, err := conn.ReadMessage()
 			if err != nil {
+				logger.PrintError("Error reading from websocket: %s", err)
 				server.WebSocket = nil
 				return
 			}
