@@ -278,10 +278,11 @@ type Server struct {
 
 	SelfTest *SelfTestResult
 
-	// The time zone that logs are parsed in, synced from the setting log_timezone
-	// The StateMutex should be held while updating this
-	LogTimezone      *time.Location
-	LogTimezoneMutex *sync.Mutex
+	// The LogParser for this server, updated as necessary whenever relevant
+	// settings (log_line_prefix and log_timezone) change
+	// The LogSettingsMutex should be held while updating this
+	LogParser     LogParser
+	LogParseMutex *sync.RWMutex
 
 	// Boolean flags for which log lines should be ignored for processing
 	//
@@ -302,7 +303,7 @@ func MakeServer(config config.ServerConfig, testRun bool) *Server {
 		LogStateMutex:         &sync.Mutex{},
 		ActivityStateMutex:    &sync.Mutex{},
 		CollectionStatusMutex: &sync.Mutex{},
-		LogTimezoneMutex:      &sync.Mutex{},
+		LogParseMutex:         &sync.RWMutex{},
 	}
 	if testRun {
 		server.SelfTest = MakeSelfTest()
@@ -315,6 +316,13 @@ const (
 	LOG_IGNORE_DURATION
 )
 
+type LogParser interface {
+	Matches(prefix string, tz *time.Location, isSyslog bool) bool
+	GetOccurredAt(timePart string) time.Time
+	ParseLine(line string) (logLine LogLine, ok bool)
+	ValidatePrefix() error
+}
+
 func (s *Server) SetLogIgnoreFlags(ignoreStatement bool, ignoreDuration bool) {
 	var newFlags uint32
 	if ignoreStatement {
@@ -326,22 +334,11 @@ func (s *Server) SetLogIgnoreFlags(ignoreStatement bool, ignoreDuration bool) {
 	atomic.StoreUint32(&s.LogIgnoreFlags, newFlags)
 }
 
-func (s *Server) SetLogTimezone(settings []PostgresSetting) {
-	tz := getTimeZoneFromSettings(settings)
+func (s *Server) GetLogParser() LogParser {
+	s.LogParseMutex.RLock()
+	defer s.LogParseMutex.RUnlock()
 
-	s.LogTimezoneMutex.Lock()
-	defer s.LogTimezoneMutex.Unlock()
-	s.LogTimezone = tz
-}
-
-func (s *Server) GetLogTimezone() *time.Location {
-	s.LogTimezoneMutex.Lock()
-	defer s.LogTimezoneMutex.Unlock()
-	if s.LogTimezone == nil {
-		return nil
-	}
-	tz := *s.LogTimezone
-	return &tz
+	return s.LogParser
 }
 
 // IgnoreLogLine - helper function that lets callers determine whether a log

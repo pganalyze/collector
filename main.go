@@ -619,9 +619,11 @@ func checkOneInitialCollectionStatus(ctx context.Context, server *state.Server, 
 		logger.PrintInfo("Log statement lines will be ignored for this server: %s", logsDisabledReason)
 	}
 
-	server.SetLogTimezone(settings)
-	if server.LogTimezone == nil {
-		logger.PrintWarning("Could not determine log timezone for this server: %s")
+	logs.SyncLogParser(server, settings)
+	parser := server.GetLogParser()
+	prefixErr := parser.ValidatePrefix()
+	if prefixErr != nil {
+		logger.PrintWarning("Checking log_line_prefix: %s", prefixErr)
 	}
 
 	server.CollectionStatusMutex.Lock()
