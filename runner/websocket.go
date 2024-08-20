@@ -71,7 +71,7 @@ func connect(ctx context.Context, server *state.Server, globalCollectionOpts sta
 				err = server.WebSocket.WriteMessage(websocket.BinaryMessage, snapshot)
 				if err != nil {
 					logger.PrintError("Error uploading snapshot: %s", err)
-					server.WebSocket = nil
+					cancelConn()
 					return
 				}
 			}
@@ -82,7 +82,7 @@ func connect(ctx context.Context, server *state.Server, globalCollectionOpts sta
 			_, compressedData, err := conn.ReadMessage()
 			if err != nil {
 				logger.PrintError("Error reading from websocket: %s", err)
-				server.WebSocket = nil
+				cancelConn()
 				return
 			}
 			var data bytes.Buffer
