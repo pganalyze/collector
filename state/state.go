@@ -321,6 +321,7 @@ type LogParser interface {
 	GetOccurredAt(timePart string) time.Time
 	ParseLine(line string) (logLine LogLine, ok bool)
 	ValidatePrefix() error
+	GetPrefixAndContent(line string) (prefix string, content string, ok bool)
 }
 
 func (s *Server) SetLogIgnoreFlags(ignoreStatement bool, ignoreDuration bool) {

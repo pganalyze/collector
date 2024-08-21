@@ -159,6 +159,7 @@ type LogParser struct {
 
 	lineRegexp     *regexp.Regexp
 	prefixElements []PrefixEscape
+	prefixRegexp   string
 }
 
 func NewLogParser(prefix string, tz *time.Location, isSyslog bool, useLegacyFallback bool) *LogParser {
@@ -173,6 +174,7 @@ func NewLogParser(prefix string, tz *time.Location, isSyslog bool, useLegacyFall
 
 		lineRegexp:     lineRegexp,
 		prefixElements: prefixElements,
+		prefixRegexp:   prefixRegexp,
 	}
 }
 
@@ -446,4 +448,15 @@ func parsePrefix(prefix string) (string, []PrefixEscape) {
 	}
 
 	return resultRegexp.String(), escapes
+}
+
+func (lp *LogParser) GetPrefixAndContent(line string) (prefix string, content string, ok bool) {
+	lineRegexp := regexp.MustCompile("(?ms)^" + lp.prefixRegexp + `(.*\n?)$`)
+	// Last 2 indexes here is important
+	// [..., end idx of prefix, start idx of content, end idx of content]
+	matchIdx := lineRegexp.FindStringSubmatchIndex(line)
+	if matchIdx == nil {
+		return "", "", false
+	}
+	return line[0:matchIdx[len(matchIdx)-2]], line[matchIdx[len(matchIdx)-2]:matchIdx[len(matchIdx)-1]], true
 }

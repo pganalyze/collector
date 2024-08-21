@@ -44,6 +44,17 @@ type AzurePostgresLogRecord struct {
 	Properties        AzurePostgresLogMessage `json:"properties"`
 }
 
+func (record *AzurePostgresLogRecord) IsSingleServer() bool {
+	resourceParts := strings.Split(record.ResourceID, "/")
+	// ResourceID's second to last element is a resource type
+	return strings.ToLower(resourceParts[len(resourceParts)-2]) == "servers"
+}
+
+func (record *AzurePostgresLogRecord) IsCosmosDB() bool {
+	resourceParts := strings.Split(record.ResourceID, "/")
+	return strings.ToLower(resourceParts[len(resourceParts)-2]) == "servergroupsv2"
+}
+
 type AzureEventHubData struct {
 	Records []AzurePostgresLogRecord `json:"records"`
 }
@@ -229,12 +240,12 @@ func SetupLogSubscriber(ctx context.Context, wg *sync.WaitGroup, globalCollectio
 }
 
 func GetServerNameFromRecord(in AzurePostgresLogRecord) string {
-	if in.LogicalServerName == "" { // Flexible Server
-		// For Flexible Server, logical server name is not set, so instead determine it based on the resource ID
+	if in.IsSingleServer() {
+		return in.LogicalServerName
+	} else { // Flexible Server, Cosmos DB
+		// For Flexible Server, logical server name is typically not set, so instead determine it based on the resource ID
 		resourceParts := strings.Split(in.ResourceID, "/")
 		return strings.ToLower(resourceParts[len(resourceParts)-1])
-	} else { // Single Server
-		return in.LogicalServerName
 	}
 }
 
@@ -242,7 +253,7 @@ func GetServerNameFromRecord(in AzurePostgresLogRecord) string {
 func ParseRecordToLogLines(in AzurePostgresLogRecord, parser state.LogParser) ([]state.LogLine, error) {
 	logLineContent := in.Properties.Message
 
-	if in.LogicalServerName != "" { // Single Server
+	if in.IsSingleServer() { // Single Server
 		// Adjust Azure-modified log messages to be standard Postgres log messages
 		if strings.HasPrefix(logLineContent, "connection received:") {
 			logLineContent = connectionReceivedRegexp.ReplaceAllString(logLineContent, "$1")
@@ -256,6 +267,13 @@ func ParseRecordToLogLines(in AzurePostgresLogRecord, parser state.LogParser) ([
 		// Add prefix and error level, which are separated from the content on
 		// Single Server (but our parser expects them together)
 		logLineContent = fmt.Sprintf("%s%s:  %s", in.Properties.Prefix, in.Properties.ErrorLevel, logLineContent)
+	} else if in.IsCosmosDB() { // Cosmos DB
+		prefix, content, ok := parser.GetPrefixAndContent(logLineContent)
+		if ok {
+			// Cosmos DB doesn't output the log level after the log_line_prefix and before the content
+			// Manually adding it between them so the parser can parse the log line
+			logLineContent = fmt.Sprintf("%s%s:  %s", prefix, in.Properties.ErrorLevel, content)
+		}
 	}
 	logLine, ok := parser.ParseLine(logLineContent)
 	if !ok {

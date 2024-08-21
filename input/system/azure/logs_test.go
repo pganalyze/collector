@@ -114,6 +114,71 @@ var parseRecordTests = []parseRecordTestpair{
 		"pganalyze-test",
 		nil,
 	},
+	{
+		`{
+			"LogicalServerName": "pganalyze-test",
+			"SubscriptionId": "",
+			"ResourceGroup": "",
+			"time": "2024-08-20T04:29:38.302Z",
+			"resourceId": "/SUBSCRIPTIONS/00000000-0000-0000-0000-000000000000/RESOURCEGROUPS/NETWORKWATCHERRG/PROVIDERS/MICROSOFT.DBFORPOSTGRESQL/FLEXIBLESERVERS/PGANALYZE-TEST",
+			"category": "PostgreSQLLogs",
+			"operationName": "LogEvent",
+			"properties": {
+				"prefix": "",
+				"message": "2024-08-20 04:12:31.701 UTC [1177] [user=[unknown],db=[unknown],app=[unknown]] LOG:  connection received: host=127.0.0.1 port=52498",
+				"detail": "",
+				"errorLevel": "LOG",
+				"domain": "",
+				"schemaName": "",
+				"tableName": "",
+				"columnName": "",
+				"datatypeName": ""
+			}
+		}`, []state.LogLine{
+			{
+				Content:    "connection received: host=127.0.0.1 port=52498",
+				LogLevel:   pganalyze_collector.LogLineInformation_LOG,
+				OccurredAt: time.Date(2024, time.August, 20, 4, 12, 31, 701*1000*1000, time.UTC),
+				BackendPid: 1177,
+			},
+		},
+		"pganalyze-test",
+		nil,
+	},
+	// Cosmos DB examples
+	{
+		`{
+			"LogicalServerName": "",
+			"SubscriptionId": "",
+			"ResourceGroup": "",
+			"time": "2024-08-21T08:48:57.0145890Z",
+			"resourceId": "/SUBSCRIPTIONS/00000000-0000-0000-0000-000000000000/RESOURCEGROUPS/NETWORKWATCHERRG/PROVIDERS/MICROSOFT.DBFORPOSTGRESQL/SERVERGROUPSV2/PGANALYZE-TEST",
+			"category": "PostgreSQLLogs",
+			"operationName": "LogEvent",
+			"properties": {
+				"prefix": "",
+				"message": "2024-08-21 08:48:57.014 UTC [167373] [user=postgres,db=postgres,app=[unknown]] connection authorized: user=postgres database=postgres application_name=citus_azure-admin",
+				"detail": "",
+				"errorLevel": "LOG",
+				"domain": "",
+				"schemaName": "",
+				"tableName": "",
+				"columnName": "",
+				"datatypeName": ""
+			}
+		}`, []state.LogLine{
+			{
+				Content:    "connection authorized: user=postgres database=postgres application_name=citus_azure-admin",
+				LogLevel:   pganalyze_collector.LogLineInformation_LOG,
+				OccurredAt: time.Date(2024, time.August, 21, 8, 48, 57, 14*1000*1000, time.UTC),
+				BackendPid: 167373,
+				Username:   "postgres",
+				Database:   "postgres",
+			},
+		},
+		"pganalyze-test",
+		nil,
+	},
 	// Single Server examples
 	{
 		`{
@@ -280,7 +345,7 @@ var parseRecordTests = []parseRecordTestpair{
 func TestParseRecordToLogLines(t *testing.T) {
 	for i, pair := range parseRecordTests {
 		var prefix string
-		if i < 3 {
+		if i < 5 {
 			prefix = logs.LogPrefixCustom3
 		} else {
 			prefix = logs.LogPrefixAzure
