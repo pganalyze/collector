@@ -313,7 +313,7 @@ func postprocessAndSendLogs(ctx context.Context, server *state.Server, globalCol
 		for idx, sample := range transientLogState.QuerySamples {
 			// Ensure we always normalize the query text (when sample normalization is on), even if EXPLAIN errors out
 			sample.Query = util.NormalizeQuery(sample.Query, "unparseable", -1)
-			for pIdx, _ := range sample.Parameters {
+			for pIdx := range sample.Parameters {
 				sample.Parameters[pIdx] = null.StringFrom("<removed>")
 			}
 			if sample.ExplainOutputText != "" {
@@ -321,6 +321,8 @@ func postprocessAndSendLogs(ctx context.Context, server *state.Server, globalCol
 				sample.ExplainError = "EXPLAIN normalize failed: auto_explain format is not JSON - not supported (discarding EXPLAIN)"
 			}
 			if sample.ExplainOutputJSON != nil {
+				// force removing parameters
+				sample.ExplainOutputJSON.QueryParameters = ""
 				sample.ExplainOutputJSON, err = querysample.NormalizeExplainJSON(sample.ExplainOutputJSON)
 				if err != nil {
 					sample.ExplainOutputJSON = nil
