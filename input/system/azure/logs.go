@@ -253,7 +253,7 @@ func GetServerNameFromRecord(in AzurePostgresLogRecord) string {
 func ParseRecordToLogLines(in AzurePostgresLogRecord, parser state.LogParser) ([]state.LogLine, error) {
 	logLineContent := in.Properties.Message
 
-	if in.IsSingleServer() { // Single Server
+	if in.IsSingleServer() {
 		// Adjust Azure-modified log messages to be standard Postgres log messages
 		if strings.HasPrefix(logLineContent, "connection received:") {
 			logLineContent = connectionReceivedRegexp.ReplaceAllString(logLineContent, "$1")
@@ -267,7 +267,7 @@ func ParseRecordToLogLines(in AzurePostgresLogRecord, parser state.LogParser) ([
 		// Add prefix and error level, which are separated from the content on
 		// Single Server (but our parser expects them together)
 		logLineContent = fmt.Sprintf("%s%s:  %s", in.Properties.Prefix, in.Properties.ErrorLevel, logLineContent)
-	} else if in.IsCosmosDB() { // Cosmos DB
+	} else if in.IsCosmosDB() {
 		prefix, content, ok := parser.GetPrefixAndContent(logLineContent)
 		if ok {
 			// Cosmos DB doesn't output the log level after the log_line_prefix and before the content
