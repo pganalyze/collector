@@ -159,12 +159,14 @@ type LogParser struct {
 
 	lineRegexp     *regexp.Regexp
 	prefixElements []PrefixEscape
-	prefixRegexp   string
+
+	lineRegexpWithoutLogLevel *regexp.Regexp
 }
 
 func NewLogParser(prefix string, tz *time.Location, isSyslog bool, useLegacyFallback bool) *LogParser {
 	prefixRegexp, prefixElements := parsePrefix(prefix)
 	lineRegexp := regexp.MustCompile("(?ms)^" + prefixRegexp + `(\w+):\s+(.*\n?)$`)
+	lineRegexpWithoutLogLevel := regexp.MustCompile("(?ms)^" + prefixRegexp + `(.*\n?)$`)
 	return &LogParser{
 		prefix:   prefix,
 		tz:       tz,
@@ -174,7 +176,8 @@ func NewLogParser(prefix string, tz *time.Location, isSyslog bool, useLegacyFall
 
 		lineRegexp:     lineRegexp,
 		prefixElements: prefixElements,
-		prefixRegexp:   prefixRegexp,
+
+		lineRegexpWithoutLogLevel: lineRegexpWithoutLogLevel,
 	}
 }
 
@@ -451,12 +454,13 @@ func parsePrefix(prefix string) (string, []PrefixEscape) {
 }
 
 func (lp *LogParser) GetPrefixAndContent(line string) (prefix string, content string, ok bool) {
-	lineRegexp := regexp.MustCompile("(?ms)^" + lp.prefixRegexp + `(.*\n?)$`)
 	// Last 2 indexes here is important
 	// [..., end idx of prefix, start idx of content, end idx of content]
-	matchIdx := lineRegexp.FindStringSubmatchIndex(line)
-	if matchIdx == nil {
+	matchIdxs := lp.lineRegexpWithoutLogLevel.FindStringSubmatchIndex(line)
+	if matchIdxs == nil {
 		return "", "", false
 	}
-	return line[0:matchIdx[len(matchIdx)-2]], line[matchIdx[len(matchIdx)-2]:matchIdx[len(matchIdx)-1]], true
+	contentStart := matchIdxs[len(matchIdxs)-2]
+	contentEnd := matchIdxs[len(matchIdxs)-1]
+	return line[0:contentStart], line[contentStart:contentEnd], true
 }

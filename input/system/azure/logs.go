@@ -274,6 +274,8 @@ func ParseRecordToLogLines(in AzurePostgresLogRecord, parser state.LogParser) ([
 			// Manually adding it between them so the parser can parse the log line
 			logLineContent = fmt.Sprintf("%s%s:  %s", prefix, in.Properties.ErrorLevel, content)
 		}
+	} else {
+		// Flexible Server: no tweak needed
 	}
 	logLine, ok := parser.ParseLine(logLineContent)
 	if !ok {
