@@ -50,7 +50,7 @@ func connect(ctx context.Context, server *state.Server, globalCollectionOpts sta
 	conn, response, err := websocket.DefaultDialer.DialContext(connCtx, url.String(), headers)
 	if err != nil {
 		cancelConn()
-		logger.PrintError("Error starting websocket: %s %v", err, response)
+		logger.PrintWarning("Error starting websocket: %s %v", err, response)
 		return
 	}
 	server.WebSocket = conn
@@ -61,7 +61,7 @@ func connect(ctx context.Context, server *state.Server, globalCollectionOpts sta
 			case <-connCtx.Done():
 				err := server.WebSocket.Close()
 				if err != nil {
-					logger.PrintError("Error closing websocket: %s", err)
+					logger.PrintWarning("Error closing websocket: %s", err)
 					return
 				}
 				server.WebSocket = nil
@@ -81,14 +81,14 @@ func connect(ctx context.Context, server *state.Server, globalCollectionOpts sta
 		for {
 			_, compressedData, err := conn.ReadMessage()
 			if err != nil {
-				logger.PrintError("Error reading from websocket: %s", err)
+				logger.PrintWarning("Error reading from websocket: %s", err)
 				cancelConn()
 				return
 			}
 			var data bytes.Buffer
 			r, err := zlib.NewReader(bytes.NewReader(compressedData))
 			if err != nil {
-				logger.PrintError("Error decompressing ServerMessage: %s", err)
+				logger.PrintWarning("Error decompressing ServerMessage: %s", err)
 				return
 			}
 			defer r.Close()
@@ -96,7 +96,7 @@ func connect(ctx context.Context, server *state.Server, globalCollectionOpts sta
 			message := &pganalyze_collector.ServerMessage{}
 			err = proto.Unmarshal(data.Bytes(), message)
 			if err != nil {
-				logger.PrintError("Error parsing ServerMessage: %s", err)
+				logger.PrintWarning("Error parsing ServerMessage: %s", err)
 			} else if message.GetConfig() != nil {
 				server.Grant.Config = *message.GetConfig()
 			} else if message.GetPause() != nil {
