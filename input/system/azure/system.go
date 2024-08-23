@@ -17,7 +17,7 @@ func GetSystemState(ctx context.Context, server *state.Server, logger *util.Logg
 		server.SelfTest.MarkCollectionAspectWarning(state.CollectionAspectSystemStats, "unable to collect system stats")
 		server.SelfTest.HintCollectionAspect(state.CollectionAspectSystemStats, "Config value azure_resource_id is required to collect system stats.")
 		return
-	} else if strings.ToLower(config.AzureResourceType) == "flexibleservers" {
+	} else if strings.ToLower(config.AzureResourceType) != "flexibleservers" {
 		server.SelfTest.MarkCollectionAspectWarning(state.CollectionAspectSystemStats, "unable to collect system stats")
 		server.SelfTest.HintCollectionAspect(state.CollectionAspectSystemStats, "System stats collection is only supported for Flexible Server.")
 		return
@@ -43,7 +43,17 @@ func GetSystemState(ctx context.Context, server *state.Server, logger *util.Logg
 		return
 	}
 
-	logger.PrintInfo("server info: %+v", res)
+	system.Info.Azure = &state.SystemInfoAzure{
+		Location:              util.StringPtrToString(res.Location),
+		CreatedAt:             util.TimePtrToTime(res.SystemData.CreatedAt),
+		State:                 util.StringCustomTypePtrToString(res.Properties.State),
+		AvailabilityZone:      util.StringPtrToString(res.Properties.AvailabilityZone),
+		ResourceGroup:         config.AzureResourceGroup,
+		StorageGB:             util.Int32PtrToInt(res.Properties.Storage.StorageSizeGB),
+		HighAvailabilityMode:  util.StringCustomTypePtrToString(res.Properties.HighAvailability.Mode),
+		HighAvailabilityState: util.StringCustomTypePtrToString(res.Properties.HighAvailability.State),
+		ReplicationRole:       util.StringCustomTypePtrToString(res.Properties.ReplicationRole),
+	}
 
 	server.SelfTest.MarkCollectionAspectOk(state.CollectionAspectSystemStats)
 

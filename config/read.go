@@ -627,9 +627,12 @@ func preprocessConfig(config *ServerConfig) (*ServerConfig, error) {
 
 	if config.AzureResourceID != "" {
 		resourceIDParts := strings.Split(config.AzureResourceID, "/")
-		config.AzureSubscriptionID = resourceIDParts[2]
-		config.AzureResourceGroup = resourceIDParts[4]
-		config.AzureResourceType = resourceIDParts[7]
+		if len(resourceIDParts) > 8 {
+			config.AzureSubscriptionID = resourceIDParts[2]
+			config.AzureResourceGroup = resourceIDParts[4]
+			config.AzureResourceType = resourceIDParts[7]
+
+		}
 	}
 
 	dbNameParts := []string{}

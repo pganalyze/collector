@@ -37,9 +37,16 @@ func IntPtrToInt(ptr *int64) int64 {
 	return *ptr
 }
 
-func IntPtrToString(ptr *int64) int64 {
+func Int32PtrToInt(ptr *int32) int32 {
 	if ptr == nil {
 		return 0
 	}
 	return *ptr
+}
+
+func StringCustomTypePtrToString[T ~string](ptr *T) string {
+	if ptr == nil {
+		return ""
+	}
+	return string(*ptr)
 }

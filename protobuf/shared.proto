@@ -138,6 +138,7 @@ message SystemInformation {
     SystemInformationSelfHosted self_hosted = 2;
     SystemInformationAmazonRDS amazon_rds = 3;
     SystemInformationCrunchyBridge crunchy_bridge = 5;
+    SystemInformationAzure azure = 6;
   }
 
   map<string, string> resource_tags = 4;
@@ -198,6 +199,18 @@ message SystemInformationCrunchyBridge {
   int32 cpu_units = 6;
   int32 storage_gb = 7;
   double memory_gb = 8;
+}
+
+message SystemInformationAzure {
+  string location = 1;
+  google.protobuf.Timestamp created_at = 2;
+  string state = 3;
+  string availability_zone = 4;
+  string resource_group = 5;
+  int32 storage_gb = 6;
+  string high_availability_mode = 7;
+  string high_availability_state = 8;
+  string replication_role = 9;
 }
 
 message SchedulerStatistic {
