@@ -23,7 +23,7 @@ func SetupWebsocketForAllServers(ctx context.Context, servers []*state.Server, g
 				if server.WebSocket == nil {
 					connect(ctx, server, globalCollectionOpts, logger)
 				}
-				time.Sleep(60 * time.Second) // Delay between reconnect attempts
+				time.Sleep(3 * 60 * time.Second) // Delay between reconnect attempts
 			}
 		}(servers[idx])
 	}
@@ -31,7 +31,7 @@ func SetupWebsocketForAllServers(ctx context.Context, servers []*state.Server, g
 
 func connect(ctx context.Context, server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
 	connCtx, cancelConn := context.WithCancel(ctx)
-	url, _ := url.Parse(server.Config.APIBaseURL + "/v2/websocket")
+	url, _ := url.Parse(server.Config.APIBaseURL + "/v2/snapshots/websocket")
 	if url.Scheme == "http" {
 		url.Scheme = "ws"
 	} else {
@@ -46,7 +46,6 @@ func connect(ctx context.Context, server *state.Server, globalCollectionOpts sta
 	headers["Pganalyze-System-Type-Fallback"] = []string{server.Config.SystemTypeFallback}
 	headers["Pganalyze-System-Scope-Fallback"] = []string{server.Config.SystemScopeFallback}
 	headers["User-Agent"] = []string{util.CollectorNameAndVersion}
-	headers["Sec-WebSocket-Protocol"] = []string{"websocket"}
 	conn, response, err := websocket.DefaultDialer.DialContext(connCtx, url.String(), headers)
 	if err != nil {
 		cancelConn()
