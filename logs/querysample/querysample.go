@@ -122,7 +122,7 @@ func findQueryParameters(paramText string) []null.String {
 	var parameters []null.String
 	// Regular expression to find all values in single quotes or NULL
 	// Query Parameters example: $1 = 'foo', $2 = '123', $3 = NULL, $4 = 'bo''o'
-	re := regexp.MustCompile(`'((?:[^']|'')*)'|NULL`)
+	re := regexp.MustCompile(`(?:(NULL)|'((?:[^']|'')*)')`)
 	for _, part := range re.FindAllString(paramText, -1) {
 		if part == "NULL" {
 			parameters = append(parameters, null.NewString("", false))

@@ -45,7 +45,7 @@ var tests = []testpair{
 			Content:  "duration: 4079.697 ms  execute <unnamed>: \nSELECT * FROM x WHERE y = $1 LIMIT $2",
 			LogLevel: pganalyze_collector.LogLineInformation_LOG,
 		}, {
-			Content:  "parameters: $1 = 'long string', $2 = '1'",
+			Content:  "parameters: $1 = 'o''clock', $2 = '1'",
 			LogLevel: pganalyze_collector.LogLineInformation_DETAIL,
 		}},
 		[]state.LogLine{{
@@ -63,11 +63,11 @@ var tests = []testpair{
 			ReviewedForSecrets: true,
 			SecretMarkers: []state.LogSecretMarker{{
 				ByteStart: 18,
-				ByteEnd:   29,
+				ByteEnd:   26,
 				Kind:      state.StatementParameterLogSecret,
 			}, {
-				ByteStart: 38,
-				ByteEnd:   39,
+				ByteStart: 35,
+				ByteEnd:   36,
 				Kind:      state.StatementParameterLogSecret,
 			}},
 		}},
@@ -75,7 +75,7 @@ var tests = []testpair{
 			Query:     "SELECT * FROM x WHERE y = $1 LIMIT $2",
 			RuntimeMs: 4079.697,
 			Parameters: []null.String{
-				null.StringFrom("long string"),
+				null.StringFrom("o''clock"),
 				null.StringFrom("1"),
 			},
 		}},
