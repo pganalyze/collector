@@ -94,6 +94,22 @@ func transformSystem(systemState state.SystemState, diffState state.DiffState) *
 		system.SystemInformation.Type = snapshot.SystemInformation_GOOGLE_CLOUD_SQL_SYSTEM
 	} else if systemState.Info.Type == state.AzureDatabaseSystem {
 		system.SystemInformation.Type = snapshot.SystemInformation_AZURE_DATABASE_SYSTEM
+		if systemState.Info.Azure != nil {
+			createdAt := timestamppb.New(systemState.Info.Azure.CreatedAt)
+			system.SystemInformation.Info = &snapshot.SystemInformation_Azure{
+				Azure: &snapshot.SystemInformationAzure{
+					Location:              systemState.Info.Azure.Location,
+					CreatedAt:             createdAt,
+					State:                 systemState.Info.Azure.State,
+					AvailabilityZone:      systemState.Info.Azure.AvailabilityZone,
+					ResourceGroup:         systemState.Info.Azure.ResourceGroup,
+					StorageGb:             systemState.Info.Azure.StorageGB,
+					HighAvailabilityMode:  systemState.Info.Azure.HighAvailabilityMode,
+					HighAvailabilityState: systemState.Info.Azure.HighAvailabilityState,
+					ReplicationRole:       systemState.Info.Azure.ReplicationRole,
+				},
+			}
+		}
 	} else if systemState.Info.Type == state.CrunchyBridgeSystem {
 		system.SystemInformation.Type = snapshot.SystemInformation_CRUNCHY_BRIDGE_SYSTEM
 		if systemState.Info.CrunchyBridge != nil {
