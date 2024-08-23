@@ -11,7 +11,6 @@ import (
 	"github.com/pganalyze/collector/logs/util"
 	"github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
-	cUtil "github.com/pganalyze/collector/util"
 )
 
 func TransformAutoExplainToQuerySample(logLine state.LogLine, explainText string, queryRuntime string) (state.PostgresQuerySample, error) {
@@ -55,8 +54,6 @@ func transformExplainJSONToQuerySample(logLine state.LogLine, explainText string
 	}, nil
 }
 
-var autoExplainTextPlanDetailsRegexp = regexp.MustCompile(`^Query Text: (.+)\s+([\s\S]+)`)
-var herokuAutoExplainWithTabRegexp = regexp.MustCompile(`^Query Text: ([^\t]+)\t([\s\S]+)`)
 var autoExplainTextWithQueryParametersRegexp = regexp.MustCompile(`^Query Text: ([\s\S]+)\r?\n\s*Query Parameters: (.+)\r?\n\s*([\s\S]+)`)
 var autoExplainTextWithCostsRegexp = regexp.MustCompile(`^Query Text: ([\s\S]+?)\r?\n\s*([\S ]+  \(cost=\d+\.\d{2}\.\.\d+\.\d{2} rows=\d+ width=\d+\)[\s\S]+)`)
 
@@ -76,29 +73,15 @@ func transformExplainTextToQuerySample(logLine state.LogLine, explainText string
 		querySample.Parameters = findQueryParameters(withParametersParts[2])
 		querySample.Query = withParametersParts[1]
 		querySample.ExplainOutputText = withParametersParts[3]
-	} else {
-		explainParts := autoExplainTextWithCostsRegexp.FindStringSubmatch(explainText)
-		if len(explainParts) != 3 {
-			// Fallback to the old way (not supporting new lines in Query Text, but does support EXPLAIN without costs)
-			explainParts = autoExplainTextPlanDetailsRegexp.FindStringSubmatch(explainText)
-			if len(explainParts) != 3 {
-				return state.PostgresQuerySample{}, fmt.Errorf("auto_explain output doesn't match expected format")
-			}
-		}
-
-		// If EXPLAIN output's first char is not a capital letter (e.g. not something like "Update on" or "Index Scan"),
-		// likely it's hitting the Heroku's newline break in "Query Text:" chunk
-		// Handle the separation of the query and the explain output text with the tab for these cases
-		// (this can be retired with the autoExplainTextWithCostsRegexp, but leaving here for the EXPLAIN without costs case)
-		explainOutputFirstChar := explainParts[2][0]
-		if cUtil.IsHeroku() && !(explainOutputFirstChar >= 'A' && explainOutputFirstChar <= 'Z') {
-			if parts := herokuAutoExplainWithTabRegexp.FindStringSubmatch(explainText); len(parts) == 3 {
-				explainParts = parts
-			}
-		}
-		querySample.Query = explainParts[1]
-		querySample.ExplainOutputText = explainParts[2]
+		return querySample, nil
 	}
+
+	explainParts := autoExplainTextWithCostsRegexp.FindStringSubmatch(explainText)
+	if len(explainParts) != 3 {
+		return state.PostgresQuerySample{}, fmt.Errorf("auto_explain output doesn't match expected format")
+	}
+	querySample.Query = explainParts[1]
+	querySample.ExplainOutputText = explainParts[2]
 	return querySample, nil
 }
 

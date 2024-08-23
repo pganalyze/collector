@@ -321,7 +321,7 @@ func postprocessAndSendLogs(ctx context.Context, server *state.Server, globalCol
 				sample.ExplainError = "EXPLAIN normalize failed: auto_explain format is not JSON - not supported (discarding EXPLAIN)"
 			}
 			if sample.ExplainOutputJSON != nil {
-				// force removing parameters
+				// remove parameters as part of normalization
 				sample.ExplainOutputJSON.QueryParameters = ""
 				sample.ExplainOutputJSON, err = querysample.NormalizeExplainJSON(sample.ExplainOutputJSON)
 				if err != nil {
