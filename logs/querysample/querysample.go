@@ -55,7 +55,7 @@ func transformExplainJSONToQuerySample(logLine state.LogLine, explainText string
 }
 
 var autoExplainTextWithQueryParametersRegexp = regexp.MustCompile(`^Query Text: ([\s\S]+)\r?\n\s*Query Parameters: (.+)\r?\n\s*([\s\S]+)`)
-var autoExplainTextWithCostsRegexp = regexp.MustCompile(`^Query Text: ([\s\S]+?)\r?\n\s*([\S ]+  \(cost=\d+\.\d{2}\.\.\d+\.\d{2} rows=\d+ width=\d+\)[\s\S]+)`)
+var autoExplainTextWithCostsRegexp = regexp.MustCompile(`^Query Text: ([\s\S]+?)\r?\n\s*([\S ]+  \(cost=\d+\.\d+\.\.\d+\.\d+ rows=\d+ width=\d+\)[\s\S]+)`)
 
 func transformExplainTextToQuerySample(logLine state.LogLine, explainText string, queryRuntimeMs float64) (state.PostgresQuerySample, error) {
 	querySample := state.PostgresQuerySample{
