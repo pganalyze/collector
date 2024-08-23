@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/monitor/azquery"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/postgresql/armpostgresqlflexibleservers/v4"
 	"github.com/pganalyze/collector/state"
@@ -65,7 +66,7 @@ func GetSystemState(ctx context.Context, server *state.Server, logger *util.Logg
 		logger.PrintError("Azure/System: Failed to make a metrics client: %v\n", err)
 		return
 	}
-	option := &azquery.MetricsClientQueryResourceOptions{}
+	option := &azquery.MetricsClientQueryResourceOptions{MetricNames: to.Ptr("cpu_percent,database_size_bytes,memory_percent,storage_used")}
 
 	metricsRes, err := client.QueryResource(ctx, config.AzureResourceID, option)
 	if err != nil {
