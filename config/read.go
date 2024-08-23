@@ -227,6 +227,9 @@ func getDefaultConfig() *ServerConfig {
 	if azureADCertificatePassword := os.Getenv("AZURE_AD_CERTIFICATE_PASSWORD"); azureADCertificatePassword != "" {
 		config.AzureADCertificatePassword = azureADCertificatePassword
 	}
+	if azureResourceID := os.Getenv("AZURE_RESOURCE_ID"); azureResourceID != "" {
+		config.AzureResourceID = azureResourceID
+	}
 	if gcpCloudSQLInstanceID := os.Getenv("GCP_CLOUDSQL_INSTANCE_ID"); gcpCloudSQLInstanceID != "" {
 		config.GcpCloudSQLInstanceID = gcpCloudSQLInstanceID
 	}
@@ -620,6 +623,13 @@ func preprocessConfig(config *ServerConfig) (*ServerConfig, error) {
 		instanceParts := strings.SplitN(config.GcpCloudSQLInstanceID, ":", 3)
 		config.GcpProjectID = instanceParts[0]
 		config.GcpCloudSQLInstanceID = instanceParts[2]
+	}
+
+	if config.AzureResourceID != "" {
+		resourceIDParts := strings.Split(config.AzureResourceID, "/")
+		config.AzureSubscriptionID = resourceIDParts[2]
+		config.AzureResourceGroup = resourceIDParts[4]
+		config.AzureResourceType = resourceIDParts[7]
 	}
 
 	dbNameParts := []string{}

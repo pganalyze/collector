@@ -63,7 +63,7 @@ var connectionReceivedRegexp = regexp.MustCompile(`^(connection received: host=[
 var connectionAuthorizedRegexp = regexp.MustCompile(`^(connection authorized: user=\w+)(database=\w+)`)
 var checkpointCompleteRegexp = regexp.MustCompile(`^(checkpoint complete) \(\d+\)(:)`)
 
-func getEventHubConsumerClient(config config.ServerConfig) (*azeventhubs.ConsumerClient, error) {
+func getAzureCredential(config config.ServerConfig) (azcore.TokenCredential, error) {
 	var credential azcore.TokenCredential
 	var err error
 
@@ -114,6 +114,14 @@ func getEventHubConsumerClient(config config.ServerConfig) (*azeventhubs.Consume
 				return nil, fmt.Errorf("failed to use default Azure credentials: %s", err)
 			}
 		}
+	}
+	return credential, nil
+}
+
+func getEventHubConsumerClient(config config.ServerConfig) (*azeventhubs.ConsumerClient, error) {
+	credential, err := getAzureCredential(config)
+	if err != nil {
+		return nil, err
 	}
 
 	consumerClient, err := azeventhubs.NewConsumerClient(config.AzureEventhubNamespace+".servicebus.windows.net", config.AzureEventhubName, azeventhubs.DefaultConsumerGroup, credential, nil)

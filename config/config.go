@@ -100,6 +100,10 @@ type ServerConfig struct {
 	AzureADClientSecret        string `ini:"azure_ad_client_secret"`
 	AzureADCertificatePath     string `ini:"azure_ad_certificate_path"`
 	AzureADCertificatePassword string `ini:"azure_ad_certificate_password"`
+	AzureResourceID            string `ini:"azure_resource_id"`
+	AzureSubscriptionID        string `ini:"azure_subscription_id"`
+	AzureResourceGroup         string `ini:"azure_resource_group"`
+	AzureResourceType          string `ini:"azure_resource_type"`
 
 	GcpProjectID          string `ini:"gcp_project_id"` // Optional for CloudSQL (you can pass the full "Connection name" as the instance ID)
 	GcpCloudSQLInstanceID string `ini:"gcp_cloudsql_instance_id"`

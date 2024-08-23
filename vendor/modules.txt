@@ -29,6 +29,7 @@ github.com/AlecAivazis/survey/v2/terminal
 # github.com/Azure/azure-sdk-for-go/sdk/azcore v1.11.1
 ## explicit; go 1.18
 github.com/Azure/azure-sdk-for-go/sdk/azcore
+github.com/Azure/azure-sdk-for-go/sdk/azcore/arm
 github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/internal/resource
 github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/policy
 github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/runtime
@@ -73,6 +74,12 @@ github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs/internal/exported
 github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs/internal/sas
 github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs/internal/sbauth
 github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs/internal/utils
+# github.com/Azure/azure-sdk-for-go/sdk/monitor/azquery v1.1.0
+## explicit; go 1.18
+github.com/Azure/azure-sdk-for-go/sdk/monitor/azquery
+# github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/postgresql/armpostgresqlflexibleservers/v4 v4.0.0-beta.5
+## explicit; go 1.18
+github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/postgresql/armpostgresqlflexibleservers/v4
 # github.com/Azure/go-amqp v1.0.0
 ## explicit; go 1.18
 github.com/Azure/go-amqp
