@@ -1,4 +1,4 @@
 package util
 
-const CollectorVersion = "0.57.1"
+const CollectorVersion = "0.58.0"
 const CollectorNameAndVersion = "pganalyze-collector " + CollectorVersion
