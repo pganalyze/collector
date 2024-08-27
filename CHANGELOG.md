@@ -6,7 +6,7 @@
   - New log parsing mechanism that is more performant and allows
     for arbitrary log_line_prefix settings. The new parsing mechanism
     is the default, but you can set `db_log_line_prefix = legacy` in
-    the config file or `DB_LOG_LINE_PREFIX=legacy` in the environment
+    the config file or `LOG_LINE_PREFIX=legacy` in the environment
     to revert to the old mechanism.
 * RDS:
   - Update AWS SDK to v1.55.3
