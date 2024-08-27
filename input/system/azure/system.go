@@ -194,6 +194,7 @@ func GetSystemState(ctx context.Context, server *state.Server, logger *util.Logg
 		DiffedOnInput: true,
 		DiffedValues:  diffedNetworkStats,
 	}
+	system.DiskStats = make(state.DiskStatsMap)
 	system.DiskStats["default"] = state.DiskStats{
 		DiffedOnInput: true,
 		DiffedValues:  diffedDiskStats,
