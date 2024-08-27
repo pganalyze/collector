@@ -66,7 +66,16 @@ func GetSystemState(ctx context.Context, server *state.Server, logger *util.Logg
 		logger.PrintError("Azure/System: Failed to make a metrics client: %v\n", err)
 		return
 	}
-	option := &azquery.MetricsClientQueryResourceOptions{MetricNames: to.Ptr("cpu_percent,database_size_bytes,memory_percent,storage_used")}
+
+	// Query metrics data with 1 min interval, for the last 1 min (should return 1 value)
+	metricNames := "cpu_percent,memory_percent,txlogs_storage_used,network_bytes_egress,network_bytes_ingress," +
+		"read_iops,write_iops,disk_queue_depth,read_throughput,write_throughput,storage_used"
+	option := &azquery.MetricsClientQueryResourceOptions{
+		MetricNames: to.Ptr(metricNames),
+		Aggregation: to.SliceOfPtrs(azquery.AggregationTypeAverage),
+		Interval:    to.Ptr("PT1M"),
+		Timespan:    to.Ptr(azquery.TimeInterval("PT1M")),
+	}
 
 	metricsRes, err := client.QueryResource(ctx, config.AzureResourceID, option)
 	if err != nil {
@@ -75,13 +84,119 @@ func GetSystemState(ctx context.Context, server *state.Server, logger *util.Logg
 		server.SelfTest.HintCollectionAspect(state.CollectionAspectSystemStats, "Make sure the Monitoring Reader permission of the database is granted to the managed identity.")
 		return
 	}
+
+	system.CPUStats = make(state.CPUStatisticMap)
+	diffedNetworkStats := &state.DiffedNetworkStats{}
+	diffedDiskStats := &state.DiffedDiskStats{}
 	for _, metric := range metricsRes.Value {
-		logger.PrintInfo("Metrics name: %s", *metric.Name.Value)
-		for _, timeSeriesElement := range metric.TimeSeries {
-			for _, metricValue := range timeSeriesElement.Data {
-				logger.PrintInfo("Metrics time: %v", metricValue.TimeStamp)
+		if *metric.Name.Value == "cpu_percent" {
+			// Should be only one data as 1 min time span with 1 min interval is selected
+			for _, timeSeriesElement := range metric.TimeSeries {
+				for _, metricValue := range timeSeriesElement.Data {
+					if metricValue.Average != nil {
+						system.CPUStats["all"] = state.CPUStatistic{
+							DiffedOnInput: true,
+							DiffedValues: &state.DiffedSystemCPUStats{
+								UserPercent: *metricValue.Average,
+							},
+						}
+					}
+				}
+			}
+		} else if *metric.Name.Value == "memory_percent" {
+			// Currently, we can only retrieve memory percent
+			// Since total memory size is not listed in the server info,
+			// we are unable to pass this value to pganalyze at the moment
+		} else if *metric.Name.Value == "txlogs_storage_used" {
+			for _, timeSeriesElement := range metric.TimeSeries {
+				for _, metricValue := range timeSeriesElement.Data {
+					if metricValue.Average != nil {
+						system.XlogUsedBytes = uint64(*metricValue.Average)
+					}
+				}
+			}
+		} else if *metric.Name.Value == "network_bytes_egress" {
+			for _, timeSeriesElement := range metric.TimeSeries {
+				for _, metricValue := range timeSeriesElement.Data {
+					if metricValue.Average != nil {
+						// value is total of 1min
+						diffedNetworkStats.TransmitThroughputBytesPerSecond = uint64(*metricValue.Average / 60)
+					}
+				}
+			}
+		} else if *metric.Name.Value == "network_bytes_ingress" {
+			for _, timeSeriesElement := range metric.TimeSeries {
+				for _, metricValue := range timeSeriesElement.Data {
+					if metricValue.Average != nil {
+						// value is total of 1min
+						diffedNetworkStats.ReceiveThroughputBytesPerSecond = uint64(*metricValue.Average / 60)
+					}
+				}
+			}
+		} else if *metric.Name.Value == "read_iops" {
+			for _, timeSeriesElement := range metric.TimeSeries {
+				for _, metricValue := range timeSeriesElement.Data {
+					if metricValue.Average != nil {
+						diffedDiskStats.ReadOperationsPerSecond = *metricValue.Average
+					}
+				}
+			}
+		} else if *metric.Name.Value == "write_iops" {
+			for _, timeSeriesElement := range metric.TimeSeries {
+				for _, metricValue := range timeSeriesElement.Data {
+					if metricValue.Average != nil {
+						diffedDiskStats.WriteOperationsPerSecond = *metricValue.Average
+					}
+				}
+			}
+		} else if *metric.Name.Value == "disk_queue_depth" {
+			for _, timeSeriesElement := range metric.TimeSeries {
+				for _, metricValue := range timeSeriesElement.Data {
+					if metricValue.Average != nil {
+						diffedDiskStats.AvgQueueSize = int32(*metricValue.Average)
+					}
+				}
+			}
+		} else if *metric.Name.Value == "read_throughput" {
+			for _, timeSeriesElement := range metric.TimeSeries {
+				for _, metricValue := range timeSeriesElement.Data {
+					if metricValue.Average != nil {
+						diffedDiskStats.BytesReadPerSecond = *metricValue.Average
+					}
+				}
+			}
+		} else if *metric.Name.Value == "write_throughput" {
+			for _, timeSeriesElement := range metric.TimeSeries {
+				for _, metricValue := range timeSeriesElement.Data {
+					if metricValue.Average != nil {
+						diffedDiskStats.BytesWrittenPerSecond = *metricValue.Average
+					}
+				}
+			}
+		} else if *metric.Name.Value == "storage_used" {
+			for _, timeSeriesElement := range metric.TimeSeries {
+				for _, metricValue := range timeSeriesElement.Data {
+					if metricValue.Average != nil && serverRes.Properties.Storage.StorageSizeGB != nil {
+						totalGB := uint64(*serverRes.Properties.Storage.StorageSizeGB)
+						system.DiskPartitions = make(state.DiskPartitionMap)
+						system.DiskPartitions["/"] = state.DiskPartition{
+							DiskName:   "default",
+							UsedBytes:  uint64(*metricValue.Average),
+							TotalBytes: totalGB * 1024 * 1024 * 1024,
+						}
+					}
+				}
 			}
 		}
+	}
+	system.NetworkStats = make(state.NetworkStatsMap)
+	system.NetworkStats["default"] = state.NetworkStats{
+		DiffedOnInput: true,
+		DiffedValues:  diffedNetworkStats,
+	}
+	system.DiskStats["default"] = state.DiskStats{
+		DiffedOnInput: true,
+		DiffedValues:  diffedDiskStats,
 	}
 
 	server.SelfTest.MarkCollectionAspectOk(state.CollectionAspectSystemStats)
