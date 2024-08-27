@@ -748,6 +748,11 @@ func Read(logger *util.Logger, filename string) (Config, error) {
 
 		sections := configFile.Sections()
 		for _, section := range sections {
+			sectionName := section.Name()
+			if sectionName == "pganalyze" || sectionName == "" {
+				// we already handled this above
+				continue
+			}
 			config := &ServerConfig{}
 			*config = *defaultConfig
 
@@ -760,7 +765,12 @@ func Read(logger *util.Logger, filename string) (Config, error) {
 			if err != nil {
 				return conf, err
 			}
-			config.SectionName = section.Name()
+
+			if config.GetDbName() == "" {
+				return conf, fmt.Errorf("No connection info found for section %s; see https://pganalyze.com/docs/collector/settings", sectionName)
+			}
+
+			config.SectionName = sectionName
 			config.SystemID, config.SystemType, config.SystemScope, config.SystemIDFallback, config.SystemTypeFallback, config.SystemScopeFallback = identifySystem(*config)
 
 			config.Identifier = ServerIdentifier{
@@ -771,20 +781,19 @@ func Read(logger *util.Logger, filename string) (Config, error) {
 				SystemScope: config.SystemScope,
 			}
 
-			if config.GetDbName() != "" {
-				// Ensure we have no duplicate identifiers within one collector
-				skip := false
-				for _, server := range conf.Servers {
-					if config.Identifier == server.Identifier {
-						skip = true
-					}
-				}
-				if skip {
-					logger.PrintError("Skipping config section %s, detected as duplicate. Note: To monitor multiple databases on the same server, db_name accepts a comma-separated list.", config.SectionName)
-				} else {
-					conf.Servers = append(conf.Servers, *config)
+			// Ensure we have no duplicate identifiers within one collector
+			skip := false
+			for _, server := range conf.Servers {
+				if config.Identifier == server.Identifier {
+					skip = true
 				}
 			}
+			if skip {
+				logger.PrintError("Skipping config section %s, detected as duplicate. Note: To monitor multiple databases on the same server, db_name accepts a comma-separated list.", config.SectionName)
+				continue
+			}
+
+			conf.Servers = append(conf.Servers, *config)
 
 			if config.DbURL != "" {
 				_, err := url.Parse(config.DbURL)
