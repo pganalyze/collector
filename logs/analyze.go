@@ -2280,7 +2280,7 @@ func markUtilitySecret(line *state.LogLine) {
 		if m.Kind == state.StatementTextLogSecret {
 			query := line.Content[m.ByteStart:m.ByteEnd]
 			normalized, err := pg_query.NormalizeUtility(query)
-			if err == nil && len(query) != len(normalized) {
+			if err == nil && query != normalized {
 				line.SecretMarkers = append(line.SecretMarkers, state.LogSecretMarker{
 					ByteStart: m.ByteStart,
 					ByteEnd:   m.ByteEnd,
