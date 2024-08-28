@@ -39,7 +39,7 @@ func SetupLogCollection(ctx context.Context, wg *sync.WaitGroup, servers []*stat
 	var hasAnyLogTails bool
 
 	for _, server := range servers {
-		if server.Config.DisableLogs || server.Pause.Pause {
+		if server.Config.DisableLogs || server.Pause.Load().Pause {
 			continue
 		}
 		if server.Config.LogLocation != "" || server.Config.LogDockerTail != "" || server.Config.LogSyslogServer != "" || server.Config.LogOtelServer != "" {
@@ -97,7 +97,7 @@ func setupLogDownloadForAllServers(ctx context.Context, wg *sync.WaitGroup, glob
 				}
 
 				for _, server := range servers {
-					if server.Config.DisableLogs || (server.Grant.Valid && !server.Grant.Config.EnableLogs) {
+					if server.Config.DisableLogs || (server.Grant.Valid && !server.Grant.Config.Load().EnableLogs) {
 						continue
 					}
 

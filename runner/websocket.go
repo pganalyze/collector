@@ -20,7 +20,7 @@ func SetupWebsocketForAllServers(ctx context.Context, servers []*state.Server, g
 		go func(server *state.Server) {
 			logger = logger.WithPrefixAndRememberErrors(server.Config.SectionName)
 			for {
-				if server.WebSocket == nil {
+				if server.WebSocket.Load() == nil {
 					connect(ctx, server, globalCollectionOpts, logger)
 				}
 				time.Sleep(3 * 60 * time.Second) // Delay between reconnect attempts
@@ -52,22 +52,23 @@ func connect(ctx context.Context, server *state.Server, globalCollectionOpts sta
 		logger.PrintWarning("Error starting websocket: %s %v", err, response)
 		return
 	}
-	server.WebSocket = conn
-	server.Pause.Pause = false
+	server.WebSocket.Store(conn)
+	server.Pause.Store(&pganalyze_collector.ServerMessage_Pause{Pause: false})
 	go func() {
 		for {
 			select {
 			case <-connCtx.Done():
-				err := server.WebSocket.Close()
-				if err != nil {
-					logger.PrintWarning("Error closing websocket: %s", err)
-					return
+				socket := server.WebSocket.Swap(nil)
+				if socket != nil {
+					err = socket.Close()
+					if err != nil {
+						logger.PrintWarning("Error closing websocket: %s", err)
+					}
 				}
-				server.WebSocket = nil
 				return
 			case snapshot := <-server.SnapshotStream:
 				logger.PrintVerbose("Uploading snapshot to websocket")
-				err = server.WebSocket.WriteMessage(websocket.BinaryMessage, snapshot)
+				err = server.WebSocket.Load().WriteMessage(websocket.BinaryMessage, snapshot)
 				if err != nil {
 					logger.PrintError("Error uploading snapshot: %s", err)
 					cancelConn()
@@ -97,9 +98,9 @@ func connect(ctx context.Context, server *state.Server, globalCollectionOpts sta
 			if err != nil {
 				logger.PrintWarning("Error parsing ServerMessage: %s", err)
 			} else if message.GetConfig() != nil {
-				server.Grant.Config = *message.GetConfig()
+				server.Grant.Config.Store(message.GetConfig())
 			} else if message.GetPause() != nil {
-				server.Pause = *message.GetPause()
+				server.Pause.Store(message.GetPause())
 			} else if message.GetExplainRun() != nil {
 				logger.PrintVerbose("ExplainRun: %v", message.GetExplainRun()) // TODO
 			}

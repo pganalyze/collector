@@ -25,8 +25,8 @@ func processActivityForServer(ctx context.Context, server *state.Server, globalC
 
 	newState := server.ActivityPrevState
 
-	if server.Pause.Pause {
-		logger.PrintWarning("Snapshot processing disabled by pganalyze server: %s", server.Pause.Reason)
+	if server.Pause.Load().Pause {
+		logger.PrintWarning("Snapshot processing disabled by pganalyze server: %s", server.Pause.Load().Reason)
 		return newState, false, nil
 	}
 
@@ -46,7 +46,7 @@ func processActivityForServer(ctx context.Context, server *state.Server, globalC
 		}
 	}
 
-	if server.WebSocket != nil {
+	if server.WebSocket.Load() != nil {
 		newGrant = server.Grant
 	} else if !globalCollectionOpts.ForceEmptyGrant {
 		newGrant, err = grant.GetDefaultGrant(ctx, server, globalCollectionOpts, logger)
@@ -54,7 +54,7 @@ func processActivityForServer(ctx context.Context, server *state.Server, globalC
 			return newState, false, errors.Wrap(err, "could not get default grant for activity snapshot")
 		}
 
-		if !newGrant.Config.EnableActivity {
+		if !newGrant.Config.Load().EnableActivity {
 			if globalCollectionOpts.TestRun {
 				server.SelfTest.MarkCollectionAspectNotAvailable(state.CollectionAspectActivity, "not available on this plan")
 				server.SelfTest.HintCollectionAspect(state.CollectionAspectActivity, "Compare plans at %s", selftest.URLPrinter.Sprint("https://pganalyze.com/pricing"))
@@ -123,7 +123,7 @@ func CollectActivityFromAllServers(ctx context.Context, servers []*state.Server,
 
 	for idx := range servers {
 		server := servers[idx]
-		if server.Config.DisableActivity || (server.Grant.Valid && !server.Grant.Config.EnableActivity) {
+		if server.Config.DisableActivity || (server.Grant.Valid && !server.Grant.Config.Load().EnableActivity) {
 			server.SelfTest.MarkCollectionAspectNotAvailable(state.CollectionAspectActivity, "not available on this plan")
 			server.SelfTest.HintCollectionAspect(state.CollectionAspectActivity, "Compare plans at %s", selftest.URLPrinter.Sprint("https://pganalyze.com/pricing"))
 			continue

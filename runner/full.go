@@ -15,7 +15,6 @@ import (
 	"github.com/pganalyze/collector/input/postgres"
 	"github.com/pganalyze/collector/logs"
 	"github.com/pganalyze/collector/output"
-	"github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
 )
@@ -89,10 +88,9 @@ func processServer(ctx context.Context, server *state.Server, globalCollectionOp
 	var newState state.PersistedState
 	var collectionStatus state.CollectionStatus
 	var err error
-	newGrant.Config.Features = &pganalyze_collector.ServerMessage_Features{}
 
-	if server.Pause.Pause {
-		logger.PrintWarning("Snapshot processing disabled by pganalyze server: %s", server.Pause.Reason)
+	if server.Pause.Load().Pause {
+		logger.PrintWarning("Snapshot processing disabled by pganalyze server: %s", server.Pause.Load().Reason)
 		return newState, newGrant, collectionStatus, nil
 	}
 
@@ -101,7 +99,7 @@ func processServer(ctx context.Context, server *state.Server, globalCollectionOp
 		return newState, newGrant, collectionStatus, err
 	}
 
-	if server.WebSocket != nil {
+	if server.WebSocket.Load() != nil {
 		newGrant = server.Grant
 	} else if !globalCollectionOpts.ForceEmptyGrant {
 		newGrant, err = grant.GetDefaultGrant(ctx, server, globalCollectionOpts, logger)
@@ -117,8 +115,9 @@ func processServer(ctx context.Context, server *state.Server, globalCollectionOp
 	}
 
 	var sentryClient *raven.Client
-	if server.Grant.Config.SentryDsn != "" {
-		sentryClient, err = raven.NewWithTags(server.Grant.Config.SentryDsn, map[string]string{"server_id": server.Grant.Config.ServerId})
+	config := server.Grant.Config.Load()
+	if config.SentryDsn != "" {
+		sentryClient, err = raven.NewWithTags(config.SentryDsn, map[string]string{"server_id": config.ServerId})
 		if err != nil {
 			logger.PrintVerbose("Failed to setup Sentry client: %s", err)
 		} else {

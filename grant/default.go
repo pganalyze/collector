@@ -14,7 +14,7 @@ import (
 
 func GetDefaultGrant(ctx context.Context, server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.Grant, error) {
 	grant := state.Grant{}
-	grant.Config.Features = &pganalyze_collector.ServerMessage_Features{}
+	grant.Config.Load().Features = &pganalyze_collector.ServerMessage_Features{}
 	req, err := http.NewRequestWithContext(ctx, "GET", server.Config.APIBaseURL+"/v2/snapshots/grant", nil)
 	if err != nil {
 		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectApiConnection, err.Error())

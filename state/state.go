@@ -217,10 +217,10 @@ type CollectionOpts struct {
 
 type Grant struct {
 	Valid    bool
-	Config   pganalyze_collector.ServerMessage_Config `json:"config"`
-	S3URL    string                                   `json:"s3_url"`
-	S3Fields map[string]string                        `json:"s3_fields"`
-	LocalDir string                                   `json:"local_dir"`
+	Config   atomic.Pointer[pganalyze_collector.ServerMessage_Config] `json:"config"`
+	S3URL    string                                                   `json:"s3_url"`
+	S3Fields map[string]string                                        `json:"s3_fields"`
+	LocalDir string                                                   `json:"local_dir"`
 }
 
 func (g Grant) S3() GrantS3 {
@@ -259,9 +259,9 @@ type Server struct {
 
 	SelfTest *SelfTestResult
 
-	WebSocket      *websocket.Conn
 	SnapshotStream chan []byte
-	Pause          pganalyze_collector.ServerMessage_Pause
+	WebSocket      atomic.Pointer[websocket.Conn]
+	Pause          atomic.Pointer[pganalyze_collector.ServerMessage_Pause]
 
 	// The time zone that logs are parsed in, synced from the setting log_timezone
 	// The StateMutex should be held while updating this
@@ -290,8 +290,8 @@ func MakeServer(config config.ServerConfig, testRun bool) *Server {
 		LogTimezoneMutex:      &sync.Mutex{},
 		SnapshotStream:        make(chan []byte),
 	}
-	server.Pause = pganalyze_collector.ServerMessage_Pause{Pause: false}
-	server.Grant.Config.Features = &pganalyze_collector.ServerMessage_Features{}
+	server.Pause.Store(&pganalyze_collector.ServerMessage_Pause{Pause: false})
+	server.Grant.Config.Store(&pganalyze_collector.ServerMessage_Config{Features: &pganalyze_collector.ServerMessage_Features{}})
 	if testRun {
 		server.SelfTest = MakeSelfTest()
 	}

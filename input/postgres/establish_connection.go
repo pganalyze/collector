@@ -114,7 +114,7 @@ func SetStatementTimeout(ctx context.Context, connection *sql.DB, statementTimeo
 }
 
 func SetDefaultStatementTimeout(ctx context.Context, connection *sql.DB, logger *util.Logger, server *state.Server) error {
-	statementTimeoutMs := server.Grant.Config.Features.StatementTimeoutMs
+	statementTimeoutMs := server.Grant.Config.Load().Features.StatementTimeoutMs
 	if statementTimeoutMs == 0 { // Default value
 		statementTimeoutMs = 30000
 	}
@@ -134,7 +134,7 @@ func SetDefaultStatementTimeout(ctx context.Context, connection *sql.DB, logger 
 }
 
 func SetQueryTextStatementTimeout(ctx context.Context, connection *sql.DB, logger *util.Logger, server *state.Server) error {
-	queryTextStatementTimeoutMs := server.Grant.Config.Features.StatementTimeoutMsQueryText
+	queryTextStatementTimeoutMs := server.Grant.Config.Load().Features.StatementTimeoutMsQueryText
 	if queryTextStatementTimeoutMs == 0 { // Default value
 		queryTextStatementTimeoutMs = 120000
 	}

@@ -83,14 +83,15 @@ func CollectFull(ctx context.Context, server *state.Server, connection *sql.DB, 
 	}
 
 	ps.StatementResetCounter = server.PrevState.StatementResetCounter + 1
-	if server.Grant.Config.Features.StatementResetFrequency != 0 && ps.StatementResetCounter >= int(server.Grant.Config.Features.StatementResetFrequency) {
+	config := server.Grant.Config.Load()
+	if config.Features.StatementResetFrequency != 0 && ps.StatementResetCounter >= int(config.Features.StatementResetFrequency) {
 		ps.StatementResetCounter = 0
 		err = postgres.ResetStatements(ctx, logger, connection, systemType)
 		if err != nil {
 			logger.PrintError("Error calling pg_stat_statements_reset() as requested: %s", err)
 			err = nil
 		} else {
-			logger.PrintInfo("Successfully called pg_stat_statements_reset() for all queries, next reset in %d hours", server.Grant.Config.Features.StatementResetFrequency/scheduler.FullSnapshotsPerHour)
+			logger.PrintInfo("Successfully called pg_stat_statements_reset() for all queries, next reset in %d hours", config.Features.StatementResetFrequency/scheduler.FullSnapshotsPerHour)
 			_, _, ts.ResetStatementStats, err = postgres.GetStatements(ctx, server, logger, connection, globalCollectionOpts, ts.Version, false, systemType)
 			if err != nil {
 				logger.PrintError("Error collecting pg_stat_statements after reset: %s", err)

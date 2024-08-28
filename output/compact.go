@@ -58,7 +58,7 @@ func uploadAndSubmitCompactSnapshot(ctx context.Context, s pganalyze_collector.C
 		return nil
 	}
 
-	if server.WebSocket != nil {
+	if server.WebSocket.Load() != nil {
 		server.SnapshotStream <- compressedData.Bytes()
 		logger.PrintVerbose("Submitted compact %s snapshot successfully", kind)
 		return nil
