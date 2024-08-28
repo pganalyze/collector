@@ -104,7 +104,7 @@ func (c *Client) GetClusterInfo(ctx context.Context) (*ClusterInfo, error) {
 	}
 
 	if resp.StatusCode != http.StatusOK || len(body) == 0 {
-		return nil, err
+		return nil, fmt.Errorf("unexpected status code: %d, response body: %s", resp.StatusCode, string(body))
 	}
 
 	clusterInfo := ClusterInfo{}

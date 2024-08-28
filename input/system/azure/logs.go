@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/pganalyze/collector/config"
-	"github.com/pganalyze/collector/logs"
 	"github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
@@ -43,6 +42,17 @@ type AzurePostgresLogRecord struct {
 	Category          string                  `json:"category"`
 	OperationName     string                  `json:"operationName"`
 	Properties        AzurePostgresLogMessage `json:"properties"`
+}
+
+func (record *AzurePostgresLogRecord) IsSingleServer() bool {
+	resourceParts := strings.Split(record.ResourceID, "/")
+	// ResourceID's second to last element is a resource type
+	return strings.ToLower(resourceParts[len(resourceParts)-2]) == "servers"
+}
+
+func (record *AzurePostgresLogRecord) IsCosmosDB() bool {
+	resourceParts := strings.Split(record.ResourceID, "/")
+	return strings.ToLower(resourceParts[len(resourceParts)-2]) == "servergroupsv2"
 }
 
 type AzureEventHubData struct {
@@ -229,17 +239,21 @@ func SetupLogSubscriber(ctx context.Context, wg *sync.WaitGroup, globalCollectio
 	return nil
 }
 
-// Parses one Azure Event Hub log record into one or two log lines (main + DETAIL)
-func ParseRecordToLogLines(in AzurePostgresLogRecord) ([]state.LogLine, string, error) {
-	var azureDbServerName string
+func GetServerNameFromRecord(in AzurePostgresLogRecord) string {
+	if in.IsSingleServer() {
+		return in.LogicalServerName
+	} else { // Flexible Server, Cosmos DB
+		// For Flexible Server, logical server name is typically not set, so instead determine it based on the resource ID
+		resourceParts := strings.Split(in.ResourceID, "/")
+		return strings.ToLower(resourceParts[len(resourceParts)-1])
+	}
+}
 
+// Parses one Azure Event Hub log record into one or two log lines (main + DETAIL)
+func ParseRecordToLogLines(in AzurePostgresLogRecord, parser state.LogParser) ([]state.LogLine, error) {
 	logLineContent := in.Properties.Message
 
-	if in.LogicalServerName == "" { // Flexible Server
-		// For Flexible Server, logical server name is not set, so instead determine it based on the resource ID
-		resourceParts := strings.Split(in.ResourceID, "/")
-		azureDbServerName = strings.ToLower(resourceParts[len(resourceParts)-1])
-	} else { // Single Server
+	if in.IsSingleServer() {
 		// Adjust Azure-modified log messages to be standard Postgres log messages
 		if strings.HasPrefix(logLineContent, "connection received:") {
 			logLineContent = connectionReceivedRegexp.ReplaceAllString(logLineContent, "$1")
@@ -253,13 +267,19 @@ func ParseRecordToLogLines(in AzurePostgresLogRecord) ([]state.LogLine, string, 
 		// Add prefix and error level, which are separated from the content on
 		// Single Server (but our parser expects them together)
 		logLineContent = fmt.Sprintf("%s%s:  %s", in.Properties.Prefix, in.Properties.ErrorLevel, logLineContent)
-
-		azureDbServerName = in.LogicalServerName
+	} else if in.IsCosmosDB() {
+		prefix, content, ok := parser.GetPrefixAndContent(logLineContent)
+		if ok {
+			// Cosmos DB doesn't output the log level after the log_line_prefix and before the content
+			// Manually adding it between them so the parser can parse the log line
+			logLineContent = fmt.Sprintf("%s%s:  %s", prefix, in.Properties.ErrorLevel, content)
+		}
+	} else {
+		// Flexible Server: no tweak needed
 	}
-
-	logLine, ok := logs.ParseLogLineWithPrefix("", logLineContent, nil)
+	logLine, ok := parser.ParseLine(logLineContent)
 	if !ok {
-		return []state.LogLine{}, "", fmt.Errorf("Can't parse log line: \"%s\"", logLineContent)
+		return []state.LogLine{}, fmt.Errorf("Can't parse log line: \"%s\"", logLineContent)
 	}
 
 	logLines := []state.LogLine{logLine}
@@ -275,7 +295,7 @@ func ParseRecordToLogLines(in AzurePostgresLogRecord) ([]state.LogLine, string, 
 		logLines = append(logLines, detailLogLine)
 	}
 
-	return logLines, azureDbServerName, nil
+	return logLines, nil
 }
 
 func setupLogTransformer(ctx context.Context, wg *sync.WaitGroup, servers []*state.Server, in <-chan AzurePostgresLogRecord, out chan state.ParsedLogStreamItem, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
@@ -296,7 +316,21 @@ func setupLogTransformer(ctx context.Context, wg *sync.WaitGroup, servers []*sta
 					return
 				}
 
-				logLines, azureDbServerName, err := ParseRecordToLogLines(in)
+				azureDbServerName := GetServerNameFromRecord(in)
+				var server *state.Server
+				for _, s := range servers {
+					if azureDbServerName == s.Config.AzureDbServerName {
+						server = s
+					}
+				}
+				if server == nil {
+					if globalCollectionOpts.TestRun {
+						logger.PrintVerbose("Discarding log line because of unknown server (did you set the correct azure_db_server_name?): %s", azureDbServerName)
+					}
+					continue
+				}
+				parser := server.GetLogParser()
+				logLines, err := ParseRecordToLogLines(in, parser)
 				if err != nil {
 					logger.PrintError("%s", err)
 					continue
@@ -310,19 +344,8 @@ func setupLogTransformer(ctx context.Context, wg *sync.WaitGroup, servers []*sta
 					continue
 				}
 
-				foundServer := false
-				for _, server := range servers {
-					if azureDbServerName == server.Config.AzureDbServerName {
-						foundServer = true
-
-						for _, logLine := range logLines {
-							out <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: logLine}
-						}
-					}
-				}
-
-				if !foundServer && globalCollectionOpts.TestRun {
-					logger.PrintVerbose("Discarding log line because of unknown server (did you set the correct azure_db_server_name?): %s", azureDbServerName)
+				for _, logLine := range logLines {
+					out <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: logLine}
 				}
 			}
 		}

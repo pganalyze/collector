@@ -12,6 +12,7 @@ import (
 	"github.com/lib/pq"
 	"github.com/pganalyze/collector/input/postgres"
 	"github.com/pganalyze/collector/input/system"
+	"github.com/pganalyze/collector/logs"
 	"github.com/pganalyze/collector/scheduler"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
@@ -156,7 +157,7 @@ func CollectFull(ctx context.Context, server *state.Server, connection *sql.DB, 
 		ps.System = system.GetSystemState(ctx, server, logger, globalCollectionOpts)
 	}
 
-	server.SetLogTimezone(ts.Settings)
+	logs.SyncLogParser(server, ts.Settings)
 
 	ps.CollectorStats = getCollectorStats()
 	ts.CollectorConfig = getCollectorConfig(server.Config)
