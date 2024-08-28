@@ -2,18 +2,17 @@
 
 ## 0.58.0      2024-08-27
 
-* Log Insights:
-  - New log parsing mechanism that is more performant and allows
-    for arbitrary log_line_prefix settings. The new parsing mechanism
-    is the default, but you can set `db_log_line_prefix = legacy` in
-    the config file or `LOG_LINE_PREFIX=legacy` in the environment
-    to revert to the old mechanism.
-* RDS:
-  - Update AWS SDK to v1.55.3
+* Log Insights: Revamp log parsing mechanism
+  - The new mechanism is more performant and allows for arbitrary
+    log_line_prefix settings. The new parsing mechanism is the default, but you
+    can set `db_log_line_prefix = legacy` in the config file or
+    `LOG_LINE_PREFIX=legacy` in the environment to revert to the old mechanism.
+* RDS: Update AWS SDK to v1.55.3
+  - This allows using EKS pod identity; documentation coming soon
 * Azure:
   - Improve log handling for Flexible Server and Cosmos DB
 * Crunchy Bridge:
-  - fix error handling for error responses from Crunchy Bridge API
+  - Fix error handling for error responses from Crunchy Bridge API
 
 
 ## 0.57.1      2024-07-17
