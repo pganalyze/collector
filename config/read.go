@@ -800,7 +800,7 @@ func Read(logger *util.Logger, filename string) (Config, error) {
 		}
 
 		if len(conf.Servers) == 0 {
-			return conf, fmt.Errorf("Configuration file is empty, please edit %s and reload the collector", filename)
+			return conf, fmt.Errorf("Configuration contains no valid servers, please edit %s and reload the collector", filename)
 		}
 	} else {
 		if util.IsHeroku() {
