@@ -108,17 +108,32 @@ type SystemInfoCrunchyBridge struct {
 	MemoryGB    float32
 }
 
-// SystemInfoAzure - System information for Azure systems (Flexible Server)
+// SystemInfoAzure - System information for Azure systems
 type SystemInfoAzure struct {
-	Location              string
-	CreatedAt             time.Time
-	State                 string
+	Location       string
+	CreatedAt      time.Time
+	State          string
+	SubscriptionID string
+	ResourceGroup  string
+	ResourceType   string
+	ResourceName   string
+	// Flexible Server
 	AvailabilityZone      string
-	ResourceGroup         string
 	StorageGB             int32
 	HighAvailabilityMode  string
 	HighAvailabilityState string
 	ReplicationRole       string
+	SKUName               string
+	// Cosmos
+	CitusVersion             string
+	HighAvailabilityEnabled  bool
+	CoordinatorStorageMB     int32
+	NodeStorageMB            int32
+	CoordinatorVCores        int32
+	NodeVCores               int32
+	NodeCount                int32
+	CoordinatorServerEdition string
+	NodeServerEdition        string
 }
 
 // Scheduler - Information about the OS scheduler

@@ -6,6 +6,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/monitor/azquery"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/cosmosforpostgresql/armcosmosforpostgresql"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/postgresql/armpostgresqlflexibleservers/v4"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
@@ -15,48 +16,119 @@ import (
 func GetSystemState(ctx context.Context, server *state.Server, logger *util.Logger) (system state.SystemState) {
 	config := server.Config
 	system.Info.Type = state.AzureDatabaseSystem
-	if config.AzureResourceID == "" {
+	if config.AzureSubscriptionID == "" {
 		server.SelfTest.MarkCollectionAspectWarning(state.CollectionAspectSystemStats, "unable to collect system stats")
-		server.SelfTest.HintCollectionAspect(state.CollectionAspectSystemStats, "Config value azure_resource_id is required to collect system stats.")
-		return
-	} else if strings.ToLower(config.AzureResourceType) != "flexibleservers" {
-		server.SelfTest.MarkCollectionAspectWarning(state.CollectionAspectSystemStats, "unable to collect system stats")
-		server.SelfTest.HintCollectionAspect(state.CollectionAspectSystemStats, "System stats collection is only supported for Flexible Server.")
+		server.SelfTest.HintCollectionAspect(state.CollectionAspectSystemStats, "Config value azure_subscription_id is required to collect system stats.")
 		return
 	}
 
 	credential, err := getAzureCredential(config)
 	if err != nil {
 		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectSystemStats, "error getting credential: %v", err)
+		server.SelfTest.HintCollectionAspect(state.CollectionAspectSystemStats, "Make sure the managed identity is assigned to the collector VM.")
 		logger.PrintError("Azure/System: Encountered error getting credential: %v\n", err)
 		return
 	}
 
-	// Server info
+	var resourceID string
+
+	// Server info: Flexible Server
 	clientFactory, err := armpostgresqlflexibleservers.NewClientFactory(config.AzureSubscriptionID, credential, nil)
 	if err != nil {
-		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectSystemStats, "error making a client: %v", err)
-		logger.PrintError("Azure/System: Failed to make a factory client: %v\n", err)
+		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectSystemStats, "error making a Flexible Server client: %v", err)
+		logger.PrintError("Azure/System: Failed to make a Flexible Server client: %v\n", err)
 		return
 	}
-	serverRes, err := clientFactory.NewServersClient().Get(ctx, config.AzureResourceGroup, config.AzureDbServerName, nil)
-	if err != nil {
-		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectSystemStats, "error getting a server info: %v", err)
-		server.SelfTest.HintCollectionAspect(state.CollectionAspectSystemStats, "Make sure the Reader permission of the database is granted to the managed identity.")
-		logger.PrintError("Azure/System: Encountered error getting a server info: %v\n", err)
-		return
+	// Search a server from the list
+	pager := clientFactory.NewServersClient().NewListPager(nil)
+	for pager.More() {
+		page, err := pager.NextPage(ctx)
+		if err != nil {
+			logger.PrintError("Azure/System: Failed to advance page of Flexible Server list: %v\n", err)
+		}
+		for _, v := range page.Value {
+			if v.ID != nil {
+				resourceIDParts := strings.Split(*v.ID, "/")
+				resourceGroup := resourceIDParts[4]
+				resourceType := resourceIDParts[7]
+				resourceName := resourceIDParts[8]
+
+				if config.AzureDbServerName == resourceName {
+					system.Info.Azure = &state.SystemInfoAzure{
+						Location:              util.StringPtrToString(v.Location),
+						CreatedAt:             util.TimePtrToTime(v.SystemData.CreatedAt),
+						State:                 util.StringCustomTypePtrToString(v.Properties.State),
+						SubscriptionID:        config.AzureSubscriptionID,
+						ResourceGroup:         resourceGroup,
+						ResourceType:          resourceType,
+						ResourceName:          resourceName,
+						SKUName:               util.StringPtrToString(v.SKU.Name),
+						AvailabilityZone:      util.StringPtrToString(v.Properties.AvailabilityZone),
+						StorageGB:             util.Int32PtrToInt(v.Properties.Storage.StorageSizeGB),
+						HighAvailabilityMode:  util.StringCustomTypePtrToString(v.Properties.HighAvailability.Mode),
+						HighAvailabilityState: util.StringCustomTypePtrToString(v.Properties.HighAvailability.State),
+						ReplicationRole:       util.StringCustomTypePtrToString(v.Properties.ReplicationRole),
+					}
+					resourceID = *v.ID
+					break
+				}
+			}
+		}
 	}
 
-	system.Info.Azure = &state.SystemInfoAzure{
-		Location:              util.StringPtrToString(serverRes.Location),
-		CreatedAt:             util.TimePtrToTime(serverRes.SystemData.CreatedAt),
-		State:                 util.StringCustomTypePtrToString(serverRes.Properties.State),
-		AvailabilityZone:      util.StringPtrToString(serverRes.Properties.AvailabilityZone),
-		ResourceGroup:         config.AzureResourceGroup,
-		StorageGB:             util.Int32PtrToInt(serverRes.Properties.Storage.StorageSizeGB),
-		HighAvailabilityMode:  util.StringCustomTypePtrToString(serverRes.Properties.HighAvailability.Mode),
-		HighAvailabilityState: util.StringCustomTypePtrToString(serverRes.Properties.HighAvailability.State),
-		ReplicationRole:       util.StringCustomTypePtrToString(serverRes.Properties.ReplicationRole),
+	// Server info: Cosmos DB (when server is not found within Flexible Server)
+	if resourceID == "" {
+		clientFactory, err := armcosmosforpostgresql.NewClientFactory(config.AzureSubscriptionID, credential, nil)
+		if err != nil {
+			server.SelfTest.MarkCollectionAspectError(state.CollectionAspectSystemStats, "error making a Cosmos DB client: %v", err)
+			logger.PrintError("Azure/System: Failed to make a Cosmos DB client: %v\n", err)
+			return
+		}
+		// Search a server from the list
+		pager := clientFactory.NewClustersClient().NewListPager(nil)
+		for pager.More() {
+			page, err := pager.NextPage(ctx)
+			if err != nil {
+				logger.PrintError("Azure/System: Failed to advance page of Cosmos DB cluster list: %v\n", err)
+			}
+			for _, v := range page.Value {
+				if v.ID != nil {
+					resourceIDParts := strings.Split(*v.ID, "/")
+					resourceGroup := resourceIDParts[4]
+					resourceType := resourceIDParts[7]
+					resourceName := resourceIDParts[8]
+
+					if config.AzureDbServerName == resourceName {
+						system.Info.Azure = &state.SystemInfoAzure{
+							Location:                 util.StringPtrToString(v.Location),
+							CreatedAt:                util.TimePtrToTime(v.SystemData.CreatedAt),
+							State:                    util.StringCustomTypePtrToString(v.Properties.State),
+							SubscriptionID:           config.AzureSubscriptionID,
+							ResourceGroup:            resourceGroup,
+							ResourceType:             resourceType,
+							ResourceName:             resourceName,
+							CitusVersion:             util.StringPtrToString(v.Properties.CitusVersion),
+							HighAvailabilityEnabled:  util.BoolPtrToBool(v.Properties.EnableHa),
+							CoordinatorStorageMB:     util.Int32PtrToInt(v.Properties.CoordinatorStorageQuotaInMb),
+							NodeStorageMB:            util.Int32PtrToInt(v.Properties.NodeStorageQuotaInMb),
+							CoordinatorVCores:        util.Int32PtrToInt(v.Properties.CoordinatorVCores),
+							NodeVCores:               util.Int32PtrToInt(v.Properties.NodeVCores),
+							CoordinatorServerEdition: util.StringPtrToString(v.Properties.CoordinatorServerEdition),
+							NodeServerEdition:        util.StringPtrToString(v.Properties.NodeServerEdition),
+							NodeCount:                util.Int32PtrToInt(v.Properties.NodeCount),
+						}
+						resourceID = *v.ID
+						break
+					}
+				}
+			}
+		}
+	}
+
+	if resourceID == "" {
+		server.SelfTest.MarkCollectionAspectWarning(state.CollectionAspectSystemStats, "unable to find the database server info")
+		server.SelfTest.HintCollectionAspect(state.CollectionAspectSystemStats, "Make sure the Reader permission of the database is granted to the managed identity.")
+		return
 	}
 
 	// Server metrics
@@ -68,8 +140,11 @@ func GetSystemState(ctx context.Context, server *state.Server, logger *util.Logg
 	}
 
 	// Query metrics data with 1 min interval, for the last 1 min (should return 1 value)
-	metricNames := "cpu_percent,memory_percent,txlogs_storage_used,network_bytes_egress,network_bytes_ingress," +
-		"read_iops,write_iops,disk_queue_depth,read_throughput,write_throughput,storage_used"
+	metricNames := "cpu_percent,memory_percent,network_bytes_egress,network_bytes_ingress,storage_used"
+	if strings.ToLower(system.Info.Azure.ResourceType) == "flexibleserver" {
+		// metrics only available with Flexible Server
+		metricNames += ",txlogs_storage_used,read_iops,write_iops,disk_queue_depth,read_throughput,write_throughput"
+	}
 	option := &azquery.MetricsClientQueryResourceOptions{
 		MetricNames: to.Ptr(metricNames),
 		Aggregation: to.SliceOfPtrs(azquery.AggregationTypeAverage),
@@ -77,7 +152,7 @@ func GetSystemState(ctx context.Context, server *state.Server, logger *util.Logg
 		Timespan:    to.Ptr(azquery.TimeInterval("PT1M")),
 	}
 
-	metricsRes, err := client.QueryResource(ctx, config.AzureResourceID, option)
+	metricsRes, err := client.QueryResource(ctx, resourceID, option)
 	if err != nil {
 		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectSystemStats, "error getting server metrics: %v", err)
 		logger.PrintError("Azure/System: Encountered error getting server metrics: %v\n", err)
@@ -176,13 +251,27 @@ func GetSystemState(ctx context.Context, server *state.Server, logger *util.Logg
 		} else if *metric.Name.Value == "storage_used" {
 			for _, timeSeriesElement := range metric.TimeSeries {
 				for _, metricValue := range timeSeriesElement.Data {
-					if metricValue.Average != nil && serverRes.Properties.Storage.StorageSizeGB != nil {
-						totalGB := uint64(*serverRes.Properties.Storage.StorageSizeGB)
-						system.DiskPartitions = make(state.DiskPartitionMap)
-						system.DiskPartitions["/"] = state.DiskPartition{
-							DiskName:   "default",
-							UsedBytes:  uint64(*metricValue.Average),
-							TotalBytes: totalGB * 1024 * 1024 * 1024,
+					if metricValue.Average != nil {
+						if system.Info.Azure.StorageGB != 0 {
+							// Flexible Server
+							totalGB := uint64(system.Info.Azure.StorageGB)
+							system.DiskPartitions = make(state.DiskPartitionMap)
+							system.DiskPartitions["/"] = state.DiskPartition{
+								DiskName:   "default",
+								UsedBytes:  uint64(*metricValue.Average),
+								TotalBytes: totalGB * 1024 * 1024 * 1024,
+							}
+						} else if system.Info.Azure.CoordinatorStorageMB != 0 {
+							// Cosmos DB
+							// TODO: check if we need to sum up the node storage MB too
+							// (e.g. system.Info.Azure.NodeStorageMB * system.Info.Azure.NodeCount)
+							totalMB := uint64(system.Info.Azure.CoordinatorStorageMB)
+							system.DiskPartitions = make(state.DiskPartitionMap)
+							system.DiskPartitions["/"] = state.DiskPartition{
+								DiskName:   "default",
+								UsedBytes:  uint64(*metricValue.Average),
+								TotalBytes: totalMB * 1024 * 1024,
+							}
 						}
 					}
 				}

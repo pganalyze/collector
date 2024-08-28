@@ -205,12 +205,25 @@ message SystemInformationAzure {
   string location = 1;
   google.protobuf.Timestamp created_at = 2;
   string state = 3;
-  string availability_zone = 4;
+  string subscription_id = 4;
   string resource_group = 5;
-  int32 storage_gb = 6;
-  string high_availability_mode = 7;
-  string high_availability_state = 8;
-  string replication_role = 9;
+  string resource_type = 6;
+  string resource_name = 7;
+  string availability_zone = 8;
+  int32 storage_gb = 9;
+  string high_availability_mode = 10;
+  string high_availability_state = 11;
+  string replication_role = 12;
+  string citus_version = 13;
+  bool high_availability_enabled = 14;
+  int32 coordinator_storage_mb = 15;
+  int32 node_storage_mb = 16;
+  int32 coordinator_vcores = 17;
+  int32 node_vcores = 18;
+  int32 node_count = 19;
+  string sku_name = 20;
+  string coordinator_server_edition = 21;
+  string node_server_edition = 22;
 }
 
 message SchedulerStatistic {

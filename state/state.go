@@ -106,7 +106,7 @@ type CollectorConfig struct {
 	AzureAdTenantId            string
 	AzureAdClientId            string
 	AzureHasAdCertificate      bool
-	AzureResourceID            string
+	AzureSubscriptionID        string
 	GcpCloudsqlInstanceId      string
 	GcpAlloyDBClusterID        string
 	GcpAlloyDBInstanceID       string

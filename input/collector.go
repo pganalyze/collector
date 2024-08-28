@@ -102,7 +102,7 @@ func getCollectorConfig(c config.ServerConfig) state.CollectorConfig {
 		AzureAdTenantId:            c.AzureADTenantID,
 		AzureAdClientId:            c.AzureADClientID,
 		AzureHasAdCertificate:      c.AzureADCertificatePath != "",
-		AzureResourceID:            c.AzureResourceID,
+		AzureSubscriptionID:        c.AzureSubscriptionID,
 		GcpCloudsqlInstanceId:      c.GcpCloudSQLInstanceID,
 		GcpAlloyDBClusterID:        c.GcpAlloyDBClusterID,
 		GcpAlloyDBInstanceID:       c.GcpAlloyDBInstanceID,
