@@ -15,6 +15,7 @@ import (
 	"github.com/pganalyze/collector/input/postgres"
 	"github.com/pganalyze/collector/logs"
 	"github.com/pganalyze/collector/output"
+	"github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
 )
@@ -88,6 +89,7 @@ func processServer(ctx context.Context, server *state.Server, globalCollectionOp
 	var newState state.PersistedState
 	var collectionStatus state.CollectionStatus
 	var err error
+	newGrant.Config.Store(&pganalyze_collector.ServerMessage_Config{Features: &pganalyze_collector.ServerMessage_Features{}})
 
 	if server.Pause.Load().Pause {
 		logger.PrintWarning("Snapshot processing disabled by pganalyze server: %s", server.Pause.Load().Reason)
