@@ -749,8 +749,8 @@ func Read(logger *util.Logger, filename string) (Config, error) {
 		sections := configFile.Sections()
 		for _, section := range sections {
 			sectionName := section.Name()
-			if sectionName == "pganalyze" || sectionName == "DEFAULT" {
-				// we already handled this above
+			if sectionName == "pganalyze" || sectionName == ini.DefaultSection {
+				// we already handled the pganalyze section above, and we don't use the default section
 				continue
 			}
 			config := &ServerConfig{}
