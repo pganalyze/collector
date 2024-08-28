@@ -45,6 +45,7 @@ func GetSystemState(ctx context.Context, server *state.Server, logger *util.Logg
 		page, err := pager.NextPage(ctx)
 		if err != nil {
 			logger.PrintError("Azure/System: Failed to advance page of Flexible Server list: %v\n", err)
+			break
 		}
 		for _, v := range page.Value {
 			if v.ID != nil {
@@ -90,6 +91,7 @@ func GetSystemState(ctx context.Context, server *state.Server, logger *util.Logg
 			page, err := pager.NextPage(ctx)
 			if err != nil {
 				logger.PrintError("Azure/System: Failed to advance page of Cosmos DB cluster list: %v\n", err)
+				break
 			}
 			for _, v := range page.Value {
 				if v.ID != nil {
