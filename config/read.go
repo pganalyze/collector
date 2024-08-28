@@ -789,15 +789,14 @@ func Read(logger *util.Logger, filename string) (Config, error) {
 				}
 			}
 
-			conf.Servers = append(conf.Servers, *config)
-
 			if config.DbURL != "" {
 				_, err := url.Parse(config.DbURL)
 				if err != nil {
-					prefixedLogger := logger.WithPrefix(config.SectionName)
-					prefixedLogger.PrintError("Could not parse db_url; check URL format and note that any special characters must be percent-encoded")
+					return conf, fmt.Errorf("Could not parse db_url in section %s; check URL format and note that any special characters must be percent-encoded", config.SectionName)
 				}
 			}
+
+			conf.Servers = append(conf.Servers, *config)
 		}
 
 		if len(conf.Servers) == 0 {
