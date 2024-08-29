@@ -15,7 +15,8 @@
 * RDS: Update AWS SDK to v1.55.3
   - This allows using EKS pod identity; documentation coming soon
 * Azure:
-  - Improve log handling for Flexible Server and Cosmos DB
+  - Ensure correct log handling for all Flexible Server events (don't accidentally treat them as Single Server events)
+  - Support log parsing for Azure Database for Cosmos DB Postgres
 * Crunchy Bridge:
   - Fix error handling for error responses from Crunchy Bridge API
 
