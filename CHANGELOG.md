@@ -7,6 +7,9 @@
     log_line_prefix settings. The new parsing mechanism is the default, but you
     can set `db_log_line_prefix = legacy` in the config file or
     `LOG_LINE_PREFIX=legacy` in the environment to revert to the old mechanism.
+* Log Insights: Redact parameters from utility statements by default
+  - Statements like `CREATE USER u WITH PASSWORD 'passw0rd'` can leak sensitive
+    data into Log Insights, so they are now redacted by default.
 * RDS: Update AWS SDK to v1.55.3
   - This allows using EKS pod identity; documentation coming soon
 * Azure:
