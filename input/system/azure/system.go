@@ -143,7 +143,7 @@ func GetSystemState(ctx context.Context, server *state.Server, logger *util.Logg
 
 	// Query metrics data with 1 min interval, for the last 1 min (should return 1 value)
 	metricNames := "cpu_percent,memory_percent,network_bytes_egress,network_bytes_ingress,storage_used"
-	if strings.ToLower(system.Info.Azure.ResourceType) == "flexibleserver" {
+	if strings.ToLower(system.Info.Azure.ResourceType) == "flexibleservers" {
 		// metrics only available with Flexible Server
 		metricNames += ",txlogs_storage_used,read_iops,write_iops,disk_queue_depth,read_throughput,write_throughput"
 	}
@@ -287,7 +287,7 @@ func GetSystemState(ctx context.Context, server *state.Server, logger *util.Logg
 	}
 	system.Disks = make(state.DiskMap)
 	system.Disks["default"] = state.Disk{}
-	if strings.ToLower(system.Info.Azure.ResourceType) == "flexibleserver" {
+	if strings.ToLower(system.Info.Azure.ResourceType) == "flexibleservers" {
 		// DiskStats is only available with Flexible Server
 		system.DiskStats = make(state.DiskStatsMap)
 		system.DiskStats["default"] = state.DiskStats{
