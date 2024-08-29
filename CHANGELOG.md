@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.58.0      2024-08-27
+## 0.58.0      2024-08-29
 
 * Log Insights: Revamp log parsing mechanism
   - The new mechanism is more performant and allows for arbitrary
@@ -10,8 +10,8 @@
 * Log Insights: Redact parameters from utility statements by default
   - Statements like `CREATE USER u WITH PASSWORD 'passw0rd'` can leak sensitive
     data into Log Insights, so they are now redacted by default. Note that these
-    statements are usually very fast, and are normally only logged with Postgres
-    configurations like `log_min_duration_statement = 0` that log every statement.
+    statements are usually very fast, and are normally only logged in edge cases,
+    like a lock wait problem relating to the statement.
 * RDS: Update AWS SDK to v1.55.3
   - This allows using EKS pod identity; documentation coming soon
 * Azure:
