@@ -287,10 +287,13 @@ func GetSystemState(ctx context.Context, server *state.Server, logger *util.Logg
 	}
 	system.Disks = make(state.DiskMap)
 	system.Disks["default"] = state.Disk{}
-	system.DiskStats = make(state.DiskStatsMap)
-	system.DiskStats["default"] = state.DiskStats{
-		DiffedOnInput: true,
-		DiffedValues:  diffedDiskStats,
+	if strings.ToLower(system.Info.Azure.ResourceType) == "flexibleserver" {
+		// DiskStats is only available with Flexible Server
+		system.DiskStats = make(state.DiskStatsMap)
+		system.DiskStats["default"] = state.DiskStats{
+			DiffedOnInput: true,
+			DiffedValues:  diffedDiskStats,
+		}
 	}
 
 	server.SelfTest.MarkCollectionAspectOk(state.CollectionAspectSystemStats)
