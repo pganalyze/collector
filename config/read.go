@@ -766,8 +766,16 @@ func Read(logger *util.Logger, filename string) (Config, error) {
 				return conf, err
 			}
 
+			if config.DbURL != "" {
+				_, err := url.Parse(config.DbURL)
+				if err != nil {
+					logger.PrintError("Could not parse db_url in section %s; check URL format and note that any special characters must be percent-encoded", config.SectionName)
+				}
+			}
+
 			if config.GetDbName() == "" {
-				return conf, fmt.Errorf("No connection info found for section %s; see https://pganalyze.com/docs/collector/settings", sectionName)
+				logger.PrintError("No connection info found for section %s; see https://pganalyze.com/docs/collector/settings", sectionName)
+				continue
 			}
 
 			config.SectionName = sectionName
@@ -786,13 +794,6 @@ func Read(logger *util.Logger, filename string) (Config, error) {
 				if config.Identifier == server.Identifier {
 					logger.PrintError("Skipping config section %s, detected as duplicate. Note: To monitor multiple databases on the same server, db_name accepts a comma-separated list.", config.SectionName)
 					continue
-				}
-			}
-
-			if config.DbURL != "" {
-				_, err := url.Parse(config.DbURL)
-				if err != nil {
-					return conf, fmt.Errorf("Could not parse db_url in section %s; check URL format and note that any special characters must be percent-encoded", config.SectionName)
 				}
 			}
 
