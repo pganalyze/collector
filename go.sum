@@ -156,8 +156,8 @@ github.com/ogier/pflag v0.0.0-20160129220114-45c278ab3607 h1:db+rES1EpSjP45xOU3h
 github.com/ogier/pflag v0.0.0-20160129220114-45c278ab3607/go.mod h1:zkFki7tvTa0tafRvTBIZTvzYyAu6kQhPZFnshFFPE+g=
 github.com/papertrail/go-tail v0.0.0-20180509224916-973c153b0431 h1:i1egM7gz4bPxLCIwBJOkpk6TqHpjTnL4dE1xdN/4dcs=
 github.com/papertrail/go-tail v0.0.0-20180509224916-973c153b0431/go.mod h1:dMID0RaS2a5rhpOjC4RsAKitU6WGgkFBZnPVffL69b8=
-github.com/pganalyze/pg_query_go/v5 v5.1.1-0.20240806162031-502d8d478511 h1:HWM/uR3ajSgm7RHcdqZdid+kuEgO2cLkpNE4ScXBPIA=
-github.com/pganalyze/pg_query_go/v5 v5.1.1-0.20240806162031-502d8d478511/go.mod h1:FsglvxidZsVN+Ltw3Ai6nTgPVcK2BPukH3jCDEqc1Ug=
+github.com/pganalyze/pg_query_go/v5 v5.1.1-0.20240829182208-c3a818d346a9 h1:9aymnVwCh0j7i+Myb1x3g+Xm1JtAk4TrTAyqBwCWhN8=
+github.com/pganalyze/pg_query_go/v5 v5.1.1-0.20240829182208-c3a818d346a9/go.mod h1:FsglvxidZsVN+Ltw3Ai6nTgPVcK2BPukH3jCDEqc1Ug=
 github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c h1:+mdjkGKdHQG3305AYmdv1U2eRNDiU2ErMBj1gwrq8eQ=
 github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c/go.mod h1:7rwL4CYBLnjLxUqIJNnCWiEdr3bn6IUYi15bNlnbCCU=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
