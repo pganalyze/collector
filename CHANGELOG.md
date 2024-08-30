@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.58.0      2024-08-29
+## 0.58.0      2024-08-30
 
 * Log Insights: Revamp log parsing mechanism
   - The new mechanism is more performant and allows for arbitrary
@@ -19,6 +19,7 @@
   - Support log parsing for Azure Database for Cosmos DB Postgres
 * Crunchy Bridge:
   - Fix error handling for error responses from Crunchy Bridge API
+* Fix hang on exit with the `--discover-log-location` flag
 
 
 ## 0.57.1      2024-07-17
