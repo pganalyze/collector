@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.58.0      2024-08-30
+
+* Log Insights: Revamp log parsing mechanism
+  - The new mechanism is more performant and allows for arbitrary
+    log_line_prefix settings. The new parsing mechanism is the default, but you
+    can set `db_log_line_prefix = legacy` in the config file or
+    `LOG_LINE_PREFIX=legacy` in the environment to revert to the old mechanism.
+* Log Insights: Redact parameters from utility statements by default
+  - Statements like `CREATE USER u WITH PASSWORD 'passw0rd'` can leak sensitive
+    data into Log Insights, so they are now redacted by default. Note that these
+    statements are usually very fast, and are normally only logged in edge cases,
+    like a lock wait problem relating to the statement.
+* RDS: Update AWS SDK to v1.55.3
+  - This allows using EKS pod identity; documentation coming soon
+* Azure:
+  - Ensure correct log handling for all Flexible Server events (don't accidentally treat them as Single Server events)
+  - Support log parsing for Azure Database for Cosmos DB Postgres
+* Crunchy Bridge:
+  - Fix error handling for error responses from Crunchy Bridge API
+* Fix hang on exit with the `--discover-log-location` flag
+
+
 ## 0.57.1      2024-07-17
 
 * Log Insights:
