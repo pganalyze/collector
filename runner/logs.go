@@ -388,7 +388,7 @@ func TestLogsForAllServers(ctx context.Context, servers []*state.Server, globalC
 		} else if server.Config.SystemType == "heroku" && logLinePrefix == logs.LogPrefixHerokuHobbyTier {
 			prefixedLogger.PrintWarning("WARNING - Detected log_line_prefix indicates Heroku Postgres Hobby tier, which has no log output support")
 			continue
-		} else if !logs.IsSupportedPrefix(logLinePrefix) {
+		} else if server.Config.LogLinePrefix == "legacy" && !logs.IsSupportedPrefix(logLinePrefix) {
 			prefixedLogger.PrintError("ERROR - Unsupported log_line_prefix setting: '%s'", logLinePrefix)
 			prefixedLogger.PrintInfo("HINT - You can find a list of supported settings in the pganalyze documentation: https://pganalyze.com/docs/log-insights/setup/self-managed/troubleshooting")
 			hasFailedServers = true
