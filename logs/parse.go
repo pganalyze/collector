@@ -15,7 +15,7 @@ import (
 
 type PrefixEscape struct {
 	Regexp     string
-	ApplyValue func(value string, logLine *state.LogLine, tz *time.Location)
+	ApplyValue func(value string, logLine *state.LogLine, parser *LogParser)
 	// Indicates a value may not always be present for this escape (e.g., when logging from a non-backend process)
 	Optional bool
 }
@@ -27,7 +27,7 @@ var EscapeMatchers = map[rune]PrefixEscape{
 	// Application name
 	'a': {
 		Regexp: `.+?`,
-		ApplyValue: func(value string, logLine *state.LogLine, tz *time.Location) {
+		ApplyValue: func(value string, logLine *state.LogLine, parser *LogParser) {
 			if value == "[unknown]" {
 				return
 			}
@@ -38,7 +38,7 @@ var EscapeMatchers = map[rune]PrefixEscape{
 	// User name
 	'u': {
 		Regexp: `.+?`,
-		ApplyValue: func(value string, logLine *state.LogLine, tz *time.Location) {
+		ApplyValue: func(value string, logLine *state.LogLine, parser *LogParser) {
 			if value == "[unknown]" {
 				return
 			}
@@ -49,7 +49,7 @@ var EscapeMatchers = map[rune]PrefixEscape{
 	// Database name
 	'd': {
 		Regexp: `.+?`,
-		ApplyValue: func(value string, logLine *state.LogLine, tz *time.Location) {
+		ApplyValue: func(value string, logLine *state.LogLine, parser *LogParser) {
 			if value == "[unknown]" {
 				return
 			}
@@ -74,7 +74,7 @@ var EscapeMatchers = map[rune]PrefixEscape{
 	// 	Process ID
 	'p': {
 		Regexp: `\d+`,
-		ApplyValue: func(value string, logLine *state.LogLine, tz *time.Location) {
+		ApplyValue: func(value string, logLine *state.LogLine, parser *LogParser) {
 			intVal, _ := strconv.ParseInt(value, 10, 32)
 			logLine.BackendPid = int32(intVal)
 		},
@@ -87,21 +87,21 @@ var EscapeMatchers = map[rune]PrefixEscape{
 	// Time stamp without milliseconds
 	't': {
 		Regexp: `\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} (?:[A-Z]{1,4}|[+-]\d+)`,
-		ApplyValue: func(value string, logLine *state.LogLine, tz *time.Location) {
-			logLine.OccurredAt = GetOccurredAt(value, tz, false)
+		ApplyValue: func(value string, logLine *state.LogLine, parser *LogParser) {
+			logLine.OccurredAt = parser.GetOccurredAt(value)
 		},
 	},
 	// Time stamp with milliseconds
 	'm': {
 		Regexp: `\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3} (?:[A-Z]{1,4}|[+-]\d+)`,
-		ApplyValue: func(value string, logLine *state.LogLine, tz *time.Location) {
-			logLine.OccurredAt = GetOccurredAt(value, tz, false)
+		ApplyValue: func(value string, logLine *state.LogLine, parser *LogParser) {
+			logLine.OccurredAt = parser.GetOccurredAt(value)
 		},
 	},
 	// Time stamp with milliseconds (as a Unix epoch)
 	'n': {
 		Regexp: `\d+\.\d+`,
-		ApplyValue: func(value string, logLine *state.LogLine, tz *time.Location) {
+		ApplyValue: func(value string, logLine *state.LogLine, parser *LogParser) {
 			tsparts := strings.SplitN(value, ".", 2)
 			seconds, _ := strconv.ParseInt(tsparts[0], 10, 64)
 			millis, _ := strconv.ParseInt(tsparts[1], 10, 64)
@@ -125,7 +125,7 @@ var EscapeMatchers = map[rune]PrefixEscape{
 	// Number of the log line for each session or process, starting at 1
 	'l': {
 		Regexp: `\d+`,
-		ApplyValue: func(value string, logLine *state.LogLine, tz *time.Location) {
+		ApplyValue: func(value string, logLine *state.LogLine, parser *LogParser) {
 			intVal, _ := strconv.ParseInt(value, 10, 32)
 			logLine.LogLineNumber = int32(intVal)
 		},
@@ -301,7 +301,7 @@ func (lp *LogParser) GetOccurredAt(timePart string) time.Time {
 	return ts
 }
 
-func parseSyslogLine(line string, tz *time.Location) (logLine state.LogLine, ok bool) {
+func (lp *LogParser) parseSyslogLine(line string) (logLine state.LogLine, ok bool) {
 	parts := RsyslogRegexp.FindStringSubmatch(line)
 	if len(parts) == 0 {
 		return
@@ -334,7 +334,7 @@ func parseSyslogLine(line string, tz *time.Location) (logLine state.LogLine, ok 
 		}
 	}
 
-	occurredAt := GetOccurredAt(timePart, tz, true)
+	occurredAt := lp.GetOccurredAt(timePart)
 	if occurredAt.IsZero() {
 		return
 	}
@@ -358,7 +358,7 @@ func parseSyslogLine(line string, tz *time.Location) (logLine state.LogLine, ok 
 
 func (lp *LogParser) ParseLine(line string) (logLine state.LogLine, ok bool) {
 	if lp.isSyslog {
-		return parseSyslogLine(line, lp.tz)
+		return lp.parseSyslogLine(line)
 	}
 
 	if lp.prefix == "" {
@@ -376,7 +376,7 @@ func (lp *LogParser) ParseLine(line string) (logLine state.LogLine, ok bool) {
 	for i, elem := range lp.prefixElements {
 		if elem.ApplyValue != nil {
 			value := lineValues[i+1]
-			elem.ApplyValue(value, &logLine, lp.tz)
+			elem.ApplyValue(value, &logLine, lp)
 		}
 	}
 

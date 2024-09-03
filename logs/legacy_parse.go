@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"io"
 	"regexp"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -102,69 +100,6 @@ var RsyslogTimeRegexp = `(\w+\s+\d+ \d{2}:\d{2}:\d{2})`
 var RsyslogHostnameRegxp = `(\S+)`
 var RsyslogProcessNameRegexp = `(\w+)`
 var RsyslogRegexp = regexp.MustCompile(`^` + RsyslogTimeRegexp + ` ` + RsyslogHostnameRegxp + ` ` + RsyslogProcessNameRegexp + `\[` + PidRegexp + `\]: ` + SyslogSequenceAndSplitRegexp + ` ` + RsyslogLevelAndContentRegexp)
-
-func GetOccurredAt(timePart string, tz *time.Location, rsyslog bool) time.Time {
-	if tz != nil && !rsyslog {
-		lastSpaceIdx := strings.LastIndex(timePart, " ")
-		if lastSpaceIdx == -1 {
-			return time.Time{}
-		}
-		timePartNoTz := timePart[0:lastSpaceIdx]
-		result, err := time.ParseInLocation("2006-01-02 15:04:05", timePartNoTz, tz)
-		if err != nil {
-			return time.Time{}
-		}
-
-		return result
-	}
-
-	// Assume Postgres time format unless overriden by the prefix (e.g. syslog)
-	var timeFormat, timeFormatAlt string
-	if rsyslog {
-		timeFormat = "2006 Jan  2 15:04:05"
-		timeFormatAlt = ""
-	} else {
-		timeFormat = "2006-01-02 15:04:05 -0700"
-		timeFormatAlt = "2006-01-02 15:04:05 MST"
-	}
-
-	ts, err := time.Parse(timeFormat, timePart)
-	if err != nil {
-		if timeFormatAlt != "" {
-			// Ensure we have the correct format remembered for ParseInLocation call that may happen later
-			timeFormat = timeFormatAlt
-			ts, err = time.Parse(timeFormat, timePart)
-		}
-		if err != nil {
-			return time.Time{}
-		}
-	}
-
-	// Handle non-UTC timezones in systems that have log_timezone set to a different
-	// timezone value than their system timezone. This is necessary because Go otherwise
-	// only reads the timezone name but does not set the timezone offset, see
-	// https://pkg.go.dev/time#Parse
-	zone, offset := ts.Zone()
-	if offset == 0 && zone != "UTC" && zone != "" {
-		var zoneLocation *time.Location
-		zoneNum, err := strconv.Atoi(zone)
-		if err == nil {
-			zoneLocation = time.FixedZone(zone, zoneNum*3600)
-		} else {
-			zoneLocation, err = time.LoadLocation(zone)
-			if err != nil {
-				// We don't know which timezone this is (and a timezone name is present), so we can't process this log line
-				return time.Time{}
-			}
-		}
-		ts, err = time.ParseInLocation(timeFormat, timePart, zoneLocation)
-		if err != nil {
-			// Technically this should not occur (as we should have already failed previously in time.Parse)
-			return time.Time{}
-		}
-	}
-	return ts
-}
 
 type LineReader interface {
 	ReadString(delim byte) (string, error)
