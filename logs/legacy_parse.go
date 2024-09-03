@@ -104,15 +104,6 @@ var RsyslogHostnameRegxp = `(\S+)`
 var RsyslogProcessNameRegexp = `(\w+)`
 var RsyslogRegexp = regexp.MustCompile(`^` + RsyslogTimeRegexp + ` ` + RsyslogHostnameRegxp + ` ` + RsyslogProcessNameRegexp + `\[` + PidRegexp + `\]: ` + SyslogSequenceAndSplitRegexp + ` ` + RsyslogLevelAndContentRegexp)
 
-func IsSupportedPrefix(prefix string) bool {
-	for _, supportedPrefix := range SupportedPrefixes {
-		if supportedPrefix == prefix {
-			return true
-		}
-	}
-	return false
-}
-
 func ParseLogLineWithPrefix(prefix string, line string, tz *time.Location) (logLine state.LogLine, ok bool) {
 	var timePart, userPart, dbPart, appPart, pidPart, logLineNumberPart, levelPart, contentPart string
 

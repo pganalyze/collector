@@ -628,7 +628,7 @@ func TestLogParser(t *testing.T) {
 		// ignored by the parser in that case. We use an empty string to indicate
 		// that this is a syslog test case.
 		isSyslog := pair.prefixIn == ""
-		parser := logs.NewLogParser(pair.prefixIn, pair.lineInTz, isSyslog, false)
+		parser := logs.NewLogParser(pair.prefixIn, pair.lineInTz, isSyslog)
 		l, lOk := parser.ParseLine(pair.lineIn)
 
 		cfg := pretty.CompareConfig

@@ -155,15 +155,13 @@ type LogParser struct {
 	tz       *time.Location
 	isSyslog bool
 
-	useLegacyFallback bool
-
 	lineRegexp     *regexp.Regexp
 	prefixElements []PrefixEscape
 
 	lineRegexpWithoutLogLevel *regexp.Regexp
 }
 
-func NewLogParser(prefix string, tz *time.Location, isSyslog bool, useLegacyFallback bool) *LogParser {
+func NewLogParser(prefix string, tz *time.Location, isSyslog bool) *LogParser {
 	prefixRegexp, prefixElements := parsePrefix(prefix)
 	lineRegexp := regexp.MustCompile("(?ms)^" + prefixRegexp + `(\w+):\s+(.*\n?)$`)
 	lineRegexpWithoutLogLevel := regexp.MustCompile("(?ms)^" + prefixRegexp + `(.*\n?)$`)
@@ -171,8 +169,6 @@ func NewLogParser(prefix string, tz *time.Location, isSyslog bool, useLegacyFall
 		prefix:   prefix,
 		tz:       tz,
 		isSyslog: isSyslog,
-
-		useLegacyFallback: useLegacyFallback,
 
 		lineRegexp:     lineRegexp,
 		prefixElements: prefixElements,
@@ -205,7 +201,6 @@ func SyncLogParser(server *state.Server, settings []state.PostgresSetting) {
 
 	tz, prefix := getLogConfigFromSettings(settings)
 	isSyslog := server.Config.LogSyslogServer != ""
-	useLegacyFallback := server.Config.LogLinePrefix == "legacy"
 	parserInSync := server.LogParser != nil && server.LogParser.Matches(prefix, tz, isSyslog)
 	server.LogParseMutex.RUnlock()
 
@@ -216,7 +211,7 @@ func SyncLogParser(server *state.Server, settings []state.PostgresSetting) {
 	server.LogParseMutex.Lock()
 	defer server.LogParseMutex.Unlock()
 
-	server.LogParser = NewLogParser(prefix, tz, isSyslog, useLegacyFallback)
+	server.LogParser = NewLogParser(prefix, tz, isSyslog)
 }
 
 func (lp *LogParser) ValidatePrefix() error {
@@ -362,9 +357,6 @@ func parseSyslogLine(line string, tz *time.Location) (logLine state.LogLine, ok 
 }
 
 func (lp *LogParser) ParseLine(line string) (logLine state.LogLine, ok bool) {
-	if lp.useLegacyFallback {
-		return ParseLogLineWithPrefix("", line, lp.tz)
-	}
 	if lp.isSyslog {
 		return parseSyslogLine(line, lp.tz)
 	}
