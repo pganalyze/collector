@@ -175,7 +175,6 @@ type ServerConfig struct {
 	// Configure the collector's log parsing mechanism. Can be either 'legacy' (to
 	// use the old mechanism), or 'auto' (a new mechanism that can support an
 	// arbitrary log_line_prefix).
-	// TODO: analyze and mention (hopefully beneficial) performance impact
 	LogLinePrefix string `init:"db_log_line_prefix"`
 
 	// Specifies a table pattern to ignore - no statistics will be collected for
