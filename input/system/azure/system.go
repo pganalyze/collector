@@ -129,7 +129,7 @@ func GetSystemState(ctx context.Context, server *state.Server, logger *util.Logg
 
 	if resourceID == "" {
 		server.SelfTest.MarkCollectionAspectWarning(state.CollectionAspectSystemStats, "unable to find the database server info")
-		server.SelfTest.HintCollectionAspect(state.CollectionAspectSystemStats, "Make sure the Reader permission of the database is granted to the managed identity.")
+		server.SelfTest.HintCollectionAspect(state.CollectionAspectSystemStats, "Make sure the Monitoring Reader permission of the database is granted to the managed identity.")
 		return
 	}
 
