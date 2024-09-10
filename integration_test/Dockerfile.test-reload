@@ -11,7 +11,7 @@ STOPSIGNAL SIGRTMIN+3
 ENTRYPOINT ["/lib/systemd/systemd"]
 CMD ["--log-level=info"]
 
-ENV GOVERSION 1.21.0
+ENV GOVERSION 1.23.1
 ENV CODE_DIR /collector
 ENV PATH $PATH:/usr/local/go/bin
 
