@@ -163,6 +163,7 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 		// This channel is buffered so the function can exit (and mark the wait group as done)
 		// without the caller consuming the channel, e.g. when the context gets canceled
 		testRunSuccess = make(chan bool, 1)
+		runner.SetupWebsocketForAllServers(ctx, servers, globalCollectionOpts, logger)
 		go func() {
 			if globalCollectionOpts.TestExplain {
 				success := true

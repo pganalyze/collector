@@ -217,6 +217,7 @@ func printServerTestSummary(s *state.Server, verbosity SummaryVerbosity) {
 	}
 
 	printAspectStatus(status, state.CollectionAspectApiConnection, "pganalyze connection")
+	printAspectStatus(status, state.CollectionAspectWebSocket, "pganalyze WebSocket")
 	printAspectStatus(status, state.CollectionAspectTelemetry, "Collector telemetry")
 
 	if s.PGAnalyzeURL != "" {
