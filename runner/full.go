@@ -89,7 +89,7 @@ func processServer(ctx context.Context, server *state.Server, globalCollectionOp
 	var newState state.PersistedState
 	var collectionStatus state.CollectionStatus
 	var err error
-	newGrant.Config.Store(&pganalyze_collector.ServerMessage_Config{Features: &pganalyze_collector.ServerMessage_Features{}})
+	newGrant.Config = pganalyze_collector.ServerMessage_Config{Features: &pganalyze_collector.ServerMessage_Features{}}
 
 	if server.Pause.Load().Pause {
 		logger.PrintWarning("Snapshot processing disabled by pganalyze server: %s", server.Pause.Load().Reason)
@@ -102,22 +102,22 @@ func processServer(ctx context.Context, server *state.Server, globalCollectionOp
 	}
 
 	if server.WebSocket.Load() != nil {
-		newGrant = server.Grant
+		newGrant = *server.Grant.Load()
 	} else if !globalCollectionOpts.ForceEmptyGrant {
 		newGrant, err = grant.GetDefaultGrant(ctx, server, globalCollectionOpts, logger)
 		if err != nil {
-			if server.Grant.Valid {
+			if server.Grant.Load().Valid {
 				logger.PrintVerbose("Could not acquire snapshot grant, reusing previous grant: %s", err)
 			} else {
 				return newState, newGrant, collectionStatus, err
 			}
 		} else {
-			server.Grant = newGrant
+			server.Grant.Store(&newGrant)
 		}
 	}
 
 	var sentryClient *raven.Client
-	config := server.Grant.Config.Load()
+	config := server.Grant.Load().Config
 	if config.SentryDsn != "" {
 		sentryClient, err = raven.NewWithTags(config.SentryDsn, map[string]string{"server_id": config.ServerId})
 		if err != nil {
@@ -226,7 +226,7 @@ func CollectAllServers(ctx context.Context, servers []*state.Server, globalColle
 					prefixedLogger.PrintError("Could not process server: %s", err)
 
 					if grant.Valid && !globalCollectionOpts.TestRun && globalCollectionOpts.SubmitCollectedData {
-						server.Grant = grant
+						server.Grant.Store(&grant)
 						err = output.SendFailedFull(ctx, server, globalCollectionOpts, prefixedLogger)
 						if err != nil {
 							prefixedLogger.PrintWarning("Could not send error information to remote server: %s", err)
@@ -238,7 +238,7 @@ func CollectAllServers(ctx context.Context, servers []*state.Server, globalColle
 					}
 				}
 			} else {
-				server.Grant = grant
+				server.Grant.Store(&grant)
 				server.PrevState = newState
 				server.StateMutex.Unlock()
 				server.CollectionStatusMutex.Lock()

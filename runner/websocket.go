@@ -114,7 +114,9 @@ func connect(ctx context.Context, server *state.Server, globalCollectionOpts sta
 			if err != nil {
 				logger.PrintWarning("Error parsing ServerMessage: %s", err)
 			} else if message.GetConfig() != nil {
-				server.Grant.Config.Store(message.GetConfig())
+				grant := *server.Grant.Load()
+				grant.Config = *message.GetConfig()
+				server.Grant.Store(&grant)
 			} else if message.GetPause() != nil {
 				server.Pause.Store(message.GetPause())
 			} else if message.GetExplainRun() != nil {

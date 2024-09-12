@@ -97,7 +97,8 @@ func setupLogDownloadForAllServers(ctx context.Context, wg *sync.WaitGroup, glob
 				}
 
 				for _, server := range servers {
-					if server.Config.DisableLogs || (server.Grant.Valid && !server.Grant.Config.Load().EnableLogs) {
+					grant := server.Grant.Load()
+					if server.Config.DisableLogs || (grant.Valid && !grant.Config.EnableLogs) {
 						continue
 					}
 

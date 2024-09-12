@@ -81,7 +81,7 @@ func CollectAllSchemas(ctx context.Context, server *state.Server, collectionOpts
 		ts.DatabaseOidsWithLocalCatalog = append(ts.DatabaseOidsWithLocalCatalog, databaseOid)
 		server.SelfTest.MarkDbCollectionAspectOk(dbName, state.CollectionAspectSchema)
 	}
-	schemaTableLimit := int(server.Grant.Config.Load().SchemaTableLimit)
+	schemaTableLimit := int(server.Grant.Load().Config.SchemaTableLimit)
 	if schemaTableLimit == 0 {
 		schemaTableLimit = defaultSchemaTableLimit
 	}

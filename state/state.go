@@ -217,10 +217,10 @@ type CollectionOpts struct {
 
 type Grant struct {
 	Valid    bool
-	Config   atomic.Pointer[pganalyze_collector.ServerMessage_Config] `json:"config"`
-	S3URL    string                                                   `json:"s3_url"`
-	S3Fields map[string]string                                        `json:"s3_fields"`
-	LocalDir string                                                   `json:"local_dir"`
+	Config   pganalyze_collector.ServerMessage_Config `json:"config"`
+	S3URL    string                                   `json:"s3_url"`
+	S3Fields map[string]string                        `json:"s3_fields"`
+	LocalDir string                                   `json:"local_dir"`
 }
 
 func (g Grant) S3() GrantS3 {
@@ -242,7 +242,7 @@ type CollectionStatus struct {
 type Server struct {
 	Config           config.ServerConfig
 	RequestedSslMode string
-	Grant            Grant
+	Grant            atomic.Pointer[Grant]
 	PGAnalyzeURL     string
 
 	PrevState  PersistedState
@@ -291,8 +291,8 @@ func MakeServer(config config.ServerConfig, testRun bool) *Server {
 		SnapshotStream:        make(chan []byte),
 		LogParseMutex:         &sync.RWMutex{},
 	}
-	server.Pause.Store(&pganalyze_collector.ServerMessage_Pause{Pause: false})
-	server.Grant.Config.Store(&pganalyze_collector.ServerMessage_Config{Features: &pganalyze_collector.ServerMessage_Features{}})
+	server.Grant.Store(&Grant{Config: pganalyze_collector.ServerMessage_Config{Features: &pganalyze_collector.ServerMessage_Features{}}})
+	server.Pause.Store(&pganalyze_collector.ServerMessage_Pause{})
 	if testRun {
 		server.SelfTest = MakeSelfTest()
 	}
