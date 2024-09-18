@@ -75,6 +75,11 @@ func GetSystemState(ctx context.Context, server *state.Server, logger *util.Logg
 						HighAvailabilityState:   util.StringCustomTypePtrToString(v.Properties.HighAvailability.State),
 						ReplicationRole:         util.StringCustomTypePtrToString(v.Properties.ReplicationRole),
 					}
+					tags := make(map[string]string)
+					for key, value := range v.Tags {
+						tags[key] = util.StringPtrToString(value)
+					}
+					system.Info.ResourceTags = tags
 					resourceID = *v.ID
 					break
 				}
@@ -129,6 +134,11 @@ func GetSystemState(ctx context.Context, server *state.Server, logger *util.Logg
 							NodeServerEdition:        util.StringPtrToString(v.Properties.NodeServerEdition),
 							NodeCount:                util.Int32PtrToInt(v.Properties.NodeCount),
 						}
+						tags := make(map[string]string)
+						for key, value := range v.Tags {
+							tags[key] = util.StringPtrToString(value)
+						}
+						system.Info.ResourceTags = tags
 						resourceID = *v.ID
 						break
 					}
