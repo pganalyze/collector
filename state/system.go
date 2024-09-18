@@ -110,13 +110,17 @@ type SystemInfoCrunchyBridge struct {
 
 // SystemInfoAzure - System information for Azure systems
 type SystemInfoAzure struct {
-	Location       string
-	CreatedAt      time.Time
-	State          string
-	SubscriptionID string
-	ResourceGroup  string
-	ResourceType   string
-	ResourceName   string
+	Location                string
+	CreatedAt               time.Time
+	State                   string
+	SubscriptionID          string
+	ResourceGroup           string
+	ResourceType            string
+	ResourceName            string
+	MaintenanceCustomWindow bool
+	MaintenanceDayOfWeek    int32
+	MaintenanceStartHour    int32
+	MaintenanceStartMinute  int32
 	// Flexible Server
 	AvailabilityZone      string
 	StorageGB             int32

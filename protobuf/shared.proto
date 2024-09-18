@@ -224,6 +224,10 @@ message SystemInformationAzure {
   string sku_name = 20;
   string coordinator_server_edition = 21;
   string node_server_edition = 22;
+  bool maintenance_custom_window = 23;
+  int32 maintenance_day_of_week = 24;
+  int32 maintenance_start_hour = 25;
+  int32 maintenance_start_minute = 26;
 }
 
 message SchedulerStatistic {

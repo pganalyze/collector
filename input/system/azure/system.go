@@ -55,20 +55,25 @@ func GetSystemState(ctx context.Context, server *state.Server, logger *util.Logg
 				resourceName := resourceIDParts[8]
 
 				if config.AzureDbServerName == resourceName {
+					customWindowEnabled := util.StringCustomTypePtrToString(v.Properties.MaintenanceWindow.CustomWindow) == "Enabled"
 					system.Info.Azure = &state.SystemInfoAzure{
-						Location:              util.StringPtrToString(v.Location),
-						CreatedAt:             util.TimePtrToTime(v.SystemData.CreatedAt),
-						State:                 util.StringCustomTypePtrToString(v.Properties.State),
-						SubscriptionID:        config.AzureSubscriptionID,
-						ResourceGroup:         resourceGroup,
-						ResourceType:          resourceType,
-						ResourceName:          resourceName,
-						SKUName:               util.StringPtrToString(v.SKU.Name),
-						AvailabilityZone:      util.StringPtrToString(v.Properties.AvailabilityZone),
-						StorageGB:             util.Int32PtrToInt(v.Properties.Storage.StorageSizeGB),
-						HighAvailabilityMode:  util.StringCustomTypePtrToString(v.Properties.HighAvailability.Mode),
-						HighAvailabilityState: util.StringCustomTypePtrToString(v.Properties.HighAvailability.State),
-						ReplicationRole:       util.StringCustomTypePtrToString(v.Properties.ReplicationRole),
+						Location:                util.StringPtrToString(v.Location),
+						CreatedAt:               util.TimePtrToTime(v.SystemData.CreatedAt),
+						State:                   util.StringCustomTypePtrToString(v.Properties.State),
+						SubscriptionID:          config.AzureSubscriptionID,
+						ResourceGroup:           resourceGroup,
+						ResourceType:            resourceType,
+						ResourceName:            resourceName,
+						MaintenanceCustomWindow: customWindowEnabled,
+						MaintenanceDayOfWeek:    util.Int32PtrToInt(v.Properties.MaintenanceWindow.DayOfWeek),
+						MaintenanceStartHour:    util.Int32PtrToInt(v.Properties.MaintenanceWindow.StartHour),
+						MaintenanceStartMinute:  util.Int32PtrToInt(v.Properties.MaintenanceWindow.StartMinute),
+						SKUName:                 util.StringPtrToString(v.SKU.Name),
+						AvailabilityZone:        util.StringPtrToString(v.Properties.AvailabilityZone),
+						StorageGB:               util.Int32PtrToInt(v.Properties.Storage.StorageSizeGB),
+						HighAvailabilityMode:    util.StringCustomTypePtrToString(v.Properties.HighAvailability.Mode),
+						HighAvailabilityState:   util.StringCustomTypePtrToString(v.Properties.HighAvailability.State),
+						ReplicationRole:         util.StringCustomTypePtrToString(v.Properties.ReplicationRole),
 					}
 					resourceID = *v.ID
 					break
@@ -101,6 +106,7 @@ func GetSystemState(ctx context.Context, server *state.Server, logger *util.Logg
 					resourceName := resourceIDParts[8]
 
 					if config.AzureDbServerName == resourceName {
+						customWindowEnabled := util.StringCustomTypePtrToString(v.Properties.MaintenanceWindow.CustomWindow) == "Enabled"
 						system.Info.Azure = &state.SystemInfoAzure{
 							Location:                 util.StringPtrToString(v.Location),
 							CreatedAt:                util.TimePtrToTime(v.SystemData.CreatedAt),
@@ -109,6 +115,10 @@ func GetSystemState(ctx context.Context, server *state.Server, logger *util.Logg
 							ResourceGroup:            resourceGroup,
 							ResourceType:             resourceType,
 							ResourceName:             resourceName,
+							MaintenanceCustomWindow:  customWindowEnabled,
+							MaintenanceDayOfWeek:     util.Int32PtrToInt(v.Properties.MaintenanceWindow.DayOfWeek),
+							MaintenanceStartHour:     util.Int32PtrToInt(v.Properties.MaintenanceWindow.StartHour),
+							MaintenanceStartMinute:   util.Int32PtrToInt(v.Properties.MaintenanceWindow.StartMinute),
 							CitusVersion:             util.StringPtrToString(v.Properties.CitusVersion),
 							HighAvailabilityEnabled:  util.BoolPtrToBool(v.Properties.EnableHa),
 							CoordinatorStorageMB:     util.Int32PtrToInt(v.Properties.CoordinatorStorageQuotaInMb),
@@ -265,8 +275,6 @@ func GetSystemState(ctx context.Context, server *state.Server, logger *util.Logg
 							}
 						} else if system.Info.Azure.CoordinatorStorageMB != 0 {
 							// Cosmos DB
-							// TODO: check if we need to sum up the node storage MB too
-							// (e.g. system.Info.Azure.NodeStorageMB * system.Info.Azure.NodeCount)
 							totalMB := uint64(system.Info.Azure.CoordinatorStorageMB)
 							system.DiskPartitions = make(state.DiskPartitionMap)
 							system.DiskPartitions["/"] = state.DiskPartition{
