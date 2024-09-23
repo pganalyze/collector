@@ -109,6 +109,7 @@ func connect(ctx context.Context, server *state.Server, globalCollectionOpts sta
 			r, err := zlib.NewReader(bytes.NewReader(compressedData))
 			if err != nil {
 				logger.PrintWarning("Error decompressing ServerMessage: %s", err)
+				cancelConn()
 				return
 			}
 			defer r.Close()
