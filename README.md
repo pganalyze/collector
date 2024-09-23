@@ -120,7 +120,7 @@ Heroku Monitoring
 
 When monitoring a Heroku Postgres database, it is recommended you deploy the collector as its own app inside your Heroku account.
 
-[![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy?template=https://github.com/pganalyze/collector)
+[![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://www.heroku.com/deploy?template=https://github.com/pganalyze/collector)
 
 Follow the instructions in the pganalyze documentation to add your databases to the collector.
 
