@@ -97,7 +97,9 @@ func connect(ctx context.Context, server *state.Server, globalCollectionOpts sta
 		for {
 			_, compressedData, err := conn.ReadMessage()
 			if err != nil {
-				logger.PrintWarning("Error reading from websocket: %s", err)
+				if !websocket.IsCloseError(err, 1005) { // Normal close event
+					logger.PrintWarning("Error reading from websocket: %s", err)
+				}
 				server.SelfTest.MarkCollectionAspectError(state.CollectionAspectWebSocket, "error starting WebSocket: %s", err)
 				cancelConn()
 				return
