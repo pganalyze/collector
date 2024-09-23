@@ -3,19 +3,51 @@ package logs
 import (
 	"errors"
 	"fmt"
+	"io"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
 
+	"github.com/google/uuid"
+
 	"github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
 )
 
+const LogPrefixAmazonRds string = "%t:%r:%u@%d:[%p]:"
+const LogPrefixAzure string = "%t-%c-"
+const LogPrefixCustom1 string = "%m [%p][%v] : [%l-1] %q[app=%a] "
+const LogPrefixCustom2 string = "%t [%p-%l] %q%u@%d "
+const LogPrefixCustom3 string = "%m [%p] %q[user=%u,db=%d,app=%a] "
+const LogPrefixCustom4 string = "%m [%p] %q[user=%u,db=%d,app=%a,host=%h] "
+const LogPrefixCustom5 string = "%t [%p]: [%l-1] user=%u,db=%d - PG-%e "
+const LogPrefixCustom6 string = "%t [%p]: [%l-1] user=%u,db=%d,app=%a,client=%h "
+const LogPrefixCustom7 string = "%t [%p]: [%l-1] [trx_id=%x] user=%u,db=%d "
+const LogPrefixCustom8 string = "[%p]: [%l-1] db=%d,user=%u "
+const LogPrefixCustom9 string = "%m %r %u %a [%c] [%p] "
+const LogPrefixCustom10 string = "%m [%p]: [%l-1] db=%d,user=%u "
+const LogPrefixCustom11 string = "pid=%p,user=%u,db=%d,app=%a,client=%h "
+const LogPrefixCustom12 string = "user=%u,db=%d,app=%a,client=%h "
+const LogPrefixCustom13 string = "%p-%s-%c-%l-%h-%u-%d-%m "
+const LogPrefixCustom14 string = "%m [%p][%b][%v][%x] %q[user=%u,db=%d,app=%a] "
+const LogPrefixCustom15 string = "%m [%p] %q%u@%d "
+const LogPrefixCustom16 string = "%t [%p] %q%u@%d %h "
+const LogPrefixSimple string = "%m [%p] "
+const LogPrefixHeroku1 string = " sql_error_code = %e "
+const LogPrefixHeroku2 string = ` sql_error_code = %e time_ms = "%m" pid="%p" proc_start_time="%s" session_id="%c" vtid="%v" tid="%x" log_line="%l" %qdatabase="%d" connection_source="%r" user="%u" application_name="%a" `
+
+const LogPrefixRecommended = LogPrefixCustom3
+
+// Used only to recognize the Heroku hobby tier log_line_prefix to give a warning (logs are not supported
+// on hobby tier) and avoid errors during prefix check; logs with this prefix are never actually received
+const LogPrefixHerokuHobbyTier string = " database = %d connection_source = %r sql_error_code = %e "
+const LogPrefixEmpty string = ""
+
 type PrefixEscape struct {
 	Regexp     string
-	ApplyValue func(value string, logLine *state.LogLine, tz *time.Location)
+	ApplyValue func(value string, logLine *state.LogLine, parser *LogParser)
 	// Indicates a value may not always be present for this escape (e.g., when logging from a non-backend process)
 	Optional bool
 }
@@ -27,7 +59,7 @@ var EscapeMatchers = map[rune]PrefixEscape{
 	// Application name
 	'a': {
 		Regexp: `.+?`,
-		ApplyValue: func(value string, logLine *state.LogLine, tz *time.Location) {
+		ApplyValue: func(value string, logLine *state.LogLine, parser *LogParser) {
 			if value == "[unknown]" {
 				return
 			}
@@ -38,7 +70,7 @@ var EscapeMatchers = map[rune]PrefixEscape{
 	// User name
 	'u': {
 		Regexp: `.+?`,
-		ApplyValue: func(value string, logLine *state.LogLine, tz *time.Location) {
+		ApplyValue: func(value string, logLine *state.LogLine, parser *LogParser) {
 			if value == "[unknown]" {
 				return
 			}
@@ -49,7 +81,7 @@ var EscapeMatchers = map[rune]PrefixEscape{
 	// Database name
 	'd': {
 		Regexp: `.+?`,
-		ApplyValue: func(value string, logLine *state.LogLine, tz *time.Location) {
+		ApplyValue: func(value string, logLine *state.LogLine, parser *LogParser) {
 			if value == "[unknown]" {
 				return
 			}
@@ -74,7 +106,7 @@ var EscapeMatchers = map[rune]PrefixEscape{
 	// 	Process ID
 	'p': {
 		Regexp: `\d+`,
-		ApplyValue: func(value string, logLine *state.LogLine, tz *time.Location) {
+		ApplyValue: func(value string, logLine *state.LogLine, parser *LogParser) {
 			intVal, _ := strconv.ParseInt(value, 10, 32)
 			logLine.BackendPid = int32(intVal)
 		},
@@ -87,21 +119,21 @@ var EscapeMatchers = map[rune]PrefixEscape{
 	// Time stamp without milliseconds
 	't': {
 		Regexp: `\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} (?:[A-Z]{1,4}|[+-]\d+)`,
-		ApplyValue: func(value string, logLine *state.LogLine, tz *time.Location) {
-			logLine.OccurredAt = GetOccurredAt(value, tz, false)
+		ApplyValue: func(value string, logLine *state.LogLine, parser *LogParser) {
+			logLine.OccurredAt = parser.GetOccurredAt(value)
 		},
 	},
 	// Time stamp with milliseconds
 	'm': {
 		Regexp: `\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3} (?:[A-Z]{1,4}|[+-]\d+)`,
-		ApplyValue: func(value string, logLine *state.LogLine, tz *time.Location) {
-			logLine.OccurredAt = GetOccurredAt(value, tz, false)
+		ApplyValue: func(value string, logLine *state.LogLine, parser *LogParser) {
+			logLine.OccurredAt = parser.GetOccurredAt(value)
 		},
 	},
 	// Time stamp with milliseconds (as a Unix epoch)
 	'n': {
 		Regexp: `\d+\.\d+`,
-		ApplyValue: func(value string, logLine *state.LogLine, tz *time.Location) {
+		ApplyValue: func(value string, logLine *state.LogLine, parser *LogParser) {
 			tsparts := strings.SplitN(value, ".", 2)
 			seconds, _ := strconv.ParseInt(tsparts[0], 10, 64)
 			millis, _ := strconv.ParseInt(tsparts[1], 10, 64)
@@ -125,7 +157,7 @@ var EscapeMatchers = map[rune]PrefixEscape{
 	// Number of the log line for each session or process, starting at 1
 	'l': {
 		Regexp: `\d+`,
-		ApplyValue: func(value string, logLine *state.LogLine, tz *time.Location) {
+		ApplyValue: func(value string, logLine *state.LogLine, parser *LogParser) {
 			intVal, _ := strconv.ParseInt(value, 10, 32)
 			logLine.LogLineNumber = int32(intVal)
 		},
@@ -155,15 +187,13 @@ type LogParser struct {
 	tz       *time.Location
 	isSyslog bool
 
-	useLegacyFallback bool
-
 	lineRegexp     *regexp.Regexp
 	prefixElements []PrefixEscape
 
 	lineRegexpWithoutLogLevel *regexp.Regexp
 }
 
-func NewLogParser(prefix string, tz *time.Location, isSyslog bool, useLegacyFallback bool) *LogParser {
+func NewLogParser(prefix string, tz *time.Location, isSyslog bool) *LogParser {
 	prefixRegexp, prefixElements := parsePrefix(prefix)
 	lineRegexp := regexp.MustCompile("(?ms)^" + prefixRegexp + `(\w+):\s+(.*\n?)$`)
 	lineRegexpWithoutLogLevel := regexp.MustCompile("(?ms)^" + prefixRegexp + `(.*\n?)$`)
@@ -171,8 +201,6 @@ func NewLogParser(prefix string, tz *time.Location, isSyslog bool, useLegacyFall
 		prefix:   prefix,
 		tz:       tz,
 		isSyslog: isSyslog,
-
-		useLegacyFallback: useLegacyFallback,
 
 		lineRegexp:     lineRegexp,
 		prefixElements: prefixElements,
@@ -205,7 +233,6 @@ func SyncLogParser(server *state.Server, settings []state.PostgresSetting) {
 
 	tz, prefix := getLogConfigFromSettings(settings)
 	isSyslog := server.Config.LogSyslogServer != ""
-	useLegacyFallback := server.Config.LogLinePrefix == "legacy"
 	parserInSync := server.LogParser != nil && server.LogParser.Matches(prefix, tz, isSyslog)
 	server.LogParseMutex.RUnlock()
 
@@ -216,7 +243,7 @@ func SyncLogParser(server *state.Server, settings []state.PostgresSetting) {
 	server.LogParseMutex.Lock()
 	defer server.LogParseMutex.Unlock()
 
-	server.LogParser = NewLogParser(prefix, tz, isSyslog, useLegacyFallback)
+	server.LogParser = NewLogParser(prefix, tz, isSyslog)
 }
 
 func (lp *LogParser) ValidatePrefix() error {
@@ -306,7 +333,22 @@ func (lp *LogParser) GetOccurredAt(timePart string) time.Time {
 	return ts
 }
 
-func parseSyslogLine(line string, tz *time.Location) (logLine state.LogLine, ok bool) {
+var UserRegexp = `(\S*)`                              // %u
+var DbRegexp = `(\S*)`                                // %d
+var AppInsideBracketsRegexp = `(\[unknown\]|[^,\]]*)` // %a
+var PidRegexp = `(\d+)`                               // %p
+
+var SyslogSequenceAndSplitRegexp = `(\[[\d-]+\])?`
+var LevelAndContentRegexp = `(\w+):\s+(.*\n?)$`
+var LogPrefixNoTimestampUserDatabaseAppRegexp = regexp.MustCompile(`(?s)^\[user=` + UserRegexp + `,db=` + DbRegexp + `,app=` + AppInsideBracketsRegexp + `\] ` + LevelAndContentRegexp)
+
+var RsyslogLevelAndContentRegexp = `(?:(\w+):\s+)?(.*\n?)$`
+var RsyslogTimeRegexp = `(\w+\s+\d+ \d{2}:\d{2}:\d{2})`
+var RsyslogHostnameRegxp = `(\S+)`
+var RsyslogProcessNameRegexp = `(\w+)`
+var RsyslogRegexp = regexp.MustCompile(`^` + RsyslogTimeRegexp + ` ` + RsyslogHostnameRegxp + ` ` + RsyslogProcessNameRegexp + `\[` + PidRegexp + `\]: ` + SyslogSequenceAndSplitRegexp + ` ` + RsyslogLevelAndContentRegexp)
+
+func (lp *LogParser) parseSyslogLine(line string) (logLine state.LogLine, ok bool) {
 	parts := RsyslogRegexp.FindStringSubmatch(line)
 	if len(parts) == 0 {
 		return
@@ -339,7 +381,7 @@ func parseSyslogLine(line string, tz *time.Location) (logLine state.LogLine, ok 
 		}
 	}
 
-	occurredAt := GetOccurredAt(timePart, tz, true)
+	occurredAt := lp.GetOccurredAt(timePart)
 	if occurredAt.IsZero() {
 		return
 	}
@@ -362,11 +404,8 @@ func parseSyslogLine(line string, tz *time.Location) (logLine state.LogLine, ok 
 }
 
 func (lp *LogParser) ParseLine(line string) (logLine state.LogLine, ok bool) {
-	if lp.useLegacyFallback {
-		return ParseLogLineWithPrefix("", line, lp.tz)
-	}
 	if lp.isSyslog {
-		return parseSyslogLine(line, lp.tz)
+		return lp.parseSyslogLine(line)
 	}
 
 	if lp.prefix == "" {
@@ -384,7 +423,7 @@ func (lp *LogParser) ParseLine(line string) (logLine state.LogLine, ok bool) {
 	for i, elem := range lp.prefixElements {
 		if elem.ApplyValue != nil {
 			value := lineValues[i+1]
-			elem.ApplyValue(value, &logLine, lp.tz)
+			elem.ApplyValue(value, &logLine, lp)
 		}
 	}
 
@@ -463,4 +502,68 @@ func (lp *LogParser) GetPrefixAndContent(line string) (prefix string, content st
 	contentStart := matchIdxs[len(matchIdxs)-2]
 	contentEnd := matchIdxs[len(matchIdxs)-1]
 	return line[0:contentStart], line[contentStart:contentEnd], true
+}
+
+type LineReader interface {
+	ReadString(delim byte) (string, error)
+}
+
+func ParseAndAnalyzeBuffer(logStream LineReader, linesNewerThan time.Time, server *state.Server) ([]state.LogLine, []state.PostgresQuerySample) {
+	var logLines []state.LogLine
+	var currentByteStart int64 = 0
+	parser := server.GetLogParser()
+
+	for {
+		line, err := logStream.ReadString('\n')
+		byteStart := currentByteStart
+		currentByteStart += int64(len(line))
+
+		// This is intentionally after updating currentByteStart, since we consume the
+		// data in the file even if an error is returned
+		if err != nil {
+			if err != io.EOF {
+				fmt.Printf("Log Read ERROR: %s", err)
+			}
+			break
+		}
+
+		logLine, ok := parser.ParseLine(line)
+		if !ok {
+			// Assume that a parsing error in a follow-on line means that we actually
+			// got additional data for the previous line
+			if len(logLines) > 0 && logLine.Content != "" {
+				logLines[len(logLines)-1].Content += logLine.Content
+				logLines[len(logLines)-1].ByteEnd += int64(len(logLine.Content))
+			}
+			continue
+		}
+
+		// Ignore loglines which are outside our time window
+		if logLine.OccurredAt.Before(linesNewerThan) {
+			continue
+		}
+
+		// Ignore loglines that are ignored server-wide (e.g. because they are
+		// log_statement=all/log_duration=on lines). Note this intentionally
+		// runs after multi-line log lines have been stitched together.
+		if server.IgnoreLogLine(logLine.Content) {
+			continue
+		}
+
+		logLine.ByteStart = byteStart
+		logLine.ByteContentStart = byteStart + int64(len(line)-len(logLine.Content))
+		logLine.ByteEnd = byteStart + int64(len(line))
+
+		// Generate unique ID that can be used to reference this line
+		logLine.UUID, err = uuid.NewV7()
+		if err != nil {
+			fmt.Printf("Failed to generate log line UUID: %s", err)
+			continue
+		}
+
+		logLines = append(logLines, logLine)
+	}
+
+	newLogLines, newSamples := AnalyzeLogLines(logLines)
+	return newLogLines, newSamples
 }
