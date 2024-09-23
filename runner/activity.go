@@ -26,7 +26,7 @@ func processActivityForServer(ctx context.Context, server *state.Server, globalC
 	newState := server.ActivityPrevState
 
 	if server.Pause.Load().Pause {
-		logger.PrintWarning("Snapshot processing disabled by pganalyze server: %s", server.Pause.Load().Reason)
+		logger.PrintVerbose("Snapshot processing disabled by pganalyze server: %s", server.Pause.Load().Reason)
 		return newState, false, nil
 	}
 
