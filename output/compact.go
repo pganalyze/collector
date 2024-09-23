@@ -60,17 +60,48 @@ func uploadAndSubmitCompactSnapshot(ctx context.Context, s pganalyze_collector.C
 
 	if server.WebSocket.Load() != nil {
 		server.SnapshotStream <- compressedData.Bytes()
+	} else {
+		s3Location, err := uploadSnapshot(ctx, server.Config.HTTPClientWithRetry, grant, logger, compressedData, snapshotUUID.String())
+		if err != nil {
+			logger.PrintError("Error uploading snapshot: %s", err)
+			return err
+		}
+		err = submitCompactSnapshot(ctx, server, collectionOpts, logger, s3Location, collectedAt, quiet, kind)
+		if err != nil {
+			return err
+		}
+	}
+
+	if !collectionOpts.TestRun && !quiet {
 		logger.PrintVerbose("Submitted compact %s snapshot successfully", kind)
-		return nil
+		if server.CompactLogTime.IsZero() {
+			server.CompactLogTime = time.Now().Truncate(time.Minute)
+			server.CompactLogStats = make(map[string]uint8)
+		} else {
+			server.CompactLogStats[kind] = server.CompactLogStats[kind] + 1
+			if time.Since(server.CompactLogTime) > time.Minute {
+				var keys []string
+				for k := range server.CompactLogStats {
+					keys = append(keys, k)
+				}
+				sort.Strings(keys)
+				details := ""
+				for i, kind := range keys {
+					details += fmt.Sprintf("%d %s", server.CompactLogStats[kind], kind)
+					if i < len(keys)-1 {
+						details += ", "
+					}
+				}
+				if len(details) > 0 {
+					logger.PrintInfo("Submitted compact snapshots successfully: " + details)
+				}
+				server.CompactLogTime = time.Now().Truncate(time.Minute)
+				server.CompactLogStats = make(map[string]uint8)
+			}
+		}
 	}
 
-	s3Location, err := uploadSnapshot(ctx, server.Config.HTTPClientWithRetry, grant, logger, compressedData, snapshotUUID.String())
-	if err != nil {
-		logger.PrintError("Error uploading snapshot: %s", err)
-		return err
-	}
-
-	return submitCompactSnapshot(ctx, server, collectionOpts, logger, s3Location, collectedAt, quiet, kind)
+	return nil
 }
 
 func debugCompactOutputAsJSON(logger *util.Logger, compressedData bytes.Buffer) {
@@ -147,33 +178,6 @@ func submitCompactSnapshot(ctx context.Context, server *state.Server, collection
 
 	if len(msg) > 0 && collectionOpts.TestRun {
 		logger.PrintInfo("  %s", msg)
-	} else if !quiet {
-		logger.PrintVerbose("Submitted compact %s snapshot successfully", kind)
-		if server.CompactLogTime.IsZero() {
-			server.CompactLogTime = time.Now().Truncate(time.Minute)
-			server.CompactLogStats = make(map[string]uint8)
-		} else {
-			server.CompactLogStats[kind] = server.CompactLogStats[kind] + 1
-			if time.Since(server.CompactLogTime) > time.Minute {
-				var keys []string
-				for k := range server.CompactLogStats {
-					keys = append(keys, k)
-				}
-				sort.Strings(keys)
-				details := ""
-				for i, kind := range keys {
-					details += fmt.Sprintf("%d %s", server.CompactLogStats[kind], kind)
-					if i < len(keys)-1 {
-						details += ", "
-					}
-				}
-				if len(details) > 0 {
-					logger.PrintInfo("Submitted compact snapshots successfully: " + details)
-				}
-				server.CompactLogTime = time.Now().Truncate(time.Minute)
-				server.CompactLogStats = make(map[string]uint8)
-			}
-		}
 	}
 
 	return nil
