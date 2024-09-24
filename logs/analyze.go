@@ -11,6 +11,7 @@ import (
 	"github.com/pganalyze/collector/logs/util"
 	"github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
+	pg_query "github.com/pganalyze/pg_query_go/v5"
 )
 
 type match struct {
@@ -2246,6 +2247,9 @@ func AnalyzeBackendLogLines(logLines []state.LogLine) (logLinesOut []state.LogLi
 
 		logLine, statementLine, detailLine, contextLine, hintLine, samples = classifyAndSetDetails(logLine, statementLine, detailLine, contextLine, hintLine, samples)
 
+		markUtilitySecret(&logLine)
+		markUtilitySecret(&statementLine)
+
 		if statementLineIdx != 0 {
 			logLines[statementLineIdx] = statementLine
 		}
@@ -2269,4 +2273,21 @@ func AnalyzeBackendLogLines(logLines []state.LogLine) (logLinesOut []state.LogLi
 	}
 
 	return
+}
+
+func markUtilitySecret(line *state.LogLine) {
+	for _, m := range line.SecretMarkers {
+		if m.Kind == state.StatementTextLogSecret {
+			query := line.Content[m.ByteStart:m.ByteEnd]
+			normalized, err := pg_query.NormalizeUtility(query)
+			if err == nil && query != normalized {
+				line.SecretMarkers = append(line.SecretMarkers, state.LogSecretMarker{
+					ByteStart: m.ByteStart,
+					ByteEnd:   m.ByteEnd,
+					Kind:      state.CredentialLogSecret,
+				})
+				return
+			}
+		}
+	}
 }

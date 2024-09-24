@@ -155,6 +155,34 @@ var tests = []testpair{
 		}},
 		nil,
 	},
+	{
+		[]state.LogLine{{
+			Content:  "duration: 3205.800 ms  execute a2: CREATE ROLE postgres PASSWORD 'xyz'\n",
+			LogLevel: pganalyze_collector.LogLineInformation_LOG,
+		}},
+		[]state.LogLine{{
+			Query:              "CREATE ROLE postgres PASSWORD 'xyz'",
+			LogLevel:           pganalyze_collector.LogLineInformation_LOG,
+			Classification:     pganalyze_collector.LogLineInformation_STATEMENT_DURATION,
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{
+				{
+					ByteStart: 35,
+					ByteEnd:   70,
+					Kind:      state.StatementTextLogSecret,
+				},
+				{
+					ByteStart: 35,
+					ByteEnd:   70,
+					Kind:      state.CredentialLogSecret,
+				},
+			},
+		}},
+		[]state.PostgresQuerySample{{
+			Query:     "CREATE ROLE postgres PASSWORD 'xyz'",
+			RuntimeMs: 3205.8,
+		}},
+	},
 	// Statement log
 	{
 		[]state.LogLine{{

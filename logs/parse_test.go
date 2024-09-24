@@ -10,7 +10,25 @@ import (
 	"github.com/pganalyze/collector/state"
 )
 
-var parse2Tests = []parseTestpair{
+type parseTestpair struct {
+	prefixIn  string
+	lineIn    string
+	lineInTz  *time.Location
+	lineOut   state.LogLine
+	lineOutOk bool
+}
+
+func mustTimeLocation(tzStr string) *time.Location {
+	tz, err := time.LoadLocation(tzStr)
+	if err != nil {
+		panic(err)
+	}
+	return tz
+}
+
+var BSTTimeLocation = mustTimeLocation("Europe/London")
+
+var parseTests = []parseTestpair{
 	// rsyslog format
 	{
 		"",
@@ -623,12 +641,12 @@ var parse2Tests = []parseTestpair{
 }
 
 func TestLogParser(t *testing.T) {
-	for _, pair := range parse2Tests {
+	for _, pair := range parseTests {
 		// Syslog format has a separate, fixed prefix, so the prefix argument is
 		// ignored by the parser in that case. We use an empty string to indicate
 		// that this is a syslog test case.
 		isSyslog := pair.prefixIn == ""
-		parser := logs.NewLogParser(pair.prefixIn, pair.lineInTz, isSyslog, false)
+		parser := logs.NewLogParser(pair.prefixIn, pair.lineInTz, isSyslog)
 		l, lOk := parser.ParseLine(pair.lineIn)
 
 		cfg := pretty.CompareConfig

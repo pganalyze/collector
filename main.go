@@ -226,6 +226,8 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 
 	if globalCollectionOpts.DiscoverLogLocation {
 		selfhosted.DiscoverLogLocation(ctx, servers, globalCollectionOpts, logger)
+		testRunSuccess = make(chan bool, 1)
+		testRunSuccess <- true
 		return
 	}
 

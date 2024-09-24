@@ -65,7 +65,7 @@ func TestReplaceSecrets(t *testing.T) {
 	for _, pair := range replaceTests {
 		reader := bufio.NewReader(strings.NewReader(pair.input))
 		server := state.MakeServer(config.ServerConfig{}, false)
-		server.LogParser = logs.NewLogParser(logs.LogPrefixAmazonRds, nil, false, false)
+		server.LogParser = logs.NewLogParser(logs.LogPrefixAmazonRds, nil, false)
 		logLines, _ := logs.ParseAndAnalyzeBuffer(reader, time.Time{}, server)
 		output := logs.ReplaceSecrets([]byte(pair.input), logLines, state.ParseFilterLogSecret(pair.filterLogSecret))
 

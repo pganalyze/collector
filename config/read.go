@@ -56,13 +56,6 @@ func parseConfigDisableCitusSchemaStats(value string) string {
 	return "all"
 }
 
-func parseConfigLogLinePrefix(value string) string {
-	if value == "legacy" {
-		return value
-	}
-	return "auto"
-}
-
 func getDefaultConfig() *ServerConfig {
 	config := &ServerConfig{
 		APIBaseURL:              DefaultAPIBaseURL,
@@ -307,9 +300,6 @@ func getDefaultConfig() *ServerConfig {
 	}
 	if logOtelK8SLabels := os.Getenv("LOG_OTEL_K8S_LABELS"); logOtelK8SLabels != "" {
 		config.LogOtelK8SLabels = logOtelK8SLabels
-	}
-	if logLinePrefix := os.Getenv("LOG_LINE_PREFIX"); logLinePrefix != "" {
-		config.LogLinePrefix = logLinePrefix
 	}
 	if alwaysCollectSystemData := os.Getenv("PGA_ALWAYS_COLLECT_SYSTEM_DATA"); alwaysCollectSystemData != "" {
 		config.AlwaysCollectSystemData = parseConfigBool(alwaysCollectSystemData)
@@ -719,8 +709,6 @@ func preprocessConfig(config *ServerConfig) (*ServerConfig, error) {
 		config.DisableCitusSchemaStats = parseConfigDisableCitusSchemaStats(config.DisableCitusSchemaStats)
 	}
 
-	config.LogLinePrefix = parseConfigLogLinePrefix(config.LogLinePrefix)
-
 	return config, nil
 }
 
@@ -748,6 +736,11 @@ func Read(logger *util.Logger, filename string) (Config, error) {
 
 		sections := configFile.Sections()
 		for _, section := range sections {
+			sectionName := section.Name()
+			if sectionName == "pganalyze" || sectionName == ini.DefaultSection {
+				// we already handled the pganalyze section above, and we don't use the default section
+				continue
+			}
 			config := &ServerConfig{}
 			*config = *defaultConfig
 
@@ -760,7 +753,20 @@ func Read(logger *util.Logger, filename string) (Config, error) {
 			if err != nil {
 				return conf, err
 			}
-			config.SectionName = section.Name()
+
+			if config.DbURL != "" {
+				_, err := url.Parse(config.DbURL)
+				if err != nil {
+					logger.PrintError("Could not parse db_url in section %s; check URL format and note that any special characters must be percent-encoded", config.SectionName)
+				}
+			}
+
+			if config.GetDbName() == "" {
+				logger.PrintError("No connection info found for section %s; see https://pganalyze.com/docs/collector/settings", sectionName)
+				continue
+			}
+
+			config.SectionName = sectionName
 			config.SystemID, config.SystemType, config.SystemScope, config.SystemIDFallback, config.SystemTypeFallback, config.SystemScopeFallback = identifySystem(*config)
 
 			config.Identifier = ServerIdentifier{
@@ -771,32 +777,19 @@ func Read(logger *util.Logger, filename string) (Config, error) {
 				SystemScope: config.SystemScope,
 			}
 
-			if config.GetDbName() != "" {
-				// Ensure we have no duplicate identifiers within one collector
-				skip := false
-				for _, server := range conf.Servers {
-					if config.Identifier == server.Identifier {
-						skip = true
-					}
-				}
-				if skip {
+			// Ensure we have no duplicate identifiers within one collector
+			for _, server := range conf.Servers {
+				if config.Identifier == server.Identifier {
 					logger.PrintError("Skipping config section %s, detected as duplicate. Note: To monitor multiple databases on the same server, db_name accepts a comma-separated list.", config.SectionName)
-				} else {
-					conf.Servers = append(conf.Servers, *config)
+					continue
 				}
 			}
 
-			if config.DbURL != "" {
-				_, err := url.Parse(config.DbURL)
-				if err != nil {
-					prefixedLogger := logger.WithPrefix(config.SectionName)
-					prefixedLogger.PrintError("Could not parse db_url; check URL format and note that any special characters must be percent-encoded")
-				}
-			}
+			conf.Servers = append(conf.Servers, *config)
 		}
 
 		if len(conf.Servers) == 0 {
-			return conf, fmt.Errorf("Configuration file is empty, please edit %s and reload the collector", filename)
+			return conf, fmt.Errorf("Configuration contains no valid servers, please edit %s and reload the collector", filename)
 		}
 	} else {
 		if util.IsHeroku() {

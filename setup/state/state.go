@@ -8,7 +8,6 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"sort"
 	"strings"
 	"time"
 
@@ -21,29 +20,13 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
-var SupportedLogLinePrefixes []string
-
 func init() {
-	SupportedLogLinePrefixes = make([]string, len(logs.SupportedPrefixes))
-	copy(SupportedLogLinePrefixes, logs.SupportedPrefixes)
-	recommended := SupportedLogLinePrefixes[logs.RecommendedPrefixIdx]
-
-	sort.SliceStable(SupportedLogLinePrefixes, func(i, j int) bool {
-		if SupportedLogLinePrefixes[i] == recommended {
-			return true
-		} else if SupportedLogLinePrefixes[j] == recommended {
-			return false
-		} else {
-			return i < j
-		}
-	})
-
 	RecommendedGUCS = SetupGUCS{
 		LogErrorVerbosity:       null.StringFrom("default"),
 		LogDuration:             null.StringFrom("off"),
 		LogStatement:            null.StringFrom("none"),
 		LogMinDurationStatement: null.IntFrom(1000),
-		LogLinePrefix:           null.StringFrom(SupportedLogLinePrefixes[0]),
+		LogLinePrefix:           null.StringFrom(logs.LogPrefixRecommended),
 
 		AutoExplainLogAnalyze:          null.StringFrom("on"),
 		AutoExplainLogBuffers:          null.StringFrom("on"),
