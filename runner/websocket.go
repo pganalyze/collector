@@ -112,8 +112,8 @@ func connect(ctx context.Context, server *state.Server, globalCollectionOpts sta
 				cancelConn()
 				return
 			}
-			defer r.Close()
 			io.Copy(&data, r)
+			r.Close()
 			message := &pganalyze_collector.ServerMessage{}
 			err = proto.Unmarshal(data.Bytes(), message)
 			if err != nil {
