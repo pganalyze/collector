@@ -2,7 +2,7 @@
   "name": "pganalyze collector",
   "description": "Helper for pganalyze to collect PostgreSQL monitoring data from Heroku apps",
   "repository": "https://github.com/pganalyze/collector",
-  "logo": "http://static-assets.pganalyze.com/logo_square_120px.png",
+  "logo": "https://static-assets.pganalyze.com/pganalyze_logo_bimi.svg",
   "keywords": ["postgresql", "monitoring"],
   "env": {
     "PGA_API_KEY": {
