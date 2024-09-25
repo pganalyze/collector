@@ -186,13 +186,9 @@ func submitSnapshot(ctx context.Context, server *state.Server, collectionOpts st
 		return util.CleanHTTPError(err)
 	}
 
-	msg, serverURL, err := parseSnapshotResponse(resp, collectionOpts)
+	msg, err := parseSnapshotResponse(resp, collectionOpts)
 	if err != nil {
 		return err
-	}
-
-	if serverURL != "" {
-		server.PGAnalyzeURL = serverURL
 	}
 
 	if len(msg) > 0 && collectionOpts.TestRun {

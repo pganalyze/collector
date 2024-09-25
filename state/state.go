@@ -243,7 +243,6 @@ type Server struct {
 	Config           config.ServerConfig
 	RequestedSslMode string
 	Grant            atomic.Pointer[Grant]
-	PGAnalyzeURL     string
 
 	PrevState  PersistedState
 	StateMutex *sync.Mutex
