@@ -38,6 +38,7 @@ func transformCollectorConfig(s snapshot.FullSnapshot, state state.TransientStat
 		AzureAdTenantId:            c.AzureAdTenantId,
 		AzureAdClientId:            c.AzureAdClientId,
 		AzureHasAdCertificate:      c.AzureHasAdCertificate,
+		AzureSubscriptionId:        c.AzureSubscriptionID,
 		GcpCloudsqlInstanceId:      c.GcpCloudsqlInstanceId,
 		GcpAlloydbClusterId:        c.GcpAlloyDBClusterID,
 		GcpAlloydbInstanceId:       c.GcpAlloyDBInstanceID,

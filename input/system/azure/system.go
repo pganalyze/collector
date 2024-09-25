@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/monitor/azquery"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/cosmosforpostgresql/armcosmosforpostgresql"
@@ -18,7 +19,7 @@ func GetSystemState(ctx context.Context, server *state.Server, logger *util.Logg
 	system.Info.Type = state.AzureDatabaseSystem
 	if config.AzureSubscriptionID == "" {
 		server.SelfTest.MarkCollectionAspectWarning(state.CollectionAspectSystemStats, "unable to collect system stats")
-		server.SelfTest.HintCollectionAspect(state.CollectionAspectSystemStats, "Config value azure_subscription_id is required to collect system stats.")
+		server.SelfTest.HintCollectionAspect(state.CollectionAspectSystemStats, "Config value azure_subscription_id / AZURE_SUBSCRIPTION_ID is required to collect system stats.")
 		return
 	}
 
@@ -49,21 +50,22 @@ func GetSystemState(ctx context.Context, server *state.Server, logger *util.Logg
 		}
 		for _, v := range page.Value {
 			if v.ID != nil {
-				resourceIDParts := strings.Split(*v.ID, "/")
-				resourceGroup := resourceIDParts[4]
-				resourceType := resourceIDParts[7]
-				resourceName := resourceIDParts[8]
+				rID, err := arm.ParseResourceID(*v.ID)
+				if err != nil {
+					logger.PrintError("Azure/System: Failed to parse a resource ID: %v\n", err)
+					break
+				}
 
-				if config.AzureDbServerName == resourceName {
+				if config.AzureDbServerName == rID.Name {
 					customWindowEnabled := util.StringCustomTypePtrToString(v.Properties.MaintenanceWindow.CustomWindow) == "Enabled"
 					system.Info.Azure = &state.SystemInfoAzure{
 						Location:                util.StringPtrToString(v.Location),
 						CreatedAt:               util.TimePtrToTime(v.SystemData.CreatedAt),
 						State:                   util.StringCustomTypePtrToString(v.Properties.State),
 						SubscriptionID:          config.AzureSubscriptionID,
-						ResourceGroup:           resourceGroup,
-						ResourceType:            resourceType,
-						ResourceName:            resourceName,
+						ResourceGroup:           rID.ResourceGroupName,
+						ResourceType:            rID.ResourceType.Type,
+						ResourceName:            rID.Name,
 						MaintenanceCustomWindow: customWindowEnabled,
 						MaintenanceDayOfWeek:    util.Int32PtrToInt(v.Properties.MaintenanceWindow.DayOfWeek),
 						MaintenanceStartHour:    util.Int32PtrToInt(v.Properties.MaintenanceWindow.StartHour),
@@ -105,21 +107,22 @@ func GetSystemState(ctx context.Context, server *state.Server, logger *util.Logg
 			}
 			for _, v := range page.Value {
 				if v.ID != nil {
-					resourceIDParts := strings.Split(*v.ID, "/")
-					resourceGroup := resourceIDParts[4]
-					resourceType := resourceIDParts[7]
-					resourceName := resourceIDParts[8]
+					rID, err := arm.ParseResourceID(*v.ID)
+					if err != nil {
+						logger.PrintError("Azure/System: Failed to parse a resource ID: %v\n", err)
+						break
+					}
 
-					if config.AzureDbServerName == resourceName {
+					if config.AzureDbServerName == rID.Name {
 						customWindowEnabled := util.StringCustomTypePtrToString(v.Properties.MaintenanceWindow.CustomWindow) == "Enabled"
 						system.Info.Azure = &state.SystemInfoAzure{
 							Location:                 util.StringPtrToString(v.Location),
 							CreatedAt:                util.TimePtrToTime(v.SystemData.CreatedAt),
 							State:                    util.StringCustomTypePtrToString(v.Properties.State),
 							SubscriptionID:           config.AzureSubscriptionID,
-							ResourceGroup:            resourceGroup,
-							ResourceType:             resourceType,
-							ResourceName:             resourceName,
+							ResourceGroup:            rID.ResourceGroupName,
+							ResourceType:             rID.ResourceType.Type,
+							ResourceName:             rID.Name,
 							MaintenanceCustomWindow:  customWindowEnabled,
 							MaintenanceDayOfWeek:     util.Int32PtrToInt(v.Properties.MaintenanceWindow.DayOfWeek),
 							MaintenanceStartHour:     util.Int32PtrToInt(v.Properties.MaintenanceWindow.StartHour),
@@ -186,114 +189,59 @@ func GetSystemState(ctx context.Context, server *state.Server, logger *util.Logg
 	diffedNetworkStats := &state.DiffedNetworkStats{}
 	diffedDiskStats := &state.DiffedDiskStats{}
 	for _, metric := range metricsRes.Value {
-		if *metric.Name.Value == "cpu_percent" {
-			// Should be only one data as 1 min time span with 1 min interval is selected
-			for _, timeSeriesElement := range metric.TimeSeries {
-				for _, metricValue := range timeSeriesElement.Data {
-					if metricValue.Average != nil {
-						system.CPUStats["all"] = state.CPUStatistic{
-							DiffedOnInput: true,
-							DiffedValues: &state.DiffedSystemCPUStats{
-								UserPercent: *metricValue.Average,
-							},
-						}
-					}
-				}
+		// Should be only one data as 1 min time span with 1 min interval is selected, so getting first metric is good
+		metricValue := getFirstMetricValue(metric)
+		if metricValue == nil {
+			continue
+		}
+		switch *metric.Name.Value {
+		case "cpu_percent":
+			system.CPUStats["all"] = state.CPUStatistic{
+				DiffedOnInput: true,
+				DiffedValues: &state.DiffedSystemCPUStats{
+					UserPercent: *metricValue.Average,
+				},
 			}
-		} else if *metric.Name.Value == "memory_percent" {
+		case "memory_percent":
 			// Currently, we can only retrieve memory percent
 			// Since total memory size is not listed in the server info,
 			// we are unable to pass this value to pganalyze at the moment
-		} else if *metric.Name.Value == "txlogs_storage_used" {
-			for _, timeSeriesElement := range metric.TimeSeries {
-				for _, metricValue := range timeSeriesElement.Data {
-					if metricValue.Average != nil {
-						system.XlogUsedBytes = uint64(*metricValue.Average)
-					}
+		case "txlogs_storage_used":
+			system.XlogUsedBytes = uint64(*metricValue.Average)
+		case "network_bytes_egress":
+			// value is total of 1min
+			diffedNetworkStats.TransmitThroughputBytesPerSecond = uint64(*metricValue.Average / 60)
+		case "network_bytes_ingress":
+			// value is total of 1min
+			diffedNetworkStats.ReceiveThroughputBytesPerSecond = uint64(*metricValue.Average / 60)
+		case "read_iops":
+			diffedDiskStats.ReadOperationsPerSecond = *metricValue.Average
+		case "write_iops":
+			diffedDiskStats.WriteOperationsPerSecond = *metricValue.Average
+		case "disk_queue_depth":
+			diffedDiskStats.AvgQueueSize = int32(*metricValue.Average)
+		case "read_throughput":
+			diffedDiskStats.BytesReadPerSecond = *metricValue.Average
+		case "write_throughput":
+			diffedDiskStats.BytesWrittenPerSecond = *metricValue.Average
+		case "storage_used":
+			if system.Info.Azure.StorageGB != 0 {
+				// Flexible Server
+				totalGB := uint64(system.Info.Azure.StorageGB)
+				system.DiskPartitions = make(state.DiskPartitionMap)
+				system.DiskPartitions["/"] = state.DiskPartition{
+					DiskName:   "default",
+					UsedBytes:  uint64(*metricValue.Average),
+					TotalBytes: totalGB * 1024 * 1024 * 1024,
 				}
-			}
-		} else if *metric.Name.Value == "network_bytes_egress" {
-			for _, timeSeriesElement := range metric.TimeSeries {
-				for _, metricValue := range timeSeriesElement.Data {
-					if metricValue.Average != nil {
-						// value is total of 1min
-						diffedNetworkStats.TransmitThroughputBytesPerSecond = uint64(*metricValue.Average / 60)
-					}
-				}
-			}
-		} else if *metric.Name.Value == "network_bytes_ingress" {
-			for _, timeSeriesElement := range metric.TimeSeries {
-				for _, metricValue := range timeSeriesElement.Data {
-					if metricValue.Average != nil {
-						// value is total of 1min
-						diffedNetworkStats.ReceiveThroughputBytesPerSecond = uint64(*metricValue.Average / 60)
-					}
-				}
-			}
-		} else if *metric.Name.Value == "read_iops" {
-			for _, timeSeriesElement := range metric.TimeSeries {
-				for _, metricValue := range timeSeriesElement.Data {
-					if metricValue.Average != nil {
-						diffedDiskStats.ReadOperationsPerSecond = *metricValue.Average
-					}
-				}
-			}
-		} else if *metric.Name.Value == "write_iops" {
-			for _, timeSeriesElement := range metric.TimeSeries {
-				for _, metricValue := range timeSeriesElement.Data {
-					if metricValue.Average != nil {
-						diffedDiskStats.WriteOperationsPerSecond = *metricValue.Average
-					}
-				}
-			}
-		} else if *metric.Name.Value == "disk_queue_depth" {
-			for _, timeSeriesElement := range metric.TimeSeries {
-				for _, metricValue := range timeSeriesElement.Data {
-					if metricValue.Average != nil {
-						diffedDiskStats.AvgQueueSize = int32(*metricValue.Average)
-					}
-				}
-			}
-		} else if *metric.Name.Value == "read_throughput" {
-			for _, timeSeriesElement := range metric.TimeSeries {
-				for _, metricValue := range timeSeriesElement.Data {
-					if metricValue.Average != nil {
-						diffedDiskStats.BytesReadPerSecond = *metricValue.Average
-					}
-				}
-			}
-		} else if *metric.Name.Value == "write_throughput" {
-			for _, timeSeriesElement := range metric.TimeSeries {
-				for _, metricValue := range timeSeriesElement.Data {
-					if metricValue.Average != nil {
-						diffedDiskStats.BytesWrittenPerSecond = *metricValue.Average
-					}
-				}
-			}
-		} else if *metric.Name.Value == "storage_used" {
-			for _, timeSeriesElement := range metric.TimeSeries {
-				for _, metricValue := range timeSeriesElement.Data {
-					if metricValue.Average != nil {
-						if system.Info.Azure.StorageGB != 0 {
-							// Flexible Server
-							totalGB := uint64(system.Info.Azure.StorageGB)
-							system.DiskPartitions = make(state.DiskPartitionMap)
-							system.DiskPartitions["/"] = state.DiskPartition{
-								DiskName:   "default",
-								UsedBytes:  uint64(*metricValue.Average),
-								TotalBytes: totalGB * 1024 * 1024 * 1024,
-							}
-						} else if system.Info.Azure.CoordinatorStorageMB != 0 {
-							// Cosmos DB
-							totalMB := uint64(system.Info.Azure.CoordinatorStorageMB)
-							system.DiskPartitions = make(state.DiskPartitionMap)
-							system.DiskPartitions["/"] = state.DiskPartition{
-								DiskName:   "default",
-								UsedBytes:  uint64(*metricValue.Average),
-								TotalBytes: totalMB * 1024 * 1024,
-							}
-						}
-					}
+			} else if system.Info.Azure.CoordinatorStorageMB != 0 {
+				// Cosmos DB
+				totalMB := uint64(system.Info.Azure.CoordinatorStorageMB)
+				system.DiskPartitions = make(state.DiskPartitionMap)
+				system.DiskPartitions["/"] = state.DiskPartition{
+					DiskName:   "default",
+					UsedBytes:  uint64(*metricValue.Average),
+					TotalBytes: totalMB * 1024 * 1024,
 				}
 			}
 		}
@@ -316,5 +264,15 @@ func GetSystemState(ctx context.Context, server *state.Server, logger *util.Logg
 
 	server.SelfTest.MarkCollectionAspectOk(state.CollectionAspectSystemStats)
 
+	return
+}
+
+// getFirstMetricValue gets the first data from the time series metric and returns the value
+func getFirstMetricValue(metric *azquery.Metric) (metricValue *azquery.MetricValue) {
+	for _, timeSeriesElement := range metric.TimeSeries {
+		for _, mValue := range timeSeriesElement.Data {
+			metricValue = mValue
+		}
+	}
 	return
 }
