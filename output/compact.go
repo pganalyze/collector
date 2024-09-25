@@ -66,7 +66,7 @@ func uploadAndSubmitCompactSnapshot(ctx context.Context, s pganalyze_collector.C
 			logger.PrintError("Error uploading snapshot: %s", err)
 			return err
 		}
-		err = submitCompactSnapshot(ctx, server, collectionOpts, logger, s3Location, collectedAt, quiet, kind)
+		err = submitCompactSnapshot(ctx, server, collectionOpts, logger, s3Location, collectedAt, kind)
 		if err != nil {
 			return err
 		}
@@ -134,7 +134,7 @@ func debugCompactOutputAsJSON(logger *util.Logger, compressedData bytes.Buffer) 
 	fmt.Printf("%s\n", out.String())
 }
 
-func submitCompactSnapshot(ctx context.Context, server *state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, s3Location string, collectedAt time.Time, quiet bool, kind string) error {
+func submitCompactSnapshot(ctx context.Context, server *state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, s3Location string, collectedAt time.Time, kind string) error {
 	requestURL := server.Config.APIBaseURL + "/v2/snapshots/compact"
 
 	if collectionOpts.TestRun {

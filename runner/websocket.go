@@ -22,10 +22,15 @@ func SetupWebsocketForAllServers(ctx context.Context, servers []*state.Server, g
 		go func(server *state.Server) {
 			logger = logger.WithPrefixAndRememberErrors(server.Config.SectionName)
 			for {
-				if server.WebSocket.Load() == nil {
-					connect(ctx, server, globalCollectionOpts, logger)
+				select {
+				case <-ctx.Done():
+					return
+				default:
+					if server.WebSocket.Load() == nil {
+						connect(ctx, server, globalCollectionOpts, logger)
+					}
+					time.Sleep(3 * 60 * time.Second) // Delay between reconnect attempts
 				}
-				time.Sleep(3 * 60 * time.Second) // Delay between reconnect attempts
 			}
 		}(servers[idx])
 	}
@@ -83,7 +88,7 @@ func connect(ctx context.Context, server *state.Server, globalCollectionOpts sta
 				return
 			case snapshot := <-server.SnapshotStream:
 				logger.PrintVerbose("Uploading snapshot to websocket")
-				err = server.WebSocket.Load().WriteMessage(websocket.BinaryMessage, snapshot)
+				err = conn.WriteMessage(websocket.BinaryMessage, snapshot)
 				if err != nil {
 					logger.PrintError("Error uploading snapshot: %s", err)
 					cancelConn()
@@ -99,8 +104,8 @@ func connect(ctx context.Context, server *state.Server, globalCollectionOpts sta
 			if err != nil {
 				if !websocket.IsCloseError(err, 1005) { // Normal close event
 					logger.PrintWarning("Error reading from websocket: %s", err)
+					server.SelfTest.MarkCollectionAspectError(state.CollectionAspectWebSocket, "error starting WebSocket: %s", err)
 				}
-				server.SelfTest.MarkCollectionAspectError(state.CollectionAspectWebSocket, "error starting WebSocket: %s", err)
 				cancelConn()
 				return
 			}
