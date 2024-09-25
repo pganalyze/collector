@@ -45,8 +45,11 @@ func GetSystemState(ctx context.Context, server *state.Server, logger *util.Logg
 	for pager.More() {
 		page, err := pager.NextPage(ctx)
 		if err != nil {
+			// This likely raises errors with 403 AuthorizationFailed when the managed identity is not assigned to any role / any DB instances
+			server.SelfTest.MarkCollectionAspectError(state.CollectionAspectSystemStats, "error advancing page of Flexible Server list: %v", err)
+			server.SelfTest.HintCollectionAspect(state.CollectionAspectSystemStats, "Make sure the Monitoring Reader permission of the database is granted to the managed identity.")
 			logger.PrintError("Azure/System: Failed to advance page of Flexible Server list: %v\n", err)
-			break
+			return
 		}
 		for _, v := range page.Value {
 			if v.ID != nil {
@@ -151,6 +154,7 @@ func GetSystemState(ctx context.Context, server *state.Server, logger *util.Logg
 	}
 
 	if resourceID == "" {
+		// This is reached when the managed identity is assigned to _some_ databases but not the one that we want to get the info
 		server.SelfTest.MarkCollectionAspectWarning(state.CollectionAspectSystemStats, "unable to find the database server info")
 		server.SelfTest.HintCollectionAspect(state.CollectionAspectSystemStats, "Make sure the Monitoring Reader permission of the database is granted to the managed identity.")
 		return
