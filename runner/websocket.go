@@ -52,7 +52,11 @@ func connect(ctx context.Context, server *state.Server, globalCollectionOpts sta
 			return proxyConfig.ProxyFunc()(req.URL)
 		},
 	}
-	url, _ := url.Parse(server.Config.APIBaseURL + "/v2/snapshots/websocket")
+	url, err := url.Parse(server.Config.APIBaseURL + "/v2/snapshots/websocket")
+	if err != nil {
+		logger.PrintWarning("Error parsing websocket URL: %s", err)
+		return
+	}
 	if url.Scheme == "http" {
 		url.Scheme = "ws"
 	} else {
