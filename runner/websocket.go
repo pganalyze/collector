@@ -5,6 +5,7 @@ import (
 	"compress/zlib"
 	"context"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"time"
@@ -13,6 +14,7 @@ import (
 	"github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
+	"github.com/pkg/errors"
 	"golang.org/x/net/http/httpproxy"
 	"google.golang.org/protobuf/proto"
 )
@@ -102,7 +104,9 @@ func connect(ctx context.Context, server *state.Server, globalCollectionOpts sta
 		for {
 			_, compressedData, err := conn.ReadMessage()
 			if err != nil {
-				if !websocket.IsCloseError(err, 1005) { // Normal close event
+				serverClosed := websocket.IsCloseError(err, websocket.CloseNoStatusReceived) // The server shutdown the websocket
+				shutdown := errors.Is(err, net.ErrClosed)                                    // The collector process is shutting down
+				if !serverClosed && !shutdown {
 					logger.PrintWarning("Error reading from websocket: %s", err)
 					server.SelfTest.MarkCollectionAspectError(state.CollectionAspectWebSocket, "error starting WebSocket: %s", err)
 				}
