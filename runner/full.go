@@ -111,8 +111,6 @@ func processServer(ctx context.Context, server *state.Server, globalCollectionOp
 			} else {
 				return newState, newGrant, collectionStatus, err
 			}
-		} else {
-			server.Grant.Store(&newGrant)
 		}
 	}
 
@@ -226,7 +224,9 @@ func CollectAllServers(ctx context.Context, servers []*state.Server, globalColle
 					prefixedLogger.PrintError("Could not process server: %s", err)
 
 					if grant.Valid && !globalCollectionOpts.TestRun && globalCollectionOpts.SubmitCollectedData {
-						server.Grant.Store(&grant)
+						if server.WebSocket.Load() == nil {
+							server.Grant.Store(&grant)
+						}
 						err = output.SendFailedFull(ctx, server, globalCollectionOpts, prefixedLogger)
 						if err != nil {
 							prefixedLogger.PrintWarning("Could not send error information to remote server: %s", err)
@@ -238,7 +238,9 @@ func CollectAllServers(ctx context.Context, servers []*state.Server, globalColle
 					}
 				}
 			} else {
-				server.Grant.Store(&grant)
+				if server.WebSocket.Load() == nil {
+					server.Grant.Store(&grant)
+				}
 				server.PrevState = newState
 				server.StateMutex.Unlock()
 				server.CollectionStatusMutex.Lock()
