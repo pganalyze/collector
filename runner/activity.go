@@ -48,7 +48,9 @@ func processActivityForServer(ctx context.Context, server *state.Server, globalC
 
 	if server.WebSocket.Load() != nil {
 		newGrant = *server.Grant.Load()
-	} else if !globalCollectionOpts.ForceEmptyGrant {
+	}
+
+	if !newGrant.Valid && !globalCollectionOpts.ForceEmptyGrant {
 		newGrant, err = grant.GetDefaultGrant(ctx, server, globalCollectionOpts, logger)
 		if err != nil {
 			return newState, false, errors.Wrap(err, "could not get default grant for activity snapshot")
