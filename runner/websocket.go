@@ -81,7 +81,6 @@ func connect(ctx context.Context, server *state.Server, globalCollectionOpts sta
 		return
 	}
 	server.WebSocket.Store(conn)
-	server.Pause.Store(&pganalyze_collector.ServerMessage_Pause{Pause: false})
 	// Writer goroutine
 	go func() {
 		for {
@@ -139,7 +138,7 @@ func connect(ctx context.Context, server *state.Server, globalCollectionOpts sta
 				grant.Config = *message.GetConfig()
 				server.Grant.Store(&grant)
 			} else if message.GetPause() != nil {
-				server.Pause.Store(message.GetPause())
+				server.Pause.Store(message.GetPause().Pause)
 			} else if message.GetExplainRun() != nil {
 				logger.PrintVerbose("ExplainRun: %v", message.GetExplainRun()) // TODO
 			}

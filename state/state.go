@@ -260,7 +260,7 @@ type Server struct {
 
 	SnapshotStream chan []byte
 	WebSocket      atomic.Pointer[websocket.Conn]
-	Pause          atomic.Pointer[pganalyze_collector.ServerMessage_Pause]
+	Pause          atomic.Bool
 
 	// The LogParser for this server, updated as necessary whenever relevant
 	// settings (log_line_prefix and log_timezone) change
@@ -291,7 +291,7 @@ func MakeServer(config config.ServerConfig, testRun bool) *Server {
 		LogParseMutex:         &sync.RWMutex{},
 	}
 	server.Grant.Store(&Grant{Config: pganalyze_collector.ServerMessage_Config{Features: &pganalyze_collector.ServerMessage_Features{}}})
-	server.Pause.Store(&pganalyze_collector.ServerMessage_Pause{})
+	server.Pause.Store(false)
 	if testRun {
 		server.SelfTest = MakeSelfTest()
 	}

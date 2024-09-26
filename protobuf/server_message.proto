@@ -35,7 +35,6 @@ message ServerMessage {
 
   message Pause {
     bool pause = 1;
-    string reason = 2;
   }
 
   message ExplainRun {

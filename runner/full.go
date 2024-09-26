@@ -91,8 +91,8 @@ func processServer(ctx context.Context, server *state.Server, globalCollectionOp
 	var err error
 	newGrant.Config = pganalyze_collector.ServerMessage_Config{Features: &pganalyze_collector.ServerMessage_Features{}}
 
-	if server.Pause.Load().Pause {
-		logger.PrintWarning("Snapshot processing disabled by pganalyze server: %s", server.Pause.Load().Reason)
+	if server.Pause.Load() {
+		logger.PrintWarning("Snapshot processing disabled by pganalyze server")
 		return newState, newGrant, collectionStatus, nil
 	}
 
