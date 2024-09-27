@@ -94,6 +94,39 @@ func transformSystem(systemState state.SystemState, diffState state.DiffState) *
 		system.SystemInformation.Type = snapshot.SystemInformation_GOOGLE_CLOUD_SQL_SYSTEM
 	} else if systemState.Info.Type == state.AzureDatabaseSystem {
 		system.SystemInformation.Type = snapshot.SystemInformation_AZURE_DATABASE_SYSTEM
+		if systemState.Info.Azure != nil {
+			createdAt := timestamppb.New(systemState.Info.Azure.CreatedAt)
+			system.SystemInformation.Info = &snapshot.SystemInformation_Azure{
+				Azure: &snapshot.SystemInformationAzure{
+					Location:                 systemState.Info.Azure.Location,
+					CreatedAt:                createdAt,
+					State:                    systemState.Info.Azure.State,
+					SubscriptionId:           systemState.Info.Azure.SubscriptionID,
+					ResourceGroup:            systemState.Info.Azure.ResourceGroup,
+					ResourceType:             systemState.Info.Azure.ResourceType,
+					ResourceName:             systemState.Info.Azure.ResourceName,
+					MaintenanceCustomWindow:  systemState.Info.Azure.MaintenanceCustomWindow,
+					MaintenanceDayOfWeek:     systemState.Info.Azure.MaintenanceDayOfWeek,
+					MaintenanceStartHour:     systemState.Info.Azure.MaintenanceStartHour,
+					MaintenanceStartMinute:   systemState.Info.Azure.MaintenanceStartMinute,
+					AvailabilityZone:         systemState.Info.Azure.AvailabilityZone,
+					StorageGb:                systemState.Info.Azure.StorageGB,
+					HighAvailabilityMode:     systemState.Info.Azure.HighAvailabilityMode,
+					HighAvailabilityState:    systemState.Info.Azure.HighAvailabilityState,
+					ReplicationRole:          systemState.Info.Azure.ReplicationRole,
+					SkuName:                  systemState.Info.Azure.SKUName,
+					CitusVersion:             systemState.Info.Azure.CitusVersion,
+					HighAvailabilityEnabled:  systemState.Info.Azure.HighAvailabilityEnabled,
+					CoordinatorStorageMb:     systemState.Info.Azure.CoordinatorStorageMB,
+					NodeStorageMb:            systemState.Info.Azure.NodeStorageMB,
+					CoordinatorVcores:        systemState.Info.Azure.CoordinatorVCores,
+					NodeVcores:               systemState.Info.Azure.NodeVCores,
+					NodeCount:                systemState.Info.Azure.NodeCount,
+					CoordinatorServerEdition: systemState.Info.Azure.CoordinatorServerEdition,
+					NodeServerEdition:        systemState.Info.Azure.NodeServerEdition,
+				},
+			}
+		}
 	} else if systemState.Info.Type == state.CrunchyBridgeSystem {
 		system.SystemInformation.Type = snapshot.SystemInformation_CRUNCHY_BRIDGE_SYSTEM
 		if systemState.Info.CrunchyBridge != nil {

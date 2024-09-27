@@ -43,6 +43,7 @@ type SystemInfo struct {
 	SelfHosted    *SystemInfoSelfHosted
 	AmazonRds     *SystemInfoAmazonRds
 	CrunchyBridge *SystemInfoCrunchyBridge
+	Azure         *SystemInfoAzure
 	ResourceTags  map[string]string
 
 	BootTime time.Time
@@ -105,6 +106,38 @@ type SystemInfoCrunchyBridge struct {
 	CPUUnits    int32
 	StorageGB   int32
 	MemoryGB    float32
+}
+
+// SystemInfoAzure - System information for Azure systems
+type SystemInfoAzure struct {
+	Location                string
+	CreatedAt               time.Time
+	State                   string
+	SubscriptionID          string
+	ResourceGroup           string
+	ResourceType            string
+	ResourceName            string
+	MaintenanceCustomWindow bool
+	MaintenanceDayOfWeek    int32
+	MaintenanceStartHour    int32
+	MaintenanceStartMinute  int32
+	// Flexible Server
+	AvailabilityZone      string
+	StorageGB             int32
+	HighAvailabilityMode  string
+	HighAvailabilityState string
+	ReplicationRole       string
+	SKUName               string
+	// Cosmos
+	CitusVersion             string
+	HighAvailabilityEnabled  bool
+	CoordinatorStorageMB     int32
+	NodeStorageMB            int32
+	CoordinatorVCores        int32
+	NodeVCores               int32
+	NodeCount                int32
+	CoordinatorServerEdition string
+	NodeServerEdition        string
 }
 
 // Scheduler - Information about the OS scheduler

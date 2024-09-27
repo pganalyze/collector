@@ -29,8 +29,8 @@ require (
 	github.com/shirou/gopsutil v3.21.10+incompatible
 	github.com/smartystreets/assertions v0.0.0-20160707190355-2063fd1cc7c9 // indirect
 	github.com/smartystreets/goconvey v0.0.0-20160704134950-4622128e06c7 // indirect
-	golang.org/x/crypto v0.24.0 // indirect
-	golang.org/x/net v0.26.0
+	golang.org/x/crypto v0.25.0 // indirect
+	golang.org/x/net v0.27.0
 	google.golang.org/api v0.143.0
 	google.golang.org/protobuf v1.33.0
 	gopkg.in/ini.v1 v1.62.0 // indirect
@@ -38,9 +38,12 @@ require (
 )
 
 require (
-	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.11.1
-	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.6.0
+	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.14.0
+	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.7.0
 	github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs v1.0.0
+	github.com/Azure/azure-sdk-for-go/sdk/monitor/azquery v1.1.0
+	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/cosmosforpostgresql/armcosmosforpostgresql v1.1.0
+	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/postgresql/armpostgresqlflexibleservers/v4 v4.0.0-beta.5
 	github.com/fatih/color v1.16.0
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.1
@@ -59,7 +62,7 @@ require (
 	cloud.google.com/go/compute v1.23.0 // indirect
 	cloud.google.com/go/compute/metadata v0.2.3 // indirect
 	cloud.google.com/go/iam v1.1.2 // indirect
-	github.com/Azure/azure-sdk-for-go/sdk/internal v1.8.0 // indirect
+	github.com/Azure/azure-sdk-for-go/sdk/internal v1.10.0 // indirect
 	github.com/Azure/go-amqp v1.0.0 // indirect
 	github.com/AzureAD/microsoft-authentication-library-for-go v1.2.2 // indirect
 	github.com/cenkalti/backoff/v4 v4.2.1 // indirect
@@ -85,8 +88,8 @@ require (
 	go.opentelemetry.io/otel/metric v1.19.0 // indirect
 	golang.org/x/oauth2 v0.12.0 // indirect
 	golang.org/x/sync v0.7.0 // indirect
-	golang.org/x/sys v0.21.0 // indirect
-	golang.org/x/term v0.21.0 // indirect
+	golang.org/x/sys v0.22.0 // indirect
+	golang.org/x/term v0.22.0 // indirect
 	golang.org/x/text v0.16.0 // indirect
 	google.golang.org/appengine v1.6.8 // indirect
 	google.golang.org/genproto v0.0.0-20231002182017-d307bd883b97 // indirect

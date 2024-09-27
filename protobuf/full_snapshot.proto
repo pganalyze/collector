@@ -319,6 +319,7 @@ message CollectorConfig {
   string azure_ad_tenant_id = 57;
   string azure_ad_client_id = 58;
   bool azure_has_ad_certificate = 59;
+  string azure_subscription_id = 60;
 
   string gcp_cloudsql_instance_id = 69;
   string gcp_pubsub_subscription = 70;

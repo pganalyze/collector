@@ -138,6 +138,7 @@ message SystemInformation {
     SystemInformationSelfHosted self_hosted = 2;
     SystemInformationAmazonRDS amazon_rds = 3;
     SystemInformationCrunchyBridge crunchy_bridge = 5;
+    SystemInformationAzure azure = 6;
   }
 
   map<string, string> resource_tags = 4;
@@ -198,6 +199,35 @@ message SystemInformationCrunchyBridge {
   int32 cpu_units = 6;
   int32 storage_gb = 7;
   double memory_gb = 8;
+}
+
+message SystemInformationAzure {
+  string location = 1;
+  google.protobuf.Timestamp created_at = 2;
+  string state = 3;
+  string subscription_id = 4;
+  string resource_group = 5;
+  string resource_type = 6;
+  string resource_name = 7;
+  string availability_zone = 8;
+  int32 storage_gb = 9;
+  string high_availability_mode = 10;
+  string high_availability_state = 11;
+  string replication_role = 12;
+  string citus_version = 13;
+  bool high_availability_enabled = 14;
+  int32 coordinator_storage_mb = 15;
+  int32 node_storage_mb = 16;
+  int32 coordinator_vcores = 17;
+  int32 node_vcores = 18;
+  int32 node_count = 19;
+  string sku_name = 20;
+  string coordinator_server_edition = 21;
+  string node_server_edition = 22;
+  bool maintenance_custom_window = 23;
+  int32 maintenance_day_of_week = 24;
+  int32 maintenance_start_hour = 25;
+  int32 maintenance_start_minute = 26;
 }
 
 message SchedulerStatistic {
