@@ -18,7 +18,7 @@ import (
 
 const otelSpanName = "EXPLAIN Plan"
 
-func urlToSample(server *state.Server, grant state.GrantLogs, sample state.PostgresQuerySample) string {
+func urlToSample(server *state.Server, grant state.Grant, sample state.PostgresQuerySample) string {
 	fp := util.FingerprintQuery(sample.Query, server.Config.FilterQueryText, -1)
 	fpBin := make([]byte, 8)
 	binary.BigEndian.PutUint64(fpBin, fp)
@@ -66,7 +66,7 @@ func startAndEndTime(traceState trace.TraceState, sample state.PostgresQuerySamp
 	return
 }
 
-func ExportQuerySamplesAsTraceSpans(ctx context.Context, server *state.Server, logger *util.Logger, grant state.GrantLogs, samples []state.PostgresQuerySample) {
+func ExportQuerySamplesAsTraceSpans(ctx context.Context, server *state.Server, logger *util.Logger, grant state.Grant, samples []state.PostgresQuerySample) {
 	exportCount := 0
 	for _, sample := range samples {
 		if !sample.HasExplain {

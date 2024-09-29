@@ -8,9 +8,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pganalyze/collector/input/system/tembo"
-	"github.com/pganalyze/collector/selftest"
-
 	"github.com/google/uuid"
 	"github.com/guregu/null"
 	"github.com/pganalyze/collector/config"
@@ -21,6 +18,7 @@ import (
 	"github.com/pganalyze/collector/input/system/google_cloudsql"
 	"github.com/pganalyze/collector/input/system/heroku"
 	"github.com/pganalyze/collector/input/system/selfhosted"
+	"github.com/pganalyze/collector/input/system/tembo"
 	"github.com/pganalyze/collector/logs"
 	"github.com/pganalyze/collector/logs/querysample"
 	"github.com/pganalyze/collector/logs/stream"
@@ -147,7 +145,7 @@ func downloadLogsForServerWithLocksAndCallbacks(ctx context.Context, wg *sync.Wa
 }
 
 func downloadLogsForServer(ctx context.Context, server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.PersistedLogState, bool, error) {
-	grant, err := getLogsGrant(ctx, server, globalCollectionOpts, logger)
+	grant, err := grant.GetDefaultGrant(ctx, server, globalCollectionOpts, logger)
 	if err != nil || !grant.Valid {
 		return server.LogPrevState, false, err
 	}
@@ -259,7 +257,7 @@ func processLogStream(ctx context.Context, server *state.Server, logLines []stat
 		return tooFreshLogLines
 	}
 
-	grant, err := getLogsGrant(ctx, server, globalCollectionOpts, logger)
+	grant, err := grant.GetDefaultGrant(ctx, server, globalCollectionOpts, logger)
 	if err != nil {
 		// Note we intentionally discard log lines here (and in the other
 		// error case below), because the HTTP client already retries to work
@@ -281,28 +279,7 @@ func processLogStream(ctx context.Context, server *state.Server, logLines []stat
 	return tooFreshLogLines
 }
 
-func getLogsGrant(ctx context.Context, server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (logGrant state.GrantLogs, err error) {
-	logGrant, err = grant.GetLogsGrant(ctx, server, globalCollectionOpts, logger)
-	if err != nil {
-		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectLogs, "error getting log grant: %s", err)
-		return state.GrantLogs{Valid: false}, errors.Wrap(err, "could not get log grant")
-	}
-
-	if !logGrant.Valid {
-		if globalCollectionOpts.TestRun {
-			server.SelfTest.MarkCollectionAspectError(state.CollectionAspectLogs, "Log Insights not available on this plan")
-			server.SelfTest.HintCollectionAspect(state.CollectionAspectLogs, "You may need to upgrade, see %s", selftest.URLPrinter.Sprint("https://pganalyze.com/pricing"))
-			logger.PrintError("  Failed - Log Insights feature not available on this pganalyze plan, or log data limit exceeded. You may need to upgrade, see https://pganalyze.com/pricing")
-		} else {
-			logger.PrintVerbose("Skipping log data: Feature not available on this pganalyze plan, or log data limit exceeded")
-		}
-		return state.GrantLogs{Valid: false}, nil
-	}
-
-	return logGrant, nil
-}
-
-func postprocessAndSendLogs(ctx context.Context, server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger, transientLogState state.TransientLogState, grant state.GrantLogs) (err error) {
+func postprocessAndSendLogs(ctx context.Context, server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger, transientLogState state.TransientLogState, grant state.Grant) (err error) {
 	if server.Config.EnableLogExplain && len(transientLogState.QuerySamples) != 0 {
 		transientLogState.QuerySamples = postgres.RunExplain(ctx, server, transientLogState.QuerySamples, globalCollectionOpts, logger)
 	}
