@@ -22,42 +22,32 @@ var replaceTests = []replaceTestpair{
 	{
 		filterLogSecret: "all",
 		input:           "2018-03-11 20:00:02 UTC:1.1.1.1(2):a@b:[3]:LOG:  duration: 1242.570 ms  statement: SELECT 1\n",
-		output:          "2018-03-11 20:00:02 UTC:1.1.1.1(2):a@b:[3]:LOG:  duration: 1242.570 ms  statement: XXXXXXXX\n",
+		output:          "duration: 1242.570 ms  statement: [redacted]\n",
 	},
 	{
 		filterLogSecret: "statement_text",
 		input:           "2018-03-11 20:00:02 UTC:1.1.1.1(2):a@b:[3]:LOG:  duration: 1242.570 ms  statement: SELECT 1\n",
-		output:          "2018-03-11 20:00:02 UTC:1.1.1.1(2):a@b:[3]:LOG:  duration: 1242.570 ms  statement: XXXXXXXX\n",
+		output:          "duration: 1242.570 ms  statement: [redacted]\n",
 	},
 	{
 		filterLogSecret: "statement_parameter",
 		input:           "2018-03-11 20:00:02 UTC:1.1.1.1(2):a@b:[3]:LOG:  duration: 4079.697 ms  execute <unnamed>: \nSELECT * FROM x WHERE y = $1 LIMIT $2\n2018-03-11 20:00:02 UTC:1.1.1.1(2):a@b:[3]:DETAIL:  parameters: $1 = 'long string', $2 = '1'\n",
-		output:          "2018-03-11 20:00:02 UTC:1.1.1.1(2):a@b:[3]:LOG:  duration: 4079.697 ms  execute <unnamed>: \nSELECT * FROM x WHERE y = $1 LIMIT $2\n2018-03-11 20:00:02 UTC:1.1.1.1(2):a@b:[3]:DETAIL:  parameters: $1 = 'XXXXXXXXXXX', $2 = 'X'\n",
+		output:          "duration: 4079.697 ms  execute <unnamed>: \nSELECT * FROM x WHERE y = $1 LIMIT $2\nparameters: $1 = '[redacted]', $2 = '[redacted]'\n",
 	},
 	{
 		filterLogSecret: "none",
 		input:           "2018-03-11 20:00:02 UTC:1.1.1.1(2):a@b:[3]:ERROR:  division by zero\n2018-03-11 20:00:02 UTC:1.1.1.1(2):a@b:[3]:ERROR:  Unknown Data\n",
-		output:          "2018-03-11 20:00:02 UTC:1.1.1.1(2):a@b:[3]:ERROR:  division by zero\n2018-03-11 20:00:02 UTC:1.1.1.1(2):a@b:[3]:ERROR:  Unknown Data\n",
+		output:          "division by zero\nUnknown Data\n",
 	},
 	{
 		filterLogSecret: "unidentified",
 		input:           "2018-03-11 20:00:02 UTC:1.1.1.1(2):a@b:[3]:ERROR:  division by zero\n2018-03-11 20:00:02 UTC:1.1.1.1(2):a@b:[3]:ERROR:  Unknown Data\n",
-		output:          "2018-03-11 20:00:02 UTC:1.1.1.1(2):a@b:[3]:ERROR:  division by zero\n2018-03-11 20:00:02 UTC:1.1.1.1(2):a@b:[3]:ERROR:  XXXXXXXXXXXXX",
-	},
-	{
-		filterLogSecret: "none",
-		input:           "Unknown Data\n",
-		output:          "Unknown Data\n",
-	},
-	{
-		filterLogSecret: "unidentified",
-		input:           "Unknown Data\n",
-		output:          "XXXXXXXXXXXXX",
+		output:          "division by zero\n[redacted]\n",
 	},
 	{
 		filterLogSecret: "statement_text, statement_parameter, unidentified",
 		input:           "2018-03-11 20:00:02 UTC:1.1.1.1(2):a@b:[3]:LOG:  duration: 4079.697 ms  execute <unnamed>: \nSELECT * FROM x WHERE y = $1 LIMIT $2\n2018-03-11 20:00:02 UTC:1.1.1.1(2):a@b:[3]:DETAIL:  parameters: $1 = 'long string', $2 = '1'\n",
-		output:          "2018-03-11 20:00:02 UTC:1.1.1.1(2):a@b:[3]:LOG:  duration: 4079.697 ms  execute <unnamed>: \nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\n2018-03-11 20:00:02 UTC:1.1.1.1(2):a@b:[3]:DETAIL:  parameters: $1 = 'XXXXXXXXXXX', $2 = 'X'\n",
+		output:          "duration: 4079.697 ms  execute <unnamed>: \n[redacted]\n[redacted]\n",
 	},
 }
 
@@ -66,12 +56,16 @@ func TestReplaceSecrets(t *testing.T) {
 		reader := bufio.NewReader(strings.NewReader(pair.input))
 		server := &state.Server{LogParseMutex: &sync.RWMutex{}, LogParser: logs.NewLogParser(logs.LogPrefixAmazonRds, nil, false)}
 		logLines, _ := logs.ParseAndAnalyzeBuffer(reader, time.Time{}, server)
-		output := logs.ReplaceSecrets([]byte(pair.input), logLines, state.ParseFilterLogSecret(pair.filterLogSecret))
+		logs.ReplaceSecrets([]byte(pair.input), logLines, state.ParseFilterLogSecret(pair.filterLogSecret))
 
 		cfg := pretty.CompareConfig
 		cfg.SkipZeroFields = true
 
-		if diff := cfg.Compare(pair.output, string(output)); diff != "" {
+		output := ""
+		for _, logLine := range logLines {
+			output += logLine.Content
+		}
+		if diff := cfg.Compare(pair.output, output); diff != "" {
 			t.Errorf("For filter \"%s\", text:\n%vdiff: (-want +got)\n%s", pair.filterLogSecret, pair.input, diff)
 		}
 	}

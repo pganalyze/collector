@@ -344,10 +344,25 @@ func postprocessAndSendLogs(ctx context.Context, server *state.Server, globalCol
 		transientLogState.LogFiles[idx].FilterLogSecret = state.ParseFilterLogSecret(server.Config.FilterLogSecret)
 	}
 
+	for idx := range transientLogState.LogFiles {
+		logFile := &transientLogState.LogFiles[idx]
+		if len(logFile.FilterLogSecret) > 0 {
+			content, err := ioutil.ReadFile(logFile.TmpFile.Name())
+			if err != nil {
+				return err
+			}
+			logFile.ByteSize = int64(len(content))
+			logs.ReplaceSecrets(content, logFile.LogLines, logFile.FilterLogSecret)
+		}
+	}
+
 	if globalCollectionOpts.DebugLogs {
 		logger.PrintInfo("Would have sent log state:\n")
 		for _, logFile := range transientLogState.LogFiles {
-			content, _ := ioutil.ReadFile(logFile.TmpFile.Name())
+			content, err := ioutil.ReadFile(logFile.TmpFile.Name())
+			if err != nil {
+				return err
+			}
 			logs.PrintDebugInfo(string(content), logFile.LogLines, transientLogState.QuerySamples)
 		}
 		return nil

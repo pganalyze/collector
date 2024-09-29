@@ -2266,8 +2266,7 @@ func AnalyzeBackendLogLines(logLines []state.LogLine) (logLinesOut []state.LogLi
 		logLinesOut = append(logLinesOut, logLine)
 	}
 
-	// Ensure no other part of the system accidentally sends log line contents, as
-	// they should be considered opaque from here on
+	// Remove log line content. Note that ReplaceSecrets adds it back after secrets have been removed.
 	for idx := range logLinesOut {
 		logLinesOut[idx].Content = ""
 	}

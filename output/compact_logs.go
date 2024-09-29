@@ -9,19 +9,13 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
-// UploadAndSendLogs - Filters the log file, then uploads it to the storage and sends the metadata to the API
+// UploadAndSendLogs - Filters the log file, then uploads it
 func UploadAndSendLogs(ctx context.Context, server *state.Server, grant state.GrantLogs, collectionOpts state.CollectionOpts, logger *util.Logger, logState state.TransientLogState) error {
-	if collectionOpts.SubmitCollectedData && grant.EncryptionKey.CiphertextBlob != "" {
-		logState.LogFiles = EncryptAndUploadLogfiles(ctx, server.Config.HTTPClientWithRetry, grant.Logdata, grant.EncryptionKey, logger, logState.LogFiles)
-	}
-
 	ls, r := transform.LogStateToLogSnapshot(server, logState)
 	s := pganalyze_collector.CompactSnapshot{
 		BaseRefs: &r,
 		Data:     &pganalyze_collector.CompactSnapshot_LogSnapshot{LogSnapshot: &ls},
 	}
-
 	snapshotGrant := state.Grant{Valid: true, S3URL: grant.Snapshot.S3URL, S3Fields: grant.Snapshot.S3Fields}
-
 	return uploadAndSubmitCompactSnapshot(ctx, s, snapshotGrant, server, collectionOpts, logger, logState.CollectedAt, false, "logs")
 }

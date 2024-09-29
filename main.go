@@ -459,7 +459,11 @@ func main() {
 		reader := strings.NewReader(content)
 		logReader := logs.NewMaybeHerokuLogReader(reader)
 		logLines, _ := logs.ParseAndAnalyzeBuffer(logReader, time.Time{}, &state.Server{})
-		output := logs.ReplaceSecrets(contentBytes, logLines, state.ParseFilterLogSecret(filterLogSecret))
+		logs.ReplaceSecrets(contentBytes, logLines, state.ParseFilterLogSecret(filterLogSecret))
+		output := ""
+		for _, logLine := range logLines {
+			output += logLine.Content
+		}
 		fmt.Printf("%s", output)
 		return
 	}
