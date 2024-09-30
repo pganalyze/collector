@@ -20,6 +20,9 @@ import (
 )
 
 func SetupWebsocketForAllServers(ctx context.Context, servers []*state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
+	if globalCollectionOpts.ForceEmptyGrant {
+		return
+	}
 	for idx := range servers {
 		go func(server *state.Server) {
 			logger = logger.WithPrefixAndRememberErrors(server.Config.SectionName)
