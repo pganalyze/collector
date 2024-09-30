@@ -22,6 +22,7 @@ import (
 	"github.com/pganalyze/collector/logs/querysample"
 	"github.com/pganalyze/collector/logs/stream"
 	"github.com/pganalyze/collector/output"
+	"github.com/pganalyze/collector/selftest"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
 	"github.com/pkg/errors"
@@ -250,9 +251,14 @@ func processLogStream(ctx context.Context, server *state.Server, logLines []stat
 	}
 
 	if globalCollectionOpts.TestRun {
-		server.SelfTest.MarkCollectionAspectOk(state.CollectionAspectLogs)
-		logTestFunc(server, logFile, logTestSucceeded)
-
+		if !server.Grant.Valid || server.Grant.Config.EnableLogs {
+			server.SelfTest.MarkCollectionAspectOk(state.CollectionAspectLogs)
+			logTestFunc(server, logFile, logTestSucceeded)
+		} else {
+			server.SelfTest.MarkCollectionAspectError(state.CollectionAspectLogs, "Log Insights not available on this plan")
+			server.SelfTest.HintCollectionAspect(state.CollectionAspectLogs, "You may need to upgrade, see %s", selftest.URLPrinter.Sprint("https://pganalyze.com/pricing"))
+			logger.PrintError("  Failed - Log Insights feature not available on this pganalyze plan. You may need to upgrade, see https://pganalyze.com/pricing")
+		}
 		return tooFreshLogLines
 	}
 
