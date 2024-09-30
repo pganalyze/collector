@@ -8,7 +8,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pganalyze/collector/grant"
 	"github.com/pganalyze/collector/input/postgres"
 	"github.com/pganalyze/collector/output"
 	"github.com/pganalyze/collector/selftest"
@@ -42,7 +41,7 @@ func processActivityForServer(ctx context.Context, server *state.Server, globalC
 	}
 
 	if !globalCollectionOpts.ForceEmptyGrant {
-		newGrant, err = grant.GetDefaultGrant(ctx, server, globalCollectionOpts, logger)
+		newGrant, err = output.GetGrant(ctx, server, globalCollectionOpts, logger)
 		if err != nil {
 			return newState, false, errors.Wrap(err, "could not get default grant for activity snapshot")
 		}

@@ -11,7 +11,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/guregu/null"
 	"github.com/pganalyze/collector/config"
-	"github.com/pganalyze/collector/grant"
 	"github.com/pganalyze/collector/input/postgres"
 	"github.com/pganalyze/collector/input/system"
 	"github.com/pganalyze/collector/input/system/azure"
@@ -145,7 +144,7 @@ func downloadLogsForServerWithLocksAndCallbacks(ctx context.Context, wg *sync.Wa
 }
 
 func downloadLogsForServer(ctx context.Context, server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.PersistedLogState, bool, error) {
-	grant, err := grant.GetDefaultGrant(ctx, server, globalCollectionOpts, logger)
+	grant, err := output.GetGrant(ctx, server, globalCollectionOpts, logger)
 	if err != nil || !grant.Valid {
 		return server.LogPrevState, false, err
 	}
@@ -257,7 +256,7 @@ func processLogStream(ctx context.Context, server *state.Server, logLines []stat
 		return tooFreshLogLines
 	}
 
-	grant, err := grant.GetDefaultGrant(ctx, server, globalCollectionOpts, logger)
+	grant, err := output.GetGrant(ctx, server, globalCollectionOpts, logger)
 	if err != nil {
 		// Note we intentionally discard log lines here (and in the other
 		// error case below), because the HTTP client already retries to work

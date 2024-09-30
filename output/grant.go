@@ -1,4 +1,4 @@
-package grant
+package output
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
-func GetDefaultGrant(ctx context.Context, server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.Grant, error) {
+func GetGrant(ctx context.Context, server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.Grant, error) {
 	req, err := http.NewRequestWithContext(ctx, "GET", server.Config.APIBaseURL+"/v2/snapshots/grant", nil)
 	if err != nil {
 		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectApiConnection, err.Error())
