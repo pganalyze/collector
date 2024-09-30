@@ -400,7 +400,7 @@ func main() {
 		CollectSystemInformation: !noSystemInformation,
 		StateFilename:            stateFilename,
 		WriteStateUpdate:         (!dryRun && !dryRunLogs && !testRun) || forceStateUpdate,
-		ForceEmptyGrant:          dryRun || dryRunLogs || benchmark,
+		ForceEmptyGrant:          dryRun || dryRunLogs || testRunLogs || benchmark,
 		OutputAsJson:             !benchmark,
 	}
 
