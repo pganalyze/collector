@@ -111,6 +111,8 @@ func processServer(ctx context.Context, server *state.Server, globalCollectionOp
 			} else {
 				return newState, newGrant, collectionStatus, err
 			}
+		} else {
+			server.Grant.Store(&newGrant)
 		}
 	}
 
