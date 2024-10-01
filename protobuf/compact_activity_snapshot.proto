@@ -356,6 +356,10 @@ message VacuumProgressStatistic {
   int64 heap_blks_scanned = 4;
   int64 heap_blks_vacuumed = 5;
   int64 index_vacuum_count = 6;
-  int64 max_dead_tuples = 7;
-  int64 num_dead_tuples = 8;
+  int64 max_dead_item_ids = 7; // Postgres 16 and older
+  int64 num_dead_item_ids = 8;
+  int64 dead_tuple_bytes = 9; // Postgres 17+
+  int64 max_dead_tuple_bytes = 10; // Postgres 17+
+  int64 indexes_total = 11; // Postgres 17+
+  int64 indexes_processed = 12; // Postgres 17+
 }
