@@ -48,7 +48,7 @@ var duration = analyzeGroup{
 		remainderKind: state.StatementTextLogSecret,
 	},
 	detail: match{
-		regexp:  regexp.MustCompile(`(?:parameters: |, )\$\d+ = (?:(NULL)|'([^']*)')`),
+		regexp:  regexp.MustCompile(`(?:parameters: |, )\$\d+ = (?:(NULL)|'((?:[^']|'')*)')`),
 		secrets: []state.LogSecretKind{state.StatementParameterLogSecret, state.StatementParameterLogSecret},
 	},
 }

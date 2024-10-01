@@ -45,7 +45,7 @@ var tests = []testpair{
 			Content:  "duration: 4079.697 ms  execute <unnamed>: \nSELECT * FROM x WHERE y = $1 LIMIT $2",
 			LogLevel: pganalyze_collector.LogLineInformation_LOG,
 		}, {
-			Content:  "parameters: $1 = 'long string', $2 = '1'",
+			Content:  "parameters: $1 = 'o''clock', $2 = '1'",
 			LogLevel: pganalyze_collector.LogLineInformation_DETAIL,
 		}},
 		[]state.LogLine{{
@@ -63,11 +63,11 @@ var tests = []testpair{
 			ReviewedForSecrets: true,
 			SecretMarkers: []state.LogSecretMarker{{
 				ByteStart: 18,
-				ByteEnd:   29,
+				ByteEnd:   26,
 				Kind:      state.StatementParameterLogSecret,
 			}, {
-				ByteStart: 38,
-				ByteEnd:   39,
+				ByteStart: 35,
+				ByteEnd:   36,
 				Kind:      state.StatementParameterLogSecret,
 			}},
 		}},
@@ -75,7 +75,7 @@ var tests = []testpair{
 			Query:     "SELECT * FROM x WHERE y = $1 LIMIT $2",
 			RuntimeMs: 4079.697,
 			Parameters: []null.String{
-				null.StringFrom("long string"),
+				null.StringFrom("o''clock"),
 				null.StringFrom("1"),
 			},
 		}},
@@ -4171,6 +4171,116 @@ var tests = []testpair{
 				"    ->  Index Scan using pgbench_branches_pkey on public.pgbench_branches  (cost=0.27..8.29 rows=1 width=370) (actual rows=1 loops=1)\n" +
 				"          Output: bid, (bbalance + 2656), filler, ctid\n" +
 				"          Index Cond: (pgbench_branches.bid = 59)",
+		}},
+	},
+	{
+		[]state.LogLine{{
+			Content: "duration: 0.006 ms  plan:\n" +
+				"\t{\n" +
+				"\t  \"Query Text\": \"PREPARE show_values (text, uuid, integer, text) AS SELECT $1, $2, $3, $4;\",\n" +
+				"\t  \"Query Parameters\": \"$1 = 'o''clock', $2 = '13f82cb8-a0cf-424e-903a-6f8d7db83191', $3 = '1234', $4 = NULL\",\n" +
+				"\t  \"Plan\": {\n" +
+				"\t    \"Node Type\": \"Result\",\n" +
+				"\t    \"Parallel Aware\": false,\n" +
+				"\t    \"Async Capable\": false,\n" +
+				"\t    \"Startup Cost\": 0.00,\n" +
+				"\t    \"Total Cost\": 0.01,\n" +
+				"\t    \"Plan Rows\": 1,\n" +
+				"\t    \"Plan Width\": 84\n" +
+				"\t  }\n" +
+				"\t}\n",
+		}},
+		[]state.LogLine{{
+			Query:              "PREPARE show_values (text, uuid, integer, text) AS SELECT $1, $2, $3, $4;",
+			Classification:     pganalyze_collector.LogLineInformation_STATEMENT_AUTO_EXPLAIN,
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 27,
+				ByteEnd:   436,
+				Kind:      state.StatementTextLogSecret,
+			}},
+		}},
+		[]state.PostgresQuerySample{{
+			Query:         "PREPARE show_values (text, uuid, integer, text) AS SELECT $1, $2, $3, $4;",
+			RuntimeMs:     0.006,
+			HasExplain:    true,
+			ExplainSource: pganalyze_collector.QuerySample_AUTO_EXPLAIN_EXPLAIN_SOURCE,
+			ExplainFormat: pganalyze_collector.QuerySample_JSON_EXPLAIN_FORMAT,
+			Parameters:    []null.String{null.StringFrom("o''clock"), null.StringFrom("13f82cb8-a0cf-424e-903a-6f8d7db83191"), null.StringFrom("1234"), null.NewString("", false)},
+			ExplainOutputJSON: &state.ExplainPlanContainer{
+				Plan: []byte("{\n" +
+					"\t    \"Node Type\": \"Result\",\n" +
+					"\t    \"Parallel Aware\": false,\n" +
+					"\t    \"Async Capable\": false,\n" +
+					"\t    \"Startup Cost\": 0.00,\n" +
+					"\t    \"Total Cost\": 0.01,\n" +
+					"\t    \"Plan Rows\": 1,\n" +
+					"\t    \"Plan Width\": 84\n" +
+					"\t  }"),
+				QueryParameters: "$1 = 'o''clock', $2 = '13f82cb8-a0cf-424e-903a-6f8d7db83191', $3 = '1234', $4 = NULL",
+			},
+		}},
+	},
+	// new lines
+	{
+		[]state.LogLine{{
+			Content: "duration: 1681.452 ms  plan:\n" +
+				"\tQuery Text: PREPARE pga_keys (text) AS\n" +
+				"\t    SELECT * FROM api_keys WHERE access_scope_type = $1\n" +
+				"\t    AND organization_id = '13f82cb8-a0cf-424e-903a-6f8d7db83191';\n" +
+				"\tSeq Scan on api_keys  (cost=0.00..11.93 rows=1 width=132)\n" +
+				"\t  Filter: ((access_scope_type = 'organization'::text) AND (organization_id = '13f82cb8-a0cf-424e-903a-6f8d7db83191'::uuid))",
+		}},
+		[]state.LogLine{{
+			Query:              "PREPARE pga_keys (text) AS\n\t    SELECT * FROM api_keys WHERE access_scope_type = $1\n\t    AND organization_id = '13f82cb8-a0cf-424e-903a-6f8d7db83191';",
+			Classification:     pganalyze_collector.LogLineInformation_STATEMENT_AUTO_EXPLAIN,
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 30,
+				ByteEnd:   376,
+				Kind:      state.StatementTextLogSecret,
+			}},
+		}},
+		[]state.PostgresQuerySample{{
+			Query:         "PREPARE pga_keys (text) AS\n\t    SELECT * FROM api_keys WHERE access_scope_type = $1\n\t    AND organization_id = '13f82cb8-a0cf-424e-903a-6f8d7db83191';",
+			RuntimeMs:     1681.452,
+			HasExplain:    true,
+			ExplainSource: pganalyze_collector.QuerySample_AUTO_EXPLAIN_EXPLAIN_SOURCE,
+			ExplainFormat: pganalyze_collector.QuerySample_TEXT_EXPLAIN_FORMAT,
+			ExplainOutputText: "Seq Scan on api_keys  (cost=0.00..11.93 rows=1 width=132)\n" +
+				"\t  Filter: ((access_scope_type = 'organization'::text) AND (organization_id = '13f82cb8-a0cf-424e-903a-6f8d7db83191'::uuid))",
+		}},
+	},
+	// new lines + Query Parameters
+	{
+		[]state.LogLine{{
+			Content: "duration: 1681.452 ms  plan:\n" +
+				"\tQuery Text: PREPARE pga_keys (text) AS\n" +
+				"\t    SELECT * FROM api_keys WHERE access_scope_type = $1\n" +
+				"\t    AND organization_id = '13f82cb8-a0cf-424e-903a-6f8d7db83191';\n" +
+				"\tQuery Parameters: $1 = 'organizati...'\n" +
+				"\tSeq Scan on api_keys  (cost=0.00..11.93 rows=1 width=132)\n" +
+				"\t  Filter: ((access_scope_type = 'organization'::text) AND (organization_id = '13f82cb8-a0cf-424e-903a-6f8d7db83191'::uuid))",
+		}},
+		[]state.LogLine{{
+			Query:              "PREPARE pga_keys (text) AS\n\t    SELECT * FROM api_keys WHERE access_scope_type = $1\n\t    AND organization_id = '13f82cb8-a0cf-424e-903a-6f8d7db83191';",
+			Classification:     pganalyze_collector.LogLineInformation_STATEMENT_AUTO_EXPLAIN,
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 30,
+				ByteEnd:   416,
+				Kind:      state.StatementTextLogSecret,
+			}},
+		}},
+		[]state.PostgresQuerySample{{
+			Query:         "PREPARE pga_keys (text) AS\n\t    SELECT * FROM api_keys WHERE access_scope_type = $1\n\t    AND organization_id = '13f82cb8-a0cf-424e-903a-6f8d7db83191';",
+			RuntimeMs:     1681.452,
+			HasExplain:    true,
+			ExplainSource: pganalyze_collector.QuerySample_AUTO_EXPLAIN_EXPLAIN_SOURCE,
+			ExplainFormat: pganalyze_collector.QuerySample_TEXT_EXPLAIN_FORMAT,
+			ExplainOutputText: "Seq Scan on api_keys  (cost=0.00..11.93 rows=1 width=132)\n" +
+				"\t  Filter: ((access_scope_type = 'organization'::text) AND (organization_id = '13f82cb8-a0cf-424e-903a-6f8d7db83191'::uuid))",
+			Parameters: []null.String{null.StringFrom("organizati...")},
 		}},
 	},
 	// pganalyze-collector-identify
