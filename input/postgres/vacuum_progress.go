@@ -9,11 +9,21 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
-const vacuumProgressSQLmaxDeadTuplesField = `v.max_dead_tuples`
-const vacuumProgressSQLpg17maxDeadTuplesField = `v.max_dead_tuple_bytes`
+const vacuumProgressSQLdefaultFields = `
+COALESCE(v.max_dead_tuples, 0) AS max_dead_item_ids,
+COALESCE(v.num_dead_tuples, 0) AS num_dead_item_ids,
+0,
+0,
+0,
+0`
 
-const vacuumProgressSQLdeadTuplesField = `v.num_dead_tuples`
-const vacuumProgressSQLpg17deadTuplesField = `v.dead_tuple_bytes`
+const vacuumProgressSQLpg17Fields = `
+0,
+COALESCE(v.num_dead_item_ids, 0) AS num_dead_item_ids,
+COALESCE(v.dead_tuple_bytes, 0) AS dead_tuple_bytes,
+COALESCE(v.max_dead_tuple_bytes, 0) AS max_dead_tuple_bytes,
+COALESCE(v.indexes_total, 0) AS indexes_total,
+COALESCE(v.indexes_processed, 0) AS indexes_processed`
 
 const vacuumProgressSQLDefault string = `
 WITH activity AS (
@@ -46,8 +56,7 @@ SELECT (query_start_epoch || padded_pid)::bigint AS vacuum_identity,
 			 COALESCE(v.heap_blks_scanned, 0) AS heap_blks_scanned,
 			 COALESCE(v.heap_blks_vacuumed, 0) AS heap_blks_vacuumed,
 			 COALESCE(v.index_vacuum_count, 0) AS index_vacuum_count,
-			 COALESCE(%s, 0) AS max_dead_tuples,
-			 COALESCE(%s, 0) AS num_dead_tuples
+			 %s
 	FROM %s v
 			 JOIN activity a USING (pid)
 			 LEFT JOIN pg_catalog.pg_class c ON (c.oid = v.relid)
@@ -65,18 +74,11 @@ func GetVacuumProgress(ctx context.Context, logger *util.Logger, db *sql.DB, pos
 		activitySourceTable = "pg_catalog.pg_stat_activity"
 	}
 
-	var maxDeadTuplesField string
+	var fields string
 	if postgresVersion.Numeric >= state.PostgresVersion17 {
-		maxDeadTuplesField = vacuumProgressSQLpg17maxDeadTuplesField
+		fields = vacuumProgressSQLpg17Fields
 	} else {
-		maxDeadTuplesField = vacuumProgressSQLmaxDeadTuplesField
-	}
-
-	var deadTuplesField string
-	if postgresVersion.Numeric >= state.PostgresVersion17 {
-		deadTuplesField = vacuumProgressSQLpg17deadTuplesField
-	} else {
-		deadTuplesField = vacuumProgressSQLdeadTuplesField
+		fields = vacuumProgressSQLdefaultFields
 	}
 
 	var vacuumSourceTable string
@@ -85,7 +87,7 @@ func GetVacuumProgress(ctx context.Context, logger *util.Logger, db *sql.DB, pos
 	} else {
 		vacuumSourceTable = "pg_catalog.pg_stat_progress_vacuum"
 	}
-	sql = fmt.Sprintf(vacuumProgressSQLDefault, activitySourceTable, maxDeadTuplesField, deadTuplesField, vacuumSourceTable)
+	sql = fmt.Sprintf(vacuumProgressSQLDefault, activitySourceTable, fields, vacuumSourceTable)
 
 	stmt, err := db.PrepareContext(ctx, QueryMarkerSQL+sql)
 	if err != nil {
@@ -108,7 +110,9 @@ func GetVacuumProgress(ctx context.Context, logger *util.Logger, db *sql.DB, pos
 		err := rows.Scan(&row.VacuumIdentity, &row.BackendIdentity, &row.DatabaseName,
 			&row.SchemaName, &row.RelationName, &row.RoleName, &row.StartedAt, &row.Autovacuum,
 			&row.Phase, &row.HeapBlksTotal, &row.HeapBlksScanned, &row.HeapBlksVacuumed,
-			&row.IndexVacuumCount, &row.MaxDeadTuples, &row.NumDeadTuples)
+			&row.IndexVacuumCount, &row.MaxDeadItemIds, &row.NumDeadItemIds, &row.DeadTupleBytes,
+			&row.MaxDeadTupleBytes, &row.IndexesTotal, &row.IndexesProcessed,
+		)
 		if err != nil {
 			return nil, err
 		}
