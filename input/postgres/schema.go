@@ -170,7 +170,7 @@ func collectSchemaData(ctx context.Context, collectionOpts state.CollectionOpts,
 	}
 
 	if collectionOpts.CollectPostgresFunctions {
-		newFunctions, err := GetFunctions(ctx, db, postgresVersion, databaseOid, server.Config.IgnoreSchemaRegexp)
+		newFunctions, err := GetFunctions(ctx, logger, db, postgresVersion, databaseOid, server.Config.IgnoreSchemaRegexp)
 		if err != nil {
 			return ps, ts, fmt.Errorf("error collecting stored procedure metadata: %s", err)
 		}

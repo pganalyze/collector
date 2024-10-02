@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 
 	"github.com/pganalyze/collector/state"
 )
@@ -33,13 +34,18 @@ SELECT t.oid,
     AND (t.typrelid = 0 OR (SELECT c.relkind = 'c' FROM pg_catalog.pg_class c WHERE c.oid = t.typrelid))
     AND NOT EXISTS (SELECT 1 FROM pg_catalog.pg_type el WHERE el.oid = t.typelem AND el.typarray = t.oid)
 	AND t.oid NOT IN (SELECT pd.objid FROM pg_catalog.pg_depend pd WHERE pd.deptype = 'e' AND pd.classid = 'pg_catalog.pg_type'::regclass)
-    AND n.nspname <> 'pg_catalog'
-    AND n.nspname <> 'information_schema'
-    AND n.nspname !~ '^pg_toast'
+    AND %s
 `
 
 func GetTypes(ctx context.Context, db *sql.DB, postgresVersion state.PostgresVersion, currentDatabaseOid state.Oid) ([]state.PostgresType, error) {
-	stmt, err := db.PrepareContext(ctx, QueryMarkerSQL+typesSQL)
+	var systemCatalogFilter string
+	if postgresVersion.IsEPAS {
+		systemCatalogFilter = relationSQLepasSystemCatalogFilter
+	} else {
+		systemCatalogFilter = relationSQLdefaultSystemCatalogFilter
+	}
+
+	stmt, err := db.PrepareContext(ctx, QueryMarkerSQL+fmt.Sprintf(typesSQL, systemCatalogFilter))
 	if err != nil {
 		return nil, err
 	}

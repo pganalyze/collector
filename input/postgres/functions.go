@@ -7,6 +7,7 @@ import (
 
 	"github.com/guregu/null"
 	"github.com/pganalyze/collector/state"
+	"github.com/pganalyze/collector/util"
 )
 
 const functionsSQLDefaultKindFields = "CASE WHEN pp.proisagg THEN 'a' WHEN pp.proiswindow THEN 'w' ELSE 'f' END AS prokind"
@@ -14,7 +15,7 @@ const functionsSQLpg11KindFields = "pp.prokind"
 
 const functionsSQL string = `
 SELECT pp.oid,
-	   pn.nspname,
+	   n.nspname,
 	   pp.proname,
 	   pl.lanname,
 	   pp.prosrc,
@@ -29,23 +30,30 @@ SELECT pp.oid,
 	   pp.proretset,
 	   pp.provolatile
   FROM pg_catalog.pg_proc pp
-	   INNER JOIN pg_catalog.pg_namespace pn ON (pp.pronamespace = pn.oid)
+	   INNER JOIN pg_catalog.pg_namespace n ON (pp.pronamespace = n.oid)
 	   INNER JOIN pg_catalog.pg_language pl ON (pp.prolang = pl.oid)
- WHERE pn.nspname NOT IN ('pg_catalog', 'information_schema')
+ WHERE %s
 	   AND pp.oid NOT IN (SELECT pd.objid FROM pg_catalog.pg_depend pd WHERE pd.deptype = 'e' AND pd.classid = 'pg_catalog.pg_proc'::regclass)
-	   AND ($1 = '' OR (pn.nspname || '.' || pp.proname) !~* $1)`
+	   AND ($1 = '' OR (n.nspname || '.' || pp.proname) !~* $1)`
 
 const functionStatsSQL string = `
 SELECT funcid, calls, total_time, self_time
   FROM pg_stat_user_functions psuf
 	   INNER JOIN pg_catalog.pg_proc pp ON (psuf.funcid = pp.oid)
-	   INNER JOIN pg_catalog.pg_namespace pn ON (pp.pronamespace = pn.oid)
- WHERE pn.nspname NOT IN ('pg_catalog', 'information_schema')
+	   INNER JOIN pg_catalog.pg_namespace n ON (pp.pronamespace = n.oid)
+ WHERE %s
 	   AND pp.oid NOT IN (SELECT pd.objid FROM pg_catalog.pg_depend pd WHERE pd.deptype = 'e' AND pd.classid = 'pg_catalog.pg_proc'::regclass)
-	   AND ($1 = '' OR (pn.nspname || '.' || pp.proname) !~* $1)`
+	   AND ($1 = '' OR (n.nspname || '.' || pp.proname) !~* $1)`
 
-func GetFunctions(ctx context.Context, db *sql.DB, postgresVersion state.PostgresVersion, currentDatabaseOid state.Oid, ignoreRegexp string) ([]state.PostgresFunction, error) {
+type FunctionSignature struct {
+	SchemaName   string
+	FunctionName string
+	Arguments    string
+}
+
+func GetFunctions(ctx context.Context, logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion, currentDatabaseOid state.Oid, ignoreRegexp string) ([]state.PostgresFunction, error) {
 	var kindFields string
+	var systemCatalogFilter string
 
 	if postgresVersion.Numeric >= state.PostgresVersion11 {
 		kindFields = functionsSQLpg11KindFields
@@ -53,7 +61,13 @@ func GetFunctions(ctx context.Context, db *sql.DB, postgresVersion state.Postgre
 		kindFields = functionsSQLDefaultKindFields
 	}
 
-	stmt, err := db.PrepareContext(ctx, QueryMarkerSQL+fmt.Sprintf(functionsSQL, kindFields))
+	if postgresVersion.IsEPAS {
+		systemCatalogFilter = relationSQLepasSystemCatalogFilter
+	} else {
+		systemCatalogFilter = relationSQLdefaultSystemCatalogFilter
+	}
+
+	stmt, err := db.PrepareContext(ctx, QueryMarkerSQL+fmt.Sprintf(functionsSQL, kindFields, systemCatalogFilter))
 	if err != nil {
 		return nil, err
 	}
@@ -68,6 +82,11 @@ func GetFunctions(ctx context.Context, db *sql.DB, postgresVersion state.Postgre
 	defer rows.Close()
 
 	var functions []state.PostgresFunction
+	var functionSignatures map[FunctionSignature]struct{}
+
+	if postgresVersion.IsEPAS {
+		functionSignatures = make(map[FunctionSignature]struct{})
+	}
 
 	for rows.Next() {
 		var row state.PostgresFunction
@@ -78,6 +97,20 @@ func GetFunctions(ctx context.Context, db *sql.DB, postgresVersion state.Postgre
 			&row.SecurityDefiner, &row.Leakproof, &row.Strict, &row.ReturnsSet, &row.Volatile)
 		if err != nil {
 			return nil, err
+		}
+
+		if postgresVersion.IsEPAS {
+			// EDB Postgres Advanced Server allows creating functions and procedures that share a signature
+			// (functions take precedence when calling), something which regular Postgres does not allow.
+			//
+			// For now we ignore them here to avoid server side errors, but we could revise this in the future.
+			signature := FunctionSignature{SchemaName: row.SchemaName, FunctionName: row.FunctionName, Arguments: row.Arguments}
+			if _, ok := functionSignatures[signature]; ok {
+				logger.PrintVerbose("Ignoring duplicate function signature for %s.%s(%s)", signature.SchemaName, signature.FunctionName, signature.Arguments)
+				continue
+			} else {
+				functionSignatures[signature] = struct{}{}
+			}
 		}
 
 		row.DatabaseOid = currentDatabaseOid
@@ -94,7 +127,15 @@ func GetFunctions(ctx context.Context, db *sql.DB, postgresVersion state.Postgre
 }
 
 func GetFunctionStats(ctx context.Context, db *sql.DB, postgresVersion state.PostgresVersion, ignoreRegexp string) (functionStats state.PostgresFunctionStatsMap, err error) {
-	stmt, err := db.PrepareContext(ctx, QueryMarkerSQL+functionStatsSQL)
+	var systemCatalogFilter string
+
+	if postgresVersion.IsEPAS {
+		systemCatalogFilter = relationSQLepasSystemCatalogFilter
+	} else {
+		systemCatalogFilter = relationSQLdefaultSystemCatalogFilter
+	}
+
+	stmt, err := db.PrepareContext(ctx, QueryMarkerSQL+fmt.Sprintf(functionStatsSQL, systemCatalogFilter))
 	if err != nil {
 		err = fmt.Errorf("FunctionStats/Prepare: %s", err)
 		return

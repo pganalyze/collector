@@ -11,6 +11,9 @@ import (
 	"github.com/pganalyze/collector/state"
 )
 
+const relationSQLdefaultSystemCatalogFilter = "n.nspname NOT IN ('pg_catalog', 'pg_toast', 'information_schema')"
+const relationSQLepasSystemCatalogFilter = "n.nspname NOT IN ('pg_catalog', 'pg_toast', 'information_schema', 'sys') AND n.nspparent <> 'sys'::regnamespace"
+
 const relationsSQLOidField = "c.relhasoids AS relation_has_oids"
 const relationsSQLpg12OidField = "false AS relation_has_oids"
 
@@ -41,7 +44,7 @@ const relationsSQL string = `
 	WHERE c.relkind IN ('r','v','m','p')
 				AND c.relpersistence <> 't'
 				AND c.oid NOT IN (SELECT pd.objid FROM pg_catalog.pg_depend pd WHERE pd.deptype = 'e' AND pd.classid = 'pg_catalog.pg_class'::regclass)
-				AND n.nspname NOT IN ('pg_catalog','pg_toast','information_schema')
+				AND %s
 				AND ($1 = '' OR (n.nspname || '.' || c.relname) !~* $1)`
 
 const columnsSQL string = `
@@ -64,7 +67,7 @@ const columnsSQL string = `
  WHERE c.relkind IN ('r','v','m','p')
 			 AND c.relpersistence <> 't'
 			 AND c.oid NOT IN (SELECT pd.objid FROM pg_catalog.pg_depend pd WHERE pd.deptype = 'e' AND pd.classid = 'pg_catalog.pg_class'::regclass)
-			 AND n.nspname NOT IN ('pg_catalog','pg_toast','information_schema')
+			 AND %s
 			 AND a.attnum > 0
 			 AND NOT a.attisdropped
 			 AND c.oid NOT IN (SELECT relid FROM locked_relids)
@@ -104,7 +107,7 @@ SELECT c.oid,
  WHERE c.relkind IN ('r','v','m','p')
 			 AND c.relpersistence <> 't'
 			 AND c.oid NOT IN (SELECT pd.objid FROM pg_catalog.pg_depend pd WHERE pd.deptype = 'e' AND pd.classid = 'pg_catalog.pg_class'::regclass)
-			 AND n.nspname NOT IN ('pg_catalog','pg_toast','information_schema')
+			 AND %s
 			 AND c.oid NOT IN (SELECT relid FROM locked_relids)
 			 AND c2.oid NOT IN (SELECT relid FROM locked_relids)
 			 AND ($1 = '' OR (n.nspname || '.' || c.relname) !~* $1)
@@ -143,7 +146,7 @@ SELECT c.oid,
 WHERE c.relkind IN ('r','v','m','p')
 			AND c.relpersistence <> 't'
 			AND c.oid NOT IN (SELECT pd.objid FROM pg_catalog.pg_depend pd WHERE pd.deptype = 'e' AND pd.classid = 'pg_catalog.pg_class'::regclass)
-			AND n.nspname NOT IN ('pg_catalog','pg_toast','information_schema')
+			AND %s
 			AND c.oid NOT IN (SELECT relid FROM locked_relids)
 			AND ($1 = '' OR (n.nspname || '.' || c.relname) !~* $1)
 UNION ALL
@@ -171,7 +174,7 @@ SELECT c.oid,
 	WHERE c.relkind IN ('v','m')
 			 AND c.relpersistence <> 't'
 			 AND c.oid NOT IN (SELECT pd.objid FROM pg_catalog.pg_depend pd WHERE pd.deptype = 'e' AND pd.classid = 'pg_catalog.pg_class'::regclass)
-			 AND n.nspname NOT IN ('pg_catalog','pg_toast','information_schema')
+			 AND %s
 			 AND c.oid NOT IN (SELECT relid FROM locked_relids)
 			 AND ($1 = '' OR (n.nspname || '.' || c.relname) !~* $1)
 UNION ALL
@@ -184,6 +187,13 @@ SELECT relid,
 func GetRelations(ctx context.Context, db *sql.DB, postgresVersion state.PostgresVersion, currentDatabaseOid state.Oid, ignoreRegexp string) ([]state.PostgresRelation, error) {
 	relations := make(map[state.Oid]state.PostgresRelation, 0)
 
+	var systemCatalogFilter string
+	if postgresVersion.IsEPAS {
+		systemCatalogFilter = relationSQLepasSystemCatalogFilter
+	} else {
+		systemCatalogFilter = relationSQLdefaultSystemCatalogFilter
+	}
+
 	// Relations
 	var oidField string
 
@@ -193,7 +203,7 @@ func GetRelations(ctx context.Context, db *sql.DB, postgresVersion state.Postgre
 		oidField = relationsSQLOidField
 	}
 
-	rows, err := db.QueryContext(ctx, QueryMarkerSQL+fmt.Sprintf(relationsSQL, oidField), ignoreRegexp)
+	rows, err := db.QueryContext(ctx, QueryMarkerSQL+fmt.Sprintf(relationsSQL, oidField, systemCatalogFilter), ignoreRegexp)
 	if err != nil {
 		err = fmt.Errorf("Relations/Query: %s", err)
 		return nil, err
@@ -241,7 +251,7 @@ func GetRelations(ctx context.Context, db *sql.DB, postgresVersion state.Postgre
 	}
 
 	// Columns
-	rows, err = db.QueryContext(ctx, QueryMarkerSQL+columnsSQL, ignoreRegexp)
+	rows, err = db.QueryContext(ctx, QueryMarkerSQL+fmt.Sprintf(columnsSQL, systemCatalogFilter), ignoreRegexp)
 	if err != nil {
 		err = fmt.Errorf("Columns/Query: %s", err)
 		return nil, err
@@ -280,7 +290,7 @@ func GetRelations(ctx context.Context, db *sql.DB, postgresVersion state.Postgre
 	}
 
 	// Indices
-	rows, err = db.QueryContext(ctx, QueryMarkerSQL+indicesSQL, ignoreRegexp)
+	rows, err = db.QueryContext(ctx, QueryMarkerSQL+fmt.Sprintf(indicesSQL, systemCatalogFilter), ignoreRegexp)
 	if err != nil {
 		err = fmt.Errorf("Indices/Query: %s", err)
 		return nil, err
@@ -335,7 +345,7 @@ func GetRelations(ctx context.Context, db *sql.DB, postgresVersion state.Postgre
 	}
 
 	// Constraints
-	rows, err = db.QueryContext(ctx, QueryMarkerSQL+constraintsSQL, ignoreRegexp)
+	rows, err = db.QueryContext(ctx, QueryMarkerSQL+fmt.Sprintf(constraintsSQL, systemCatalogFilter), ignoreRegexp)
 	if err != nil {
 		err = fmt.Errorf("Constraints/Query: %s", err)
 		return nil, err
@@ -399,7 +409,7 @@ func GetRelations(ctx context.Context, db *sql.DB, postgresVersion state.Postgre
 	}
 
 	// View definitions
-	rows, err = db.QueryContext(ctx, QueryMarkerSQL+viewDefinitionSQL, ignoreRegexp)
+	rows, err = db.QueryContext(ctx, QueryMarkerSQL+fmt.Sprintf(viewDefinitionSQL, systemCatalogFilter), ignoreRegexp)
 	if err != nil {
 		err = fmt.Errorf("Views/Prepare: %s", err)
 		return nil, err
