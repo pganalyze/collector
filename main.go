@@ -316,7 +316,7 @@ func main() {
 	flag.BoolVar(&dryRunLogs, "dry-run-logs", false, "Print JSON data for log snapshot (without actually sending) and exit afterwards")
 	flag.StringVar(&analyzeLogfile, "analyze-logfile", "", "Analyzes the content of the given log file and returns debug output about it")
 	flag.StringVar(&analyzeLogfilePrefix, "analyze-logfile-prefix", "", "The log_line_prefix to use with --analyze-logfile")
-	flag.StringVar(&analyzeLogfileTz, "analyze-logfile-tz", "", "The timezone to use with --analyze-logfile (default UTC)")
+	flag.StringVar(&analyzeLogfileTz, "analyze-logfile-tz", "", "The log_timezone to use with --analyze-logfile (default: UTC)")
 	flag.StringVar(&analyzeDebugClassifications, "analyze-debug-classifications", "", "When used with --analyze-logfile, print detailed information about given classifications (can be comma-separated list of integer classifications, or keyword 'all')")
 	flag.StringVar(&filterLogFile, "filter-logfile", "", "Test command that filters all known secrets in the logfile according to the filter-log-secret option")
 	flag.StringVar(&filterLogSecret, "filter-log-secret", "all", "Sets the type of secrets filtered by the filter-logfile test command (default: all)")
