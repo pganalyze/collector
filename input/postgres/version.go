@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"strings"
 
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
@@ -14,6 +15,7 @@ func GetPostgresVersion(ctx context.Context, logger *util.Logger, db *sql.DB) (v
 	if err != nil {
 		return
 	}
+	version.IsEPAS = strings.Contains(version.Full, "EnterpriseDB Advanced Server")
 
 	err = db.QueryRowContext(ctx, QueryMarkerSQL+"SHOW server_version").Scan(&version.Short)
 	if err != nil {

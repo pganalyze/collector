@@ -80,7 +80,7 @@ SELECT c.oid,
        AND c.relkind IN ('r','v','m','p')
 			 AND c.relpersistence <> 't'
 			 AND c.oid NOT IN (SELECT pd.objid FROM pg_catalog.pg_depend pd WHERE pd.deptype = 'e' AND pd.classid = 'pg_catalog.pg_class'::regclass)
-			 AND n.nspname NOT IN ('pg_catalog','pg_toast','information_schema')
+			 AND %s
 			 AND ($1 = '' OR (n.nspname || '.' || c.relname) !~* $1)
  UNION ALL
 SELECT relid,
@@ -153,6 +153,7 @@ SELECT relid,
 
 func GetRelationStats(ctx context.Context, db *sql.DB, postgresVersion state.PostgresVersion, server *state.Server) (relStats state.PostgresRelationStatsMap, err error) {
 	var insertsSinceVacuumField string
+	var systemCatalogFilter string
 
 	if postgresVersion.Numeric >= state.PostgresVersion13 {
 		insertsSinceVacuumField = relationStatsSQLInsertsSinceVacuumFieldPg13
@@ -160,7 +161,13 @@ func GetRelationStats(ctx context.Context, db *sql.DB, postgresVersion state.Pos
 		insertsSinceVacuumField = relationStatsSQLInsertsSinceVacuumFieldDefault
 	}
 
-	stmt, err := db.PrepareContext(ctx, QueryMarkerSQL+fmt.Sprintf(relationStatsSQL, insertsSinceVacuumField))
+	if postgresVersion.IsEPAS {
+		systemCatalogFilter = relationSQLEPASSystemCatalogFilter
+	} else {
+		systemCatalogFilter = relationSQLdefaultSystemCatalogFilter
+	}
+
+	stmt, err := db.PrepareContext(ctx, QueryMarkerSQL+fmt.Sprintf(relationStatsSQL, insertsSinceVacuumField, systemCatalogFilter))
 	if err != nil {
 		err = fmt.Errorf("RelationStats/Prepare: %s", err)
 		return
