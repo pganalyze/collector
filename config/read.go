@@ -220,6 +220,9 @@ func getDefaultConfig() *ServerConfig {
 	if azureADCertificatePassword := os.Getenv("AZURE_AD_CERTIFICATE_PASSWORD"); azureADCertificatePassword != "" {
 		config.AzureADCertificatePassword = azureADCertificatePassword
 	}
+	if azureSubscriptionID := os.Getenv("AZURE_SUBSCRIPTION_ID"); azureSubscriptionID != "" {
+		config.AzureSubscriptionID = azureSubscriptionID
+	}
 	if gcpCloudSQLInstanceID := os.Getenv("GCP_CLOUDSQL_INSTANCE_ID"); gcpCloudSQLInstanceID != "" {
 		config.GcpCloudSQLInstanceID = gcpCloudSQLInstanceID
 	}

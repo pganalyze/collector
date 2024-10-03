@@ -9,6 +9,22 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
+const vacuumProgressSQLdefaultFields = `
+COALESCE(v.max_dead_tuples, 0) AS max_dead_item_ids,
+COALESCE(v.num_dead_tuples, 0) AS num_dead_item_ids,
+0,
+0,
+0,
+0`
+
+const vacuumProgressSQLpg17Fields = `
+0,
+COALESCE(v.num_dead_item_ids, 0) AS num_dead_item_ids,
+COALESCE(v.dead_tuple_bytes, 0) AS dead_tuple_bytes,
+COALESCE(v.max_dead_tuple_bytes, 0) AS max_dead_tuple_bytes,
+COALESCE(v.indexes_total, 0) AS indexes_total,
+COALESCE(v.indexes_processed, 0) AS indexes_processed`
+
 const vacuumProgressSQLDefault string = `
 WITH activity AS (
 	SELECT pg_catalog.to_char(pid, 'FM0000000') AS padded_pid,
@@ -40,8 +56,7 @@ SELECT (query_start_epoch || padded_pid)::bigint AS vacuum_identity,
 			 COALESCE(v.heap_blks_scanned, 0) AS heap_blks_scanned,
 			 COALESCE(v.heap_blks_vacuumed, 0) AS heap_blks_vacuumed,
 			 COALESCE(v.index_vacuum_count, 0) AS index_vacuum_count,
-			 COALESCE(v.max_dead_tuples, 0) AS max_dead_tuples,
-			 COALESCE(v.num_dead_tuples, 0) AS num_dead_tuples
+			 %s
 	FROM %s v
 			 JOIN activity a USING (pid)
 			 LEFT JOIN pg_catalog.pg_class c ON (c.oid = v.relid)
@@ -59,13 +74,20 @@ func GetVacuumProgress(ctx context.Context, logger *util.Logger, db *sql.DB, pos
 		activitySourceTable = "pg_catalog.pg_stat_activity"
 	}
 
+	var fields string
+	if postgresVersion.Numeric >= state.PostgresVersion17 {
+		fields = vacuumProgressSQLpg17Fields
+	} else {
+		fields = vacuumProgressSQLdefaultFields
+	}
+
 	var vacuumSourceTable string
 	if StatsHelperExists(ctx, db, "get_stat_progress_vacuum") {
 		vacuumSourceTable = "pganalyze.get_stat_progress_vacuum()"
 	} else {
 		vacuumSourceTable = "pg_catalog.pg_stat_progress_vacuum"
 	}
-	sql = fmt.Sprintf(vacuumProgressSQLDefault, activitySourceTable, vacuumSourceTable)
+	sql = fmt.Sprintf(vacuumProgressSQLDefault, activitySourceTable, fields, vacuumSourceTable)
 
 	stmt, err := db.PrepareContext(ctx, QueryMarkerSQL+sql)
 	if err != nil {
@@ -88,7 +110,9 @@ func GetVacuumProgress(ctx context.Context, logger *util.Logger, db *sql.DB, pos
 		err := rows.Scan(&row.VacuumIdentity, &row.BackendIdentity, &row.DatabaseName,
 			&row.SchemaName, &row.RelationName, &row.RoleName, &row.StartedAt, &row.Autovacuum,
 			&row.Phase, &row.HeapBlksTotal, &row.HeapBlksScanned, &row.HeapBlksVacuumed,
-			&row.IndexVacuumCount, &row.MaxDeadTuples, &row.NumDeadTuples)
+			&row.IndexVacuumCount, &row.MaxDeadItemIds, &row.NumDeadItemIds, &row.DeadTupleBytes,
+			&row.MaxDeadTupleBytes, &row.IndexesTotal, &row.IndexesProcessed,
+		)
 		if err != nil {
 			return nil, err
 		}

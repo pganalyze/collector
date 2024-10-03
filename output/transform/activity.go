@@ -71,13 +71,17 @@ func ActivityStateToCompactActivitySnapshot(server *state.Server, activityState 
 
 		if vacuum.Phase != "" {
 			vacuumStats := snapshot.VacuumProgressStatistic{
-				VacuumIdentity:   vacuum.VacuumIdentity,
-				HeapBlksTotal:    vacuum.HeapBlksTotal,
-				HeapBlksScanned:  vacuum.HeapBlksScanned,
-				HeapBlksVacuumed: vacuum.HeapBlksVacuumed,
-				IndexVacuumCount: vacuum.IndexVacuumCount,
-				MaxDeadTuples:    vacuum.MaxDeadTuples,
-				NumDeadTuples:    vacuum.NumDeadTuples,
+				VacuumIdentity:    vacuum.VacuumIdentity,
+				HeapBlksTotal:     vacuum.HeapBlksTotal,
+				HeapBlksScanned:   vacuum.HeapBlksScanned,
+				HeapBlksVacuumed:  vacuum.HeapBlksVacuumed,
+				IndexVacuumCount:  vacuum.IndexVacuumCount,
+				MaxDeadItemIds:    vacuum.MaxDeadItemIds,
+				NumDeadItemIds:    vacuum.NumDeadItemIds,
+				DeadTupleBytes:    vacuum.DeadTupleBytes,
+				MaxDeadTupleBytes: vacuum.MaxDeadTupleBytes,
+				IndexesTotal:      vacuum.IndexesTotal,
+				IndexesProcessed:  vacuum.IndexesProcessed,
 			}
 
 			switch vacuum.Phase {

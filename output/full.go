@@ -82,7 +82,13 @@ func submitFull(ctx context.Context, s snapshot.FullSnapshot, server *state.Serv
 		return nil
 	}
 
-	s3Location, err := uploadSnapshot(ctx, server.Config.HTTPClientWithRetry, server.Grant, logger, compressedData, snapshotUUID.String())
+	if server.WebSocket.Load() != nil {
+		server.SnapshotStream <- compressedData.Bytes()
+		logger.PrintInfo("Submitted full snapshot successfully")
+		return nil
+	}
+
+	s3Location, err := uploadSnapshot(ctx, server.Config.HTTPClientWithRetry, *server.Grant.Load(), logger, compressedData, snapshotUUID.String())
 	if err != nil {
 		logger.PrintError("Error uploading snapshot: %s", err)
 		return err
@@ -180,13 +186,9 @@ func submitSnapshot(ctx context.Context, server *state.Server, collectionOpts st
 		return util.CleanHTTPError(err)
 	}
 
-	msg, serverURL, err := parseSnapshotResponse(resp, collectionOpts)
+	msg, err := parseSnapshotResponse(resp, collectionOpts)
 	if err != nil {
 		return err
-	}
-
-	if serverURL != "" {
-		server.PGAnalyzeURL = serverURL
 	}
 
 	if len(msg) > 0 && collectionOpts.TestRun {

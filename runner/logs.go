@@ -37,7 +37,7 @@ func SetupLogCollection(ctx context.Context, wg *sync.WaitGroup, servers []*stat
 	var hasAnyLogTails bool
 
 	for _, server := range servers {
-		if server.Config.DisableLogs {
+		if server.Config.DisableLogs || server.Pause.Load() {
 			continue
 		}
 		if server.Config.LogLocation != "" || server.Config.LogDockerTail != "" || server.Config.LogSyslogServer != "" || server.Config.LogOtelServer != "" {
@@ -95,7 +95,8 @@ func setupLogDownloadForAllServers(ctx context.Context, wg *sync.WaitGroup, glob
 				}
 
 				for _, server := range servers {
-					if server.Config.DisableLogs || (server.Grant.Valid && !server.Grant.Config.EnableLogs) {
+					grant := server.Grant.Load()
+					if server.Config.DisableLogs || (grant.Valid && !grant.Config.EnableLogs) {
 						continue
 					}
 
@@ -251,7 +252,8 @@ func processLogStream(ctx context.Context, server *state.Server, logLines []stat
 	}
 
 	if globalCollectionOpts.TestRun {
-		if !server.Grant.Valid || server.Grant.Config.EnableLogs {
+		grant := server.Grant.Load()
+		if !grant.Valid || grant.Config.EnableLogs {
 			server.SelfTest.MarkCollectionAspectOk(state.CollectionAspectLogs)
 			logTestFunc(server, logFile, logTestSucceeded)
 		} else {
@@ -295,7 +297,7 @@ func postprocessAndSendLogs(ctx context.Context, server *state.Server, globalCol
 		for idx, sample := range transientLogState.QuerySamples {
 			// Ensure we always normalize the query text (when sample normalization is on), even if EXPLAIN errors out
 			sample.Query = util.NormalizeQuery(sample.Query, "unparseable", -1)
-			for pIdx, _ := range sample.Parameters {
+			for pIdx := range sample.Parameters {
 				sample.Parameters[pIdx] = null.StringFrom("<removed>")
 			}
 			if sample.ExplainOutputText != "" {
@@ -303,6 +305,8 @@ func postprocessAndSendLogs(ctx context.Context, server *state.Server, globalCol
 				sample.ExplainError = "EXPLAIN normalize failed: auto_explain format is not JSON - not supported (discarding EXPLAIN)"
 			}
 			if sample.ExplainOutputJSON != nil {
+				// remove parameters as part of normalization
+				sample.ExplainOutputJSON.QueryParameters = ""
 				sample.ExplainOutputJSON, err = querysample.NormalizeExplainJSON(sample.ExplainOutputJSON)
 				if err != nil {
 					sample.ExplainOutputJSON = nil

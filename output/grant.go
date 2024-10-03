@@ -7,15 +7,17 @@ import (
 	"io/ioutil"
 	"net/http"
 
+	"github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
 )
 
 func GetGrant(ctx context.Context, server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.Grant, error) {
+	grant := state.Grant{Config: pganalyze_collector.ServerMessage_Config{Features: &pganalyze_collector.ServerMessage_Features{}}}
 	req, err := http.NewRequestWithContext(ctx, "GET", server.Config.APIBaseURL+"/v2/snapshots/grant", nil)
 	if err != nil {
 		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectApiConnection, err.Error())
-		return state.Grant{}, err
+		return grant, err
 	}
 
 	req.Header.Set("Pganalyze-Api-Key", server.Config.APIKey)
@@ -32,26 +34,25 @@ func GetGrant(ctx context.Context, server *state.Server, globalCollectionOpts st
 	if err != nil {
 		cleanErr := util.CleanHTTPError(err)
 		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectApiConnection, "error contacting API: %s", cleanErr)
-		return state.Grant{}, cleanErr
+		return grant, cleanErr
 	}
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectApiConnection, "error contacting API: %s", err)
-		return state.Grant{}, err
+		return grant, err
 	}
 
 	if resp.StatusCode != http.StatusOK || len(body) == 0 {
 		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectApiConnection, "error contacting API: %s", body)
-		return state.Grant{}, fmt.Errorf("Error when getting grant: %s", body)
+		return grant, fmt.Errorf("Error when getting grant: %s", body)
 	}
 
-	grant := state.Grant{}
 	err = json.Unmarshal(body, &grant)
 	if err != nil {
 		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectApiConnection, "error deserializing API response: %s", err)
-		return state.Grant{}, err
+		return grant, err
 	}
 	grant.Valid = true
 

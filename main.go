@@ -163,6 +163,7 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 		// This channel is buffered so the function can exit (and mark the wait group as done)
 		// without the caller consuming the channel, e.g. when the context gets canceled
 		testRunSuccess = make(chan bool, 1)
+		runner.SetupWebsocketForAllServers(ctx, servers, globalCollectionOpts, logger)
 		go func() {
 			if globalCollectionOpts.TestExplain {
 				success := true
@@ -257,6 +258,8 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 		wg.Done()
 	}, logger, "high frequency query statistics of all servers", schedulerGroups["stats"])
 
+	runner.SetupWebsocketForAllServers(ctx, servers, globalCollectionOpts, logger)
+
 	keepRunning = true
 	return
 }
@@ -269,6 +272,8 @@ func main() {
 	var dryRun bool
 	var dryRunLogs bool
 	var analyzeLogfile string
+	var analyzeLogfilePrefix string
+	var analyzeLogfileTz string
 	var analyzeDebugClassifications string
 	var filterLogFile string
 	var filterLogSecret string
@@ -313,6 +318,8 @@ func main() {
 	flag.BoolVar(&dryRun, "dry-run", false, "Print JSON data that would get sent to web service (without actually sending) and exit afterwards")
 	flag.BoolVar(&dryRunLogs, "dry-run-logs", false, "Print JSON data for log snapshot (without actually sending) and exit afterwards")
 	flag.StringVar(&analyzeLogfile, "analyze-logfile", "", "Analyzes the content of the given log file and returns debug output about it")
+	flag.StringVar(&analyzeLogfilePrefix, "analyze-logfile-prefix", "", "The log_line_prefix to use with --analyze-logfile")
+	flag.StringVar(&analyzeLogfileTz, "analyze-logfile-tz", "", "The log_timezone to use with --analyze-logfile (default: UTC)")
 	flag.StringVar(&analyzeDebugClassifications, "analyze-debug-classifications", "", "When used with --analyze-logfile, print detailed information about given classifications (can be comma-separated list of integer classifications, or keyword 'all')")
 	flag.StringVar(&filterLogFile, "filter-logfile", "", "Test command that filters all known secrets in the logfile according to the filter-log-secret option")
 	flag.StringVar(&filterLogSecret, "filter-log-secret", "all", "Sets the type of secrets filtered by the filter-logfile test command (default: all)")
@@ -397,7 +404,7 @@ func main() {
 		CollectSystemInformation: !noSystemInformation,
 		StateFilename:            stateFilename,
 		WriteStateUpdate:         (!dryRun && !dryRunLogs && !testRun) || forceStateUpdate,
-		ForceEmptyGrant:          dryRun || dryRunLogs || benchmark,
+		ForceEmptyGrant:          dryRun || dryRunLogs || testRunLogs || benchmark,
 		OutputAsJson:             !benchmark,
 	}
 
@@ -427,7 +434,19 @@ func main() {
 		content := string(contentBytes)
 		reader := strings.NewReader(content)
 		logReader := logs.NewMaybeHerokuLogReader(reader)
-		logLines, samples := logs.ParseAndAnalyzeBuffer(logReader, time.Time{}, state.MakeServer(config.ServerConfig{}, false))
+		server := state.MakeServer(config.ServerConfig{}, false)
+		tz, err := time.LoadLocation(analyzeLogfileTz)
+		if err != nil {
+			fmt.Printf("ERROR: could not read time zone: %s\n", err)
+			return
+		}
+		if analyzeLogfilePrefix == "" {
+			fmt.Println("ERROR: must specify log_line_prefix used to generate logfile with --analyze-logfile-prefix")
+			return
+		}
+		server.LogParser = logs.NewLogParser(analyzeLogfilePrefix, tz, false)
+
+		logLines, samples := logs.ParseAndAnalyzeBuffer(logReader, time.Time{}, server)
 		logs.PrintDebugInfo(content, logLines, samples)
 		if analyzeDebugClassifications != "" {
 			classifications := strings.Split(analyzeDebugClassifications, ",")
@@ -458,7 +477,7 @@ func main() {
 		content := string(contentBytes)
 		reader := strings.NewReader(content)
 		logReader := logs.NewMaybeHerokuLogReader(reader)
-		logLines, _ := logs.ParseAndAnalyzeBuffer(logReader, time.Time{}, &state.Server{})
+		logLines, _ := logs.ParseAndAnalyzeBuffer(logReader, time.Time{}, state.MakeServer(config.ServerConfig{}, false))
 		logs.ReplaceSecrets(contentBytes, logLines, state.ParseFilterLogSecret(filterLogSecret))
 		output := ""
 		for _, logLine := range logLines {

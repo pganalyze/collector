@@ -22,6 +22,7 @@ type PostgresVersion struct {
 	Numeric int    `json:"numeric"` // e.g. 90501
 
 	// For collector use only, to avoid calling functions that don't work
-	IsAwsAurora bool
-	IsCitus     bool
+	IsAwsAurora bool // Amazon Aurora
+	IsCitus     bool // Citus extension (e.g. with Azure CosmosDB for PostgreSQL)
+	IsEPAS      bool // EnterpriseDB Advanced Server
 }

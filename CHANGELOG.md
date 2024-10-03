@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.59.0      2024-10-01
+
+* Use new WebSocket-based API for snapshot submissions
+  - Long-lived WebSocket connections have lower overhead for individual snapshots
+    that send statistics data to pganalyze, and avoid repeated HTTP connections
+  - In case of errors when connecting the collector will fall back to regular
+    HTTP-based snapshots and emit a warning (e.g. due to a misconfigured proxy, or when
+    connecting to a pganalyze Enterprise Server install without WebSocket support)
+* Automated EXPLAIN (auto_explain) improvements
+  - Unless filtered, keep query parameters included with auto_explain as part of query samples
+  - Improve handling of newlines with auto_explain "text" format
+* Azure Database / Cosmos DB for PostgreSQL: Collect system info and metrics
+  - To start using this, you need to supply a new config variable AZURE_SUBSCRIPTION_ID to the collector, as well as setting up managed identity (like is done for Log Insights support)
+  - The managed identity now additionally needs access to the Monitoring Reader role on the Azure Database instance
+* Improve support for EDB Postgres Advanced Server
+* Postgres 17: Update pg_stat_progress_vacuum field names
+* Log Insights: Complete transition to new log parser (introduced in 0.58.0)
+  - Drop supported log_line_prefix check in test
+  - Drop legacy log line parsing mechanism
+  - Fix --analyze-logfile flag
+
+
 ## 0.58.0      2024-08-30
 
 * Log Insights: Revamp log parsing mechanism
