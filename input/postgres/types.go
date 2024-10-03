@@ -40,7 +40,7 @@ SELECT t.oid,
 func GetTypes(ctx context.Context, db *sql.DB, postgresVersion state.PostgresVersion, currentDatabaseOid state.Oid) ([]state.PostgresType, error) {
 	var systemCatalogFilter string
 	if postgresVersion.IsEPAS {
-		systemCatalogFilter = relationSQLepasSystemCatalogFilter
+		systemCatalogFilter = relationSQLEPASSystemCatalogFilter
 	} else {
 		systemCatalogFilter = relationSQLdefaultSystemCatalogFilter
 	}

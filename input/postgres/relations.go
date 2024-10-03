@@ -12,7 +12,7 @@ import (
 )
 
 const relationSQLdefaultSystemCatalogFilter = "n.nspname NOT IN ('pg_catalog', 'pg_toast', 'information_schema')"
-const relationSQLepasSystemCatalogFilter = "n.nspname NOT IN ('pg_catalog', 'pg_toast', 'information_schema', 'sys') AND n.nspparent <> 'sys'::regnamespace"
+const relationSQLEPASSystemCatalogFilter = "n.nspname NOT IN ('pg_catalog', 'pg_toast', 'information_schema', 'sys') AND n.nspparent <> 'sys'::regnamespace"
 
 const relationsSQLOidField = "c.relhasoids AS relation_has_oids"
 const relationsSQLpg12OidField = "false AS relation_has_oids"
@@ -189,7 +189,7 @@ func GetRelations(ctx context.Context, db *sql.DB, postgresVersion state.Postgre
 
 	var systemCatalogFilter string
 	if postgresVersion.IsEPAS {
-		systemCatalogFilter = relationSQLepasSystemCatalogFilter
+		systemCatalogFilter = relationSQLEPASSystemCatalogFilter
 	} else {
 		systemCatalogFilter = relationSQLdefaultSystemCatalogFilter
 	}

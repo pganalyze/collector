@@ -162,7 +162,7 @@ func GetRelationStats(ctx context.Context, db *sql.DB, postgresVersion state.Pos
 	}
 
 	if postgresVersion.IsEPAS {
-		systemCatalogFilter = relationSQLepasSystemCatalogFilter
+		systemCatalogFilter = relationSQLEPASSystemCatalogFilter
 	} else {
 		systemCatalogFilter = relationSQLdefaultSystemCatalogFilter
 	}

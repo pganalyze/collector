@@ -62,7 +62,7 @@ func GetFunctions(ctx context.Context, logger *util.Logger, db *sql.DB, postgres
 	}
 
 	if postgresVersion.IsEPAS {
-		systemCatalogFilter = relationSQLepasSystemCatalogFilter
+		systemCatalogFilter = relationSQLEPASSystemCatalogFilter
 	} else {
 		systemCatalogFilter = relationSQLdefaultSystemCatalogFilter
 	}
@@ -130,7 +130,7 @@ func GetFunctionStats(ctx context.Context, db *sql.DB, postgresVersion state.Pos
 	var systemCatalogFilter string
 
 	if postgresVersion.IsEPAS {
-		systemCatalogFilter = relationSQLepasSystemCatalogFilter
+		systemCatalogFilter = relationSQLEPASSystemCatalogFilter
 	} else {
 		systemCatalogFilter = relationSQLdefaultSystemCatalogFilter
 	}
