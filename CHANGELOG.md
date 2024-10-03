@@ -5,8 +5,9 @@
 * Use new WebSocket-based API for snapshot submissions
   - Long-lived WebSocket connections have lower overhead for individual snapshots
     that send statistics data to pganalyze, and avoid repeated HTTP connections
-  - In case of errors when connecting (e.g. due to a proxy, or missing server side support),
-    the collector will fall back to regular HTTP-based snapshots and emit a warning
+  - In case of errors when connecting the collector will fall back to regular
+    HTTP-based snapshots and emit a warning (e.g. due to a misconfigured proxy, or when
+    connecting to a pganalyze Enterprise Server install without WebSocket support)
 * Automated EXPLAIN (auto_explain) improvements
   - Unless filtered, keep query parameters included with auto_explain as part of query samples
   - Improve handling of newlines with auto_explain "text" format
