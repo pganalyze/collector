@@ -25,6 +25,11 @@ func processActivityForServer(ctx context.Context, server *state.Server, globalC
 
 	newState := server.ActivityPrevState
 
+	if server.Pause.Load() {
+		logger.PrintVerbose("Snapshot processing disabled by pganalyze server")
+		return newState, false, nil
+	}
+
 	if server.Config.SkipIfReplica {
 		connection, err = postgres.EstablishConnection(ctx, server, logger, globalCollectionOpts, "")
 		if err != nil {
@@ -41,7 +46,11 @@ func processActivityForServer(ctx context.Context, server *state.Server, globalC
 		}
 	}
 
-	if !globalCollectionOpts.ForceEmptyGrant {
+	if server.WebSocket.Load() != nil {
+		newGrant = *server.Grant.Load()
+	}
+
+	if !newGrant.Valid && !globalCollectionOpts.ForceEmptyGrant {
 		newGrant, err = grant.GetDefaultGrant(ctx, server, globalCollectionOpts, logger)
 		if err != nil {
 			return newState, false, errors.Wrap(err, "could not get default grant for activity snapshot")
@@ -116,7 +125,8 @@ func CollectActivityFromAllServers(ctx context.Context, servers []*state.Server,
 
 	for idx := range servers {
 		server := servers[idx]
-		if server.Config.DisableActivity || (server.Grant.Valid && !server.Grant.Config.EnableActivity) {
+		grant := server.Grant.Load()
+		if server.Config.DisableActivity || (grant.Valid && !grant.Config.EnableActivity) {
 			server.SelfTest.MarkCollectionAspectNotAvailable(state.CollectionAspectActivity, "not available on this plan")
 			server.SelfTest.HintCollectionAspect(state.CollectionAspectActivity, "Compare plans at %s", selftest.URLPrinter.Sprint("https://pganalyze.com/pricing"))
 			continue

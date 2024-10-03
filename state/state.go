@@ -7,7 +7,9 @@ import (
 	"time"
 
 	raven "github.com/getsentry/raven-go"
+	"github.com/gorilla/websocket"
 	"github.com/pganalyze/collector/config"
+	"github.com/pganalyze/collector/output/pganalyze_collector"
 )
 
 type SchemaStats struct {
@@ -214,33 +216,12 @@ type CollectionOpts struct {
 	OutputAsJson bool
 }
 
-type GrantConfig struct {
-	ServerID  string `json:"server_id"`
-	ServerURL string `json:"server_url"`
-	SentryDsn string `json:"sentry_dsn"`
-
-	Features GrantFeatures `json:"features"`
-
-	EnableActivity bool `json:"enable_activity"`
-	EnableLogs     bool `json:"enable_logs"`
-
-	SchemaTableLimit int `json:"schema_table_limit"` // Maximum number of tables that can be monitored per server
-}
-
-type GrantFeatures struct {
-	Logs bool `json:"logs"`
-
-	StatementResetFrequency     int   `json:"statement_reset_frequency"`
-	StatementTimeoutMs          int32 `json:"statement_timeout_ms"`            // Statement timeout for all SQL statements sent to the database (defaults to 30s)
-	StatementTimeoutMsQueryText int32 `json:"statement_timeout_ms_query_text"` // Statement timeout for pg_stat_statements query text requests (defaults to 120s)
-}
-
 type Grant struct {
 	Valid    bool
-	Config   GrantConfig       `json:"config"`
-	S3URL    string            `json:"s3_url"`
-	S3Fields map[string]string `json:"s3_fields"`
-	LocalDir string            `json:"local_dir"`
+	Config   pganalyze_collector.ServerMessage_Config `json:"config"`
+	S3URL    string                                   `json:"s3_url"`
+	S3Fields map[string]string                        `json:"s3_fields"`
+	LocalDir string                                   `json:"local_dir"`
 }
 
 func (g Grant) S3() GrantS3 {
@@ -262,8 +243,7 @@ type CollectionStatus struct {
 type Server struct {
 	Config           config.ServerConfig
 	RequestedSslMode string
-	Grant            Grant
-	PGAnalyzeURL     string
+	Grant            atomic.Pointer[Grant]
 
 	PrevState  PersistedState
 	StateMutex *sync.Mutex
@@ -278,6 +258,10 @@ type Server struct {
 	CollectionStatusMutex *sync.Mutex
 
 	SelfTest *SelfTestResult
+
+	SnapshotStream chan []byte
+	WebSocket      atomic.Pointer[websocket.Conn]
+	Pause          atomic.Bool
 
 	// The LogParser for this server, updated as necessary whenever relevant
 	// settings (log_line_prefix and log_timezone) change
@@ -304,8 +288,11 @@ func MakeServer(config config.ServerConfig, testRun bool) *Server {
 		LogStateMutex:         &sync.Mutex{},
 		ActivityStateMutex:    &sync.Mutex{},
 		CollectionStatusMutex: &sync.Mutex{},
+		SnapshotStream:        make(chan []byte),
 		LogParseMutex:         &sync.RWMutex{},
 	}
+	server.Grant.Store(&Grant{Config: pganalyze_collector.ServerMessage_Config{Features: &pganalyze_collector.ServerMessage_Features{}}})
+	server.Pause.Store(false)
 	if testRun {
 		server.SelfTest = MakeSelfTest()
 	}

@@ -29,6 +29,7 @@ type CollectionAspect int
 
 const (
 	CollectionAspectApiConnection CollectionAspect = iota
+	CollectionAspectWebSocket
 	CollectionAspectTelemetry
 	CollectionAspectSystemStats
 	CollectionAspectMonitoringDbConnection
@@ -41,6 +42,7 @@ const (
 
 var CollectionAspects = []CollectionAspect{
 	CollectionAspectApiConnection,
+	CollectionAspectWebSocket,
 	CollectionAspectTelemetry,
 	CollectionAspectSystemStats,
 	CollectionAspectMonitoringDbConnection,

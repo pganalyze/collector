@@ -3,11 +3,11 @@ package logs_test
 import (
 	"bufio"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
 	"github.com/kylelemons/godebug/pretty"
+	"github.com/pganalyze/collector/config"
 	"github.com/pganalyze/collector/logs"
 	"github.com/pganalyze/collector/state"
 )
@@ -64,7 +64,8 @@ var replaceTests = []replaceTestpair{
 func TestReplaceSecrets(t *testing.T) {
 	for _, pair := range replaceTests {
 		reader := bufio.NewReader(strings.NewReader(pair.input))
-		server := &state.Server{LogParseMutex: &sync.RWMutex{}, LogParser: logs.NewLogParser(logs.LogPrefixAmazonRds, nil, false)}
+		server := state.MakeServer(config.ServerConfig{}, false)
+		server.LogParser = logs.NewLogParser(logs.LogPrefixAmazonRds, nil, false)
 		logLines, _ := logs.ParseAndAnalyzeBuffer(reader, time.Time{}, server)
 		output := logs.ReplaceSecrets([]byte(pair.input), logLines, state.ParseFilterLogSecret(pair.filterLogSecret))
 

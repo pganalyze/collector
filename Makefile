@@ -32,8 +32,13 @@ vendor:
 	modvendor -copy="**/*.c **/*.h **/*.proto" -v
 
 test: build
-	go test -coverprofile=coverage.out ./...
-	# go tool cover -html=coverage.out
+	go test -race -coverprofile=coverage.out ./...
+
+coverage: test
+	go tool cover -html=coverage.out
+
+run: build
+	go run -race .
 
 integration_test:
 	make -C integration_test

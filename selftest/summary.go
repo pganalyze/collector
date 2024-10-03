@@ -217,11 +217,10 @@ func printServerTestSummary(s *state.Server, verbosity SummaryVerbosity) {
 	}
 
 	printAspectStatus(status, state.CollectionAspectApiConnection, "pganalyze connection")
+	printAspectStatus(status, state.CollectionAspectWebSocket, "pganalyze WebSocket")
 	printAspectStatus(status, state.CollectionAspectTelemetry, "Collector telemetry")
 
-	if s.PGAnalyzeURL != "" {
-		fmt.Fprintf(os.Stderr, "\t  View in pganalyze:\t%s\n", URLPrinter.Sprint(s.PGAnalyzeURL))
-	}
+	fmt.Fprintf(os.Stderr, "\t  View in pganalyze:\t%s\n", URLPrinter.Sprint(s.Grant.Load().Config.ServerUrl))
 
 	fmt.Fprintln(os.Stderr)
 	if verbosity == VerbosityTerse {

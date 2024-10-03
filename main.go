@@ -163,6 +163,7 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 		// This channel is buffered so the function can exit (and mark the wait group as done)
 		// without the caller consuming the channel, e.g. when the context gets canceled
 		testRunSuccess = make(chan bool, 1)
+		runner.SetupWebsocketForAllServers(ctx, servers, globalCollectionOpts, logger)
 		go func() {
 			if globalCollectionOpts.TestExplain {
 				success := true
@@ -256,6 +257,8 @@ func run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 		runner.GatherQueryStatsFromAllServers(ctx, servers, globalCollectionOpts, logger)
 		wg.Done()
 	}, logger, "high frequency query statistics of all servers", schedulerGroups["stats"])
+
+	runner.SetupWebsocketForAllServers(ctx, servers, globalCollectionOpts, logger)
 
 	keepRunning = true
 	return
@@ -401,7 +404,7 @@ func main() {
 		CollectSystemInformation: !noSystemInformation,
 		StateFilename:            stateFilename,
 		WriteStateUpdate:         (!dryRun && !dryRunLogs && !testRun) || forceStateUpdate,
-		ForceEmptyGrant:          dryRun || dryRunLogs || benchmark,
+		ForceEmptyGrant:          dryRun || dryRunLogs || testRunLogs || benchmark,
 		OutputAsJson:             !benchmark,
 	}
 
@@ -474,7 +477,7 @@ func main() {
 		content := string(contentBytes)
 		reader := strings.NewReader(content)
 		logReader := logs.NewMaybeHerokuLogReader(reader)
-		logLines, _ := logs.ParseAndAnalyzeBuffer(logReader, time.Time{}, &state.Server{})
+		logLines, _ := logs.ParseAndAnalyzeBuffer(logReader, time.Time{}, state.MakeServer(config.ServerConfig{}, false))
 		output := logs.ReplaceSecrets(contentBytes, logLines, state.ParseFilterLogSecret(filterLogSecret))
 		fmt.Printf("%s", output)
 		return

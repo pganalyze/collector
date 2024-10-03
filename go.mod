@@ -46,7 +46,7 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/postgresql/armpostgresqlflexibleservers/v4 v4.0.0-beta.5
 	github.com/fatih/color v1.16.0
 	github.com/google/uuid v1.6.0
-	github.com/gorilla/websocket v1.5.1
+	github.com/gorilla/websocket v1.5.3
 	github.com/pganalyze/pg_query_go/v5 v5.1.1-0.20240829182208-c3a818d346a9
 	github.com/prometheus/procfs v0.7.3
 	go.opentelemetry.io/otel v1.19.0
