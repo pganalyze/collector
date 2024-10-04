@@ -31,7 +31,7 @@ func ReplaceSecrets(input []byte, logLines []state.LogLine, filterLogSecret []st
 					if m.Kind == k && m.ByteStart > bytesChecked {
 						content = slices.Replace(content, m.ByteStart-offset, m.ByteEnd-offset, []byte(replacement)...)
 						bytesChecked = m.ByteEnd
-						offset += max(1, len(replacement)-m.ByteEnd-m.ByteStart)
+						offset += (m.ByteEnd - m.ByteStart) - len(replacement)
 					}
 				}
 			}
