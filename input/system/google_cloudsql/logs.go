@@ -169,6 +169,9 @@ func SetupLogSubscriber(ctx context.Context, wg *sync.WaitGroup, globalCollectio
 	return nil
 }
 
+// AlloyDB adds a special [filename:lineno] prefix to all log lines (not part of log_line_prefix)
+var alloyPrefix = regexp.MustCompile(`(?s)^\[[\w.-]+:\d+\]  (.*)`)
+
 func setupLogTransformer(ctx context.Context, wg *sync.WaitGroup, servers []*state.Server, in <-chan LogStreamItem, out chan state.ParsedLogStreamItem, logger *util.Logger) {
 	wg.Add(1)
 	go func() {
@@ -203,14 +206,12 @@ func setupLogTransformer(ctx context.Context, wg *sync.WaitGroup, servers []*sta
 					continue
 				}
 
-				parser := server.GetLogParser()
-
 				// We ignore failures here since we want the per-backend stitching logic
 				// that runs later on (and any other parsing errors will just be ignored).
 				// Note that we need to restore the original trailing newlines since
 				// AnalyzeStreamInGroups expects them and they are not present in the GCP
 				// log stream.
-				logLine, _ := parser.ParseLine(in.Content + "\n")
+				logLine, _ := server.GetLogParser().ParseLine(in.Content + "\n")
 				logLine.OccurredAt = in.OccurredAt
 
 				// Ignore loglines which are outside our time window
@@ -219,8 +220,7 @@ func setupLogTransformer(ctx context.Context, wg *sync.WaitGroup, servers []*sta
 				}
 
 				if isAlloyDBCluster {
-					// AlloyDB adds a special [filename:lineno] prefix to all log lines (not part of log_line_prefix)
-					parts := regexp.MustCompile(`(?s)^\[[\w.-]+:\d+\]  (.*)`).FindStringSubmatch(string(logLine.Content))
+					parts := alloyPrefix.FindStringSubmatch(string(logLine.Content))
 					if len(parts) == 2 {
 						logLine.Content = parts[1]
 					}
