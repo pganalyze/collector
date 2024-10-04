@@ -10,7 +10,6 @@ import (
 	"time"
 
 	raven "github.com/getsentry/raven-go"
-	"github.com/pganalyze/collector/grant"
 	"github.com/pganalyze/collector/input"
 	"github.com/pganalyze/collector/input/postgres"
 	"github.com/pganalyze/collector/logs"
@@ -104,7 +103,7 @@ func processServer(ctx context.Context, server *state.Server, globalCollectionOp
 	if server.WebSocket.Load() != nil {
 		newGrant = *server.Grant.Load()
 	} else if !globalCollectionOpts.ForceEmptyGrant {
-		newGrant, err = grant.GetDefaultGrant(ctx, server, globalCollectionOpts, logger)
+		newGrant, err = output.GetGrant(ctx, server, globalCollectionOpts, logger)
 		if err != nil {
 			if server.Grant.Load().Valid {
 				logger.PrintVerbose("Could not acquire snapshot grant, reusing previous grant: %s", err)

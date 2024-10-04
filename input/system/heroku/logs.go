@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/kr/logfmt"
-	"github.com/pganalyze/collector/grant"
 	"github.com/pganalyze/collector/logs"
 	"github.com/pganalyze/collector/output"
 	"github.com/pganalyze/collector/state"
@@ -69,7 +68,7 @@ func processSystemMetrics(ctx context.Context, timestamp time.Time, content []by
 
 	prefixedLogger := logger.WithPrefix(server.Config.SectionName)
 
-	grant, err := grant.GetDefaultGrant(ctx, server, globalCollectionOpts, prefixedLogger)
+	grant, err := output.GetGrant(ctx, server, globalCollectionOpts, prefixedLogger)
 	if err != nil {
 		prefixedLogger.PrintError("Could not get default grant for system snapshot: %s", err)
 		return

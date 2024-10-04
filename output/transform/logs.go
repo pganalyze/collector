@@ -148,6 +148,7 @@ func transformSystemLogLine(server *state.Server, r *snapshot.CompactSnapshot_Ba
 		Level:            logLineIn.LogLevel,
 		Classification:   logLineIn.Classification,
 		RelatedPids:      logLineIn.RelatedPids,
+		Content:          logLineIn.Content,
 	}
 
 	if logLineIn.ParentUUID != uuid.Nil {
