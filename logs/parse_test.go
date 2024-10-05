@@ -442,6 +442,22 @@ var parseTests = []parseTestpair{
 		},
 		true,
 	},
+	{
+		logs.LogPrefixCustom10,
+		// Database and user are empty
+		"2020-09-04 16:03:11.375 UTC [417880]: [1-1] db=,user= LOG:  pganalyze-collector-identify: myserver",
+		nil,
+		state.LogLine{
+			OccurredAt:    time.Date(2020, time.September, 4, 16, 3, 11, 375*1000*1000, time.UTC),
+			Username:      "",
+			Database:      "",
+			BackendPid:    417880,
+			LogLineNumber: 1,
+			LogLevel:      pganalyze_collector.LogLineInformation_LOG,
+			Content:       "pganalyze-collector-identify: myserver",
+		},
+		true,
+	},
 	// Custom 11 format
 	{
 		logs.LogPrefixCustom11,
