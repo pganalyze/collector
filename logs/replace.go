@@ -9,7 +9,7 @@ import (
 
 const replacement = "[redacted]"
 
-func ReplaceSecrets(input []byte, logLines []state.LogLine, filterLogSecret []state.LogSecretKind) {
+func ReplaceSecrets(logLines []state.LogLine, filterLogSecret []state.LogSecretKind) {
 	filterUnidentified := false
 	for _, k := range filterLogSecret {
 		if k == state.UnidentifiedLogSecret {
@@ -20,10 +20,10 @@ func ReplaceSecrets(input []byte, logLines []state.LogLine, filterLogSecret []st
 		if filterUnidentified && logLines[idx].Classification == 0 {
 			logLines[idx].Content = replacement + "\n"
 		} else {
-			content := input[logLines[idx].ByteContentStart:logLines[idx].ByteEnd]
 			sort.Slice(logLine.SecretMarkers, func(i, j int) bool {
 				return logLine.SecretMarkers[i].ByteStart < logLine.SecretMarkers[j].ByteEnd
 			})
+			content := []byte(logLine.Content)
 			bytesChecked := 0
 			offset := 0
 			for _, m := range logLine.SecretMarkers {

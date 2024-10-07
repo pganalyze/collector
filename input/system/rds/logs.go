@@ -5,9 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
-	"io/ioutil"
-	"os"
 	"strings"
 	"time"
 
@@ -60,58 +57,38 @@ func DownloadLogFiles(ctx context.Context, server *state.Server, logger *util.Lo
 	var newMarkers = make(map[string]string)
 
 	for _, rdsLogFile := range resp.DescribeDBLogFiles {
+		var content strings.Builder
 		var lastMarker *string
-		var bytesWritten int64
-
 		prevMarker, ok := psl.AwsMarkers[*rdsLogFile.LogFileName]
 		if ok {
 			lastMarker = &prevMarker
 		}
 
-		var tmpFile *os.File
-		tmpFile, err = ioutil.TempFile("", "")
-		if err != nil {
-			err = fmt.Errorf("Error allocating tempfile for logs: %s", err)
-			goto ErrorCleanup
-		}
-
 		for {
-			var newBytesWritten int
+			var fileContent *string
 			var newMarker *string
 			var additionalDataPending bool
-			newBytesWritten, newMarker, additionalDataPending, err = downloadRdsLogFilePortion(rdsSvc, tmpFile, logger, &identifier, rdsLogFile.LogFileName, lastMarker)
+			fileContent, newMarker, additionalDataPending, err = downloadRdsLogFilePortion(rdsSvc, logger, &identifier, rdsLogFile.LogFileName, lastMarker)
 			if err != nil {
-				util.CleanUpTmpFile(tmpFile, logger)
-				goto ErrorCleanup
+				return server.LogPrevState, nil, nil, err
 			}
-
-			bytesWritten += int64(newBytesWritten)
+			content.WriteString(*fileContent)
 			if newMarker != nil {
 				lastMarker = newMarker
 			}
-
 			if !additionalDataPending {
 				break
 			}
 		}
 
-		var buf []byte
-		buf, tmpFile, err = readLogFilePortion(tmpFile, bytesWritten, logger)
-		if err != nil {
-			util.CleanUpTmpFile(tmpFile, logger)
-			goto ErrorCleanup
-		}
+		stream := bufio.NewReader(strings.NewReader(content.String()))
+		newLogLines, newSamples := logs.ParseAndAnalyzeBuffer(stream, linesNewerThan, server)
 
-		fileContent := bufio.NewReader(strings.NewReader(string(buf)))
-		newLogLines, newSamples := logs.ParseAndAnalyzeBuffer(fileContent, linesNewerThan, server)
-
-		// Pass responsibility to LogFile for cleaning up the temp file
 		var logFile state.LogFile
-		logFile, err = state.NewLogFile(tmpFile, *rdsLogFile.LogFileName)
+		logFile, err = state.NewLogFile(*rdsLogFile.LogFileName)
 		if err != nil {
 			err = fmt.Errorf("error initializing log file: %s", err)
-			util.CleanUpTmpFile(tmpFile, logger)
-			goto ErrorCleanup
+			return server.LogPrevState, nil, nil, err
 		}
 		logFile.LogLines = append(logFile.LogLines, newLogLines...)
 		samples = append(samples, newSamples...)
@@ -125,13 +102,6 @@ func DownloadLogFiles(ctx context.Context, server *state.Server, logger *util.Lo
 	psl.AwsMarkers = newMarkers
 
 	return psl, logFiles, samples, err
-
-ErrorCleanup:
-	for _, logFile := range logFiles {
-		logFile.Cleanup(logger)
-	}
-
-	return server.LogPrevState, nil, nil, err
 }
 
 var DescribeDBClustersErrorCache *util.TTLMap = util.NewTTLMap(10 * 60)
@@ -164,7 +134,7 @@ func getAwsDbInstanceID(config config.ServerConfig, sess *session.Session) (stri
 	return *instance.DBInstanceIdentifier, nil
 }
 
-func downloadRdsLogFilePortion(rdsSvc *rds.RDS, tmpFile *os.File, logger *util.Logger, identifier *string, logFileName *string, lastMarker *string) (newBytesWritten int, newMarker *string, additionalDataPending bool, err error) {
+func downloadRdsLogFilePortion(rdsSvc *rds.RDS, logger *util.Logger, identifier *string, logFileName *string, lastMarker *string) (content *string, newMarker *string, additionalDataPending bool, err error) {
 	var resp *rds.DownloadDBLogFilePortionOutput
 	resp, err = rdsSvc.DownloadDBLogFilePortion(&rds.DownloadDBLogFilePortionInput{
 		DBInstanceIdentifier: identifier,
@@ -182,71 +152,9 @@ func downloadRdsLogFilePortion(rdsSvc *rds.RDS, tmpFile *os.File, logger *util.L
 		return
 	}
 
-	if len(*resp.LogFileData) > 0 {
-		newBytesWritten, err = tmpFile.WriteString(*resp.LogFileData)
-		if err != nil {
-			err = fmt.Errorf("Error writing to tempfile: %s", err)
-			return
-		}
-	}
-
+	content = resp.LogFileData
 	newMarker = resp.Marker
 	additionalDataPending = *resp.AdditionalDataPending
 
 	return
-}
-
-// Analyze and submit at most the trailing 10 megabytes of the retrieved RDS log file portions
-//
-// This avoids an OOM in two edge cases:
-// 1) When starting the collector, as we always load the last 10,000 lines (which may be very long)
-// 2) When extremely large values are output in a single log event (e.g. query parameters in a DETAIL line)
-//
-// We intentionally throw away data here (and warn the user about it), since the alternative
-// is often a collector crash (due to OOM), which would be less desirable.
-const maxLogParsingSize = 10 * 1024 * 1024
-
-func readLogFilePortion(tmpFile *os.File, bytesWritten int64, logger *util.Logger) ([]byte, *os.File, error) {
-	var err error
-	var readSize int64
-
-	exceededMaxParsingSize := bytesWritten > maxLogParsingSize
-	if exceededMaxParsingSize {
-		logger.PrintWarning("RDS log file portion exceeded more than 10 MB of data in 30 second interval, collecting most recent data only (skipping %d bytes)", bytesWritten-maxLogParsingSize)
-		readSize = maxLogParsingSize
-	} else {
-		readSize = bytesWritten
-	}
-
-	// Read the data into memory for analysis
-	_, err = tmpFile.Seek(bytesWritten-readSize, io.SeekStart)
-	if err != nil {
-		return nil, tmpFile, fmt.Errorf("Error seeking tempfile: %s", err)
-	}
-	buf := make([]byte, readSize)
-	_, err = io.ReadFull(tmpFile, buf)
-	if err != nil {
-		return nil, tmpFile, fmt.Errorf("Error reading %d bytes from tempfile: %s", len(buf), err)
-	}
-
-	// If necessary, recreate tempfile with just the data we're analyzing
-	// (this supports the later read of the temp file during the log upload)
-	if exceededMaxParsingSize {
-		truncatedTmpFile, err := ioutil.TempFile("", "")
-		if err != nil {
-			return nil, tmpFile, fmt.Errorf("Error allocating tempfile for logs: %s", err)
-		}
-
-		_, err = truncatedTmpFile.Write(buf)
-		if err != nil {
-			util.CleanUpTmpFile(truncatedTmpFile, logger)
-			return nil, tmpFile, fmt.Errorf("Error writing to tempfile: %s", err)
-		}
-
-		// We succeeded, so remove the previous file and use the new one going forward
-		util.CleanUpTmpFile(tmpFile, logger)
-		tmpFile = truncatedTmpFile
-	}
-
-	return buf, tmpFile, nil
 }

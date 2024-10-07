@@ -4328,6 +4328,9 @@ var tests = []testpair{
 func TestAnalyzeLogLines(t *testing.T) {
 	for _, pair := range tests {
 		l, s := logs.AnalyzeLogLines(pair.logLinesIn)
+		for idx := range l {
+			l[idx].Content = ""
+		}
 
 		cfg := pretty.CompareConfig
 		cfg.SkipZeroFields = true
@@ -4387,6 +4390,9 @@ func TestAnalyzeLogLinesHeroku(t *testing.T) {
 	t.Setenv("PORT", "dummy")
 	for _, pair := range testsHeroku {
 		l, s := logs.AnalyzeLogLines(pair.logLinesIn)
+		for idx := range l {
+			l[idx].Content = ""
+		}
 
 		cfg := pretty.CompareConfig
 		cfg.SkipZeroFields = true

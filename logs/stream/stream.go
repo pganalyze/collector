@@ -159,20 +159,14 @@ func isAdditionalLineLevel(str pganalyze_collector.LogLineInformation_LogLevel) 
 	return false
 }
 
-// writeTmpLogFile - Setup temporary file that will be used for encryption
-func writeTmpLogFile(readyLogLines []state.LogLine, logger *util.Logger) (state.LogFile, error) {
-	logFile, err := state.NewLogFile(nil, "")
+func createLogFile(readyLogLines []state.LogLine, logger *util.Logger) (state.LogFile, error) {
+	logFile, err := state.NewLogFile("")
 	if err != nil {
 		return state.LogFile{}, fmt.Errorf("could not initialize log file: %s", err)
 	}
 
 	currentByteStart := int64(0)
 	for idx, logLine := range readyLogLines {
-		_, err = logFile.TmpFile.WriteString(logLine.Content)
-		if err != nil {
-			logFile.Cleanup(logger)
-			return logFile, err
-		}
 		logLine.ByteStart = currentByteStart
 		logLine.ByteContentStart = currentByteStart
 		logLine.ByteEnd = currentByteStart + int64(len(logLine.Content))
@@ -307,7 +301,7 @@ func AnalyzeStreamInGroups(logLines []state.LogLine, now time.Time, server *stat
 		}
 	}
 
-	logFile, err := writeTmpLogFile(analyzableLogLines, logger)
+	logFile, err := createLogFile(analyzableLogLines, logger)
 	if err != nil {
 		return state.TransientLogState{}, state.LogFile{}, logLines, err
 	}

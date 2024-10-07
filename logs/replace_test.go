@@ -57,7 +57,7 @@ func TestReplaceSecrets(t *testing.T) {
 		server := state.MakeServer(config.ServerConfig{}, false)
 		server.LogParser = logs.NewLogParser(logs.LogPrefixAmazonRds, nil, false)
 		logLines, _ := logs.ParseAndAnalyzeBuffer(reader, time.Time{}, server)
-		logs.ReplaceSecrets([]byte(pair.input), logLines, state.ParseFilterLogSecret(pair.filterLogSecret))
+		logs.ReplaceSecrets(logLines, state.ParseFilterLogSecret(pair.filterLogSecret))
 
 		cfg := pretty.CompareConfig
 		cfg.SkipZeroFields = true

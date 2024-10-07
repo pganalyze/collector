@@ -1,7 +1,6 @@
 package stream_test
 
 import (
-	"io/ioutil"
 	"log"
 	"os"
 	"sort"
@@ -364,16 +363,12 @@ func TestAnalyzeStreamInGroups(t *testing.T) {
 		server := state.MakeServer(config.ServerConfig{}, false)
 		TransientLogState, logFile, tooFreshLogLines, err := stream.AnalyzeStreamInGroups(pair.logLines, now, server, &util.Logger{Destination: log.New(os.Stderr, "", log.LstdFlags)})
 		logFileContent := ""
-		if logFile.TmpFile != nil {
-			dat, err := ioutil.ReadFile(logFile.TmpFile.Name())
-			if err != nil {
-				t.Errorf("Error reading temporary log file: %s", err)
-			}
-			logFileContent = string(dat)
+		for idx, logLine := range logFile.LogLines {
+			logFileContent += logLine.Content
+			logFile.LogLines[idx].Content = ""
 		}
 
 		TransientLogState.CollectedAt = time.Time{} // Avoid comparing against time.Now()
-		logFile.TmpFile = nil                       // Avoid comparing against tempfile
 		logFile.UUID = uuid.UUID{}                  // Avoid comparing against a generated UUID
 
 		cfg := pretty.CompareConfig
