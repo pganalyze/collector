@@ -81,6 +81,7 @@ func connect(ctx context.Context, server *state.Server, globalCollectionOpts sta
 	if err != nil {
 		cancelConn()
 		logger.PrintWarning("Error starting websocket: %s %v", err, response)
+		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectWebSocket, "error starting WebSocket: %s", err)
 		return
 	}
 	server.WebSocket.Store(conn)
@@ -117,7 +118,7 @@ func connect(ctx context.Context, server *state.Server, globalCollectionOpts sta
 				shutdown := errors.Is(err, net.ErrClosed)                                    // The collector process is shutting down
 				if !serverClosed && !shutdown {
 					logger.PrintWarning("Error reading from websocket: %s", err)
-					server.SelfTest.MarkCollectionAspectError(state.CollectionAspectWebSocket, "error starting WebSocket: %s", err)
+					server.SelfTest.MarkCollectionAspectError(state.CollectionAspectWebSocket, "error reading from WebSocket: %s", err)
 				}
 				cancelConn()
 				return
