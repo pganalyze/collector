@@ -458,6 +458,32 @@ var parseTests = []parseTestpair{
 		},
 		true,
 	},
+	// Custom 11 format
+	{
+		logs.LogPrefixCustom11,
+		"pid=8284,user=[unknown],db=[unknown],app=[unknown],client=[local] LOG: connection received: host=[local]",
+		nil,
+		state.LogLine{
+			BackendPid: 8284,
+			LogLevel:   pganalyze_collector.LogLineInformation_LOG,
+			Content:    "connection received: host=[local]",
+		},
+		true,
+	},
+	{
+		// Updating this to reflect that we can now capture the unusual application
+		// name (previously Application was omitted in the expected output struct)
+		logs.LogPrefixCustom11,
+		"pid=8284,user=[unknown],db=[unknown],app=why would you[] name your application this,client=[local] LOG: connection received: host=[local]",
+		nil,
+		state.LogLine{
+			Application: "why would you[] name your application this",
+			BackendPid:  8284,
+			LogLevel:    pganalyze_collector.LogLineInformation_LOG,
+			Content:     "connection received: host=[local]",
+		},
+		true,
+	},
 	// Custom 12 format
 	{
 		logs.LogPrefixCustom12,
