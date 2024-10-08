@@ -3,6 +3,7 @@ package selfhosted
 import (
 	"bufio"
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -39,15 +40,10 @@ SELECT setting
 	FROM pg_settings
  WHERE name = '%s'`
 
-func getPostgresSetting(ctx context.Context, settingName string, server *state.Server, globalCollectionOpts state.CollectionOpts, prefixedLogger *util.Logger) (string, error) {
+func getPostgresSetting(ctx context.Context, db *sql.DB, settingName string, server *state.Server, globalCollectionOpts state.CollectionOpts, prefixedLogger *util.Logger) (string, error) {
 	var value string
 
-	db, err := postgres.EstablishConnection(ctx, server, prefixedLogger, globalCollectionOpts, "")
-	if err != nil {
-		return "", fmt.Errorf("Could not connect to database to retrieve \"%s\": %s", settingName, err)
-	}
-
-	err = db.QueryRowContext(ctx, postgres.QueryMarkerSQL+fmt.Sprintf(settingValueSQL, settingName)).Scan(&value)
+	err := db.QueryRowContext(ctx, postgres.QueryMarkerSQL+fmt.Sprintf(settingValueSQL, settingName)).Scan(&value)
 	db.Close()
 	if err != nil {
 		return "", fmt.Errorf("Could not read \"%s\" setting: %s", settingName, err)
@@ -66,7 +62,13 @@ func DiscoverLogLocation(ctx context.Context, servers []*state.Server, globalCol
 			prefixedLogger.PrintWarning("WARNING - Database hostname is not localhost - Log Insights requires the collector to run on the database server directly for self-hosted systems")
 		}
 
-		logDestination, err := getPostgresSetting(ctx, "log_destination", server, globalCollectionOpts, prefixedLogger)
+		db, err := postgres.EstablishConnection(ctx, server, prefixedLogger, globalCollectionOpts, "")
+		if err != nil {
+			prefixedLogger.PrintError("Could not connect to database: %s", err)
+			continue
+		}
+
+		logDestination, err := getPostgresSetting(ctx, db, "log_destination", server, globalCollectionOpts, prefixedLogger)
 		if err != nil {
 			prefixedLogger.PrintError("ERROR - %s", err)
 			continue
@@ -80,7 +82,7 @@ func DiscoverLogLocation(ctx context.Context, servers []*state.Server, globalCol
 			continue
 		}
 
-		loggingCollector, err := getPostgresSetting(ctx, "logging_collector", server, globalCollectionOpts, prefixedLogger)
+		loggingCollector, err := getPostgresSetting(ctx, db, "logging_collector", server, globalCollectionOpts, prefixedLogger)
 		if err != nil {
 			prefixedLogger.PrintError("ERROR - %s", err)
 			continue
@@ -100,7 +102,7 @@ func DiscoverLogLocation(ctx context.Context, servers []*state.Server, globalCol
 		}
 
 		if loggingCollector == "on" {
-			logDirectory, err := getPostgresSetting(ctx, "log_directory", server, globalCollectionOpts, prefixedLogger)
+			logDirectory, err := getPostgresSetting(ctx, db, "log_directory", server, globalCollectionOpts, prefixedLogger)
 			if err != nil {
 				prefixedLogger.PrintError("ERROR - Could not retrieve log_directory setting from Postgres: %s", err)
 				continue
