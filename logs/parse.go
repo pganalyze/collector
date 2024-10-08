@@ -195,7 +195,7 @@ type LogParser struct {
 
 func NewLogParser(prefix string, tz *time.Location, isSyslog bool) *LogParser {
 	prefixRegexp, prefixElements := parsePrefix(prefix)
-	lineRegexp := regexp.MustCompile("(?ms)^" + prefixRegexp + `(\w+):\s+(.*\n?)$`)
+	lineRegexp := regexp.MustCompile("(?ms)^" + prefixRegexp + `(DEBUG|INFO|NOTICE|WARNING|ERROR|LOG|FATAL|PANIC|DETAIL|HINT|CONTEXT|STATEMENT|QUERY):\s+(.*\n?)$`)
 	lineRegexpWithoutLogLevel := regexp.MustCompile("(?ms)^" + prefixRegexp + `(.*\n?)$`)
 	return &LogParser{
 		prefix:   prefix,

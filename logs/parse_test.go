@@ -442,6 +442,22 @@ var parseTests = []parseTestpair{
 		},
 		true,
 	},
+	{
+		logs.LogPrefixCustom10,
+		// Database and user are empty
+		"2024-10-04 06:38:28.808 UTC [2569017]: [1-1] db=,user= LOG: automatic vacuum of table \"some_database.some_schema.some_table\": index scans: 0\npages: 0 removed, 14 remain, 0 skipped due to pins, 0 skipped frozen\ntuples: 0 removed, 107 remain, 94 are dead but not yet removable, oldest xmin: 17243830\nindex scan not needed: 0 pages from table (0.00% of total) had 0 dead item identifiers removed\nI/O timings: read: 0.000 ms, write: 0.000 ms\navg read rate: 0.000 MB/s, avg write rate: 0.000 MB/s\nbuffer usage: 52 hits, 0 misses, 0 dirtied\nWAL usage: 0 records, 0 full page images, 0 bytes\nsystem usage: CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.00 s",
+		nil,
+		state.LogLine{
+			OccurredAt:    time.Date(2024, time.October, 4, 6, 38, 28, 808*1000*1000, time.UTC),
+			Username:      "",
+			Database:      "",
+			BackendPid:    2569017,
+			LogLineNumber: 1,
+			LogLevel:      pganalyze_collector.LogLineInformation_LOG,
+			Content:       "automatic vacuum of table \"some_database.some_schema.some_table\": index scans: 0\npages: 0 removed, 14 remain, 0 skipped due to pins, 0 skipped frozen\ntuples: 0 removed, 107 remain, 94 are dead but not yet removable, oldest xmin: 17243830\nindex scan not needed: 0 pages from table (0.00% of total) had 0 dead item identifiers removed\nI/O timings: read: 0.000 ms, write: 0.000 ms\navg read rate: 0.000 MB/s, avg write rate: 0.000 MB/s\nbuffer usage: 52 hits, 0 misses, 0 dirtied\nWAL usage: 0 records, 0 full page images, 0 bytes\nsystem usage: CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.00 s",
+		},
+		true,
+	},
 	// Custom 11 format
 	{
 		logs.LogPrefixCustom11,
