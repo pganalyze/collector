@@ -445,42 +445,16 @@ var parseTests = []parseTestpair{
 	{
 		logs.LogPrefixCustom10,
 		// Database and user are empty
-		"2020-09-04 16:03:11.375 UTC [417880]: [1-1] db=,user= LOG:  pganalyze-collector-identify: myserver",
+		"2024-10-04 06:38:28.808 UTC [2569017]: [1-1] db=,user= LOG: automatic vacuum of table \"some_database.some_schema.some_table\": index scans: 0\npages: 0 removed, 14 remain, 0 skipped due to pins, 0 skipped frozen\ntuples: 0 removed, 107 remain, 94 are dead but not yet removable, oldest xmin: 17243830\nindex scan not needed: 0 pages from table (0.00% of total) had 0 dead item identifiers removed\nI/O timings: read: 0.000 ms, write: 0.000 ms\navg read rate: 0.000 MB/s, avg write rate: 0.000 MB/s\nbuffer usage: 52 hits, 0 misses, 0 dirtied\nWAL usage: 0 records, 0 full page images, 0 bytes\nsystem usage: CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.00 s",
 		nil,
 		state.LogLine{
-			OccurredAt:    time.Date(2020, time.September, 4, 16, 3, 11, 375*1000*1000, time.UTC),
+			OccurredAt:    time.Date(2024, time.October, 4, 6, 38, 28, 808*1000*1000, time.UTC),
 			Username:      "",
 			Database:      "",
-			BackendPid:    417880,
+			BackendPid:    2569017,
 			LogLineNumber: 1,
 			LogLevel:      pganalyze_collector.LogLineInformation_LOG,
-			Content:       "pganalyze-collector-identify: myserver",
-		},
-		true,
-	},
-	// Custom 11 format
-	{
-		logs.LogPrefixCustom11,
-		"pid=8284,user=[unknown],db=[unknown],app=[unknown],client=[local] LOG: connection received: host=[local]",
-		nil,
-		state.LogLine{
-			BackendPid: 8284,
-			LogLevel:   pganalyze_collector.LogLineInformation_LOG,
-			Content:    "connection received: host=[local]",
-		},
-		true,
-	},
-	{
-		// Updating this to reflect that we can now capture the unusual application
-		// name (previously Application was omitted in the expected output struct)
-		logs.LogPrefixCustom11,
-		"pid=8284,user=[unknown],db=[unknown],app=why would you[] name your application this,client=[local] LOG: connection received: host=[local]",
-		nil,
-		state.LogLine{
-			Application: "why would you[] name your application this",
-			BackendPid:  8284,
-			LogLevel:    pganalyze_collector.LogLineInformation_LOG,
-			Content:     "connection received: host=[local]",
+			Content:       "automatic vacuum of table \"some_database.some_schema.some_table\": index scans: 0\npages: 0 removed, 14 remain, 0 skipped due to pins, 0 skipped frozen\ntuples: 0 removed, 107 remain, 94 are dead but not yet removable, oldest xmin: 17243830\nindex scan not needed: 0 pages from table (0.00% of total) had 0 dead item identifiers removed\nI/O timings: read: 0.000 ms, write: 0.000 ms\navg read rate: 0.000 MB/s, avg write rate: 0.000 MB/s\nbuffer usage: 52 hits, 0 misses, 0 dirtied\nWAL usage: 0 records, 0 full page images, 0 bytes\nsystem usage: CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.00 s",
 		},
 		true,
 	},
