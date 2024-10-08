@@ -69,7 +69,7 @@ var EscapeMatchers = map[rune]PrefixEscape{
 	},
 	// User name
 	'u': {
-		Regexp: `.*?`,
+		Regexp: `.+?`,
 		ApplyValue: func(value string, logLine *state.LogLine, parser *LogParser) {
 			if value == "[unknown]" {
 				return
@@ -80,7 +80,7 @@ var EscapeMatchers = map[rune]PrefixEscape{
 	},
 	// Database name
 	'd': {
-		Regexp: `.*?`,
+		Regexp: `.+?`,
 		ApplyValue: func(value string, logLine *state.LogLine, parser *LogParser) {
 			if value == "[unknown]" {
 				return
