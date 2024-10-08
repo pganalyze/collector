@@ -117,13 +117,14 @@ func TransformLogMinDurationStatementToQuerySample(logLine state.LogLine, queryT
 	return sample, true
 }
 
+// Regular expression to find all values in single quotes or NULL
+// Query Parameters example: $1 = 'foo', $2 = '123', $3 = NULL, $4 = 'bo”o'
+var valueRegexp = regexp.MustCompile(`(?:(NULL)|'((?:[^']|'')*)')`)
+
 func findQueryParameters(paramText string) []null.String {
 	// Handle Query Parameters (available from Postgres 16+)
 	var parameters []null.String
-	// Regular expression to find all values in single quotes or NULL
-	// Query Parameters example: $1 = 'foo', $2 = '123', $3 = NULL, $4 = 'bo''o'
-	re := regexp.MustCompile(`(?:(NULL)|'((?:[^']|'')*)')`)
-	for _, part := range re.FindAllString(paramText, -1) {
+	for _, part := range valueRegexp.FindAllString(paramText, -1) {
 		if part == "NULL" {
 			parameters = append(parameters, null.NewString("", false))
 		} else {
