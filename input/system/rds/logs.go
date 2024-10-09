@@ -18,6 +18,16 @@ import (
 	"github.com/aws/aws-sdk-go/service/rds"
 )
 
+// Analyze and submit at most the trailing 10 megabytes of the retrieved RDS log file portions
+//
+// This avoids an OOM in two edge cases:
+// 1) When starting the collector, as we always load the last 10,000 lines (which may be very long)
+// 2) When extremely large values are output in a single log event (e.g. query parameters in a DETAIL line)
+//
+// We intentionally throw away data here (and warn the user about it), since the alternative
+// is often a collector crash (due to OOM), which would be less desirable.
+const maxLogParsingSize = 10 * 1024 * 1024
+
 // DownloadLogFiles - Gets log files for an Amazon RDS instance
 func DownloadLogFiles(ctx context.Context, server *state.Server, logger *util.Logger) (state.PersistedLogState, []state.LogFile, []state.PostgresQuerySample, error) {
 	var err error
@@ -57,7 +67,7 @@ func DownloadLogFiles(ctx context.Context, server *state.Server, logger *util.Lo
 	var newMarkers = make(map[string]string)
 
 	for _, rdsLogFile := range resp.DescribeDBLogFiles {
-		var content strings.Builder
+		var content []byte
 		var lastMarker *string
 		prevMarker, ok := psl.AwsMarkers[*rdsLogFile.LogFileName]
 		if ok {
@@ -65,14 +75,28 @@ func DownloadLogFiles(ctx context.Context, server *state.Server, logger *util.Lo
 		}
 
 		for {
-			var fileContent *string
+			var newContent string
 			var newMarker *string
 			var additionalDataPending bool
-			fileContent, newMarker, additionalDataPending, err = downloadRdsLogFilePortion(rdsSvc, logger, &identifier, rdsLogFile.LogFileName, lastMarker)
+			newContent, newMarker, additionalDataPending, err = downloadRdsLogFilePortion(rdsSvc, logger, &identifier, rdsLogFile.LogFileName, lastMarker)
 			if err != nil {
 				return server.LogPrevState, nil, nil, err
 			}
-			content.WriteString(*fileContent)
+			if len(newContent) > maxLogParsingSize {
+				content = []byte(newContent[len(newContent)-maxLogParsingSize:])
+			} else {
+				// Shift existing data left if needed
+				overflow := len(content) + len(newContent) - maxLogParsingSize
+				if overflow > 0 {
+					copy(content, content[overflow:])
+				}
+				pos := min(len(content), maxLogParsingSize-len(newContent))
+				// Resize result buffer if needed
+				if pos+len(newContent) > len(content) {
+					content = append(content, make([]byte, pos+len(newContent)-len(content))...)
+				}
+				copy(content[pos:], newContent)
+			}
 			if newMarker != nil {
 				lastMarker = newMarker
 			}
@@ -81,7 +105,7 @@ func DownloadLogFiles(ctx context.Context, server *state.Server, logger *util.Lo
 			}
 		}
 
-		stream := bufio.NewReader(strings.NewReader(content.String()))
+		stream := bufio.NewReader(strings.NewReader(string(content)))
 		newLogLines, newSamples := logs.ParseAndAnalyzeBuffer(stream, linesNewerThan, server)
 
 		var logFile state.LogFile
@@ -134,7 +158,7 @@ func getAwsDbInstanceID(config config.ServerConfig, sess *session.Session) (stri
 	return *instance.DBInstanceIdentifier, nil
 }
 
-func downloadRdsLogFilePortion(rdsSvc *rds.RDS, logger *util.Logger, identifier *string, logFileName *string, lastMarker *string) (content *string, newMarker *string, additionalDataPending bool, err error) {
+func downloadRdsLogFilePortion(rdsSvc *rds.RDS, logger *util.Logger, identifier *string, logFileName *string, lastMarker *string) (content string, newMarker *string, additionalDataPending bool, err error) {
 	var resp *rds.DownloadDBLogFilePortionOutput
 	resp, err = rdsSvc.DownloadDBLogFilePortion(&rds.DownloadDBLogFilePortionInput{
 		DBInstanceIdentifier: identifier,
@@ -152,7 +176,7 @@ func downloadRdsLogFilePortion(rdsSvc *rds.RDS, logger *util.Logger, identifier 
 		return
 	}
 
-	content = resp.LogFileData
+	content = *resp.LogFileData
 	newMarker = resp.Marker
 	additionalDataPending = *resp.AdditionalDataPending
 
