@@ -46,7 +46,7 @@ func GetColumnStats(ctx context.Context, logger *util.Logger, db *sql.DB, global
 				server.SelfTest.HintDbCollectionAspect(dbName, state.CollectionAspectColumnStats, "Please set up"+
 					" the monitoring helper function pganalyze.get_column_stats (%s)"+
 					" or connect as superuser to get column statistics for all tables.", selftest.URLPrinter.Sprint("https://pganalyze.com/docs/install/troubleshooting/column_stats_helper"))
-				logger.PrintWarning("Limited access to table column statistics detected in database %s. Please set up"+
+				logger.PrintInfo("Warning: Limited access to table column statistics detected in database %s. Please set up"+
 					" the monitoring helper function pganalyze.get_column_stats (https://pganalyze.com/docs/install/troubleshooting/column_stats_helper)"+
 					" or connect as superuser, to get column statistics for all tables.", dbName)
 			}
