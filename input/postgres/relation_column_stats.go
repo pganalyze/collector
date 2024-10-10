@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 
 	"github.com/pganalyze/collector/selftest"
 	"github.com/pganalyze/collector/state"
@@ -20,9 +21,21 @@ func GetColumnStats(ctx context.Context, logger *util.Logger, db *sql.DB, global
 	var sourceTable string
 
 	if StatsHelperExists(ctx, db, "get_column_stats") {
-		logger.PrintVerbose("Found pganalyze.get_column_stats() stats helper")
-		sourceTable = "pganalyze.get_column_stats()"
-		server.SelfTest.MarkDbCollectionAspectOk(dbName, state.CollectionAspectColumnStats)
+		if strings.Contains(StatsHelperReturnType(ctx, db, "get_column_stats"), "pg_stats") {
+			sourceTable = "pg_catalog.pg_stats"
+			logger.PrintWarning("Outdated pganalyze.get_column_stats() function detected in database %s."+
+				" Please `DROP FUNCTION pganalyze.get_column_stats()` and then add the new function definition"+
+				" https://pganalyze.com/docs/install/troubleshooting/column_stats_helper", dbName)
+			if globalCollectionOpts.TestRun {
+				server.SelfTest.MarkDbCollectionAspectError(dbName, state.CollectionAspectColumnStats, "monitoring helper function pganalyze.get_column_stats outdated")
+				server.SelfTest.HintDbCollectionAspect(dbName, state.CollectionAspectColumnStats,
+					"Please `DROP FUNCTION pganalyze.get_column_stats()` and then add the new function definition %s", selftest.URLPrinter.Sprint("https://pganalyze.com/docs/install/troubleshooting/column_stats_helper"))
+			}
+		} else {
+			sourceTable = "pganalyze.get_column_stats()"
+			logger.PrintVerbose("Found pganalyze.get_column_stats() stats helper")
+			server.SelfTest.MarkDbCollectionAspectOk(dbName, state.CollectionAspectColumnStats)
+		}
 	} else {
 		sourceTable = "pg_catalog.pg_stats"
 		if globalCollectionOpts.TestRun {
