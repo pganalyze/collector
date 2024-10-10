@@ -82,7 +82,7 @@ func LogPgReadFile(ctx context.Context, server *state.Server, globalCollectionOp
 	for _, fileName := range fileNames {
 		if err != nil {
 			err = fmt.Errorf("LogFileSql/Scan: %s", err)
-			goto ErrorCleanup
+			return server.LogPrevState, nil, nil, err
 		}
 		var logData string
 		var newOffset int64
@@ -90,21 +90,14 @@ func LogPgReadFile(ctx context.Context, server *state.Server, globalCollectionOp
 		err = db.QueryRowContext(ctx, QueryMarkerSQL+logReadSql, fileName, prevOffset).Scan(&newOffset, &logData)
 		if err != nil {
 			err = fmt.Errorf("LogReadSql/QueryRow: %s", err)
-			goto ErrorCleanup
+			return server.LogPrevState, nil, nil, err
 		}
 
 		var logFile state.LogFile
-		logFile, err = state.NewLogFile(nil, fileName)
+		logFile, err = state.NewLogFile(fileName)
 		if err != nil {
 			err = fmt.Errorf("error initializing log file: %s", err)
-			goto ErrorCleanup
-		}
-
-		_, err := logFile.TmpFile.WriteString(logData)
-		if err != nil {
-			err = fmt.Errorf("Error writing to tempfile: %s", err)
-			logFile.Cleanup(logger)
-			goto ErrorCleanup
+			return server.LogPrevState, nil, nil, err
 		}
 
 		logReader := bufio.NewReader(strings.NewReader(logData))
@@ -119,11 +112,4 @@ func LogPgReadFile(ctx context.Context, server *state.Server, globalCollectionOp
 	psl.ReadFileMarkers = newMarkers
 
 	return psl, logFiles, samples, err
-
-ErrorCleanup:
-	for _, logFile := range logFiles {
-		logFile.Cleanup(logger)
-	}
-
-	return server.LogPrevState, nil, nil, err
 }

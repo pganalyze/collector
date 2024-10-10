@@ -12,7 +12,7 @@ import (
 	"github.com/pganalyze/collector/state"
 )
 
-func PrintDebugInfo(logFileContents string, logLines []state.LogLine, samples []state.PostgresQuerySample) {
+func PrintDebugInfo(logLines []state.LogLine, samples []state.PostgresQuerySample) {
 	fmt.Printf("log lines: %d, query samples: %d\n", len(logLines), len(samples))
 	groups := map[pganalyze_collector.LogLineInformation_LogClassification]int{}
 	unclassifiedLogLines := []state.LogLine{}
@@ -35,15 +35,13 @@ func PrintDebugInfo(logFileContents string, logLines []state.LogLine, samples []
 	if len(unclassifiedLogLines) > 0 {
 		fmt.Printf("\nUnclassified log lines:\n")
 		for _, logLine := range unclassifiedLogLines {
-			fmt.Printf("%s\n", logFileContents[logLine.ByteStart:logLine.ByteEnd])
-			fmt.Printf("  Level: %s\n", logLine.LogLevel)
-			fmt.Printf("  Content: %#v\n", logFileContents[logLine.ByteContentStart:logLine.ByteEnd])
+			fmt.Printf("  %s: %s", logLine.LogLevel, logLine.Content)
 			fmt.Printf("---\n")
 		}
 	}
 }
 
-func PrintDebugLogLines(logFileContents string, logLines []state.LogLine, classifications map[pganalyze_collector.LogLineInformation_LogClassification]bool) {
+func PrintDebugLogLines(logLines []state.LogLine, classifications map[pganalyze_collector.LogLineInformation_LogClassification]bool) {
 	fmt.Println("\nParsed log lines:")
 	linesById := make(map[uuid.UUID]*state.LogLine)
 	for _, logLine := range logLines {
@@ -63,15 +61,13 @@ func PrintDebugLogLines(logFileContents string, logLines []state.LogLine, classi
 		if err != nil {
 			panic(err)
 		}
-		fmt.Printf("%s\n", logFileContents[logLine.ByteStart:logLine.ByteEnd])
-		fmt.Printf("  Level:          %s\n", logLine.LogLevel)
+		fmt.Printf("  %s: %s", logLine.LogLevel, logLine.Content)
 		if logLine.ParentUUID == uuid.Nil {
 			fmt.Printf("  Classification: %s (%d)\n", logLine.Classification, logLine.Classification)
 		}
 		if len(logLine.Details) > 0 {
 			fmt.Printf("  Details:        %s\n", detailsStr)
 		}
-		fmt.Printf("  Content:    %#v\n", logFileContents[logLine.ByteContentStart:logLine.ByteEnd])
 		fmt.Printf("---\n")
 	}
 }

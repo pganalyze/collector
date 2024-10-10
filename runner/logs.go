@@ -3,7 +3,6 @@ package runner
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"strings"
 	"sync"
 	"time"
@@ -151,7 +150,6 @@ func downloadLogsForServer(ctx context.Context, server *state.Server, globalColl
 		return server.LogPrevState, false, err
 	}
 	transientLogState := state.TransientLogState{CollectedAt: time.Now()}
-	defer transientLogState.Cleanup(logger)
 
 	var newLogState state.PersistedLogState
 	newLogState, transientLogState.LogFiles, transientLogState.QuerySamples, err = system.DownloadLogFiles(ctx, server, globalCollectionOpts, logger)
@@ -242,7 +240,6 @@ func processLogStream(ctx context.Context, server *state.Server, logLines []stat
 		logger.PrintError("%s", err)
 		return tooFreshLogLines
 	}
-	defer transientLogState.Cleanup(logger)
 
 	transientLogState.LogFiles = []state.LogFile{logFile}
 
@@ -332,24 +329,16 @@ func postprocessAndSendLogs(ctx context.Context, server *state.Server, globalCol
 
 	for idx := range transientLogState.LogFiles {
 		logFile := &transientLogState.LogFiles[idx]
+		logFile.ByteSize = int64(logFile.LogLines[len(logFile.LogLines)-1].ByteEnd)
 		if len(logFile.FilterLogSecret) > 0 {
-			content, err := ioutil.ReadFile(logFile.TmpFile.Name())
-			if err != nil {
-				return err
-			}
-			logFile.ByteSize = int64(len(content))
-			logs.ReplaceSecrets(content, logFile.LogLines, logFile.FilterLogSecret)
+			logs.ReplaceSecrets(logFile.LogLines, logFile.FilterLogSecret)
 		}
 	}
 
 	if globalCollectionOpts.DebugLogs {
 		logger.PrintInfo("Would have sent log state:\n")
 		for _, logFile := range transientLogState.LogFiles {
-			content, err := ioutil.ReadFile(logFile.TmpFile.Name())
-			if err != nil {
-				return err
-			}
-			logs.PrintDebugInfo(string(content), logFile.LogLines, transientLogState.QuerySamples)
+			logs.PrintDebugInfo(logFile.LogLines, transientLogState.QuerySamples)
 		}
 		return nil
 	}

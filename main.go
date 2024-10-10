@@ -197,9 +197,7 @@ func main() {
 			fmt.Printf("ERROR: %s\n", err)
 			return
 		}
-		content := string(contentBytes)
-		reader := strings.NewReader(content)
-		logReader := logs.NewMaybeHerokuLogReader(reader)
+		logReader := logs.NewMaybeHerokuLogReader(strings.NewReader(string(contentBytes)))
 		server := state.MakeServer(config.ServerConfig{}, false)
 		tz, err := time.LoadLocation(analyzeLogfileTz)
 		if err != nil {
@@ -213,7 +211,7 @@ func main() {
 		server.LogParser = logs.NewLogParser(analyzeLogfilePrefix, tz, false)
 
 		logLines, samples := logs.ParseAndAnalyzeBuffer(logReader, time.Time{}, server)
-		logs.PrintDebugInfo(content, logLines, samples)
+		logs.PrintDebugInfo(logLines, samples)
 		if analyzeDebugClassifications != "" {
 			classifications := strings.Split(analyzeDebugClassifications, ",")
 			classMap := make(map[pganalyze_collector.LogLineInformation_LogClassification]bool)
@@ -229,7 +227,7 @@ func main() {
 				classInt := int32(classVal)
 				classMap[pganalyze_collector.LogLineInformation_LogClassification(classInt)] = true
 			}
-			logs.PrintDebugLogLines(content, logLines, classMap)
+			logs.PrintDebugLogLines(logLines, classMap)
 		}
 		return
 	}
@@ -240,11 +238,9 @@ func main() {
 			fmt.Printf("ERROR: %s\n", err)
 			return
 		}
-		content := string(contentBytes)
-		reader := strings.NewReader(content)
-		logReader := logs.NewMaybeHerokuLogReader(reader)
+		logReader := logs.NewMaybeHerokuLogReader(strings.NewReader(string(contentBytes)))
 		logLines, _ := logs.ParseAndAnalyzeBuffer(logReader, time.Time{}, state.MakeServer(config.ServerConfig{}, false))
-		logs.ReplaceSecrets(contentBytes, logLines, state.ParseFilterLogSecret(filterLogSecret))
+		logs.ReplaceSecrets(logLines, state.ParseFilterLogSecret(filterLogSecret))
 		output := ""
 		for _, logLine := range logLines {
 			output += logLine.Content
