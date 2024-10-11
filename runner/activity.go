@@ -76,7 +76,7 @@ func processActivityForServer(ctx context.Context, server *state.Server, globalC
 		defer connection.Close()
 	}
 
-	trackActivityQuerySize, err := postgres.GetPostgresSetting(ctx, "track_activity_query_size", server, globalCollectionOpts, logger)
+	trackActivityQuerySize, err := postgres.GetPostgresSetting(ctx, connection, "track_activity_query_size", server, globalCollectionOpts, logger)
 	if err != nil {
 		activity.TrackActivityQuerySize = -1
 	} else {
