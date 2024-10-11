@@ -327,9 +327,13 @@ func postprocessAndSendLogs(ctx context.Context, server *state.Server, globalCol
 		transientLogState.LogFiles[idx].FilterLogSecret = state.ParseFilterLogSecret(server.Config.FilterLogSecret)
 	}
 
+	logsExist := false
 	for idx := range transientLogState.LogFiles {
 		logFile := &transientLogState.LogFiles[idx]
-		logFile.ByteSize = int64(logFile.LogLines[len(logFile.LogLines)-1].ByteEnd)
+		if len(logFile.LogLines) > 0 {
+			logsExist = true
+			logFile.ByteSize = int64(logFile.LogLines[len(logFile.LogLines)-1].ByteEnd)
+		}
 		if len(logFile.FilterLogSecret) > 0 {
 			logs.ReplaceSecrets(logFile.LogLines, logFile.FilterLogSecret)
 		}
@@ -343,10 +347,12 @@ func postprocessAndSendLogs(ctx context.Context, server *state.Server, globalCol
 		return nil
 	}
 
-	err = output.UploadAndSendLogs(ctx, server, grant, globalCollectionOpts, logger, transientLogState)
-	if err != nil {
-		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectLogs, "error sending logs: %s", err)
-		return errors.Wrap(err, "failed to upload/send logs")
+	if logsExist {
+		err = output.UploadAndSendLogs(ctx, server, grant, globalCollectionOpts, logger, transientLogState)
+		if err != nil {
+			server.SelfTest.MarkCollectionAspectError(state.CollectionAspectLogs, "error sending logs: %s", err)
+			return errors.Wrap(err, "failed to upload/send logs")
+		}
 	}
 
 	return nil
