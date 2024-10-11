@@ -2,15 +2,12 @@ package state
 
 import (
 	"fmt"
-	"io/ioutil"
-	"os"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/pganalyze/collector/config"
 	"github.com/pganalyze/collector/output/pganalyze_collector"
-	"github.com/pganalyze/collector/util"
 )
 
 type GrantLogs struct {
@@ -63,8 +60,6 @@ type LogFile struct {
 
 	ByteSize     int64
 	OriginalName string
-
-	TmpFile *os.File
 
 	FilterLogSecret []LogSecretKind
 }
@@ -183,33 +178,13 @@ type LogLine struct {
 	SecretMarkers      []LogSecretMarker
 }
 
-func NewLogFile(tmpFile *os.File, originalName string) (LogFile, error) {
-	var err error
-	if tmpFile == nil {
-		tmpFile, err = ioutil.TempFile("", "")
-		if err != nil {
-			return LogFile{}, fmt.Errorf("error allocating tempfile for logs: %s", err)
-		}
-	}
+func NewLogFile(originalName string) (LogFile, error) {
 	uuid, err := uuid.NewV7()
 	if err != nil {
 		return LogFile{}, fmt.Errorf("error generating log file UUID: %s", err)
 	}
 	return LogFile{
 		UUID:         uuid,
-		TmpFile:      tmpFile,
 		OriginalName: originalName,
 	}, nil
-}
-
-func (logFile *LogFile) Cleanup(logger *util.Logger) {
-	if logFile.TmpFile != nil {
-		util.CleanUpTmpFile(logFile.TmpFile, logger)
-	}
-}
-
-func (ls *TransientLogState) Cleanup(logger *util.Logger) {
-	for _, logFile := range ls.LogFiles {
-		logFile.Cleanup(logger)
-	}
 }
