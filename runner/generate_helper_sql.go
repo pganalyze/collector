@@ -14,7 +14,7 @@ import (
 var statsHelpers = []string{
 	// Column stats
 	`DROP FUNCTION IF EXISTS pganalyze.get_column_stats;
-CREATE OR REPLACE FUNCTION pganalyze.get_column_stats() RETURNS TABLE(
+CREATE FUNCTION pganalyze.get_column_stats() RETURNS TABLE(
   schemaname name, tablename name, attname name, inherited bool, null_frac real, avg_width int, n_distinct real, correlation real
 ) AS $$
   /* pganalyze-collector */
