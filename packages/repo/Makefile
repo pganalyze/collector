@@ -31,7 +31,7 @@ update_rpm:
 		-e REPO_GPG_KEY=$(REPO_GPG_KEY) \
 		-e RPM_PACKAGE_X86_64=$(RPM_PACKAGE_X86_64) \
 		-e RPM_PACKAGE_ARM64=$(RPM_PACKAGE_ARM64) \
-		pga-collector-repo /sbin/init
+		pga-collector-repo sleep 600
 	keybase pgp export --unencrypted -s -q $(REPO_GPG_KEY) | $(DOCKER_CMD) exec -i pga-collector-repo gpg --allow-secret-key-import --import
 	$(DOCKER_CMD) exec -i pga-collector-repo /root/sync_rpm.sh
 	$(call docker_clean)
