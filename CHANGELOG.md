@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.60.0      2024-10-15
+
+WARNING: For Enterprise Server releases older than 2024.10 using [a separate collector installation](https://pganalyze.com/docs/enterprise/setup/separate-collector-install), this release is partially incompatible. Log Insights will not receive any data if using this collector version. Enterprise Server installations using an integrated collector are not affected, nor are Scale and Production plans.
+
+* Update `get_column_stats` for Postgres 17
+  - The function signature has changed, so must be dropped and recreated
+    https://pganalyze.com/docs/install/troubleshooting/column_stats_helper
+* Handle ambiguous log lines more reliably
+  - This fixes parsing of some log lines for Google CloudSQL
+* Change log upload to include log text directly in snapshots, instead of uploading it separately to S3
+  - This simplifies the Enterprise Server setup by making object storage optional
+* Reduce memory usage when processing `pg_stat_statements`
+* Remove temp file usage from collector
+
+
 ## 0.59.0      2024-10-01
 
 * Use new WebSocket-based API for snapshot submissions
