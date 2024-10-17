@@ -362,15 +362,8 @@ func TestAnalyzeStreamInGroups(t *testing.T) {
 	for _, pair := range streamTests {
 		server := state.MakeServer(config.ServerConfig{}, false)
 		TransientLogState, logFile, tooFreshLogLines, err := stream.AnalyzeStreamInGroups(pair.logLines, now, server, &util.Logger{Destination: log.New(os.Stderr, "", log.LstdFlags)})
-		logFileContent := ""
-		for idx, logLine := range logFile.LogLines {
-			logFileContent += logLine.Content
-			logFile.LogLines[idx].Content = ""
-		}
-
 		TransientLogState.CollectedAt = time.Time{} // Avoid comparing against time.Now()
 		logFile.UUID = uuid.UUID{}                  // Avoid comparing against a generated UUID
-
 		cfg := pretty.CompareConfig
 		cfg.SkipZeroFields = true
 
@@ -383,6 +376,12 @@ func TestAnalyzeStreamInGroups(t *testing.T) {
 		sort.SliceStable(logFile.LogLines, func(i, j int) bool {
 			return logFile.LogLines[i].ByteStart < logFile.LogLines[j].ByteStart
 		})
+		logFileContent := ""
+		for idx, logLine := range logFile.LogLines {
+			logFileContent += logLine.Content
+			logFile.LogLines[idx].Content = ""
+		}
+
 		if diff := cfg.Compare(pair.logFile, logFile); diff != "" {
 			t.Errorf("For %v: log file diff: (-want +got)\n%s", pair.logFile, diff)
 		}
