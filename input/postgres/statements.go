@@ -134,6 +134,11 @@ func GetStatements(ctx context.Context, server *state.Server, logger *util.Logge
 		foundExtMinorVersion = extMinorVersion
 	}
 
+	if postgresVersion.Numeric >= state.PostgresVersion14 && foundExtMinorVersion < 9 {
+		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectPgStatStatements, "extension version (1.%d) is too old, 1.9 or newer is required.", foundExtMinorVersion)
+		server.SelfTest.HintCollectionAspect(state.CollectionAspectPgStatStatements, "Update the extension by running `ALTER EXTENSION pg_stat_statements UPDATE`.")
+	}
+
 	if foundExtMinorVersion >= 8 {
 		totalTimeField = statementSQLTotalTimeFieldMinorVersion8
 	} else {
