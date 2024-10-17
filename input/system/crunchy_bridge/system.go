@@ -32,6 +32,11 @@ func GetSystemState(ctx context.Context, server *state.Server, logger *util.Logg
 		logger.PrintError("CrunchyBridge/System: Encountered error when getting cluster info %v\n", err)
 		return
 	}
+	if clusterInfo.ParentID.Valid {
+		system.Info.ClusterID = clusterInfo.ParentID.String
+	} else {
+		system.Info.ClusterID = client.ClusterID
+	}
 	system.Info.CrunchyBridge = &state.SystemInfoCrunchyBridge{
 		ClusterName: clusterInfo.Name,
 		PlanID:      clusterInfo.PlanID,
