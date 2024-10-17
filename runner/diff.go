@@ -7,6 +7,7 @@ import (
 
 func diffState(logger *util.Logger, prevState state.PersistedState, newState state.PersistedState, collectedIntervalSecs uint32) (diffState state.DiffState) {
 	diffState.StatementStats = diffStatements(newState.StatementStats, prevState.StatementStats)
+	diffState.PlanStats = diffPlanStats(newState.PlanStats, prevState.PlanStats)
 	diffState.SchemaStats = make(map[state.Oid]*state.DiffedSchemaStats)
 	for dbOid := range newState.SchemaStats {
 		newDbStats := newState.SchemaStats[dbOid]
@@ -51,6 +52,28 @@ func diffStatements(new state.PostgresStatementStatsMap, prev state.PostgresStat
 
 		if diffedStatement.Calls > 0 {
 			diff[key] = diffedStatement
+		}
+	}
+
+	return
+}
+
+func diffPlanStats(new state.PostgresPlanStatsMap, prev state.PostgresPlanStatsMap) (diff state.DiffedPostgresPlanStatsMap) {
+	followUpRun := len(prev) > 0
+	diff = make(state.DiffedPostgresPlanStatsMap)
+
+	for key, planStats := range new {
+		var diffedPlanStats state.DiffedPostgresStatementStats
+
+		prevPlanStats, exists := prev[key]
+		if exists {
+			diffedPlanStats = planStats.DiffSince(prevPlanStats)
+		} else if followUpRun { // New statement since the last run
+			diffedPlanStats = planStats.DiffSince(state.PostgresStatementStats{})
+		}
+
+		if diffedPlanStats.Calls > 0 {
+			diff[key] = diffedPlanStats
 		}
 	}
 
