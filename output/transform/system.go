@@ -154,6 +154,7 @@ func transformSystem(systemState state.SystemState, diffState state.DiffState) *
 
 	system.SystemId = systemState.Info.SystemID
 	system.SystemScope = systemState.Info.SystemScope
+	system.ClusterId = systemState.Info.ClusterID
 	system.XlogUsedBytes = systemState.XlogUsedBytes
 
 	system.SchedulerStatistic = &snapshot.SchedulerStatistic{

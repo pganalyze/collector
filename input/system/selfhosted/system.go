@@ -49,6 +49,7 @@ func GetSystemState(server *state.Server, logger *util.Logger) (system state.Sys
 
 		system.XlogUsedBytes = status.XlogUsedBytes
 		system.Info.SelfHosted.DatabaseSystemIdentifier = status.SystemIdentifier
+		system.Info.ClusterID = status.SystemIdentifier
 	}
 
 	hostInfo, err := host.Info()

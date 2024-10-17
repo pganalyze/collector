@@ -2,6 +2,7 @@ package azure
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
@@ -61,6 +62,14 @@ func GetSystemState(ctx context.Context, server *state.Server, logger *util.Logg
 
 				if config.AzureDbServerName == rID.Name {
 					customWindowEnabled := util.StringCustomTypePtrToString(v.Properties.MaintenanceWindow.CustomWindow) == "Enabled"
+					if v.Properties.SourceServerResourceID != nil {
+						sourceID, err := arm.ParseResourceID(*v.Properties.SourceServerResourceID)
+						if err != nil {
+							system.Info.ClusterID = fmt.Sprintf("%s/%s", sourceID.ResourceGroupName, sourceID.Name)
+						}
+					} else {
+						system.Info.ClusterID = fmt.Sprintf("%s/%s", rID.ResourceGroupName, rID.Name)
+					}
 					system.Info.Azure = &state.SystemInfoAzure{
 						Location:                util.StringPtrToString(v.Location),
 						CreatedAt:               util.TimePtrToTime(v.SystemData.CreatedAt),
@@ -118,6 +127,7 @@ func GetSystemState(ctx context.Context, server *state.Server, logger *util.Logg
 
 					if config.AzureDbServerName == rID.Name {
 						customWindowEnabled := util.StringCustomTypePtrToString(v.Properties.MaintenanceWindow.CustomWindow) == "Enabled"
+						system.Info.ClusterID = fmt.Sprintf("%s/%s", rID.ResourceGroupName, rID.Name)
 						system.Info.Azure = &state.SystemInfoAzure{
 							Location:                 util.StringPtrToString(v.Location),
 							CreatedAt:                util.TimePtrToTime(v.SystemData.CreatedAt),
