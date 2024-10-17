@@ -225,6 +225,32 @@ func GetStatements(ctx context.Context, server *state.Server, logger *util.Logge
 	statementTextsByFp := make(state.PostgresStatementTextMap)
 	statementStats := make(state.PostgresStatementStatsMap)
 
+	// pg_query fingerprinting and normalizing is done in a separate goroutine to keep pg_stat_statements
+	// from tracking parse time here as actual query time
+	type PgQueryInput struct {
+		key    state.PostgresStatementKey
+		string string
+	}
+	pgQueryInput := make(chan PgQueryInput, 100)
+	pgQueryDone := make(chan bool)
+	go func() {
+		if showtext {
+			loop:
+			for {
+				select {
+				case input, more := <-pgQueryInput:
+					if !more {
+						break loop
+					}
+					fingerprintAndNormalize(input.key, input.string, server, statements, statementTextsByFp)
+				case <-ctx.Done():
+					break loop
+				}
+			}
+		}
+		pgQueryDone <- true
+	}()
+
 	for rows.Next() {
 		var key state.PostgresStatementKey
 		var queryID null.Int
@@ -248,19 +274,19 @@ func GetStatements(ctx context.Context, server *state.Server, logger *util.Logge
 		}
 
 		if showtext {
-			select {
-			// Since normalizing can take time, explicitly check for cancellations
-			case <-ctx.Done():
-				return nil, nil, nil, ctx.Err()
-			default:
-				fingerprintAndNormalize(key, receivedQuery.String, server, statements, statementTextsByFp)
-			}
+			pgQueryInput <- PgQueryInput{key, receivedQuery.String}
 		}
 		if ignoreIOTiming(postgresVersion, receivedQuery) {
 			stats.BlkReadTime = 0
 			stats.BlkWriteTime = 0
 		}
 		statementStats[key] = stats
+	}
+
+	close(pgQueryInput)
+	select {
+	case <-pgQueryDone:
+	case <-ctx.Done():
 	}
 
 	if err = rows.Err(); err != nil {
