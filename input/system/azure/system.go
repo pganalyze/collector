@@ -64,7 +64,7 @@ func GetSystemState(ctx context.Context, server *state.Server, logger *util.Logg
 					customWindowEnabled := util.StringCustomTypePtrToString(v.Properties.MaintenanceWindow.CustomWindow) == "Enabled"
 					if v.Properties.SourceServerResourceID != nil {
 						sourceID, err := arm.ParseResourceID(*v.Properties.SourceServerResourceID)
-						if err != nil {
+						if err == nil {
 							system.Info.ClusterID = fmt.Sprintf("%s/%s", sourceID.ResourceGroupName, sourceID.Name)
 						}
 					} else {
