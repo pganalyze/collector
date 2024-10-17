@@ -4,7 +4,7 @@ PROTOBUF_FILES := $(wildcard protobuf/*.proto)
 PATH := $(PWD)/protoc/bin:$(PWD)/bin:$(PATH)
 SHELL := env PATH=$(PATH) /bin/sh
 
-PROTOC_VERSION_NEEDED := 3.14.0
+PROTOC_VERSION_NEEDED := 28.2
 PROTOC_VERSION := $(shell command -v protoc > /dev/null 2>&1 && protoc --version)
 
 .PHONY: default build build_dist vendor test docker_release packages integration_test
