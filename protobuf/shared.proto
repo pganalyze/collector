@@ -71,6 +71,38 @@ message QueryInformation {
   repeated int64 query_ids = 3;
 }
 
+message QueryPlanInformation {
+  int32 query_idx = 1;
+
+  repeated QueryPlan query_plans = 2;
+}
+
+message QueryPlan {
+  int64 plan_id = 1;
+  string explain_plan = 2;
+  google.protobuf.Timestamp plan_captured_time = 3;
+  QueryPlanStatistic query_plan_stats = 4;
+}
+
+message QueryPlanStatistic {
+  // Copy of QueryStatistic (full_snapshot.proto), without query_idx
+  int64 calls = 2;
+  double total_time = 3;
+  int64 rows = 4;
+  int64 shared_blks_hit = 5;
+  int64 shared_blks_read = 6;
+  int64 shared_blks_dirtied = 7;
+  int64 shared_blks_written = 8;
+  int64 local_blks_hit = 9;
+  int64 local_blks_read = 10;
+  int64 local_blks_dirtied = 11;
+  int64 local_blks_written = 12;
+  int64 temp_blks_read = 13;
+  int64 temp_blks_written = 14;
+  double blk_read_time = 15;
+  double blk_write_time = 16;
+}
+
 message QueryExplainInformation {
   int32 query_idx = 1;
 

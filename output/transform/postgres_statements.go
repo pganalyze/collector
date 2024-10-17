@@ -67,11 +67,27 @@ func transformQueryStatistic(stats state.DiffedPostgresStatementStats, idx int32
 	}
 }
 
-func transformPostgresStatements(s snapshot.FullSnapshot, newState state.PersistedState, diffState state.DiffState, transientState state.TransientState, roleOidToIdx OidToIdx, databaseOidToIdx OidToIdx) snapshot.FullSnapshot {
+type postgresStatementKey struct {
+	databaseOid state.Oid
+	userOid     state.Oid
+	queryID     int64
+}
+type StatementKeyToIdx map[postgresStatementKey]int32
+
+func transformPostgresStatements(s snapshot.FullSnapshot, newState state.PersistedState, diffState state.DiffState, transientState state.TransientState, roleOidToIdx OidToIdx, databaseOidToIdx OidToIdx) (snapshot.FullSnapshot, StatementKeyToIdx) {
 	// Statement stats from this snapshot
 	groupedStatements := groupStatements(transientState.Statements, diffState.StatementStats)
+	queryIdxMap := make(StatementKeyToIdx)
 	for key, value := range groupedStatements {
 		idx := upsertQueryReferenceAndInformation(&s, transientState.StatementTexts, roleOidToIdx, databaseOidToIdx, key, value)
+		for _, queryId := range value.queryIDs {
+			sKey := postgresStatementKey{
+				databaseOid: key.databaseOid,
+				userOid:     key.userOid,
+				queryID:     queryId,
+			}
+			queryIdxMap[sKey] = idx
+		}
 
 		statistic := transformQueryStatistic(value.statementStats, idx)
 		s.QueryStatistics = append(s.QueryStatistics, &statistic)
@@ -98,5 +114,5 @@ func transformPostgresStatements(s snapshot.FullSnapshot, newState state.Persist
 		s.HistoricQueryStatistics = append(s.HistoricQueryStatistics, &h)
 	}
 
-	return s
+	return s, queryIdxMap
 }
