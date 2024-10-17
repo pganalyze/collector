@@ -63,6 +63,7 @@ message FullSnapshot {
 
   repeated QueryInformation query_informations = 210;
   repeated QueryStatistic query_statistics = 211;
+  repeated QueryPlanInformation query_plan_informations = 212;
 
   repeated HistoricQueryStatistics historic_query_statistics = 213;
 
