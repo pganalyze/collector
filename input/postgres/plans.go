@@ -81,6 +81,7 @@ func GetPlans(ctx context.Context, server *state.Server, logger *util.Logger, db
 			continue
 		}
 
+		plans[key] = plan
 		planStats[key] = stats
 	}
 
