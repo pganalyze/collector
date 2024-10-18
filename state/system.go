@@ -39,6 +39,7 @@ type SystemInfo struct {
 	Type        SystemType
 	SystemScope string
 	SystemID    string
+	ClusterID   string
 
 	SelfHosted    *SystemInfoSelfHosted
 	AmazonRds     *SystemInfoAmazonRds

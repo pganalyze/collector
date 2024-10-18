@@ -38,6 +38,8 @@ func GetSystemState(server *state.Server, logger *util.Logger) (system state.Sys
 		return
 	}
 
+	system.Info.ClusterID = util.StringPtrToString(instance.DBClusterIdentifier)
+
 	isAurora := util.StringPtrToString(instance.Engine) == "aurora-postgresql"
 
 	system.Info.AmazonRds = &state.SystemInfoAmazonRds{
