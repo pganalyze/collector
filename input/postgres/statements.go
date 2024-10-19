@@ -97,8 +97,7 @@ func ResetStatements(ctx context.Context, logger *util.Logger, db *sql.DB, syste
 	return nil
 }
 
-func GetStatements(ctx context.Context, server *state.Server, logger *util.Logger, db *sql.DB, globalCollectionOpts state.CollectionOpts, postgresVersion state.PostgresVersion, showtext bool, systemType string) (state.PostgresStatementMap, state.PostgresStatementTextMap, state.PostgresStatementStatsMap, error) {
-	var err error
+func buildQuery(ctx context.Context, server *state.Server, logger *util.Logger, db *sql.DB, globalCollectionOpts state.CollectionOpts, postgresVersion state.PostgresVersion, showtext bool, systemType string) (query string, usingStatsHelper bool, err error) {
 	var totalTimeField string
 	var ioTimeFields string
 	var optionalFields string
@@ -119,7 +118,7 @@ func GetStatements(ctx context.Context, server *state.Server, logger *util.Logge
 
 	err = db.QueryRowContext(ctx, QueryMarkerSQL+statementExtensionVersionSQL).Scan(&extSchema, &foundExtMinorVersion)
 	if err != nil && err != sql.ErrNoRows {
-		return nil, nil, nil, err
+		return
 	}
 
 	if err == sql.ErrNoRows {
@@ -128,7 +127,7 @@ func GetStatements(ctx context.Context, server *state.Server, logger *util.Logge
 		if err != nil {
 			server.SelfTest.MarkCollectionAspectError(state.CollectionAspectPgStatStatements, "extension does not exist in database %s and could not be created: %s", server.Config.DbName, err)
 			logger.PrintInfo("HINT - if you expect the extension to already be installed, please review the pganalyze documentation: https://pganalyze.com/docs/install/troubleshooting/pg_stat_statements")
-			return nil, nil, nil, err
+			return
 		}
 		extSchema = "public"
 		foundExtMinorVersion = extMinorVersion
@@ -159,7 +158,8 @@ func GetStatements(ctx context.Context, server *state.Server, logger *util.Logge
 		optionalFields = statementSQLOptionalFieldsMinorVersion3
 	} else {
 		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectPgStatStatements, "extension version not supported (1.%d installed, 1.3+ supported)", foundExtMinorVersion)
-		return nil, nil, nil, fmt.Errorf("pg_stat_statements extension not supported (1.%d installed, 1.3+ supported). To update run `ALTER EXTENSION pg_stat_statements UPDATE`", foundExtMinorVersion)
+		err = fmt.Errorf("pg_stat_statements extension not supported (1.%d installed, 1.3+ supported). To update run `ALTER EXTENSION pg_stat_statements UPDATE`", foundExtMinorVersion)
+		return
 	}
 
 	if globalCollectionOpts.TestRun && foundExtMinorVersion < extMinorVersion {
@@ -176,7 +176,7 @@ func GetStatements(ctx context.Context, server *state.Server, logger *util.Logge
 		server.SelfTest.HintCollectionAspect(state.CollectionAspectPgStatStatements, "To update run `ALTER EXTENSION pg_stat_statements UPDATE`")
 	}
 
-	usingStatsHelper := false
+	usingStatsHelper = false
 	if statementStatsHelperExists(ctx, db, showtext) {
 		usingStatsHelper = true
 		if !showtext {
@@ -202,9 +202,15 @@ func GetStatements(ctx context.Context, server *state.Server, logger *util.Logge
 			sourceTable = extSchema + ".pg_stat_statements"
 		}
 	}
+	query = QueryMarkerSQL + fmt.Sprintf(statementSQL, totalTimeField, ioTimeFields, optionalFields, sourceTable)
+	return
+}
 
-	querySql := QueryMarkerSQL + fmt.Sprintf(statementSQL, totalTimeField, ioTimeFields, optionalFields, sourceTable)
-
+func GetStatements(ctx context.Context, server *state.Server, logger *util.Logger, db *sql.DB, globalCollectionOpts state.CollectionOpts, postgresVersion state.PostgresVersion, showtext bool, systemType string) (state.PostgresStatementMap, state.PostgresStatementTextMap, state.PostgresStatementStatsMap, error) {
+	querySql, usingStatsHelper, err := buildQuery(ctx, server, logger, db, globalCollectionOpts, postgresVersion, showtext, systemType)
+	if err != nil {
+		return nil, nil, nil, err
+	}
 	stmt, err := db.PrepareContext(ctx, querySql)
 	if err != nil {
 		var e *pq.Error
@@ -217,7 +223,6 @@ func GetStatements(ctx context.Context, server *state.Server, logger *util.Logge
 			return nil, nil, nil, err
 		}
 	}
-
 	defer stmt.Close()
 
 	rows, err := stmt.QueryContext(ctx)
