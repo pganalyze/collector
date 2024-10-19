@@ -36,14 +36,13 @@ SELECT dbid, userid, query, calls, %s, rows, shared_blks_hit, shared_blks_read,
 			 %s,
 			 queryid,
 			 %s
-	FROM %s`
+`
 
 const statementStatsHelperSQL string = `
 SELECT 1 AS enabled
 	FROM pg_catalog.pg_proc p
 	JOIN pg_catalog.pg_namespace n ON (p.pronamespace = n.oid)
- WHERE n.nspname = 'pganalyze' AND p.proname = 'get_stat_statements'
-			 %s
+ WHERE n.nspname = 'pganalyze' AND p.proname = 'get_stat_statements' AND pronargs = 1
 `
 
 const statementExtensionVersionSQL string = `
@@ -54,20 +53,12 @@ SELECT nspname,
  WHERE pge.extname = 'pg_stat_statements'
 `
 
-func statementStatsHelperExists(ctx context.Context, db *sql.DB, showtext bool) bool {
-	var enabled bool
-	var additionalWhere string
-
-	if !showtext {
-		additionalWhere = "AND pronargs = 1"
-	}
-
-	err := db.QueryRowContext(ctx, QueryMarkerSQL+fmt.Sprintf(statementStatsHelperSQL, additionalWhere)).Scan(&enabled)
+func statementStatsHelperExists(ctx context.Context, db *sql.DB) (enabled bool) {
+	err := db.QueryRowContext(ctx, QueryMarkerSQL+statementStatsHelperSQL).Scan(&enabled)
 	if err != nil {
 		return false
 	}
-
-	return enabled
+	return
 }
 
 func collectorStatement(query string) bool {
@@ -97,11 +88,10 @@ func ResetStatements(ctx context.Context, logger *util.Logger, db *sql.DB, syste
 	return nil
 }
 
-func buildQuery(ctx context.Context, server *state.Server, logger *util.Logger, db *sql.DB, globalCollectionOpts state.CollectionOpts, postgresVersion state.PostgresVersion, showtext bool, systemType string) (query string, usingStatsHelper bool, err error) {
+func buildQuery(ctx context.Context, server *state.Server, logger *util.Logger, db *sql.DB, globalCollectionOpts state.CollectionOpts, postgresVersion state.PostgresVersion, systemType string) (query string, source string, usingStatsHelper bool, err error) {
 	var totalTimeField string
 	var ioTimeFields string
 	var optionalFields string
-	var sourceTable string
 	var extSchema string
 	var extMinorVersion int16
 	var foundExtMinorVersion int16
@@ -176,16 +166,10 @@ func buildQuery(ctx context.Context, server *state.Server, logger *util.Logger, 
 		server.SelfTest.HintCollectionAspect(state.CollectionAspectPgStatStatements, "To update run `ALTER EXTENSION pg_stat_statements UPDATE`")
 	}
 
-	usingStatsHelper = false
-	if statementStatsHelperExists(ctx, db, showtext) {
+	if statementStatsHelperExists(ctx, db) {
 		usingStatsHelper = true
-		if !showtext {
-			logger.PrintVerbose("Found pganalyze.get_stat_statements(false) stats helper")
-			sourceTable = "pganalyze.get_stat_statements(false)"
-		} else {
-			logger.PrintVerbose("Found pganalyze.get_stat_statements() stats helper")
-			sourceTable = "pganalyze.get_stat_statements()"
-		}
+		logger.PrintVerbose("Found pganalyze.get_stat_statements() stats helper")
+		source = "pganalyze.get_stat_statements"
 	} else {
 		if systemType != "heroku" && !connectedAsSuperUser(ctx, db, systemType) && !connectedAsMonitoringRole(ctx, db) && globalCollectionOpts.TestRun {
 			server.SelfTest.MarkCollectionAspectWarning(state.CollectionAspectPgStatStatements, "monitoring user may have insufficient permissions to capture all queries")
@@ -196,22 +180,18 @@ func buildQuery(ctx context.Context, server *state.Server, logger *util.Logger, 
 				" the monitoring helper functions (https://pganalyze.com/docs/install/aiven/03_create_pg_stat_statements_helpers)" +
 				" or connect as superuser, to get query statistics for all roles.")
 		}
-		if !showtext {
-			sourceTable = extSchema + ".pg_stat_statements(false)"
-		} else {
-			sourceTable = extSchema + ".pg_stat_statements"
-		}
+		source = extSchema + ".pg_stat_statements"
 	}
-	query = QueryMarkerSQL + fmt.Sprintf(statementSQL, totalTimeField, ioTimeFields, optionalFields, sourceTable)
+	query = QueryMarkerSQL + fmt.Sprintf(statementSQL, totalTimeField, ioTimeFields, optionalFields)
 	return
 }
 
 func GetStatements(ctx context.Context, server *state.Server, logger *util.Logger, db *sql.DB, globalCollectionOpts state.CollectionOpts, postgresVersion state.PostgresVersion, showtext bool, systemType string) (state.PostgresStatementMap, state.PostgresStatementTextMap, state.PostgresStatementStatsMap, error) {
-	querySql, usingStatsHelper, err := buildQuery(ctx, server, logger, db, globalCollectionOpts, postgresVersion, showtext, systemType)
+	query, source, usingStatsHelper, err := buildQuery(ctx, server, logger, db, globalCollectionOpts, postgresVersion, systemType)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	stmt, err := db.PrepareContext(ctx, querySql)
+	stmt, err := db.PrepareContext(ctx, fmt.Sprintf("%s FROM %s(%s)", query, source, showtext))
 	if err != nil {
 		var e *pq.Error
 		if !usingStatsHelper && errors.As(err, &e) {
