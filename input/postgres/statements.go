@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"strings"
 
@@ -236,9 +235,9 @@ func GetStatements(ctx context.Context, server *state.Server, logger *util.Logge
 
 	queryKeys := make([]state.PostgresStatementKey, 0)
 	queryStats := make([]state.PostgresStatementStats, 0)
-	queryLength := make([]int, 0)
+	queryLengths := make([]int, 0)
 	if showtext {
-		tmpFile, err = ioutil.TempFile("", "")
+		tmpFile, err = os.CreateTemp("", "")
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -271,13 +270,9 @@ func GetStatements(ctx context.Context, server *state.Server, logger *util.Logge
 		if showtext {
 			queryKeys = append(queryKeys, key)
 			queryStats = append(queryStats, stats)
-			queryLength = append(queryLength, len(receivedQuery.String))
+			queryLengths = append(queryLengths, len(receivedQuery.String))
 			tmpFile.WriteString(receivedQuery.String)
 		} else {
-			if ignoreIOTiming(postgresVersion, "") {
-				stats.BlkReadTime = 0
-				stats.BlkWriteTime = 0
-			}
 			statementStats[key] = stats
 		}
 	}
@@ -286,28 +281,30 @@ func GetStatements(ctx context.Context, server *state.Server, logger *util.Logge
 		return nil, nil, nil, err
 	}
 
-	tmpFile.Seek(0, io.SeekStart)
-	for idx, length := range queryLength {
-		bytes := make([]byte, length)
-		_, err = io.ReadFull(tmpFile, bytes)
-		if err != nil {
-			return nil, nil, nil, err
+	if showtext {
+		tmpFile.Seek(0, io.SeekStart)
+		for idx, length := range queryLengths {
+			bytes := make([]byte, length)
+			_, err = io.ReadFull(tmpFile, bytes)
+			if err != nil {
+				return nil, nil, nil, err
+			}
+			query := string(bytes)
+			key := queryKeys[idx]
+			select {
+			// Since normalizing can take time, explicitly check for cancellations
+			case <-ctx.Done():
+				return nil, nil, nil, ctx.Err()
+			default:
+				fingerprintAndNormalize(key, query, server, statements, statementTextsByFp)
+			}
+			stats := queryStats[idx]
+			if ignoreIOTiming(postgresVersion, query) {
+				stats.BlkReadTime = 0
+				stats.BlkWriteTime = 0
+			}
+			statementStats[key] = stats
 		}
-		query := string(bytes)
-		key := queryKeys[idx]
-		select {
-		// Since normalizing can take time, explicitly check for cancellations
-		case <-ctx.Done():
-			return nil, nil, nil, ctx.Err()
-		default:
-			fingerprintAndNormalize(key, query, server, statements, statementTextsByFp)
-		}
-		stats := queryStats[idx]
-		if ignoreIOTiming(postgresVersion, query) {
-			stats.BlkReadTime = 0
-			stats.BlkWriteTime = 0
-		}
-		statementStats[key] = stats
 	}
 
 	server.SelfTest.MarkCollectionAspectOk(state.CollectionAspectPgStatStatements)
@@ -318,7 +315,7 @@ func GetStatements(ctx context.Context, server *state.Server, logger *util.Logge
 func ignoreIOTiming(postgresVersion state.PostgresVersion, receivedQuery string) bool {
 	// Currently, Aurora gives wildly incorrect blk_read_time and blk_write_time values
 	// for utility statements; ignore I/O timing in this situation.
-	if !postgresVersion.IsAwsAurora || receivedQuery != "" {
+	if !postgresVersion.IsAwsAurora || receivedQuery == "" {
 		return false
 	}
 
