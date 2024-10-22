@@ -1,6 +1,7 @@
 package state
 
 import (
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -342,4 +343,42 @@ func (s *Server) IgnoreLogLine(content string) bool {
 
 	return (flags&LOG_IGNORE_STATEMENT != 0 && (strings.HasPrefix(content, "statement: ") || strings.HasPrefix(content, "execute ") || strings.HasPrefix(content, "parameters: "))) ||
 		(flags&LOG_IGNORE_DURATION != 0 && strings.HasPrefix(content, "duration: ") && !strings.Contains(content, " ms  plan:\n"))
+}
+
+
+// TODO: do these need to be scoped by database? Probably don't need role scoping
+
+type QueryFingerprints struct {
+	pgQuery []uint64
+	postgres [][]int64
+}
+
+func (q *QueryFingerprints) Find(postgresQueryID int64) uint64 {
+	for idx, queryIDs := range q.postgres {
+		if slices.Contains(queryIDs, postgresQueryID) {
+			return q.pgQuery[idx]
+		}
+	}
+	return 0
+}
+
+func (q *QueryFingerprints) Add(pgQueryID uint64, postgresQueryID int64) {
+	// If either `pg_query` or `postgres` get too large, remove the oldest element
+	if len(q.pgQuery) > 5_000 {
+		q.pgQuery = q.pgQuery[1:]
+		q.postgres = q.postgres[1:]
+	}
+	idx := slices.Index(q.pgQuery, pgQueryID)
+	if idx == -1 {
+		q.pgQuery = append(q.pgQuery, pgQueryID)
+		idx = len(q.pgQuery) - 1
+	}
+	queryIDs := q.postgres[idx]
+	if !slices.Contains(queryIDs, postgresQueryID) {
+		if len(queryIDs) > 1_000 {
+			q.postgres[idx] = queryIDs[1:]
+			queryIDs = q.postgres[idx]
+		}
+		q.postgres[idx] = append(queryIDs, postgresQueryID)
+	}
 }

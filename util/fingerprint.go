@@ -4,6 +4,8 @@ import (
 	pg_query "github.com/pganalyze/pg_query_go/v5"
 )
 
+// TODO: should we be using uint64 instead of int64 in the app code?
+
 // FingerprintQuery - Generates a unique fingerprint for the given query
 func FingerprintQuery(query string, filterQueryText string, trackActivityQuerySize int) (fp uint64) {
 	fp, err := pg_query.FingerprintToUInt64(query)

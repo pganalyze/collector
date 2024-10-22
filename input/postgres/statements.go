@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/guregu/null"
@@ -30,7 +31,7 @@ const statementSQLOptionalFieldsMinorVersion9 = "min_exec_time, max_exec_time, m
 const statementSQLIoTimeFieldsMinorVersion11 = "shared_blk_read_time + local_blk_read_time + temp_blk_read_time, shared_blk_write_time + local_blk_write_time + temp_blk_write_time"
 
 const statementSQL string = `
-SELECT dbid, userid, query, calls, %s, rows, shared_blks_hit, shared_blks_read,
+SELECT dbid, userid, calls, %s, rows, shared_blks_hit, shared_blks_read,
 			 shared_blks_dirtied, shared_blks_written, local_blks_hit, local_blks_read,
 			 local_blks_dirtied, local_blks_written, temp_blks_read, temp_blks_written,
 			 %s,
@@ -186,12 +187,12 @@ func buildQuery(ctx context.Context, server *state.Server, logger *util.Logger, 
 	return
 }
 
-func GetStatements(ctx context.Context, server *state.Server, logger *util.Logger, db *sql.DB, globalCollectionOpts state.CollectionOpts, postgresVersion state.PostgresVersion, showtext bool, systemType string) (state.PostgresStatementMap, state.PostgresStatementTextMap, state.PostgresStatementStatsMap, error) {
+func GetStatements(ctx context.Context, server *state.Server, logger *util.Logger, db *sql.DB, globalCollectionOpts state.CollectionOpts, postgresVersion state.PostgresVersion, showtext bool, systemType string) (statements state.PostgresStatementMap, statementTextsByFp state.PostgresStatementTextMap, statementStats state.PostgresStatementStatsMap, err error) {
 	query, source, usingStatsHelper, err := buildQuery(ctx, server, logger, db, globalCollectionOpts, postgresVersion, systemType)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	stmt, err := db.PrepareContext(ctx, fmt.Sprintf("%s FROM %s(%s)", query, source, showtext))
+	stmt, err := db.PrepareContext(ctx, fmt.Sprintf("%s FROM %s(false)", query, source))
 	if err != nil {
 		var e *pq.Error
 		if !usingStatsHelper && errors.As(err, &e) {
@@ -204,62 +205,108 @@ func GetStatements(ctx context.Context, server *state.Server, logger *util.Logge
 		}
 	}
 	defer stmt.Close()
-
 	rows, err := stmt.QueryContext(ctx)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 	defer rows.Close()
 
-	statements := make(state.PostgresStatementMap)
-	statementTextsByFp := make(state.PostgresStatementTextMap)
-	statementStats := make(state.PostgresStatementStatsMap)
+	// TODO: move this onto server struct
+	//
+	// TODO: maybe make it a nested map, where the internal key tracks usage rate.
+	// And when adding new keys there's a limit to the number of single-use query IDs we retain (1 thousand?)
+	//
+	fingerprints := make(map[int64][]int64) // pg_query fingerprint -> array of Postgres queryids
+
+	newQueries := make(map[int64]state.PostgresStatementStats)
+
+
+	// statements := make(state.PostgresStatementMap)
+	// statementTextsByFp := make(state.PostgresStatementTextMap)
+	// statementStats := make(state.PostgresStatementStatsMap)
 
 	for rows.Next() {
 		var key state.PostgresStatementKey
 		var queryID null.Int
-		var receivedQuery null.String
 		var stats state.PostgresStatementStats
-
-		err = rows.Scan(&key.DatabaseOid, &key.UserOid, &receivedQuery, &stats.Calls, &stats.TotalTime, &stats.Rows,
+		err = rows.Scan(&key.DatabaseOid, &key.UserOid, &stats.Calls, &stats.TotalTime, &stats.Rows,
 			&stats.SharedBlksHit, &stats.SharedBlksRead, &stats.SharedBlksDirtied, &stats.SharedBlksWritten,
 			&stats.LocalBlksHit, &stats.LocalBlksRead, &stats.LocalBlksDirtied, &stats.LocalBlksWritten,
 			&stats.TempBlksRead, &stats.TempBlksWritten, &stats.BlkReadTime, &stats.BlkWriteTime,
 			&queryID, &stats.MinTime, &stats.MaxTime, &stats.MeanTime, &stats.StddevTime, &key.TopLevel)
 		if err != nil {
-			return nil, nil, nil, err
+			return
 		}
-
-		if queryID.Valid {
-			key.QueryID = queryID.Int64
-		} else {
-			// We can't process this entry, most likely a permission problem with reading the query ID
+		if !queryID.Valid {
 			continue
 		}
-
-		if showtext {
-			select {
-			// Since normalizing can take time, explicitly check for cancellations
-			case <-ctx.Done():
-				return nil, nil, nil, ctx.Err()
-			default:
-				fingerprintAndNormalize(key, receivedQuery.String, server, statements, statementTextsByFp)
+		// TODO: Ideally we wouldn't have the query text here to be more memory-efficient
+		// I guess `fingerprints` could track whether it's a utility statement?
+		//
+		// Excluding Aurora, what is the purpose of ignoring IO time from utility statements?
+		//
+		// if ignoreIOTiming(postgresVersion, receivedQuery) {
+		// 	stats.BlkReadTime = 0
+		// 	stats.BlkWriteTime = 0
+		// }
+		for fp, queryIDs := range fingerprints {
+			if slices.Contains(queryIDs, queryID.Int64) {
+				key.QueryID = fp
+				break
 			}
 		}
-		if ignoreIOTiming(postgresVersion, receivedQuery) {
-			stats.BlkReadTime = 0
-			stats.BlkWriteTime = 0
+		if key.QueryID == 0 {
+			newQueries[queryID.Int64] = stats
+		} else {
+			// TODO: part of this change makes it so the `key` uses the pg_query fingerprint,
+			// so we need some merging code here (and above) combine stats.
+			// But wouldn't that conflict with the existing diffing code?
+			// Maybe the `key` needs both postgres and pg_query fingerprints, then we combine them after the diff.
+			statementStats[key] = stats
 		}
-		statementStats[key] = stats
+	}
+	if err = rows.Err(); err != nil {
+		return
 	}
 
+	// Now that we have a list of Postgres query IDs that we don't have a pg_query fingerprint for, look up the query text to normalize + fingerprint.
+	queryIDsString := ""
+	for id := range newQueries {
+		new := len(queryIDsString) == 0
+		queryIDsString += string(id)
+		if new {
+			queryIDsString += ","
+		}
+	}
+	stmt, err = db.PrepareContext(ctx, fmt.Sprintf("SELECT dbid, userid, queryid, toplevel, query FROM %s(true) WHERE queryid = ANY(array[%s])", source, queryIDsString))
+	if err != nil {
+		return
+	}
+	defer stmt.Close()
+	rows, err = stmt.QueryContext(ctx)
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var key state.PostgresStatementKey
+		var receivedQuery string
+		err = rows.Scan(&key.DatabaseOid, &key.UserOid, &key.QueryID, &key.TopLevel, &receivedQuery)
+		if err != nil {
+			return
+		}
+		key.QueryID = util.FingerprintQuery(receivedQuery, server.Config.FilterQueryText, -1)
+		statementTextsByFp[key.QueryID] = util.NormalizeQuery(receivedQuery, server.Config.FilterQueryText, -1)
+		statementStats[key] = newQueries[key.QueryID]
+	}
+	rows.Close()
+	stmt.Close()
 	if err = rows.Err(); err != nil {
-		return nil, nil, nil, err
+		return
 	}
 
 	server.SelfTest.MarkCollectionAspectOk(state.CollectionAspectPgStatStatements)
-
-	return statements, statementTextsByFp, statementStats, nil
+	return
 }
 
 func ignoreIOTiming(postgresVersion state.PostgresVersion, receivedQuery null.String) bool {
