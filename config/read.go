@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
@@ -526,7 +525,7 @@ func CreateOTelTracingProvider(ctx context.Context, conf ServerConfig) (*sdktrac
 }
 
 func writeValueToTempfile(value string) (string, error) {
-	file, err := ioutil.TempFile("", "")
+	file, err := os.CreateTemp("", "")
 	if err != nil {
 		return "", err
 	}
