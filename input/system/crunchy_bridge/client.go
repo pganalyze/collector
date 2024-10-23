@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/guregu/null"
 	"github.com/pganalyze/collector/util"
 )
 
@@ -21,14 +22,15 @@ type Client struct {
 }
 
 type ClusterInfo struct {
-	CPU        int32   `json:"cpu"`
-	CreatedAt  string  `json:"created_at"`
-	Memory     float32 `json:"memory"`
-	Name       string  `json:"name"`
-	PlanID     string  `json:"plan_id"`
-	ProviderID string  `json:"provider_id"`
-	RegionID   string  `json:"region_id"`
-	Storage    int32   `json:"storage"`
+	CPU        int32       `json:"cpu"`
+	CreatedAt  string      `json:"created_at"`
+	Memory     float32     `json:"memory"`
+	Name       string      `json:"name"`
+	ParentID   null.String `json:"parent_id"`
+	PlanID     string      `json:"plan_id"`
+	ProviderID string      `json:"provider_id"`
+	RegionID   string      `json:"region_id"`
+	Storage    int32       `json:"storage"`
 }
 
 type MetricViews struct {

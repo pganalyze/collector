@@ -96,6 +96,7 @@ message System {
   SystemInformation system_information = 1;
   string system_id = 2; // Unique identifier for this system
   string system_scope = 3; // Name the system ID is scoped by (optional)
+  string cluster_id = 4; // Unique identifier for the (physical replication) cluster
 
   SchedulerStatistic scheduler_statistic = 10;
   MemoryStatistic memory_statistic = 11;
