@@ -58,7 +58,7 @@ type PrefixEscape struct {
 var EscapeMatchers = map[rune]PrefixEscape{
 	// Application name
 	'a': {
-		Regexp: `.+?`,
+		Regexp: `.{1,63}?`,
 		ApplyValue: func(value string, logLine *state.LogLine, parser *LogParser) {
 			if value == "[unknown]" {
 				return
@@ -69,7 +69,7 @@ var EscapeMatchers = map[rune]PrefixEscape{
 	},
 	// User name
 	'u': {
-		Regexp: `.+?`,
+		Regexp: `.{1,63}?`,
 		ApplyValue: func(value string, logLine *state.LogLine, parser *LogParser) {
 			if value == "[unknown]" {
 				return
@@ -80,7 +80,7 @@ var EscapeMatchers = map[rune]PrefixEscape{
 	},
 	// Database name
 	'd': {
-		Regexp: `.+?`,
+		Regexp: `.{1,63}?`,
 		ApplyValue: func(value string, logLine *state.LogLine, parser *LogParser) {
 			if value == "[unknown]" {
 				return
