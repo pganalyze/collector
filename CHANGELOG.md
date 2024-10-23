@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.61.0      2024-10-23
+
+* Store query texts in temporary file before fingerprinting them
+  - This fixes an increase in reported runtime of collector queries,
+    due to a slow loading of the result set introduced in release 0.60.0
+* Log Insights: Use more specific log parsing regexp
+  - This avoids incorrectly sending application/database/role identifiers longer
+    than 63 characters (Postgres' built-in limit) when there are parsing issues
+* Show error when pg_stat_statements version is below 1.9 with Postgres 14+
+  - Old pg_stat_statements extension schemas don't correctly include the
+    "toplevel" attribute, and can cause bogus query statistics when there
+    is a mismatch between the extension schema and the shared library code
+* Track cluster identifier (cluster ID) as part of system information
+* Keep fetching column stats with outdated helper function on Postgres < 17
+
+
 ## 0.60.0      2024-10-15
 
 WARNING: For Enterprise Server releases older than 2024.10 using [a separate collector installation](https://pganalyze.com/docs/enterprise/setup/separate-collector-install), this release is partially incompatible. Log Insights will not receive any data if using this collector version. Enterprise Server installations using an integrated collector are not affected, nor are Scale and Production plans.
