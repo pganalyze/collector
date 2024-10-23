@@ -8,7 +8,7 @@
 * Log Insights: Use more specific log parsing regexp
   - This avoids incorrectly sending application/database/role identifiers longer
     than 63 characters (Postgres' built-in limit) when there are parsing issues
-* Show error when pg_stat_statements version is below 1.9 with Postgres 14+
+* Show test error when pg_stat_statements version is below 1.9 with Postgres 14+
   - Old pg_stat_statements extension schemas don't correctly include the
     "toplevel" attribute, and can cause bogus query statistics when there
     is a mismatch between the extension schema and the shared library code
