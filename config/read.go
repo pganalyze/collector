@@ -101,6 +101,15 @@ func getDefaultConfig() *ServerConfig {
 	if dbURL := os.Getenv("DB_URL"); dbURL != "" {
 		config.DbURL = dbURL
 	}
+	if dbURLFile := os.Getenv("DB_URL_FILE"); dbURLFile != "" {
+		dbURL, err := os.ReadFile(dbURLFile)
+
+		if err != nil {
+			panic(err)
+		}
+
+		config.DbURL = strings.TrimSpace(string(dbURL))
+	}
 	if dbName := os.Getenv("DB_NAME"); dbName != "" {
 		config.DbName = dbName
 	}
@@ -112,6 +121,15 @@ func getDefaultConfig() *ServerConfig {
 	}
 	if dbPassword := os.Getenv("DB_PASSWORD"); dbPassword != "" {
 		config.DbPassword = dbPassword
+	}
+	if dbPasswordFile := os.Getenv("DB_PASSWORD_FILE"); dbPasswordFile != "" {
+		dbPassword, err := os.ReadFile(dbPasswordFile)
+
+		if err != nil {
+			panic(err)
+		}
+
+		config.DbPassword = strings.TrimSpace(string(dbPassword))
 	}
 	if dbHost := os.Getenv("DB_HOST"); dbHost != "" {
 		config.DbHost = dbHost
