@@ -9,6 +9,8 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
+// Do not query with plan_type 'no plan', as it's a query without a meaningful plan (planid=0)
+// e.g. FETCH 50 IN "query-cursor_1"
 const planSQL string = `
 SELECT
 	userid, dbid, toplevel, queryid, planid, query,

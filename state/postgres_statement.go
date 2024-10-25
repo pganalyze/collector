@@ -121,3 +121,5 @@ type PostgresPlanMap map[PostgresPlanKey]PostgresPlan
 type PostgresPlanStatsMap map[PostgresPlanKey]PostgresStatementStats
 type DiffedPostgresPlanStats PostgresStatementStats
 type DiffedPostgresPlanStatsMap map[PostgresPlanKey]DiffedPostgresStatementStats
+
+type HistoricPlanStatsMap map[PostgresStatementStatsTimeKey]DiffedPostgresPlanStatsMap

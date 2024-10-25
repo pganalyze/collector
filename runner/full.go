@@ -56,6 +56,7 @@ func collectDiffAndSubmit(ctx context.Context, server *state.Server, globalColle
 	diffState := diffState(logger, server.PrevState, newState, collectedIntervalSecs)
 
 	transientState.HistoricStatementStats = server.PrevState.UnidentifiedStatementStats
+	transientState.HistoricPlanStats = server.PrevState.UnidentifiedPlanStats
 
 	err = output.SendFull(ctx, server, globalCollectionOpts, logger, newState, diffState, transientState, collectedIntervalSecs)
 	if err != nil {
