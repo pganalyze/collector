@@ -47,10 +47,6 @@ func gatherQueryStatsForServer(ctx context.Context, server *state.Server, global
 	if err != nil {
 		return newState, errors.Wrap(err, "error collecting pg_stat_statements")
 	}
-	_, newState.PlanStats, err = postgres.GetPlans(ctx, server, logger, connection, globalCollectionOpts, postgresVersion)
-	if err != nil {
-		return newState, errors.Wrap(err, "error collecting query plan stats")
-	}
 
 	// Don't calculate any diffs on the first run (but still update the state)
 	if len(server.PrevState.StatementStats) == 0 || server.PrevState.LastStatementStatsAt.IsZero() {
@@ -58,19 +54,32 @@ func gatherQueryStatsForServer(ctx context.Context, server *state.Server, global
 	}
 
 	diffedStatementStats := diffStatements(newState.StatementStats, server.PrevState.StatementStats)
-	diffedPlanStats := diffPlanStats(newState.PlanStats, server.PrevState.PlanStats)
 	collectedIntervalSecs := uint32(newState.LastStatementStatsAt.Sub(server.PrevState.LastStatementStatsAt) / time.Second)
 
 	timeKey := state.PostgresStatementStatsTimeKey{CollectedAt: collectedAt, CollectedIntervalSecs: collectedIntervalSecs}
 	newState.UnidentifiedStatementStats = server.PrevState.UnidentifiedStatementStats
-	newState.UnidentifiedPlanStats = server.PrevState.UnidentifiedPlanStats
 	if newState.UnidentifiedStatementStats == nil {
 		newState.UnidentifiedStatementStats = make(state.HistoricStatementStatsMap)
 	}
+	newState.UnidentifiedStatementStats[timeKey] = diffedStatementStats
+
+	_, newState.PlanStats, err = postgres.GetPlans(ctx, server, logger, connection, globalCollectionOpts, postgresVersion)
+	if err != nil {
+		return newState, errors.Wrap(err, "error collecting query plan stats")
+	}
+
+	// Don't calculate any diffs on the first run or prev run with no results (plan collection not supported)
+	// (but still update the state for the following runs)
+	if len(server.PrevState.PlanStats) == 0 {
+		return newState, nil
+	}
+
+	diffedPlanStats := diffPlanStats(newState.PlanStats, server.PrevState.PlanStats)
+
+	newState.UnidentifiedPlanStats = server.PrevState.UnidentifiedPlanStats
 	if newState.UnidentifiedPlanStats == nil {
 		newState.UnidentifiedPlanStats = make(state.HistoricPlanStatsMap)
 	}
-	newState.UnidentifiedStatementStats[timeKey] = diffedStatementStats
 	newState.UnidentifiedPlanStats[timeKey] = diffedPlanStats
 
 	return newState, nil
