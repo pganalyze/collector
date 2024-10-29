@@ -9,7 +9,7 @@ User=pganalyze
 ProtectSystem=full
 ProtectHome=true
 CapabilityBoundingSet=CAP_SYS_PTRACE CAP_DAC_READ_SEARCH CAP_DAC_OVERRIDE
-MemoryLimit=1024M
+MemoryMax=1024M
 Restart=always
 
 [Install]
