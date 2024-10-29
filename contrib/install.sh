@@ -63,19 +63,19 @@ then
   pkg=yum
   distribution=el
   version=9
-elif grep -q '^ID="\(rhel\|centos\)"$' /etc/os-release;
+elif grep -q '^ID="\(rhel\|centos\|almalinux\)"$' /etc/os-release;
 then
-  # RHEL and CentOS
+  # RHEL, CentOS and AlmaLinux
   pkg=yum
   distribution=el
   version=$(grep VERSION_ID /etc/os-release | cut -d= -f2 | tr -d '"' | cut -d. -f1)
   if [ "$version" != 7 ] && [ "$version" != 8 ] && [ "$version" != 9 ];
   then
-    if confirm "Unsupported RHEL or CentOS version; try RHEL9 package?";
+    if confirm "Unsupported RHEL, CentOS or AlmaLinux version; try RHEL9 package?";
     then
       version=9
     else
-      fail "unrecognized RHEL or CentOS version: ${version}"
+      fail "unrecognized RHEL, CentOS or AlmaLinux version: ${version}"
     fi
   fi
 elif grep -q '^ID=fedora$' /etc/os-release;
