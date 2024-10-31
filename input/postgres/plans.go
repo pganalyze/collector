@@ -71,9 +71,10 @@ func GetPlans(ctx context.Context, server *state.Server, logger *util.Logger, db
 		var plan state.PostgresPlan
 		var queryID null.Int
 		var stats state.PostgresStatementStats
+		var explainPlan null.String
 
 		err = rows.Scan(&key.UserOid, &key.DatabaseOid, &key.TopLevel, &queryID, &key.PlanID,
-			&plan.ExplainPlan, &plan.PlanType, &plan.PlanCapturedTime,
+			&explainPlan, &plan.PlanType, &plan.PlanCapturedTime,
 			&stats.Calls, &stats.TotalTime,
 			&stats.Rows, &stats.SharedBlksHit, &stats.SharedBlksRead, &stats.SharedBlksDirtied, &stats.SharedBlksWritten,
 			&stats.LocalBlksHit, &stats.LocalBlksRead, &stats.LocalBlksDirtied, &stats.LocalBlksWritten,
@@ -89,7 +90,11 @@ func GetPlans(ctx context.Context, server *state.Server, logger *util.Logger, db
 			continue
 		}
 
-		plans[key] = plan
+		if showtext {
+			plan.ExplainPlan = explainPlan.String
+			plans[key] = plan
+		}
+
 		planStats[key] = stats
 	}
 
