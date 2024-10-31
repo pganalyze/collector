@@ -50,10 +50,17 @@ func groupPlans(plans state.PostgresPlanMap, statsMap state.DiffedPostgresPlanSt
 		}
 		value, exist := groupedPlans[key]
 		if exist {
-			// When there are multiple plans per group, we'll use the first plan found
-			groupedPlans[key] = planValue{
-				plan:      value.plan,
-				planStats: value.planStats.Add(stats),
+			// When there are multiple plans per group, use the most recently captured plan
+			if value.plan.PlanCapturedTime.Before(plan.PlanCapturedTime) {
+				groupedPlans[key] = planValue{
+					plan:      plan,
+					planStats: value.planStats.Add(stats),
+				}
+			} else {
+				groupedPlans[key] = planValue{
+					plan:      value.plan,
+					planStats: value.planStats.Add(stats),
+				}
 			}
 		} else {
 			groupedPlans[key] = planValue{
