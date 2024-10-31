@@ -64,6 +64,11 @@ message QueryReference {
   bytes fingerprint = 3;
 }
 
+message QueryPlanReference {
+  int32 query_idx = 1;
+  int64 plan_id = 2;
+}
+
 message QueryInformation {
   int32 query_idx = 1;
 

@@ -68,7 +68,7 @@ func diffPlanStats(new state.PostgresPlanStatsMap, prev state.PostgresPlanStatsM
 		prevPlanStats, exists := prev[key]
 		if exists {
 			diffedPlanStats = planStats.DiffSince(prevPlanStats)
-		} else if followUpRun { // New statement since the last run
+		} else if followUpRun { // New plan since the last run
 			diffedPlanStats = planStats.DiffSince(state.PostgresStatementStats{})
 		}
 

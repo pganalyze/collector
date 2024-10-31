@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"fmt"
 
 	"github.com/guregu/null"
 	"github.com/pganalyze/collector/state"
@@ -13,20 +14,20 @@ import (
 // e.g. FETCH 50 IN "query-cursor_1"
 const planSQL string = `
 SELECT
-	userid, dbid, toplevel, queryid, planid, query,
+	userid, dbid, toplevel, queryid, planid,
 	explain_plan, plan_type, plan_captured_time,
-	calls, total_exec_time, min_exec_time, max_exec_time, mean_exec_time, stddev_exec_time,
+	calls, total_exec_time,
 	rows, shared_blks_hit, shared_blks_read, shared_blks_dirtied, shared_blks_written,
 	local_blks_hit, local_blks_read, local_blks_dirtied, local_blks_written,
 	temp_blks_read, temp_blks_written,
 	blk_read_time, blk_write_time
 FROM
-	aurora_stat_plans(true)
+	aurora_stat_plans(%t)
 WHERE
 	plan_type IN ('estimate', 'actual')`
 
 // GetPlans collects query execution plans and stats
-func GetPlans(ctx context.Context, server *state.Server, logger *util.Logger, db *sql.DB, globalCollectionOpts state.CollectionOpts, postgresVersion state.PostgresVersion) (state.PostgresPlanMap, state.PostgresPlanStatsMap, error) {
+func GetPlans(ctx context.Context, server *state.Server, logger *util.Logger, db *sql.DB, globalCollectionOpts state.CollectionOpts, postgresVersion state.PostgresVersion, showtext bool) (state.PostgresPlanMap, state.PostgresPlanStatsMap, error) {
 	var err error
 
 	// Currently only collects this with Aurora using aurora_stat_plans function
@@ -35,15 +36,21 @@ func GetPlans(ctx context.Context, server *state.Server, logger *util.Logger, db
 	}
 
 	computePlanIdEnabled, err := GetPostgresSetting(ctx, "aurora_compute_plan_id", server, globalCollectionOpts, logger)
-	// aurora_compute_plan_id needs to be on to use aurora_stat_plans function
-	if err != nil || computePlanIdEnabled != "on" {
+	if err != nil {
 		if globalCollectionOpts.TestRun {
-			logger.PrintInfo("Function aurora_stat_plans() is not supported or aurora_compute_plan_id is not enabled. Skip collecting query plans and stats.")
+			logger.PrintInfo("Function aurora_stat_plans() is not supported because Aurora version is too old. Upgrade to Aurora PostgreSQL version 14.10, 15.5, or later versions to collect query plans and stats.")
+		}
+		return nil, nil, nil
+	}
+	// aurora_compute_plan_id needs to be on to use aurora_stat_plans function
+	if computePlanIdEnabled != "on" {
+		if globalCollectionOpts.TestRun {
+			logger.PrintInfo("Function aurora_stat_plans() is not supported because aurora_compute_plan_id is turned off. Skipping collecting query plans and stats.")
 		}
 		return nil, nil, nil
 	}
 
-	stmt, err := db.PrepareContext(ctx, QueryMarkerSQL+planSQL)
+	stmt, err := db.PrepareContext(ctx, QueryMarkerSQL+fmt.Sprintf(planSQL, showtext))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -63,12 +70,11 @@ func GetPlans(ctx context.Context, server *state.Server, logger *util.Logger, db
 		var key state.PostgresPlanKey
 		var plan state.PostgresPlan
 		var queryID null.Int
-		var receivedQuery null.String
 		var stats state.PostgresStatementStats
 
-		err = rows.Scan(&key.UserOid, &key.DatabaseOid, &key.TopLevel, &queryID, &key.PlanID, &receivedQuery,
+		err = rows.Scan(&key.UserOid, &key.DatabaseOid, &key.TopLevel, &queryID, &key.PlanID,
 			&plan.ExplainPlan, &plan.PlanType, &plan.PlanCapturedTime,
-			&stats.Calls, &stats.TotalTime, &stats.MinTime, &stats.MaxTime, &stats.MeanTime, &stats.StddevTime,
+			&stats.Calls, &stats.TotalTime,
 			&stats.Rows, &stats.SharedBlksHit, &stats.SharedBlksRead, &stats.SharedBlksDirtied, &stats.SharedBlksWritten,
 			&stats.LocalBlksHit, &stats.LocalBlksRead, &stats.LocalBlksDirtied, &stats.LocalBlksWritten,
 			&stats.TempBlksRead, &stats.TempBlksWritten, &stats.BlkReadTime, &stats.BlkWriteTime)
