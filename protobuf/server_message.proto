@@ -1,5 +1,7 @@
 syntax = "proto3";
 
+import "shared.proto";
+
 package pganalyze.collector;
 option go_package = "github.com/pganalyze/collector/output/pganalyze_collector";
 
@@ -9,8 +11,8 @@ message ServerMessage {
     Config config = 1;
     // Server request to pause collection of data (e.g. in case of duplicate collectors)
     Pause pause = 2;
-    // Request for the collector to generate an explain plan for a query
-    ExplainRun explain_run = 3;
+    // Request for the collector to run a query on behalf of a user
+    QueryRun query_run = 3;
   }
 
   message Config {
@@ -37,9 +39,9 @@ message ServerMessage {
     bool pause = 1;
   }
 
-  message ExplainRun {
-    int64 explain_query_id = 1;
-    int64 explain_parameter_set_id = 2;
+  message QueryRun {
+    int64 id = 1;
+    QueryRunType type = 2;
     string database_name = 3;
     string query_text = 4;
   }

@@ -21,6 +21,49 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+type QueryRunType int32
+
+const (
+	QueryRunType_EXPLAIN QueryRunType = 0 // Future sources: REINDEX, CREATE INDEX, DROP INDEX
+)
+
+// Enum value maps for QueryRunType.
+var (
+	QueryRunType_name = map[int32]string{
+		0: "EXPLAIN",
+	}
+	QueryRunType_value = map[string]int32{
+		"EXPLAIN": 0,
+	}
+)
+
+func (x QueryRunType) Enum() *QueryRunType {
+	p := new(QueryRunType)
+	*p = x
+	return p
+}
+
+func (x QueryRunType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (QueryRunType) Descriptor() protoreflect.EnumDescriptor {
+	return file_shared_proto_enumTypes[0].Descriptor()
+}
+
+func (QueryRunType) Type() protoreflect.EnumType {
+	return &file_shared_proto_enumTypes[0]
+}
+
+func (x QueryRunType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use QueryRunType.Descriptor instead.
+func (QueryRunType) EnumDescriptor() ([]byte, []int) {
+	return file_shared_proto_rawDescGZIP(), []int{0}
+}
+
 type QueryExplainInformation_ExplainFormat int32
 
 const (
@@ -51,11 +94,11 @@ func (x QueryExplainInformation_ExplainFormat) String() string {
 }
 
 func (QueryExplainInformation_ExplainFormat) Descriptor() protoreflect.EnumDescriptor {
-	return file_shared_proto_enumTypes[0].Descriptor()
+	return file_shared_proto_enumTypes[1].Descriptor()
 }
 
 func (QueryExplainInformation_ExplainFormat) Type() protoreflect.EnumType {
-	return &file_shared_proto_enumTypes[0]
+	return &file_shared_proto_enumTypes[1]
 }
 
 func (x QueryExplainInformation_ExplainFormat) Number() protoreflect.EnumNumber {
@@ -103,11 +146,11 @@ func (x QueryExplainInformation_ExplainSource) String() string {
 }
 
 func (QueryExplainInformation_ExplainSource) Descriptor() protoreflect.EnumDescriptor {
-	return file_shared_proto_enumTypes[1].Descriptor()
+	return file_shared_proto_enumTypes[2].Descriptor()
 }
 
 func (QueryExplainInformation_ExplainSource) Type() protoreflect.EnumType {
-	return &file_shared_proto_enumTypes[1]
+	return &file_shared_proto_enumTypes[2]
 }
 
 func (x QueryExplainInformation_ExplainSource) Number() protoreflect.EnumNumber {
@@ -167,11 +210,11 @@ func (x SystemInformation_SystemType) String() string {
 }
 
 func (SystemInformation_SystemType) Descriptor() protoreflect.EnumDescriptor {
-	return file_shared_proto_enumTypes[2].Descriptor()
+	return file_shared_proto_enumTypes[3].Descriptor()
 }
 
 func (SystemInformation_SystemType) Type() protoreflect.EnumType {
-	return &file_shared_proto_enumTypes[2]
+	return &file_shared_proto_enumTypes[3]
 }
 
 func (x SystemInformation_SystemType) Number() protoreflect.EnumNumber {
@@ -3728,11 +3771,13 @@ var file_shared_proto_rawDesc = []byte{
 	0x20, 0x01, 0x28, 0x04, 0x52, 0x09, 0x75, 0x73, 0x65, 0x64, 0x42, 0x79, 0x74, 0x65, 0x73, 0x12,
 	0x1f, 0x0a, 0x0b, 0x74, 0x6f, 0x74, 0x61, 0x6c, 0x5f, 0x62, 0x79, 0x74, 0x65, 0x73, 0x18, 0x03,
 	0x20, 0x01, 0x28, 0x04, 0x52, 0x0a, 0x74, 0x6f, 0x74, 0x61, 0x6c, 0x42, 0x79, 0x74, 0x65, 0x73,
-	0x42, 0x3b, 0x5a, 0x39, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x70,
-	0x67, 0x61, 0x6e, 0x61, 0x6c, 0x79, 0x7a, 0x65, 0x2f, 0x63, 0x6f, 0x6c, 0x6c, 0x65, 0x63, 0x74,
-	0x6f, 0x72, 0x2f, 0x6f, 0x75, 0x74, 0x70, 0x75, 0x74, 0x2f, 0x70, 0x67, 0x61, 0x6e, 0x61, 0x6c,
-	0x79, 0x7a, 0x65, 0x5f, 0x63, 0x6f, 0x6c, 0x6c, 0x65, 0x63, 0x74, 0x6f, 0x72, 0x62, 0x06, 0x70,
-	0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x2a, 0x1b, 0x0a, 0x0c, 0x51, 0x75, 0x65, 0x72, 0x79, 0x52, 0x75, 0x6e, 0x54, 0x79, 0x70, 0x65,
+	0x12, 0x0b, 0x0a, 0x07, 0x45, 0x58, 0x50, 0x4c, 0x41, 0x49, 0x4e, 0x10, 0x00, 0x42, 0x3b, 0x5a,
+	0x39, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x70, 0x67, 0x61, 0x6e,
+	0x61, 0x6c, 0x79, 0x7a, 0x65, 0x2f, 0x63, 0x6f, 0x6c, 0x6c, 0x65, 0x63, 0x74, 0x6f, 0x72, 0x2f,
+	0x6f, 0x75, 0x74, 0x70, 0x75, 0x74, 0x2f, 0x70, 0x67, 0x61, 0x6e, 0x61, 0x6c, 0x79, 0x7a, 0x65,
+	0x5f, 0x63, 0x6f, 0x6c, 0x6c, 0x65, 0x63, 0x74, 0x6f, 0x72, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74,
+	0x6f, 0x33,
 }
 
 var (
@@ -3747,76 +3792,77 @@ func file_shared_proto_rawDescGZIP() []byte {
 	return file_shared_proto_rawDescData
 }
 
-var file_shared_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
+var file_shared_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
 var file_shared_proto_msgTypes = make([]protoimpl.MessageInfo, 33)
 var file_shared_proto_goTypes = []interface{}{
-	(QueryExplainInformation_ExplainFormat)(0), // 0: pganalyze.collector.QueryExplainInformation.ExplainFormat
-	(QueryExplainInformation_ExplainSource)(0), // 1: pganalyze.collector.QueryExplainInformation.ExplainSource
-	(SystemInformation_SystemType)(0),          // 2: pganalyze.collector.SystemInformation.SystemType
-	(*NullString)(nil),                         // 3: pganalyze.collector.NullString
-	(*NullInt32)(nil),                          // 4: pganalyze.collector.NullInt32
-	(*NullDouble)(nil),                         // 5: pganalyze.collector.NullDouble
-	(*NullTimestamp)(nil),                      // 6: pganalyze.collector.NullTimestamp
-	(*PostgresVersion)(nil),                    // 7: pganalyze.collector.PostgresVersion
-	(*RoleReference)(nil),                      // 8: pganalyze.collector.RoleReference
-	(*DatabaseReference)(nil),                  // 9: pganalyze.collector.DatabaseReference
-	(*RelationReference)(nil),                  // 10: pganalyze.collector.RelationReference
-	(*IndexReference)(nil),                     // 11: pganalyze.collector.IndexReference
-	(*FunctionReference)(nil),                  // 12: pganalyze.collector.FunctionReference
-	(*QueryReference)(nil),                     // 13: pganalyze.collector.QueryReference
-	(*QueryInformation)(nil),                   // 14: pganalyze.collector.QueryInformation
-	(*QueryExplainInformation)(nil),            // 15: pganalyze.collector.QueryExplainInformation
-	(*System)(nil),                             // 16: pganalyze.collector.System
-	(*SystemInformation)(nil),                  // 17: pganalyze.collector.SystemInformation
-	(*SystemInformationSelfHosted)(nil),        // 18: pganalyze.collector.SystemInformationSelfHosted
-	(*SystemInformationAmazonRDS)(nil),         // 19: pganalyze.collector.SystemInformationAmazonRDS
-	(*SystemInformationCrunchyBridge)(nil),     // 20: pganalyze.collector.SystemInformationCrunchyBridge
-	(*SystemInformationAzure)(nil),             // 21: pganalyze.collector.SystemInformationAzure
-	(*SchedulerStatistic)(nil),                 // 22: pganalyze.collector.SchedulerStatistic
-	(*MemoryStatistic)(nil),                    // 23: pganalyze.collector.MemoryStatistic
-	(*CPUInformation)(nil),                     // 24: pganalyze.collector.CPUInformation
-	(*CPUReference)(nil),                       // 25: pganalyze.collector.CPUReference
-	(*CPUStatistic)(nil),                       // 26: pganalyze.collector.CPUStatistic
-	(*NetworkReference)(nil),                   // 27: pganalyze.collector.NetworkReference
-	(*NetworkStatistic)(nil),                   // 28: pganalyze.collector.NetworkStatistic
-	(*DiskReference)(nil),                      // 29: pganalyze.collector.DiskReference
-	(*DiskInformation)(nil),                    // 30: pganalyze.collector.DiskInformation
-	(*DiskStatistic)(nil),                      // 31: pganalyze.collector.DiskStatistic
-	(*DiskPartitionReference)(nil),             // 32: pganalyze.collector.DiskPartitionReference
-	(*DiskPartitionInformation)(nil),           // 33: pganalyze.collector.DiskPartitionInformation
-	(*DiskPartitionStatistic)(nil),             // 34: pganalyze.collector.DiskPartitionStatistic
-	nil,                                        // 35: pganalyze.collector.SystemInformation.ResourceTagsEntry
-	(*timestamppb.Timestamp)(nil),              // 36: google.protobuf.Timestamp
+	(QueryRunType)(0),                          // 0: pganalyze.collector.QueryRunType
+	(QueryExplainInformation_ExplainFormat)(0), // 1: pganalyze.collector.QueryExplainInformation.ExplainFormat
+	(QueryExplainInformation_ExplainSource)(0), // 2: pganalyze.collector.QueryExplainInformation.ExplainSource
+	(SystemInformation_SystemType)(0),          // 3: pganalyze.collector.SystemInformation.SystemType
+	(*NullString)(nil),                         // 4: pganalyze.collector.NullString
+	(*NullInt32)(nil),                          // 5: pganalyze.collector.NullInt32
+	(*NullDouble)(nil),                         // 6: pganalyze.collector.NullDouble
+	(*NullTimestamp)(nil),                      // 7: pganalyze.collector.NullTimestamp
+	(*PostgresVersion)(nil),                    // 8: pganalyze.collector.PostgresVersion
+	(*RoleReference)(nil),                      // 9: pganalyze.collector.RoleReference
+	(*DatabaseReference)(nil),                  // 10: pganalyze.collector.DatabaseReference
+	(*RelationReference)(nil),                  // 11: pganalyze.collector.RelationReference
+	(*IndexReference)(nil),                     // 12: pganalyze.collector.IndexReference
+	(*FunctionReference)(nil),                  // 13: pganalyze.collector.FunctionReference
+	(*QueryReference)(nil),                     // 14: pganalyze.collector.QueryReference
+	(*QueryInformation)(nil),                   // 15: pganalyze.collector.QueryInformation
+	(*QueryExplainInformation)(nil),            // 16: pganalyze.collector.QueryExplainInformation
+	(*System)(nil),                             // 17: pganalyze.collector.System
+	(*SystemInformation)(nil),                  // 18: pganalyze.collector.SystemInformation
+	(*SystemInformationSelfHosted)(nil),        // 19: pganalyze.collector.SystemInformationSelfHosted
+	(*SystemInformationAmazonRDS)(nil),         // 20: pganalyze.collector.SystemInformationAmazonRDS
+	(*SystemInformationCrunchyBridge)(nil),     // 21: pganalyze.collector.SystemInformationCrunchyBridge
+	(*SystemInformationAzure)(nil),             // 22: pganalyze.collector.SystemInformationAzure
+	(*SchedulerStatistic)(nil),                 // 23: pganalyze.collector.SchedulerStatistic
+	(*MemoryStatistic)(nil),                    // 24: pganalyze.collector.MemoryStatistic
+	(*CPUInformation)(nil),                     // 25: pganalyze.collector.CPUInformation
+	(*CPUReference)(nil),                       // 26: pganalyze.collector.CPUReference
+	(*CPUStatistic)(nil),                       // 27: pganalyze.collector.CPUStatistic
+	(*NetworkReference)(nil),                   // 28: pganalyze.collector.NetworkReference
+	(*NetworkStatistic)(nil),                   // 29: pganalyze.collector.NetworkStatistic
+	(*DiskReference)(nil),                      // 30: pganalyze.collector.DiskReference
+	(*DiskInformation)(nil),                    // 31: pganalyze.collector.DiskInformation
+	(*DiskStatistic)(nil),                      // 32: pganalyze.collector.DiskStatistic
+	(*DiskPartitionReference)(nil),             // 33: pganalyze.collector.DiskPartitionReference
+	(*DiskPartitionInformation)(nil),           // 34: pganalyze.collector.DiskPartitionInformation
+	(*DiskPartitionStatistic)(nil),             // 35: pganalyze.collector.DiskPartitionStatistic
+	nil,                                        // 36: pganalyze.collector.SystemInformation.ResourceTagsEntry
+	(*timestamppb.Timestamp)(nil),              // 37: google.protobuf.Timestamp
 }
 var file_shared_proto_depIdxs = []int32{
-	36, // 0: pganalyze.collector.NullTimestamp.value:type_name -> google.protobuf.Timestamp
-	0,  // 1: pganalyze.collector.QueryExplainInformation.explain_format:type_name -> pganalyze.collector.QueryExplainInformation.ExplainFormat
-	1,  // 2: pganalyze.collector.QueryExplainInformation.explain_source:type_name -> pganalyze.collector.QueryExplainInformation.ExplainSource
-	17, // 3: pganalyze.collector.System.system_information:type_name -> pganalyze.collector.SystemInformation
-	22, // 4: pganalyze.collector.System.scheduler_statistic:type_name -> pganalyze.collector.SchedulerStatistic
-	23, // 5: pganalyze.collector.System.memory_statistic:type_name -> pganalyze.collector.MemoryStatistic
-	24, // 6: pganalyze.collector.System.cpu_information:type_name -> pganalyze.collector.CPUInformation
-	25, // 7: pganalyze.collector.System.cpu_references:type_name -> pganalyze.collector.CPUReference
-	26, // 8: pganalyze.collector.System.cpu_statistics:type_name -> pganalyze.collector.CPUStatistic
-	27, // 9: pganalyze.collector.System.network_references:type_name -> pganalyze.collector.NetworkReference
-	28, // 10: pganalyze.collector.System.network_statistics:type_name -> pganalyze.collector.NetworkStatistic
-	29, // 11: pganalyze.collector.System.disk_references:type_name -> pganalyze.collector.DiskReference
-	30, // 12: pganalyze.collector.System.disk_informations:type_name -> pganalyze.collector.DiskInformation
-	31, // 13: pganalyze.collector.System.disk_statistics:type_name -> pganalyze.collector.DiskStatistic
-	32, // 14: pganalyze.collector.System.disk_partition_references:type_name -> pganalyze.collector.DiskPartitionReference
-	33, // 15: pganalyze.collector.System.disk_partition_informations:type_name -> pganalyze.collector.DiskPartitionInformation
-	34, // 16: pganalyze.collector.System.disk_partition_statistics:type_name -> pganalyze.collector.DiskPartitionStatistic
-	2,  // 17: pganalyze.collector.SystemInformation.type:type_name -> pganalyze.collector.SystemInformation.SystemType
-	18, // 18: pganalyze.collector.SystemInformation.self_hosted:type_name -> pganalyze.collector.SystemInformationSelfHosted
-	19, // 19: pganalyze.collector.SystemInformation.amazon_rds:type_name -> pganalyze.collector.SystemInformationAmazonRDS
-	20, // 20: pganalyze.collector.SystemInformation.crunchy_bridge:type_name -> pganalyze.collector.SystemInformationCrunchyBridge
-	21, // 21: pganalyze.collector.SystemInformation.azure:type_name -> pganalyze.collector.SystemInformationAzure
-	35, // 22: pganalyze.collector.SystemInformation.resource_tags:type_name -> pganalyze.collector.SystemInformation.ResourceTagsEntry
-	36, // 23: pganalyze.collector.SystemInformation.boot_time:type_name -> google.protobuf.Timestamp
-	36, // 24: pganalyze.collector.SystemInformationAmazonRDS.latest_restorable_time:type_name -> google.protobuf.Timestamp
-	36, // 25: pganalyze.collector.SystemInformationAmazonRDS.created_at:type_name -> google.protobuf.Timestamp
-	36, // 26: pganalyze.collector.SystemInformationCrunchyBridge.created_at:type_name -> google.protobuf.Timestamp
-	36, // 27: pganalyze.collector.SystemInformationAzure.created_at:type_name -> google.protobuf.Timestamp
+	37, // 0: pganalyze.collector.NullTimestamp.value:type_name -> google.protobuf.Timestamp
+	1,  // 1: pganalyze.collector.QueryExplainInformation.explain_format:type_name -> pganalyze.collector.QueryExplainInformation.ExplainFormat
+	2,  // 2: pganalyze.collector.QueryExplainInformation.explain_source:type_name -> pganalyze.collector.QueryExplainInformation.ExplainSource
+	18, // 3: pganalyze.collector.System.system_information:type_name -> pganalyze.collector.SystemInformation
+	23, // 4: pganalyze.collector.System.scheduler_statistic:type_name -> pganalyze.collector.SchedulerStatistic
+	24, // 5: pganalyze.collector.System.memory_statistic:type_name -> pganalyze.collector.MemoryStatistic
+	25, // 6: pganalyze.collector.System.cpu_information:type_name -> pganalyze.collector.CPUInformation
+	26, // 7: pganalyze.collector.System.cpu_references:type_name -> pganalyze.collector.CPUReference
+	27, // 8: pganalyze.collector.System.cpu_statistics:type_name -> pganalyze.collector.CPUStatistic
+	28, // 9: pganalyze.collector.System.network_references:type_name -> pganalyze.collector.NetworkReference
+	29, // 10: pganalyze.collector.System.network_statistics:type_name -> pganalyze.collector.NetworkStatistic
+	30, // 11: pganalyze.collector.System.disk_references:type_name -> pganalyze.collector.DiskReference
+	31, // 12: pganalyze.collector.System.disk_informations:type_name -> pganalyze.collector.DiskInformation
+	32, // 13: pganalyze.collector.System.disk_statistics:type_name -> pganalyze.collector.DiskStatistic
+	33, // 14: pganalyze.collector.System.disk_partition_references:type_name -> pganalyze.collector.DiskPartitionReference
+	34, // 15: pganalyze.collector.System.disk_partition_informations:type_name -> pganalyze.collector.DiskPartitionInformation
+	35, // 16: pganalyze.collector.System.disk_partition_statistics:type_name -> pganalyze.collector.DiskPartitionStatistic
+	3,  // 17: pganalyze.collector.SystemInformation.type:type_name -> pganalyze.collector.SystemInformation.SystemType
+	19, // 18: pganalyze.collector.SystemInformation.self_hosted:type_name -> pganalyze.collector.SystemInformationSelfHosted
+	20, // 19: pganalyze.collector.SystemInformation.amazon_rds:type_name -> pganalyze.collector.SystemInformationAmazonRDS
+	21, // 20: pganalyze.collector.SystemInformation.crunchy_bridge:type_name -> pganalyze.collector.SystemInformationCrunchyBridge
+	22, // 21: pganalyze.collector.SystemInformation.azure:type_name -> pganalyze.collector.SystemInformationAzure
+	36, // 22: pganalyze.collector.SystemInformation.resource_tags:type_name -> pganalyze.collector.SystemInformation.ResourceTagsEntry
+	37, // 23: pganalyze.collector.SystemInformation.boot_time:type_name -> google.protobuf.Timestamp
+	37, // 24: pganalyze.collector.SystemInformationAmazonRDS.latest_restorable_time:type_name -> google.protobuf.Timestamp
+	37, // 25: pganalyze.collector.SystemInformationAmazonRDS.created_at:type_name -> google.protobuf.Timestamp
+	37, // 26: pganalyze.collector.SystemInformationCrunchyBridge.created_at:type_name -> google.protobuf.Timestamp
+	37, // 27: pganalyze.collector.SystemInformationAzure.created_at:type_name -> google.protobuf.Timestamp
 	28, // [28:28] is the sub-list for method output_type
 	28, // [28:28] is the sub-list for method input_type
 	28, // [28:28] is the sub-list for extension type_name
@@ -4226,7 +4272,7 @@ func file_shared_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_shared_proto_rawDesc,
-			NumEnums:      3,
+			NumEnums:      4,
 			NumMessages:   33,
 			NumExtensions: 0,
 			NumServices:   0,
