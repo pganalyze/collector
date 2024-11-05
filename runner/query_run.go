@@ -27,7 +27,9 @@ func SetupQueryRunnerForAllServers(ctx context.Context, servers []*state.Server,
 				case <-cleanupInterval.C:
 					cleanup(server)
 				default:
-					run(ctx, server, collectionOpts, logger)
+					if server.Config.EnableQueryRunner {
+						run(ctx, server, collectionOpts, logger)
+					}
 					time.Sleep(1 * time.Second)
 				}
 			}
