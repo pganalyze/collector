@@ -30,6 +30,7 @@ func SubmitCompactActivitySnapshot(ctx context.Context, server *state.Server, gr
 		}
 	}
 
+	server.QueryRunsMutex.Lock()
 	for _, query := range server.QueryRuns {
 		as.QueryRuns = append(as.QueryRuns, &pganalyze_collector.QueryRun{
 			Id:         query.Id,
@@ -40,6 +41,7 @@ func SubmitCompactActivitySnapshot(ctx context.Context, server *state.Server, gr
 			BackendPid: int32(query.BackendPid),
 		})
 	}
+	server.QueryRunsMutex.Unlock()
 
 	s := pganalyze_collector.CompactSnapshot{
 		BaseRefs: &r,
