@@ -30,7 +30,7 @@ WHERE
 func GetPlans(ctx context.Context, server *state.Server, logger *util.Logger, db *sql.DB, globalCollectionOpts state.CollectionOpts, postgresVersion state.PostgresVersion, showtext bool) (state.PostgresPlanMap, state.PostgresPlanStatsMap, error) {
 	var err error
 
-	// Currently only collects this with Aurora using aurora_stat_plans function
+	// Only collect this with Aurora using aurora_stat_plans function for now
 	if !postgresVersion.IsAwsAurora {
 		return nil, nil, nil
 	}
