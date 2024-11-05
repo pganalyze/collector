@@ -20,6 +20,7 @@ func groupStatements(statements state.PostgresStatementMap, statsMap state.Diffe
 
 		// Note we intentionally don't include sKey.TopLevel here, since we don't (yet)
 		// separate statistics based on that attribute in the pganalyze app
+		// As such, pg_stat_statements entries that only differ by toplevel will be aggregated here
 		key := statementKey{
 			databaseOid: sKey.DatabaseOid,
 			userOid:     sKey.UserOid,
@@ -67,11 +68,29 @@ func transformQueryStatistic(stats state.DiffedPostgresStatementStats, idx int32
 	}
 }
 
-func transformPostgresStatements(s snapshot.FullSnapshot, newState state.PersistedState, diffState state.DiffState, transientState state.TransientState, roleOidToIdx OidToIdx, databaseOidToIdx OidToIdx) snapshot.FullSnapshot {
+type queryIDKey struct {
+	databaseOid state.Oid
+	userOid     state.Oid
+	queryID     int64
+}
+type QueryIDKeyToIdx map[queryIDKey]int32
+
+func transformPostgresStatements(s snapshot.FullSnapshot, newState state.PersistedState, diffState state.DiffState, transientState state.TransientState, roleOidToIdx OidToIdx, databaseOidToIdx OidToIdx) (snapshot.FullSnapshot, QueryIDKeyToIdx) {
 	// Statement stats from this snapshot
 	groupedStatements := groupStatements(transientState.Statements, diffState.StatementStats)
+	queryIDKeyToIDx := make(QueryIDKeyToIdx)
 	for key, value := range groupedStatements {
 		idx := upsertQueryReferenceAndInformation(&s, transientState.StatementTexts, roleOidToIdx, databaseOidToIdx, key, value)
+		// Store the map of QueryIdx (idx here) and databaseOid, userOid, queryID combinations
+		// to use them later on with plans transformation
+		for _, queryId := range value.queryIDs {
+			sKey := queryIDKey{
+				databaseOid: key.databaseOid,
+				userOid:     key.userOid,
+				queryID:     queryId,
+			}
+			queryIDKeyToIDx[sKey] = idx
+		}
 
 		statistic := transformQueryStatistic(value.statementStats, idx)
 		s.QueryStatistics = append(s.QueryStatistics, &statistic)
@@ -98,5 +117,5 @@ func transformPostgresStatements(s snapshot.FullSnapshot, newState state.Persist
 		s.HistoricQueryStatistics = append(s.HistoricQueryStatistics, &h)
 	}
 
-	return s
+	return s, queryIDKeyToIDx
 }

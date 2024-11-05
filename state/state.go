@@ -27,6 +27,7 @@ type PersistedState struct {
 	DatabaseStats  PostgresDatabaseStatsMap
 	StatementStats PostgresStatementStatsMap
 	SchemaStats    map[Oid]*SchemaStats
+	PlanStats      PostgresPlanStatsMap
 
 	Relations []PostgresRelation
 	Functions []PostgresFunction
@@ -44,6 +45,9 @@ type PersistedState struct {
 
 	// All statement stats that have not been identified (will be cleared by the next full snapshot)
 	UnidentifiedStatementStats HistoricStatementStatsMap
+
+	// All plan stats that have not been identified (will be cleared by the next full snapshot)
+	UnidentifiedPlanStats HistoricPlanStatsMap
 }
 
 // TransientState - State thats only used within a collector run (and not needed for diffs)
@@ -58,6 +62,8 @@ type TransientState struct {
 	Statements             PostgresStatementMap
 	StatementTexts         PostgresStatementTextMap
 	HistoricStatementStats HistoricStatementStatsMap
+	HistoricPlanStats      HistoricPlanStatsMap
+	Plans                  PostgresPlanMap
 
 	// This is a new zero value that was recorded after a pg_stat_statements_reset(),
 	// in order to enable the next snapshot to be able to diff against something
@@ -163,6 +169,7 @@ type DiffedSchemaStats struct {
 type DiffState struct {
 	StatementStats DiffedPostgresStatementStatsMap
 	SchemaStats    map[Oid]*DiffedSchemaStats
+	PlanStats      DiffedPostgresPlanStatsMap
 
 	SystemCPUStats     DiffedSystemCPUStatsMap
 	SystemNetworkStats DiffedNetworkStatsMap

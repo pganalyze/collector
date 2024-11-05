@@ -76,6 +76,14 @@ func CollectFull(ctx context.Context, server *state.Server, connection *sql.DB, 
 			server.SelfTest.HintCollectionAspect(state.CollectionAspectPgStatStatements, "Current shared_preload_libraries setting: '%s'. Your Postgres server may need to be restarted for changes to take effect.", shared_preload_libraries)
 		}
 		err = nil
+	} else {
+		// Only collect plan stats when we successfully collected query stats
+		ts.Plans, ps.PlanStats, err = postgres.GetPlans(ctx, server, logger, connection, globalCollectionOpts, ts.Version, true)
+		if err != nil {
+			// Accept this as a non-fatal issue as this is not a critical stats (at least for now)
+			logger.PrintError("Skipping query plan statistics, due to error: %s", err)
+			err = nil
+		}
 	}
 	err = postgres.SetDefaultStatementTimeout(ctx, connection, logger, server)
 	if err != nil {

@@ -103,3 +103,23 @@ func (stmt DiffedPostgresStatementStats) Add(other DiffedPostgresStatementStats)
 		BlkWriteTime:      stmt.BlkWriteTime + other.BlkWriteTime,
 	}
 }
+
+// PostgresPlan
+type PostgresPlan struct {
+	ExplainPlan      string    // Explain plan of the query in the text format
+	PlanType         string    // How explain plan was captured. estimate - plan captured with estimated costs, actual - plan captured with EXPLAIN ANALYZE
+	PlanCapturedTime time.Time // Last time a plan was captured
+}
+
+// PostgresPlanKey
+type PostgresPlanKey struct {
+	PostgresStatementKey
+	PlanID int64 // Plan identifier, computed by Aurora
+}
+
+type PostgresPlanMap map[PostgresPlanKey]PostgresPlan
+type PostgresPlanStatsMap map[PostgresPlanKey]PostgresStatementStats
+type DiffedPostgresPlanStats PostgresStatementStats
+type DiffedPostgresPlanStatsMap map[PostgresPlanKey]DiffedPostgresStatementStats
+
+type HistoricPlanStatsMap map[PostgresStatementStatsTimeKey]DiffedPostgresPlanStatsMap
