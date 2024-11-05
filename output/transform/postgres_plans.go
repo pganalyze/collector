@@ -96,12 +96,12 @@ func transformQueryPlanStatistic(stats state.DiffedPostgresStatementStats, idx i
 
 func upsertQueryPlanReference(s *snapshot.FullSnapshot, queryIdx int32, planId int64) int32 {
 	newRef := snapshot.QueryPlanReference{
-		QueryIdx: queryIdx,
-		PlanId:   planId,
+		QueryIdx:       queryIdx,
+		OriginalPlanId: planId,
 	}
 
 	for idx, ref := range s.QueryPlanReferences {
-		if ref.QueryIdx == newRef.QueryIdx && ref.PlanId == newRef.PlanId {
+		if ref.QueryIdx == newRef.QueryIdx && ref.OriginalPlanId == newRef.OriginalPlanId {
 			return int32(idx)
 		}
 	}
