@@ -67,7 +67,7 @@ func run(ctx context.Context, server *state.Server, collectionOpts state.Collect
 		}
 
 		pid := 0
-		err = db.QueryRow("SELECT pg_backend_pid()").Scan(&pid)
+		err = db.QueryRow(postgres.QueryMarkerSQL + "SELECT pg_backend_pid()").Scan(&pid)
 		if err == nil {
 			server.QueryRunsMutex.Lock()
 			server.QueryRuns[idx].BackendPid = pid
@@ -80,19 +80,25 @@ func run(ctx context.Context, server *state.Server, collectionOpts state.Collect
 			continue
 		}
 
-		// The comment doesn't include /* pganalyze-collector */ so that query runs are reported separately in pganalyze
+		// We don't include QueryMarkerSQL so query runs are reported separately in pganalyze
 		comment := fmt.Sprintf("/* pganalyze:no-alert,pganalyze-query-run:%d */ ", query.Id)
 		prefix := ""
 		result := ""
 		if query.Type == pganalyze_collector.QueryRunType_EXPLAIN {
-			prefix = "EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) "
+			prefix = "EXPLAIN (ANALYZE, VERBOSE, BUFFERS, FORMAT JSON) "
 		}
 
 		err = db.QueryRowContext(ctx, comment+prefix+query.QueryText).Scan(&result)
 
-		if err != nil && query.Type == pganalyze_collector.QueryRunType_EXPLAIN && strings.Contains(err.Error(), "statement timeout") {
-			prefix = "EXPLAIN (FORMAT JSON) "
+		if query.Type == pganalyze_collector.QueryRunType_EXPLAIN {
+			// Run EXPLAIN ANALYZE a second time to get a warm cache result
 			err = db.QueryRowContext(ctx, comment+prefix+query.QueryText).Scan(&result)
+
+			// If the EXPLAIN ANALYZE timed out, capture a regular EXPLAIN instead
+			if err != nil && strings.Contains(err.Error(), "statement timeout") {
+				prefix = "EXPLAIN (VERBOSE, FORMAT JSON) "
+				err = db.QueryRowContext(ctx, comment+prefix+query.QueryText).Scan(&result)
+			}
 		}
 
 		server.QueryRunsMutex.Lock()
