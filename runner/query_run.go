@@ -91,8 +91,14 @@ func run(ctx context.Context, server *state.Server, collectionOpts state.Collect
 		err = db.QueryRowContext(ctx, comment+prefix+query.QueryText).Scan(&result)
 
 		if query.Type == pganalyze_collector.QueryRunType_EXPLAIN {
+			firstErr := err
 			// Run EXPLAIN ANALYZE a second time to get a warm cache result
 			err = db.QueryRowContext(ctx, comment+prefix+query.QueryText).Scan(&result)
+
+			// If the first run failed, run once more to get a warm cache result
+			if err == nil && firstErr != nil {
+				err = db.QueryRowContext(ctx, comment+prefix+query.QueryText).Scan(&result)
+			}
 
 			// If the EXPLAIN ANALYZE timed out, capture a regular EXPLAIN instead
 			if err != nil && strings.Contains(err.Error(), "statement timeout") {
@@ -116,7 +122,7 @@ func cleanup(server *state.Server) {
 	server.QueryRunsMutex.Lock()
 	queryRuns := make([]state.QueryRun, 0)
 	for _, query := range server.QueryRuns {
-		if time.Since(query.FinishedAt) >= 10*time.Minute {
+		if time.Since(query.FinishedAt) < 10*time.Minute {
 			queryRuns = append(queryRuns, query)
 		}
 	}

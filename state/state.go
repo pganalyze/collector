@@ -283,7 +283,7 @@ type Server struct {
 	WebSocket      atomic.Pointer[websocket.Conn]
 	Pause          atomic.Bool
 
-	// State to track requests for the collector to run a query on behalf of a user
+	// State to track queries the collector is running on behalf of a user
 	QueryRuns      []QueryRun
 	QueryRunsMutex *sync.Mutex
 
