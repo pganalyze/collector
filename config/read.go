@@ -102,13 +102,7 @@ func getDefaultConfig() *ServerConfig {
 		config.DbURL = dbURL
 	}
 	if dbURLFile := os.Getenv("DB_URL_FILE"); dbURLFile != "" {
-		dbURL, err := os.ReadFile(dbURLFile)
-
-		if err != nil {
-			panic(err)
-		}
-
-		config.DbURL = strings.TrimSpace(string(dbURL))
+		config.DbURLFile = dbURLFile
 	}
 	if dbName := os.Getenv("DB_NAME"); dbName != "" {
 		config.DbName = dbName
@@ -123,13 +117,7 @@ func getDefaultConfig() *ServerConfig {
 		config.DbPassword = dbPassword
 	}
 	if dbPasswordFile := os.Getenv("DB_PASSWORD_FILE"); dbPasswordFile != "" {
-		dbPassword, err := os.ReadFile(dbPasswordFile)
-
-		if err != nil {
-			panic(err)
-		}
-
-		config.DbPassword = strings.TrimSpace(string(dbPassword))
+		config.DbPasswordFile = dbPasswordFile
 	}
 	if dbHost := os.Getenv("DB_HOST"); dbHost != "" {
 		config.DbHost = dbHost
@@ -641,6 +629,26 @@ func preprocessConfig(config *ServerConfig) (*ServerConfig, error) {
 		config.DbAllNames = true
 	} else {
 		config.DbExtraNames = dbNameParts[1:]
+	}
+
+	if config.DbURL == "" && config.DbURLFile != "" {
+		dbURL, err := os.ReadFile(config.DbURLFile)
+
+		if err != nil {
+			return config, err
+		}
+
+		config.DbURL = strings.TrimSpace(string(dbURL))
+	}
+
+	if config.DbPassword == "" && config.DbPasswordFile != "" {
+		dbPassword, err := os.ReadFile(config.DbPasswordFile)
+
+		if err != nil {
+			return config, err
+		}
+
+		config.DbPassword = strings.TrimSpace(string(dbPassword))
 	}
 
 	if config.DbSslRootCertContents != "" {

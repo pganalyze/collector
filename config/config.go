@@ -47,9 +47,11 @@ type ServerConfig struct {
 	EnableLogExplain bool `ini:"enable_log_explain"`
 
 	DbURL                 string `ini:"db_url"`
+	DbURLFile             string `ini:"db_url_file"`
 	DbName                string `ini:"db_name"`
 	DbUsername            string `ini:"db_username"`
 	DbPassword            string `ini:"db_password"`
+	DbPasswordFile        string `ini:"db_password_file"`
 	DbHost                string `ini:"db_host"`
 	DbPort                int    `ini:"db_port"`
 	DbSslMode             string `ini:"db_sslmode"`
