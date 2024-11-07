@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"testing"
+	"time"
 
 	"github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/output/transform"
@@ -15,10 +16,14 @@ import (
 func TestStatements(t *testing.T) {
 	key1 := state.PostgresStatementKey{QueryID: 1}
 	key2 := state.PostgresStatementKey{QueryID: 2}
+	pKey1 := state.PostgresPlanKey{PlanID: 111}
+	pKey2 := state.PostgresPlanKey{PlanID: 222}
+	pKey1.QueryID = key2.QueryID
+	pKey2.QueryID = key2.QueryID
 
 	newState := state.PersistedState{}
-	transientState := state.TransientState{Statements: make(state.PostgresStatementMap), StatementTexts: make(state.PostgresStatementTextMap)}
-	diffState := state.DiffState{StatementStats: make(state.DiffedPostgresStatementStatsMap)}
+	transientState := state.TransientState{Statements: make(state.PostgresStatementMap), StatementTexts: make(state.PostgresStatementTextMap), Plans: make(state.PostgresPlanMap)}
+	diffState := state.DiffState{StatementStats: make(state.DiffedPostgresStatementStatsMap), PlanStats: make(state.DiffedPostgresPlanStatsMap)}
 
 	q1 := "SELECT 1"
 	q2 := "SELECT * FROM test"
@@ -28,12 +33,17 @@ func TestStatements(t *testing.T) {
 	fp2 := util.FingerprintQuery(q2, "none", -1)
 	fpBuf2 := make([]byte, 8)
 	binary.BigEndian.PutUint64(fpBuf2, fp2)
+	capturedTime := time.Time{}
 	transientState.Statements[key1] = state.PostgresStatement{Fingerprint: fp1}
 	transientState.Statements[key2] = state.PostgresStatement{Fingerprint: fp2}
 	transientState.StatementTexts[fp1] = q1
 	transientState.StatementTexts[fp2] = q2
+	transientState.Plans[pKey1] = state.PostgresPlan{ExplainPlan: "Index Scan", PlanCapturedTime: capturedTime}
+	transientState.Plans[pKey2] = state.PostgresPlan{ExplainPlan: "Bitmap Heap Scan", PlanCapturedTime: capturedTime}
 	diffState.StatementStats[key1] = state.DiffedPostgresStatementStats{Calls: 1}
 	diffState.StatementStats[key2] = state.DiffedPostgresStatementStats{Calls: 13}
+	diffState.PlanStats[pKey1] = state.DiffedPostgresStatementStats{Calls: 2}
+	diffState.PlanStats[pKey2] = state.DiffedPostgresStatementStats{Calls: 24}
 
 	actual := transform.StateToSnapshot(newState, diffState, transientState)
 	actualJSON, _ := json.Marshal(actual)
@@ -88,6 +98,38 @@ func TestStatements(t *testing.T) {
 				Calls:    13,
 			},
 		},
+		QueryPlanReferences: []*pganalyze_collector.QueryPlanReference{
+			&pganalyze_collector.QueryPlanReference{
+				QueryIdx:       1,
+				OriginalPlanId: 111,
+			},
+			&pganalyze_collector.QueryPlanReference{
+				QueryIdx:       1,
+				OriginalPlanId: 222,
+			},
+		},
+		QueryPlanInformations: []*pganalyze_collector.QueryPlanInformation{
+			&pganalyze_collector.QueryPlanInformation{
+				QueryPlanIdx:     0,
+				ExplainPlan:      "Index Scan",
+				PlanCapturedTime: timestamppb.New(capturedTime),
+			},
+			&pganalyze_collector.QueryPlanInformation{
+				QueryPlanIdx:     1,
+				ExplainPlan:      "Bitmap Heap Scan",
+				PlanCapturedTime: timestamppb.New(capturedTime),
+			},
+		},
+		QueryPlanStatistics: []*pganalyze_collector.QueryPlanStatistic{
+			&pganalyze_collector.QueryPlanStatistic{
+				QueryPlanIdx: 0,
+				Calls:        2,
+			},
+			&pganalyze_collector.QueryPlanStatistic{
+				QueryPlanIdx: 1,
+				Calls:        24,
+			},
+		},
 	}
 	expectedJSON, _ := json.Marshal(expected)
 
@@ -140,6 +182,38 @@ func TestStatements(t *testing.T) {
 			&pganalyze_collector.QueryStatistic{
 				QueryIdx: 1,
 				Calls:    1,
+			},
+		},
+		QueryPlanReferences: []*pganalyze_collector.QueryPlanReference{
+			&pganalyze_collector.QueryPlanReference{
+				QueryIdx:       1,
+				OriginalPlanId: 222,
+			},
+			&pganalyze_collector.QueryPlanReference{
+				QueryIdx:       1,
+				OriginalPlanId: 111,
+			},
+		},
+		QueryPlanInformations: []*pganalyze_collector.QueryPlanInformation{
+			&pganalyze_collector.QueryPlanInformation{
+				QueryPlanIdx:     0,
+				ExplainPlan:      "Bitmap Heap Scan",
+				PlanCapturedTime: timestamppb.New(capturedTime),
+			},
+			&pganalyze_collector.QueryPlanInformation{
+				QueryPlanIdx:     1,
+				ExplainPlan:      "Index Scan",
+				PlanCapturedTime: timestamppb.New(capturedTime),
+			},
+		},
+		QueryPlanStatistics: []*pganalyze_collector.QueryPlanStatistic{
+			&pganalyze_collector.QueryPlanStatistic{
+				QueryPlanIdx: 0,
+				Calls:        24,
+			},
+			&pganalyze_collector.QueryPlanStatistic{
+				QueryPlanIdx: 1,
+				Calls:        2,
 			},
 		},
 	}
