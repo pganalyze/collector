@@ -48,6 +48,7 @@ func TestStatements(t *testing.T) {
 	actual := transform.StateToSnapshot(newState, diffState, transientState)
 	actualJSON, _ := json.Marshal(actual)
 
+	// Query: 0, 1, Plan: 0, 1
 	expected := pganalyze_collector.FullSnapshot{
 		Config:             &pganalyze_collector.CollectorConfig{},
 		CollectorStatistic: &pganalyze_collector.CollectorStatistic{},
@@ -133,93 +134,121 @@ func TestStatements(t *testing.T) {
 	}
 	expectedJSON, _ := json.Marshal(expected)
 
-	// Sadly this is the quickest way with all the idx references...
-	expectedAlt := pganalyze_collector.FullSnapshot{
-		Config:             &pganalyze_collector.CollectorConfig{},
-		CollectorStatistic: &pganalyze_collector.CollectorStatistic{},
-		CollectorStartedAt: &timestamppb.Timestamp{
-			Seconds: -62135596800,
-			Nanos:   0,
+	// Query: 1, 0, Plan: 0, 1
+	var expectedAlt pganalyze_collector.FullSnapshot
+	json.Unmarshal(expectedJSON, &expectedAlt)
+	expectedAlt.QueryReferences = []*pganalyze_collector.QueryReference{
+		&pganalyze_collector.QueryReference{
+			DatabaseIdx: 0,
+			RoleIdx:     0,
+			Fingerprint: fpBuf2,
 		},
-		System: &pganalyze_collector.System{
-			SystemInformation:  &pganalyze_collector.SystemInformation{},
-			SchedulerStatistic: &pganalyze_collector.SchedulerStatistic{},
-			MemoryStatistic:    &pganalyze_collector.MemoryStatistic{},
-			CpuInformation:     &pganalyze_collector.CPUInformation{},
+		&pganalyze_collector.QueryReference{
+			DatabaseIdx: 0,
+			RoleIdx:     0,
+			Fingerprint: fpBuf1,
 		},
-		PostgresVersion: &pganalyze_collector.PostgresVersion{},
-		ServerStatistic: &pganalyze_collector.ServerStatistic{},
-		Replication:     &pganalyze_collector.Replication{},
-		QueryReferences: []*pganalyze_collector.QueryReference{
-			&pganalyze_collector.QueryReference{
-				DatabaseIdx: 0,
-				RoleIdx:     0,
-				Fingerprint: fpBuf2,
-			},
-			&pganalyze_collector.QueryReference{
-				DatabaseIdx: 0,
-				RoleIdx:     0,
-				Fingerprint: fpBuf1,
-			},
+	}
+	expectedAlt.QueryInformations = []*pganalyze_collector.QueryInformation{
+		&pganalyze_collector.QueryInformation{
+			QueryIdx:        0,
+			NormalizedQuery: "SELECT * FROM test",
+			QueryIds:        []int64{2},
 		},
-		QueryInformations: []*pganalyze_collector.QueryInformation{
-			&pganalyze_collector.QueryInformation{
-				QueryIdx:        0,
-				NormalizedQuery: "SELECT * FROM test",
-				QueryIds:        []int64{2},
-			},
-			&pganalyze_collector.QueryInformation{
-				QueryIdx:        1,
-				NormalizedQuery: "SELECT 1",
-				QueryIds:        []int64{1},
-			},
+		&pganalyze_collector.QueryInformation{
+			QueryIdx:        1,
+			NormalizedQuery: "SELECT 1",
+			QueryIds:        []int64{1},
 		},
-		QueryStatistics: []*pganalyze_collector.QueryStatistic{
-			&pganalyze_collector.QueryStatistic{
-				QueryIdx: 0,
-				Calls:    13,
-			},
-			&pganalyze_collector.QueryStatistic{
-				QueryIdx: 1,
-				Calls:    1,
-			},
+	}
+	expectedAlt.QueryStatistics = []*pganalyze_collector.QueryStatistic{
+		&pganalyze_collector.QueryStatistic{
+			QueryIdx: 0,
+			Calls:    13,
 		},
-		QueryPlanReferences: []*pganalyze_collector.QueryPlanReference{
-			&pganalyze_collector.QueryPlanReference{
-				QueryIdx:       1,
-				OriginalPlanId: 222,
-			},
-			&pganalyze_collector.QueryPlanReference{
-				QueryIdx:       1,
-				OriginalPlanId: 111,
-			},
-		},
-		QueryPlanInformations: []*pganalyze_collector.QueryPlanInformation{
-			&pganalyze_collector.QueryPlanInformation{
-				QueryPlanIdx:     0,
-				ExplainPlan:      "Bitmap Heap Scan",
-				PlanCapturedTime: timestamppb.New(capturedTime),
-			},
-			&pganalyze_collector.QueryPlanInformation{
-				QueryPlanIdx:     1,
-				ExplainPlan:      "Index Scan",
-				PlanCapturedTime: timestamppb.New(capturedTime),
-			},
-		},
-		QueryPlanStatistics: []*pganalyze_collector.QueryPlanStatistic{
-			&pganalyze_collector.QueryPlanStatistic{
-				QueryPlanIdx: 0,
-				Calls:        24,
-			},
-			&pganalyze_collector.QueryPlanStatistic{
-				QueryPlanIdx: 1,
-				Calls:        2,
-			},
+		&pganalyze_collector.QueryStatistic{
+			QueryIdx: 1,
+			Calls:    1,
 		},
 	}
 	expectedJSONAlt, _ := json.Marshal(expectedAlt)
 
-	if string(expectedJSON) != string(actualJSON) && string(expectedJSONAlt) != string(actualJSON) {
+	// Query: 1, 0, Plan: 1, 0
+	expectedAlt.QueryPlanReferences = []*pganalyze_collector.QueryPlanReference{
+		&pganalyze_collector.QueryPlanReference{
+			QueryIdx:       1,
+			OriginalPlanId: 222,
+		},
+		&pganalyze_collector.QueryPlanReference{
+			QueryIdx:       1,
+			OriginalPlanId: 111,
+		},
+	}
+	expectedAlt.QueryPlanInformations = []*pganalyze_collector.QueryPlanInformation{
+		&pganalyze_collector.QueryPlanInformation{
+			QueryPlanIdx:     0,
+			ExplainPlan:      "Bitmap Heap Scan",
+			PlanCapturedTime: timestamppb.New(capturedTime),
+		},
+		&pganalyze_collector.QueryPlanInformation{
+			QueryPlanIdx:     1,
+			ExplainPlan:      "Index Scan",
+			PlanCapturedTime: timestamppb.New(capturedTime),
+		},
+	}
+	expectedAlt.QueryPlanStatistics = []*pganalyze_collector.QueryPlanStatistic{
+		&pganalyze_collector.QueryPlanStatistic{
+			QueryPlanIdx: 0,
+			Calls:        24,
+		},
+		&pganalyze_collector.QueryPlanStatistic{
+			QueryPlanIdx: 1,
+			Calls:        2,
+		},
+	}
+	expectedJSONAlt2, _ := json.Marshal(expectedAlt)
+
+	// Query: 0, 1, Plan: 1, 0
+	expectedAlt.QueryReferences = []*pganalyze_collector.QueryReference{
+		&pganalyze_collector.QueryReference{
+			DatabaseIdx: 0,
+			RoleIdx:     0,
+			Fingerprint: fpBuf1,
+		},
+		&pganalyze_collector.QueryReference{
+			DatabaseIdx: 0,
+			RoleIdx:     0,
+			Fingerprint: fpBuf2,
+		},
+	}
+	expectedAlt.QueryInformations = []*pganalyze_collector.QueryInformation{
+		&pganalyze_collector.QueryInformation{
+			QueryIdx:        0,
+			NormalizedQuery: "SELECT 1",
+			QueryIds:        []int64{1},
+		},
+		&pganalyze_collector.QueryInformation{
+			QueryIdx:        1,
+			NormalizedQuery: "SELECT * FROM test",
+			QueryIds:        []int64{2},
+		},
+	}
+	expectedAlt.QueryStatistics = []*pganalyze_collector.QueryStatistic{
+		&pganalyze_collector.QueryStatistic{
+			QueryIdx: 0,
+			Calls:    1,
+		},
+		&pganalyze_collector.QueryStatistic{
+			QueryIdx: 1,
+			Calls:    13,
+		},
+	}
+	expectedJSONAlt3, _ := json.Marshal(expectedAlt)
+
+	if string(expectedJSON) != string(actualJSON) &&
+		string(expectedJSONAlt) != string(actualJSON) &&
+		string(expectedJSONAlt2) != string(actualJSON) &&
+		string(expectedJSONAlt3) != string(actualJSON) {
 		t.Errorf("\nExpected:%+v\n\tActual: %+v\n\n", string(expectedJSON), string(actualJSON))
 	}
 }
