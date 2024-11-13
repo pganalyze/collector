@@ -91,6 +91,9 @@ func run(ctx context.Context, server *state.Server, collectionOpts state.Collect
 		err = db.QueryRowContext(ctx, comment+prefix+query.QueryText).Scan(&result)
 
 		if query.Type == pganalyze_collector.QueryRunType_EXPLAIN {
+			// Rollback any changes the query may perform
+			db.ExecContext(ctx, postgres.QueryMarkerSQL+"BEGIN READ ONLY")
+
 			firstErr := err
 			// Run EXPLAIN ANALYZE a second time to get a warm cache result
 			err = db.QueryRowContext(ctx, comment+prefix+query.QueryText).Scan(&result)
