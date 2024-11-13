@@ -8,7 +8,7 @@ if ! getent passwd pganalyze > /dev/null; then
 fi
 
 if ! getent group pganalyze > /dev/null; then
-  addgroup --system --quiet pganalyze
+  groupadd --system pganalyze
   usermod -g pganalyze pganalyze
 fi
 
