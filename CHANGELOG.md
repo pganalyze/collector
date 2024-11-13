@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.62.0      2024-11-13
+
+* Fix PII filtering for detail log lines
+  - Due to a bug in 0.60.0, all detail log lines (lines that add additional
+    context to the primary log message) were unnecessarily redacted
+* Add DB_URL_FILE and DB_PASSWORD_FILE ([@Munksgaard](https://github.com/Munksgaard))
+  - This allows passing sensitive DB passwords through files instead of environment
+    variables. This makes collector work better with [systemd
+    credentials](https://systemd.io/CREDENTIALS/) and NixOS flakes.
+* Collect query plan information on Amazon Aurora
+  - This collects query plans and statistics in full snapshots using the [aurora_stat_plans](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora_stat_plans.html) function.
+* Update systemd file to use MemoryMax instead of MemoryLimit
+  - The latter is [deprecated](https://www.freedesktop.org/software/systemd/man/latest/systemd.resource-control.html#MemoryMax=bytes)
+
+
 ## 0.61.0      2024-10-23
 
 * Store query texts in temporary file before fingerprinting them
