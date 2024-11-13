@@ -284,7 +284,7 @@ type Server struct {
 	Pause          atomic.Bool
 
 	// State to track queries the collector is running on behalf of a user
-	QueryRuns      []QueryRun
+	QueryRuns      map[int64]*QueryRun
 	QueryRunsMutex *sync.Mutex
 
 	// The LogParser for this server, updated as necessary whenever relevant

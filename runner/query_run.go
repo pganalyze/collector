@@ -38,20 +38,20 @@ func SetupQueryRunnerForAllServers(ctx context.Context, servers []*state.Server,
 }
 
 func run(ctx context.Context, server *state.Server, collectionOpts state.CollectionOpts, logger *util.Logger) {
-	for idx, query := range server.QueryRuns {
+	for id, query := range server.QueryRuns {
 		if !query.FinishedAt.IsZero() {
 			continue
 		}
 		server.QueryRunsMutex.Lock()
-		server.QueryRuns[idx].StartedAt = time.Now()
+		server.QueryRuns[id].StartedAt = time.Now()
 		server.QueryRunsMutex.Unlock()
 		logger.PrintVerbose("Query run %d starting: %s", query.Id, query.QueryText)
 
 		db, err := postgres.EstablishConnection(ctx, server, logger, collectionOpts, query.DatabaseName)
 		if err != nil {
 			server.QueryRunsMutex.Lock()
-			server.QueryRuns[idx].FinishedAt = time.Now()
-			server.QueryRuns[idx].Error = err.Error()
+			server.QueryRuns[id].FinishedAt = time.Now()
+			server.QueryRuns[id].Error = err.Error()
 			server.QueryRunsMutex.Unlock()
 			continue
 		}
@@ -60,8 +60,8 @@ func run(ctx context.Context, server *state.Server, collectionOpts state.Collect
 		err = postgres.SetStatementTimeout(ctx, db, 60*1000)
 		if err != nil {
 			server.QueryRunsMutex.Lock()
-			server.QueryRuns[idx].FinishedAt = time.Now()
-			server.QueryRuns[idx].Error = err.Error()
+			server.QueryRuns[id].FinishedAt = time.Now()
+			server.QueryRuns[id].Error = err.Error()
 			server.QueryRunsMutex.Unlock()
 			continue
 		}
@@ -70,12 +70,12 @@ func run(ctx context.Context, server *state.Server, collectionOpts state.Collect
 		err = db.QueryRow(postgres.QueryMarkerSQL + "SELECT pg_backend_pid()").Scan(&pid)
 		if err == nil {
 			server.QueryRunsMutex.Lock()
-			server.QueryRuns[idx].BackendPid = pid
+			server.QueryRuns[id].BackendPid = pid
 			server.QueryRunsMutex.Unlock()
 		} else {
 			server.QueryRunsMutex.Lock()
-			server.QueryRuns[idx].FinishedAt = time.Now()
-			server.QueryRuns[idx].Error = err.Error()
+			server.QueryRuns[id].FinishedAt = time.Now()
+			server.QueryRuns[id].Error = err.Error()
 			server.QueryRunsMutex.Unlock()
 			continue
 		}
@@ -108,10 +108,10 @@ func run(ctx context.Context, server *state.Server, collectionOpts state.Collect
 		}
 
 		server.QueryRunsMutex.Lock()
-		server.QueryRuns[idx].FinishedAt = time.Now()
-		server.QueryRuns[idx].Result = result
+		server.QueryRuns[id].FinishedAt = time.Now()
+		server.QueryRuns[id].Result = result
 		if err != nil {
-			server.QueryRuns[idx].Error = err.Error()
+			server.QueryRuns[id].Error = err.Error()
 		}
 		server.QueryRunsMutex.Unlock()
 	}
@@ -120,10 +120,10 @@ func run(ctx context.Context, server *state.Server, collectionOpts state.Collect
 // Removes old query runs that have finished
 func cleanup(server *state.Server) {
 	server.QueryRunsMutex.Lock()
-	queryRuns := make([]state.QueryRun, 0)
-	for _, query := range server.QueryRuns {
+	queryRuns := make(map[int64]*state.QueryRun)
+	for id, query := range server.QueryRuns {
 		if time.Since(query.FinishedAt) < 10*time.Minute {
-			queryRuns = append(queryRuns, query)
+			queryRuns[id] = query
 		}
 	}
 	server.QueryRuns = queryRuns
