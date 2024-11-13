@@ -125,7 +125,7 @@ func cleanup(server *state.Server) {
 	server.QueryRunsMutex.Lock()
 	queryRuns := make(map[int64]*state.QueryRun)
 	for id, query := range server.QueryRuns {
-		if time.Since(query.FinishedAt) < 10*time.Minute {
+		if query.FinishedAt.IsZero() || time.Since(query.FinishedAt) < 10*time.Minute {
 			queryRuns[id] = query
 		}
 	}
