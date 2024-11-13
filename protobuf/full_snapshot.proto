@@ -156,6 +156,7 @@ message DatabaseStatistic {
   int32 minmxid_age = 3; // The age of minimum multixact ID for this database (relative to latest stable mxid)
   int32 xact_commit = 4; // Number of transactions in this database that have been committed
   int32 xact_rollback = 5; // Number of transactions in this database that have been rolled back
+  int64 untracked_cache_bytes = 6; // Size of Postgres buffer cache not associated with tables tracked by the collector
 }
 
 // Postgres server statistic
@@ -527,6 +528,8 @@ message RelationStatistic {
   NullTimestamp last_autoanalyze = 48; // Last time at which this table was analyzed by the autovacuum daemon
   float toast_reltuples = 49;          // Number of live rows in the TOAST table. -1 indicating that the row count is unknown
   int32 toast_relpages = 50;           // Size of the on-disk representation of the TOAST table in pages (of size BLCKSZ)
+  int64 cached_data_bytes = 51;        // Size of table data in the Postgres buffer cache
+  int64 cached_toast_bytes = 52;       // Size of TOAST in the Postgres buffer cache
 }
 
 message RelationEvent {
@@ -567,6 +570,7 @@ message IndexStatistic {
   int64 idx_tup_fetch = 6;
   int64 idx_blks_read = 7;
   int64 idx_blks_hit = 8;
+  int64 cached_bytes = 9; // Size of index in the Postgres buffer cache
 }
 
 message FunctionInformation {

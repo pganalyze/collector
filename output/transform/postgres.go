@@ -22,6 +22,7 @@ func transformPostgres(s snapshot.FullSnapshot, newState state.PersistedState, d
 	s = transformPostgresFunctions(s, newState, diffState, roleOidToIdx, databaseOidToIdx)
 	s = transformPostgresBackendCounts(s, transientState, roleOidToIdx, databaseOidToIdx)
 	s = transformPostgresExtensions(s, transientState, databaseOidToIdx)
+	s = transformPostgresBufferCache(s, transientState, databaseOidToIdx)
 
 	return s
 }

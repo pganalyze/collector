@@ -50,6 +50,11 @@ func CollectFull(ctx context.Context, server *state.Server, connection *sql.DB, 
 		return
 	}
 
+	bufferCacheReady := make(chan state.BufferCache)
+	go func() {
+		postgres.GetBufferCache(ctx, server, globalCollectionOpts, logger, ts.Version, bufferCacheReady)
+	}()
+
 	ps.LastStatementStatsAt = time.Now()
 	err = postgres.SetQueryTextStatementTimeout(ctx, connection, logger, server)
 	if err != nil {
@@ -135,6 +140,12 @@ func CollectFull(ctx context.Context, server *state.Server, connection *sql.DB, 
 	if err != nil {
 		logger.PrintError("Error collecting backend counts: %s", err)
 		return
+	}
+
+	// CollectAllSchemas relies on GetBufferCache to access the filenode OIDs before that data is discarded
+	select {
+	case <-ctx.Done():
+	case ts.BufferCache = <-bufferCacheReady:
 	}
 
 	ps, ts, err = postgres.CollectAllSchemas(ctx, server, globalCollectionOpts, logger, ps, ts)
