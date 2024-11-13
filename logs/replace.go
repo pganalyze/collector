@@ -4,6 +4,7 @@ import (
 	"slices"
 	"sort"
 
+	"github.com/google/uuid"
 	"github.com/pganalyze/collector/state"
 )
 
@@ -17,7 +18,7 @@ func ReplaceSecrets(logLines []state.LogLine, filterLogSecret []state.LogSecretK
 		}
 	}
 	for idx, logLine := range logLines {
-		if filterUnidentified && logLines[idx].Classification == 0 {
+		if filterUnidentified && logLines[idx].Classification == 0 && logLines[idx].ParentUUID == uuid.Nil {
 			logLines[idx].Content = replacement + "\n"
 		} else {
 			sort.Slice(logLine.SecretMarkers, func(i, j int) bool {
