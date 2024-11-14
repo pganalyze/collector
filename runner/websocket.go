@@ -143,8 +143,17 @@ func connect(ctx context.Context, server *state.Server, globalCollectionOpts sta
 				server.Grant.Store(&grant)
 			} else if message.GetPause() != nil {
 				server.Pause.Store(message.GetPause().Pause)
-			} else if message.GetExplainRun() != nil {
-				logger.PrintVerbose("ExplainRun: %v", message.GetExplainRun()) // TODO
+			} else if message.GetQueryRun() != nil {
+				q := message.GetQueryRun()
+				logger.PrintVerbose("Query run %d received: %s", q.Id, q.QueryText)
+				server.QueryRunsMutex.Lock()
+				server.QueryRuns[q.Id] = &state.QueryRun{
+					Id:           q.Id,
+					Type:         q.Type,
+					DatabaseName: q.DatabaseName,
+					QueryText:    q.QueryText,
+				}
+				server.QueryRunsMutex.Unlock()
 			}
 		}
 	}()

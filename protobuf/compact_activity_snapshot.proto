@@ -16,6 +16,7 @@ message CompactActivitySnapshot {
 
   repeated VacuumProgressInformation vacuum_progress_informations = 10;
   repeated VacuumProgressStatistic vacuum_progress_statistics = 11;
+  repeated QueryRun query_runs = 12;
 }
 
 message Backend {
@@ -362,4 +363,13 @@ message VacuumProgressStatistic {
   int64 max_dead_tuple_bytes = 10; // Postgres 17+
   int64 indexes_total = 11; // Postgres 17+
   int64 indexes_processed = 12; // Postgres 17+
+}
+
+message QueryRun {
+  int64 id = 1;
+  google.protobuf.Timestamp started_at = 2;
+  google.protobuf.Timestamp finished_at = 3;
+  string result = 4;
+  string error = 5;
+  int32 backend_pid = 6;
 }

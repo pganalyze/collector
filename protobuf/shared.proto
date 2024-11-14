@@ -354,3 +354,8 @@ message DiskPartitionStatistic {
   uint64 used_bytes = 2;
   uint64 total_bytes = 3;
 }
+
+enum QueryRunType {
+  EXPLAIN = 0;
+  // Future sources: REINDEX, CREATE INDEX, DROP INDEX
+}

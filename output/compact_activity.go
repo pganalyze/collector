@@ -7,6 +7,7 @@ import (
 	"github.com/pganalyze/collector/output/transform"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func SubmitCompactActivitySnapshot(ctx context.Context, server *state.Server, grant state.Grant, collectionOpts state.CollectionOpts, logger *util.Logger, activityState state.TransientActivityState) error {
@@ -28,6 +29,19 @@ func SubmitCompactActivitySnapshot(ctx context.Context, server *state.Server, gr
 			}
 		}
 	}
+
+	server.QueryRunsMutex.Lock()
+	for _, query := range server.QueryRuns {
+		as.QueryRuns = append(as.QueryRuns, &pganalyze_collector.QueryRun{
+			Id:         query.Id,
+			StartedAt:  timestamppb.New(query.StartedAt),
+			FinishedAt: timestamppb.New(query.FinishedAt),
+			Result:     query.Result,
+			Error:      query.Error,
+			BackendPid: int32(query.BackendPid),
+		})
+	}
+	server.QueryRunsMutex.Unlock()
 
 	s := pganalyze_collector.CompactSnapshot{
 		BaseRefs: &r,

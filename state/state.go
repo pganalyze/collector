@@ -88,6 +88,7 @@ type CollectorConfig struct {
 	DisableLogs                bool
 	DisableActivity            bool
 	EnableLogExplain           bool
+	EnableQueryRunner          bool
 	DbName                     string
 	DbUsername                 string
 	DbHost                     string
@@ -247,6 +248,18 @@ type CollectionStatus struct {
 	LogSnapshotDisabledReason string
 }
 
+type QueryRun struct {
+	Id           int64
+	Type         pganalyze_collector.QueryRunType
+	DatabaseName string
+	QueryText    string
+	Result       string
+	Error        string
+	StartedAt    time.Time
+	FinishedAt   time.Time
+	BackendPid   int
+}
+
 type Server struct {
 	Config           config.ServerConfig
 	RequestedSslMode string
@@ -269,6 +282,10 @@ type Server struct {
 	SnapshotStream chan []byte
 	WebSocket      atomic.Pointer[websocket.Conn]
 	Pause          atomic.Bool
+
+	// State to track queries the collector is running on behalf of a user
+	QueryRuns      map[int64]*QueryRun
+	QueryRunsMutex *sync.Mutex
 
 	// The LogParser for this server, updated as necessary whenever relevant
 	// settings (log_line_prefix and log_timezone) change
@@ -296,6 +313,7 @@ func MakeServer(config config.ServerConfig, testRun bool) *Server {
 		ActivityStateMutex:    &sync.Mutex{},
 		CollectionStatusMutex: &sync.Mutex{},
 		SnapshotStream:        make(chan []byte),
+		QueryRunsMutex:        &sync.Mutex{},
 		LogParseMutex:         &sync.RWMutex{},
 	}
 	server.Grant.Store(&Grant{Config: pganalyze_collector.ServerMessage_Config{Features: &pganalyze_collector.ServerMessage_Features{}}})
