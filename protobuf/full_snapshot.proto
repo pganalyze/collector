@@ -358,6 +358,7 @@ message CollectorConfig {
   int32 query_stats_interval = 116;
   int32 max_collector_connections = 117;
   bool skip_if_replica = 118;
+  int32 max_buffer_cache_monitoring_gb = 119;
 
   string filter_log_secret = 127;
   string filter_query_sample = 128;

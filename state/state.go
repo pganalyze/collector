@@ -143,6 +143,7 @@ type CollectorConfig struct {
 	QueryStatsInterval         int32
 	MaxCollectorConnections    int32
 	SkipIfReplica              bool
+	MaxBufferCacheMonitoringGB int32
 	FilterLogSecret            string
 	FilterQuerySample          string
 	FilterQueryText            string
