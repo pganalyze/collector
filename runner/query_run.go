@@ -2,6 +2,7 @@ package runner
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -88,13 +89,13 @@ func run(ctx context.Context, server *state.Server, collectionOpts state.Collect
 			prefix = "EXPLAIN (ANALYZE, VERBOSE, BUFFERS, FORMAT JSON) "
 		}
 
-		err = db.QueryRowContext(ctx, comment+prefix+query.QueryText).Scan(&result)
-
 		if query.Type == pganalyze_collector.QueryRunType_EXPLAIN {
 			// Rollback any changes the query may perform
 			db.ExecContext(ctx, postgres.QueryMarkerSQL+"BEGIN READ ONLY")
 
+			err = db.QueryRowContext(ctx, comment+prefix+query.QueryText).Scan(&result)
 			firstErr := err
+
 			// Run EXPLAIN ANALYZE a second time to get a warm cache result
 			err = db.QueryRowContext(ctx, comment+prefix+query.QueryText).Scan(&result)
 
@@ -108,6 +109,9 @@ func run(ctx context.Context, server *state.Server, collectionOpts state.Collect
 				prefix = "EXPLAIN (VERBOSE, FORMAT JSON) "
 				err = db.QueryRowContext(ctx, comment+prefix+query.QueryText).Scan(&result)
 			}
+		} else {
+			err = errors.New("Unhandled query run type")
+			logger.PrintVerbose("Unhandled query run type %d for %d", query.Type, query.Id)
 		}
 
 		server.QueryRunsMutex.Lock()
