@@ -2,24 +2,37 @@ package postgres
 
 import (
 	"context"
+	"fmt"
+	"time"
 
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
 )
 
-// See also https://www.postgresql.org/docs/current/pgbuffercache.html
-const bufferCacheSQL string = `
-SELECT reldatabase, relfilenode, count(*) * current_setting('block_size')::int
-FROM pg_buffercache
-GROUP BY 1, 2`
+const bufferCacheExtensionSQL string = `
+SELECT COALESCE((
+	SELECT nspname
+	FROM pg_catalog.pg_extension
+	INNER JOIN pg_catalog.pg_namespace n ON extnamespace = n.oid
+	WHERE extname = 'pg_buffercache'
+), '')
+`
 
 const bufferCacheSizeSQL string = `
-SELECT pg_size_bytes(unit) * pg_size_bytes(setting) / 1024 / 1024 / 1024
-FROM pg_settings
+SELECT pg_catalog.pg_size_bytes(unit) * pg_catalog.pg_size_bytes(setting) / 1024 / 1024 / 1024
+FROM pg_catalog.pg_settings
 WHERE name = 'shared_buffers'
 `
 
+// https://www.postgresql.org/docs/current/pgbuffercache.html
+const bufferCacheSQL string = `
+SELECT reldatabase, relfilenode, count(*) * current_setting('block_size')::int
+FROM %s.pg_buffercache
+GROUP BY 1, 2
+`
+
 func GetBufferCache(ctx context.Context, server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger, postgresVersion state.PostgresVersion, channel chan state.BufferCache) {
+	start := time.Now()
 	bufferCache := make(state.BufferCache)
 	db, err := EstablishConnection(ctx, server, logger, globalCollectionOpts, "")
 	if err != nil {
@@ -28,9 +41,9 @@ func GetBufferCache(ctx context.Context, server *state.Server, globalCollectionO
 		return
 	}
 
-	extensionEnabled := false
-	db.QueryRowContext(ctx, QueryMarkerSQL+"SELECT true FROM pg_extension WHERE extname = 'pg_buffercache'").Scan(&extensionEnabled)
-	if !extensionEnabled {
+	schemaName := ""
+	db.QueryRowContext(ctx, QueryMarkerSQL+bufferCacheExtensionSQL).Scan(&schemaName)
+	if schemaName == "" {
 		channel <- bufferCache
 		return
 	}
@@ -38,12 +51,14 @@ func GetBufferCache(ctx context.Context, server *state.Server, globalCollectionO
 	sizeGB := 0
 	db.QueryRowContext(ctx, QueryMarkerSQL+bufferCacheSizeSQL).Scan(&sizeGB)
 	if sizeGB > server.Config.MaxBufferCacheMonitoringGB {
-		logger.PrintWarning("GetBufferCache: skipping collection. To enable, set max_buffer_cache_monitoring_gb to a value over %d", sizeGB)
+		if globalCollectionOpts.TestRun {
+			logger.PrintWarning("GetBufferCache: skipping collection. To enable, set max_buffer_cache_monitoring_gb to a value over %d", sizeGB)
+		}
 		channel <- bufferCache
 		return
 	}
 
-	stmt, err := db.PrepareContext(ctx, QueryMarkerSQL+bufferCacheSQL)
+	stmt, err := db.PrepareContext(ctx, QueryMarkerSQL+fmt.Sprintf(bufferCacheSQL, schemaName))
 	if err != nil {
 		logger.PrintError("GetBufferCache: %s", err)
 		channel <- bufferCache
@@ -74,5 +89,7 @@ func GetBufferCache(ctx context.Context, server *state.Server, globalCollectionO
 			bufferCache[reldatabase] = map[state.Oid]int64{relfilenode: bytes}
 		}
 	}
+
+	logger.PrintVerbose("GetBufferCache: finished after %s", time.Since(start))
 	channel <- bufferCache
 }

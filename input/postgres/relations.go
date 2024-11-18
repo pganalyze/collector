@@ -37,8 +37,8 @@ const relationsSQL string = `
 				COALESCE(pg_catalog.pg_get_partkeydef(c.oid), '') AS partition_expr,
 				locked_relids.relid IS NOT NULL AS exclusively_locked,
 				COALESCE(toast.relname, '') AS toast_table,
-				coalesce(pg_relation_filenode(c.oid), 0) AS data_filenode,
-				coalesce(pg_relation_filenode(c.reltoastrelid), 0) AS toast_filenode
+				COALESCE(pg_relation_filenode(c.oid), 0) AS data_filenode,
+				COALESCE(pg_relation_filenode(c.reltoastrelid), 0) AS toast_filenode
 	 FROM pg_catalog.pg_class c
 	 LEFT JOIN pg_catalog.pg_namespace n ON (n.oid = c.relnamespace)
 	 LEFT JOIN locked_relids ON (c.oid = locked_relids.relid)
@@ -99,7 +99,7 @@ SELECT c.oid,
 			 c2.reloptions,
 			 (SELECT a.amname FROM pg_catalog.pg_am a JOIN pg_catalog.pg_opclass o ON (a.oid = o.opcmethod) WHERE o.oid = i.indclass[0]),
 			 false AS exclusively_locked,
-			 coalesce(pg_relation_filenode(i.indexrelid), 0)
+			 COALESCE(pg_relation_filenode(i.indexrelid), 0)
 	FROM pg_catalog.pg_class c
 	JOIN pg_catalog.pg_namespace n ON (n.oid = c.relnamespace)
 	JOIN pg_catalog.pg_index i ON (c.oid = i.indrelid)
@@ -252,6 +252,7 @@ func GetRelations(ctx context.Context, db *sql.DB, postgresVersion state.Postgre
 		if ok {
 			row.CachedDataBytes = bufferCache[dataFilenode]
 			row.CachedToastBytes = bufferCache[toastFilenode]
+			// Any non-zero values are later summed up in DatabaseStatistic.UntrackedCacheBytes
 			bufferCache[dataFilenode] = 0
 			bufferCache[toastFilenode] = 0
 		}
@@ -343,6 +344,7 @@ func GetRelations(ctx context.Context, db *sql.DB, postgresVersion state.Postgre
 		bufferCache, ok := ts.BufferCache[currentDatabaseOid]
 		if ok {
 			row.CachedBytes = bufferCache[filenode]
+			// Any non-zero values are later summed up in DatabaseStatistic.UntrackedCacheBytes
 			bufferCache[filenode] = 0
 		}
 
