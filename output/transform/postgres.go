@@ -23,6 +23,7 @@ func transformPostgres(s snapshot.FullSnapshot, newState state.PersistedState, d
 	s = transformPostgresBackendCounts(s, transientState, roleOidToIdx, databaseOidToIdx)
 	s = transformPostgresExtensions(s, transientState, databaseOidToIdx)
 	s = transformPostgresBufferCache(s, transientState, databaseOidToIdx)
+	s = mergePartitionSizes(s, newState, transientState, databaseOidToIdx)
 
 	return s
 }

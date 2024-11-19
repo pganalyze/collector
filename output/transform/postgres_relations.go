@@ -252,22 +252,20 @@ func transformPostgresRelations(s snapshot.FullSnapshot, newState state.Persiste
 			s.IndexInformations = append(s.IndexInformations, &indexInfo)
 
 			// Statistic
+			var indexStats state.DiffedPostgresIndexStats
 			if diffedSchemaStatsExist {
-				indexStats, exists := diffedSchemaStats.IndexStats[index.IndexOid]
-				if exists {
-					statistic := snapshot.IndexStatistic{
-						IndexIdx:    indexIdx,
-						SizeBytes:   indexStats.SizeBytes,
-						IdxScan:     indexStats.IdxScan,
-						IdxTupRead:  indexStats.IdxTupRead,
-						IdxTupFetch: indexStats.IdxTupFetch,
-						IdxBlksRead: indexStats.IdxBlksRead,
-						IdxBlksHit:  indexStats.IdxBlksHit,
-						CachedBytes: index.CachedBytes,
-					}
-					s.IndexStatistics = append(s.IndexStatistics, &statistic)
-				}
+				indexStats = diffedSchemaStats.IndexStats[index.IndexOid]
 			}
+			s.IndexStatistics = append(s.IndexStatistics, &snapshot.IndexStatistic{
+				IndexIdx:    indexIdx,
+				SizeBytes:   indexStats.SizeBytes,
+				IdxScan:     indexStats.IdxScan,
+				IdxTupRead:  indexStats.IdxTupRead,
+				IdxTupFetch: indexStats.IdxTupFetch,
+				IdxBlksRead: indexStats.IdxBlksRead,
+				IdxBlksHit:  indexStats.IdxBlksHit,
+				CachedBytes: index.CachedBytes,
+			})
 		}
 	}
 
