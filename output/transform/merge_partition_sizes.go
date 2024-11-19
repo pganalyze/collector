@@ -16,7 +16,15 @@ func mergePartitionSizes(s snapshot.FullSnapshot, newState state.PersistedState,
 				continue
 			}
 			if info.IndexType == pi.IndexType && info.IsUnique == pi.IsUnique && intArrayEqual(info.Columns, pi.Columns) {
-				s.IndexStatistics[parentIdx].SizeBytes += s.IndexStatistics[idx].SizeBytes
+				stat := s.IndexStatistics[idx]
+				parent := s.IndexStatistics[parentIdx]
+				parent.SizeBytes += stat.SizeBytes
+				parent.IdxScan += stat.IdxScan
+				parent.IdxTupRead += stat.IdxTupRead
+				parent.IdxTupFetch += stat.IdxTupFetch
+				parent.IdxBlksRead += stat.IdxBlksRead
+				parent.IdxBlksHit += stat.IdxBlksHit
+				parent.CachedBytes += stat.CachedBytes
 				break
 			}
 		}
