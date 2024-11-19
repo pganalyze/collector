@@ -6,6 +6,24 @@ import (
 )
 
 func mergePartitionSizes(s snapshot.FullSnapshot, newState state.PersistedState, ts state.TransientState, databaseOidToIdx OidToIdx) snapshot.FullSnapshot {
+	for idx, rel := range s.RelationInformations {
+		if !rel.HasParentRelation || rel.PartitionBoundary == "" {
+			continue
+		}
+		stat := s.RelationStatistics[idx]
+		parent := s.RelationStatistics[rel.ParentRelationIdx]
+		parent.NTupIns += stat.NTupIns
+		parent.NTupUpd += stat.NTupUpd
+		parent.NTupDel += stat.NTupDel
+		parent.NTupHotUpd += stat.NTupHotUpd
+		parent.NLiveTup += stat.NLiveTup
+		parent.NDeadTup += stat.NDeadTup
+		parent.SizeBytes += stat.SizeBytes
+		parent.ToastSizeBytes += stat.ToastSizeBytes
+		parent.CachedDataBytes += stat.CachedDataBytes
+		parent.CachedToastBytes += stat.CachedToastBytes
+	}
+
 	for idx, info := range s.IndexInformations {
 		rel := s.RelationInformations[info.RelationIdx]
 		if !rel.HasParentRelation || rel.PartitionBoundary == "" {
@@ -28,24 +46,6 @@ func mergePartitionSizes(s snapshot.FullSnapshot, newState state.PersistedState,
 				break
 			}
 		}
-	}
-
-	for idx, rel := range s.RelationInformations {
-		if !rel.HasParentRelation || rel.PartitionBoundary == "" {
-			continue
-		}
-		stat := s.RelationStatistics[idx]
-		parent := s.RelationStatistics[rel.ParentRelationIdx]
-		parent.NTupIns += stat.NTupIns
-		parent.NTupUpd += stat.NTupUpd
-		parent.NTupDel += stat.NTupDel
-		parent.NTupHotUpd += stat.NTupHotUpd
-		parent.NLiveTup += stat.NLiveTup
-		parent.NDeadTup += stat.NDeadTup
-		parent.SizeBytes += stat.SizeBytes
-		parent.ToastSizeBytes += stat.ToastSizeBytes
-		parent.CachedDataBytes += stat.CachedDataBytes
-		parent.CachedToastBytes += stat.CachedToastBytes
 	}
 
 	return s
