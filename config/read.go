@@ -57,11 +57,12 @@ func parseConfigDisableCitusSchemaStats(value string) string {
 
 func getDefaultConfig() *ServerConfig {
 	config := &ServerConfig{
-		APIBaseURL:              DefaultAPIBaseURL,
-		SectionName:             "default",
-		QueryStatsInterval:      60,
-		MaxCollectorConnections: 10,
-		OtelServiceName:         DefaultOtelServiceName,
+		APIBaseURL:                 DefaultAPIBaseURL,
+		SectionName:                "default",
+		QueryStatsInterval:         60,
+		MaxCollectorConnections:    10,
+		MaxBufferCacheMonitoringGB: 200,
+		OtelServiceName:            DefaultOtelServiceName,
 	}
 
 	// The environment variables are the default way to configure when running inside a Docker container.

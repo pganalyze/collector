@@ -69,6 +69,7 @@ type TransientState struct {
 	// in order to enable the next snapshot to be able to diff against something
 	ResetStatementStats PostgresStatementStatsMap
 
+	BufferCache   BufferCache
 	ServerStats   PostgresServerStats
 	Replication   PostgresReplication
 	Settings      []PostgresSetting
@@ -82,6 +83,8 @@ type TransientState struct {
 	CollectorConfig   CollectorConfig
 	CollectorPlatform CollectorPlatform
 }
+
+type BufferCache map[Oid]map[Oid]int64
 
 type CollectorConfig struct {
 	SectionName                string
@@ -140,6 +143,7 @@ type CollectorConfig struct {
 	QueryStatsInterval         int32
 	MaxCollectorConnections    int32
 	SkipIfReplica              bool
+	MaxBufferCacheMonitoringGB int32
 	FilterLogSecret            string
 	FilterQuerySample          string
 	FilterQueryText            string

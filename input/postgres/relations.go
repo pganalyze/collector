@@ -36,7 +36,9 @@ const relationsSQL string = `
 				(SELECT p.partattrs FROM pg_partitioned_table p WHERE p.partrelid = c.oid) AS partition_columns,
 				COALESCE(pg_catalog.pg_get_partkeydef(c.oid), '') AS partition_expr,
 				locked_relids.relid IS NOT NULL AS exclusively_locked,
-				COALESCE(toast.relname, '') AS toast_table
+				COALESCE(toast.relname, '') AS toast_table,
+				COALESCE(pg_relation_filenode(c.oid), 0) AS data_filenode,
+				COALESCE(pg_relation_filenode(c.reltoastrelid), 0) AS toast_filenode
 	 FROM pg_catalog.pg_class c
 	 LEFT JOIN pg_catalog.pg_namespace n ON (n.oid = c.relnamespace)
 	 LEFT JOIN locked_relids ON (c.oid = locked_relids.relid)
@@ -96,7 +98,8 @@ SELECT c.oid,
 			 pg_catalog.pg_get_constraintdef(con.oid, FALSE),
 			 c2.reloptions,
 			 (SELECT a.amname FROM pg_catalog.pg_am a JOIN pg_catalog.pg_opclass o ON (a.oid = o.opcmethod) WHERE o.oid = i.indclass[0]),
-			 false AS exclusively_locked
+			 false AS exclusively_locked,
+			 COALESCE(pg_relation_filenode(i.indexrelid), 0)
 	FROM pg_catalog.pg_class c
 	JOIN pg_catalog.pg_namespace n ON (n.oid = c.relnamespace)
 	JOIN pg_catalog.pg_index i ON (c.oid = i.indrelid)
@@ -123,7 +126,8 @@ SELECT c.oid,
 		NULL,
 		NULL,
 		'',
-		true AS exclusively_locked
+		true,
+		0
   FROM locked_relids
 `
 
@@ -184,7 +188,7 @@ SELECT relid,
   FROM locked_relids
 `
 
-func GetRelations(ctx context.Context, db *sql.DB, postgresVersion state.PostgresVersion, currentDatabaseOid state.Oid, ignoreRegexp string) ([]state.PostgresRelation, error) {
+func GetRelations(ctx context.Context, db *sql.DB, postgresVersion state.PostgresVersion, currentDatabaseOid state.Oid, ignoreRegexp string, ts state.TransientState) ([]state.PostgresRelation, error) {
 	relations := make(map[state.Oid]state.PostgresRelation, 0)
 
 	var systemCatalogFilter string
@@ -214,12 +218,14 @@ func GetRelations(ctx context.Context, db *sql.DB, postgresVersion state.Postgre
 		var row state.PostgresRelation
 		var options null.String
 		var partCols null.String
+		var dataFilenode state.Oid
+		var toastFilenode state.Oid
 
 		err = rows.Scan(&row.Oid, &row.SchemaName, &row.RelationName, &row.RelationType,
 			&options, &row.HasOids, &row.PersistenceType, &row.HasInheritanceChildren,
 			&row.HasToast, &row.FrozenXID, &row.MinimumMultixactXID, &row.ParentTableOid,
 			&row.PartitionBoundary, &row.PartitionStrategy, &partCols, &row.PartitionedBy,
-			&row.ExclusivelyLocked, &row.ToastName)
+			&row.ExclusivelyLocked, &row.ToastName, &dataFilenode, &toastFilenode)
 		if err != nil {
 			err = fmt.Errorf("Relations/Scan: %s", err)
 			return nil, err
@@ -241,6 +247,15 @@ func GetRelations(ctx context.Context, db *sql.DB, postgresVersion state.Postgre
 		}
 
 		row.DatabaseOid = currentDatabaseOid
+
+		bufferCache, ok := ts.BufferCache[currentDatabaseOid]
+		if ok {
+			row.CachedDataBytes = bufferCache[dataFilenode]
+			row.CachedToastBytes = bufferCache[toastFilenode]
+			// Any non-zero values are later summed up in DatabaseStatistic.UntrackedCacheBytes
+			bufferCache[dataFilenode] = 0
+			bufferCache[toastFilenode] = 0
+		}
 
 		relations[row.Oid] = row
 	}
@@ -303,10 +318,11 @@ func GetRelations(ctx context.Context, db *sql.DB, postgresVersion state.Postgre
 		var columns string
 		var options null.String
 		var exclusivelyLocked bool
+		var filenode state.Oid
 
 		err = rows.Scan(&row.RelationOid, &row.IndexOid, &columns, &row.Name, &row.IsPrimary,
 			&row.IsUnique, &row.IsValid, &row.IndexDef, &row.ConstraintDef, &options, &row.IndexType,
-			&exclusivelyLocked)
+			&exclusivelyLocked, &filenode)
 		if err != nil {
 			err = fmt.Errorf("Indices/Scan: %s", err)
 			return nil, err
@@ -323,6 +339,13 @@ func GetRelations(ctx context.Context, db *sql.DB, postgresVersion state.Postgre
 				parts := strings.Split(cstr, "=")
 				row.Options[parts[0]] = parts[1]
 			}
+		}
+
+		bufferCache, ok := ts.BufferCache[currentDatabaseOid]
+		if ok {
+			row.CachedBytes = bufferCache[filenode]
+			// Any non-zero values are later summed up in DatabaseStatistic.UntrackedCacheBytes
+			bufferCache[filenode] = 0
 		}
 
 		relation, ok := relations[row.RelationOid]

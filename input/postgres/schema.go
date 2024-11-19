@@ -128,7 +128,7 @@ func collectOneSchema(ctx context.Context, server *state.Server, collectionOpts 
 
 func collectSchemaData(ctx context.Context, collectionOpts state.CollectionOpts, logger *util.Logger, db *sql.DB, ps state.PersistedState, ts state.TransientState, databaseOid state.Oid, postgresVersion state.PostgresVersion, server *state.Server, systemType string, dbName string) (state.PersistedState, state.TransientState, error) {
 	if collectionOpts.CollectPostgresRelations {
-		newRelations, err := GetRelations(ctx, db, postgresVersion, databaseOid, server.Config.IgnoreSchemaRegexp)
+		newRelations, err := GetRelations(ctx, db, postgresVersion, databaseOid, server.Config.IgnoreSchemaRegexp, ts)
 		if err != nil {
 			return ps, ts, fmt.Errorf("error collecting table/index metadata: %s", err)
 		}

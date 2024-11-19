@@ -64,6 +64,7 @@ func transformCollectorConfig(s snapshot.FullSnapshot, state state.TransientStat
 		QueryStatsInterval:         c.QueryStatsInterval,
 		MaxCollectorConnections:    c.MaxCollectorConnections,
 		SkipIfReplica:              c.SkipIfReplica,
+		MaxBufferCacheMonitoringGb: c.MaxBufferCacheMonitoringGB,
 		FilterLogSecret:            c.FilterLogSecret,
 		FilterQuerySample:          c.FilterQuerySample,
 		FilterQueryText:            c.FilterQueryText,

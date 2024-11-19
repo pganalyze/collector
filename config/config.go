@@ -212,6 +212,10 @@ type ServerConfig struct {
 	// once the server is promoted
 	SkipIfReplica bool `ini:"skip_if_replica"`
 
+	// The maximum shared_buffers size in gigabytes that the collector will monitor
+	// pg_buffercache. Defaults to 200 GB.
+	MaxBufferCacheMonitoringGB int `ini:"max_buffer_cache_monitoring_gb"`
+
 	// Configuration for PII filtering
 	FilterLogSecret   string `ini:"filter_log_secret"`   // none/all/credential/parsing_error/statement_text/statement_parameter/table_data/ops/unidentified (comma separated)
 	FilterQuerySample string `ini:"filter_query_sample"` // none/normalize/all (defaults to "none")

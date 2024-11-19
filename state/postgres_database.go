@@ -11,6 +11,7 @@ type PostgresDatabase struct {
 	IsTemplate       bool   // If true, then this database can be cloned by any user with CREATEDB privileges; if false, then only superusers or the owner of the database can clone it.
 	AllowConnections bool   // If false then no one can connect to this database. This is used to protect the template0 database from being altered.
 	ConnectionLimit  int32  // Sets maximum number of concurrent connections that can be made to this database. -1 means no limit.
+	BufferCache      map[Oid]int64
 
 	// All transaction IDs before this one have been replaced with a permanent ("frozen") transaction ID in this database.
 	// This is used to track whether the database needs to be vacuumed in order to prevent transaction ID wraparound or to

@@ -128,6 +128,7 @@ func getCollectorConfig(c config.ServerConfig) state.CollectorConfig {
 		QueryStatsInterval:         int32(c.QueryStatsInterval),
 		MaxCollectorConnections:    int32(c.MaxCollectorConnections),
 		SkipIfReplica:              c.SkipIfReplica,
+		MaxBufferCacheMonitoringGB: int32(c.MaxBufferCacheMonitoringGB),
 		FilterLogSecret:            c.FilterLogSecret,
 		FilterQuerySample:          c.FilterQuerySample,
 		FilterQueryText:            c.FilterQueryText,
