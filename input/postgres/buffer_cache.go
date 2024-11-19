@@ -28,6 +28,7 @@ WHERE name = 'shared_buffers'
 const bufferCacheSQL string = `
 SELECT reldatabase, relfilenode, count(*) * current_setting('block_size')::int
 FROM %s.pg_buffercache
+WHERE reldatabase IS NOT NULL -- filters out unused pages
 GROUP BY 1, 2
 `
 
