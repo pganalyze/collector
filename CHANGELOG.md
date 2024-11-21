@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.63.0      2024-11-21
+
+* Fix WebSocket error handling
+  - If the WebSocket mechanism hit an error at the wrong time, this could cause
+    a stuck collector state, where the collector would keep running but stop
+    processing and sending snapshots
+* Track Postgres buffer cache usage
+  - This reports statistics from [pg_buffercache](https://www.postgresql.org/docs/current/pgbuffercache.html)
+    if available
+* Fix partitioned table stats handling
+  - Partitioned table stats are now reported as aggregations over child partition stats
+* Add collector query runner
+  - This provides a mechanism for the collector to help pganalyze users run
+    EXPLAIN queries in future versions of pganalyze
+  - This is disabled by default
+* Update packaging scripts to use the `groupadd` command instead of `addgroup` when installing
+  - `addgroup` is not available on some newer distributions, e.g., Amazon Linux 2023
+
+
 ## 0.62.0      2024-11-13
 
 * Fix PII filtering for detail log lines
