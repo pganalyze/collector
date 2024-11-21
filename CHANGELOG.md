@@ -9,6 +9,8 @@
 * Track Postgres buffer cache usage
   - This reports statistics from [pg_buffercache](https://www.postgresql.org/docs/current/pgbuffercache.html)
     if available
+  - Since this can be slow, and grows slower with larger buffer size, this can be
+    configured with the new setting `max_buffer_cache_monitoring_gb` (default 200 GB)
 * Fix partitioned table stats handling
   - Partitioned table stats are now reported as aggregations over child partition stats
 * Add collector query runner
