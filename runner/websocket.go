@@ -90,20 +90,14 @@ func connect(ctx context.Context, server *state.Server, globalCollectionOpts sta
 		for {
 			select {
 			case <-connCtx.Done():
-				socket := server.WebSocket.Swap(nil)
-				if socket != nil {
-					err = socket.Close()
-					if err != nil {
-						logger.PrintWarning("Error closing websocket: %s", err)
-					}
-				}
+				closeConnection(server, logger)
 				return
 			case snapshot := <-server.SnapshotStream:
 				logger.PrintVerbose("Uploading snapshot to websocket")
 				err = conn.WriteMessage(websocket.BinaryMessage, snapshot)
 				if err != nil {
 					logger.PrintError("Error uploading snapshot: %s", err)
-					cancelConn()
+					closeConnection(server, logger)
 					return
 				}
 			}
@@ -157,4 +151,14 @@ func connect(ctx context.Context, server *state.Server, globalCollectionOpts sta
 			}
 		}
 	}()
+}
+
+func closeConnection(server *state.Server, logger *util.Logger) {
+	socket := server.WebSocket.Swap(nil)
+	if socket != nil {
+		err := socket.Close()
+		if err != nil {
+			logger.PrintWarning("Error closing websocket: %s", err)
+		}
+	}
 }
