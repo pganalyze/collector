@@ -156,9 +156,9 @@ type OriginalPlanRef struct {
 // and similar fields sorted into a single canonical order.
 func makeCanonical(snapshot pganalyze_collector.FullSnapshot) {
 	// ensure query references occur in a consistent order
-	queryRefs := make([]*OriginalQueryRef, len(snapshot.QueryReferences))
+	queryRefs := make([]OriginalQueryRef, len(snapshot.QueryReferences))
 	for i, qRef := range snapshot.QueryReferences {
-		queryRefs[i] = &OriginalQueryRef{
+		queryRefs[i] = OriginalQueryRef{
 			Original:    qRef,
 			OriginalIdx: int32(i),
 		}
