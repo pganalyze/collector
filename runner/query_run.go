@@ -94,18 +94,12 @@ func run(ctx context.Context, server *state.Server, collectionOpts state.Collect
 			db.ExecContext(ctx, postgres.QueryMarkerSQL+"BEGIN READ ONLY")
 
 			err = db.QueryRowContext(ctx, comment+prefix+query.QueryText).Scan(&result)
-			firstErr := err
 
-			// Run EXPLAIN ANALYZE a second time to get a warm cache result
-			err = db.QueryRowContext(ctx, comment+prefix+query.QueryText).Scan(&result)
-
-			// If the first run failed, run once more to get a warm cache result
-			if err == nil && firstErr != nil {
+			if err == nil {
+				// Run EXPLAIN ANALYZE a second time to get a warm cache result
 				err = db.QueryRowContext(ctx, comment+prefix+query.QueryText).Scan(&result)
-			}
-
-			// If the EXPLAIN ANALYZE timed out, capture a regular EXPLAIN instead
-			if err != nil && strings.Contains(err.Error(), "statement timeout") {
+			} else if strings.Contains(err.Error(), "statement timeout") {
+				// If the EXPLAIN ANALYZE timed out, capture a regular EXPLAIN instead
 				prefix = "EXPLAIN (VERBOSE, FORMAT JSON) "
 				err = db.QueryRowContext(ctx, comment+prefix+query.QueryText).Scan(&result)
 			}
