@@ -48,7 +48,7 @@ func TestStatements(t *testing.T) {
 	actual := transform.StateToSnapshot(newState, diffState, transientState)
 	actualJSON, _ := json.Marshal(actual)
 
-	// Query: 0, 1, Plan: 0, 1
+	// Query: 0, 1, Plan: 0, 1 (w/ QueryIdx 1)
 	expected := pganalyze_collector.FullSnapshot{
 		Config:             &pganalyze_collector.CollectorConfig{},
 		CollectorStatistic: &pganalyze_collector.CollectorStatistic{},
@@ -134,7 +134,7 @@ func TestStatements(t *testing.T) {
 	}
 	expectedJSON, _ := json.Marshal(expected)
 
-	// Query: 1, 0, Plan: 0, 1
+	// Query: 1, 0, Plan: 0, 1 (w/ QueryIdx 0)
 	var expectedAlt pganalyze_collector.FullSnapshot
 	json.Unmarshal(expectedJSON, &expectedAlt)
 	expectedAlt.QueryReferences = []*pganalyze_collector.QueryReference{
@@ -171,16 +171,26 @@ func TestStatements(t *testing.T) {
 			Calls:    1,
 		},
 	}
-	expectedJSONAlt, _ := json.Marshal(expectedAlt)
-
-	// Query: 1, 0, Plan: 1, 0
 	expectedAlt.QueryPlanReferences = []*pganalyze_collector.QueryPlanReference{
 		&pganalyze_collector.QueryPlanReference{
-			QueryIdx:       1,
+			QueryIdx:       0,
+			OriginalPlanId: 111,
+		},
+		&pganalyze_collector.QueryPlanReference{
+			QueryIdx:       0,
+			OriginalPlanId: 222,
+		},
+	}
+	expectedJSONAlt, _ := json.Marshal(expectedAlt)
+
+	// Query: 1, 0, Plan: 1, 0 (w/ QueryIdx 0)
+	expectedAlt.QueryPlanReferences = []*pganalyze_collector.QueryPlanReference{
+		&pganalyze_collector.QueryPlanReference{
+			QueryIdx:       0,
 			OriginalPlanId: 222,
 		},
 		&pganalyze_collector.QueryPlanReference{
-			QueryIdx:       1,
+			QueryIdx:       0,
 			OriginalPlanId: 111,
 		},
 	}
@@ -208,7 +218,7 @@ func TestStatements(t *testing.T) {
 	}
 	expectedJSONAlt2, _ := json.Marshal(expectedAlt)
 
-	// Query: 0, 1, Plan: 1, 0
+	// Query: 0, 1, Plan: 1, 0 (w/ QueryIdx 1)
 	expectedAlt.QueryReferences = []*pganalyze_collector.QueryReference{
 		&pganalyze_collector.QueryReference{
 			DatabaseIdx: 0,
@@ -241,6 +251,16 @@ func TestStatements(t *testing.T) {
 		&pganalyze_collector.QueryStatistic{
 			QueryIdx: 1,
 			Calls:    13,
+		},
+	}
+	expectedAlt.QueryPlanReferences = []*pganalyze_collector.QueryPlanReference{
+		&pganalyze_collector.QueryPlanReference{
+			QueryIdx:       1,
+			OriginalPlanId: 222,
+		},
+		&pganalyze_collector.QueryPlanReference{
+			QueryIdx:       1,
+			OriginalPlanId: 111,
 		},
 	}
 	expectedJSONAlt3, _ := json.Marshal(expectedAlt)
