@@ -227,6 +227,10 @@ func makeCanonical(snapshot pganalyze_collector.FullSnapshot) {
 	// ensure plan references occur in a consistent order
 	planRefs := make([]OriginalPlanRef, len(snapshot.QueryPlanReferences))
 	for i, planRef := range snapshot.QueryPlanReferences {
+		newQueryIdx := slices.IndexFunc(queryRefs, func(item OriginalQueryRef) bool {
+			return item.OriginalIdx == planRef.QueryIdx
+		})
+		planRef.QueryIdx = int32(newQueryIdx)
 		planRefs[i] = OriginalPlanRef{
 			Original:    planRef,
 			OriginalIdx: int32(i),
