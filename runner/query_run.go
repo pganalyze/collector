@@ -40,6 +40,7 @@ func SetupQueryRunnerForAllServers(ctx context.Context, servers []*state.Server,
 
 func run(ctx context.Context, server *state.Server, collectionOpts state.CollectionOpts, logger *util.Logger) {
 	for id, query := range server.QueryRuns {
+		var firstErr error
 		if !query.FinishedAt.IsZero() {
 			continue
 		}
@@ -94,7 +95,7 @@ func run(ctx context.Context, server *state.Server, collectionOpts state.Collect
 			db.ExecContext(ctx, postgres.QueryMarkerSQL+"BEGIN READ ONLY")
 
 			err = db.QueryRowContext(ctx, comment+prefix+query.QueryText).Scan(&result)
-			firstErr := err
+			firstErr = err
 
 			// Run EXPLAIN ANALYZE a second time to get a warm cache result
 			err = db.QueryRowContext(ctx, comment+prefix+query.QueryText).Scan(&result)
@@ -117,7 +118,9 @@ func run(ctx context.Context, server *state.Server, collectionOpts state.Collect
 		server.QueryRunsMutex.Lock()
 		server.QueryRuns[id].FinishedAt = time.Now()
 		server.QueryRuns[id].Result = result
-		if err != nil {
+		if firstErr != nil {
+			server.QueryRuns[id].Error = firstErr.Error()
+		} else if err != nil {
 			server.QueryRuns[id].Error = err.Error()
 		}
 		server.QueryRunsMutex.Unlock()

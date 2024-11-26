@@ -317,6 +317,7 @@ func MakeServer(config config.ServerConfig, testRun bool) *Server {
 		ActivityStateMutex:    &sync.Mutex{},
 		CollectionStatusMutex: &sync.Mutex{},
 		SnapshotStream:        make(chan []byte),
+		QueryRuns:             make(map[int64]*QueryRun),
 		QueryRunsMutex:        &sync.Mutex{},
 		LogParseMutex:         &sync.RWMutex{},
 	}
