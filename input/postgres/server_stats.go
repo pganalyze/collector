@@ -69,8 +69,30 @@ COALESCE((
 ), '0'::xid) as standby
 `
 
-func GetServerStats(ctx context.Context, logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion, systemType string) (state.PostgresServerStats, error) {
+const ioStatisticSQLPg16 string = `
+SELECT backend_type,
+	   object,
+	   context,
+	   coalesce(reads, 0),
+	   coalesce(read_time, 0),
+	   coalesce(writes, 0),
+	   coalesce(write_time, 0),
+	   coalesce(writebacks, 0),
+	   coalesce(writeback_time, 0),
+	   coalesce(extends, 0),
+	   coalesce(extend_time, 0),
+	   coalesce(op_bytes, 0),
+	   coalesce(hits, 0),
+	   coalesce(evictions, 0),
+	   coalesce(reuses, 0),
+	   coalesce(fsyncs, 0),
+	   coalesce(fsync_time, 0)
+  FROM pg_stat_io
+`
+
+func GetServerStats(ctx context.Context, logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion, systemType string) (state.PostgresServerStats, state.PostgresServerIoStatsMap, error) {
 	var stats state.PostgresServerStats
+	var ioStats state.PostgresServerIoStatsMap
 	var transactionIdSQL string
 
 	// Only collect transaction ID or xmin horizon related stats with non-replicas
@@ -90,7 +112,7 @@ func GetServerStats(ctx context.Context, logger *util.Logger, db *sql.DB, postgr
 			&stats.XminHorizonPreparedXact, &stats.XminHorizonStandby,
 		)
 		if err != nil {
-			return stats, err
+			return stats, ioStats, err
 		}
 
 		if postgresVersion.Numeric >= state.PostgresVersion13 {
@@ -103,9 +125,64 @@ func GetServerStats(ctx context.Context, logger *util.Logger, db *sql.DB, postgr
 			&stats.CurrentXactId, &stats.NextMultiXactId,
 		)
 		if err != nil {
-			return stats, err
+			return stats, ioStats, err
 		}
 	}
 
-	return stats, nil
+	// Retrieve I/O statistics if we're on a new enough Postgres
+	if postgresVersion.Numeric >= state.PostgresVersion16 {
+		rows, err := db.Query(QueryMarkerSQL + ioStatisticSQLPg16)
+		if err != nil {
+			return stats, ioStats, err
+		}
+		defer rows.Close()
+
+		ioStats = make(state.PostgresServerIoStatsMap)
+
+		for rows.Next() {
+			var k state.PostgresServerIoStatsKey
+			var s state.PostgresServerIoStats
+
+			err := rows.Scan(&k.BackendType, &k.IoObject, &k.IoContext,
+				&s.Reads, &s.ReadTime, &s.Writes, &s.WriteTime,
+				&s.Writebacks, &s.WritebackTime, &s.Extends,
+				&s.ExtendTime, &s.OpBytes, &s.Hits,
+				&s.Evictions, &s.Reuses, &s.Fsyncs, &s.FsyncTime,
+			)
+			if err != nil {
+				return stats, ioStats, err
+			}
+
+			ioStats[k] = s
+		}
+
+		if err = rows.Err(); err != nil {
+			return stats, ioStats, err
+		}
+	}
+
+	return stats, ioStats, nil
+}
+
+type PostgresServerIoStatsKey struct {
+	BackendType string // a backend type like "autovacuum worker"
+	IoObject    string // "relation" or "temp relation"
+	IoContext   string // "normal", "vacuum", "bulkread" or "bulkwrite"
+}
+
+type PostgresServerIoStats struct {
+	Reads         int64
+	ReadTime      float64
+	Writes        int64
+	WriteTime     float64
+	Writebacks    int64
+	WritebackTime float64
+	Extends       int64
+	ExtendTime    float64
+	OpBytes       int64
+	Hits          int64
+	Evictions     int64
+	Reuses        int64
+	Fsyncs        int64
+	FsyncTime     float64
 }

@@ -45,6 +45,7 @@ message FullSnapshot {
   repeated DatabaseInformation database_informations = 111;
   repeated DatabaseStatistic database_statictics = 112;
   ServerStatistic server_statistic = 113;
+  repeated HistoricServerIoStatistics historic_server_io_statistics = 114;
 
   reserved 120;
   reserved 121; // This used to be backends before we moved them to their own compact snapshot
@@ -170,6 +171,32 @@ message ServerStatistic {
   int64 xmin_horizon_replication_slot_catalog = 5; // The oldest catalog_xmin for replication slots in xid8 (64-bit FullTransactionId)
   int64 xmin_horizon_prepared_xact = 6; // The oldest xmin for prepared transactions in xid8 (64-bit FullTransactionId)
   int64 xmin_horizon_standby = 7; // The oldest xmin for standbys in xid8 (64-bit FullTransactionId)
+}
+
+// Postgres server I/O statistics (from pg_stat_io, in Postgres 16+)
+message HistoricServerIoStatistics {
+  google.protobuf.Timestamp collected_at = 1;
+  uint32 collected_interval_secs = 2;
+  repeated ServerIoStatistic statistics = 3;
+}
+message ServerIoStatistic {
+  string backend_type = 1;
+  string io_object = 2; // "relation" or "temp relation"
+  string io_context = 3; // "normal", "vacuum", "bulkread" or "bulkwrite"
+  int64 reads = 4;
+  double read_time = 5;
+  int64 writes = 6;
+  double write_time = 7;
+  int64 writebacks = 8;
+  double writeback_time = 9;
+  int64 extends = 10;
+  double extend_time = 11;
+  int64 op_bytes = 12;
+  int64 hits = 13;
+  int64 evictions = 14;
+  int64 reuses = 15;
+  int64 fsyncs = 16;
+  double fsync_time = 17;
 }
 
 message Setting {
