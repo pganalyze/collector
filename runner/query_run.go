@@ -40,6 +40,7 @@ func SetupQueryRunnerForAllServers(ctx context.Context, servers []*state.Server,
 
 func run(ctx context.Context, server *state.Server, collectionOpts state.CollectionOpts, logger *util.Logger) {
 	for id, query := range server.QueryRuns {
+		var firstErr error
 		if !query.FinishedAt.IsZero() {
 			continue
 		}
@@ -83,31 +84,25 @@ func run(ctx context.Context, server *state.Server, collectionOpts state.Collect
 
 		// We don't include QueryMarkerSQL so query runs are reported separately in pganalyze
 		comment := fmt.Sprintf("/* pganalyze:no-alert,pganalyze-query-run:%d */ ", query.Id)
-		prefix := ""
 		result := ""
-		if query.Type == pganalyze_collector.QueryRunType_EXPLAIN {
-			prefix = "EXPLAIN (ANALYZE, VERBOSE, BUFFERS, FORMAT JSON) "
-		}
 
 		if query.Type == pganalyze_collector.QueryRunType_EXPLAIN {
-			// Rollback any changes the query may perform
-			db.ExecContext(ctx, postgres.QueryMarkerSQL+"BEGIN READ ONLY")
-
-			err = db.QueryRowContext(ctx, comment+prefix+query.QueryText).Scan(&result)
-			firstErr := err
+			sql := "BEGIN; EXPLAIN (ANALYZE, VERBOSE, BUFFERS, FORMAT JSON) " + comment + query.QueryText + "; ROLLBACK"
+			err = db.QueryRowContext(ctx, sql).Scan(&result)
+			firstErr = err
 
 			// Run EXPLAIN ANALYZE a second time to get a warm cache result
-			err = db.QueryRowContext(ctx, comment+prefix+query.QueryText).Scan(&result)
+			err = db.QueryRowContext(ctx, sql).Scan(&result)
 
-			// If the first run failed, run once more to get a warm cache result
+			// If the first run failed and the second run succeeded, run once more to get a warm cache result
 			if err == nil && firstErr != nil {
-				err = db.QueryRowContext(ctx, comment+prefix+query.QueryText).Scan(&result)
+				err = db.QueryRowContext(ctx, sql).Scan(&result)
 			}
 
-			// If the EXPLAIN ANALYZE timed out, capture a regular EXPLAIN instead
+			// If it timed out, capture a non-ANALYZE EXPLAIN instead
 			if err != nil && strings.Contains(err.Error(), "statement timeout") {
-				prefix = "EXPLAIN (VERBOSE, FORMAT JSON) "
-				err = db.QueryRowContext(ctx, comment+prefix+query.QueryText).Scan(&result)
+				sql = "BEGIN; EXPLAIN (VERBOSE, FORMAT JSON) " + comment + query.QueryText + "; ROLLBACK"
+				err = db.QueryRowContext(ctx, sql).Scan(&result)
 			}
 		} else {
 			err = errors.New("Unhandled query run type")
@@ -117,7 +112,9 @@ func run(ctx context.Context, server *state.Server, collectionOpts state.Collect
 		server.QueryRunsMutex.Lock()
 		server.QueryRuns[id].FinishedAt = time.Now()
 		server.QueryRuns[id].Result = result
-		if err != nil {
+		if firstErr != nil {
+			server.QueryRuns[id].Error = firstErr.Error()
+		} else if err != nil {
 			server.QueryRuns[id].Error = err.Error()
 		}
 		server.QueryRunsMutex.Unlock()
