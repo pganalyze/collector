@@ -162,65 +162,65 @@ func transformPostgresRelations(s snapshot.FullSnapshot, newState state.Persiste
 		}
 		s.RelationInformations = append(s.RelationInformations, &info)
 
-		// Statistic
 		diffedSchemaStats, diffedSchemaStatsExist := diffState.SchemaStats[relation.DatabaseOid]
-		if diffedSchemaStatsExist {
-			stats, exists := diffedSchemaStats.RelationStats[relation.Oid]
-			if exists {
-				statistic := snapshot.RelationStatistic{
-					RelationIdx:      relationIdx,
-					SizeBytes:        stats.SizeBytes,
-					ToastSizeBytes:   stats.ToastSizeBytes,
-					SeqScan:          stats.SeqScan,
-					SeqTupRead:       stats.SeqTupRead,
-					IdxScan:          stats.IdxScan,
-					IdxTupFetch:      stats.IdxTupFetch,
-					NTupIns:          stats.NTupIns,
-					NTupUpd:          stats.NTupUpd,
-					NTupDel:          stats.NTupDel,
-					NTupHotUpd:       stats.NTupHotUpd,
-					NLiveTup:         stats.NLiveTup,
-					NDeadTup:         stats.NDeadTup,
-					NModSinceAnalyze: stats.NModSinceAnalyze,
-					NInsSinceVacuum:  stats.NInsSinceVacuum,
-					HeapBlksRead:     stats.HeapBlksRead,
-					HeapBlksHit:      stats.HeapBlksHit,
-					IdxBlksRead:      stats.IdxBlksRead,
-					IdxBlksHit:       stats.IdxBlksHit,
-					ToastBlksRead:    stats.ToastBlksRead,
-					ToastBlksHit:     stats.ToastBlksHit,
-					TidxBlksRead:     stats.TidxBlksRead,
-					TidxBlksHit:      stats.TidxBlksHit,
-					FrozenxidAge:     stats.FrozenXIDAge,
-					MinmxidAge:       stats.MinMXIDAge,
-					Relpages:         stats.Relpages,
-					Reltuples:        stats.Reltuples,
-					Relallvisible:    stats.Relallvisible,
-					ToastReltuples:   stats.ToastReltuples,
-					ToastRelpages:    stats.ToastRelpages,
-					Relfrozenxid:     relation.FullFrozenXID(currentXactId),
-					Relminmxid:       int64(relation.MinimumMultixactXID),
-					LastVacuum:       snapshot.NullTimeToNullTimestamp(stats.LastVacuum),
-					LastAutovacuum:   snapshot.NullTimeToNullTimestamp(stats.LastAutovacuum),
-					LastAnalyze:      snapshot.NullTimeToNullTimestamp(stats.LastAnalyze),
-					LastAutoanalyze:  snapshot.NullTimeToNullTimestamp(stats.LastAutoanalyze),
-					CachedDataBytes:  relation.CachedDataBytes,
-					CachedToastBytes: relation.CachedToastBytes,
-				}
-				if stats.LastAutoanalyze.Valid && (!stats.LastAnalyze.Valid || stats.LastAutoanalyze.Time.After(stats.LastAnalyze.Time)) {
-					statistic.AnalyzedAt = snapshot.NullTimeToNullTimestamp(stats.LastAutoanalyze)
-				} else {
-					statistic.AnalyzedAt = snapshot.NullTimeToNullTimestamp(stats.LastAnalyze)
-				}
-				s.RelationStatistics = append(s.RelationStatistics, &statistic)
 
-				// Events
-				s.RelationEvents = addRelationEvents(relationIdx, s.RelationEvents, stats.AnalyzeCount, stats.LastAnalyze, snapshot.RelationEvent_MANUAL_ANALYZE)
-				s.RelationEvents = addRelationEvents(relationIdx, s.RelationEvents, stats.AutoanalyzeCount, stats.LastAutoanalyze, snapshot.RelationEvent_AUTO_ANALYZE)
-				s.RelationEvents = addRelationEvents(relationIdx, s.RelationEvents, stats.VacuumCount, stats.LastVacuum, snapshot.RelationEvent_MANUAL_VACUUM)
-				s.RelationEvents = addRelationEvents(relationIdx, s.RelationEvents, stats.AutovacuumCount, stats.LastAutovacuum, snapshot.RelationEvent_AUTO_VACUUM)
-			}
+		// Statistic
+		var stats state.DiffedPostgresRelationStats
+		if diffedSchemaStatsExist {
+			stats = diffedSchemaStats.RelationStats[relation.Oid]
 		}
+		statistic := snapshot.RelationStatistic{
+			RelationIdx:      relationIdx,
+			SizeBytes:        stats.SizeBytes,
+			ToastSizeBytes:   stats.ToastSizeBytes,
+			SeqScan:          stats.SeqScan,
+			SeqTupRead:       stats.SeqTupRead,
+			IdxScan:          stats.IdxScan,
+			IdxTupFetch:      stats.IdxTupFetch,
+			NTupIns:          stats.NTupIns,
+			NTupUpd:          stats.NTupUpd,
+			NTupDel:          stats.NTupDel,
+			NTupHotUpd:       stats.NTupHotUpd,
+			NLiveTup:         stats.NLiveTup,
+			NDeadTup:         stats.NDeadTup,
+			NModSinceAnalyze: stats.NModSinceAnalyze,
+			NInsSinceVacuum:  stats.NInsSinceVacuum,
+			HeapBlksRead:     stats.HeapBlksRead,
+			HeapBlksHit:      stats.HeapBlksHit,
+			IdxBlksRead:      stats.IdxBlksRead,
+			IdxBlksHit:       stats.IdxBlksHit,
+			ToastBlksRead:    stats.ToastBlksRead,
+			ToastBlksHit:     stats.ToastBlksHit,
+			TidxBlksRead:     stats.TidxBlksRead,
+			TidxBlksHit:      stats.TidxBlksHit,
+			FrozenxidAge:     stats.FrozenXIDAge,
+			MinmxidAge:       stats.MinMXIDAge,
+			Relpages:         stats.Relpages,
+			Reltuples:        stats.Reltuples,
+			Relallvisible:    stats.Relallvisible,
+			ToastReltuples:   stats.ToastReltuples,
+			ToastRelpages:    stats.ToastRelpages,
+			Relfrozenxid:     relation.FullFrozenXID(currentXactId),
+			Relminmxid:       int64(relation.MinimumMultixactXID),
+			LastVacuum:       snapshot.NullTimeToNullTimestamp(stats.LastVacuum),
+			LastAutovacuum:   snapshot.NullTimeToNullTimestamp(stats.LastAutovacuum),
+			LastAnalyze:      snapshot.NullTimeToNullTimestamp(stats.LastAnalyze),
+			LastAutoanalyze:  snapshot.NullTimeToNullTimestamp(stats.LastAutoanalyze),
+			CachedDataBytes:  relation.CachedDataBytes,
+			CachedToastBytes: relation.CachedToastBytes,
+		}
+		if stats.LastAutoanalyze.Valid && (!stats.LastAnalyze.Valid || stats.LastAutoanalyze.Time.After(stats.LastAnalyze.Time)) {
+			statistic.AnalyzedAt = snapshot.NullTimeToNullTimestamp(stats.LastAutoanalyze)
+		} else {
+			statistic.AnalyzedAt = snapshot.NullTimeToNullTimestamp(stats.LastAnalyze)
+		}
+		s.RelationStatistics = append(s.RelationStatistics, &statistic)
+
+		// Events
+		s.RelationEvents = addRelationEvents(relationIdx, s.RelationEvents, stats.AnalyzeCount, stats.LastAnalyze, snapshot.RelationEvent_MANUAL_ANALYZE)
+		s.RelationEvents = addRelationEvents(relationIdx, s.RelationEvents, stats.AutoanalyzeCount, stats.LastAutoanalyze, snapshot.RelationEvent_AUTO_ANALYZE)
+		s.RelationEvents = addRelationEvents(relationIdx, s.RelationEvents, stats.VacuumCount, stats.LastVacuum, snapshot.RelationEvent_MANUAL_VACUUM)
+		s.RelationEvents = addRelationEvents(relationIdx, s.RelationEvents, stats.AutovacuumCount, stats.LastAutovacuum, snapshot.RelationEvent_AUTO_VACUUM)
 
 		// Indices
 		for _, index := range relation.Indices {
