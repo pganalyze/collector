@@ -205,7 +205,7 @@ func GetSystemState(ctx context.Context, server *state.Server, logger *util.Logg
 	for _, metric := range metricsRes.Value {
 		// Should be only one data as 1 min time span with 1 min interval is selected, so getting first metric is good
 		metricValue := getFirstMetricValue(metric)
-		if metricValue.Average == nil {
+		if metricValue == nil || metricValue.Average == nil {
 			continue
 		}
 		switch *metric.Name.Value {
