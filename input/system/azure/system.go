@@ -286,6 +286,7 @@ func getFirstMetricValue(metric *azquery.Metric) (metricValue *azquery.MetricVal
 	for _, timeSeriesElement := range metric.TimeSeries {
 		for _, mValue := range timeSeriesElement.Data {
 			metricValue = mValue
+			return
 		}
 	}
 	return
