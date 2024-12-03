@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+import "shared.proto";
+
+package pganalyze.collector;
+option go_package = "github.com/pganalyze/collector/output/pganalyze_collector";
+
+message QueryRunSnapshot {
+  QueryRun query_run = 1;
+}
