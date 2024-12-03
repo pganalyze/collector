@@ -283,8 +283,8 @@ func GetSystemState(ctx context.Context, server *state.Server, logger *util.Logg
 
 // getFirstMetricValue gets the first data from the time series metric and returns the value
 func getFirstMetricValue(metric *azquery.Metric) (metricValue *azquery.MetricValue) {
-        if len(metric.TimeSeries) == 0 || len(metric.TimeSeries[0].timeSeriesElement.Data) == 0 {
-                return
-        }
-        return metric.TimeSeries[0].timeSeriesElement.Data[0]
+	if len(metric.TimeSeries) == 0 || len(metric.TimeSeries[0].Data) == 0 {
+		return
+	}
+	return metric.TimeSeries[0].Data[0]
 }
