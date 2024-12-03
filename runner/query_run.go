@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/pganalyze/collector/input/postgres"
+	"github.com/pganalyze/collector/output"
 	"github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
@@ -118,6 +119,10 @@ func run(ctx context.Context, server *state.Server, collectionOpts state.Collect
 			server.QueryRuns[id].Error = err.Error()
 		}
 		server.QueryRunsMutex.Unlock()
+
+		// Activity snapshots will eventually send the query run result, but to reduce latency
+		// we also send a query run snapshot immediately after the query has finished.
+		output.SubmitQueryRunSnapshot(ctx, server, collectionOpts, logger, *server.QueryRuns[id])
 	}
 }
 

@@ -5,6 +5,7 @@ import "google/protobuf/timestamp.proto";
 import "compact_activity_snapshot.proto";
 import "compact_log_snapshot.proto";
 import "compact_system_snapshot.proto";
+import "query_run_snapshot.proto";
 import "shared.proto";
 
 package pganalyze.collector;
@@ -34,5 +35,6 @@ message CompactSnapshot {
     CompactLogSnapshot log_snapshot = 10;
     CompactSystemSnapshot system_snapshot = 11;
     CompactActivitySnapshot activity_snapshot = 12;
+    QueryRunSnapshot query_run_snapshot = 13;
   }
 }
