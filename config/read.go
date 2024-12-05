@@ -342,6 +342,9 @@ func getDefaultConfig() *ServerConfig {
 	if skipIfReplica := os.Getenv("SKIP_IF_REPLICA"); skipIfReplica != "" {
 		config.SkipIfReplica = parseConfigBool(skipIfReplica)
 	}
+	if maxBufferCacheMonitoringGB := os.Getenv("MAX_BUFFER_CACHE_MONITORING_GB"); maxBufferCacheMonitoringGB != "" {
+		config.MaxBufferCacheMonitoringGB, _ = strconv.Atoi(maxBufferCacheMonitoringGB)
+	}
 	if filterLogSecret := os.Getenv("FILTER_LOG_SECRET"); filterLogSecret != "" {
 		config.FilterLogSecret = filterLogSecret
 	} else {
