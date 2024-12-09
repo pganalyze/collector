@@ -78,7 +78,7 @@ docker run \
 
 You'll need to set PGA_API_KEY, DB_URL, and AWS_INSTANCE_ID with the correct values.
 
-Please also note that the EC2 instance running your Docker setup needs to have an IAM role that allows Cloudwatch access: https://pganalyze.com/docs/install/amazon_rds/03_setup_iam_policy
+Please also note that the EC2 instance running your Docker setup needs to have an IAM role that allows Cloudwatch access: https://pganalyze.com/docs/install/amazon_rds/iam_policy
 
 To get better data quality for server metrics, enable "Enhanced Monitoring" in your RDS dashboard. The pganalyze collector will automatically pick this up and get all the metrics.
 
