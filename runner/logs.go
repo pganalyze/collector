@@ -285,7 +285,7 @@ func processLogStream(ctx context.Context, server *state.Server, logLines []stat
 
 func postprocessAndSendLogs(ctx context.Context, server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger, transientLogState state.TransientLogState, grant state.Grant) (err error) {
 	if server.Config.EnableLogExplain && len(transientLogState.QuerySamples) != 0 {
-		transientLogState.QuerySamples = postgres.RunExplain(ctx, server, transientLogState.QuerySamples, globalCollectionOpts, logger)
+		transientLogState.QuerySamples = postgres.RunExplainForSamples(ctx, server, transientLogState.QuerySamples, globalCollectionOpts, logger)
 	}
 
 	if server.Config.FilterQuerySample == "all" {

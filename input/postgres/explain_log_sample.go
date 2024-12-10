@@ -14,7 +14,7 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
-func RunExplain(ctx context.Context, server *state.Server, inputs []state.PostgresQuerySample, collectionOpts state.CollectionOpts, logger *util.Logger) (outputs []state.PostgresQuerySample) {
+func RunExplainForSamples(ctx context.Context, server *state.Server, inputs []state.PostgresQuerySample, collectionOpts state.CollectionOpts, logger *util.Logger) (outputs []state.PostgresQuerySample) {
 	var samplesByDb = make(map[string]([]state.PostgresQuerySample))
 
 	skip := func(sample state.PostgresQuerySample) bool {
@@ -47,8 +47,9 @@ func RunExplain(ctx context.Context, server *state.Server, inputs []state.Postgr
 			logger.PrintVerbose("Could not connect to %s to run explain: %s; skipping", dbName, err)
 			continue
 		}
-		useHelper := StatsHelperExists(ctx, db, "explain")
-		if useHelper {
+		useHelper := false
+		if StatsHelperExists(ctx, db, "explain") {
+			useHelper = true
 			logger.PrintVerbose("Found pganalyze.explain() stats helper in database \"%s\"", dbName)
 		}
 
@@ -84,68 +85,19 @@ func RunExplain(ctx context.Context, server *state.Server, inputs []state.Postgr
 func runDbExplain(ctx context.Context, db *sql.DB, inputs []state.PostgresQuerySample, useHelper bool) ([]state.PostgresQuerySample, error) {
 	var outputs []state.PostgresQuerySample
 	for _, sample := range inputs {
-		var isUtil []bool
-		// To be on the safe side never EXPLAIN a statement that can't be parsed,
-		// or multiple statements in one (leading to accidental execution)
-		isUtil, err := util.IsUtilityStmt(sample.Query)
-		if err == nil && len(isUtil) == 1 && !isUtil[0] {
-			var explainOutput []byte
-
+		isExplainable, explainJSON, explainError, err := runExplain(ctx, db, sample.Query, sample.Parameters, useHelper)
+		if err != nil {
+			return nil, err
+		}
+		if isExplainable {
 			sample.HasExplain = true
 			sample.ExplainSource = pganalyze_collector.QuerySample_STATEMENT_LOG_EXPLAIN_SOURCE
 			sample.ExplainFormat = pganalyze_collector.QuerySample_JSON_EXPLAIN_FORMAT
-
-			if useHelper {
-				err = db.QueryRowContext(ctx, QueryMarkerSQL+"SELECT pganalyze.explain($1, $2)", sample.Query, pq.Array(sample.Parameters)).Scan(&explainOutput)
-				if err != nil {
-					if ctx.Err() != nil {
-						return nil, err
-					}
-					sample.ExplainError = fmt.Sprintf("%s", err)
-				}
-			} else {
-				if len(sample.Parameters) > 0 {
-					_, err = db.ExecContext(ctx, QueryMarkerSQL+"PREPARE pganalyze_explain AS "+sample.Query)
-					if err != nil {
-						if ctx.Err() != nil {
-							return nil, err
-						}
-						sample.ExplainError = fmt.Sprintf("%s", err)
-					} else {
-						paramStr := getQuotedParamsStr(sample.Parameters)
-						err = db.QueryRowContext(ctx, QueryMarkerSQL+"EXPLAIN (VERBOSE, FORMAT JSON) EXECUTE pganalyze_explain("+paramStr+")").Scan(&explainOutput)
-						if err != nil {
-							if ctx.Err() != nil {
-								return nil, err
-							}
-							sample.ExplainError = fmt.Sprintf("%s", err)
-						}
-
-						_, err = db.ExecContext(ctx, QueryMarkerSQL+"DEALLOCATE pganalyze_explain")
-						if err != nil {
-							return nil, err
-						}
-					}
-				} else {
-					err = db.QueryRowContext(ctx, QueryMarkerSQL+"EXPLAIN (VERBOSE, FORMAT JSON) "+sample.Query).Scan(&explainOutput)
-					if err != nil {
-						if ctx.Err() != nil {
-							return nil, err
-						}
-						sample.ExplainError = fmt.Sprintf("%s", err)
-					}
-				}
+			if explainJSON != nil {
+				sample.ExplainOutputJSON = explainJSON
 			}
-
-			if len(explainOutput) > 0 {
-				var explainOutputJSON []state.ExplainPlanContainer
-				if err := json.Unmarshal(explainOutput, &explainOutputJSON); err != nil {
-					sample.ExplainError = fmt.Sprintf("%s", err)
-				} else if len(explainOutputJSON) != 1 {
-					sample.ExplainError = fmt.Sprintf("Unexpected plan size: %d (expected 1)", len(explainOutputJSON))
-				} else {
-					sample.ExplainOutputJSON = &explainOutputJSON[0]
-				}
+			if explainError != nil {
+				sample.ExplainError = fmt.Sprintf("%s", explainError)
 			}
 		}
 
@@ -162,6 +114,74 @@ func contains(strs []string, val string) bool {
 		}
 	}
 	return false
+}
+
+func runExplain(ctx context.Context, db *sql.DB, query string, parameters []null.String, useHelper bool) (isExplainable bool, explainJSON *state.ExplainPlanContainer, explainError error, _err error) {
+	var isUtil []bool
+	// To be on the safe side never EXPLAIN a statement that can't be parsed,
+	// or multiple statements in one (leading to accidental execution)
+	isUtil, err := util.IsUtilityStmt(query)
+	if err != nil || len(isUtil) != 1 || isUtil[0] {
+		return
+	}
+
+	var explainOutput []byte
+	isExplainable = true
+
+	if useHelper {
+		err = db.QueryRowContext(ctx, QueryMarkerSQL+"SELECT pganalyze.explain($1, $2)", query, pq.Array(parameters)).Scan(&explainOutput)
+		if err != nil {
+			if ctx.Err() != nil {
+				return false, nil, nil, err
+			}
+			explainError = fmt.Errorf("%s", err)
+		}
+	} else {
+		if len(parameters) > 0 {
+			_, err = db.ExecContext(ctx, QueryMarkerSQL+"PREPARE pganalyze_explain AS "+query)
+			if err != nil {
+				if ctx.Err() != nil {
+					return false, nil, nil, err
+				}
+				explainError = err
+			} else {
+				paramStr := getQuotedParamsStr(parameters)
+				err = db.QueryRowContext(ctx, QueryMarkerSQL+"EXPLAIN (VERBOSE, FORMAT JSON) EXECUTE pganalyze_explain("+paramStr+")").Scan(&explainOutput)
+				if err != nil {
+					if ctx.Err() != nil {
+						return false, nil, nil, err
+					}
+					explainError = err
+				}
+
+				_, err = db.ExecContext(ctx, QueryMarkerSQL+"DEALLOCATE pganalyze_explain")
+				if err != nil {
+					return false, nil, nil, err
+				}
+			}
+		} else {
+			err = db.QueryRowContext(ctx, QueryMarkerSQL+"EXPLAIN (VERBOSE, FORMAT JSON) "+query).Scan(&explainOutput)
+			if err != nil {
+				if ctx.Err() != nil {
+					return false, nil, nil, err
+				}
+				explainError = err
+			}
+		}
+	}
+
+	if len(explainOutput) > 0 {
+		var explainOutputJSON []state.ExplainPlanContainer
+		if err := json.Unmarshal(explainOutput, &explainOutputJSON); err != nil {
+			explainError = err
+		} else if len(explainOutputJSON) != 1 {
+			explainError = fmt.Errorf("Unexpected plan size: %d (expected 1)", len(explainOutputJSON))
+		} else {
+			explainJSON = &explainOutputJSON[0]
+		}
+	}
+
+	return
 }
 
 func getQuotedParamsStr(parameters []null.String) string {
