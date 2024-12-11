@@ -240,7 +240,7 @@ func Run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 
 	schedulerGroups["query_stats"].ScheduleSecondary(ctx, func(ctx context.Context) {
 		wg.Add(1)
-		GatherQueryStatsFromAllServers(ctx, servers, globalCollectionOpts, logger)
+		Gather1minStatsFromAllServers(ctx, servers, globalCollectionOpts, logger)
 		wg.Done()
 	}, logger, "high frequency query statistics of all servers", schedulerGroups["stats"])
 
