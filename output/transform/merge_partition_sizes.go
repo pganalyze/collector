@@ -5,6 +5,12 @@ import (
 	"github.com/pganalyze/collector/state"
 )
 
+// Since Postgres reports parent partition tables as being zero-sized,
+// this backfills stats for the parent table as a summation of all child tables.
+//
+// When ignore_schema_regexp is set, GetRelationStats bypasses this for tables not tracked by the collector.
+//
+// TODO: recursively build up stats when nested partitioning is used
 func mergePartitionSizes(s snapshot.FullSnapshot, newState state.PersistedState, ts state.TransientState, databaseOidToIdx OidToIdx) snapshot.FullSnapshot {
 	for idx, rel := range s.RelationInformations {
 		if !rel.HasParentRelation || rel.PartitionBoundary == "" {

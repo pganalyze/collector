@@ -20,7 +20,16 @@ locked_relids_with_parents AS (
 	UNION SELECT relid FROM locked_relids
 )
 SELECT c.oid,
-			 COALESCE(pg_catalog.pg_table_size(c.oid), 0) AS size_bytes,
+			 COALESCE(pg_catalog.pg_table_size(c.oid), 0) +
+			 COALESCE((
+				SELECT pg_catalog.sum(pg_catalog.pg_table_size(inhrelid))
+				FROM pg_catalog.pg_inherits
+				JOIN pg_class t ON inhrelid = t.oid
+				WHERE inhparent = c.oid
+					-- Only include sizes from child partitions skipped by ignore_schema_regexp.
+					-- Child partitions tracked by the collector have their sizes added by mergePartitionSizes.
+					AND ($1 != '' AND (n.nspname || '.' || t.relname) ~* $1)
+			 ), 0) AS size_bytes,
 			 CASE c.reltoastrelid WHEN NULL THEN 0 ELSE COALESCE(pg_catalog.pg_total_relation_size(c.reltoastrelid), 0) END AS toast_bytes,
 			 COALESCE(pg_stat_get_numscans(c.oid), 0) AS seq_scan,
 			 COALESCE(pg_stat_get_tuples_returned(c.oid), 0) AS seq_tup_read,
