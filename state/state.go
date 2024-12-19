@@ -8,6 +8,7 @@ import (
 
 	raven "github.com/getsentry/raven-go"
 	"github.com/gorilla/websocket"
+	"github.com/guregu/null"
 	"github.com/pganalyze/collector/config"
 	"github.com/pganalyze/collector/output/pganalyze_collector"
 )
@@ -253,15 +254,18 @@ type CollectionStatus struct {
 }
 
 type QueryRun struct {
-	Id           int64
-	Type         pganalyze_collector.QueryRunType
-	DatabaseName string
-	QueryText    string
-	Result       string
-	Error        string
-	StartedAt    time.Time
-	FinishedAt   time.Time
-	BackendPid   int
+	Id                  int64
+	Type                pganalyze_collector.QueryRunType
+	DatabaseName        string
+	QueryText           string
+	QueryParameters     []null.String
+	QueryParameterTypes []string
+	PostgresSettings    map[string]string
+	Result              string
+	Error               string
+	StartedAt           time.Time
+	FinishedAt          time.Time
+	BackendPid          int
 }
 
 type Server struct {

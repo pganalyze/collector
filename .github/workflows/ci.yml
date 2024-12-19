@@ -13,6 +13,15 @@ jobs:
   build:
     # Use new enough OS that has CGroupsv2 enabled (required by the integration tests)
     runs-on: ubuntu-22.04
+    env:
+      TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres?sslmode=disable
+    services:
+      postgres:
+        image: postgres:14
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
 
     steps:
 

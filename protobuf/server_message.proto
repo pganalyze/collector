@@ -44,5 +44,8 @@ message ServerMessage {
     QueryRunType type = 2;
     string database_name = 3;
     string query_text = 4;
+    repeated NullString query_parameters = 5;
+    repeated string query_parameter_types = 6;
+    map<string, string> postgres_settings = 7;
   }
 }
