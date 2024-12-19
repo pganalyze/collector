@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
+	"github.com/lib/pq"
 	"github.com/pganalyze/collector/input/postgres"
 	"github.com/pganalyze/collector/output"
 	"github.com/pganalyze/collector/output/pganalyze_collector"
@@ -41,89 +41,78 @@ func SetupQueryRunnerForAllServers(ctx context.Context, servers []*state.Server,
 
 func run(ctx context.Context, server *state.Server, collectionOpts state.CollectionOpts, logger *util.Logger) {
 	for id, query := range server.QueryRuns {
-		var firstErr error
 		if !query.FinishedAt.IsZero() {
 			continue
 		}
+
 		server.QueryRunsMutex.Lock()
 		server.QueryRuns[id].StartedAt = time.Now()
 		server.QueryRunsMutex.Unlock()
 		logger.PrintVerbose("Query run %d starting: %s", query.Id, query.QueryText)
 
-		db, err := postgres.EstablishConnection(ctx, server, logger, collectionOpts, query.DatabaseName)
+		result, err := runQueryOnDatabase(ctx, server, collectionOpts, logger, id, query)
 		if err != nil {
 			server.QueryRunsMutex.Lock()
 			server.QueryRuns[id].FinishedAt = time.Now()
 			server.QueryRuns[id].Error = err.Error()
 			server.QueryRunsMutex.Unlock()
 			continue
-		}
-		defer db.Close()
-
-		err = postgres.SetStatementTimeout(ctx, db, 60*1000)
-		if err != nil {
-			server.QueryRunsMutex.Lock()
-			server.QueryRuns[id].FinishedAt = time.Now()
-			server.QueryRuns[id].Error = err.Error()
-			server.QueryRunsMutex.Unlock()
-			continue
-		}
-
-		pid := 0
-		err = db.QueryRow(postgres.QueryMarkerSQL + "SELECT pg_backend_pid()").Scan(&pid)
-		if err == nil {
-			server.QueryRunsMutex.Lock()
-			server.QueryRuns[id].BackendPid = pid
-			server.QueryRunsMutex.Unlock()
-		} else {
-			server.QueryRunsMutex.Lock()
-			server.QueryRuns[id].FinishedAt = time.Now()
-			server.QueryRuns[id].Error = err.Error()
-			server.QueryRunsMutex.Unlock()
-			continue
-		}
-
-		// We don't include QueryMarkerSQL so query runs are reported separately in pganalyze
-		comment := fmt.Sprintf("/* pganalyze:no-alert,pganalyze-query-run:%d */ ", query.Id)
-		result := ""
-
-		if query.Type == pganalyze_collector.QueryRunType_EXPLAIN {
-			sql := "BEGIN; EXPLAIN (ANALYZE, VERBOSE, BUFFERS, FORMAT JSON) " + comment + query.QueryText + "; ROLLBACK"
-			err = db.QueryRowContext(ctx, sql).Scan(&result)
-			firstErr = err
-
-			// Run EXPLAIN ANALYZE a second time to get a warm cache result
-			err = db.QueryRowContext(ctx, sql).Scan(&result)
-
-			// If the first run failed and the second run succeeded, run once more to get a warm cache result
-			if err == nil && firstErr != nil {
-				err = db.QueryRowContext(ctx, sql).Scan(&result)
-			}
-
-			// If it timed out, capture a non-ANALYZE EXPLAIN instead
-			if err != nil && strings.Contains(err.Error(), "statement timeout") {
-				sql = "BEGIN; EXPLAIN (VERBOSE, FORMAT JSON) " + comment + query.QueryText + "; ROLLBACK"
-				err = db.QueryRowContext(ctx, sql).Scan(&result)
-			}
-		} else {
-			err = errors.New("Unhandled query run type")
-			logger.PrintVerbose("Unhandled query run type %d for %d", query.Type, query.Id)
 		}
 
 		server.QueryRunsMutex.Lock()
 		server.QueryRuns[id].FinishedAt = time.Now()
 		server.QueryRuns[id].Result = result
-		if firstErr != nil {
-			server.QueryRuns[id].Error = firstErr.Error()
-		} else if err != nil {
-			server.QueryRuns[id].Error = err.Error()
-		}
 		server.QueryRunsMutex.Unlock()
 
 		// Activity snapshots will eventually send the query run result, but to reduce latency
 		// we also send a query run snapshot immediately after the query has finished.
 		output.SubmitQueryRunSnapshot(ctx, server, collectionOpts, logger, *server.QueryRuns[id])
 	}
+}
+
+func runQueryOnDatabase(ctx context.Context, server *state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, id int64, query *state.QueryRun) (string, error) {
+	if query.Type != pganalyze_collector.QueryRunType_EXPLAIN {
+		logger.PrintVerbose("Unhandled query run type %d for %d", query.Type, query.Id)
+		return "", errors.New("Unhandled query run type")
+	}
+
+	db, err := postgres.EstablishConnection(ctx, server, logger, collectionOpts, query.DatabaseName)
+	if err != nil {
+		return "", err
+	}
+	defer db.Close()
+
+	if postgres.StatsHelperExists(ctx, db, "explain_analyze") {
+		logger.PrintVerbose("Found pganalyze.explain_analyze helper function in database \"%s\"", query.DatabaseName)
+	} else {
+		return "", fmt.Errorf("Required helper function pganalyze.explain_analyze is not set up")
+	}
+
+	pid := 0
+	err = db.QueryRow(postgres.QueryMarkerSQL + "SELECT pg_backend_pid()").Scan(&pid)
+	if err != nil {
+		return "", err
+	}
+	server.QueryRunsMutex.Lock()
+	server.QueryRuns[id].BackendPid = pid
+	server.QueryRunsMutex.Unlock()
+
+	for name, value := range query.PostgresSettings {
+		_, err = db.ExecContext(ctx, postgres.QueryMarkerSQL+fmt.Sprintf("SET %s = %s", pq.QuoteIdentifier(name), pq.QuoteLiteral(value)))
+		if err != nil {
+			return "", err
+		}
+	}
+
+	err = postgres.SetStatementTimeout(ctx, db, 60*1000)
+	if err != nil {
+		return "", err
+	}
+
+	// We don't include QueryMarkerSQL so query runs are reported separately in pganalyze
+	marker := fmt.Sprintf("/* pganalyze:no-alert,pganalyze-query-run:%d */ ", query.Id)
+
+	return postgres.RunExplainAnalyzeForQueryRun(ctx, db, query.QueryText, query.QueryParameters, query.QueryParameterTypes, marker)
 }
 
 // Removes old query runs that have finished

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/guregu/null"
 	"github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
@@ -142,11 +143,18 @@ func connect(ctx context.Context, server *state.Server, globalCollectionOpts sta
 				logger.PrintVerbose("Query run %d received: %s", q.Id, q.QueryText)
 				server.QueryRunsMutex.Lock()
 				if _, exists := server.QueryRuns[q.Id]; !exists {
+					parameters := []null.String{}
+					for _, p := range q.QueryParameters {
+						parameters = append(parameters, null.NewString(p.Value, p.Valid))
+					}
 					server.QueryRuns[q.Id] = &state.QueryRun{
-						Id:           q.Id,
-						Type:         q.Type,
-						DatabaseName: q.DatabaseName,
-						QueryText:    q.QueryText,
+						Id:                  q.Id,
+						Type:                q.Type,
+						DatabaseName:        q.DatabaseName,
+						QueryText:           q.QueryText,
+						QueryParameters:     parameters,
+						QueryParameterTypes: q.QueryParameterTypes,
+						PostgresSettings:    q.PostgresSettings,
 					}
 				}
 				server.QueryRunsMutex.Unlock()
