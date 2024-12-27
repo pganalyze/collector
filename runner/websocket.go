@@ -141,11 +141,13 @@ func connect(ctx context.Context, server *state.Server, globalCollectionOpts sta
 				q := message.GetQueryRun()
 				logger.PrintVerbose("Query run %d received: %s", q.Id, q.QueryText)
 				server.QueryRunsMutex.Lock()
-				server.QueryRuns[q.Id] = &state.QueryRun{
-					Id:           q.Id,
-					Type:         q.Type,
-					DatabaseName: q.DatabaseName,
-					QueryText:    q.QueryText,
+				if _, exists := server.QueryRuns[q.Id]; !exists {
+					server.QueryRuns[q.Id] = &state.QueryRun{
+						Id:           q.Id,
+						Type:         q.Type,
+						DatabaseName: q.DatabaseName,
+						QueryText:    q.QueryText,
+					}
 				}
 				server.QueryRunsMutex.Unlock()
 			}
