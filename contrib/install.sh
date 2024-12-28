@@ -6,7 +6,9 @@ fail () {
   >&2 echo
   >&2 echo "Install failed: $1"
   >&2 echo
-  >&2 echo "Please contact support@pganalyze.com for help and include information about your platform"
+  >&2 echo "Review manual package install instructions: https://pganalyze.com/docs/collector/packages"
+  >&2 echo
+  >&2 echo "You can also contact support@pganalyze.com for help - please make sure to include information about your platform"
   exit 1
 }
 
