@@ -6,7 +6,9 @@ fail () {
   >&2 echo
   >&2 echo "Install failed: $1"
   >&2 echo
-  >&2 echo "Please contact support@pganalyze.com for help and include information about your platform"
+  >&2 echo "Review manual package install instructions: https://pganalyze.com/docs/collector/packages"
+  >&2 echo
+  >&2 echo "You can also contact support@pganalyze.com for help - please make sure to include information about your platform"
   exit 1
 }
 
@@ -63,19 +65,19 @@ then
   pkg=yum
   distribution=el
   version=9
-elif grep -q '^ID="\(rhel\|centos\)"$' /etc/os-release;
+elif grep -q '^ID="\(rhel\|centos\|almalinux\|rocky\)"$' /etc/os-release;
 then
-  # RHEL and CentOS
+  # RHEL, CentOS, AlmaLinux and Rocky Linux
   pkg=yum
   distribution=el
   version=$(grep VERSION_ID /etc/os-release | cut -d= -f2 | tr -d '"' | cut -d. -f1)
   if [ "$version" != 7 ] && [ "$version" != 8 ] && [ "$version" != 9 ];
   then
-    if confirm "Unsupported RHEL or CentOS version; try RHEL9 package?";
+    if confirm "Unsupported RHEL, CentOS, AlmaLinux or Rocky Linux version; try RHEL9 package?";
     then
       version=9
     else
-      fail "unrecognized RHEL or CentOS version: ${version}"
+      fail "unrecognized RHEL, CentOS, AlmaLinux or Rocky Linux version: ${version}"
     fi
   fi
 elif grep -q '^ID=fedora$' /etc/os-release;
