@@ -29,7 +29,7 @@ require (
 	github.com/smartystreets/assertions v0.0.0-20160707190355-2063fd1cc7c9 // indirect
 	github.com/smartystreets/goconvey v0.0.0-20160704134950-4622128e06c7 // indirect
 	golang.org/x/crypto v0.31.0 // indirect
-	golang.org/x/net v0.27.0
+	golang.org/x/net v0.33.0
 	google.golang.org/api v0.143.0
 	google.golang.org/protobuf v1.33.0
 	gopkg.in/ini.v1 v1.62.0 // indirect
