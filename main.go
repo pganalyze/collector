@@ -50,6 +50,8 @@ func main() {
 	var testExplain bool
 	var testSection string
 	var generateStatsHelperSql string
+	var generateHelperExplainAnalyzeSql string
+	var generateHelperExplainAnalyzeRole string
 	var forceStateUpdate bool
 	var configFilename string
 	var stateFilename string
@@ -74,6 +76,8 @@ func main() {
 	flag.BoolVar(&testExplain, "test-explain", false, "Tests whether EXPLAIN collection works by issuing a dummy query (ensure log collection works first)")
 	flag.StringVar(&testSection, "test-section", "", "Tests a particular section of the config file, i.e. a specific server, and ignores all other config sections")
 	flag.StringVar(&generateStatsHelperSql, "generate-stats-helper-sql", "", "Generates a SQL script for the given server (name of section in the config file, or \"default\" for env variables), that can be run with \"psql -f\" for installing the collector stats helpers on all configured databases")
+	flag.StringVar(&generateHelperExplainAnalyzeSql, "generate-explain-analyze-helper-sql", "", "Generates a SQL script for the given server (name of section in the config file, or \"default\" for env variables), that can be run with \"psql -f\" for installing the collector pganalyze.explain_analyze helper on all configured databases")
+	flag.StringVar(&generateHelperExplainAnalyzeRole, "generate-explain-analyze-helper-role", "pganalyze_explain", "Sets owner role of the pganalyze.explain_analyze helper function, defaults to \"pganalyze_explain\"")
 	flag.BoolVar(&reloadRun, "reload", false, "Reloads the collector daemon that's running on the host")
 	flag.BoolVar(&noReload, "no-reload", false, "Disables automatic config reloading during a test run")
 	flag.BoolVarP(&logger.Verbose, "verbose", "v", false, "Outputs additional debugging information, use this if you're encountering errors or other problems")
@@ -145,33 +149,35 @@ func main() {
 		}
 	}
 
-	if testRunLogs || testRunAndTrace || testExplain || generateStatsHelperSql != "" {
+	if testRunLogs || testRunAndTrace || testExplain || generateStatsHelperSql != "" || generateHelperExplainAnalyzeSql != "" {
 		testRun = true
 	}
 
 	globalCollectionOpts := state.CollectionOpts{
-		StartedAt:                time.Now(),
-		SubmitCollectedData:      !benchmark && true,
-		TestRun:                  testRun,
-		TestRunLogs:              testRunLogs || dryRunLogs,
-		TestExplain:              testExplain,
-		TestSection:              testSection,
-		GenerateStatsHelperSql:   generateStatsHelperSql,
-		DebugLogs:                debugLogs,
-		DiscoverLogLocation:      discoverLogLocation,
-		CollectPostgresRelations: !noPostgresRelations,
-		CollectPostgresSettings:  !noPostgresSettings,
-		CollectPostgresLocks:     !noPostgresLocks,
-		CollectPostgresFunctions: !noPostgresFunctions,
-		CollectPostgresBloat:     !noPostgresBloat,
-		CollectPostgresViews:     !noPostgresViews,
-		CollectLogs:              !noLogs,
-		CollectExplain:           !noExplain,
-		CollectSystemInformation: !noSystemInformation,
-		StateFilename:            stateFilename,
-		WriteStateUpdate:         (!dryRun && !dryRunLogs && !testRun) || forceStateUpdate,
-		ForceEmptyGrant:          dryRun || dryRunLogs || testRunLogs || benchmark,
-		OutputAsJson:             !benchmark,
+		StartedAt:                        time.Now(),
+		SubmitCollectedData:              !benchmark && true,
+		TestRun:                          testRun,
+		TestRunLogs:                      testRunLogs || dryRunLogs,
+		TestExplain:                      testExplain,
+		TestSection:                      testSection,
+		GenerateStatsHelperSql:           generateStatsHelperSql,
+		GenerateExplainAnalyzeHelperSql:  generateHelperExplainAnalyzeSql,
+		GenerateExplainAnalyzeHelperRole: generateHelperExplainAnalyzeRole,
+		DebugLogs:                        debugLogs,
+		DiscoverLogLocation:              discoverLogLocation,
+		CollectPostgresRelations:         !noPostgresRelations,
+		CollectPostgresSettings:          !noPostgresSettings,
+		CollectPostgresLocks:             !noPostgresLocks,
+		CollectPostgresFunctions:         !noPostgresFunctions,
+		CollectPostgresBloat:             !noPostgresBloat,
+		CollectPostgresViews:             !noPostgresViews,
+		CollectLogs:                      !noLogs,
+		CollectExplain:                   !noExplain,
+		CollectSystemInformation:         !noSystemInformation,
+		StateFilename:                    stateFilename,
+		WriteStateUpdate:                 (!dryRun && !dryRunLogs && !testRun) || forceStateUpdate,
+		ForceEmptyGrant:                  dryRun || dryRunLogs || testRunLogs || benchmark,
+		OutputAsJson:                     !benchmark,
 	}
 
 	if reloadRun && !testRun {

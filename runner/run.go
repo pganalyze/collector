@@ -130,6 +130,34 @@ func Run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 		return
 	}
 
+	if globalCollectionOpts.GenerateExplainAnalyzeHelperSql != "" {
+		wg.Add(1)
+		testRunSuccess = make(chan bool)
+		go func() {
+			var matchingServer *state.Server
+			for _, server := range servers {
+				if globalCollectionOpts.GenerateExplainAnalyzeHelperSql == server.Config.SectionName {
+					matchingServer = server
+				}
+			}
+			if matchingServer == nil {
+				fmt.Fprintf(os.Stderr, "ERROR - Specified configuration section name '%s' not known\n", globalCollectionOpts.GenerateExplainAnalyzeHelperSql)
+				testRunSuccess <- false
+			} else {
+				output, err := GenerateExplainAnalyzeHelperSql(ctx, matchingServer, globalCollectionOpts, logger.WithPrefix(matchingServer.Config.SectionName))
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "ERROR - %s\n", err)
+					testRunSuccess <- false
+				} else {
+					fmt.Print(output)
+					testRunSuccess <- true
+				}
+			}
+			wg.Done()
+		}()
+		return
+	}
+
 	state.ReadStateFile(servers, globalCollectionOpts, logger)
 
 	writeStateFile = func() {
