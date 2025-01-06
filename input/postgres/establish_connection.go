@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"time"
 
 	"github.com/aws/aws-sdk-go/service/rds/rdsutils"
 	"github.com/pganalyze/collector/config"
@@ -78,7 +77,6 @@ func connectToDb(ctx context.Context, config config.ServerConfig, logger *util.L
 	}
 
 	db.SetMaxOpenConns(1)
-	db.SetConnMaxLifetime(30 * time.Second)
 
 	err = db.PingContext(ctx)
 	if err != nil {
