@@ -76,7 +76,6 @@ func getCollectorConfig(c config.ServerConfig) state.CollectorConfig {
 		DisableLogs:                c.DisableLogs,
 		DisableActivity:            c.DisableActivity,
 		EnableLogExplain:           c.EnableLogExplain,
-		EnableQueryRunner:          c.EnableQueryRunner,
 		DbName:                     c.DbName,
 		DbUsername:                 c.DbUsername,
 		DbHost:                     c.DbHost,

@@ -42,10 +42,9 @@ type ServerConfig struct {
 	ErrorCallback   string `ini:"error_callback"`
 	SuccessCallback string `ini:"success_callback"`
 
-	DisableLogs       bool `ini:"disable_logs"`
-	DisableActivity   bool `ini:"disable_activity"`
-	EnableLogExplain  bool `ini:"enable_log_explain"`
-	EnableQueryRunner bool `ini:"enable_query_runner"`
+	DisableLogs      bool `ini:"disable_logs"`
+	DisableActivity  bool `ini:"disable_activity"`
+	EnableLogExplain bool `ini:"enable_log_explain"`
 
 	DbURL                 string `ini:"db_url"`
 	DbURLFile             string `ini:"db_url_file"`

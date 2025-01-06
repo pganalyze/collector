@@ -91,7 +91,6 @@ type CollectorConfig struct {
 	DisableLogs                bool
 	DisableActivity            bool
 	EnableLogExplain           bool
-	EnableQueryRunner          bool
 	DbName                     string
 	DbUsername                 string
 	DbHost                     string
