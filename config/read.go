@@ -99,9 +99,6 @@ func getDefaultConfig() *ServerConfig {
 	if enableLogExplain := os.Getenv("PGA_ENABLE_LOG_EXPLAIN"); enableLogExplain != "" {
 		config.EnableLogExplain = parseConfigBool(enableLogExplain)
 	}
-	if enableQueryRunner := os.Getenv("PGA_ENABLE_QUERY_RUNNER"); enableQueryRunner != "" {
-		config.EnableQueryRunner = parseConfigBool(enableQueryRunner)
-	}
 	if dbURL := os.Getenv("DB_URL"); dbURL != "" {
 		config.DbURL = dbURL
 	}
