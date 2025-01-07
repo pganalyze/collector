@@ -91,6 +91,10 @@ var blockedFunctions = []string{
 	"dblink_connect",
 	"dblink_exec",
 	// Blocked because these functions allow executing arbitrary SQL as input (which can workaround other checks)
+	"crosstab",
+	"crosstab2",
+	"crosstab3",
+	"crosstab4",
 	"xpath_table",
 }
 
