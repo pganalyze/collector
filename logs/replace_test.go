@@ -45,6 +45,11 @@ var replaceTests = []replaceTestpair{
 		output:          "division by zero\n[redacted]\n",
 	},
 	{
+		filterLogSecret: "statement_parameter, unidentified",
+		input:           "2018-03-11 20:00:02 UTC:1.1.1.1(2):a@b:[3]:LOG:  duration: 2007.111 ms  plan:\n{\"Query Text\": \"SELECT * FROM x WHERE y = $1 LIMIT $2\", \"Plan\": { } }\n2018-03-11 20:00:02 UTC:1.1.1.1(2):a@b:[3]:CONTEXT: some new context we do not know with a secret\n",
+		output:          "duration: 2007.111 ms  plan:\n{\"Query Text\": \"SELECT * FROM x WHERE y = $1 LIMIT $2\", \"Plan\": { } }\n[redacted]\n",
+	},
+	{
 		filterLogSecret: "statement_text, statement_parameter, unidentified",
 		input:           "2018-03-11 20:00:02 UTC:1.1.1.1(2):a@b:[3]:LOG:  duration: 4079.697 ms  execute <unnamed>: \nSELECT * FROM x WHERE y = $1 LIMIT $2\n2018-03-11 20:00:02 UTC:1.1.1.1(2):a@b:[3]:DETAIL:  parameters: $1 = 'long string', $2 = '1'\n",
 		output:          "duration: 4079.697 ms  execute <unnamed>: \n[redacted]\nparameters: $1 = '[redacted]', $2 = '[redacted]'\n",
