@@ -1,5 +1,36 @@
 # Changelog
 
+## 0.64.0      2025-01-07
+
+* Support for pganalyze Query Tuning Workbooks
+  - The collector now optionally executes on-demand EXPLAIN ANALYZE queries for
+    the new Query Tuning feature via the new pganalyze.explain_analyze() helper
+  - This helper is owned by a separate user which gets assigned table read
+    permissions, and avoids granting the collector user unnecessary permissions
+    directly
+  - By creating the helper function you opt into automated query runs through
+    the collector. For high security environments, Query Tuning Workbooks can
+    still be used without this feature by running queries manually
+  - For easily creating the helper in all databases on a server the
+    new "--generate-explain-analyze-helper-sql" command is added
+  - The enable_query_runner setting introduced in 0.63.0 is removed,
+    since the helper function is now mandatory to use this feature
+* Update pg_query to v6 / Postgres 17 parser
+* Install script: Add AlmaLinux and Rocky Linux support
+* PII filtering bug fixes
+  - Correctly handle secondary lines that were not analyzed
+  - Detect bind parameters in CONTEXT as statement_parameter
+* Other bug fixes
+  - Azure: Improve system metrics error handling, and correctly return most recent value
+  - Add missing MAX_BUFFER_CACHE_MONITORING_GB configuration variable
+  - Track parent partition size when child partitions are untracked
+  - Store zero-value table stats when diff doesn't exist
+  - DB connections: Don't limit to 30 seconds lifetime to avoid timeout bugs
+* Routine security updates
+  - Bump golang.org/x/crypto from 0.25.0 to 0.31.0
+  - Update golang.org/x/net to v0.33.0
+
+
 ## 0.63.0      2024-11-21
 
 * Fix WebSocket error handling
