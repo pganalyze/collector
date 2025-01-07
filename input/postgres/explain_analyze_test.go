@@ -234,14 +234,21 @@ var queryRunTests = []queryRunTestpair{
 		[]null.String{},
 		[]string{},
 		"",
-		"pq: cannot execute UPDATE in a read-only transaction",
+		"query is not permitted to run - DML statement",
 	},
 	{
 		"SELECT 1; UPDATE test SET id = 123",
 		[]null.String{},
 		[]string{},
 		"",
-		"query is not permitted to run (multi-statement or utility command?)",
+		"query is not permitted to run - multi-statement query string",
+	},
+	{
+		"SELECT dblink_exec('host=myhost user=myuser password=mypass dbname=mydb', dblink_build_sql_insert('secret_table', '1', 1, '{\"1\"}', '{\"1\"}'))",
+		[]null.String{},
+		[]string{},
+		"",
+		"query is not permitted to run - function not allowed: dblink_exec",
 	},
 	{
 		"SELECT $1",

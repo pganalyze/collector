@@ -4,11 +4,16 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/guregu/null"
 	"github.com/lib/pq"
-	"github.com/pganalyze/collector/util"
+	pg_query "github.com/pganalyze/pg_query_go/v6"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protopath"
+	"google.golang.org/protobuf/reflect/protorange"
+	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
 func RunExplainAnalyzeForQueryRun(ctx context.Context, db *sql.DB, query string, parameters []null.String, parameterTypes []string, marker string) (result string, err error) {
@@ -53,16 +58,76 @@ func runExplainAnalyze(ctx context.Context, db *sql.DB, query string, parameters
 }
 
 func validateQuery(query string) error {
-	var isUtil []bool
-	// To be on the safe side never EXPLAIN a statement that can't be parsed,
-	// or multiple statements in one (leading to accidental execution)
-	isUtil, err := util.IsUtilityStmt(query)
-	if err != nil || len(isUtil) != 1 || isUtil[0] {
-		err = fmt.Errorf("query is not permitted to run (multi-statement or utility command?)")
+	parseResult, err := pg_query.Parse(query)
+	if err != nil {
+		return fmt.Errorf("query is not permitted to run - failed to parse")
+	}
+	if len(parseResult.Stmts) != 1 {
+		return fmt.Errorf("query is not permitted to run - multi-statement query string")
+	}
+
+	stmt := parseResult.Stmts[0].Stmt.Node
+	switch stmt.(type) {
+	case *pg_query.Node_SelectStmt:
+		// Allowed, continue
+		// Note that we permit wCTEs here (for now), and instead rely on the read-only transaction to block them
+	case *pg_query.Node_InsertStmt, *pg_query.Node_UpdateStmt, *pg_query.Node_DeleteStmt:
+		return fmt.Errorf("query is not permitted to run - DML statement")
+	default:
+		return fmt.Errorf("query is not permitted to run - utility statement")
+	}
+
+	err = validateBlockedFunctions(parseResult)
+	if err != nil {
 		return err
 	}
 
-	// TODO: Consider adding additional checks here (e.g. blocking known bad function calls)
-
 	return nil
+}
+
+var blockedFunctions = []string{
+	// Blocked because these functions allow exfiltrating data to external servers
+	"dblink",
+	"dblink_connect",
+	"dblink_exec",
+	// Blocked because these functions allow executing arbitrary SQL as input (which can workaround other checks)
+	"crosstab",
+	"crosstab2",
+	"crosstab3",
+	"crosstab4",
+	"xpath_table",
+}
+
+func validateBlockedFunctions(parseResult *pg_query.ParseResult) error {
+	return walkParseTree(parseResult, func(nodeType string, node proto.Message) error {
+		if nodeType != "FuncCall" {
+			return nil
+		}
+
+		f := node.(*pg_query.FuncCall)
+		// The funcname field can be optionally schema qualified, so we take the last item in the list of names
+		nameNode := f.Funcname[len(f.Funcname)-1]
+		name := nameNode.GetString_().Sval
+
+		if slices.Contains(blockedFunctions, name) {
+			return fmt.Errorf("query is not permitted to run - function not allowed: %s", name)
+		}
+		return nil
+	})
+}
+
+type treeWalker func(nodeType string, node proto.Message) error
+
+func walkParseTree(parseResult *pg_query.ParseResult, fn treeWalker) error {
+	return protorange.Range(parseResult.ProtoReflect(), func(p protopath.Values) error {
+		last := p.Index(-1)
+		m, ok := last.Value.Interface().(protoreflect.Message)
+		if ok {
+			err := fn(string(m.Descriptor().Name()), m.Interface())
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }
