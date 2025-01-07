@@ -65,18 +65,18 @@ func validateQuery(query string) error {
 	if len(parseResult.Stmts) != 1 {
 		return fmt.Errorf("query is not permitted to run - multi-statement query string")
 	}
-	for _, rawStmt := range parseResult.Stmts {
-		stmt := rawStmt.Stmt.Node
-		switch stmt.(type) {
-		case *pg_query.Node_SelectStmt:
-			// Allowed, continue
-			// Note that we permit wCTEs here (for now), and instead rely on the read-only transaction to block them
-		case *pg_query.Node_InsertStmt, *pg_query.Node_UpdateStmt, *pg_query.Node_DeleteStmt:
-			return fmt.Errorf("query is not permitted to run - DML statement")
-		default:
-			return fmt.Errorf("query is not permitted to run - utility statement")
-		}
+
+	stmt := parseResult.Stmts[0].Stmt.Node
+	switch stmt.(type) {
+	case *pg_query.Node_SelectStmt:
+		// Allowed, continue
+		// Note that we permit wCTEs here (for now), and instead rely on the read-only transaction to block them
+	case *pg_query.Node_InsertStmt, *pg_query.Node_UpdateStmt, *pg_query.Node_DeleteStmt:
+		return fmt.Errorf("query is not permitted to run - DML statement")
+	default:
+		return fmt.Errorf("query is not permitted to run - utility statement")
 	}
+
 	err = validateBlockedFunctions(parseResult)
 	if err != nil {
 		return err
