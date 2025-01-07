@@ -376,7 +376,13 @@ func TestLogsForAllServers(ctx context.Context, servers []*state.Server, globalC
 			continue
 		}
 
-		logLinePrefix, err := postgres.GetPostgresSetting(ctx, "log_line_prefix", server, globalCollectionOpts, prefixedLogger)
+		db, err := postgres.EstablishConnection(ctx, server, prefixedLogger, globalCollectionOpts, "")
+		if err != nil {
+			prefixedLogger.PrintError("Could not connect to database: %s", err)
+			continue
+		}
+
+		logLinePrefix, err := postgres.GetPostgresSetting(ctx, db, "log_line_prefix", server, globalCollectionOpts, prefixedLogger)
 		if err != nil {
 			prefixedLogger.PrintError("ERROR - Could not check log_line_prefix for server: %s", err)
 			hasFailedServers = true
