@@ -1153,6 +1153,11 @@ var otherContextPatterns = []match{
 		regexp:   regexp.MustCompile(`^JSON data, line (\d+): (.+)`),
 		secrets:  []state.LogSecretKind{0, state.TableDataLogSecret},
 	},
+	{
+		prefixes: []string{"portal \"", "unnamed portal "},
+		regexp:   regexp.MustCompile(`(?:(?:unnamed portal|portal \"(.+)\") with parameters: |, )\$\d+ = (?:(NULL)|'((?:[^']|'')*)')`),
+		secrets:  []state.LogSecretKind{0, state.StatementParameterLogSecret, state.StatementParameterLogSecret},
+	},
 }
 
 var autoVacuumIndexRegexp = regexp.MustCompile(`index "(.+?)": pages: (\d+) in total, (\d+) newly deleted, (\d+) currently deleted, (\d+) reusable,?\s*`)
@@ -2170,7 +2175,7 @@ func matchOtherContextLogLine(logLine state.LogLine) state.LogLine {
 		return logLine
 	}
 	for _, match := range otherContextPatterns {
-		logLine, parts := matchLogLine(logLine, match)
+		logLine, parts := matchLogLineAll(logLine, match)
 		if parts != nil {
 			return logLine
 		}
