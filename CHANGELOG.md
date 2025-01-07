@@ -8,8 +8,9 @@
   - This helper is owned by a separate user which gets assigned table read
     permissions, and avoids granting the collector user unnecessary permissions
     directly
-  - You can opt into this feature by creating the helper function, otherwise
-    this new feature is turned off by default
+  - By creating the helper function you opt into automated query runs through
+    the collector. For high security environments, Query Tuning Workbooks can
+    still be used without this feature by running queries manually
   - For easily creating the helper in all databases on a server the
     new "--generate-explain-analyze-helper-sql" command is added
   - The enable_query_runner setting introduced in 0.63.0 is removed,
