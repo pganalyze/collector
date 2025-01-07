@@ -94,16 +94,34 @@ var blockedFunctions = []string{
 	"xpath_table",
 }
 
-func validateBlockedFunctions(msg proto.Message) error {
-	return protorange.Range(msg.ProtoReflect(), func(p protopath.Values) error {
+func validateBlockedFunctions(parseResult *pg_query.ParseResult) error {
+	return walkParseTree(parseResult, func(nodeType string, node proto.Message) error {
+		if nodeType != "FuncCall" {
+			return nil
+		}
+
+		f := node.(*pg_query.FuncCall)
+		// The funcname field can be optionally schema qualified, so we take the last item in the list of names
+		nameNode := f.Funcname[len(f.Funcname)-1]
+		name := nameNode.GetString_().Sval
+
+		if slices.Contains(blockedFunctions, name) {
+			return fmt.Errorf("query is not permitted to run - function not allowed: %s", name)
+		}
+		return nil
+	})
+}
+
+type treeWalker func(nodeType string, node proto.Message) error
+
+func walkParseTree(parseResult *pg_query.ParseResult, fn treeWalker) error {
+	return protorange.Range(parseResult.ProtoReflect(), func(p protopath.Values) error {
 		last := p.Index(-1)
 		m, ok := last.Value.Interface().(protoreflect.Message)
-		if ok && m.Descriptor().Name() == "FuncCall" {
-			f := m.Interface().(*pg_query.FuncCall)
-			nameNode := f.Funcname[len(f.Funcname)-1]
-			name := nameNode.GetString_().Sval
-			if slices.Contains(blockedFunctions, name) {
-				return fmt.Errorf("query is not permitted to run - function not allowed: %s", name)
+		if ok {
+			err := fn(string(m.Descriptor().Name()), m.Interface())
+			if err != nil {
+				return err
 			}
 		}
 		return nil
