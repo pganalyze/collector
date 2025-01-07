@@ -18,7 +18,7 @@ func ReplaceSecrets(logLines []state.LogLine, filterLogSecret []state.LogSecretK
 		}
 	}
 	for idx, logLine := range logLines {
-		if filterUnidentified && logLines[idx].Classification == 0 && logLines[idx].ParentUUID == uuid.Nil {
+		if filterUnidentified && (!logLine.ReviewedForSecrets || (logLine.Classification == 0 && logLines[idx].ParentUUID == uuid.Nil)) {
 			logLines[idx].Content = replacement + "\n"
 		} else {
 			sort.Slice(logLine.SecretMarkers, func(i, j int) bool {
