@@ -35,7 +35,7 @@ func GetPlans(ctx context.Context, server *state.Server, logger *util.Logger, db
 		return nil, nil, nil
 	}
 
-	computePlanIdEnabled, err := GetPostgresSetting(ctx, "aurora_compute_plan_id", server, globalCollectionOpts, logger)
+	computePlanIdEnabled, err := GetPostgresSetting(ctx, db, "aurora_compute_plan_id")
 	if err != nil {
 		if globalCollectionOpts.TestRun {
 			logger.PrintInfo("Function aurora_stat_plans() is not supported because Aurora version is too old. Upgrade to Aurora PostgreSQL version 14.10, 15.5, or later versions to collect query plans and stats.")
