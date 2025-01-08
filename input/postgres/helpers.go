@@ -9,7 +9,6 @@ import (
 
 	"github.com/guregu/null"
 	"github.com/pganalyze/collector/state"
-	"github.com/pganalyze/collector/util"
 )
 
 func unpackPostgresInt32Array(input null.String) (result []int32) {
@@ -72,16 +71,10 @@ SELECT setting
 	FROM pg_settings
  WHERE name = '%s'`
 
-func GetPostgresSetting(ctx context.Context, settingName string, server *state.Server, globalCollectionOpts state.CollectionOpts, prefixedLogger *util.Logger) (string, error) {
+func GetPostgresSetting(ctx context.Context, db *sql.DB, settingName string) (string, error) {
 	var value string
 
-	db, err := EstablishConnection(ctx, server, prefixedLogger, globalCollectionOpts, "")
-	if err != nil {
-		return "", fmt.Errorf("Could not connect to database to retrieve \"%s\": %s", settingName, err)
-	}
-
-	err = db.QueryRow(QueryMarkerSQL + fmt.Sprintf(settingValueSQL, settingName)).Scan(&value)
-	db.Close()
+	err := db.QueryRow(QueryMarkerSQL + fmt.Sprintf(settingValueSQL, settingName)).Scan(&value)
 	if err != nil {
 		return "", fmt.Errorf("Could not read \"%s\" setting: %s", settingName, err)
 	}

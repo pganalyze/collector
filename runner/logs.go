@@ -376,7 +376,7 @@ func TestLogsForAllServers(ctx context.Context, servers []*state.Server, globalC
 			continue
 		}
 
-		logLinePrefix, err := postgres.GetPostgresSetting(ctx, "log_line_prefix", server, globalCollectionOpts, prefixedLogger)
+		logLinePrefix, err := getLogLinePrefix(ctx, server, globalCollectionOpts, prefixedLogger)
 		if err != nil {
 			prefixedLogger.PrintError("ERROR - Could not check log_line_prefix for server: %s", err)
 			hasFailedServers = true
@@ -424,6 +424,16 @@ func TestLogsForAllServers(ctx context.Context, servers []*state.Server, globalC
 	}
 
 	return
+}
+
+func getLogLinePrefix(ctx context.Context, server *state.Server, globalCollectionOpts state.CollectionOpts, prefixedLogger *util.Logger) (string, error) {
+	db, err := postgres.EstablishConnection(ctx, server, prefixedLogger, globalCollectionOpts, "")
+	if err != nil {
+		return "", fmt.Errorf("Could not connect to database to retrieve log_line_prefix: %s", err)
+	}
+	defer db.Close()
+
+	return postgres.GetPostgresSetting(ctx, db, "log_line_prefix")
 }
 
 func testLocalLogTail(ctx context.Context, wg *sync.WaitGroup, server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) bool {
