@@ -46,9 +46,9 @@ func getPostgresSetting(ctx context.Context, settingName string, server *state.S
 	if err != nil {
 		return "", fmt.Errorf("Could not connect to database to retrieve \"%s\": %s", settingName, err)
 	}
+	defer db.Close()
 
 	err = db.QueryRowContext(ctx, postgres.QueryMarkerSQL+fmt.Sprintf(settingValueSQL, settingName)).Scan(&value)
-	db.Close()
 	if err != nil {
 		return "", fmt.Errorf("Could not read \"%s\" setting: %s", settingName, err)
 	}
