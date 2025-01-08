@@ -41,6 +41,7 @@ func GetBufferCache(ctx context.Context, server *state.Server, globalCollectionO
 		channel <- bufferCache
 		return
 	}
+	defer db.Close()
 
 	schemaName := ""
 	db.QueryRowContext(ctx, QueryMarkerSQL+bufferCacheExtensionSQL).Scan(&schemaName)
@@ -83,9 +84,9 @@ func GetBufferCache(ctx context.Context, server *state.Server, globalCollectionO
 			channel <- bufferCache
 			return
 		}
-		db, ok := bufferCache[reldatabase]
+		b, ok := bufferCache[reldatabase]
 		if ok {
-			db[relfilenode] = bytes
+			b[relfilenode] = bytes
 		} else {
 			bufferCache[reldatabase] = map[state.Oid]int64{relfilenode: bytes}
 		}
