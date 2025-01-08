@@ -4,7 +4,7 @@
 
 * Fix database connection leak in buffercache logic
   - This was previously not an issue since connections auto-closed after 30 seconds,
-    but due to a connection handling change in 0.64.0 this broke and caused
+    but due to a connection handling change in 0.64.0, this broke and caused
     pganalyze user connection limits to be hit
 
 
