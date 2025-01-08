@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.64.1      2025-01-08
+
+* Fix database connection leak in buffercache logic
+  - This was previously not an issue since connections auto-closed after 30 seconds,
+    but due to a connection handling change in 0.64.0 this broke and caused
+    pganalyze user connection limits to be hit
+
+
 ## 0.64.0      2025-01-07
 
 * Support for pganalyze Query Tuning Workbooks
