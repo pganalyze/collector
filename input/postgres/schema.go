@@ -134,7 +134,7 @@ func collectSchemaData(ctx context.Context, collectionOpts state.CollectionOpts,
 		}
 		ps.Relations = append(ps.Relations, newRelations...)
 
-		newRelationStats, err := GetRelationStats(ctx, db, postgresVersion, server)
+		newRelationStats, err := GetRelationStats(ctx, db, postgresVersion, server, logger)
 		if err != nil {
 			return ps, ts, fmt.Errorf("error collecting table statistics: %s", err)
 		}

@@ -6,10 +6,12 @@ import (
 	"fmt"
 
 	"github.com/pganalyze/collector/state"
+	"github.com/pganalyze/collector/util"
 )
 
 const citusRelationSizeSQL = `
 SELECT logicalrelid::oid,
+			 (n.nspname || '.' || c.relname),
 			 CASE
 			   WHEN coalesce(current_setting('citus.shard_replication_factor')::integer, 1) = 1
 				 THEN pg_catalog.citus_table_size(logicalrelid)
@@ -25,10 +27,13 @@ func collectCitusRelationStats(postgresVersion state.PostgresVersion, server *st
 	return postgresVersion.IsCitus && server.Config.DisableCitusSchemaStats != "all"
 }
 
-func handleRelationStatsAux(ctx context.Context, db *sql.DB, relStats state.PostgresRelationStatsMap, postgresVersion state.PostgresVersion, server *state.Server) (state.PostgresRelationStatsMap, error) {
+func handleRelationStatsAux(ctx context.Context, db *sql.DB, relStats state.PostgresRelationStatsMap, postgresVersion state.PostgresVersion, server *state.Server, logger *util.Logger) (state.PostgresRelationStatsMap, error) {
+	logger.PrintVerbose("Collecting relation stats auxiliary")
 	if !collectCitusRelationStats(postgresVersion, server) {
+		logger.PrintVerbose("Citus not detected")
 		return relStats, nil
 	}
+	logger.PrintVerbose("Citus detected, collecting Citus relation size")
 
 	stmt, err := db.PrepareContext(ctx, QueryMarkerSQL+citusRelationSizeSQL)
 	if err != nil {
@@ -44,9 +49,10 @@ func handleRelationStatsAux(ctx context.Context, db *sql.DB, relStats state.Post
 
 	for rows.Next() {
 		var oid state.Oid
+		var name string
 		var sizeBytes int64
 
-		err = rows.Scan(&oid, &sizeBytes)
+		err = rows.Scan(&oid, &name, &sizeBytes)
 		if err != nil {
 			return relStats, fmt.Errorf("RelationStatsExt/Scan: %s", err)
 		}
@@ -54,12 +60,14 @@ func handleRelationStatsAux(ctx context.Context, db *sql.DB, relStats state.Post
 		s.SizeBytes = sizeBytes
 		s.ToastSizeBytes = 0
 		relStats[oid] = s
+		logger.PrintVerbose("Recording stats: oid=%v, name=%s, size_bytes=%d", oid, name, sizeBytes)
 	}
 
 	if err = rows.Err(); err != nil {
 		return relStats, fmt.Errorf("RelationStatsExt/Rows: %s", err)
 	}
 
+	logger.PrintVerbose("Finish collecting Citus relation size")
 	return relStats, nil
 }
 

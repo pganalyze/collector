@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/pganalyze/collector/state"
+	"github.com/pganalyze/collector/util"
 )
 
 const relationStatsSQLInsertsSinceVacuumFieldPg13 string = "pg_stat_get_ins_since_vacuum(c.oid)"
@@ -157,7 +158,7 @@ SELECT relid,
   FROM locked_relids
 `
 
-func GetRelationStats(ctx context.Context, db *sql.DB, postgresVersion state.PostgresVersion, server *state.Server) (relStats state.PostgresRelationStatsMap, err error) {
+func GetRelationStats(ctx context.Context, db *sql.DB, postgresVersion state.PostgresVersion, server *state.Server, logger *util.Logger) (relStats state.PostgresRelationStatsMap, err error) {
 	var insertsSinceVacuumField string
 	var systemCatalogFilter string
 
@@ -218,7 +219,7 @@ func GetRelationStats(ctx context.Context, db *sql.DB, postgresVersion state.Pos
 		return
 	}
 
-	relStats, err = handleRelationStatsAux(ctx, db, relStats, postgresVersion, server)
+	relStats, err = handleRelationStatsAux(ctx, db, relStats, postgresVersion, server, logger)
 
 	return
 }
