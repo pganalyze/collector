@@ -1,5 +1,7 @@
 package state
 
+import "github.com/guregu/null"
+
 // PostgresServerStats - Statistics for a Postgres server.
 type PostgresServerStats struct {
 	CurrentXactId   Xid8
@@ -10,6 +12,9 @@ type PostgresServerStats struct {
 	XminHorizonReplicationSlotCatalog Xid
 	XminHorizonPreparedXact           Xid
 	XminHorizonStandby                Xid
+
+	PgStatStatementsDealloc int64
+	PgStatStatementsReset   null.Time
 }
 
 // FullXminHorizonBackend - Returns XminHorizonBackend in 64-bit FullTransactionId

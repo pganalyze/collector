@@ -170,6 +170,9 @@ message ServerStatistic {
   int64 xmin_horizon_replication_slot_catalog = 5; // The oldest catalog_xmin for replication slots in xid8 (64-bit FullTransactionId)
   int64 xmin_horizon_prepared_xact = 6; // The oldest xmin for prepared transactions in xid8 (64-bit FullTransactionId)
   int64 xmin_horizon_standby = 7; // The oldest xmin for standbys in xid8 (64-bit FullTransactionId)
+
+  int64 pg_stat_statements_dealloc = 8; // Total number of times pg_stat_statements entries about the least-executed statements were deallocated
+  NullTimestamp pg_stat_statements_reset = 9; // Time at which all statistics in the pg_stat_statements view were last reset
 }
 
 message Setting {

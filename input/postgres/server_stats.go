@@ -69,9 +69,21 @@ COALESCE((
 ), '0'::xid) as standby
 `
 
+const pgStatStatementsInfoSQL string = `
+SELECT
+	dealloc,
+	stats_reset
+FROM %s;
+`
+
 func GetServerStats(ctx context.Context, logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion, systemType string) (state.PostgresServerStats, error) {
 	var stats state.PostgresServerStats
 	var transactionIdSQL string
+
+	err := getPgStatStatementsInfo(ctx, db, &stats)
+	if err != nil {
+		return stats, err
+	}
 
 	// Only collect transaction ID or xmin horizon related stats with non-replicas
 	if isReplica, err := getIsReplica(ctx, db); err == nil && !isReplica {
@@ -108,4 +120,26 @@ func GetServerStats(ctx context.Context, logger *util.Logger, db *sql.DB, postgr
 	}
 
 	return stats, nil
+}
+
+func getPgStatStatementsInfo(ctx context.Context, db *sql.DB, stats *state.PostgresServerStats) error {
+	var extSchema string
+	var foundExtMinorVersion int16
+	// pg_stat_statements_info view was introduced in pg_stat_statements 1.9+ (Postgres 14+)
+	const supportedExtMinorVersion = 9
+	var pgStatStatementsInfoView string
+
+	err := db.QueryRowContext(ctx, QueryMarkerSQL+statementExtensionVersionSQL).Scan(&extSchema, &foundExtMinorVersion)
+	if err != nil && err != sql.ErrNoRows {
+		return err
+	}
+	if foundExtMinorVersion < supportedExtMinorVersion {
+		return nil
+	}
+
+	pgStatStatementsInfoView = extSchema + ".pg_stat_statements_info"
+	err = db.QueryRowContext(ctx, QueryMarkerSQL+fmt.Sprintf(pgStatStatementsInfoSQL, pgStatStatementsInfoView)).Scan(
+		&stats.PgStatStatementsDealloc, &stats.PgStatStatementsReset,
+	)
+	return err
 }

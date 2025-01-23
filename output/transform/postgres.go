@@ -164,6 +164,8 @@ func transformPostgresServerStats(s snapshot.FullSnapshot, transientState state.
 		XminHorizonReplicationSlotCatalog: transientState.ServerStats.FullXminHorizonReplicationSlotCatalog(),
 		XminHorizonPreparedXact:           transientState.ServerStats.FullXminHorizonPreparedXact(),
 		XminHorizonStandby:                transientState.ServerStats.FullXminHorizonStandby(),
+		PgStatStatementsDealloc:           transientState.ServerStats.PgStatStatementsDealloc,
+		PgStatStatementsReset:             snapshot.NullTimeToNullTimestamp(transientState.ServerStats.PgStatStatementsReset),
 	}
 
 	return s
