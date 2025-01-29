@@ -12,9 +12,6 @@ type PostgresServerStats struct {
 	XminHorizonReplicationSlotCatalog Xid
 	XminHorizonPreparedXact           Xid
 	XminHorizonStandby                Xid
-
-	PgStatStatementsDealloc int64
-	PgStatStatementsReset   null.Time
 }
 
 // FullXminHorizonBackend - Returns XminHorizonBackend in 64-bit FullTransactionId
@@ -40,4 +37,18 @@ func (ss PostgresServerStats) FullXminHorizonPreparedXact() int64 {
 // FullXminHorizonStandby - Returns XminHorizonStandby in 64-bit FullTransactionId
 func (ss PostgresServerStats) FullXminHorizonStandby() int64 {
 	return int64(XidToXid8(ss.XminHorizonStandby, Xid8(ss.CurrentXactId)))
+}
+
+type PgStatStatementsStats struct {
+	Dealloc int64
+	Reset   null.Time
+}
+
+type DiffedPgStatStatementsStats PgStatStatementsStats
+
+func (curr PgStatStatementsStats) DiffSince(prev PgStatStatementsStats) DiffedPgStatStatementsStats {
+	return DiffedPgStatStatementsStats{
+		Dealloc: curr.Dealloc - prev.Dealloc,
+		Reset:   curr.Reset,
+	}
 }

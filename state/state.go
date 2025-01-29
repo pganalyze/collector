@@ -33,8 +33,9 @@ type PersistedState struct {
 	Relations []PostgresRelation
 	Functions []PostgresFunction
 
-	System         SystemState
-	CollectorStats CollectorStats
+	System                SystemState
+	CollectorStats        CollectorStats
+	PgStatStatementsStats PgStatStatementsStats
 
 	// Incremented every run, indicates whether we should run a pg_stat_statements_reset()
 	// on behalf of the user. Only activates once it reaches GrantFeatures.StatementReset,
@@ -183,6 +184,8 @@ type DiffState struct {
 	CollectorStats DiffedCollectorStats
 
 	DatabaseStats DiffedPostgresDatabaseStatsMap
+
+	PgStatStatementsStats DiffedPgStatStatementsStats
 }
 
 // StateOnDiskFormatVersion - Increment this when an old state preserved to disk should be ignored
