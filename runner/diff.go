@@ -32,6 +32,7 @@ func diffState(logger *util.Logger, prevState state.PersistedState, newState sta
 	diffState.CollectorStats = diffCollectorStats(newState.CollectorStats, prevState.CollectorStats)
 
 	diffState.DatabaseStats = diffDatabaseStats(newState.DatabaseStats, prevState.DatabaseStats)
+	diffState.PgStatStatementsStats = diffPgStatStatementsStats(newState.PgStatStatementsStats, prevState.PgStatStatementsStats)
 
 	return
 }
@@ -195,6 +196,11 @@ func diffSystemDiskStats(new state.DiskStatsMap, prev state.DiskStatsMap, collec
 }
 
 func diffCollectorStats(new state.CollectorStats, prev state.CollectorStats) (diff state.DiffedCollectorStats) {
+	diff = new.DiffSince(prev)
+	return
+}
+
+func diffPgStatStatementsStats(new state.PgStatStatementsStats, prev state.PgStatStatementsStats) (diff state.DiffedPgStatStatementsStats) {
 	diff = new.DiffSince(prev)
 	return
 }

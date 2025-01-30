@@ -69,9 +69,21 @@ COALESCE((
 ), '0'::xid) as standby
 `
 
-func GetServerStats(ctx context.Context, logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion, systemType string) (state.PostgresServerStats, error) {
+const pgStatStatementsInfoSQL string = `
+SELECT
+	dealloc,
+	stats_reset
+FROM %s;
+`
+
+func GetServerStats(ctx context.Context, logger *util.Logger, db *sql.DB, ps state.PersistedState, ts state.TransientState, systemType string) (state.PersistedState, state.TransientState, error) {
 	var stats state.PostgresServerStats
 	var transactionIdSQL string
+
+	err := getPgStatStatementsInfo(ctx, db, &ps.PgStatStatementsStats)
+	if err != nil {
+		return ps, ts, err
+	}
 
 	// Only collect transaction ID or xmin horizon related stats with non-replicas
 	if isReplica, err := getIsReplica(ctx, db); err == nil && !isReplica {
@@ -90,10 +102,11 @@ func GetServerStats(ctx context.Context, logger *util.Logger, db *sql.DB, postgr
 			&stats.XminHorizonPreparedXact, &stats.XminHorizonStandby,
 		)
 		if err != nil {
-			return stats, err
+			ts.ServerStats = stats
+			return ps, ts, err
 		}
 
-		if postgresVersion.Numeric >= state.PostgresVersion13 {
+		if ts.Version.Numeric >= state.PostgresVersion13 {
 			transactionIdSQL = transactionIdSQLPg13
 		} else {
 			transactionIdSQL = transactionIdSQLDefault
@@ -103,9 +116,33 @@ func GetServerStats(ctx context.Context, logger *util.Logger, db *sql.DB, postgr
 			&stats.CurrentXactId, &stats.NextMultiXactId,
 		)
 		if err != nil {
-			return stats, err
+			ts.ServerStats = stats
+			return ps, ts, err
 		}
 	}
 
-	return stats, nil
+	ts.ServerStats = stats
+	return ps, ts, nil
+}
+
+func getPgStatStatementsInfo(ctx context.Context, db *sql.DB, stats *state.PgStatStatementsStats) error {
+	var extSchema string
+	var foundExtMinorVersion int16
+	// pg_stat_statements_info view was introduced in pg_stat_statements 1.9+ (Postgres 14+)
+	const supportedExtMinorVersion = 9
+	var pgStatStatementsInfoView string
+
+	err := db.QueryRowContext(ctx, QueryMarkerSQL+statementExtensionVersionSQL).Scan(&extSchema, &foundExtMinorVersion)
+	if err != nil && err != sql.ErrNoRows {
+		return err
+	}
+	if foundExtMinorVersion < supportedExtMinorVersion {
+		return nil
+	}
+
+	pgStatStatementsInfoView = extSchema + ".pg_stat_statements_info"
+	err = db.QueryRowContext(ctx, QueryMarkerSQL+fmt.Sprintf(pgStatStatementsInfoSQL, pgStatStatementsInfoView)).Scan(
+		&stats.Dealloc, &stats.Reset,
+	)
+	return err
 }

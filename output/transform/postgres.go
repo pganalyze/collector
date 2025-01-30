@@ -14,7 +14,7 @@ func transformPostgres(s snapshot.FullSnapshot, newState state.PersistedState, d
 
 	s = transformPostgresVersion(s, transientState)
 	s = transformPostgresConfig(s, transientState)
-	s = transformPostgresServerStats(s, transientState)
+	s = transformPostgresServerStats(s, newState, diffState, transientState)
 	s = transformPostgresReplication(s, transientState, roleOidToIdx)
 	s, queryIDKeyToIdx := transformPostgresStatements(s, newState, diffState, transientState, roleOidToIdx, databaseOidToIdx)
 	s = transformPostgresPlans(s, newState, diffState, transientState, queryIDKeyToIdx)
@@ -155,7 +155,7 @@ func transformPostgresVersion(s snapshot.FullSnapshot, transientState state.Tran
 	return s
 }
 
-func transformPostgresServerStats(s snapshot.FullSnapshot, transientState state.TransientState) snapshot.FullSnapshot {
+func transformPostgresServerStats(s snapshot.FullSnapshot, newState state.PersistedState, diffState state.DiffState, transientState state.TransientState) snapshot.FullSnapshot {
 	s.ServerStatistic = &snapshot.ServerStatistic{
 		CurrentXactId:                     int64(transientState.ServerStats.CurrentXactId),
 		NextMultiXactId:                   int64(transientState.ServerStats.NextMultiXactId),
@@ -164,6 +164,8 @@ func transformPostgresServerStats(s snapshot.FullSnapshot, transientState state.
 		XminHorizonReplicationSlotCatalog: transientState.ServerStats.FullXminHorizonReplicationSlotCatalog(),
 		XminHorizonPreparedXact:           transientState.ServerStats.FullXminHorizonPreparedXact(),
 		XminHorizonStandby:                transientState.ServerStats.FullXminHorizonStandby(),
+		PgStatStatementsDealloc:           diffState.PgStatStatementsStats.Dealloc,
+		PgStatStatementsReset:             snapshot.NullTimeToNullTimestamp(diffState.PgStatStatementsStats.Reset),
 	}
 
 	return s
