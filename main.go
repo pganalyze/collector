@@ -66,6 +66,7 @@ func main() {
 	var reloadRun bool
 	var noReload bool
 	var benchmark bool
+	var forceRecord bool
 
 	logFlags := log.LstdFlags
 	logger := &util.Logger{}
@@ -111,6 +112,7 @@ func main() {
 	flag.StringVar(&stateFilename, "statefile", defaultStateFile, "Specify alternative path for state file")
 	flag.StringVar(&pidFilename, "pidfile", "", "Specifies a path that a pidfile should be written to (default is no pidfile being written)")
 	flag.BoolVar(&benchmark, "benchmark", false, "Runs collector in benchmark mode (skip submitting the statistics to the server)")
+	flag.BoolVar(&forceRecord, "force-record", false, "When used with --test, sends snapshots like a normal one so that it will be processed on the server side (for testing and debugging)")
 	flag.Parse()
 
 	// Automatically reload the configuration after a successful test run.
@@ -178,6 +180,7 @@ func main() {
 		WriteStateUpdate:                 (!dryRun && !dryRunLogs && !testRun) || forceStateUpdate,
 		ForceEmptyGrant:                  dryRun || dryRunLogs || testRunLogs || benchmark,
 		OutputAsJson:                     !benchmark,
+		ForceRecord:                      forceRecord,
 	}
 
 	if reloadRun && !testRun {

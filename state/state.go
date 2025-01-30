@@ -231,6 +231,7 @@ type CollectionOpts struct {
 	ForceEmptyGrant  bool
 
 	OutputAsJson bool
+	ForceRecord  bool
 }
 
 type Grant struct {
