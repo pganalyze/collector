@@ -17,6 +17,12 @@ build_dist:
 	go build -o ${OUTFILE}
 	make -C helper OUTFILE=../pganalyze-collector-helper
 	make -C setup OUTFILE=../pganalyze-collector-setup
+	# Sign built Go binaries for macOS
+	@if [ "$(shell uname)" = "Darwin" ] && command -v codesign > /dev/null 2>&1; then \
+	  codesign --force --sign - ${OUTFILE}; \
+	  codesign --force --sign - pganalyze-collector-helper; \
+	  codesign --force --sign - pganalyze-collector-setup; \
+	fi
 
 build_dist_alpine:
 	# Increase stack size from Alpine's default of 80kb to 2mb - otherwise we see
