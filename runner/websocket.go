@@ -74,7 +74,7 @@ func connect(ctx context.Context, server *state.Server, globalCollectionOpts sta
 	headers["Pganalyze-System-Id-Fallback"] = []string{server.Config.SystemIDFallback}
 	headers["Pganalyze-System-Type-Fallback"] = []string{server.Config.SystemTypeFallback}
 	headers["Pganalyze-System-Scope-Fallback"] = []string{server.Config.SystemScopeFallback}
-	if globalCollectionOpts.TestRun {
+	if globalCollectionOpts.TestRun && !globalCollectionOpts.ForceRecord {
 		headers["Pganalyze-Test-Run"] = []string{"true"}
 	}
 	headers["User-Agent"] = []string{util.CollectorNameAndVersion}
