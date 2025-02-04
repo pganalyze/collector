@@ -334,9 +334,13 @@ func checkOneInitialCollectionStatus(ctx context.Context, server *state.Server, 
 
 	logs.SyncLogParser(server, settings)
 	parser := server.GetLogParser()
-	prefixErr := parser.ValidatePrefix()
-	if prefixErr != nil {
-		logger.PrintWarning("Checking log_line_prefix: %s", prefixErr)
+	if parser == nil {
+		logger.PrintWarning("Could not initialize log parser for server")
+	} else {
+		prefixErr := parser.ValidatePrefix()
+		if prefixErr != nil {
+			logger.PrintWarning("Checking log_line_prefix: %s", prefixErr)
+		}
 	}
 
 	server.CollectionStatusMutex.Lock()
