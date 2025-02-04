@@ -18,7 +18,6 @@ package s2a.proto.v2;
 
 option go_package = "github.com/google/s2a/internal/proto/v2/s2a_go_proto";
 
-import "internal/proto/common/common.proto";
 import "internal/proto/v2/common/common.proto";
 import "internal/proto/v2/s2a_context/s2a_context.proto";
 
@@ -53,11 +52,13 @@ message AlpnPolicy {
 }
 
 message AuthenticationMechanism {
+  reserved 1;
+
   // Applications may specify an identity associated to an authentication
   // mechanism. Otherwise, S2A assumes that the authentication mechanism is
   // associated with the default identity. If the default identity cannot be
   // determined, the request is rejected.
-  s2a.proto.Identity identity = 1;
+  Identity identity = 3;
 
   oneof mechanism_oneof {
     // A token that the application uses to authenticate itself to S2A.
@@ -239,6 +240,14 @@ message ValidatePeerCertificateChainReq {
     // The connect-to-Google verification mode uses the trust bundle for
     // connecting to Google, e.g. *.mtls.googleapis.com endpoints.
     CONNECT_TO_GOOGLE = 2;
+    // Internal use only.
+    RESERVED_CUSTOM_VERIFICATION_MODE_3 = 3;
+    // Internal use only.
+    RESERVED_CUSTOM_VERIFICATION_MODE_4 = 4;
+    // Internal use only.
+    RESERVED_CUSTOM_VERIFICATION_MODE_5 = 5;
+    // Internal use only.
+    RESERVED_CUSTOM_VERIFICATION_MODE_6 = 6;
   }
 
   message ClientPeer {
@@ -291,6 +300,7 @@ message ValidatePeerCertificateChainResp {
 }
 
 message SessionReq {
+  reserved 1;
   // The identity corresponding to the TLS configurations that MUST be used for
   // the TLS handshake.
   //
@@ -299,7 +309,7 @@ message SessionReq {
   // identity is not populated, S2A will try to deduce the managed identity to
   // use from the SNI extension. If that also fails, S2A uses the default
   // identity (if one exists).
-  s2a.proto.Identity local_identity = 1;
+  Identity local_identity = 7;
 
   // The authentication mechanisms that the application wishes to use to
   // authenticate to S2A, ordered by preference. S2A will always use the first

@@ -53,3 +53,25 @@ enum AlpnProtocol {
   ALPN_PROTOCOL_HTTP2 = 2;
   ALPN_PROTOCOL_HTTP1_1 = 3;
 }
+
+message Identity {
+  oneof identity_oneof {
+    // The SPIFFE ID of a connection endpoint.
+    string spiffe_id = 1;
+
+    // The hostname of a connection endpoint.
+    string hostname = 2;
+
+    // The UID of a connection endpoint.
+    string uid = 4;
+
+    // The username of a connection endpoint.
+    string username = 5;
+
+    // The GCP ID of a connection endpoint.
+    string gcp_id = 6;
+  }
+
+  // Additional identity-specific attributes.
+  map<string, string> attributes = 3;
+}
