@@ -405,6 +405,9 @@ func setupLogTransformer(ctx context.Context, wg *sync.WaitGroup, server *state.
 					return
 				}
 				logParser := server.GetLogParser()
+				if logParser == nil {
+					continue
+				}
 
 				// We ignore failures here since we want the per-backend stitching logic
 				// that runs later on (and any other parsing errors will just be ignored)
