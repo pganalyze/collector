@@ -45,6 +45,7 @@ func PrintDebugLogLines(logLines []state.LogLine, classifications map[pganalyze_
 	fmt.Println("\nParsed log lines:")
 	linesById := make(map[uuid.UUID]*state.LogLine)
 	for _, logLine := range logLines {
+		logLine := logLine
 		linesById[logLine.UUID] = &logLine
 		if len(classifications) > 0 {
 			var classifiedLine *state.LogLine
