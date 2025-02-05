@@ -44,43 +44,43 @@ func EstablishConnection(ctx context.Context, server *state.Server, logger *util
 func connectToDb(ctx context.Context, config config.ServerConfig, logger *util.Logger, globalCollectionOpts state.CollectionOpts, databaseName string) (*sql.DB, error) {
 	var dbPasswordOverride string
 	var hostOverride string
+	var sslmodeOverride string
 	var db *sql.DB
 	driverName := "postgres"
 
 	if config.DbUseIamAuth {
-		if config.SystemType != "amazon_rds" {
+		if config.SystemType == "amazon_rds" {
+			sess, err := awsutil.GetAwsSession(config)
+			if err != nil {
+				return nil, err
+			}
+			if dbToken, err := rdsutils.BuildAuthToken(
+				fmt.Sprintf("%s:%d", config.GetDbHost(), config.GetDbPortOrDefault()),
+				config.AwsRegion,
+				config.GetDbUsername(),
+				sess.Config.Credentials,
+			); err != nil {
+				return nil, err
+			} else {
+				dbPasswordOverride = dbToken
+			}
+		} else if config.SystemType == "google_cloudsql" {
+			hostOverride = strings.Join([]string{config.GcpProjectID, config.GcpRegion, config.GcpCloudSQLInstanceID}, ":")
+			// When using cloud-sql-go-connector, this needs to be set as disable
+			sslmodeOverride = "disable"
+			driverName = "cloudsql-postgres"
+		} else {
 			return nil, fmt.Errorf("IAM auth is only supported for Amazon RDS and Aurora - turn off IAM auth setting to use password-based authentication")
 		}
-		sess, err := awsutil.GetAwsSession(config)
-		if err != nil {
-			return nil, err
-		}
-		if dbToken, err := rdsutils.BuildAuthToken(
-			fmt.Sprintf("%s:%d", config.GetDbHost(), config.GetDbPortOrDefault()),
-			config.AwsRegion,
-			config.GetDbUsername(),
-			sess.Config.Credentials,
-		); err != nil {
-			return nil, err
-		} else {
-			dbPasswordOverride = dbToken
-		}
-	}
-	// TODO: do something similar to above, provide a new config
-	if config.GcpCloudSQLInstanceID != "" {
-		// TODO: specify region in config too
-		region := "us-central1"
-		hostOverride = strings.Join([]string{config.GcpProjectID, region, config.GcpCloudSQLInstanceID}, ":")
-		driverName = "cloudsql-postgres"
 	}
 
-	connectString, err := config.GetPqOpenString(databaseName, dbPasswordOverride, hostOverride)
+	connectString, err := config.GetPqOpenString(databaseName, dbPasswordOverride, hostOverride, sslmodeOverride)
 	if err != nil {
 		return nil, err
 	}
 	connectString += " application_name=" + globalCollectionOpts.CollectorApplicationName
 
-	logger.PrintVerbose("sql.Open(\"postgres\", \"%s\")", connectString)
+	// logger.PrintVerbose("sql.Open(\"postgres\", \"%s\")", connectString)
 
 	db, err = sql.Open(driverName, connectString)
 	if err != nil {

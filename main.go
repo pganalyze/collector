@@ -28,9 +28,6 @@ import (
 	"github.com/pganalyze/collector/util"
 
 	_ "github.com/lib/pq" // Enable database package to use Postgres
-
-	"cloud.google.com/go/cloudsqlconn"
-	"cloud.google.com/go/cloudsqlconn/postgres/pgxv5"
 )
 
 const defaultConfigFile = "/etc/pganalyze-collector.conf"
@@ -288,13 +285,8 @@ ReadConfigAndRun:
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := sync.WaitGroup{}
 	exitCode := 0
-	cleanup, err := pgxv5.RegisterDriver("cloudsql-postgres", cloudsqlconn.WithIAMAuthN())
-	if err != nil {
-		logger.PrintError("Failed to register cloudsql-postgres driver: %s", err)
-		return
-	}
-	defer cleanup()
-	keepRunning, testRunSuccess, writeStateFile, shutdown := runner.Run(ctx, &wg, globalCollectionOpts, logger, configFilename)
+	keepRunning, testRunSuccess, writeStateFile, shutdown, driverCleanup := runner.Run(ctx, &wg, globalCollectionOpts, logger, configFilename)
+	defer driverCleanup()
 
 	if keepRunning {
 		// Block here until we get any of the registered signals

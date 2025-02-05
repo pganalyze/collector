@@ -110,6 +110,7 @@ type ServerConfig struct {
 	GcpAlloyDBInstanceID  string `ini:"gcp_alloydb_instance_id"`
 	GcpPubsubSubscription string `ini:"gcp_pubsub_subscription"`
 	GcpCredentialsFile    string `ini:"gcp_credentials_file"`
+	GcpRegion             string `ini:"gcp_region"`
 
 	CrunchyBridgeClusterID string `ini:"crunchy_bridge_cluster_id"`
 	CrunchyBridgeAPIKey    string `ini:"crunchy_bridge_api_key"`
@@ -247,7 +248,7 @@ func (config ServerConfig) SupportsLogDownload() bool {
 }
 
 // GetPqOpenString - Gets the database configuration as a string that can be passed to lib/pq for connecting
-func (config ServerConfig) GetPqOpenString(dbNameOverride string, passwordOverride string, hostOverride string) (string, error) {
+func (config ServerConfig) GetPqOpenString(dbNameOverride string, passwordOverride string, hostOverride string, sslmodeOverride string) (string, error) {
 	var dbUsername, dbPassword, dbName, dbHost, dbSslMode, dbSslRootCert, dbSslCert, dbSslKey string
 	var dbPort int
 
@@ -311,7 +312,9 @@ func (config ServerConfig) GetPqOpenString(dbNameOverride string, passwordOverri
 	if config.DbPort != 0 {
 		dbPort = config.DbPort
 	}
-	if config.DbSslMode != "" {
+	if sslmodeOverride != "" {
+		dbSslMode = sslmodeOverride
+	} else if config.DbSslMode != "" {
 		dbSslMode = config.DbSslMode
 	}
 	if config.DbSslRootCert != "" {
