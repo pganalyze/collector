@@ -338,6 +338,9 @@ func setupLogTransformer(ctx context.Context, wg *sync.WaitGroup, servers []*sta
 					continue
 				}
 				parser := server.GetLogParser()
+				if parser == nil {
+					continue
+				}
 				logLines, err := ParseRecordToLogLines(in, parser)
 				if err != nil {
 					logger.PrintError("%s", err)

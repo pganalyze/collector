@@ -512,6 +512,9 @@ func ParseAndAnalyzeBuffer(logStream LineReader, linesNewerThan time.Time, serve
 	var logLines []state.LogLine
 	var currentByteStart int64 = 0
 	parser := server.GetLogParser()
+	if parser == nil {
+		return []state.LogLine{}, []state.PostgresQuerySample{}
+	}
 
 	for {
 		line, err := logStream.ReadString('\n')
