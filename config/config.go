@@ -247,7 +247,7 @@ func (config ServerConfig) SupportsLogDownload() bool {
 }
 
 // GetPqOpenString - Gets the database configuration as a string that can be passed to lib/pq for connecting
-func (config ServerConfig) GetPqOpenString(dbNameOverride string, passwordOverride string) (string, error) {
+func (config ServerConfig) GetPqOpenString(dbNameOverride string, passwordOverride string, hostOverride string) (string, error) {
 	var dbUsername, dbPassword, dbName, dbHost, dbSslMode, dbSslRootCert, dbSslCert, dbSslKey string
 	var dbPort int
 
@@ -303,7 +303,9 @@ func (config ServerConfig) GetPqOpenString(dbNameOverride string, passwordOverri
 	} else if config.DbName != "" {
 		dbName = config.DbName
 	}
-	if config.DbHost != "" {
+	if hostOverride != "" {
+		dbHost = hostOverride
+	} else if config.DbHost != "" {
 		dbHost = config.DbHost
 	}
 	if config.DbPort != 0 {
