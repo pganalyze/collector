@@ -285,8 +285,7 @@ ReadConfigAndRun:
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := sync.WaitGroup{}
 	exitCode := 0
-	keepRunning, testRunSuccess, writeStateFile, shutdown, driverCleanup := runner.Run(ctx, &wg, globalCollectionOpts, logger, configFilename)
-	defer driverCleanup()
+	keepRunning, testRunSuccess, writeStateFile, shutdown := runner.Run(ctx, &wg, globalCollectionOpts, logger, configFilename)
 
 	if keepRunning {
 		// Block here until we get any of the registered signals
