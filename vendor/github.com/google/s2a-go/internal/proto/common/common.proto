@@ -46,11 +46,11 @@ message Identity {
     // The UID of a connection endpoint.
     string uid = 4;
 
-    // The MDB username of a connection endpoint.
-    string mdb_username = 5;
+    // The username of a connection endpoint. 
+    string username = 5;
 
-    // The Gaia ID of a connection endpoint.
-    string gaia_id = 6;
+    // The GCP ID of a connection endpoint.
+    string gcp_id = 6;
   }
 
   // Additional identity-specific attributes.

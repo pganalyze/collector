@@ -126,6 +126,7 @@ type CollectorConfig struct {
 	GcpPubsubSubscription      string
 	GcpHasCredentialsFile      bool
 	GcpProjectId               string
+	GcpRegion                  string
 	CrunchyBridgeClusterId     string
 	AivenProjectId             string
 	AivenServiceId             string

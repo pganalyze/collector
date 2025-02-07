@@ -109,6 +109,7 @@ func getCollectorConfig(c config.ServerConfig) state.CollectorConfig {
 		GcpPubsubSubscription:      c.GcpPubsubSubscription,
 		GcpHasCredentialsFile:      c.GcpCredentialsFile != "",
 		GcpProjectId:               c.GcpProjectID,
+		GcpRegion:                  c.GcpRegion,
 		CrunchyBridgeClusterId:     c.CrunchyBridgeClusterID,
 		AivenServiceId:             c.AivenServiceID,
 		AivenProjectId:             c.AivenProjectID,

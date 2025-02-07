@@ -337,6 +337,7 @@ message CollectorConfig {
   string gcp_project_id = 72;
   string gcp_alloydb_cluster_id = 73;
   string gcp_alloydb_instance_id = 74;
+  string gcp_region = 76; // using 76 as 75 is taken below
 
   string crunchy_bridge_cluster_id = 75;
 

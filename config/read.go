@@ -247,6 +247,9 @@ func getDefaultConfig() *ServerConfig {
 	if gcpProjectID := os.Getenv("GCP_PROJECT_ID"); gcpProjectID != "" {
 		config.GcpProjectID = gcpProjectID
 	}
+	if gcpRegion := os.Getenv("GCP_REGION"); gcpRegion != "" {
+		config.GcpRegion = gcpRegion
+	}
 	if crunchyBridgeClusterID := os.Getenv("CRUNCHY_BRIDGE_CLUSTER_ID"); crunchyBridgeClusterID != "" {
 		config.CrunchyBridgeClusterID = crunchyBridgeClusterID
 	}
@@ -621,6 +624,7 @@ func preprocessConfig(config *ServerConfig) (*ServerConfig, error) {
 	if config.GcpCloudSQLInstanceID != "" && strings.Count(config.GcpCloudSQLInstanceID, ":") == 2 {
 		instanceParts := strings.SplitN(config.GcpCloudSQLInstanceID, ":", 3)
 		config.GcpProjectID = instanceParts[0]
+		config.GcpRegion = instanceParts[1]
 		config.GcpCloudSQLInstanceID = instanceParts[2]
 	}
 
