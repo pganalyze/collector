@@ -5,7 +5,7 @@ RUN echo en_US.UTF-8 UTF-8 >> /etc/locale.gen
 
 ARG TARGETARCH
 
-ENV GOVERSION 1.21.0
+ENV GOVERSION 1.23.5
 ENV CODE_DIR /collector
 ENV PATH $PATH:/usr/local/go/bin
 

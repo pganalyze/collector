@@ -1,4 +1,4 @@
-FROM golang:1.21-alpine AS base
+FROM golang:1.23-alpine AS base
 LABEL org.opencontainers.image.authors="team@pganalyze.com"
 
 ENV GOPATH=/go
@@ -18,7 +18,7 @@ COPY contrib/sslrootcert/rds-ca-global.pem /usr/share/pganalyze-collector/sslroo
 COPY contrib/docker-entrypoint.sh $HOME_DIR
 RUN chmod +x $HOME_DIR/docker-entrypoint.sh
 
-FROM alpine:3.18 AS slim
+FROM alpine:3.21 AS slim
 
 RUN apk add --no-cache ca-certificates tzdata
 
