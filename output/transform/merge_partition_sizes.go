@@ -12,11 +12,17 @@ import (
 //
 // TODO: recursively build up stats when nested partitioning is used
 func mergePartitionSizes(s snapshot.FullSnapshot, newState state.PersistedState, ts state.TransientState, databaseOidToIdx OidToIdx) snapshot.FullSnapshot {
+	relIdxToStatsIdx := make(map[int32]int, len(s.RelationStatistics))
+	for idx, stat := range s.RelationStatistics {
+		relIdxToStatsIdx[stat.RelationIdx] = idx
+	}
+
 	for idx, rel := range s.RelationInformations {
 		if !rel.HasParentRelation || rel.PartitionBoundary == "" {
 			continue
 		}
-		stat := s.RelationStatistics[idx]
+		statIdx := relIdxToStatsIdx[int32(idx)]
+		stat := s.RelationStatistics[statIdx]
 		parent := s.RelationStatistics[rel.ParentRelationIdx]
 		parent.NTupIns += stat.NTupIns
 		parent.NTupUpd += stat.NTupUpd
