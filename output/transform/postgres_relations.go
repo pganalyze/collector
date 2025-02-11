@@ -214,6 +214,23 @@ func transformPostgresRelations(s snapshot.FullSnapshot, newState state.Persiste
 		} else {
 			statistic.AnalyzedAt = snapshot.NullTimeToNullTimestamp(stats.LastAnalyze)
 		}
+
+		// Add child table statistics to parent table statistics
+		for _, childTableOid := range relation.ChildTableOids {
+			stat, ok := diffedSchemaStats.RelationStats[childTableOid]
+			if ok {
+				statistic.NTupIns += stat.NTupIns
+				statistic.NTupUpd += stat.NTupUpd
+				statistic.NTupDel += stat.NTupDel
+				statistic.NTupHotUpd += stat.NTupHotUpd
+				statistic.NLiveTup += stat.NLiveTup
+				statistic.NDeadTup += stat.NDeadTup
+				statistic.SizeBytes += stat.SizeBytes
+				statistic.ToastSizeBytes += stat.ToastSizeBytes
+				statistic.CachedDataBytes += stat.CachedDataBytes
+				statistic.CachedToastBytes += stat.CachedToastBytes
+			}
+		}
 		s.RelationStatistics = append(s.RelationStatistics, &statistic)
 
 		// Events
@@ -255,6 +272,20 @@ func transformPostgresRelations(s snapshot.FullSnapshot, newState state.Persiste
 			var indexStats state.DiffedPostgresIndexStats
 			if diffedSchemaStatsExist {
 				indexStats = diffedSchemaStats.IndexStats[index.IndexOid]
+			}
+			// Add child index statistics to parent index statistics
+			for _, childIndexOid := range index.ChildIndexOids {
+				stat, ok := diffedSchemaStats.IndexStats[childIndexOid]
+
+				if ok {
+					indexStats.SizeBytes += stat.SizeBytes
+					indexStats.IdxScan += stat.IdxScan
+					indexStats.IdxTupRead += stat.IdxTupRead
+					indexStats.IdxTupFetch += stat.IdxTupFetch
+					indexStats.IdxBlksRead += stat.IdxBlksRead
+					indexStats.IdxBlksHit += stat.IdxBlksHit
+					indexStats.CachedBytes += stat.CachedBytes
+				}
 			}
 			s.IndexStatistics = append(s.IndexStatistics, &snapshot.IndexStatistic{
 				IndexIdx:    indexIdx,
