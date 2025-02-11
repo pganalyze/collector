@@ -21,7 +21,11 @@ func mergePartitionSizes(s snapshot.FullSnapshot, newState state.PersistedState,
 		if !rel.HasParentRelation || rel.PartitionBoundary == "" {
 			continue
 		}
-		statIdx := relIdxToStatsIdx[int32(idx)]
+		statIdx, ok := relIdxToStatsIdx[int32(idx)]
+		if !ok {
+			continue
+		}
+
 		stat := s.RelationStatistics[statIdx]
 		parent := s.RelationStatistics[rel.ParentRelationIdx]
 		parent.NTupIns += stat.NTupIns
