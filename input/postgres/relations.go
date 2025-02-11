@@ -18,7 +18,8 @@ const relationsSQLOidField = "c.relhasoids AS relation_has_oids"
 const relationsSQLpg12OidField = "false AS relation_has_oids"
 
 const relationsSQL string = `
-	 WITH locked_relids AS (SELECT DISTINCT relation relid FROM pg_catalog.pg_locks WHERE mode = 'AccessExclusiveLock' AND relation IS NOT NULL AND locktype = 'relation')
+	 WITH locked_relids AS (SELECT DISTINCT relation relid FROM pg_catalog.pg_locks WHERE mode = 'AccessExclusiveLock' AND relation IS NOT NULL AND locktype = 'relation'),
+ partition_children AS (SELECT inhparent, array_agg(inhrelid) AS relids FROM pg_catalog.pg_inherits JOIN pg_catalog.pg_partitioned_table ON (partrelid = inhparent) GROUP BY 1)
  SELECT c.oid,
 				n.nspname AS schema_name,
 				c.relname AS table_name,
@@ -35,6 +36,7 @@ const relationsSQL string = `
 				COALESCE((SELECT p.partstrat FROM pg_partitioned_table p WHERE p.partrelid = c.oid), '') AS partition_strategy,
 				(SELECT p.partattrs FROM pg_partitioned_table p WHERE p.partrelid = c.oid) AS partition_columns,
 				COALESCE(pg_catalog.pg_get_partkeydef(c.oid), '') AS partition_expr,
+				(SELECT relids FROM partition_children WHERE inhparent = c.oid) AS child_relids,
 				locked_relids.relid IS NOT NULL AS exclusively_locked,
 				COALESCE(toast.relname, '') AS toast_table
 	 FROM pg_catalog.pg_class c
@@ -84,7 +86,8 @@ const columnsSQL string = `
    FROM locked_relids`
 
 const indicesSQL string = `
-	WITH locked_relids AS (SELECT DISTINCT relation relid FROM pg_catalog.pg_locks WHERE mode = 'AccessExclusiveLock' AND relation IS NOT NULL AND locktype = 'relation')
+	WITH locked_relids AS (SELECT DISTINCT relation relid FROM pg_catalog.pg_locks WHERE mode = 'AccessExclusiveLock' AND relation IS NOT NULL AND locktype = 'relation'),
+inheritance_children AS (SELECT inhparent, array_agg(inhrelid) AS relids FROM pg_catalog.pg_inherits GROUP BY 1)
 SELECT c.oid,
 			 c2.oid,
 			 i.indkey::text,
@@ -96,6 +99,7 @@ SELECT c.oid,
 			 pg_catalog.pg_get_constraintdef(con.oid, FALSE),
 			 c2.reloptions,
 			 (SELECT a.amname FROM pg_catalog.pg_am a JOIN pg_catalog.pg_opclass o ON (a.oid = o.opcmethod) WHERE o.oid = i.indclass[0]),
+			 (SELECT relids FROM inheritance_children WHERE inhparent = i.indexrelid) AS child_relids,
 			 false AS exclusively_locked
 	FROM pg_catalog.pg_class c
 	JOIN pg_catalog.pg_namespace n ON (n.oid = c.relnamespace)
@@ -123,6 +127,7 @@ SELECT c.oid,
 		NULL,
 		NULL,
 		'',
+		NULL,
 		true
   FROM locked_relids
 `
@@ -213,17 +218,20 @@ func GetRelations(ctx context.Context, db *sql.DB, postgresVersion state.Postgre
 	for rows.Next() {
 		var row state.PostgresRelation
 		var options null.String
+		var childRelids null.String
 		var partCols null.String
 
 		err = rows.Scan(&row.Oid, &row.SchemaName, &row.RelationName, &row.RelationType,
 			&options, &row.HasOids, &row.PersistenceType, &row.HasInheritanceChildren,
 			&row.HasToast, &row.FrozenXID, &row.MinimumMultixactXID, &row.ParentTableOid,
 			&row.PartitionBoundary, &row.PartitionStrategy, &partCols, &row.PartitionedBy,
-			&row.ExclusivelyLocked, &row.ToastName)
+			&childRelids, &row.ExclusivelyLocked, &row.ToastName)
 		if err != nil {
 			err = fmt.Errorf("Relations/Scan: %s", err)
 			return nil, err
 		}
+
+		row.ChildTableOids = unpackPostgresOidArray(childRelids)
 
 		row.Options = make(map[string]string)
 		if options.Valid {
@@ -303,14 +311,17 @@ func GetRelations(ctx context.Context, db *sql.DB, postgresVersion state.Postgre
 		var columns string
 		var options null.String
 		var exclusivelyLocked bool
+		var childRelids null.String
 
 		err = rows.Scan(&row.RelationOid, &row.IndexOid, &columns, &row.Name, &row.IsPrimary,
 			&row.IsUnique, &row.IsValid, &row.IndexDef, &row.ConstraintDef, &options, &row.IndexType,
-			&exclusivelyLocked)
+			&childRelids, &exclusivelyLocked)
 		if err != nil {
 			err = fmt.Errorf("Indices/Scan: %s", err)
 			return nil, err
 		}
+
+		row.ChildIndexOids = unpackPostgresOidArray(childRelids)
 
 		for _, cstr := range strings.Split(columns, " ") {
 			cint, _ := strconv.ParseInt(cstr, 10, 32)

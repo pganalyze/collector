@@ -29,6 +29,9 @@ type PostgresRelation struct {
 	PartitionColumns       []int32
 	PartitionedBy          string
 
+	// OIDs for declaratively partitioned child tables
+	ChildTableOids []Oid
+
 	// True if another process is currently holding an AccessExclusiveLock on this
 	// relation, this also means we don't collect columns/index/constraints data
 	ExclusivelyLocked bool
@@ -58,6 +61,10 @@ type PostgresIndex struct {
 	IndexDef      string
 	ConstraintDef null.String
 	Options       map[string]string
+
+	// OIDs for child indexes. This only includes indexes on declaratively
+	// partitioned child tables, where the index was declared on the parent.
+	ChildIndexOids []Oid
 }
 
 type PostgresConstraint struct {
