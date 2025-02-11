@@ -28,8 +28,6 @@ type PostgresRelation struct {
 	PartitionStrategy      string
 	PartitionColumns       []int32
 	PartitionedBy          string
-	CachedDataBytes        int64
-	CachedToastBytes       int64
 
 	// True if another process is currently holding an AccessExclusiveLock on this
 	// relation, this also means we don't collect columns/index/constraints data
@@ -60,7 +58,6 @@ type PostgresIndex struct {
 	IndexDef      string
 	ConstraintDef null.String
 	Options       map[string]string
-	CachedBytes   int64
 }
 
 type PostgresConstraint struct {

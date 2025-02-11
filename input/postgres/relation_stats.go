@@ -66,7 +66,9 @@ SELECT c.oid,
 			 c.relallvisible,
 			 false AS exclusively_locked,
 			 COALESCE(toast.reltuples, -1) AS toast_reltuples,
-			 COALESCE(toast.relpages, 0) AS toast_relpages
+			 COALESCE(toast.relpages, 0) AS toast_relpages,
+			 COALESCE(pg_relation_filenode(c.oid), 0) AS data_filenode,
+			 COALESCE(pg_relation_filenode(c.reltoastrelid), 0) AS toast_filenode
 	FROM pg_catalog.pg_class c
 	LEFT JOIN pg_catalog.pg_namespace n ON (n.oid = c.relnamespace)
 	LEFT JOIN pg_class toast ON (c.reltoastrelid = toast.oid AND toast.relkind = 't')
@@ -127,6 +129,8 @@ SELECT relid,
 	   0,
 	   true AS exclusively_locked,
 	   0,
+	   0,
+	   0,
 	   0
   FROM locked_relids_with_parents
 `
@@ -140,6 +144,7 @@ SELECT s.indexrelid,
 			 COALESCE(s.idx_tup_fetch, 0),
 			 COALESCE(sio.idx_blks_read, 0),
 			 COALESCE(sio.idx_blks_hit, 0),
+			 COALESCE(pg_relation_filenode(s.indexrelid), 0),
 			 false AS exclusively_locked
 	FROM pg_catalog.pg_stat_user_indexes s
 			 LEFT JOIN pg_catalog.pg_statio_user_indexes sio USING (indexrelid)
@@ -153,11 +158,12 @@ SELECT relid,
 	   0,
 	   0,
 	   0,
+	   0,
 	   true AS exclusively_locked
   FROM locked_relids
 `
 
-func GetRelationStats(ctx context.Context, db *sql.DB, postgresVersion state.PostgresVersion, server *state.Server) (relStats state.PostgresRelationStatsMap, err error) {
+func GetRelationStats(ctx context.Context, db *sql.DB, postgresVersion state.PostgresVersion, server *state.Server, currentDatabaseOid state.Oid, ts state.TransientState) (relStats state.PostgresRelationStatsMap, err error) {
 	var insertsSinceVacuumField string
 	var systemCatalogFilter string
 
@@ -191,6 +197,8 @@ func GetRelationStats(ctx context.Context, db *sql.DB, postgresVersion state.Pos
 	for rows.Next() {
 		var oid state.Oid
 		var stats state.PostgresRelationStats
+		var dataFilenode state.Oid
+		var toastFilenode state.Oid
 
 		err = rows.Scan(&oid, &stats.SizeBytes, &stats.ToastSizeBytes,
 			&stats.SeqScan, &stats.SeqTupRead,
@@ -204,10 +212,20 @@ func GetRelationStats(ctx context.Context, db *sql.DB, postgresVersion state.Pos
 			&stats.ToastBlksRead, &stats.ToastBlksHit, &stats.TidxBlksRead,
 			&stats.TidxBlksHit, &stats.FrozenXIDAge, &stats.MinMXIDAge,
 			&stats.Relpages, &stats.Reltuples, &stats.Relallvisible,
-			&stats.ExclusivelyLocked, &stats.ToastReltuples, &stats.ToastRelpages)
+			&stats.ExclusivelyLocked, &stats.ToastReltuples, &stats.ToastRelpages,
+			&dataFilenode, &toastFilenode)
 		if err != nil {
 			err = fmt.Errorf("RelationStats/Scan: %s", err)
 			return
+		}
+
+		bufferCache, ok := ts.BufferCache[currentDatabaseOid]
+		if ok {
+			stats.CachedDataBytes = bufferCache[dataFilenode]
+			stats.CachedToastBytes = bufferCache[toastFilenode]
+			// Any non-zero values are later summed up in DatabaseStatistic.UntrackedCacheBytes
+			bufferCache[dataFilenode] = 0
+			bufferCache[toastFilenode] = 0
 		}
 
 		relStats[oid] = stats
@@ -223,7 +241,7 @@ func GetRelationStats(ctx context.Context, db *sql.DB, postgresVersion state.Pos
 	return
 }
 
-func GetIndexStats(ctx context.Context, db *sql.DB, postgresVersion state.PostgresVersion, server *state.Server) (indexStats state.PostgresIndexStatsMap, err error) {
+func GetIndexStats(ctx context.Context, db *sql.DB, postgresVersion state.PostgresVersion, server *state.Server, currentDatabaseOid state.Oid, ts state.TransientState) (indexStats state.PostgresIndexStatsMap, err error) {
 	stmt, err := db.PrepareContext(ctx, QueryMarkerSQL+indexStatsSQL)
 	if err != nil {
 		err = fmt.Errorf("IndexStats/Prepare: %s", err)
@@ -242,13 +260,21 @@ func GetIndexStats(ctx context.Context, db *sql.DB, postgresVersion state.Postgr
 	for rows.Next() {
 		var oid state.Oid
 		var stats state.PostgresIndexStats
+		var filenode state.Oid
 
 		err = rows.Scan(&oid, &stats.SizeBytes, &stats.IdxScan, &stats.IdxTupRead,
-			&stats.IdxTupFetch, &stats.IdxBlksRead, &stats.IdxBlksHit,
+			&stats.IdxTupFetch, &stats.IdxBlksRead, &stats.IdxBlksHit, &filenode,
 			&stats.ExclusivelyLocked)
 		if err != nil {
 			err = fmt.Errorf("IndexStats/Scan: %s", err)
 			return
+		}
+
+		bufferCache, ok := ts.BufferCache[currentDatabaseOid]
+		if ok {
+			stats.CachedBytes = bufferCache[filenode]
+			// Any non-zero values are later summed up in DatabaseStatistic.UntrackedCacheBytes
+			bufferCache[filenode] = 0
 		}
 
 		indexStats[oid] = stats
