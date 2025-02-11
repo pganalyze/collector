@@ -29,7 +29,7 @@ func Run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 	writeStateFile = func() {}
 	shutdown = func() {}
 
-	schedulerGroups, err := scheduler.GetSchedulerGroups()
+	scheduler, err := scheduler.GetScheduler()
 	if err != nil {
 		logger.PrintError("Error: Could not get scheduler groups")
 		return
@@ -245,7 +245,7 @@ func Run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 		return
 	}
 
-	schedulerGroups["stats"].Schedule(ctx, func(ctx context.Context) {
+	scheduler.TenMinute.Schedule(ctx, func(ctx context.Context) {
 		wg.Add(1)
 		CollectAllServers(ctx, servers, globalCollectionOpts, logger)
 		wg.Done()
@@ -259,18 +259,18 @@ func Run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 	}
 
 	if hasAnyActivityEnabled {
-		schedulerGroups["activity"].Schedule(ctx, func(ctx context.Context) {
+		scheduler.TenSecond.Schedule(ctx, func(ctx context.Context) {
 			wg.Add(1)
 			CollectActivityFromAllServers(ctx, servers, globalCollectionOpts, logger)
 			wg.Done()
 		}, logger, "activity snapshot of all servers")
 	}
 
-	schedulerGroups["query_stats"].ScheduleSecondary(ctx, func(ctx context.Context) {
+	scheduler.OneMinute.ScheduleSecondary(ctx, func(ctx context.Context) {
 		wg.Add(1)
 		GatherQueryStatsFromAllServers(ctx, servers, globalCollectionOpts, logger)
 		wg.Done()
-	}, logger, "high frequency query statistics of all servers", schedulerGroups["stats"])
+	}, logger, "high frequency query statistics of all servers", scheduler.TenMinute)
 
 	SetupWebsocketForAllServers(ctx, servers, globalCollectionOpts, logger)
 	SetupQueryRunnerForAllServers(ctx, servers, globalCollectionOpts, logger)

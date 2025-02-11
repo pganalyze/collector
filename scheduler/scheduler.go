@@ -8,6 +8,36 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
+type Scheduler struct {
+	TenSecond Group
+	OneMinute Group
+	TenMinute Group
+}
+
+func GetScheduler() (scheduler Scheduler, err error) {
+	tenSecondInterval, err := cronexpr.Parse("*/10 * * * * * *")
+	if err != nil {
+		return
+	}
+
+	oneMinuteInterval, err := cronexpr.Parse("0 * * * * * *")
+	if err != nil {
+		return
+	}
+
+	tenMinuteInterval, err := cronexpr.Parse("0 */10 * * * * *")
+	if err != nil {
+		return
+	}
+
+	scheduler = Scheduler{
+		TenSecond: Group{interval: tenSecondInterval},
+		OneMinute: Group{interval: oneMinuteInterval},
+		TenMinute: Group{interval: tenMinuteInterval},
+	}
+	return
+}
+
 type Group struct {
 	interval *cronexpr.Expression
 }
@@ -74,28 +104,3 @@ func (group Group) ScheduleSecondary(ctx context.Context, runner func(context.Co
 }
 
 const FullSnapshotsPerHour = 6
-
-func GetSchedulerGroups() (groups map[string]Group, err error) {
-	tenSecondInterval, err := cronexpr.Parse("*/10 * * * * * *")
-	if err != nil {
-		return
-	}
-
-	oneMinuteInterval, err := cronexpr.Parse("0 * * * * * *")
-	if err != nil {
-		return
-	}
-
-	tenMinuteInterval, err := cronexpr.Parse("0 */10 * * * * *")
-	if err != nil {
-		return
-	}
-
-	groups = make(map[string]Group)
-
-	groups["stats"] = Group{interval: tenMinuteInterval}
-	groups["activity"] = Group{interval: tenSecondInterval}
-	groups["query_stats"] = Group{interval: oneMinuteInterval}
-
-	return
-}
