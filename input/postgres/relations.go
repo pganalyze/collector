@@ -40,7 +40,7 @@ const relationsSQL string = `
 	 FROM pg_catalog.pg_class c
 	 LEFT JOIN pg_catalog.pg_namespace n ON (n.oid = c.relnamespace)
 	 LEFT JOIN locked_relids ON (c.oid = locked_relids.relid)
-	 LEFT JOIN pg_class toast ON (c.reltoastrelid = toast.oid AND toast.relkind = 't')
+	 LEFT JOIN pg_catalog.pg_class toast ON (c.reltoastrelid = toast.oid AND toast.relkind = 't')
 	WHERE c.relkind IN ('r','v','m','p')
 				AND c.relpersistence <> 't'
 				AND c.oid NOT IN (SELECT pd.objid FROM pg_catalog.pg_depend pd WHERE pd.deptype = 'e' AND pd.classid = 'pg_catalog.pg_class'::regclass)

@@ -71,18 +71,18 @@ SELECT c.oid,
 			 COALESCE(pg_relation_filenode(c.reltoastrelid), 0) AS toast_filenode
 	FROM pg_catalog.pg_class c
 	LEFT JOIN pg_catalog.pg_namespace n ON (n.oid = c.relnamespace)
-	LEFT JOIN pg_class toast ON (c.reltoastrelid = toast.oid AND toast.relkind = 't')
+	LEFT JOIN pg_catalog.pg_class toast ON (c.reltoastrelid = toast.oid AND toast.relkind = 't')
 	LEFT JOIN LATERAL (
 		SELECT sum(pg_stat_get_numscans(indexrelid))::bigint AS idx_scan,
 			   sum(pg_stat_get_tuples_fetched(indexrelid))::bigint AS idx_tup_fetch,
 			   sum(pg_stat_get_blocks_fetched(pg_index.indexrelid) - pg_stat_get_blocks_hit(pg_index.indexrelid))::bigint AS idx_blks_read,
 			   sum(pg_stat_get_blocks_hit(pg_index.indexrelid))::bigint AS idx_blks_hit
-		  FROM pg_index
+		  FROM pg_catalog.pg_index
 		 WHERE pg_index.indrelid = c.oid) i ON true
 	LEFT JOIN LATERAL (
 		SELECT sum(pg_stat_get_blocks_fetched(pg_index.indexrelid) - pg_stat_get_blocks_hit(pg_index.indexrelid))::bigint AS idx_blks_read,
 			   sum(pg_stat_get_blocks_hit(pg_index.indexrelid))::bigint AS idx_blks_hit
-		  FROM pg_index
+		  FROM pg_catalog.pg_index
 		 WHERE pg_index.indrelid = toast.oid) x ON true
  WHERE c.oid NOT IN (SELECT relid FROM locked_relids_with_parents)
        AND c.relkind IN ('r','v','m','p')
