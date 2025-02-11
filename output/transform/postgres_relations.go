@@ -206,8 +206,8 @@ func transformPostgresRelations(s snapshot.FullSnapshot, newState state.Persiste
 			LastAutovacuum:   snapshot.NullTimeToNullTimestamp(stats.LastAutovacuum),
 			LastAnalyze:      snapshot.NullTimeToNullTimestamp(stats.LastAnalyze),
 			LastAutoanalyze:  snapshot.NullTimeToNullTimestamp(stats.LastAutoanalyze),
-			CachedDataBytes:  relation.CachedDataBytes,
-			CachedToastBytes: relation.CachedToastBytes,
+			CachedDataBytes:  stats.CachedDataBytes,
+			CachedToastBytes: stats.CachedToastBytes,
 		}
 		if stats.LastAutoanalyze.Valid && (!stats.LastAnalyze.Valid || stats.LastAutoanalyze.Time.After(stats.LastAnalyze.Time)) {
 			statistic.AnalyzedAt = snapshot.NullTimeToNullTimestamp(stats.LastAutoanalyze)
@@ -264,7 +264,7 @@ func transformPostgresRelations(s snapshot.FullSnapshot, newState state.Persiste
 				IdxTupFetch: indexStats.IdxTupFetch,
 				IdxBlksRead: indexStats.IdxBlksRead,
 				IdxBlksHit:  indexStats.IdxBlksHit,
-				CachedBytes: index.CachedBytes,
+				CachedBytes: indexStats.CachedBytes,
 			})
 		}
 	}
