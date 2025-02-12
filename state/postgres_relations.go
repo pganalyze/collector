@@ -28,8 +28,9 @@ type PostgresRelation struct {
 	PartitionStrategy      string
 	PartitionColumns       []int32
 	PartitionedBy          string
-	CachedDataBytes        int64
-	CachedToastBytes       int64
+
+	// OIDs for declaratively partitioned child tables
+	ChildTableOids []Oid
 
 	// True if another process is currently holding an AccessExclusiveLock on this
 	// relation, this also means we don't collect columns/index/constraints data
@@ -60,7 +61,10 @@ type PostgresIndex struct {
 	IndexDef      string
 	ConstraintDef null.String
 	Options       map[string]string
-	CachedBytes   int64
+
+	// OIDs for child indexes. This only includes indexes on declaratively
+	// partitioned child tables, where the index was declared on the parent.
+	ChildIndexOids []Oid
 }
 
 type PostgresConstraint struct {

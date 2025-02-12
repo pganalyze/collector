@@ -18,7 +18,8 @@ const relationsSQLOidField = "c.relhasoids AS relation_has_oids"
 const relationsSQLpg12OidField = "false AS relation_has_oids"
 
 const relationsSQL string = `
-	 WITH locked_relids AS (SELECT DISTINCT relation relid FROM pg_catalog.pg_locks WHERE mode = 'AccessExclusiveLock' AND relation IS NOT NULL AND locktype = 'relation')
+	 WITH locked_relids AS (SELECT DISTINCT relation relid FROM pg_catalog.pg_locks WHERE mode = 'AccessExclusiveLock' AND relation IS NOT NULL AND locktype = 'relation'),
+ partition_children AS (SELECT inhparent, array_agg(inhrelid) AS relids FROM pg_catalog.pg_inherits JOIN pg_catalog.pg_partitioned_table ON (partrelid = inhrelid) GROUP BY 1)
  SELECT c.oid,
 				n.nspname AS schema_name,
 				c.relname AS table_name,
@@ -35,14 +36,13 @@ const relationsSQL string = `
 				COALESCE((SELECT p.partstrat FROM pg_partitioned_table p WHERE p.partrelid = c.oid), '') AS partition_strategy,
 				(SELECT p.partattrs FROM pg_partitioned_table p WHERE p.partrelid = c.oid) AS partition_columns,
 				COALESCE(pg_catalog.pg_get_partkeydef(c.oid), '') AS partition_expr,
+				(SELECT relids FROM partition_children WHERE inhparent = c.oid) AS child_relids,
 				locked_relids.relid IS NOT NULL AS exclusively_locked,
-				COALESCE(toast.relname, '') AS toast_table,
-				COALESCE(pg_relation_filenode(c.oid), 0) AS data_filenode,
-				COALESCE(pg_relation_filenode(c.reltoastrelid), 0) AS toast_filenode
+				COALESCE(toast.relname, '') AS toast_table
 	 FROM pg_catalog.pg_class c
 	 LEFT JOIN pg_catalog.pg_namespace n ON (n.oid = c.relnamespace)
 	 LEFT JOIN locked_relids ON (c.oid = locked_relids.relid)
-	 LEFT JOIN pg_class toast ON (c.reltoastrelid = toast.oid AND toast.relkind = 't')
+	 LEFT JOIN pg_catalog.pg_class toast ON (c.reltoastrelid = toast.oid AND toast.relkind = 't')
 	WHERE c.relkind IN ('r','v','m','p')
 				AND c.relpersistence <> 't'
 				AND c.oid NOT IN (SELECT pd.objid FROM pg_catalog.pg_depend pd WHERE pd.deptype = 'e' AND pd.classid = 'pg_catalog.pg_class'::regclass)
@@ -86,7 +86,8 @@ const columnsSQL string = `
    FROM locked_relids`
 
 const indicesSQL string = `
-	WITH locked_relids AS (SELECT DISTINCT relation relid FROM pg_catalog.pg_locks WHERE mode = 'AccessExclusiveLock' AND relation IS NOT NULL AND locktype = 'relation')
+	WITH locked_relids AS (SELECT DISTINCT relation relid FROM pg_catalog.pg_locks WHERE mode = 'AccessExclusiveLock' AND relation IS NOT NULL AND locktype = 'relation'),
+inheritance_children AS (SELECT inhparent, array_agg(inhrelid) AS relids FROM pg_catalog.pg_inherits GROUP BY 1)
 SELECT c.oid,
 			 c2.oid,
 			 i.indkey::text,
@@ -98,8 +99,8 @@ SELECT c.oid,
 			 pg_catalog.pg_get_constraintdef(con.oid, FALSE),
 			 c2.reloptions,
 			 (SELECT a.amname FROM pg_catalog.pg_am a JOIN pg_catalog.pg_opclass o ON (a.oid = o.opcmethod) WHERE o.oid = i.indclass[0]),
-			 false AS exclusively_locked,
-			 COALESCE(pg_relation_filenode(i.indexrelid), 0)
+			 (SELECT relids FROM inheritance_children WHERE inhparent = c.oid) AS child_relids,
+			 false AS exclusively_locked
 	FROM pg_catalog.pg_class c
 	JOIN pg_catalog.pg_namespace n ON (n.oid = c.relnamespace)
 	JOIN pg_catalog.pg_index i ON (c.oid = i.indrelid)
@@ -126,8 +127,8 @@ SELECT c.oid,
 		NULL,
 		NULL,
 		'',
-		true,
-		0
+		NULL,
+		true
   FROM locked_relids
 `
 
@@ -188,7 +189,7 @@ SELECT relid,
   FROM locked_relids
 `
 
-func GetRelations(ctx context.Context, db *sql.DB, postgresVersion state.PostgresVersion, currentDatabaseOid state.Oid, ignoreRegexp string, ts state.TransientState) ([]state.PostgresRelation, error) {
+func GetRelations(ctx context.Context, db *sql.DB, postgresVersion state.PostgresVersion, currentDatabaseOid state.Oid, ignoreRegexp string) ([]state.PostgresRelation, error) {
 	relations := make(map[state.Oid]state.PostgresRelation, 0)
 
 	var systemCatalogFilter string
@@ -217,19 +218,20 @@ func GetRelations(ctx context.Context, db *sql.DB, postgresVersion state.Postgre
 	for rows.Next() {
 		var row state.PostgresRelation
 		var options null.String
+		var childRelids null.String
 		var partCols null.String
-		var dataFilenode state.Oid
-		var toastFilenode state.Oid
 
 		err = rows.Scan(&row.Oid, &row.SchemaName, &row.RelationName, &row.RelationType,
 			&options, &row.HasOids, &row.PersistenceType, &row.HasInheritanceChildren,
 			&row.HasToast, &row.FrozenXID, &row.MinimumMultixactXID, &row.ParentTableOid,
 			&row.PartitionBoundary, &row.PartitionStrategy, &partCols, &row.PartitionedBy,
-			&row.ExclusivelyLocked, &row.ToastName, &dataFilenode, &toastFilenode)
+			&childRelids, &row.ExclusivelyLocked, &row.ToastName)
 		if err != nil {
 			err = fmt.Errorf("Relations/Scan: %s", err)
 			return nil, err
 		}
+
+		row.ChildTableOids = unpackPostgresOidArray(childRelids)
 
 		row.Options = make(map[string]string)
 		if options.Valid {
@@ -247,15 +249,6 @@ func GetRelations(ctx context.Context, db *sql.DB, postgresVersion state.Postgre
 		}
 
 		row.DatabaseOid = currentDatabaseOid
-
-		bufferCache, ok := ts.BufferCache[currentDatabaseOid]
-		if ok {
-			row.CachedDataBytes = bufferCache[dataFilenode]
-			row.CachedToastBytes = bufferCache[toastFilenode]
-			// Any non-zero values are later summed up in DatabaseStatistic.UntrackedCacheBytes
-			bufferCache[dataFilenode] = 0
-			bufferCache[toastFilenode] = 0
-		}
 
 		relations[row.Oid] = row
 	}
@@ -318,15 +311,17 @@ func GetRelations(ctx context.Context, db *sql.DB, postgresVersion state.Postgre
 		var columns string
 		var options null.String
 		var exclusivelyLocked bool
-		var filenode state.Oid
+		var childRelids null.String
 
 		err = rows.Scan(&row.RelationOid, &row.IndexOid, &columns, &row.Name, &row.IsPrimary,
 			&row.IsUnique, &row.IsValid, &row.IndexDef, &row.ConstraintDef, &options, &row.IndexType,
-			&exclusivelyLocked, &filenode)
+			&childRelids, &exclusivelyLocked)
 		if err != nil {
 			err = fmt.Errorf("Indices/Scan: %s", err)
 			return nil, err
 		}
+
+		row.ChildIndexOids = unpackPostgresOidArray(childRelids)
 
 		for _, cstr := range strings.Split(columns, " ") {
 			cint, _ := strconv.ParseInt(cstr, 10, 32)
@@ -339,13 +334,6 @@ func GetRelations(ctx context.Context, db *sql.DB, postgresVersion state.Postgre
 				parts := strings.Split(cstr, "=")
 				row.Options[parts[0]] = parts[1]
 			}
-		}
-
-		bufferCache, ok := ts.BufferCache[currentDatabaseOid]
-		if ok {
-			row.CachedBytes = bufferCache[filenode]
-			// Any non-zero values are later summed up in DatabaseStatistic.UntrackedCacheBytes
-			bufferCache[filenode] = 0
 		}
 
 		relation, ok := relations[row.RelationOid]

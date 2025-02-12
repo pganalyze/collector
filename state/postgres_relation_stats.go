@@ -41,6 +41,8 @@ type PostgresRelationStats struct {
 	ExclusivelyLocked bool      // Whether these statistics are zeroed out because the table was locked at collection time
 	ToastReltuples    float32   // Number of live rows in the TOAST table. -1 indicating that the row count is unknown
 	ToastRelpages     int32     // Size of the on-disk representation of the TOAST table in pages (of size BLCKSZ)
+	CachedDataBytes   int64     // Size of main table pages in buffer cache (from pg_buffercache, if enabled)
+	CachedToastBytes  int64     // Size of TOAST table pages in buffer cache (from pg_buffercache, if enabled)
 }
 
 type PostgresIndexStats struct {
@@ -51,6 +53,7 @@ type PostgresIndexStats struct {
 	IdxBlksRead       int64 // Number of disk blocks read from this index
 	IdxBlksHit        int64 // Number of buffer hits in this index
 	ExclusivelyLocked bool  // Whether these statistics are zeroed out because the index was locked at collection time
+	CachedBytes       int64 // Size of index pages in buffer cache (from pg_buffercache, if enabled)
 }
 
 type PostgresColumnStats struct {
@@ -131,6 +134,8 @@ func (curr PostgresRelationStats) DiffSince(prev PostgresRelationStats) DiffedPo
 		Relallvisible:    curr.Relallvisible,
 		ToastReltuples:   curr.ToastReltuples,
 		ToastRelpages:    curr.ToastRelpages,
+		CachedDataBytes:  curr.CachedDataBytes,
+		CachedToastBytes: curr.CachedToastBytes,
 	}
 }
 
@@ -142,5 +147,6 @@ func (curr PostgresIndexStats) DiffSince(prev PostgresIndexStats) DiffedPostgres
 		IdxTupFetch: curr.IdxTupFetch - prev.IdxTupFetch,
 		IdxBlksRead: curr.IdxBlksRead - prev.IdxBlksRead,
 		IdxBlksHit:  curr.IdxBlksHit - prev.IdxBlksHit,
+		CachedBytes: curr.CachedBytes,
 	}
 }

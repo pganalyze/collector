@@ -128,13 +128,13 @@ func collectOneSchema(ctx context.Context, server *state.Server, collectionOpts 
 
 func collectSchemaData(ctx context.Context, collectionOpts state.CollectionOpts, logger *util.Logger, db *sql.DB, ps state.PersistedState, ts state.TransientState, databaseOid state.Oid, postgresVersion state.PostgresVersion, server *state.Server, systemType string, dbName string) (state.PersistedState, state.TransientState, error) {
 	if collectionOpts.CollectPostgresRelations {
-		newRelations, err := GetRelations(ctx, db, postgresVersion, databaseOid, server.Config.IgnoreSchemaRegexp, ts)
+		newRelations, err := GetRelations(ctx, db, postgresVersion, databaseOid, server.Config.IgnoreSchemaRegexp)
 		if err != nil {
 			return ps, ts, fmt.Errorf("error collecting table/index metadata: %s", err)
 		}
 		ps.Relations = append(ps.Relations, newRelations...)
 
-		newRelationStats, err := GetRelationStats(ctx, db, postgresVersion, server)
+		newRelationStats, err := GetRelationStats(ctx, db, postgresVersion, server, databaseOid, ts)
 		if err != nil {
 			return ps, ts, fmt.Errorf("error collecting table statistics: %s", err)
 		}
@@ -142,7 +142,7 @@ func collectSchemaData(ctx context.Context, collectionOpts state.CollectionOpts,
 			ps.SchemaStats[databaseOid].RelationStats[k] = v
 		}
 
-		newIndexStats, err := GetIndexStats(ctx, db, postgresVersion, server)
+		newIndexStats, err := GetIndexStats(ctx, db, postgresVersion, server, databaseOid, ts)
 		if err != nil {
 			return ps, ts, fmt.Errorf("error collecting index statistics: %s", err)
 		}
