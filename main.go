@@ -214,7 +214,7 @@ func main() {
 			fmt.Println("ERROR: must specify log_line_prefix used to generate logfile with --analyze-logfile-prefix")
 			return
 		}
-		server.LogParser = logs.NewLogParser(analyzeLogfilePrefix, tz, false)
+		server.LogParser = logs.NewLogParser(analyzeLogfilePrefix, tz)
 
 		logLines, samples := logs.ParseAndAnalyzeBuffer(logReader, time.Time{}, server)
 		logs.PrintDebugInfo(logLines, samples)

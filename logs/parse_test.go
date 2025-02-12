@@ -29,45 +29,6 @@ func mustTimeLocation(tzStr string) *time.Location {
 var BSTTimeLocation = mustTimeLocation("Europe/London")
 
 var parseTests = []parseTestpair{
-	// rsyslog format
-	{
-		"",
-		"Feb  1 21:48:31 ip-172-31-14-41 postgres[9076]: [3-1] LOG:  database system is ready to accept connections",
-		nil,
-		state.LogLine{
-			OccurredAt: time.Date(time.Now().Year(), time.February, 1, 21, 48, 31, 0, time.UTC),
-			LogLevel:   pganalyze_collector.LogLineInformation_LOG,
-			BackendPid: 9076,
-			Content:    "database system is ready to accept connections",
-		},
-		true,
-	},
-	{
-		"",
-		"Feb  1 21:48:31 ip-172-31-14-41 postgres[9076]: [3-2] #011 something",
-		nil,
-		state.LogLine{
-			OccurredAt: time.Date(time.Now().Year(), time.February, 1, 21, 48, 31, 0, time.UTC),
-			LogLevel:   pganalyze_collector.LogLineInformation_UNKNOWN,
-			BackendPid: 9076,
-			Content:    "\t something",
-		},
-		false,
-	},
-	{
-		"",
-		"Feb  1 21:48:31 ip-172-31-14-41 postgres[123]: [8-1] [user=postgres,db=postgres,app=[unknown]] LOG: connection received: host=[local]",
-		nil,
-		state.LogLine{
-			OccurredAt: time.Date(time.Now().Year(), time.February, 1, 21, 48, 31, 0, time.UTC),
-			LogLevel:   pganalyze_collector.LogLineInformation_LOG,
-			BackendPid: 123,
-			Username:   "postgres",
-			Database:   "postgres",
-			Content:    "connection received: host=[local]",
-		},
-		true,
-	},
 	// Amazon RDS format
 	{
 		logs.LogPrefixAmazonRds,
@@ -658,11 +619,7 @@ var parseTests = []parseTestpair{
 
 func TestLogParser(t *testing.T) {
 	for _, pair := range parseTests {
-		// Syslog format has a separate, fixed prefix, so the prefix argument is
-		// ignored by the parser in that case. We use an empty string to indicate
-		// that this is a syslog test case.
-		isSyslog := pair.prefixIn == ""
-		parser := logs.NewLogParser(pair.prefixIn, pair.lineInTz, isSyslog)
+		parser := logs.NewLogParser(pair.prefixIn, pair.lineInTz)
 		l, lOk := parser.ParseLine(pair.lineIn)
 
 		cfg := pretty.CompareConfig
