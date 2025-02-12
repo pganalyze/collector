@@ -9,9 +9,9 @@ import (
 )
 
 type Scheduler struct {
-	TenSecond Group
-	OneMinute Group
-	TenMinute Group
+	TenSecond Schedule
+	OneMinute Schedule
+	TenMinute Schedule
 }
 
 func GetScheduler() (scheduler Scheduler, err error) {
@@ -31,21 +31,21 @@ func GetScheduler() (scheduler Scheduler, err error) {
 	}
 
 	scheduler = Scheduler{
-		TenSecond: Group{interval: tenSecondInterval},
-		OneMinute: Group{interval: oneMinuteInterval},
-		TenMinute: Group{interval: tenMinuteInterval},
+		TenSecond: Schedule{interval: tenSecondInterval},
+		OneMinute: Schedule{interval: oneMinuteInterval},
+		TenMinute: Schedule{interval: tenMinuteInterval},
 	}
 	return
 }
 
-type Group struct {
+type Schedule struct {
 	interval *cronexpr.Expression
 }
 
-func (group Group) Schedule(ctx context.Context, runner func(context.Context), logger *util.Logger, logName string) {
+func (schedule Schedule) Schedule(ctx context.Context, runner func(context.Context), logger *util.Logger, logName string) {
 	go func() {
 		for {
-			nextExecutions := group.interval.NextN(time.Now(), 2)
+			nextExecutions := schedule.interval.NextN(time.Now(), 2)
 			delay := time.Until(nextExecutions[0])
 
 			logger.PrintVerbose("Scheduled next run for %s in %+v", logName, delay)
@@ -72,13 +72,13 @@ func (group Group) Schedule(ctx context.Context, runner func(context.Context), l
 }
 
 // ScheduleSecondary - Behaves almost like Schedule, but ignores the point in time
-// where the primary group also has a run (to avoid overlapping statistics)
-func (group Group) ScheduleSecondary(ctx context.Context, runner func(context.Context), logger *util.Logger, logName string, primaryGroup Group) {
+// where the primary schedule also has a run (to avoid overlapping statistics)
+func (schedule Schedule) ScheduleSecondary(ctx context.Context, primarySchedule Schedule, runner func(context.Context), logger *util.Logger, logName string) {
 	go func() {
 		for {
 			timeNow := time.Now()
-			delay := group.interval.Next(timeNow).Sub(timeNow)
-			delayPrimary := primaryGroup.interval.Next(timeNow).Sub(timeNow)
+			delay := schedule.interval.Next(timeNow).Sub(timeNow)
+			delayPrimary := primarySchedule.interval.Next(timeNow).Sub(timeNow)
 
 			// Make sure to not run more often than once a second - this can happen
 			// due to rounding errors in the interval logic
@@ -94,7 +94,7 @@ func (group Group) ScheduleSecondary(ctx context.Context, runner func(context.Co
 				return
 			case <-time.After(delay):
 				if int(delay.Seconds()) == int(delayPrimary.Seconds()) {
-					logger.PrintVerbose("Skipping run for %s since it overlaps with primary group time", logName)
+					logger.PrintVerbose("Skipping run for %s since it overlaps with primary schedule", logName)
 				} else {
 					runner(ctx)
 				}
