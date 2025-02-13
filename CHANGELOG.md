@@ -2,6 +2,10 @@
 
 ## 0.65.0      2025-02-14
 
+* Support IAM Authentication with Google Cloud SQL
+* Start collecting and report pg_stat_statements_info stats
+  - This makes it easier to track down some pg_stat_statements-related
+    problems
 * Follow symlinks when tracking storage stats for data directory
   - This fixes storage statistics accounting for data directories symlinked
     to other partitions
@@ -15,9 +19,6 @@
   - Due to security enhancements in newer macOS versions, unsigned Go
     binaries may hang when built and executed locally; signing makes it
     easier to debug the collector on macOS
-* Start collecting and report pg_stat_statements_info stats
-  - This makes it easier to track down some pg_stat_statements-related
-    problems
 * Update Go version to 1.23
 * Update Dockerfile alpine base image to 3.21
 
