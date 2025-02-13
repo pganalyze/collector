@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.65.0      2025-02-14
+
+* Follow symlinks when tracking storage stats for data directory
+  - This fixes storage statistics accounting for data directories symlinked
+    to other partitions
+* Fix errors when collecting stats about frequently-locked partitions
+* Fix receiving logs through syslog
+  - This was inadvertently broken by the log parsing changes in v0.58.0
+* Avoid log parsing error when database connection cannot be established
+  - This was only a secondary problem, but the stack trace in the logs could
+    make it harder to track down the root cause
+* Sign built Go binaries for macOS
+  - Due to security enhancements in newer macOS versions, unsigned Go
+    binaries may hang when built and executed locally; signing makes it
+    easier to debug the collector on macOS
+* Start collecting and report pg_stat_statements_info stats
+  - This makes it easier to track down some pg_stat_statements-related
+    problems
+* Update Go version to 1.23
+* Update Dockerfile alpine base image to 3.21
+
 ## 0.64.1      2025-01-08
 
 * Fix database connection leak in buffercache logic
