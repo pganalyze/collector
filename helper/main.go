@@ -49,7 +49,7 @@ func getStatus(dataDirectory string) {
 		fmt.Fprintf(os.Stderr, "%s\n", err)
 	} else {
 		status.DataDirectory = dataDirectory
-		if dataDirectory == "" {
+		if status.DataDirectory == "" {
 			status.DataDirectory = os.Getenv("PGDATA")
 		}
 
