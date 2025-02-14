@@ -48,17 +48,18 @@ func getStatus(dataDirectory string) {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%s\n", err)
 	} else {
-		if dataDirectory != "" {
-			status.DataDirectory = dataDirectory
-		} else {
+		status.DataDirectory = dataDirectory
+		if status.DataDirectory == "" {
 			status.DataDirectory = os.Getenv("PGDATA")
 		}
 
 		if status.DataDirectory == "" {
-			status.DataDirectory, err = filepath.EvalSymlinks("/proc/" + strconv.Itoa(status.PostmasterPid) + "/cwd")
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Failed to resolve data directory path: %s\n", err)
-			}
+			status.DataDirectory = "/proc/" + strconv.Itoa(status.PostmasterPid) + "/cwd"
+		}
+
+		status.DataDirectory, err = filepath.EvalSymlinks(status.DataDirectory)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to resolve data directory path: %s\n", err)
 		}
 
 		xlogDirectoryName := "pg_wal"
