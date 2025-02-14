@@ -70,6 +70,7 @@ func connectToDb(ctx context.Context, config config.ServerConfig, logger *util.L
 			}
 			hostOverride = strings.Join([]string{config.GcpProjectID, config.GcpRegion, config.GcpCloudSQLInstanceID}, ":")
 			// When using cloud-sql-go-connector, this needs to be set as disable
+			// https://github.com/GoogleCloudPlatform/cloud-sql-go-connector/issues/889
 			sslmodeOverride = "disable"
 			driverName = "cloudsql-postgres"
 		} else {
