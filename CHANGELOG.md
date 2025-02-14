@@ -2,7 +2,14 @@
 
 ## 0.65.0      2025-02-14
 
-* Support IAM Authentication with Google Cloud SQL
+* Google Cloud SQL: Support IAM Authentication
+  - This allows monitoring of Google Cloud SQL databases using the existing
+    `db_use_iam_auth` / `DB_USE_IAM_AUTH` setting: If enabled, the collector
+    fetches a short-lived token for logging into the database instance from the
+    GCP API, instead of using a hardcoded password in the collector
+    configuration file
+  - To set this up, see our [updated Google Cloud SQL setup
+    documentation](https://pganalyze.com/docs/install/google_cloud_sql/01_create_monitoring_user)
 * Start collecting and report pg_stat_statements_info stats
   - This makes it easier to track down some pg_stat_statements-related
     problems
