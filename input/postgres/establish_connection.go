@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 
 	"github.com/aws/aws-sdk-go/service/rds/rdsutils"
 	"github.com/pganalyze/collector/config"
@@ -42,28 +43,42 @@ func EstablishConnection(ctx context.Context, server *state.Server, logger *util
 
 func connectToDb(ctx context.Context, config config.ServerConfig, logger *util.Logger, globalCollectionOpts state.CollectionOpts, databaseName string) (*sql.DB, error) {
 	var dbPasswordOverride string
+	var hostOverride string
+	var sslmodeOverride string
+	var db *sql.DB
+	driverName := "postgres"
 
 	if config.DbUseIamAuth {
-		if config.SystemType != "amazon_rds" {
-			return nil, fmt.Errorf("IAM auth is only supported for Amazon RDS and Aurora - turn off IAM auth setting to use password-based authentication")
-		}
-		sess, err := awsutil.GetAwsSession(config)
-		if err != nil {
-			return nil, err
-		}
-		if dbToken, err := rdsutils.BuildAuthToken(
-			fmt.Sprintf("%s:%d", config.GetDbHost(), config.GetDbPortOrDefault()),
-			config.AwsRegion,
-			config.GetDbUsername(),
-			sess.Config.Credentials,
-		); err != nil {
-			return nil, err
+		if config.SystemType == "amazon_rds" {
+			sess, err := awsutil.GetAwsSession(config)
+			if err != nil {
+				return nil, err
+			}
+			if dbToken, err := rdsutils.BuildAuthToken(
+				fmt.Sprintf("%s:%d", config.GetDbHost(), config.GetDbPortOrDefault()),
+				config.AwsRegion,
+				config.GetDbUsername(),
+				sess.Config.Credentials,
+			); err != nil {
+				return nil, err
+			} else {
+				dbPasswordOverride = dbToken
+			}
+		} else if config.SystemType == "google_cloudsql" {
+			if config.GcpProjectID == "" || config.GcpRegion == "" || config.GcpCloudSQLInstanceID == "" {
+				return nil, fmt.Errorf("To use IAM auth with Google Cloud SQL, you must specify project ID, region, and instance ID")
+			}
+			hostOverride = strings.Join([]string{config.GcpProjectID, config.GcpRegion, config.GcpCloudSQLInstanceID}, ":")
+			// When using cloud-sql-go-connector, this needs to be set as disable
+			// https://github.com/GoogleCloudPlatform/cloud-sql-go-connector/issues/889
+			sslmodeOverride = "disable"
+			driverName = "cloudsql-postgres"
 		} else {
-			dbPasswordOverride = dbToken
+			return nil, fmt.Errorf("IAM auth is only supported for Amazon RDS, Aurora, and Google Cloud SQL - turn off IAM auth setting to use password-based authentication")
 		}
 	}
 
-	connectString, err := config.GetPqOpenString(databaseName, dbPasswordOverride)
+	connectString, err := config.GetPqOpenString(databaseName, dbPasswordOverride, hostOverride, sslmodeOverride)
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +86,7 @@ func connectToDb(ctx context.Context, config config.ServerConfig, logger *util.L
 
 	// logger.PrintVerbose("sql.Open(\"postgres\", \"%s\")", connectString)
 
-	db, err := sql.Open("postgres", connectString)
+	db, err = sql.Open(driverName, connectString)
 	if err != nil {
 		return nil, err
 	}

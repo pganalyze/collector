@@ -20,6 +20,9 @@ import (
 	"github.com/pganalyze/collector/selftest"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
+
+	"cloud.google.com/go/cloudsqlconn"
+	"cloud.google.com/go/cloudsqlconn/postgres/pgxv5"
 )
 
 func Run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *util.Logger, configFilename string) (keepRunning bool, testRunSuccess chan bool, writeStateFile func(), shutdown func()) {
@@ -28,6 +31,7 @@ func Run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 	keepRunning = false
 	writeStateFile = func() {}
 	shutdown = func() {}
+	var driverCleanup func() error
 
 	scheduler, err := scheduler.GetScheduler()
 	if err != nil {
@@ -55,6 +59,14 @@ func Run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 				logger.PrintError("Failed to initialize OpenTelemetry tracing provider, disabling exports: %s", err)
 			}
 		}
+
+		if cfg.DbUseIamAuth && cfg.SystemType == "google_cloudsql" && driverCleanup == nil {
+			driverCleanup, err = pgxv5.RegisterDriver("cloudsql-postgres", cloudsqlconn.WithIAMAuthN())
+			if err != nil {
+				logger.PrintError("Failed to register cloudsql-postgres driver: %s", err)
+				return
+			}
+		}
 	}
 
 	shutdown = func() {
@@ -65,6 +77,9 @@ func Run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 			if err := cfg.OTelTracingProviderShutdownFunc(ctx); err != nil {
 				logger.PrintError("Failed to shutdown OpenTelemetry tracing provider: %s", err)
 			}
+		}
+		if driverCleanup != nil {
+			driverCleanup()
 		}
 	}
 
