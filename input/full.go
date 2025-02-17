@@ -44,7 +44,7 @@ func CollectFull(ctx context.Context, server *state.Server, connection *sql.DB, 
 		return
 	}
 
-	ts.Databases, ps.DatabaseStats, err = postgres.GetDatabases(ctx, logger, connection, ts.Version)
+	ts.Databases, ps.DatabaseStats, err = postgres.GetDatabases(ctx, connection)
 	if err != nil {
 		logger.PrintError("Error collecting pg_databases: %s", err)
 		return
