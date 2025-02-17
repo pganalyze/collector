@@ -45,12 +45,7 @@ func GenerateStatsHelperSql(ctx context.Context, server *state.Server, globalCol
 	}
 	defer db.Close()
 
-	version, err := postgres.GetPostgresVersion(ctx, logger, db)
-	if err != nil {
-		return "", fmt.Errorf("error collecting Postgres version: %s", err)
-	}
-
-	databases, _, err := postgres.GetDatabases(ctx, logger, db, version)
+	databases, _, err := postgres.GetDatabases(ctx, db)
 	if err != nil {
 		return "", fmt.Errorf("error collecting pg_databases: %s", err)
 	}
@@ -76,12 +71,7 @@ func GenerateExplainAnalyzeHelperSql(ctx context.Context, server *state.Server, 
 	}
 	defer db.Close()
 
-	version, err := postgres.GetPostgresVersion(ctx, logger, db)
-	if err != nil {
-		return "", fmt.Errorf("error collecting Postgres version: %s", err)
-	}
-
-	databases, _, err := postgres.GetDatabases(ctx, logger, db, version)
+	databases, _, err := postgres.GetDatabases(ctx, db)
 	if err != nil {
 		return "", fmt.Errorf("error collecting pg_databases: %s", err)
 	}
