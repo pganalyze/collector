@@ -80,14 +80,14 @@ func insufficientPrivilege(query string) bool {
 	return query == "<insufficient privilege>"
 }
 
-func ResetStatements(ctx context.Context, logger *util.Logger, db *sql.DB, systemType string) error {
+func ResetStatements(ctx context.Context, c *Collection, db *sql.DB) error {
 	var method string
 	if StatsHelperExists(ctx, db, "reset_stat_statements") {
-		logger.PrintVerbose("Found pganalyze.reset_stat_statements() stats helper")
+		c.Logger.PrintVerbose("Found pganalyze.reset_stat_statements() stats helper")
 		method = "pganalyze.reset_stat_statements()"
 	} else {
-		if !connectedAsSuperUser(ctx, db, systemType) && !connectedAsMonitoringRole(ctx, db) {
-			logger.PrintInfo("Warning: You are not connecting as superuser. Please" +
+		if !c.ConnectedAsSuperUser && !c.ConnectedAsMonitoringRole {
+			c.Logger.PrintInfo("Warning: You are not connecting as superuser. Please" +
 				" contact support to get advice on setting up stat statements reset")
 		}
 		method = "pg_stat_statements_reset()"
@@ -99,7 +99,7 @@ func ResetStatements(ctx context.Context, logger *util.Logger, db *sql.DB, syste
 	return nil
 }
 
-func GetStatements(ctx context.Context, server *state.Server, logger *util.Logger, db *sql.DB, globalCollectionOpts state.CollectionOpts, postgresVersion state.PostgresVersion, showtext bool, systemType string) (state.PostgresStatementMap, state.PostgresStatementTextMap, state.PostgresStatementStatsMap, error) {
+func GetStatements(ctx context.Context, c *Collection, db *sql.DB, showtext bool) (state.PostgresStatementMap, state.PostgresStatementTextMap, state.PostgresStatementStatsMap, error) {
 	var err error
 	var totalTimeField string
 	var ioTimeFields string
@@ -110,11 +110,11 @@ func GetStatements(ctx context.Context, server *state.Server, logger *util.Logge
 	var foundExtMinorVersion int16
 	var tmpFile *os.File
 
-	if postgresVersion.Numeric >= state.PostgresVersion17 {
+	if c.PostgresVersion.Numeric >= state.PostgresVersion17 {
 		extMinorVersion = 11
-	} else if postgresVersion.Numeric >= state.PostgresVersion14 {
+	} else if c.PostgresVersion.Numeric >= state.PostgresVersion14 {
 		extMinorVersion = 9
-	} else if postgresVersion.Numeric >= state.PostgresVersion13 {
+	} else if c.PostgresVersion.Numeric >= state.PostgresVersion13 {
 		extMinorVersion = 8
 	} else {
 		extMinorVersion = 3
@@ -126,20 +126,20 @@ func GetStatements(ctx context.Context, server *state.Server, logger *util.Logge
 	}
 
 	if err == sql.ErrNoRows {
-		logger.PrintInfo("pg_stat_statements does not exist, trying to create extension...")
+		c.Logger.PrintInfo("pg_stat_statements does not exist, trying to create extension...")
 		_, err = db.ExecContext(ctx, QueryMarkerSQL+"CREATE EXTENSION IF NOT EXISTS pg_stat_statements SCHEMA public")
 		if err != nil {
-			server.SelfTest.MarkCollectionAspectError(state.CollectionAspectPgStatStatements, "extension does not exist in database %s and could not be created: %s", server.Config.DbName, err)
-			logger.PrintInfo("HINT - if you expect the extension to already be installed, please review the pganalyze documentation: https://pganalyze.com/docs/install/troubleshooting/pg_stat_statements")
+			c.SelfTest.MarkCollectionAspectError(state.CollectionAspectPgStatStatements, "extension does not exist in database %s and could not be created: %s", c.Config.DbName, err)
+			c.Logger.PrintInfo("HINT - if you expect the extension to already be installed, please review the pganalyze documentation: https://pganalyze.com/docs/install/troubleshooting/pg_stat_statements")
 			return nil, nil, nil, err
 		}
 		extSchema = "public"
 		foundExtMinorVersion = extMinorVersion
 	}
 
-	if postgresVersion.Numeric >= state.PostgresVersion14 && foundExtMinorVersion < 9 {
-		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectPgStatStatements, "extension version (1.%d) is too old, 1.9 or newer is required.", foundExtMinorVersion)
-		server.SelfTest.HintCollectionAspect(state.CollectionAspectPgStatStatements, "Update the extension by running `ALTER EXTENSION pg_stat_statements UPDATE`.")
+	if c.PostgresVersion.Numeric >= state.PostgresVersion14 && foundExtMinorVersion < 9 {
+		c.SelfTest.MarkCollectionAspectError(state.CollectionAspectPgStatStatements, "extension version (1.%d) is too old, 1.9 or newer is required.", foundExtMinorVersion)
+		c.SelfTest.HintCollectionAspect(state.CollectionAspectPgStatStatements, "Update the extension by running `ALTER EXTENSION pg_stat_statements UPDATE`.")
 	}
 
 	if foundExtMinorVersion >= 8 {
@@ -161,41 +161,41 @@ func GetStatements(ctx context.Context, server *state.Server, logger *util.Logge
 	} else if foundExtMinorVersion >= 3 {
 		optionalFields = statementSQLOptionalFieldsMinorVersion3
 	} else {
-		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectPgStatStatements, "extension version not supported (1.%d installed, 1.3+ supported)", foundExtMinorVersion)
+		c.SelfTest.MarkCollectionAspectError(state.CollectionAspectPgStatStatements, "extension version not supported (1.%d installed, 1.3+ supported)", foundExtMinorVersion)
 		return nil, nil, nil, fmt.Errorf("pg_stat_statements extension not supported (1.%d installed, 1.3+ supported). To update run `ALTER EXTENSION pg_stat_statements UPDATE`", foundExtMinorVersion)
 	}
 
-	if globalCollectionOpts.TestRun && foundExtMinorVersion < extMinorVersion {
+	if c.GlobalOpts.TestRun && foundExtMinorVersion < extMinorVersion {
 		pgssMsg := fmt.Sprintf("extension outdated (1.%d installed, 1.%d available)", foundExtMinorVersion, extMinorVersion)
-		logger.PrintInfo("pg_stat_statements %s. To update run `ALTER EXTENSION pg_stat_statements UPDATE`", pgssMsg)
+		c.Logger.PrintInfo("pg_stat_statements %s. To update run `ALTER EXTENSION pg_stat_statements UPDATE`", pgssMsg)
 		if extMinorVersion >= 9 {
 			// Using the older version pgss with Postgres 14+ can cause the incorrect query stats
 			// when track = all is used + there are toplevel queries and nested queries
 			// https://github.com/pganalyze/collector/pull/472#discussion_r1399976152
-			logger.PrintError("Outdated pg_stat_statements may cause incorrect query statistics")
+			c.Logger.PrintError("Outdated pg_stat_statements may cause incorrect query statistics")
 			pgssMsg += "; outdated pg_stat_statements may cause incorrect query statistics"
 		}
-		server.SelfTest.MarkCollectionAspectWarning(state.CollectionAspectPgStatStatements, pgssMsg)
-		server.SelfTest.HintCollectionAspect(state.CollectionAspectPgStatStatements, "To update run `ALTER EXTENSION pg_stat_statements UPDATE`")
+		c.SelfTest.MarkCollectionAspectWarning(state.CollectionAspectPgStatStatements, pgssMsg)
+		c.SelfTest.HintCollectionAspect(state.CollectionAspectPgStatStatements, "To update run `ALTER EXTENSION pg_stat_statements UPDATE`")
 	}
 
 	usingStatsHelper := false
 	if statementStatsHelperExists(ctx, db, showtext) {
 		usingStatsHelper = true
 		if !showtext {
-			logger.PrintVerbose("Found pganalyze.get_stat_statements(false) stats helper")
+			c.Logger.PrintVerbose("Found pganalyze.get_stat_statements(false) stats helper")
 			sourceTable = "pganalyze.get_stat_statements(false)"
 		} else {
-			logger.PrintVerbose("Found pganalyze.get_stat_statements() stats helper")
+			c.Logger.PrintVerbose("Found pganalyze.get_stat_statements() stats helper")
 			sourceTable = "pganalyze.get_stat_statements()"
 		}
 	} else {
-		if systemType != "heroku" && !connectedAsSuperUser(ctx, db, systemType) && !connectedAsMonitoringRole(ctx, db) && globalCollectionOpts.TestRun {
-			server.SelfTest.MarkCollectionAspectWarning(state.CollectionAspectPgStatStatements, "monitoring user may have insufficient permissions to capture all queries")
-			server.SelfTest.HintCollectionAspect(state.CollectionAspectPgStatStatements, "Please set up"+
+		if c.Config.SystemType != "heroku" && !c.ConnectedAsSuperUser && !c.ConnectedAsMonitoringRole && c.GlobalOpts.TestRun {
+			c.SelfTest.MarkCollectionAspectWarning(state.CollectionAspectPgStatStatements, "monitoring user may have insufficient permissions to capture all queries")
+			c.SelfTest.HintCollectionAspect(state.CollectionAspectPgStatStatements, "Please set up"+
 				" the monitoring helper functions (%s)"+
 				" or connect as superuser to get query statistics for all roles.", selftest.URLPrinter.Sprint("https://pganalyze.com/docs/install/aiven/03_create_pg_stat_statements_helpers"))
-			logger.PrintInfo("Warning: You are not connecting as superuser. Please setup" +
+			c.Logger.PrintInfo("Warning: You are not connecting as superuser. Please setup" +
 				" the monitoring helper functions (https://pganalyze.com/docs/install/aiven/03_create_pg_stat_statements_helpers)" +
 				" or connect as superuser, to get query statistics for all roles.")
 		}
@@ -296,10 +296,10 @@ func GetStatements(ctx context.Context, server *state.Server, logger *util.Logge
 			case <-ctx.Done():
 				return nil, nil, nil, ctx.Err()
 			default:
-				fingerprintAndNormalize(key, query, server, statements, statementTextsByFp)
+				fingerprintAndNormalize(c, key, query, statements, statementTextsByFp)
 			}
 			stats := queryStats[idx]
-			if ignoreIOTiming(postgresVersion, query) {
+			if ignoreIOTiming(c.PostgresVersion, query) {
 				stats.BlkReadTime = 0
 				stats.BlkWriteTime = 0
 			}
@@ -307,7 +307,7 @@ func GetStatements(ctx context.Context, server *state.Server, logger *util.Logge
 		}
 	}
 
-	server.SelfTest.MarkCollectionAspectOk(state.CollectionAspectPgStatStatements)
+	c.SelfTest.MarkCollectionAspectOk(state.CollectionAspectPgStatStatements)
 
 	return statements, statementTextsByFp, statementStats, nil
 }
@@ -336,7 +336,7 @@ func ignoreIOTiming(postgresVersion state.PostgresVersion, receivedQuery string)
 var collectorQueryFingerprint = util.FingerprintText(util.QueryTextCollector)
 var insufficientPrivsQueryFingerprint = util.FingerprintText(util.QueryTextInsufficientPrivs)
 
-func fingerprintAndNormalize(key state.PostgresStatementKey, text string, server *state.Server, statements state.PostgresStatementMap, statementTextsByFp state.PostgresStatementTextMap) {
+func fingerprintAndNormalize(c *Collection, key state.PostgresStatementKey, text string, statements state.PostgresStatementMap, statementTextsByFp state.PostgresStatementTextMap) {
 	if insufficientPrivilege(text) {
 		statements[key] = state.PostgresStatement{
 			InsufficientPrivilege: true,
@@ -348,11 +348,11 @@ func fingerprintAndNormalize(key state.PostgresStatementKey, text string, server
 			Fingerprint: collectorQueryFingerprint,
 		}
 	} else {
-		fp := util.FingerprintQuery(text, server.Config.FilterQueryText, -1)
+		fp := util.FingerprintQuery(text, c.Config.FilterQueryText, -1)
 		statements[key] = state.PostgresStatement{Fingerprint: fp}
 		_, ok := statementTextsByFp[fp]
 		if !ok {
-			statementTextsByFp[fp] = util.NormalizeQuery(text, server.Config.FilterQueryText, -1)
+			statementTextsByFp[fp] = util.NormalizeQuery(text, c.Config.FilterQueryText, -1)
 		}
 	}
 }

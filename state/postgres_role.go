@@ -11,6 +11,8 @@ type PostgresRole struct {
 	CreateDb           bool      // Role can create databases
 	CreateRole         bool      // Role can create more roles
 	SuperUser          bool      // Role has superuser privileges
+	CloudSuperUser     bool      // Role has cloud superuser privileges (direct or indirect member of cloud provider almost-superuser)
+	MonitoringUser     bool      // Role has monitoring user privileges (direct or indirect member of "pg_monitor")
 	Replication        bool      // Role can initiate streaming replication and put the system in and out of backup mode.
 	BypassRLS          bool      // Role bypasses every row level security policy, see https://www.postgresql.org/docs/9.5/static/ddl-rowsecurity.html
 	ConnectionLimit    int32     // For roles that can log in, this sets maximum number of concurrent connections this role can make. -1 means no limit.

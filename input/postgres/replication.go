@@ -55,13 +55,13 @@ SELECT client_addr,
 	FROM %s
  WHERE client_addr IS NOT NULL`
 
-func GetReplication(ctx context.Context, logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion, systemType string) (state.PostgresReplication, error) {
+func GetReplication(ctx context.Context, c *Collection, db *sql.DB) (state.PostgresReplication, error) {
 	var err error
 	var repl state.PostgresReplication
 	var sourceTable string
 	var replicationSQL string
 
-	if postgresVersion.IsAwsAurora {
+	if c.PostgresVersion.IsAwsAurora {
 		// Old Aurora releases don't have a way to self-identify the instance, which is needed to get replication metrics
 		if !auroraDbInstanceIdentifierExists(ctx, db) {
 			return repl, nil
@@ -83,16 +83,16 @@ func GetReplication(ctx context.Context, logger *util.Logger, db *sql.DB, postgr
 	// Skip follower statistics on Aurora for now - there might be a benefit to support this for monitoring
 	// logical replication in the future, but it requires a bit more work since Aurora will error out
 	// if you call pg_catalog.pg_current_wal_lsn() when wal_level is not logical.
-	if postgresVersion.IsAwsAurora {
+	if c.PostgresVersion.IsAwsAurora {
 		return repl, nil
 	}
 
 	if StatsHelperExists(ctx, db, "get_stat_replication") {
-		logger.PrintVerbose("Found pganalyze.get_stat_replication() stats helper")
+		c.Logger.PrintVerbose("Found pganalyze.get_stat_replication() stats helper")
 		sourceTable = "pganalyze.get_stat_replication()"
 	} else {
-		if systemType != "heroku" && !connectedAsSuperUser(ctx, db, systemType) && !connectedAsMonitoringRole(ctx, db) {
-			logger.PrintInfo("Warning: You are not connecting as superuser. Please setup" +
+		if c.Config.SystemType != "heroku" && !c.ConnectedAsSuperUser && !c.ConnectedAsMonitoringRole {
+			c.Logger.PrintInfo("Warning: You are not connecting as superuser. Please setup" +
 				" the monitoring helper functions (https://pganalyze.com/docs/install/aiven/01_create_monitoring_user)" +
 				" or connect as superuser, to get replication statistics.")
 		}

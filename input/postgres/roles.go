@@ -6,7 +6,6 @@ import (
 
 	"github.com/guregu/null"
 	"github.com/pganalyze/collector/state"
-	"github.com/pganalyze/collector/util"
 )
 
 // See also https://www.postgresql.org/docs/current/static/catalog-pg-database.html
@@ -18,6 +17,8 @@ SELECT oid,
 			 rolcreaterole,
 			 rolcreatedb,
 			 rolsuper,
+			 COALESCE((SELECT pg_has_role(r.oid, r2.oid, 'MEMBER') FROM pg_roles r2 WHERE rolname = $1), false) AS cloud_superuser,
+			 COALESCE((SELECT pg_has_role(r.oid, r2.oid, 'MEMBER') FROM pg_roles r2 WHERE rolname = 'pg_monitor'), false) AS monitoring_user,
 			 rolreplication,
 			 rolconnlimit,
 			 CASE WHEN rolvaliduntil = 'infinity' THEN NULL ELSE rolvaliduntil END,
@@ -27,15 +28,17 @@ SELECT oid,
 	FROM pg_roles r
 	 `
 
-func GetRoles(ctx context.Context, logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion) ([]state.PostgresRole, error) {
-	stmt, err := db.PrepareContext(ctx, QueryMarkerSQL+rolesSQL)
-	if err != nil {
-		return nil, err
+func getRoles(ctx context.Context, db *sql.DB, systemType string) ([]state.PostgresRole, error) {
+	cloudSuperuserName := ""
+	if systemType == "amazon_rds" {
+		cloudSuperuserName = "rds_superuser"
+	} else if systemType == "azure_database" {
+		cloudSuperuserName = "azure_pg_admin"
+	} else if systemType == "google_cloudsql" {
+		cloudSuperuserName = "cloudsqlsuperuser"
 	}
 
-	defer stmt.Close()
-
-	rows, err := stmt.QueryContext(ctx)
+	rows, err := db.QueryContext(ctx, QueryMarkerSQL+rolesSQL, cloudSuperuserName)
 	if err != nil {
 		return nil, err
 	}
@@ -49,7 +52,8 @@ func GetRoles(ctx context.Context, logger *util.Logger, db *sql.DB, postgresVers
 		var config, memberOf null.String
 
 		err := rows.Scan(&r.Oid, &r.Name, &r.Inherit, &r.Login, &r.CreateRole, &r.CreateDb, &r.SuperUser,
-			&r.Replication, &r.ConnectionLimit, &r.PasswordValidUntil, &config, &memberOf, &r.BypassRLS)
+			&r.CloudSuperUser, &r.MonitoringUser, &r.Replication, &r.ConnectionLimit, &r.PasswordValidUntil,
+			&config, &memberOf, &r.BypassRLS)
 		if err != nil {
 			return nil, err
 		}

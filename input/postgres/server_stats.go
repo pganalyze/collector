@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/pganalyze/collector/state"
-	"github.com/pganalyze/collector/util"
 )
 
 const transactionIdSQLPg13 string = `
@@ -76,7 +75,7 @@ SELECT
 FROM %s;
 `
 
-func GetServerStats(ctx context.Context, logger *util.Logger, db *sql.DB, ps state.PersistedState, ts state.TransientState, systemType string) (state.PersistedState, state.TransientState, error) {
+func GetServerStats(ctx context.Context, c *Collection, db *sql.DB, ps state.PersistedState, ts state.TransientState) (state.PersistedState, state.TransientState, error) {
 	var stats state.PostgresServerStats
 	var transactionIdSQL string
 
@@ -92,7 +91,7 @@ func GetServerStats(ctx context.Context, logger *util.Logger, db *sql.DB, ps sta
 		var sourceStatReplicationTable string
 
 		if StatsHelperExists(ctx, db, "get_stat_replication") {
-			logger.PrintVerbose("Found pganalyze.get_stat_replication() stats helper")
+			c.Logger.PrintVerbose("Found pganalyze.get_stat_replication() stats helper")
 			sourceStatReplicationTable = "pganalyze.get_stat_replication()"
 		} else {
 			sourceStatReplicationTable = "pg_catalog.pg_stat_replication"

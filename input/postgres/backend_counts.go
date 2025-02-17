@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/pganalyze/collector/state"
-	"github.com/pganalyze/collector/util"
 )
 
 const backendCountsSQL string = `
@@ -19,7 +18,7 @@ const backendCountsSQL string = `
 	 FROM %s
 	GROUP BY 1, 2, 3, 4, 5`
 
-func GetBackendCounts(ctx context.Context, logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion, systemType string) ([]state.PostgresBackendCount, error) {
+func GetBackendCounts(ctx context.Context, c *Collection, db *sql.DB) ([]state.PostgresBackendCount, error) {
 	var sourceTable string
 
 	if StatsHelperExists(ctx, db, "get_stat_activity") {
@@ -54,7 +53,7 @@ func GetBackendCounts(ctx context.Context, logger *util.Logger, db *sql.DB, post
 		}
 
 		// Special case to avoid errors for certain backends with weird names
-		if systemType == "azure_database" {
+		if c.Config.SystemType == "azure_database" {
 			row.BackendType = strings.ToValidUTF8(row.BackendType, "")
 		}
 

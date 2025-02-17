@@ -37,9 +37,9 @@ SELECT t.oid,
     AND %s
 `
 
-func GetTypes(ctx context.Context, db *sql.DB, postgresVersion state.PostgresVersion, currentDatabaseOid state.Oid) ([]state.PostgresType, error) {
+func GetTypes(ctx context.Context, c *Collection, db *sql.DB, currentDatabaseOid state.Oid) ([]state.PostgresType, error) {
 	var systemCatalogFilter string
-	if postgresVersion.IsEPAS {
+	if c.PostgresVersion.IsEPAS {
 		systemCatalogFilter = relationSQLEPASSystemCatalogFilter
 	} else {
 		systemCatalogFilter = relationSQLdefaultSystemCatalogFilter

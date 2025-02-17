@@ -7,7 +7,6 @@ type TransientActivityState struct {
 
 	TrackActivityQuerySize int
 
-	Version  PostgresVersion
 	Backends []PostgresBackend
 
 	Vacuums []PostgresVacuumProgress
