@@ -86,7 +86,7 @@ func ResetStatements(ctx context.Context, h CollectionHelper, db *sql.DB) error 
 		h.Logger.PrintVerbose("Found pganalyze.reset_stat_statements() stats helper")
 		method = "pganalyze.reset_stat_statements()"
 	} else {
-		if !connectedAsSuperUser(ctx, db, h.Config.SystemType) && !connectedAsMonitoringRole(ctx, db) {
+		if !h.ConnectedAsSuperUser && !h.ConnectedAsMonitoringRole {
 			h.Logger.PrintInfo("Warning: You are not connecting as superuser. Please" +
 				" contact support to get advice on setting up stat statements reset")
 		}
@@ -190,7 +190,7 @@ func GetStatements(ctx context.Context, h CollectionHelper, db *sql.DB, showtext
 			sourceTable = "pganalyze.get_stat_statements()"
 		}
 	} else {
-		if h.Config.SystemType != "heroku" && !connectedAsSuperUser(ctx, db, h.Config.SystemType) && !connectedAsMonitoringRole(ctx, db) && h.GlobalOpts.TestRun {
+		if h.Config.SystemType != "heroku" && !h.ConnectedAsSuperUser && !h.ConnectedAsMonitoringRole && h.GlobalOpts.TestRun {
 			h.SelfTest.MarkCollectionAspectWarning(state.CollectionAspectPgStatStatements, "monitoring user may have insufficient permissions to capture all queries")
 			h.SelfTest.HintCollectionAspect(state.CollectionAspectPgStatStatements, "Please set up"+
 				" the monitoring helper functions (%s)"+

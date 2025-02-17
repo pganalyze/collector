@@ -27,12 +27,7 @@ func CollectFull(ctx context.Context, server *state.Server, connection *sql.DB, 
 		return
 	}
 	ts.Version = h.PostgresVersion
-
-	ts.Roles, err = postgres.GetRoles(ctx, logger, connection, ts.Version)
-	if err != nil {
-		logger.PrintError("Error collecting pg_roles: %s", err)
-		return
-	}
+	ts.Roles = h.Roles
 
 	ts.Databases, ps.DatabaseStats, err = postgres.GetDatabases(ctx, connection)
 	if err != nil {

@@ -56,7 +56,7 @@ func GetRelationStatsExtended(ctx context.Context, h CollectionHelper, db *sql.D
 	} else {
 		sourceTable = "pg_catalog.pg_stats_ext"
 		if h.GlobalOpts.TestRun {
-			if h.Config.SystemType == "heroku" || connectedAsSuperUser(ctx, db, h.Config.SystemType) {
+			if h.Config.SystemType == "heroku" || h.ConnectedAsSuperUser {
 				h.SelfTest.MarkDbCollectionAspectOk(dbName, state.CollectionAspectExtendedStats)
 			} else {
 				h.SelfTest.MarkDbCollectionAspectError(dbName, state.CollectionAspectExtendedStats, "monitoring helper function pganalyze.get_relation_stats_ext not found")

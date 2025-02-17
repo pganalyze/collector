@@ -42,7 +42,7 @@ func GetColumnStats(ctx context.Context, h CollectionHelper, db *sql.DB, dbName 
 	} else {
 		sourceTable = "pg_catalog.pg_stats"
 		if h.GlobalOpts.TestRun {
-			if h.Config.SystemType == "heroku" || connectedAsSuperUser(ctx, db, h.Config.SystemType) {
+			if h.Config.SystemType == "heroku" || h.ConnectedAsSuperUser {
 				h.SelfTest.MarkDbCollectionAspectOk(dbName, state.CollectionAspectColumnStats)
 			} else {
 				h.SelfTest.MarkDbCollectionAspectError(dbName, state.CollectionAspectColumnStats, "monitoring helper function pganalyze.get_column_stats not found")
