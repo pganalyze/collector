@@ -87,7 +87,7 @@ func GetReplication(ctx context.Context, c *Collection, db *sql.DB) (state.Postg
 		return repl, nil
 	}
 
-	if StatsHelperExists(ctx, db, "get_stat_replication") {
+	if c.HelperExists("get_stat_replication", nil) {
 		c.Logger.PrintVerbose("Found pganalyze.get_stat_replication() stats helper")
 		sourceTable = "pganalyze.get_stat_replication()"
 	} else {

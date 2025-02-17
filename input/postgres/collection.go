@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 
 	"github.com/pganalyze/collector/config"
 	"github.com/pganalyze/collector/state"
@@ -19,6 +20,25 @@ type Collection struct {
 	Roles                     []state.PostgresRole
 	ConnectedAsSuperUser      bool
 	ConnectedAsMonitoringRole bool
+
+	// Information that is specific to the current database we're connected to
+	HelperFunctions map[string][]state.PostgresFunction
+}
+
+func helpersFromFunctions(functions []state.PostgresFunction) map[string][]state.PostgresFunction {
+	helpers := make(map[string][]state.PostgresFunction)
+	for _, f := range functions {
+		if f.SchemaName != "pganalyze" {
+			continue
+		}
+		funcs, ok := helpers[f.FunctionName]
+		if ok {
+			helpers[f.FunctionName] = append(funcs, f)
+		} else {
+			helpers[f.FunctionName] = []state.PostgresFunction{f}
+		}
+	}
+	return helpers
 }
 
 func NewCollection(ctx context.Context, logger *util.Logger, server *state.Server, globalOpts state.CollectionOpts, db *sql.DB) (*Collection, error) {
@@ -38,6 +58,10 @@ func NewCollection(ctx context.Context, logger *util.Logger, server *state.Serve
 	if err != nil {
 		return &Collection{}, fmt.Errorf("failed collecting pg_roles: %s", err)
 	}
+	helperFunctions, err := GetFunctions(ctx, logger, db, version, 0, "", true)
+	if err != nil {
+		return &Collection{}, fmt.Errorf("failed collecting pg_proc: %s", err)
+	}
 
 	roleByName := make(map[string]state.PostgresRole)
 	for _, role := range roles {
@@ -56,5 +80,74 @@ func NewCollection(ctx context.Context, logger *util.Logger, server *state.Serve
 		Roles:                     roles,
 		ConnectedAsSuperUser:      connectedAsSuperUser,
 		ConnectedAsMonitoringRole: connectedAsMonitoringRole,
+		HelperFunctions:           helpersFromFunctions(helperFunctions),
 	}, nil
+}
+
+func (c *Collection) ForCurrentDatabase(functions []state.PostgresFunction) *Collection {
+	return &Collection{
+		Config:                    c.Config,
+		Logger:                    c.Logger,
+		SelfTest:                  c.SelfTest,
+		GlobalOpts:                c.GlobalOpts,
+		PostgresVersion:           c.PostgresVersion,
+		Roles:                     c.Roles,
+		ConnectedAsSuperUser:      c.ConnectedAsSuperUser,
+		ConnectedAsMonitoringRole: c.ConnectedAsMonitoringRole,
+		HelperFunctions:           helpersFromFunctions(functions),
+	}
+}
+
+func (c *Collection) findHelperFunction(name string, inputTypes []string) (state.PostgresFunction, bool) {
+	funcs, exists := c.HelperFunctions[name]
+	if !exists {
+		return state.PostgresFunction{}, false
+	}
+	for _, f := range funcs {
+		args := strings.Split(f.Arguments, ", ")
+		if len(inputTypes) > len(args) {
+			// We're expecting more arguments than the function has
+			continue
+		}
+		mismatch := false
+		for idx, arg := range args {
+			// Split by the assumed output pattern of pg_get_function_arguments:
+			// "<name> <type> DEFAULT <default>"
+			//
+			// Note this currently does not handle data types with spaces in
+			// them, such as "double precision", or other cases not expected
+			// with our known set of helper functions.
+			parts := strings.Split(arg, " ")
+
+			// Check if function has more arguments required than we're expecting
+			//
+			// Note we allow extra arguments if they have default values.
+			if idx >= len(inputTypes) && parts[2] != "DEFAULT" {
+				mismatch = true
+				break
+			}
+
+			if parts[1] != inputTypes[idx] {
+				mismatch = true
+				break
+			}
+		}
+		if !mismatch {
+			return f, true
+		}
+	}
+	return state.PostgresFunction{}, false
+}
+
+func (c *Collection) HelperExists(name string, inputTypes []string) bool {
+	_, ok := c.findHelperFunction(name, inputTypes)
+	return ok
+}
+
+func (c *Collection) HelperReturnType(name string, inputTypes []string) string {
+	f, ok := c.findHelperFunction(name, inputTypes)
+	if ok {
+		return f.Result
+	}
+	return ""
 }

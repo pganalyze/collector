@@ -21,7 +21,7 @@ const backendCountsSQL string = `
 func GetBackendCounts(ctx context.Context, c *Collection, db *sql.DB) ([]state.PostgresBackendCount, error) {
 	var sourceTable string
 
-	if StatsHelperExists(ctx, db, "get_stat_activity") {
+	if c.HelperExists("get_stat_activity", nil) {
 		sourceTable = "pganalyze.get_stat_activity()"
 	} else {
 		sourceTable = "pg_catalog.pg_stat_activity"

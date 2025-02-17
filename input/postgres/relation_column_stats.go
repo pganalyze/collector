@@ -19,8 +19,8 @@ SELECT schemaname, tablename, attname, inherited, null_frac, avg_width, n_distin
 func GetColumnStats(ctx context.Context, c *Collection, db *sql.DB, dbName string) (state.PostgresColumnStatsMap, error) {
 	var sourceTable string
 
-	if StatsHelperExists(ctx, db, "get_column_stats") {
-		if strings.Contains(StatsHelperReturnType(ctx, db, "get_column_stats"), "pg_stats") {
+	if c.HelperExists("get_column_stats", nil) {
+		if strings.Contains(c.HelperReturnType("get_column_stats", nil), "pg_stats") {
 			if c.PostgresVersion.Numeric >= state.PostgresVersion17 {
 				sourceTable = "pg_catalog.pg_stats"
 			} else {

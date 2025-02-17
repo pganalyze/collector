@@ -140,6 +140,14 @@ func collectOneSchema(ctx context.Context, c *Collection, server *state.Server, 
 }
 
 func collectSchemaData(ctx context.Context, c *Collection, db *sql.DB, ps state.PersistedState, ts state.TransientState, databaseOid state.Oid, server *state.Server, dbName string) (state.PersistedState, state.TransientState, error) {
+	newFunctions, err := GetFunctions(ctx, c.Logger, db, ts.Version, databaseOid, server.Config.IgnoreSchemaRegexp, false)
+	if err != nil {
+		return ps, ts, fmt.Errorf("error collecting stored procedure metadata: %s", err)
+	}
+	ps.Functions = append(ps.Functions, newFunctions...)
+
+	c = c.ForCurrentDatabase(newFunctions)
+
 	if c.GlobalOpts.CollectPostgresRelations {
 		newRelations, err := GetRelations(ctx, c, db, databaseOid)
 		if err != nil {
@@ -180,14 +188,6 @@ func collectSchemaData(ctx context.Context, c *Collection, db *sql.DB, ps state.
 				ps.SchemaStats[databaseOid].RelationStatsExtended[k] = v
 			}
 		}
-	}
-
-	if c.GlobalOpts.CollectPostgresFunctions {
-		newFunctions, err := GetFunctions(ctx, c.Logger, db, c.PostgresVersion, databaseOid, server.Config.IgnoreSchemaRegexp)
-		if err != nil {
-			return ps, ts, fmt.Errorf("error collecting stored procedure metadata: %s", err)
-		}
-		ps.Functions = append(ps.Functions, newFunctions...)
 	}
 
 	newExtensions, err := GetExtensions(ctx, db, databaseOid)
