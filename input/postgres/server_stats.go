@@ -90,7 +90,7 @@ func GetServerStats(ctx context.Context, h CollectionHelper, db *sql.DB, ps stat
 		// as the backend_xmin from pg_stat_activity can point to the "next" transaction ID.
 		var sourceStatReplicationTable string
 
-		if StatsHelperExists(ctx, db, "get_stat_replication") {
+		if h.HelperExists("get_stat_replication", nil) {
 			h.Logger.PrintVerbose("Found pganalyze.get_stat_replication() stats helper")
 			sourceStatReplicationTable = "pganalyze.get_stat_replication()"
 		} else {
