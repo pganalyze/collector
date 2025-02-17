@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/pganalyze/collector/config"
 	"github.com/pganalyze/collector/selftest"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
@@ -18,17 +19,30 @@ const defaultSchemaTableLimit = 5000
 // timeout than a full collection interval (10 minutes)
 const schemaCollectionTimeout = 8 * time.Minute
 
-func GetDatabasesToCollect(server *state.Server, databases []state.PostgresDatabase) []string {
+func isCloudInternalDatabase(systemType string, databaseName string) bool {
+	if systemType == "amazon_rds" {
+		return databaseName == "rdsadmin"
+	}
+	if systemType == "azure_database" {
+		return databaseName == "azure_maintenance"
+	}
+	if systemType == "google_cloudsql" {
+		return databaseName == "cloudsqladmin"
+	}
+	return false
+}
+
+func GetDatabasesToCollect(config config.ServerConfig, databases []state.PostgresDatabase) []string {
 	schemaDbNames := []string{}
-	if server.Config.DbAllNames {
+	if config.DbAllNames {
 		for _, database := range databases {
-			if !database.IsTemplate && database.AllowConnections && !isCloudInternalDatabase(server.Config.SystemType, database.Name) {
+			if !database.IsTemplate && database.AllowConnections && !isCloudInternalDatabase(config.SystemType, database.Name) {
 				schemaDbNames = append(schemaDbNames, database.Name)
 			}
 		}
 	} else {
-		schemaDbNames = append(schemaDbNames, server.Config.DbName)
-		schemaDbNames = append(schemaDbNames, server.Config.DbExtraNames...)
+		schemaDbNames = append(schemaDbNames, config.DbName)
+		schemaDbNames = append(schemaDbNames, config.DbExtraNames...)
 	}
 	return schemaDbNames
 }
@@ -43,7 +57,7 @@ func CollectAllSchemas(ctx context.Context, server *state.Server, collectionOpts
 	ps.Functions = []state.PostgresFunction{}
 
 	collected := make(map[string]bool)
-	for _, dbName := range GetDatabasesToCollect(server, ts.Databases) {
+	for _, dbName := range GetDatabasesToCollect(server.Config, ts.Databases) {
 		if _, ok := collected[dbName]; ok {
 			continue
 		}
