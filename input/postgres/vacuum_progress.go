@@ -67,7 +67,7 @@ func GetVacuumProgress(ctx context.Context, h CollectionHelper, db *sql.DB) ([]s
 	var activitySourceTable string
 	var sql string
 
-	if StatsHelperExists(ctx, db, "get_stat_activity") {
+	if h.HelperExists("get_stat_activity", nil) {
 		activitySourceTable = "pganalyze.get_stat_activity()"
 	} else {
 		activitySourceTable = "pg_catalog.pg_stat_activity"
@@ -81,7 +81,7 @@ func GetVacuumProgress(ctx context.Context, h CollectionHelper, db *sql.DB) ([]s
 	}
 
 	var vacuumSourceTable string
-	if StatsHelperExists(ctx, db, "get_stat_progress_vacuum") {
+	if h.HelperExists("get_stat_progress_vacuum", nil) {
 		vacuumSourceTable = "pganalyze.get_stat_progress_vacuum()"
 	} else {
 		vacuumSourceTable = "pg_catalog.pg_stat_progress_vacuum"

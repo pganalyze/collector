@@ -33,7 +33,7 @@ func GetBackends(ctx context.Context, h CollectionHelper, db *sql.DB) ([]state.P
 		blockingPidsField = "NULL"
 	}
 
-	if StatsHelperExists(ctx, db, "get_stat_activity") {
+	if h.HelperExists("get_stat_activity", nil) {
 		sourceTable = "pganalyze.get_stat_activity()"
 	} else {
 		sourceTable = "pg_catalog.pg_stat_activity"

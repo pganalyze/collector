@@ -49,7 +49,7 @@ func GetRelationStatsExtended(ctx context.Context, h CollectionHelper, db *sql.D
 		inheritedField = extendedStatisticsSQLInheritedField
 	}
 
-	if StatsHelperExists(ctx, db, "get_relation_stats_ext") {
+	if h.HelperExists("get_relation_stats_ext", []string{}) {
 		h.Logger.PrintVerbose("Found pganalyze.get_relation_stats_ext() stats helper")
 		sourceTable = "pganalyze.get_relation_stats_ext()"
 		h.SelfTest.MarkDbCollectionAspectOk(dbName, state.CollectionAspectExtendedStats)
