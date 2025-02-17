@@ -8,7 +8,6 @@ import (
 
 	"github.com/lib/pq"
 	"github.com/pganalyze/collector/state"
-	"github.com/pganalyze/collector/util"
 )
 
 const pgBlockingPidsField = `
@@ -24,11 +23,11 @@ SELECT (extract(epoch from COALESCE(backend_start, pg_catalog.pg_postmaster_star
 FROM %s
 WHERE pid IS NOT NULL`
 
-func GetBackends(ctx context.Context, logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion, systemType string, collectPostgresLocks bool) ([]state.PostgresBackend, error) {
+func GetBackends(ctx context.Context, c *Collection, db *sql.DB) ([]state.PostgresBackend, error) {
 	var blockingPidsField string
 	var sourceTable string
 
-	if collectPostgresLocks {
+	if c.GlobalOpts.CollectPostgresLocks {
 		blockingPidsField = pgBlockingPidsField
 	} else {
 		blockingPidsField = "NULL"
@@ -70,7 +69,7 @@ func GetBackends(ctx context.Context, logger *util.Logger, db *sql.DB, postgresV
 		}
 
 		// Special case to avoid errors for certain backends with weird names
-		if systemType == "azure_database" && row.BackendType.Valid {
+		if c.Config.SystemType == "azure_database" && row.BackendType.Valid {
 			row.BackendType.String = strings.ToValidUTF8(row.BackendType.String, "")
 		}
 

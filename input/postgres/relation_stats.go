@@ -163,17 +163,17 @@ SELECT relid,
   FROM locked_relids
 `
 
-func GetRelationStats(ctx context.Context, db *sql.DB, postgresVersion state.PostgresVersion, server *state.Server, currentDatabaseOid state.Oid, ts state.TransientState) (relStats state.PostgresRelationStatsMap, err error) {
+func GetRelationStats(ctx context.Context, c *Collection, db *sql.DB, currentDatabaseOid state.Oid, ts state.TransientState) (relStats state.PostgresRelationStatsMap, err error) {
 	var insertsSinceVacuumField string
 	var systemCatalogFilter string
 
-	if postgresVersion.Numeric >= state.PostgresVersion13 {
+	if c.PostgresVersion.Numeric >= state.PostgresVersion13 {
 		insertsSinceVacuumField = relationStatsSQLInsertsSinceVacuumFieldPg13
 	} else {
 		insertsSinceVacuumField = relationStatsSQLInsertsSinceVacuumFieldDefault
 	}
 
-	if postgresVersion.IsEPAS {
+	if c.PostgresVersion.IsEPAS {
 		systemCatalogFilter = relationSQLEPASSystemCatalogFilter
 	} else {
 		systemCatalogFilter = relationSQLdefaultSystemCatalogFilter
@@ -186,7 +186,7 @@ func GetRelationStats(ctx context.Context, db *sql.DB, postgresVersion state.Pos
 	}
 	defer stmt.Close()
 
-	rows, err := stmt.QueryContext(ctx, server.Config.IgnoreSchemaRegexp)
+	rows, err := stmt.QueryContext(ctx, c.Config.IgnoreSchemaRegexp)
 	if err != nil {
 		err = fmt.Errorf("RelationStats/Query: %s", err)
 		return
@@ -236,12 +236,12 @@ func GetRelationStats(ctx context.Context, db *sql.DB, postgresVersion state.Pos
 		return
 	}
 
-	relStats, err = handleRelationStatsAux(ctx, db, relStats, postgresVersion, server)
+	relStats, err = handleRelationStatsAux(ctx, c, db, relStats)
 
 	return
 }
 
-func GetIndexStats(ctx context.Context, db *sql.DB, postgresVersion state.PostgresVersion, server *state.Server, currentDatabaseOid state.Oid, ts state.TransientState) (indexStats state.PostgresIndexStatsMap, err error) {
+func GetIndexStats(ctx context.Context, c *Collection, db *sql.DB, currentDatabaseOid state.Oid, ts state.TransientState) (indexStats state.PostgresIndexStatsMap, err error) {
 	stmt, err := db.PrepareContext(ctx, QueryMarkerSQL+indexStatsSQL)
 	if err != nil {
 		err = fmt.Errorf("IndexStats/Prepare: %s", err)
@@ -249,7 +249,7 @@ func GetIndexStats(ctx context.Context, db *sql.DB, postgresVersion state.Postgr
 	}
 	defer stmt.Close()
 
-	rows, err := stmt.QueryContext(ctx, server.Config.IgnoreSchemaRegexp)
+	rows, err := stmt.QueryContext(ctx, c.Config.IgnoreSchemaRegexp)
 	if err != nil {
 		err = fmt.Errorf("IndexStats/Query: %s", err)
 		return
@@ -285,7 +285,7 @@ func GetIndexStats(ctx context.Context, db *sql.DB, postgresVersion state.Postgr
 		return
 	}
 
-	indexStats, err = handleIndexStatsAux(ctx, db, indexStats, postgresVersion, server)
+	indexStats, err = handleIndexStatsAux(ctx, c, db, indexStats)
 
 	return
 }

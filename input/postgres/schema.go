@@ -9,7 +9,6 @@ import (
 	"github.com/pganalyze/collector/config"
 	"github.com/pganalyze/collector/selftest"
 	"github.com/pganalyze/collector/state"
-	"github.com/pganalyze/collector/util"
 )
 
 const defaultSchemaTableLimit = 5000
@@ -47,7 +46,7 @@ func GetDatabasesToCollect(config config.ServerConfig, databases []state.Postgre
 	return schemaDbNames
 }
 
-func CollectAllSchemas(ctx context.Context, server *state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, ps state.PersistedState, ts state.TransientState) (state.PersistedState, state.TransientState, error) {
+func CollectAllSchemas(ctx context.Context, c *Collection, server *state.Server, ps state.PersistedState, ts state.TransientState) (state.PersistedState, state.TransientState, error) {
 	ctxSchema, cancel := context.WithTimeout(ctx, schemaCollectionTimeout)
 	defer cancel()
 
@@ -61,14 +60,14 @@ func CollectAllSchemas(ctx context.Context, server *state.Server, collectionOpts
 		if _, ok := collected[dbName]; ok {
 			continue
 		}
-		server.SelfTest.MarkMonitoredDb(dbName)
+		c.SelfTest.MarkMonitoredDb(dbName)
 
 		collected[dbName] = true
-		psNext, tsNext, databaseOid, err := collectOneSchema(ctxSchema, server, collectionOpts, logger, ps, ts, ts.Version, server.Config.SystemType, dbName)
+		psNext, tsNext, databaseOid, err := collectOneSchema(ctxSchema, c, server, ps, ts, dbName)
 		if err != nil {
 			// If the outer context failed, return an error to the caller
 			if ctx.Err() != nil {
-				server.SelfTest.MarkRemainingDbCollectionAspectError(state.CollectionAspectSchema, err.Error())
+				c.SelfTest.MarkRemainingDbCollectionAspectError(state.CollectionAspectSchema, err.Error())
 				return ps, ts, err
 			}
 			// If the schema context failed, stop doing any further collection.
@@ -76,16 +75,16 @@ func CollectAllSchemas(ctx context.Context, server *state.Server, collectionOpts
 			// functions to report their data, and send any schema information
 			// we already collected.
 			if ctxSchema.Err() != nil {
-				logger.PrintWarning("Failed to collect schema metadata for database %s and all remaining databases: %s", dbName, err)
-				server.SelfTest.MarkRemainingDbCollectionAspectError(state.CollectionAspectSchema, err.Error())
+				c.Logger.PrintWarning("Failed to collect schema metadata for database %s and all remaining databases: %s", dbName, err)
+				c.SelfTest.MarkRemainingDbCollectionAspectError(state.CollectionAspectSchema, err.Error())
 				return ps, ts, nil
 			}
 			warning := "Failed to collect schema metadata for database %s: %s"
-			server.SelfTest.MarkDbCollectionAspectError(dbName, state.CollectionAspectSchema, err.Error())
-			if collectionOpts.TestRun {
-				logger.PrintWarning(warning, dbName, err)
+			c.SelfTest.MarkDbCollectionAspectError(dbName, state.CollectionAspectSchema, err.Error())
+			if c.GlobalOpts.TestRun {
+				c.Logger.PrintWarning(warning, dbName, err)
 			} else {
-				logger.PrintVerbose(warning, dbName, err)
+				c.Logger.PrintVerbose(warning, dbName, err)
 			}
 
 			continue
@@ -93,7 +92,7 @@ func CollectAllSchemas(ctx context.Context, server *state.Server, collectionOpts
 		ps = psNext
 		ts = tsNext
 		ts.DatabaseOidsWithLocalCatalog = append(ts.DatabaseOidsWithLocalCatalog, databaseOid)
-		server.SelfTest.MarkDbCollectionAspectOk(dbName, state.CollectionAspectSchema)
+		c.SelfTest.MarkDbCollectionAspectOk(dbName, state.CollectionAspectSchema)
 	}
 	schemaTableLimit := int(server.Grant.Load().Config.SchemaTableLimit)
 	if schemaTableLimit == 0 {
@@ -101,20 +100,20 @@ func CollectAllSchemas(ctx context.Context, server *state.Server, collectionOpts
 	}
 	if relCount := len(ps.Relations); relCount > schemaTableLimit {
 		// technically this is a server problem, but we can report it at the database level
-		if collectionOpts.TestRun {
-			for _, dbName := range server.SelfTest.MonitoredDbs {
-				server.SelfTest.MarkDbCollectionAspectError(dbName, state.CollectionAspectSchema, "too many total tables")
-				server.SelfTest.HintDbCollectionAspect(dbName, state.CollectionAspectSchema, "Too many total tables: got %d, but only %d can be monitored per server; schema information will not be sent; learn more at %s", relCount, schemaTableLimit, selftest.URLPrinter.Sprint("https://pganalyze.com/docs/collector/settings#schema-filter-settings"))
+		if c.GlobalOpts.TestRun {
+			for _, dbName := range c.SelfTest.MonitoredDbs {
+				c.SelfTest.MarkDbCollectionAspectError(dbName, state.CollectionAspectSchema, "too many total tables")
+				c.SelfTest.HintDbCollectionAspect(dbName, state.CollectionAspectSchema, "Too many total tables: got %d, but only %d can be monitored per server; schema information will not be sent; learn more at %s", relCount, schemaTableLimit, selftest.URLPrinter.Sprint("https://pganalyze.com/docs/collector/settings#schema-filter-settings"))
 			}
 		}
-		logger.PrintWarning("Too many tables: got %d, but only %d can be monitored per server; schema information will not be sent; learn more at https://pganalyze.com/docs/collector/settings#schema-filter-settings", relCount, schemaTableLimit)
+		c.Logger.PrintWarning("Too many tables: got %d, but only %d can be monitored per server; schema information will not be sent; learn more at https://pganalyze.com/docs/collector/settings#schema-filter-settings", relCount, schemaTableLimit)
 	}
 
 	return ps, ts, nil
 }
 
-func collectOneSchema(ctx context.Context, server *state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, ps state.PersistedState, ts state.TransientState, postgresVersion state.PostgresVersion, systemType string, dbName string) (psOut state.PersistedState, tsOut state.TransientState, databaseOid state.Oid, err error) {
-	schemaConnection, err := EstablishConnection(ctx, server, logger, collectionOpts, dbName)
+func collectOneSchema(ctx context.Context, c *Collection, server *state.Server, ps state.PersistedState, ts state.TransientState, dbName string) (psOut state.PersistedState, tsOut state.TransientState, databaseOid state.Oid, err error) {
+	schemaConnection, err := EstablishConnection(ctx, server, c.Logger, c.GlobalOpts, dbName)
 	if err != nil {
 		return ps, ts, 0, fmt.Errorf("error connecting: %s", err)
 	}
@@ -132,7 +131,7 @@ func collectOneSchema(ctx context.Context, server *state.Server, collectionOpts 
 		RelationStatsExtended: make(state.PostgresRelationStatsExtendedMap),
 	}
 
-	psOut, tsOut, err = collectSchemaData(ctx, collectionOpts, logger, schemaConnection, ps, ts, databaseOid, postgresVersion, server, systemType, dbName)
+	psOut, tsOut, err = collectSchemaData(ctx, c, schemaConnection, ps, ts, databaseOid, server, dbName)
 	if err != nil {
 		return ps, ts, 0, err
 	}
@@ -140,15 +139,15 @@ func collectOneSchema(ctx context.Context, server *state.Server, collectionOpts 
 	return psOut, tsOut, databaseOid, nil
 }
 
-func collectSchemaData(ctx context.Context, collectionOpts state.CollectionOpts, logger *util.Logger, db *sql.DB, ps state.PersistedState, ts state.TransientState, databaseOid state.Oid, postgresVersion state.PostgresVersion, server *state.Server, systemType string, dbName string) (state.PersistedState, state.TransientState, error) {
-	if collectionOpts.CollectPostgresRelations {
-		newRelations, err := GetRelations(ctx, db, postgresVersion, databaseOid, server.Config.IgnoreSchemaRegexp)
+func collectSchemaData(ctx context.Context, c *Collection, db *sql.DB, ps state.PersistedState, ts state.TransientState, databaseOid state.Oid, server *state.Server, dbName string) (state.PersistedState, state.TransientState, error) {
+	if c.GlobalOpts.CollectPostgresRelations {
+		newRelations, err := GetRelations(ctx, c, db, databaseOid)
 		if err != nil {
 			return ps, ts, fmt.Errorf("error collecting table/index metadata: %s", err)
 		}
 		ps.Relations = append(ps.Relations, newRelations...)
 
-		newRelationStats, err := GetRelationStats(ctx, db, postgresVersion, server, databaseOid, ts)
+		newRelationStats, err := GetRelationStats(ctx, c, db, databaseOid, ts)
 		if err != nil {
 			return ps, ts, fmt.Errorf("error collecting table statistics: %s", err)
 		}
@@ -156,7 +155,7 @@ func collectSchemaData(ctx context.Context, collectionOpts state.CollectionOpts,
 			ps.SchemaStats[databaseOid].RelationStats[k] = v
 		}
 
-		newIndexStats, err := GetIndexStats(ctx, db, postgresVersion, server, databaseOid, ts)
+		newIndexStats, err := GetIndexStats(ctx, c, db, databaseOid, ts)
 		if err != nil {
 			return ps, ts, fmt.Errorf("error collecting index statistics: %s", err)
 		}
@@ -164,7 +163,7 @@ func collectSchemaData(ctx context.Context, collectionOpts state.CollectionOpts,
 			ps.SchemaStats[databaseOid].IndexStats[k] = v
 		}
 
-		newColumnStats, err := GetColumnStats(ctx, logger, db, collectionOpts, systemType, dbName, server, ts.Version)
+		newColumnStats, err := GetColumnStats(ctx, c, db, dbName)
 		if err != nil {
 			return ps, ts, fmt.Errorf("error collecting column statistics: %s", err)
 		}
@@ -172,8 +171,8 @@ func collectSchemaData(ctx context.Context, collectionOpts state.CollectionOpts,
 			ps.SchemaStats[databaseOid].ColumnStats[k] = v
 		}
 
-		if postgresVersion.Numeric >= state.PostgresVersion12 {
-			newRelationStatsExtended, err := GetRelationStatsExtended(ctx, logger, db, postgresVersion, server, collectionOpts, systemType, dbName)
+		if c.PostgresVersion.Numeric >= state.PostgresVersion12 {
+			newRelationStatsExtended, err := GetRelationStatsExtended(ctx, c, db, dbName)
 			if err != nil {
 				return ps, ts, fmt.Errorf("error collecting extended relation statistics: %s", err)
 			}
@@ -183,8 +182,8 @@ func collectSchemaData(ctx context.Context, collectionOpts state.CollectionOpts,
 		}
 	}
 
-	if collectionOpts.CollectPostgresFunctions {
-		newFunctions, err := GetFunctions(ctx, logger, db, postgresVersion, databaseOid, server.Config.IgnoreSchemaRegexp)
+	if c.GlobalOpts.CollectPostgresFunctions {
+		newFunctions, err := GetFunctions(ctx, c.Logger, db, c.PostgresVersion, databaseOid, server.Config.IgnoreSchemaRegexp)
 		if err != nil {
 			return ps, ts, fmt.Errorf("error collecting stored procedure metadata: %s", err)
 		}
@@ -197,7 +196,7 @@ func collectSchemaData(ctx context.Context, collectionOpts state.CollectionOpts,
 	}
 	ts.Extensions = append(ts.Extensions, newExtensions...)
 
-	newTypes, err := GetTypes(ctx, db, postgresVersion, databaseOid)
+	newTypes, err := GetTypes(ctx, c, db, databaseOid)
 	if err != nil {
 		return ps, ts, fmt.Errorf("error collecting custom types: %s", err)
 	}

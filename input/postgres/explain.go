@@ -55,6 +55,12 @@ func runExplainForDb(ctx context.Context, server *state.Server, collectionOpts s
 	}
 	defer db.Close()
 
+	c, err := NewCollection(ctx, logger, server, collectionOpts, db)
+	if err != nil {
+		logger.PrintError("Error setting up collection: %s", err)
+		return nil
+	}
+
 	useHelper := StatsHelperExists(ctx, db, "explain")
 	if useHelper {
 		logger.PrintVerbose("Found pganalyze.explain() stats helper in database \"%s\"", dbName)
@@ -73,7 +79,7 @@ func runExplainForDb(ctx context.Context, server *state.Server, collectionOpts s
 			break
 		}
 	}
-	if hasPermErr && !connectedAsSuperUser(ctx, db, server.Config.SystemType) {
+	if hasPermErr && c.ConnectedAsSuperUser {
 		logger.PrintInfo("Warning: pganalyze.explain() helper function not found in database \"%s\". Please set up"+
 			" the monitoring helper functions (https://pganalyze.com/docs/explain/setup/log_explain/01_create_helper_functions)"+
 			" in every database you want to monitor to avoid permissions issues when running log-based EXPLAIN.", dbName)

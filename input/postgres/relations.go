@@ -189,11 +189,11 @@ SELECT relid,
   FROM locked_relids
 `
 
-func GetRelations(ctx context.Context, db *sql.DB, postgresVersion state.PostgresVersion, currentDatabaseOid state.Oid, ignoreRegexp string) ([]state.PostgresRelation, error) {
+func GetRelations(ctx context.Context, c *Collection, db *sql.DB, currentDatabaseOid state.Oid) ([]state.PostgresRelation, error) {
 	relations := make(map[state.Oid]state.PostgresRelation, 0)
 
 	var systemCatalogFilter string
-	if postgresVersion.IsEPAS {
+	if c.PostgresVersion.IsEPAS {
 		systemCatalogFilter = relationSQLEPASSystemCatalogFilter
 	} else {
 		systemCatalogFilter = relationSQLdefaultSystemCatalogFilter
@@ -202,13 +202,13 @@ func GetRelations(ctx context.Context, db *sql.DB, postgresVersion state.Postgre
 	// Relations
 	var oidField string
 
-	if postgresVersion.Numeric >= state.PostgresVersion12 {
+	if c.PostgresVersion.Numeric >= state.PostgresVersion12 {
 		oidField = relationsSQLpg12OidField
 	} else {
 		oidField = relationsSQLOidField
 	}
 
-	rows, err := db.QueryContext(ctx, QueryMarkerSQL+fmt.Sprintf(relationsSQL, oidField, systemCatalogFilter), ignoreRegexp)
+	rows, err := db.QueryContext(ctx, QueryMarkerSQL+fmt.Sprintf(relationsSQL, oidField, systemCatalogFilter), c.Config.IgnoreSchemaRegexp)
 	if err != nil {
 		err = fmt.Errorf("Relations/Query: %s", err)
 		return nil, err
@@ -259,7 +259,7 @@ func GetRelations(ctx context.Context, db *sql.DB, postgresVersion state.Postgre
 	}
 
 	// Columns
-	rows, err = db.QueryContext(ctx, QueryMarkerSQL+fmt.Sprintf(columnsSQL, systemCatalogFilter), ignoreRegexp)
+	rows, err = db.QueryContext(ctx, QueryMarkerSQL+fmt.Sprintf(columnsSQL, systemCatalogFilter), c.Config.IgnoreSchemaRegexp)
 	if err != nil {
 		err = fmt.Errorf("Columns/Query: %s", err)
 		return nil, err
@@ -298,7 +298,7 @@ func GetRelations(ctx context.Context, db *sql.DB, postgresVersion state.Postgre
 	}
 
 	// Indices
-	rows, err = db.QueryContext(ctx, QueryMarkerSQL+fmt.Sprintf(indicesSQL, systemCatalogFilter), ignoreRegexp)
+	rows, err = db.QueryContext(ctx, QueryMarkerSQL+fmt.Sprintf(indicesSQL, systemCatalogFilter), c.Config.IgnoreSchemaRegexp)
 	if err != nil {
 		err = fmt.Errorf("Indices/Query: %s", err)
 		return nil, err
@@ -356,7 +356,7 @@ func GetRelations(ctx context.Context, db *sql.DB, postgresVersion state.Postgre
 	}
 
 	// Constraints
-	rows, err = db.QueryContext(ctx, QueryMarkerSQL+fmt.Sprintf(constraintsSQL, systemCatalogFilter), ignoreRegexp)
+	rows, err = db.QueryContext(ctx, QueryMarkerSQL+fmt.Sprintf(constraintsSQL, systemCatalogFilter), c.Config.IgnoreSchemaRegexp)
 	if err != nil {
 		err = fmt.Errorf("Constraints/Query: %s", err)
 		return nil, err
@@ -420,7 +420,7 @@ func GetRelations(ctx context.Context, db *sql.DB, postgresVersion state.Postgre
 	}
 
 	// View definitions
-	rows, err = db.QueryContext(ctx, QueryMarkerSQL+fmt.Sprintf(viewDefinitionSQL, systemCatalogFilter), ignoreRegexp)
+	rows, err = db.QueryContext(ctx, QueryMarkerSQL+fmt.Sprintf(viewDefinitionSQL, systemCatalogFilter), c.Config.IgnoreSchemaRegexp)
 	if err != nil {
 		err = fmt.Errorf("Views/Prepare: %s", err)
 		return nil, err

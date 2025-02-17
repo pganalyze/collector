@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
 	"path/filepath"
 	"strings"
 	"time"
@@ -20,29 +19,15 @@ import (
 
 // CollectFull - Collects a "full" snapshot of all data we need on a regular interval
 func CollectFull(ctx context.Context, server *state.Server, connection *sql.DB, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (ps state.PersistedState, ts state.TransientState, err error) {
-	systemType := server.Config.SystemType
 	ps.CollectedAt = time.Now()
 
-	ts.Version, err = postgres.GetPostgresVersion(ctx, logger, connection)
+	c, err := postgres.NewCollection(ctx, logger, server, globalCollectionOpts, connection)
 	if err != nil {
-		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectPgVersion, err.Error())
-		logger.PrintError("Error collecting Postgres Version: %s", err)
+		logger.PrintError("Error setting up collection info: %s", err)
 		return
 	}
-
-	if ts.Version.Numeric < state.MinRequiredPostgresVersion {
-		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectPgVersion, "PostgreSQL server version (%s) is too old, 10 or newer is required.", ts.Version.Short)
-		err = fmt.Errorf("Error: Your PostgreSQL server version (%s) is too old, 10 or newer is required.", ts.Version.Short)
-		return
-	}
-
-	server.SelfTest.MarkCollectionAspect(state.CollectionAspectPgVersion, state.CollectionStateOkay, ts.Version.Short)
-
-	ts.Roles, err = postgres.GetRoles(ctx, logger, connection, ts.Version)
-	if err != nil {
-		logger.PrintError("Error collecting pg_roles: %s", err)
-		return
-	}
+	ts.Version = c.PostgresVersion
+	ts.Roles = c.Roles
 
 	ts.Databases, ps.DatabaseStats, err = postgres.GetDatabases(ctx, connection)
 	if err != nil {
@@ -52,7 +37,7 @@ func CollectFull(ctx context.Context, server *state.Server, connection *sql.DB, 
 
 	bufferCacheReady := make(chan state.BufferCache)
 	go func() {
-		postgres.GetBufferCache(ctx, server, globalCollectionOpts, logger, ts.Version, bufferCacheReady)
+		postgres.GetBufferCache(ctx, c, server, globalCollectionOpts, bufferCacheReady)
 	}()
 
 	ps.LastStatementStatsAt = time.Now()
@@ -61,7 +46,7 @@ func CollectFull(ctx context.Context, server *state.Server, connection *sql.DB, 
 		logger.PrintError("Error setting query text timeout: %s", err)
 		return
 	}
-	ts.Statements, ts.StatementTexts, ps.StatementStats, err = postgres.GetStatements(ctx, server, logger, connection, globalCollectionOpts, ts.Version, true, systemType)
+	ts.Statements, ts.StatementTexts, ps.StatementStats, err = postgres.GetStatements(ctx, c, connection, true)
 	if err != nil {
 		// Despite query performance data being an essential part of pganalyze, there are
 		// situations where it may not be available (or it timed out), so treat it as a
@@ -83,7 +68,7 @@ func CollectFull(ctx context.Context, server *state.Server, connection *sql.DB, 
 		err = nil
 	} else {
 		// Only collect plan stats when we successfully collected query stats
-		ts.Plans, ps.PlanStats, err = postgres.GetPlans(ctx, server, logger, connection, globalCollectionOpts, ts.Version, true)
+		ts.Plans, ps.PlanStats, err = postgres.GetPlans(ctx, c, connection, true)
 		if err != nil {
 			// Accept this as a non-fatal issue as this is not a critical stats (at least for now)
 			logger.PrintError("Skipping query plan statistics, due to error: %s", err)
@@ -100,13 +85,13 @@ func CollectFull(ctx context.Context, server *state.Server, connection *sql.DB, 
 	config := server.Grant.Load().Config
 	if config.Features.StatementResetFrequency != 0 && ps.StatementResetCounter >= int(config.Features.StatementResetFrequency) {
 		ps.StatementResetCounter = 0
-		err = postgres.ResetStatements(ctx, logger, connection, systemType)
+		err = postgres.ResetStatements(ctx, c, connection)
 		if err != nil {
 			logger.PrintError("Error calling pg_stat_statements_reset() as requested: %s", err)
 			err = nil
 		} else {
 			logger.PrintInfo("Successfully called pg_stat_statements_reset() for all queries, next reset in %d hours", config.Features.StatementResetFrequency/scheduler.FullSnapshotsPerHour)
-			_, _, ts.ResetStatementStats, err = postgres.GetStatements(ctx, server, logger, connection, globalCollectionOpts, ts.Version, false, systemType)
+			_, _, ts.ResetStatementStats, err = postgres.GetStatements(ctx, c, connection, false)
 			if err != nil {
 				logger.PrintError("Error collecting pg_stat_statements after reset: %s", err)
 				err = nil
@@ -122,7 +107,7 @@ func CollectFull(ctx context.Context, server *state.Server, connection *sql.DB, 
 		}
 	}
 
-	ts.Replication, err = postgres.GetReplication(ctx, logger, connection, ts.Version, systemType)
+	ts.Replication, err = postgres.GetReplication(ctx, c, connection)
 	if err != nil {
 		// We intentionally accept this as a non-fatal issue (at least for now), because we've historically
 		// had issues make this work reliably
@@ -130,13 +115,13 @@ func CollectFull(ctx context.Context, server *state.Server, connection *sql.DB, 
 		err = nil
 	}
 
-	ps, ts, err = postgres.GetServerStats(ctx, logger, connection, ps, ts, systemType)
+	ps, ts, err = postgres.GetServerStats(ctx, c, connection, ps, ts)
 	if err != nil {
 		logger.PrintError("Error collecting Postgres server statistics: %s", err)
 		return
 	}
 
-	ts.BackendCounts, err = postgres.GetBackendCounts(ctx, logger, connection, ts.Version, server.Config.SystemType)
+	ts.BackendCounts, err = postgres.GetBackendCounts(ctx, c, connection)
 	if err != nil {
 		logger.PrintError("Error collecting backend counts: %s", err)
 		return
@@ -148,7 +133,7 @@ func CollectFull(ctx context.Context, server *state.Server, connection *sql.DB, 
 	case ts.BufferCache = <-bufferCacheReady:
 	}
 
-	ps, ts, err = postgres.CollectAllSchemas(ctx, server, globalCollectionOpts, logger, ps, ts)
+	ps, ts, err = postgres.CollectAllSchemas(ctx, c, server, ps, ts)
 	if err != nil {
 		logger.PrintError("Error collecting schema information: %s", err)
 		return

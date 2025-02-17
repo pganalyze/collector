@@ -17,7 +17,6 @@ func gatherQueryStatsForServer(ctx context.Context, server *state.Server, global
 	var connection *sql.DB
 
 	newState := server.PrevState
-	systemType := server.Config.SystemType
 	collectedAt := time.Now()
 
 	connection, err = postgres.EstablishConnection(ctx, server, logger, globalCollectionOpts, "")
@@ -37,17 +36,17 @@ func gatherQueryStatsForServer(ctx context.Context, server *state.Server, global
 		}
 	}
 
-	postgresVersion, err := postgres.GetPostgresVersion(ctx, logger, connection)
+	c, err := postgres.NewCollection(ctx, logger, server, globalCollectionOpts, connection)
 	if err != nil {
-		return newState, errors.Wrap(err, "error collecting Postgres Version")
+		return newState, err
 	}
 
 	newState.LastStatementStatsAt = time.Now()
-	_, _, newState.StatementStats, err = postgres.GetStatements(ctx, server, logger, connection, globalCollectionOpts, postgresVersion, false, systemType)
+	_, _, newState.StatementStats, err = postgres.GetStatements(ctx, c, connection, false)
 	if err != nil {
 		return newState, errors.Wrap(err, "error collecting pg_stat_statements")
 	}
-	_, newState.PlanStats, err = postgres.GetPlans(ctx, server, logger, connection, globalCollectionOpts, postgresVersion, false)
+	_, newState.PlanStats, err = postgres.GetPlans(ctx, c, connection, false)
 	if err != nil {
 		return newState, errors.Wrap(err, "error collecting query plan stats")
 	}

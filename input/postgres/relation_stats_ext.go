@@ -8,7 +8,6 @@ import (
 	"github.com/lib/pq"
 	"github.com/pganalyze/collector/selftest"
 	"github.com/pganalyze/collector/state"
-	"github.com/pganalyze/collector/util"
 )
 
 const extendedStatisticsSQLExprsField = "null"
@@ -33,38 +32,38 @@ SELECT c.oid,
  WHERE ($1 = '' OR (n.nspname || '.' || c.relname) !~* $1)
 `
 
-func GetRelationStatsExtended(ctx context.Context, logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion, server *state.Server, globalCollectionOpts state.CollectionOpts, systemType string, dbName string) (state.PostgresRelationStatsExtendedMap, error) {
+func GetRelationStatsExtended(ctx context.Context, c *Collection, db *sql.DB, dbName string) (state.PostgresRelationStatsExtendedMap, error) {
 	var sourceTable string
 	var exprsField string
 	var inheritedField string
 
-	if postgresVersion.Numeric >= state.PostgresVersion14 {
+	if c.PostgresVersion.Numeric >= state.PostgresVersion14 {
 		exprsField = extendedStatisticsSQLpg14ExprsField
 	} else {
 		exprsField = extendedStatisticsSQLExprsField
 	}
 
-	if postgresVersion.Numeric >= state.PostgresVersion15 {
+	if c.PostgresVersion.Numeric >= state.PostgresVersion15 {
 		inheritedField = extendedStatisticsSQLpg15InheritedField
 	} else {
 		inheritedField = extendedStatisticsSQLInheritedField
 	}
 
 	if StatsHelperExists(ctx, db, "get_relation_stats_ext") {
-		logger.PrintVerbose("Found pganalyze.get_relation_stats_ext() stats helper")
+		c.Logger.PrintVerbose("Found pganalyze.get_relation_stats_ext() stats helper")
 		sourceTable = "pganalyze.get_relation_stats_ext()"
-		server.SelfTest.MarkDbCollectionAspectOk(dbName, state.CollectionAspectExtendedStats)
+		c.SelfTest.MarkDbCollectionAspectOk(dbName, state.CollectionAspectExtendedStats)
 	} else {
 		sourceTable = "pg_catalog.pg_stats_ext"
-		if globalCollectionOpts.TestRun {
-			if systemType == "heroku" || connectedAsSuperUser(ctx, db, systemType) {
-				server.SelfTest.MarkDbCollectionAspectOk(dbName, state.CollectionAspectExtendedStats)
+		if c.GlobalOpts.TestRun {
+			if c.Config.SystemType == "heroku" || c.ConnectedAsSuperUser {
+				c.SelfTest.MarkDbCollectionAspectOk(dbName, state.CollectionAspectExtendedStats)
 			} else {
-				server.SelfTest.MarkDbCollectionAspectError(dbName, state.CollectionAspectExtendedStats, "monitoring helper function pganalyze.get_relation_stats_ext not found")
-				server.SelfTest.HintDbCollectionAspect(dbName, state.CollectionAspectExtendedStats, "Please set up"+
+				c.SelfTest.MarkDbCollectionAspectError(dbName, state.CollectionAspectExtendedStats, "monitoring helper function pganalyze.get_relation_stats_ext not found")
+				c.SelfTest.HintDbCollectionAspect(dbName, state.CollectionAspectExtendedStats, "Please set up"+
 					" the monitoring helper function pganalyze.get_relation_stats_ext (%s)"+
 					" or connect as superuser, to get extended statistics for all tables.", selftest.URLPrinter.Sprint("https://pganalyze.com/docs/install/troubleshooting/ext_stats_helper"))
-				logger.PrintInfo("Warning: Limited access to extended table statistics detected in database %s. Please set up"+
+				c.Logger.PrintInfo("Warning: Limited access to extended table statistics detected in database %s. Please set up"+
 					" the monitoring helper function pganalyze.get_relation_stats_ext (https://pganalyze.com/docs/install/troubleshooting/ext_stats_helper)"+
 					" or connect as superuser, to get extended statistics for all tables.", dbName)
 			}
@@ -77,7 +76,7 @@ func GetRelationStatsExtended(ctx context.Context, logger *util.Logger, db *sql.
 	}
 	defer stmt.Close()
 
-	rows, err := stmt.QueryContext(ctx, server.Config.IgnoreSchemaRegexp)
+	rows, err := stmt.QueryContext(ctx, c.Config.IgnoreSchemaRegexp)
 	if err != nil {
 		return nil, err
 	}

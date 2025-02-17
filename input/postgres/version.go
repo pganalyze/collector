@@ -6,11 +6,10 @@ import (
 	"strings"
 
 	"github.com/pganalyze/collector/state"
-	"github.com/pganalyze/collector/util"
 )
 
-// GetPostgresVersion - Reads the version of the connected PostgreSQL server
-func GetPostgresVersion(ctx context.Context, logger *util.Logger, db *sql.DB) (version state.PostgresVersion, err error) {
+// getPostgresVersion - Reads the version of the connected PostgreSQL server
+func getPostgresVersion(ctx context.Context, db *sql.DB) (version state.PostgresVersion, err error) {
 	err = db.QueryRowContext(ctx, QueryMarkerSQL+"SELECT pg_catalog.version()").Scan(&version.Full)
 	if err != nil {
 		return
@@ -37,8 +36,6 @@ func GetPostgresVersion(ctx context.Context, logger *util.Logger, db *sql.DB) (v
 	if err != nil {
 		return
 	}
-
-	logger.PrintVerbose("Detected PostgreSQL Version %d (%s)", version.Numeric, version.Full)
 
 	return
 }

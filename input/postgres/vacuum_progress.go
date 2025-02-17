@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/pganalyze/collector/state"
-	"github.com/pganalyze/collector/util"
 )
 
 const vacuumProgressSQLdefaultFields = `
@@ -64,7 +63,7 @@ SELECT (query_start_epoch || padded_pid)::bigint AS vacuum_identity,
  WHERE c.oid IS NOT NULL OR (a.query <> '<insufficient privilege>' AND a.nspname IS NOT NULL AND a.relname IS NOT NULL)
 `
 
-func GetVacuumProgress(ctx context.Context, logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion, ignoreRegexp string) ([]state.PostgresVacuumProgress, error) {
+func GetVacuumProgress(ctx context.Context, c *Collection, db *sql.DB) ([]state.PostgresVacuumProgress, error) {
 	var activitySourceTable string
 	var sql string
 
@@ -75,7 +74,7 @@ func GetVacuumProgress(ctx context.Context, logger *util.Logger, db *sql.DB, pos
 	}
 
 	var fields string
-	if postgresVersion.Numeric >= state.PostgresVersion17 {
+	if c.PostgresVersion.Numeric >= state.PostgresVersion17 {
 		fields = vacuumProgressSQLpg17Fields
 	} else {
 		fields = vacuumProgressSQLdefaultFields
@@ -96,7 +95,7 @@ func GetVacuumProgress(ctx context.Context, logger *util.Logger, db *sql.DB, pos
 
 	defer stmt.Close()
 
-	rows, err := stmt.QueryContext(ctx, ignoreRegexp)
+	rows, err := stmt.QueryContext(ctx, c.Config.IgnoreSchemaRegexp)
 	if err != nil {
 		return nil, err
 	}
@@ -128,7 +127,7 @@ func GetVacuumProgress(ctx context.Context, logger *util.Logger, db *sql.DB, pos
 		if row.SchemaName == "pg_toast" {
 			schemaName, relationName, err := resolveToastTable(ctx, db, row.RelationName)
 			if err != nil {
-				logger.PrintVerbose("Failed to resolve TOAST table \"%s\": %s", row.RelationName, err)
+				c.Logger.PrintVerbose("Failed to resolve TOAST table \"%s\": %s", row.RelationName, err)
 			} else if schemaName != "" && relationName != "" {
 				row.SchemaName = schemaName
 				row.RelationName = relationName
