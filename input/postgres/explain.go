@@ -61,7 +61,7 @@ func runExplainForDb(ctx context.Context, server *state.Server, collectionOpts s
 		return nil
 	}
 
-	useHelper := StatsHelperExists(ctx, db, "explain")
+	useHelper := c.HelperExists("explain", []string{"text", "text[]"})
 	if useHelper {
 		logger.PrintVerbose("Found pganalyze.explain() stats helper in database \"%s\"", dbName)
 	}

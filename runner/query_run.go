@@ -80,7 +80,12 @@ func runQueryOnDatabase(ctx context.Context, server *state.Server, collectionOpt
 	}
 	defer db.Close()
 
-	if postgres.StatsHelperExists(ctx, db, "explain_analyze") {
+	h, err := postgres.NewCollection(ctx, logger, server, collectionOpts, db)
+	if err != nil {
+		return "", err
+	}
+
+	if h.HelperExists("explain_analyze", []string{"text", "text[]", "text[]", "text[]"}) {
 		logger.PrintVerbose("Found pganalyze.explain_analyze helper function in database \"%s\"", query.DatabaseName)
 	} else {
 		return "", fmt.Errorf("Required helper function pganalyze.explain_analyze is not set up")

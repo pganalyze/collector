@@ -48,6 +48,12 @@ func LogPgReadFile(ctx context.Context, server *state.Server, globalCollectionOp
 	}
 	defer db.Close()
 
+	h, err := NewCollection(ctx, logger, server, globalCollectionOpts, db)
+	if err != nil {
+		logger.PrintError("Error setting up collection helper: %s", err)
+		return server.LogPrevState, nil, nil, err
+	}
+
 	rows, err := db.QueryContext(ctx, QueryMarkerSQL+LogFileSql)
 	if err != nil {
 		err = fmt.Errorf("LogFileSql/Query: %s", err)
@@ -71,7 +77,7 @@ func LogPgReadFile(ctx context.Context, server *state.Server, globalCollectionOp
 		return server.LogPrevState, nil, nil, err
 	}
 
-	useHelper := StatsHelperExists(ctx, db, "read_log_file")
+	useHelper := h.HelperExists("read_log_file", []string{"text", "bigint", "bigint"})
 	var logReadSql = SuperUserReadLogFileSql
 	if useHelper {
 		logger.PrintVerbose("Found pganalyze.read_log_file() stats helper")

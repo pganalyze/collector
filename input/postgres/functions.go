@@ -13,6 +13,8 @@ import (
 const functionsSQLDefaultKindFields = "CASE WHEN pp.proisagg THEN 'a' WHEN pp.proiswindow THEN 'w' ELSE 'f' END AS prokind"
 const functionsSQLpg11KindFields = "pp.prokind"
 
+const functionsSQLHelperFilter = "n.nspname = 'pganalyze'"
+
 const functionsSQL string = `
 SELECT pp.oid,
 	   n.nspname,
@@ -51,7 +53,7 @@ type FunctionSignature struct {
 	Arguments    string
 }
 
-func GetFunctions(ctx context.Context, logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion, currentDatabaseOid state.Oid, ignoreRegexp string) ([]state.PostgresFunction, error) {
+func GetFunctions(ctx context.Context, logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion, currentDatabaseOid state.Oid, ignoreRegexp string, helpersOnly bool) ([]state.PostgresFunction, error) {
 	var kindFields string
 	var systemCatalogFilter string
 
@@ -61,7 +63,9 @@ func GetFunctions(ctx context.Context, logger *util.Logger, db *sql.DB, postgres
 		kindFields = functionsSQLDefaultKindFields
 	}
 
-	if postgresVersion.IsEPAS {
+	if helpersOnly {
+		systemCatalogFilter = functionsSQLHelperFilter
+	} else if postgresVersion.IsEPAS {
 		systemCatalogFilter = relationSQLEPASSystemCatalogFilter
 	} else {
 		systemCatalogFilter = relationSQLdefaultSystemCatalogFilter

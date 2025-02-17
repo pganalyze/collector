@@ -40,14 +40,6 @@ SELECT dbid, userid, query, calls, %s, rows, shared_blks_hit, shared_blks_read,
 			 %s
 	FROM %s`
 
-const statementStatsHelperSQL string = `
-SELECT 1 AS enabled
-	FROM pg_catalog.pg_proc p
-	JOIN pg_catalog.pg_namespace n ON (p.pronamespace = n.oid)
- WHERE n.nspname = 'pganalyze' AND p.proname = 'get_stat_statements'
-			 %s
-`
-
 const statementExtensionVersionSQL string = `
 SELECT nspname,
        split_part(extversion, '.', 2)
@@ -55,22 +47,6 @@ SELECT nspname,
  INNER JOIN pg_namespace pgn ON pge.extnamespace = pgn.oid
  WHERE pge.extname = 'pg_stat_statements'
 `
-
-func statementStatsHelperExists(ctx context.Context, db *sql.DB, showtext bool) bool {
-	var enabled bool
-	var additionalWhere string
-
-	if !showtext {
-		additionalWhere = "AND pronargs = 1"
-	}
-
-	err := db.QueryRowContext(ctx, QueryMarkerSQL+fmt.Sprintf(statementStatsHelperSQL, additionalWhere)).Scan(&enabled)
-	if err != nil {
-		return false
-	}
-
-	return enabled
-}
 
 func collectorStatement(query string) bool {
 	return strings.HasPrefix(query, QueryMarkerSQL)
@@ -82,7 +58,7 @@ func insufficientPrivilege(query string) bool {
 
 func ResetStatements(ctx context.Context, c *Collection, db *sql.DB) error {
 	var method string
-	if StatsHelperExists(ctx, db, "reset_stat_statements") {
+	if c.HelperExists("reset_stat_statements", nil) {
 		c.Logger.PrintVerbose("Found pganalyze.reset_stat_statements() stats helper")
 		method = "pganalyze.reset_stat_statements()"
 	} else {
@@ -180,7 +156,7 @@ func GetStatements(ctx context.Context, c *Collection, db *sql.DB, showtext bool
 	}
 
 	usingStatsHelper := false
-	if statementStatsHelperExists(ctx, db, showtext) {
+	if c.HelperExists("get_stat_statements", []string{"boolean"}) || (showtext && c.HelperExists("get_stat_statements", nil)) {
 		usingStatsHelper = true
 		if !showtext {
 			c.Logger.PrintVerbose("Found pganalyze.get_stat_statements(false) stats helper")
