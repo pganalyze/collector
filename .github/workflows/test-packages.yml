@@ -21,9 +21,10 @@ jobs:
         submodules: true
 
     - name: Set up QEMU
-      uses: docker/setup-qemu-action@v3.3.0
+      uses: docker/setup-qemu-action@v3
       with:
         platforms: arm64
+        image: tonistiigi/binfmt:buildkit-v8.1.5
 
     - name: Build packages
       run: |
