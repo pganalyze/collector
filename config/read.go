@@ -828,7 +828,7 @@ func Read(logger *util.Logger, filename string) (Config, error) {
 			return conf, fmt.Errorf("Configuration contains no valid servers, please edit %s and reload the collector", filename)
 		}
 	} else {
-		if os.Getenv("PGA_API_KEY") != "" && (os.Getenv("DB_NAME") != "" || os.Getenv("DB_URL") != "") {
+		if os.Getenv("PGA_API_KEY") != "" && (os.Getenv("DB_URL") != "" || os.Getenv("DB_HOST") != "" || os.Getenv("DB_PORT") != "" || os.Getenv("DB_NAME") != "" || os.Getenv("DB_USERNAME") != "" || os.Getenv("DB_PASSWORD") != "") {
 			config := getDefaultConfig()
 			config, err = preprocessConfig(config)
 			if err != nil {
