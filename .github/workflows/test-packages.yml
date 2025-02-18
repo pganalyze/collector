@@ -24,7 +24,7 @@ jobs:
       uses: docker/setup-qemu-action@v3
       with:
         platforms: arm64
-        image: tonistiigi/binfmt:buildkit-v8.1.5
+        image: tonistiigi/binfmt:buildkit-latest
 
     - name: Build packages
       run: |
