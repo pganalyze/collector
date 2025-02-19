@@ -170,7 +170,7 @@ jobs:
         if-no-files-found: error
 
   release:
-    needs: [build, build_arm, build_packages, build_charts]
+    needs: [build, build_arm, build_packages_x86_64, build_packages_arm64, build_charts]
     runs-on: ubuntu-latest
     # ensure we don't release on create events for branches (only tags)
     if: ${{ startsWith( github.ref, 'refs/tags' ) }}
