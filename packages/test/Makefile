@@ -131,7 +131,7 @@ rockylinux9_arm64: $(RPM_PACKAGE_ARM64)
 	$(call docker_test_and_clean)
 	rm Dockerfile.tmp
 
-fedora36_x86_64: $(RPM_PACKAGE_X86_64
+fedora36_x86_64: $(RPM_PACKAGE_X86_64)
 	echo "FROM fedora:36" > Dockerfile.tmp
 	echo "RUN dnf install -y procps systemd" >> Dockerfile.tmp
 	echo "COPY . /root" >> Dockerfile.tmp
