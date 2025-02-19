@@ -2,10 +2,13 @@
 
 BUILD_ARGS=--no-cache --build-arg VERSION=$(VERSION) --build-arg GIT_VERSION=$(GIT_VERSION)
 
-.PHONY: all
+.PHONY: all x86_64 arm64
 
-all: $(TMP_DIR)/$(RPM_PACKAGE_X86_64) $(TMP_DIR)/$(RPM_PACKAGE_ARM64) \
-$(TMP_DIR)/$(DEB_PACKAGE_X86_64) $(TMP_DIR)/$(DEB_PACKAGE_ARM64)
+all: x86_64 arm64
+
+x86_64: $(TMP_DIR)/$(RPM_PACKAGE_X86_64) $(TMP_DIR)/$(DEB_PACKAGE_X86_64)
+
+arm64: $(TMP_DIR)/$(RPM_PACKAGE_ARM64) $(TMP_DIR)/$(DEB_PACKAGE_ARM64)
 
 $(TMP_DIR)/$(RPM_PACKAGE_X86_64): Dockerfile.build.rpm-systemd
 	docker build --platform linux/amd64 $(BUILD_ARGS) -f Dockerfile.build.rpm-systemd -t pga-collector-build ../../
