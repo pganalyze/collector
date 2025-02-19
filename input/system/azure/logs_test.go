@@ -350,7 +350,7 @@ func TestParseRecordToLogLines(t *testing.T) {
 		} else {
 			prefix = logs.LogPrefixAzure
 		}
-		parser := logs.NewLogParser(prefix, nil, false)
+		parser := logs.NewLogParser(prefix, nil)
 
 		var record azure.AzurePostgresLogRecord
 		err := json.Unmarshal([]byte(pair.recordIn), &record)

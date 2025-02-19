@@ -344,7 +344,7 @@ const (
 )
 
 type LogParser interface {
-	Matches(prefix string, tz *time.Location, isSyslog bool) bool
+	Matches(prefix string, tz *time.Location) bool
 	GetOccurredAt(timePart string) time.Time
 	ParseLine(line string) (logLine LogLine, ok bool)
 	ValidatePrefix() error

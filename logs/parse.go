@@ -183,9 +183,8 @@ var EscapeMatchers = map[rune]PrefixEscape{
 }
 
 type LogParser struct {
-	prefix   string
-	tz       *time.Location
-	isSyslog bool
+	prefix string
+	tz     *time.Location
 
 	lineRegexp     *regexp.Regexp
 	prefixElements []PrefixEscape
@@ -193,14 +192,13 @@ type LogParser struct {
 	lineRegexpWithoutLogLevel *regexp.Regexp
 }
 
-func NewLogParser(prefix string, tz *time.Location, isSyslog bool) *LogParser {
+func NewLogParser(prefix string, tz *time.Location) *LogParser {
 	prefixRegexp, prefixElements := parsePrefix(prefix)
 	lineRegexp := regexp.MustCompile("(?ms)^" + prefixRegexp + `(DEBUG|INFO|NOTICE|WARNING|ERROR|LOG|FATAL|PANIC|DETAIL|HINT|CONTEXT|STATEMENT|QUERY):\s+(.*\n?)$`)
 	lineRegexpWithoutLogLevel := regexp.MustCompile("(?ms)^" + prefixRegexp + `(.*\n?)$`)
 	return &LogParser{
-		prefix:   prefix,
-		tz:       tz,
-		isSyslog: isSyslog,
+		prefix: prefix,
+		tz:     tz,
 
 		lineRegexp:     lineRegexp,
 		prefixElements: prefixElements,
@@ -232,8 +230,7 @@ func SyncLogParser(server *state.Server, settings []state.PostgresSetting) {
 	server.LogParseMutex.RLock()
 
 	tz, prefix := getLogConfigFromSettings(settings)
-	isSyslog := server.Config.LogSyslogServer != ""
-	parserInSync := server.LogParser != nil && server.LogParser.Matches(prefix, tz, isSyslog)
+	parserInSync := server.LogParser != nil && server.LogParser.Matches(prefix, tz)
 	server.LogParseMutex.RUnlock()
 
 	if parserInSync {
@@ -243,7 +240,7 @@ func SyncLogParser(server *state.Server, settings []state.PostgresSetting) {
 	server.LogParseMutex.Lock()
 	defer server.LogParseMutex.Unlock()
 
-	server.LogParser = NewLogParser(prefix, tz, isSyslog)
+	server.LogParser = NewLogParser(prefix, tz)
 }
 
 func (lp *LogParser) ValidatePrefix() error {
@@ -266,12 +263,12 @@ func (lp *LogParser) ValidatePrefix() error {
 	}
 }
 
-func (lp *LogParser) Matches(prefix string, tz *time.Location, isSyslog bool) bool {
-	return lp.prefix == prefix && tz.String() == lp.tz.String() && lp.isSyslog == isSyslog
+func (lp *LogParser) Matches(prefix string, tz *time.Location) bool {
+	return lp.prefix == prefix && tz.String() == lp.tz.String()
 }
 
 func (lp *LogParser) GetOccurredAt(timePart string) time.Time {
-	if lp.tz != nil && !lp.isSyslog {
+	if lp.tz != nil {
 		lastSpaceIdx := strings.LastIndex(timePart, " ")
 		if lastSpaceIdx == -1 {
 			return time.Time{}
@@ -287,13 +284,8 @@ func (lp *LogParser) GetOccurredAt(timePart string) time.Time {
 
 	// Assume Postgres time format unless overriden by the prefix (e.g. syslog)
 	var timeFormat, timeFormatAlt string
-	if lp.isSyslog {
-		timeFormat = "2006 Jan  2 15:04:05"
-		timeFormatAlt = ""
-	} else {
-		timeFormat = "2006-01-02 15:04:05 -0700"
-		timeFormatAlt = "2006-01-02 15:04:05 MST"
-	}
+	timeFormat = "2006-01-02 15:04:05 -0700"
+	timeFormatAlt = "2006-01-02 15:04:05 MST"
 
 	ts, err := time.Parse(timeFormat, timePart)
 	if err != nil {
@@ -333,81 +325,7 @@ func (lp *LogParser) GetOccurredAt(timePart string) time.Time {
 	return ts
 }
 
-var UserRegexp = `(\S*)`                              // %u
-var DbRegexp = `(\S*)`                                // %d
-var AppInsideBracketsRegexp = `(\[unknown\]|[^,\]]*)` // %a
-var PidRegexp = `(\d+)`                               // %p
-
-var SyslogSequenceAndSplitRegexp = `(\[[\d-]+\])?`
-var LevelAndContentRegexp = `(\w+):\s+(.*\n?)$`
-var LogPrefixNoTimestampUserDatabaseAppRegexp = regexp.MustCompile(`(?s)^\[user=` + UserRegexp + `,db=` + DbRegexp + `,app=` + AppInsideBracketsRegexp + `\] ` + LevelAndContentRegexp)
-
-var RsyslogLevelAndContentRegexp = `(?:(\w+):\s+)?(.*\n?)$`
-var RsyslogTimeRegexp = `(\w+\s+\d+ \d{2}:\d{2}:\d{2})`
-var RsyslogHostnameRegxp = `(\S+)`
-var RsyslogProcessNameRegexp = `(\w+)`
-var RsyslogRegexp = regexp.MustCompile(`^` + RsyslogTimeRegexp + ` ` + RsyslogHostnameRegxp + ` ` + RsyslogProcessNameRegexp + `\[` + PidRegexp + `\]: ` + SyslogSequenceAndSplitRegexp + ` ` + RsyslogLevelAndContentRegexp)
-
-func (lp *LogParser) parseSyslogLine(line string) (logLine state.LogLine, ok bool) {
-	parts := RsyslogRegexp.FindStringSubmatch(line)
-	if len(parts) == 0 {
-		return
-	}
-
-	timePart := fmt.Sprintf("%d %s", time.Now().Year(), parts[1])
-	// ignore syslog hostname
-	// ignore syslog process name
-	pidPart := parts[4]
-	// ignore syslog postgres sequence and split number
-	levelPart := parts[6]
-	contentPart := strings.Replace(parts[7], "#011", "\t", -1)
-
-	parts = LogPrefixNoTimestampUserDatabaseAppRegexp.FindStringSubmatch(contentPart)
-	if len(parts) == 6 {
-		userPart := parts[1]
-		dbPart := parts[2]
-		appPart := parts[3]
-		levelPart = parts[4]
-		contentPart = parts[5]
-
-		if userPart != "[unknown]" {
-			logLine.Username = userPart
-		}
-		if dbPart != "[unknown]" {
-			logLine.Database = dbPart
-		}
-		if appPart != "[unknown]" {
-			logLine.Application = appPart
-		}
-	}
-
-	occurredAt := lp.GetOccurredAt(timePart)
-	if occurredAt.IsZero() {
-		return
-	}
-
-	logLine.OccurredAt = occurredAt
-
-	backendPid, _ := strconv.ParseInt(pidPart, 10, 32)
-	logLine.BackendPid = int32(backendPid)
-	logLine.Content = contentPart
-
-	// This is actually a continuation of a previous line
-	if levelPart == "" {
-		return
-	}
-
-	logLine.LogLevel = pganalyze_collector.LogLineInformation_LogLevel(pganalyze_collector.LogLineInformation_LogLevel_value[levelPart])
-	ok = true
-
-	return
-}
-
 func (lp *LogParser) ParseLine(line string) (logLine state.LogLine, ok bool) {
-	if lp.isSyslog {
-		return lp.parseSyslogLine(line)
-	}
-
 	if lp.prefix == "" {
 		return logLine, false
 	}
