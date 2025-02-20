@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -66,7 +67,7 @@ func connectToDb(ctx context.Context, config config.ServerConfig, logger *util.L
 			}
 		} else if config.SystemType == "google_cloudsql" {
 			if config.GcpProjectID == "" || config.GcpRegion == "" || config.GcpCloudSQLInstanceID == "" {
-				return nil, fmt.Errorf("To use IAM auth with Google Cloud SQL, you must specify project ID, region, and instance ID")
+				return nil, errors.New("To use IAM auth with Google Cloud SQL, you must specify project ID, region, and instance ID")
 			}
 			hostOverride = strings.Join([]string{config.GcpProjectID, config.GcpRegion, config.GcpCloudSQLInstanceID}, ":")
 			// When using cloud-sql-go-connector, this needs to be set as disable
@@ -74,7 +75,7 @@ func connectToDb(ctx context.Context, config config.ServerConfig, logger *util.L
 			sslmodeOverride = "disable"
 			driverName = "cloudsql-postgres"
 		} else {
-			return nil, fmt.Errorf("IAM auth is only supported for Amazon RDS, Aurora, and Google Cloud SQL - turn off IAM auth setting to use password-based authentication")
+			return nil, errors.New("IAM auth is only supported for Amazon RDS, Aurora, and Google Cloud SQL - turn off IAM auth setting to use password-based authentication")
 		}
 	}
 
