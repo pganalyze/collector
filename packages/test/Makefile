@@ -1,11 +1,13 @@
 # Note: This requires variables that are set in the top-level packages Makefile
 
-docker_build_and_run = docker build --no-cache --platform linux/$(1) -f Dockerfile.tmp -t pga-collector-test . && \
-  docker run --platform linux/$(1) --name pga-collector-test --privileged=true -e container=docker -d pga-collector-test /sbin/init && \
-  docker exec pga-collector-test bash -c "echo -n 'Waiting for systemd'; while \$$(sleep 1); do echo -n '.'; if (systemctl is-system-running 2> /dev/null || /bin/true) | grep -qE 'running|degraded'; then break; fi; done; echo ''"
-docker_exec = docker exec pga-collector-test $(1)
-docker_test_and_clean = docker exec pga-collector-test /root/systemd_test.sh && \
-  docker kill pga-collector-test && docker rm pga-collector-test && docker rmi -f pga-collector-test
+DOCKER_CMD=docker
+
+docker_build_and_run = $(DOCKER_CMD) build --no-cache --platform linux/$(1) -f Dockerfile.tmp -t pga-collector-test . && \
+  $(DOCKER_CMD) run --platform linux/$(1) --name pga-collector-test --privileged=true -e container=docker -d pga-collector-test /sbin/init && \
+  $(DOCKER_CMD) exec pga-collector-test bash -c "echo -n 'Waiting for systemd'; while \$$(sleep 1); do echo -n '.'; if (systemctl is-system-running 2> /dev/null || /bin/true) | grep -qE 'running|degraded'; then break; fi; done; echo ''"
+docker_exec = $(DOCKER_CMD) exec pga-collector-test $(1)
+docker_test_and_clean = $(DOCKER_CMD) exec pga-collector-test /root/systemd_test.sh && \
+  $(DOCKER_CMD) kill pga-collector-test && $(DOCKER_CMD) rm pga-collector-test && $(DOCKER_CMD) rmi -f pga-collector-test
 
 # Note: The default list excludes rockylinux9 since there is an open issue with
 # /sbin/init not being present, see https://github.com/rocky-linux/sig-cloud-instance-images/issues/39
@@ -181,9 +183,9 @@ amazonlinux2_arm64: $(RPM_PACKAGE_ARM64)
 	echo "FROM amazonlinux:2" > Dockerfile.tmp
 	echo "RUN yum install -y procps" >> Dockerfile.tmp
 	echo "COPY . /root" >> Dockerfile.tmp
-	docker build --no-cache --platform linux/$(1) -f Dockerfile.tmp -t pga-collector-test .
-	docker run --platform linux/$(1) --name pga-collector-test --privileged=true -e container=docker -d pga-collector-test /sbin/init
-	docker exec pga-collector-test bash -c "echo -n 'Waiting for systemd'; while \$$(sleep 1); do echo -n '.'; if (systemctl is-system-running 2> /dev/null || /bin/true) | grep -qE 'running|degraded'; then break; fi; done; echo ''"
+	$(DOCKER_CMD) build --no-cache --platform linux/arm64 -f Dockerfile.tmp -t pga-collector-test .
+	$(DOCKER_CMD) run --platform linux/arm64 --name pga-collector-test --privileged=true -e container=docker -d pga-collector-test /sbin/init
+	$(DOCKER_CMD) exec pga-collector-test bash -c "echo -n 'Waiting for systemd'; while \$$(sleep 1); do echo -n '.'; if (systemctl is-system-running 2> /dev/null || /bin/true) | grep -qE 'running|degraded'; then break; fi; done; echo ''"
 # TODO: This is hanging on the first "docker run" step
 #	$(call docker_build_and_run,arm64)
 #	$(call docker_exec,yum install -y --nogpgcheck /root/$(RPM_PACKAGE_ARM64))
