@@ -108,7 +108,7 @@ jobs:
     - name: Upload packages as artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: packages
+        name: packages_x86_64
         path: |
           packages/tmp/pganalyze-collector-*.x86_64.rpm
           packages/tmp/pganalyze-collector_*_amd64.deb
@@ -138,7 +138,7 @@ jobs:
     - name: Upload packages as artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: packages
+        name: packages_arm64
         path: |
           packages/tmp/pganalyze-collector-*.aarch64.rpm
           packages/tmp/pganalyze-collector_*_arm64.deb
@@ -186,10 +186,15 @@ jobs:
       with:
         name: pganalyze-collector-linux-arm64
 
-    - name: Download build packages
+    - name: Download build packages (x86_64)
       uses: actions/download-artifact@v4
       with:
-        name: packages
+        name: packages_x86_64
+
+    - name: Download build packages (arm64)
+      uses: actions/download-artifact@v4
+      with:
+        name: packages_arm64
 
     - name: Download helm package
       uses: actions/download-artifact@v4
