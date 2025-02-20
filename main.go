@@ -63,7 +63,7 @@ func main() {
 	var logToSyslog bool
 	var logToJSON bool
 	var logNoTimestamps bool
-	var reloadRun bool
+	var reload bool
 	var noReload bool
 	var benchmark bool
 
@@ -78,7 +78,7 @@ func main() {
 	flag.StringVar(&generateStatsHelperSql, "generate-stats-helper-sql", "", "Generates a SQL script for the given server (name of section in the config file, or \"default\" for env variables), that can be run with \"psql -f\" for installing the collector stats helpers on all configured databases")
 	flag.StringVar(&generateHelperExplainAnalyzeSql, "generate-explain-analyze-helper-sql", "", "Generates a SQL script for the given server (name of section in the config file, or \"default\" for env variables), that can be run with \"psql -f\" for installing the collector pganalyze.explain_analyze helper on all configured databases")
 	flag.StringVar(&generateHelperExplainAnalyzeRole, "generate-explain-analyze-helper-role", "pganalyze_explain", "Sets owner role of the pganalyze.explain_analyze helper function, defaults to \"pganalyze_explain\"")
-	flag.BoolVar(&reloadRun, "reload", false, "Reloads the collector daemon that's running on the host")
+	flag.BoolVar(&reload, "reload", false, "Reloads the collector daemon that's running on the host")
 	flag.BoolVar(&noReload, "no-reload", false, "Disables automatic config reloading during a test run")
 	flag.BoolVarP(&logger.Verbose, "verbose", "v", false, "Outputs additional debugging information, use this if you're encountering errors or other problems")
 	flag.BoolVarP(&logger.Quiet, "quiet", "q", false, "Only outputs error messages to the logs and hides informational and warning messages")
@@ -111,9 +111,7 @@ func main() {
 	flag.Parse()
 
 	// Automatically reload the configuration after a successful test run.
-	if testRun && !noReload {
-		reloadRun = true
-	}
+	reload = reload || (testRun && !noReload)
 
 	if showVersion {
 		fmt.Printf("%s\n", util.CollectorVersion)
@@ -174,7 +172,7 @@ func main() {
 		OutputAsJson:                     !benchmark,
 	}
 
-	if reloadRun && !testRun {
+	if reload && !testRun {
 		Reload(logger)
 		return
 	}
@@ -318,7 +316,7 @@ ReadConfigAndRun:
 		for {
 			select {
 			case success := <-testRunSuccess:
-				if reloadRun {
+				if reload {
 					if success {
 						Reload(logger)
 					} else {
