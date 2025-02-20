@@ -52,7 +52,7 @@ func runExplainAnalyze(ctx context.Context, db *sql.DB, query string, parameters
 	}
 	defer tx.Rollback()
 
-	err = tx.QueryRowContext(ctx, marker+"SELECT pganalyze.explain_analyze($1, $2, $3, $4)", marker+query, pq.Array(parameters), pq.Array(parameterTypes), pq.Array(analyzeFlags)).Scan(&explainOutput)
+	err = tx.QueryRowContext(ctx, marker+"SELECT pganalyze.explain_analyze($1, $2, $3, $4)", query, pq.Array(parameters), pq.Array(parameterTypes), pq.Array(analyzeFlags)).Scan(&explainOutput)
 
 	return
 }
