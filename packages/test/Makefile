@@ -243,10 +243,6 @@ ubuntu-jammy_arm64: $(DEB_PACKAGE_ARM64)
 	echo "RUN apt-get update" >> Dockerfile.tmp
 	echo "RUN apt-get install systemd-sysv -y" >> Dockerfile.tmp
 	echo "RUN rm /usr/sbin/policy-rc.d" >> Dockerfile.tmp
-# Don't test ubuntu:jammy on arm64 for now, since for unknown reasons we're seeing the following error
-# in CI only, since GitHub Actions upgraded the Docker engine from 20.10.2 to 23.0.6:
-#   exec /bin/sh: exec format error
-#
 	$(call docker_build_and_run,arm64)
 	$(call docker_exec,dpkg -i /root/$(DEB_PACKAGE_ARM64))
 	$(call docker_test_and_clean)
@@ -269,10 +265,6 @@ ubuntu-noble_arm64: $(DEB_PACKAGE_ARM64)
 	echo "RUN apt-get update" >> Dockerfile.tmp
 	echo "RUN apt-get install systemd-sysv -y" >> Dockerfile.tmp
 	echo "RUN rm /usr/sbin/policy-rc.d" >> Dockerfile.tmp
-# Don't test ubuntu:noble on arm64 for now, since for unknown reasons we're seeing the following error
-# in CI only, since GitHub Actions upgraded the Docker engine from 20.10.2 to 23.0.6:
-#   exec /bin/sh: exec format error
-#
 	$(call docker_build_and_run,arm64)
 	$(call docker_exec,dpkg -i /root/$(DEB_PACKAGE_ARM64))
 	$(call docker_test_and_clean)
@@ -293,10 +285,6 @@ debian-bullseye_arm64: $(DEB_PACKAGE_ARM64)
 	echo "RUN apt-get update -qq && apt-get install -y -q systemd-sysv procps" >> Dockerfile.tmp
 	echo "COPY . /root" >> Dockerfile.tmp
 	echo "RUN rm /usr/sbin/policy-rc.d" >> Dockerfile.tmp
-# Don't test debian:bullseye on arm64 for now, since for unknown reasons we're seeing the following error
-# in CI only, since GitHub Actions upgraded the Docker engine from 20.10.2 to 23.0.6:
-#   exec /bin/sh: exec format error
-#
 	$(call docker_build_and_run,arm64)
 	$(call docker_exec,dpkg -i /root/$(DEB_PACKAGE_ARM64))
 	$(call docker_test_and_clean)
@@ -317,10 +305,6 @@ debian-bookworm_arm64: $(DEB_PACKAGE_ARM64)
 	echo "RUN apt-get update -qq && apt-get install -y -q systemd-sysv procps" >> Dockerfile.tmp
 	echo "COPY . /root" >> Dockerfile.tmp
 	echo "RUN rm /usr/sbin/policy-rc.d" >> Dockerfile.tmp
-# Don't test debian:bookworm on arm64 for now, since for unknown reasons we're seeing the following error
-# in CI only, since GitHub Actions upgraded the Docker engine from 20.10.2 to 23.0.6:
-#   exec /bin/sh: exec format error
-#
 	$(call docker_build_and_run,arm64)
 	$(call docker_exec,dpkg -i /root/$(DEB_PACKAGE_ARM64))
 	$(call docker_test_and_clean)
