@@ -13,9 +13,11 @@
 * Start collecting and report pg_stat_statements_info stats
   - This makes it easier to track down some pg_stat_statements-related
     problems
+* Support monitoring non-Heroku databases with Heroku-hosted collector
 * Follow symlinks when tracking storage stats for data directory
   - This fixes storage statistics accounting for data directories symlinked
     to other partitions
+* Fix pg_hint_plan handling for collector-driven Query Tuning workflow
 * Fix errors when collecting stats about frequently-locked partitions
 * Fix receiving logs through syslog
   - This was inadvertently broken by the log parsing changes in v0.58.0
