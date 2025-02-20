@@ -3,7 +3,7 @@ package querysample_test
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"regexp"
 	"testing"
 
@@ -156,7 +156,7 @@ func TestAutoExplainQuerySample(t *testing.T) {
 	jsonKeyValueSeparatorRegexp := regexp.MustCompile(`": `)
 
 	for _, pair := range autoExplainQuerySampleTests {
-		explainIn, err := ioutil.ReadFile("testdata/" + pair.testName + ".in.json")
+		explainIn, err := os.ReadFile("testdata/" + pair.testName + ".in.json")
 		if err != nil {
 			t.Fatalf("Error loading input file: %s", err)
 		}
@@ -171,7 +171,7 @@ func TestAutoExplainQuerySample(t *testing.T) {
 						t.Fatalf("For %v (%s): Error normalizing: %s", pair.testName, variant, err)
 					}
 				}
-				explainOut, err := ioutil.ReadFile("testdata/" + pair.testName + ".out_" + variant + ".json")
+				explainOut, err := os.ReadFile("testdata/" + pair.testName + ".out_" + variant + ".json")
 				if err != nil {
 					t.Fatalf("For %v (%s): Error loading output file: %s", pair.testName, variant, err)
 				}

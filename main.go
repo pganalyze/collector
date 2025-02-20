@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/signal"
@@ -190,7 +189,7 @@ func main() {
 	}
 
 	if analyzeLogfile != "" {
-		contentBytes, err := ioutil.ReadFile(analyzeLogfile)
+		contentBytes, err := os.ReadFile(analyzeLogfile)
 		if err != nil {
 			fmt.Printf("ERROR: %s\n", err)
 			return
@@ -231,7 +230,7 @@ func main() {
 	}
 
 	if filterLogFile != "" {
-		contentBytes, err := ioutil.ReadFile(filterLogFile)
+		contentBytes, err := os.ReadFile(filterLogFile)
 		if err != nil {
 			fmt.Printf("ERROR: %s\n", err)
 			return
@@ -249,7 +248,7 @@ func main() {
 
 	if pidFilename != "" {
 		pid := os.Getpid()
-		err := ioutil.WriteFile(pidFilename, []byte(strconv.Itoa(pid)), 0644)
+		err := os.WriteFile(pidFilename, []byte(strconv.Itoa(pid)), 0644)
 		if err != nil {
 			logger.PrintError("Could not write pidfile to \"%s\" as requested, exiting.", pidFilename)
 			return
