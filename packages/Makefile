@@ -12,7 +12,7 @@ export DEB_PACKAGE_ARM64=$(NAME)_$(VERSION)_arm64.deb
 
 export TMP_DIR=$(shell pwd)/tmp
 
-.PHONY: default setup build test clean repo
+.PHONY: default setup build_x86_64 build_arm64 build test_x86_64 test_arm64 test clean repo
 
 default: test repo
 
