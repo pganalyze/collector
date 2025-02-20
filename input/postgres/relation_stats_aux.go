@@ -21,12 +21,12 @@ SELECT logicalrelid::oid,
  WHERE ($1 = '' OR (n.nspname || '.' || c.relname) !~* $1)
 `
 
-func collectCitusRelationStats(postgresVersion state.PostgresVersion, server *state.Server) bool {
-	return postgresVersion.IsCitus && server.Config.DisableCitusSchemaStats != "all"
+func collectCitusRelationStats(h CollectionHelper) bool {
+	return h.PostgresVersion.IsCitus && h.Config.DisableCitusSchemaStats != "all"
 }
 
-func handleRelationStatsAux(ctx context.Context, db *sql.DB, relStats state.PostgresRelationStatsMap, postgresVersion state.PostgresVersion, server *state.Server) (state.PostgresRelationStatsMap, error) {
-	if !collectCitusRelationStats(postgresVersion, server) {
+func handleRelationStatsAux(ctx context.Context, h CollectionHelper, db *sql.DB, relStats state.PostgresRelationStatsMap) (state.PostgresRelationStatsMap, error) {
+	if !collectCitusRelationStats(h) {
 		return relStats, nil
 	}
 
@@ -36,7 +36,7 @@ func handleRelationStatsAux(ctx context.Context, db *sql.DB, relStats state.Post
 	}
 	defer stmt.Close()
 
-	rows, err := stmt.QueryContext(ctx, server.Config.IgnoreSchemaRegexp)
+	rows, err := stmt.QueryContext(ctx, h.Config.IgnoreSchemaRegexp)
 	if err != nil {
 		return relStats, fmt.Errorf("RelationStatsExt/Query: %s", err)
 	}
@@ -111,12 +111,12 @@ GROUP BY
   oid;
 `
 
-func collectCitusIndexStats(postgresVersion state.PostgresVersion, server *state.Server) bool {
-	return postgresVersion.IsCitus && server.Config.DisableCitusSchemaStats != "all" && server.Config.DisableCitusSchemaStats != "index"
+func collectCitusIndexStats(h CollectionHelper) bool {
+	return h.PostgresVersion.IsCitus && h.Config.DisableCitusSchemaStats != "all" && h.Config.DisableCitusSchemaStats != "index"
 }
 
-func handleIndexStatsAux(ctx context.Context, db *sql.DB, idxStats state.PostgresIndexStatsMap, postgresVersion state.PostgresVersion, server *state.Server) (state.PostgresIndexStatsMap, error) {
-	if !collectCitusIndexStats(postgresVersion, server) {
+func handleIndexStatsAux(ctx context.Context, h CollectionHelper, db *sql.DB, idxStats state.PostgresIndexStatsMap) (state.PostgresIndexStatsMap, error) {
+	if !collectCitusIndexStats(h) {
 		return idxStats, nil
 	}
 
@@ -126,7 +126,7 @@ func handleIndexStatsAux(ctx context.Context, db *sql.DB, idxStats state.Postgre
 	}
 	defer stmt.Close()
 
-	rows, err := stmt.QueryContext(ctx, server.Config.IgnoreSchemaRegexp)
+	rows, err := stmt.QueryContext(ctx, h.Config.IgnoreSchemaRegexp)
 	if err != nil {
 		return idxStats, fmt.Errorf("IndexStatsExt/Query: %s", err)
 	}

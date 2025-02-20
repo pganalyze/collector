@@ -6,7 +6,6 @@ import (
 
 	"github.com/guregu/null"
 	"github.com/pganalyze/collector/state"
-	"github.com/pganalyze/collector/util"
 )
 
 // See also https://www.postgresql.org/docs/current/static/catalog-pg-database.html
@@ -27,7 +26,7 @@ SELECT oid,
 	FROM pg_roles r
 	 `
 
-func GetRoles(ctx context.Context, logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion) ([]state.PostgresRole, error) {
+func GetRoles(ctx context.Context, db *sql.DB) ([]state.PostgresRole, error) {
 	stmt, err := db.PrepareContext(ctx, QueryMarkerSQL+rolesSQL)
 	if err != nil {
 		return nil, err
