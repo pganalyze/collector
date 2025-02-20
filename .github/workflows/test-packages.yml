@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  build_x86_64:
     # Use older Ubuntu release to ensure availability of CGroupsv1 (which are necessary
     # currently to support older systemd on some of the test containers)
     runs-on: ubuntu-20.04-4-cores
@@ -20,15 +20,29 @@ jobs:
       with:
         submodules: true
 
-    - name: Set up QEMU
-      uses: docker/setup-qemu-action@v3
-      with:
-        platforms: arm64
-
     - name: Build packages
       run: |
-        GIT_VERSION=HEAD VERSION=0.0.0 make -C packages build
+        GIT_VERSION=HEAD VERSION=0.0.0 make -C packages build_x86_64
 
     - name: Test packages
       run: |
-        GIT_VERSION=HEAD VERSION=0.0.0 make -C packages test
+        GIT_VERSION=HEAD VERSION=0.0.0 make -C packages test_x86_64
+
+  build_arm64:
+    runs-on: ubuntu-22.04-arm
+    permissions: {}
+
+    steps:
+
+    - name: Check out code
+      uses: actions/checkout@v4
+      with:
+        submodules: true
+
+    - name: Build packages
+      run: |
+        GIT_VERSION=HEAD VERSION=0.0.0 make -C packages build_arm64
+
+    - name: Test packages
+      run: |
+        GIT_VERSION=HEAD VERSION=0.0.0 make -C packages test_arm64

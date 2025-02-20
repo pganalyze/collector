@@ -82,7 +82,7 @@ jobs:
         name: pganalyze-collector-linux-arm64
         path: pganalyze-collector-linux-arm64
 
-  build_packages:
+  build_packages_x86_64:
     # Use older Ubuntu release to ensure availability of CGroupsv1 (which are necessary
     # currently to support older systemd on some of the test containers)
     runs-on: ubuntu-20.04
@@ -97,16 +97,43 @@ jobs:
       with:
         submodules: true
 
-    - name: Set up QEMU
-      uses: docker/setup-qemu-action@v3
-
     - name: Build packages
       run: |
-        DOCKER_BUILDKIT=1 make -C packages build
+        make -C packages build_x86_64
 
     - name: Test packages
       run: |
-        DOCKER_BUILDKIT=1 make -C packages test
+        make -C packages test_x86_64
+
+    - name: Upload packages as artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: packages
+        path: |
+          packages/tmp/pganalyze-collector-*.x86_64.rpm
+          packages/tmp/pganalyze-collector_*_amd64.deb
+        if-no-files-found: error
+
+  build_packages_arm64:
+    runs-on: ubuntu-22.04-arm
+    permissions: {}
+    # ensure we don't release on create events for branches (only tags)
+    if: ${{ startsWith( github.ref, 'refs/tags' ) }}
+
+    steps:
+
+    - name: Check out code
+      uses: actions/checkout@v4
+      with:
+        submodules: true
+
+    - name: Build packages
+      run: |
+        make -C packages build_arm64
+
+    - name: Test packages
+      run: |
+        make -C packages test_arm64
 
     - name: Upload packages as artifacts
       uses: actions/upload-artifact@v4
@@ -114,8 +141,6 @@ jobs:
         name: packages
         path: |
           packages/tmp/pganalyze-collector-*.aarch64.rpm
-          packages/tmp/pganalyze-collector-*.x86_64.rpm
-          packages/tmp/pganalyze-collector_*_amd64.deb
           packages/tmp/pganalyze-collector_*_arm64.deb
         if-no-files-found: error
 
@@ -145,7 +170,7 @@ jobs:
         if-no-files-found: error
 
   release:
-    needs: [build, build_arm, build_packages, build_charts]
+    needs: [build, build_arm, build_packages_x86_64, build_packages_arm64, build_charts]
     runs-on: ubuntu-latest
     # ensure we don't release on create events for branches (only tags)
     if: ${{ startsWith( github.ref, 'refs/tags' ) }}
