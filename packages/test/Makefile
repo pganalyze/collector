@@ -179,8 +179,8 @@ amazonlinux2_x86_64: $(RPM_PACKAGE_X86_64)
 	$(DOCKER_CMD) top pga-collector-test
 	$(DOCKER_CMD) exec pga-collector-test bash -c "echo -n 'Waiting for systemd'; while \$$(sleep 1); do echo -n '.'; if (systemctl is-system-running 2> /dev/null || /bin/true) | grep -qE 'running|degraded'; then break; fi; done; echo ''"
 #	$(call docker_build_and_run,amd64)
-#	$(call docker_exec,yum install -y --nogpgcheck /root/$(RPM_PACKAGE_X86_64))
-#	$(call docker_test_and_clean)
+	$(call docker_exec,yum install -y --nogpgcheck /root/$(RPM_PACKAGE_X86_64))
+	$(call docker_test_and_clean)
 	rm Dockerfile.tmp
 
 amazonlinux2_arm64: $(RPM_PACKAGE_ARM64)

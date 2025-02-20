@@ -10,7 +10,7 @@ jobs:
   build_x86_64:
     # Use older Ubuntu release to ensure availability of CGroupsv1 (which are necessary
     # currently to support older systemd on some of the test containers)
-    runs-on: ubuntu-20.04-4-cores
+    runs-on: ubuntu-22.04-4-cores
     permissions: {}
 
     steps:
