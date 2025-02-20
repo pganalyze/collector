@@ -1,5 +1,36 @@
 # Changelog
 
+## 0.65.0      2025-02-20
+
+* Google Cloud SQL: Support IAM Authentication
+  - This allows monitoring of Google Cloud SQL databases using the existing
+    `db_use_iam_auth` / `DB_USE_IAM_AUTH` setting: If enabled, the collector
+    fetches a short-lived token for logging into the database instance from the
+    GCP API, instead of using a hardcoded password in the collector
+    configuration file
+  - To set this up, see our [updated Google Cloud SQL setup
+    documentation](https://pganalyze.com/docs/install/google_cloud_sql/01_create_monitoring_user)
+* Start collecting and report pg_stat_statements_info stats
+  - This makes it easier to track down some pg_stat_statements-related
+    problems
+* Support monitoring non-Heroku databases with Heroku-hosted collector
+* Follow symlinks when tracking storage stats for data directory
+  - This fixes storage statistics accounting for data directories symlinked
+    to other partitions
+* Fix pg_hint_plan handling for collector-driven Query Tuning workflow
+* Fix errors when collecting stats about frequently-locked partitions
+* Fix receiving logs through syslog
+  - This was inadvertently broken by the log parsing changes in v0.58.0
+* Avoid log parsing error when database connection cannot be established
+  - This was only a secondary problem, but the stack trace in the logs could
+    make it harder to track down the root cause
+* Sign built Go binaries for macOS
+  - Due to security enhancements in newer macOS versions, unsigned Go
+    binaries may hang when built and executed locally; signing makes it
+    easier to debug the collector on macOS
+* Update Go version to 1.23
+* Update Dockerfile alpine base image to 3.21
+
 ## 0.64.1      2025-01-08
 
 * Fix database connection leak in buffercache logic
