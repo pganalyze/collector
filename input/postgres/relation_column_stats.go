@@ -17,7 +17,7 @@ SELECT schemaname, tablename, attname, inherited, null_frac, avg_width, n_distin
  WHERE schemaname NOT IN ('pg_catalog', 'information_schema')
 `
 
-func GetColumnStats(ctx context.Context, logger *util.Logger, db *sql.DB, globalCollectionOpts state.CollectionOpts, systemType string, dbName string, server *state.Server, postgresVersion state.PostgresVersion) (state.PostgresColumnStatsMap, error) {
+func GetColumnStats(ctx context.Context, logger *util.Logger, db *sql.DB, opts state.CollectionOpts, systemType string, dbName string, server *state.Server, postgresVersion state.PostgresVersion) (state.PostgresColumnStatsMap, error) {
 	var sourceTable string
 
 	if StatsHelperExists(ctx, db, "get_column_stats") {
@@ -30,7 +30,7 @@ func GetColumnStats(ctx context.Context, logger *util.Logger, db *sql.DB, global
 			logger.PrintWarning("Outdated pganalyze.get_column_stats() function detected in database %s."+
 				" Please `DROP FUNCTION pganalyze.get_column_stats()` and then add the new function definition"+
 				" https://pganalyze.com/docs/install/troubleshooting/column_stats_helper", dbName)
-			if globalCollectionOpts.TestRun {
+			if opts.TestRun {
 				server.SelfTest.MarkDbCollectionAspectError(dbName, state.CollectionAspectColumnStats, "monitoring helper function pganalyze.get_column_stats outdated")
 				server.SelfTest.HintDbCollectionAspect(dbName, state.CollectionAspectColumnStats,
 					"Please `DROP FUNCTION pganalyze.get_column_stats()` and then add the new function definition %s", selftest.URLPrinter.Sprint("https://pganalyze.com/docs/install/troubleshooting/column_stats_helper"))
@@ -42,7 +42,7 @@ func GetColumnStats(ctx context.Context, logger *util.Logger, db *sql.DB, global
 		}
 	} else {
 		sourceTable = "pg_catalog.pg_stats"
-		if globalCollectionOpts.TestRun {
+		if opts.TestRun {
 			if systemType == "heroku" || connectedAsSuperUser(ctx, db, systemType) {
 				server.SelfTest.MarkDbCollectionAspectOk(dbName, state.CollectionAspectColumnStats)
 			} else {

@@ -8,16 +8,16 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
-func WriteStateFile(servers []*Server, globalCollectionOpts CollectionOpts, logger *util.Logger) {
+func WriteStateFile(servers []*Server, opts CollectionOpts, logger *util.Logger) {
 	stateOnDisk := StateOnDisk{PrevStateByServer: make(map[config.ServerIdentifier]PersistedState), FormatVersion: StateOnDiskFormatVersion}
 
 	for _, server := range servers {
 		stateOnDisk.PrevStateByServer[server.Config.Identifier] = server.PrevState
 	}
 
-	file, err := os.Create(globalCollectionOpts.StateFilename)
+	file, err := os.Create(opts.StateFilename)
 	if err != nil {
-		logger.PrintWarning("Could not write out state file to %s because of error: %s", globalCollectionOpts.StateFilename, err)
+		logger.PrintWarning("Could not write out state file to %s because of error: %s", opts.StateFilename, err)
 		return
 	}
 	defer file.Close()
@@ -27,10 +27,10 @@ func WriteStateFile(servers []*Server, globalCollectionOpts CollectionOpts, logg
 }
 
 // ReadStateFile - This reads in the prevState structs from the state file - only run this on initial bootup and SIGHUP!
-func ReadStateFile(servers []*Server, globalCollectionOpts CollectionOpts, logger *util.Logger) {
+func ReadStateFile(servers []*Server, opts CollectionOpts, logger *util.Logger) {
 	var stateOnDisk StateOnDisk
 
-	file, err := os.Open(globalCollectionOpts.StateFilename)
+	file, err := os.Open(opts.StateFilename)
 	if err != nil {
 		if !util.IsHeroku() {
 			logger.PrintVerbose("Did not open state file: %s", err)

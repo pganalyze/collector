@@ -33,7 +33,7 @@ SELECT c.oid,
  WHERE ($1 = '' OR (n.nspname || '.' || c.relname) !~* $1)
 `
 
-func GetRelationStatsExtended(ctx context.Context, logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion, server *state.Server, globalCollectionOpts state.CollectionOpts, systemType string, dbName string) (state.PostgresRelationStatsExtendedMap, error) {
+func GetRelationStatsExtended(ctx context.Context, logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion, server *state.Server, opts state.CollectionOpts, systemType string, dbName string) (state.PostgresRelationStatsExtendedMap, error) {
 	var sourceTable string
 	var exprsField string
 	var inheritedField string
@@ -56,7 +56,7 @@ func GetRelationStatsExtended(ctx context.Context, logger *util.Logger, db *sql.
 		server.SelfTest.MarkDbCollectionAspectOk(dbName, state.CollectionAspectExtendedStats)
 	} else {
 		sourceTable = "pg_catalog.pg_stats_ext"
-		if globalCollectionOpts.TestRun {
+		if opts.TestRun {
 			if systemType == "heroku" || connectedAsSuperUser(ctx, db, systemType) {
 				server.SelfTest.MarkDbCollectionAspectOk(dbName, state.CollectionAspectExtendedStats)
 			} else {

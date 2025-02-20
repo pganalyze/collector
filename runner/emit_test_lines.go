@@ -10,8 +10,8 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
-func EmitTestLogMsg(ctx context.Context, server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) error {
-	db, err := postgres.EstablishConnection(ctx, server, logger, globalCollectionOpts, "")
+func EmitTestLogMsg(ctx context.Context, server *state.Server, opts state.CollectionOpts, logger *util.Logger) error {
+	db, err := postgres.EstablishConnection(ctx, server, logger, opts, "")
 	if err != nil {
 		return err
 	}
@@ -21,8 +21,8 @@ func EmitTestLogMsg(ctx context.Context, server *state.Server, globalCollectionO
 	return err
 }
 
-func EmitTestExplain(ctx context.Context, server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) error {
-	db, err := postgres.EstablishConnection(ctx, server, logger, globalCollectionOpts, "")
+func EmitTestExplain(ctx context.Context, server *state.Server, opts state.CollectionOpts, logger *util.Logger) error {
+	db, err := postgres.EstablishConnection(ctx, server, logger, opts, "")
 	if err != nil {
 		return err
 	}
