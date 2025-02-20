@@ -174,8 +174,8 @@ amazonlinux2_x86_64: $(RPM_PACKAGE_X86_64)
 	echo "FROM amazonlinux:2" > Dockerfile.tmp
 	echo "RUN yum install -y procps" >> Dockerfile.tmp
 	echo "COPY . /root" >> Dockerfile.tmp
-	$(DOCKER_CMD) build --no-cache --platform linux/amd64 -f Dockerfile.tmp -t pga-collector-test .
-	$(DOCKER_CMD) run --platform linux/amd64 --name pga-collector-test --privileged=true -e container=docker -d pga-collector-test /sbin/init
+	$(DOCKER_CMD) build --no-cache -f Dockerfile.tmp -t pga-collector-test .
+	$(DOCKER_CMD) run --name pga-collector-test --privileged=true -e container=docker -d pga-collector-test /sbin/init
 	$(DOCKER_CMD) top pga-collector-test
 	$(DOCKER_CMD) exec pga-collector-test bash -c "echo -n 'Waiting for systemd'; while \$$(sleep 1); do echo -n '.'; if (systemctl is-system-running 2> /dev/null || /bin/true) | grep -qE 'running|degraded'; then break; fi; done; echo ''"
 #	$(call docker_build_and_run,amd64)
@@ -187,14 +187,14 @@ amazonlinux2_arm64: $(RPM_PACKAGE_ARM64)
 	echo "FROM amazonlinux:2" > Dockerfile.tmp
 	echo "RUN yum install -y procps" >> Dockerfile.tmp
 	echo "COPY . /root" >> Dockerfile.tmp
-	$(DOCKER_CMD) build --no-cache --platform linux/arm64 -f Dockerfile.tmp -t pga-collector-test .
-	$(DOCKER_CMD) run --platform linux/arm64 --name pga-collector-test --privileged=true -e container=docker -d pga-collector-test /sbin/init
+	$(DOCKER_CMD) build --no-cache -f Dockerfile.tmp -t pga-collector-test .
+	$(DOCKER_CMD) run --name pga-collector-test --privileged=true -e container=docker -d pga-collector-test /sbin/init
 	$(DOCKER_CMD) top pga-collector-test
 	$(DOCKER_CMD) exec pga-collector-test bash -c "echo -n 'Waiting for systemd'; while \$$(sleep 1); do echo -n '.'; if (systemctl is-system-running 2> /dev/null || /bin/true) | grep -qE 'running|degraded'; then break; fi; done; echo ''"
 # TODO: This is hanging on the first "docker run" step
 #	$(call docker_build_and_run,arm64)
-#	$(call docker_exec,yum install -y --nogpgcheck /root/$(RPM_PACKAGE_ARM64))
-#	$(call docker_test_and_clean)
+	$(call docker_exec,yum install -y --nogpgcheck /root/$(RPM_PACKAGE_ARM64))
+	$(call docker_test_and_clean)
 	rm Dockerfile.tmp
 
 amazonlinux2023_x86_64: $(RPM_PACKAGE_X86_64)
