@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.65.0      2025-02-14
+## 0.65.0      2025-02-20
 
 * Google Cloud SQL: Support IAM Authentication
   - This allows monitoring of Google Cloud SQL databases using the existing
