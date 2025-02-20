@@ -247,9 +247,9 @@ ubuntu-jammy_arm64: $(DEB_PACKAGE_ARM64)
 # in CI only, since GitHub Actions upgraded the Docker engine from 20.10.2 to 23.0.6:
 #   exec /bin/sh: exec format error
 #
-#	$(call docker_build_and_run,arm64)
-#	$(call docker_exec,dpkg -i /root/$(DEB_PACKAGE_ARM64))
-#	$(call docker_test_and_clean)
+	$(call docker_build_and_run,arm64)
+	$(call docker_exec,dpkg -i /root/$(DEB_PACKAGE_ARM64))
+	$(call docker_test_and_clean)
 	rm Dockerfile.tmp
 
 ubuntu-noble_x86_64: $(DEB_PACKAGE_X86_64)
@@ -273,9 +273,9 @@ ubuntu-noble_arm64: $(DEB_PACKAGE_ARM64)
 # in CI only, since GitHub Actions upgraded the Docker engine from 20.10.2 to 23.0.6:
 #   exec /bin/sh: exec format error
 #
-#	$(call docker_build_and_run,arm64)
-#	$(call docker_exec,dpkg -i /root/$(DEB_PACKAGE_ARM64))
-#	$(call docker_test_and_clean)
+	$(call docker_build_and_run,arm64)
+	$(call docker_exec,dpkg -i /root/$(DEB_PACKAGE_ARM64))
+	$(call docker_test_and_clean)
 	rm Dockerfile.tmp
 
 debian-bullseye_x86_64: $(DEB_PACKAGE_X86_64)
@@ -297,9 +297,9 @@ debian-bullseye_arm64: $(DEB_PACKAGE_ARM64)
 # in CI only, since GitHub Actions upgraded the Docker engine from 20.10.2 to 23.0.6:
 #   exec /bin/sh: exec format error
 #
-#	$(call docker_build_and_run,arm64)
-#	$(call docker_exec,dpkg -i /root/$(DEB_PACKAGE_ARM64))
-#	$(call docker_test_and_clean)
+	$(call docker_build_and_run,arm64)
+	$(call docker_exec,dpkg -i /root/$(DEB_PACKAGE_ARM64))
+	$(call docker_test_and_clean)
 	rm Dockerfile.tmp
 
 debian-bookworm_x86_64: $(DEB_PACKAGE_X86_64)
@@ -321,7 +321,7 @@ debian-bookworm_arm64: $(DEB_PACKAGE_ARM64)
 # in CI only, since GitHub Actions upgraded the Docker engine from 20.10.2 to 23.0.6:
 #   exec /bin/sh: exec format error
 #
-#	$(call docker_build_and_run,arm64)
-#	$(call docker_exec,dpkg -i /root/$(DEB_PACKAGE_ARM64))
-#	$(call docker_test_and_clean)
+	$(call docker_build_and_run,arm64)
+	$(call docker_exec,dpkg -i /root/$(DEB_PACKAGE_ARM64))
+	$(call docker_test_and_clean)
 	rm Dockerfile.tmp
