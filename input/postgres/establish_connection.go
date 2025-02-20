@@ -85,8 +85,6 @@ func connectToDb(ctx context.Context, config config.ServerConfig, logger *util.L
 	}
 	connectString += " application_name=" + globalCollectionOpts.CollectorApplicationName
 
-	// logger.PrintVerbose("sql.Open(\"postgres\", \"%s\")", connectString)
-
 	db, err = sql.Open(driverName, connectString)
 	if err != nil {
 		return nil, err
