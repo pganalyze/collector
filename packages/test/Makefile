@@ -11,7 +11,8 @@ docker_test_and_clean = docker exec pga-collector-test /root/systemd_test.sh && 
 # /sbin/init not being present, see https://github.com/rocky-linux/sig-cloud-instance-images/issues/39
 # Note: The default list also excludes centos7 since it's EOL, we will drop the support near future
 DISTROS_X86_64=rhel8_x86_64 rockylinux8_x86_64 rhel9_x86_64 fedora36_x86_64 fedora37_x86_64 amazonlinux2_x86_64 amazonlinux2023_x86_64 ubuntu-focal_x86_64 ubuntu-jammy_x86_64 ubuntu-noble_x86_64 debian-bullseye_x86_64 debian-bookworm_x86_64
-DISTROS_ARM64=rhel8_arm64 rockylinux8_arm64 rhel9_arm64 fedora36_arm64 fedora37_arm64 amazonlinux2_arm64 amazonlinux2023_arm64 ubuntu-focal_arm64 ubuntu-jammy_arm64 ubuntu-noble_arm64 debian-bullseye_arm64 debian-bookworm_arm64
+#DISTROS_ARM64=rhel8_arm64 rockylinux8_arm64 rhel9_arm64 fedora36_arm64 fedora37_arm64 amazonlinux2_arm64 amazonlinux2023_arm64 ubuntu-focal_arm64 ubuntu-jammy_arm64 ubuntu-noble_arm64 debian-bullseye_arm64 debian-bookworm_arm64
+DISTROS_ARM64=amazonlinux2_arm64 rhel8_arm64 rockylinux8_arm64 rhel9_arm64 fedora36_arm64 fedora37_arm64 amazonlinux2023_arm64 ubuntu-focal_arm64 ubuntu-jammy_arm64 ubuntu-noble_arm64 debian-bullseye_arm64 debian-bookworm_arm64
 
 .PHONY: all $(DISTROS_X86_64) $(DISTROS_ARM64)
 
@@ -180,6 +181,9 @@ amazonlinux2_arm64: $(RPM_PACKAGE_ARM64)
 	echo "FROM amazonlinux:2" > Dockerfile.tmp
 	echo "RUN yum install -y procps" >> Dockerfile.tmp
 	echo "COPY . /root" >> Dockerfile.tmp
+	docker build --no-cache --platform linux/$(1) -f Dockerfile.tmp -t pga-collector-test .
+	docker run --platform linux/$(1) --name pga-collector-test --privileged=true -e container=docker -d pga-collector-test /sbin/init
+	docker exec pga-collector-test bash -c "echo -n 'Waiting for systemd'; while \$$(sleep 1); do echo -n '.'; if (systemctl is-system-running 2> /dev/null || /bin/true) | grep -qE 'running|degraded'; then break; fi; done; echo ''"
 # TODO: This is hanging on the first "docker run" step
 #	$(call docker_build_and_run,arm64)
 #	$(call docker_exec,yum install -y --nogpgcheck /root/$(RPM_PACKAGE_ARM64))
