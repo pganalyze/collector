@@ -3,7 +3,6 @@ package runner
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"strconv"
 	"sync"
 	"time"
@@ -86,21 +85,17 @@ func processActivityForServer(ctx context.Context, server *state.Server, globalC
 		}
 	}
 
-	activity.Version, err = postgres.GetPostgresVersion(ctx, logger, connection)
+	h, err := postgres.NewCollectionHelper(ctx, logger, server, globalCollectionOpts, connection)
 	if err != nil {
-		return newState, false, errors.Wrap(err, "error collecting postgres version")
+		return newState, false, err
 	}
 
-	if activity.Version.Numeric < state.MinRequiredPostgresVersion {
-		return newState, false, fmt.Errorf("Error: Your PostgreSQL server version (%s) is too old, 10 or newer is required", activity.Version.Short)
-	}
-
-	activity.Backends, err = postgres.GetBackends(ctx, logger, connection, activity.Version, server.Config.SystemType, globalCollectionOpts.CollectPostgresLocks)
+	activity.Backends, err = postgres.GetBackends(ctx, h, connection)
 	if err != nil {
 		return newState, false, errors.Wrap(err, "error collecting pg_stat_activity")
 	}
 
-	activity.Vacuums, err = postgres.GetVacuumProgress(ctx, logger, connection, activity.Version, server.Config.IgnoreSchemaRegexp)
+	activity.Vacuums, err = postgres.GetVacuumProgress(ctx, h, connection)
 	if err != nil {
 		return newState, false, errors.Wrap(err, "error collecting pg_stat_vacuum_progress")
 	}

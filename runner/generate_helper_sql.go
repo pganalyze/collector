@@ -45,18 +45,13 @@ func GenerateStatsHelperSql(ctx context.Context, server *state.Server, globalCol
 	}
 	defer db.Close()
 
-	version, err := postgres.GetPostgresVersion(ctx, logger, db)
-	if err != nil {
-		return "", fmt.Errorf("error collecting Postgres version: %s", err)
-	}
-
-	databases, _, err := postgres.GetDatabases(ctx, logger, db, version)
+	databases, _, err := postgres.GetDatabases(ctx, db)
 	if err != nil {
 		return "", fmt.Errorf("error collecting pg_databases: %s", err)
 	}
 
 	output := strings.Builder{}
-	for _, dbName := range postgres.GetDatabasesToCollect(server, databases) {
+	for _, dbName := range postgres.GetDatabasesToCollect(server.Config, databases) {
 		output.WriteString(fmt.Sprintf("\\c %s\n", pq.QuoteIdentifier(dbName)))
 		output.WriteString("CREATE SCHEMA IF NOT EXISTS pganalyze;\n")
 		output.WriteString(fmt.Sprintf("GRANT USAGE ON SCHEMA pganalyze TO %s;\n", server.Config.GetDbUsername()))
@@ -76,18 +71,13 @@ func GenerateExplainAnalyzeHelperSql(ctx context.Context, server *state.Server, 
 	}
 	defer db.Close()
 
-	version, err := postgres.GetPostgresVersion(ctx, logger, db)
-	if err != nil {
-		return "", fmt.Errorf("error collecting Postgres version: %s", err)
-	}
-
-	databases, _, err := postgres.GetDatabases(ctx, logger, db, version)
+	databases, _, err := postgres.GetDatabases(ctx, db)
 	if err != nil {
 		return "", fmt.Errorf("error collecting pg_databases: %s", err)
 	}
 
 	output := strings.Builder{}
-	for _, dbName := range postgres.GetDatabasesToCollect(server, databases) {
+	for _, dbName := range postgres.GetDatabasesToCollect(server.Config, databases) {
 		output.WriteString(fmt.Sprintf("\\c %s\n", pq.QuoteIdentifier(dbName)))
 		output.WriteString("CREATE SCHEMA IF NOT EXISTS pganalyze;\n")
 		output.WriteString(fmt.Sprintf("GRANT USAGE ON SCHEMA pganalyze TO %s;\n", pq.QuoteIdentifier(server.Config.GetDbUsername())))
