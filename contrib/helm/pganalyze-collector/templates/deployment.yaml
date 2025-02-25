@@ -44,11 +44,16 @@ spec:
             {{- toYaml .Values.securityContext | nindent 12 }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          {{- with .Values.extraEnv }}
+          {{- if or .Values.extraEnvRaw .Values.extraEnv }}
           env:
+            {{- with .Values.extraEnv }}
             {{- range $key, $value := . }}
             - name: {{ $key }}
               value: {{ $value | quote }}
+            {{- end }}
+            {{- end }}
+            {{- if .Values.extraEnvRaw }}
+              {{- toYaml .Values.extraEnvRaw | nindent 12 }}
             {{- end }}
           {{- end }}
           {{- $configMapName := (include "pganalyze-collector.configMapName" .) -}}

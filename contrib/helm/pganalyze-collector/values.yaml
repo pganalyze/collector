@@ -21,6 +21,15 @@ extraEnv: {}
 #   DB_ALL_NAMES: true (monitor all databases on the server)
 #   DB_USERNAME: your_monitoring_user
 
+# -- Environment variables to be passed to the container
+# Config settings can be defined in raw form, for use with externally maintained env value sources (configMapKeyRef, fieldRef, resourceFieldRef, secretKeyRef)
+extraEnvRaw: []
+  # - name: PGA_API_KEY
+  #   valueFrom:
+  #     secretKeyRef:
+  #       name: pganalyze
+  #       key: api-key
+
 configMap:
   # -- Specifies whether a config map should be created.
   # The config map can be used to set runtime environment variables

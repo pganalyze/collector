@@ -1,6 +1,6 @@
 # pganalyze-collector
 
-![Version: 0.56.0](https://img.shields.io/badge/Version-0.56.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: v0.56.0](https://img.shields.io/badge/AppVersion-v0.56.0-informational?style=flat-square)
+![Version: 0.63.0](https://img.shields.io/badge/Version-0.63.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: v0.63.0](https://img.shields.io/badge/AppVersion-v0.63.0-informational?style=flat-square)
 
 pganalyze statistics collector
 
@@ -19,6 +19,7 @@ pganalyze statistics collector
 | configMap.name | string | `""` | The name of the config map to load environment variables from. If not set and create is true, a name is generated using the fullname template |
 | configMap.values | object | `{}` | Values to initialize the ConfigMap with. Only applicable if create is true |
 | extraEnv | object | `{}` | Environment variables to be passed to the container Config settings can be defined here, or can be defined via configMap + secret |
+| extraEnvRaw | list | `[]` | Environment variables to be passed to the container Config settings can be defined in raw form, for use with externally maintained env value sources (configMapKeyRef, fieldRef, resourceFieldRef, secretKeyRef) |
 | fullnameOverride | string | `""` |  |
 | image.pullPolicy | string | `"IfNotPresent"` | Overrides the image pull policy. |
 | image.repository | string | `"quay.io/pganalyze/collector"` |  |
