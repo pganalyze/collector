@@ -28,7 +28,7 @@ extraEnvRaw: []
   #   valueFrom:
   #     secretKeyRef:
   #       name: pganalyze
-  #       key: api-key        
+  #       key: api-key
 
 configMap:
   # -- Specifies whether a config map should be created.
