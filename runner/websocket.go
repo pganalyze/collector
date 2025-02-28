@@ -20,8 +20,8 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func SetupWebsocketForAllServers(ctx context.Context, servers []*state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
-	if globalCollectionOpts.ForceEmptyGrant {
+func SetupWebsocketForAllServers(ctx context.Context, servers []*state.Server, opts state.CollectionOpts, logger *util.Logger) {
+	if opts.ForceEmptyGrant {
 		return
 	}
 	for idx := range servers {
@@ -33,7 +33,7 @@ func SetupWebsocketForAllServers(ctx context.Context, servers []*state.Server, g
 					return
 				default:
 					if server.WebSocket.Load() == nil {
-						connect(ctx, server, globalCollectionOpts, logger)
+						connect(ctx, server, opts, logger)
 					}
 					time.Sleep(3 * 60 * time.Second) // Delay between reconnect attempts
 				}
@@ -42,7 +42,7 @@ func SetupWebsocketForAllServers(ctx context.Context, servers []*state.Server, g
 	}
 }
 
-func connect(ctx context.Context, server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
+func connect(ctx context.Context, server *state.Server, opts state.CollectionOpts, logger *util.Logger) {
 	connCtx, cancelConn := context.WithCancel(ctx)
 	proxyConfig := httpproxy.Config{
 		HTTPProxy:  server.Config.HTTPProxy,
@@ -74,7 +74,7 @@ func connect(ctx context.Context, server *state.Server, globalCollectionOpts sta
 	headers["Pganalyze-System-Id-Fallback"] = []string{server.Config.SystemIDFallback}
 	headers["Pganalyze-System-Type-Fallback"] = []string{server.Config.SystemTypeFallback}
 	headers["Pganalyze-System-Scope-Fallback"] = []string{server.Config.SystemScopeFallback}
-	if globalCollectionOpts.TestRun {
+	if opts.TestRun {
 		headers["Pganalyze-Test-Run"] = []string{"true"}
 	}
 	headers["User-Agent"] = []string{util.CollectorNameAndVersion}

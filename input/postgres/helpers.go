@@ -11,19 +11,6 @@ import (
 	"github.com/pganalyze/collector/state"
 )
 
-func unpackPostgresInt32Array(input null.String) (result []int32) {
-	if !input.Valid {
-		return
-	}
-
-	for _, cstr := range strings.Split(strings.Trim(input.String, "{}"), ",") {
-		cint, _ := strconv.ParseInt(cstr, 10, 32)
-		result = append(result, int32(cint))
-	}
-
-	return
-}
-
 func unpackPostgresOidArray(input null.String) (result []state.Oid) {
 	if !input.Valid {
 		return

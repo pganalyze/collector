@@ -27,7 +27,7 @@ WHERE
 	plan_type IN ('estimate', 'actual')`
 
 // GetPlans collects query execution plans and stats
-func GetPlans(ctx context.Context, server *state.Server, logger *util.Logger, db *sql.DB, globalCollectionOpts state.CollectionOpts, postgresVersion state.PostgresVersion, showtext bool) (state.PostgresPlanMap, state.PostgresPlanStatsMap, error) {
+func GetPlans(ctx context.Context, server *state.Server, logger *util.Logger, db *sql.DB, opts state.CollectionOpts, postgresVersion state.PostgresVersion, showtext bool) (state.PostgresPlanMap, state.PostgresPlanStatsMap, error) {
 	var err error
 
 	// Only collect this with Aurora using aurora_stat_plans function for now
@@ -37,14 +37,14 @@ func GetPlans(ctx context.Context, server *state.Server, logger *util.Logger, db
 
 	computePlanIdEnabled, err := GetPostgresSetting(ctx, db, "aurora_compute_plan_id")
 	if err != nil {
-		if globalCollectionOpts.TestRun {
+		if opts.TestRun {
 			logger.PrintInfo("Function aurora_stat_plans() is not supported because Aurora version is too old. Upgrade to Aurora PostgreSQL version 14.10, 15.5, or later versions to collect query plans and stats.")
 		}
 		return nil, nil, nil
 	}
 	// aurora_compute_plan_id needs to be on to use aurora_stat_plans function
 	if computePlanIdEnabled != "on" {
-		if globalCollectionOpts.TestRun {
+		if opts.TestRun {
 			logger.PrintInfo("Function aurora_stat_plans() is not supported because aurora_compute_plan_id is turned off. Skipping collecting query plans and stats.")
 		}
 		return nil, nil, nil

@@ -12,7 +12,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func gatherQueryStatsForServer(ctx context.Context, server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.PersistedState, error) {
+func gatherQueryStatsForServer(ctx context.Context, server *state.Server, opts state.CollectionOpts, logger *util.Logger) (state.PersistedState, error) {
 	var err error
 	var connection *sql.DB
 
@@ -20,7 +20,7 @@ func gatherQueryStatsForServer(ctx context.Context, server *state.Server, global
 	systemType := server.Config.SystemType
 	collectedAt := time.Now()
 
-	connection, err = postgres.EstablishConnection(ctx, server, logger, globalCollectionOpts, "")
+	connection, err = postgres.EstablishConnection(ctx, server, logger, opts, "")
 	if err != nil {
 		return newState, errors.Wrap(err, "failed to connect to database")
 	}
@@ -43,11 +43,11 @@ func gatherQueryStatsForServer(ctx context.Context, server *state.Server, global
 	}
 
 	newState.LastStatementStatsAt = time.Now()
-	_, _, newState.StatementStats, err = postgres.GetStatements(ctx, server, logger, connection, globalCollectionOpts, postgresVersion, false, systemType)
+	_, _, newState.StatementStats, err = postgres.GetStatements(ctx, server, logger, connection, opts, postgresVersion, false, systemType)
 	if err != nil {
 		return newState, errors.Wrap(err, "error collecting pg_stat_statements")
 	}
-	_, newState.PlanStats, err = postgres.GetPlans(ctx, server, logger, connection, globalCollectionOpts, postgresVersion, false)
+	_, newState.PlanStats, err = postgres.GetPlans(ctx, server, logger, connection, opts, postgresVersion, false)
 	if err != nil {
 		return newState, errors.Wrap(err, "error collecting query plan stats")
 	}
@@ -78,7 +78,7 @@ func gatherQueryStatsForServer(ctx context.Context, server *state.Server, global
 	return newState, nil
 }
 
-func GatherQueryStatsFromAllServers(ctx context.Context, servers []*state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
+func GatherQueryStatsFromAllServers(ctx context.Context, servers []*state.Server, opts state.CollectionOpts, logger *util.Logger) {
 	var wg sync.WaitGroup
 
 	for idx := range servers {
@@ -91,7 +91,7 @@ func GatherQueryStatsFromAllServers(ctx context.Context, servers []*state.Server
 			prefixedLogger := logger.WithPrefixAndRememberErrors(server.Config.SectionName)
 
 			server.StateMutex.Lock()
-			newState, err := gatherQueryStatsForServer(ctx, server, globalCollectionOpts, prefixedLogger)
+			newState, err := gatherQueryStatsForServer(ctx, server, opts, prefixedLogger)
 
 			if err != nil {
 				server.StateMutex.Unlock()

@@ -3,7 +3,6 @@ package postgres
 import (
 	"context"
 	"database/sql"
-	"fmt"
 
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
@@ -32,7 +31,7 @@ FROM pg_catalog.pg_database d
 	ON d.oid = sd.datid`
 
 func GetDatabases(ctx context.Context, logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion) ([]state.PostgresDatabase, state.PostgresDatabaseStatsMap, error) {
-	stmt, err := db.PrepareContext(ctx, QueryMarkerSQL+fmt.Sprintf(databasesSQL))
+	stmt, err := db.PrepareContext(ctx, QueryMarkerSQL+databasesSQL)
 	if err != nil {
 		return nil, nil, err
 	}

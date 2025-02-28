@@ -99,7 +99,7 @@ func ResetStatements(ctx context.Context, logger *util.Logger, db *sql.DB, syste
 	return nil
 }
 
-func GetStatements(ctx context.Context, server *state.Server, logger *util.Logger, db *sql.DB, globalCollectionOpts state.CollectionOpts, postgresVersion state.PostgresVersion, showtext bool, systemType string) (state.PostgresStatementMap, state.PostgresStatementTextMap, state.PostgresStatementStatsMap, error) {
+func GetStatements(ctx context.Context, server *state.Server, logger *util.Logger, db *sql.DB, opts state.CollectionOpts, postgresVersion state.PostgresVersion, showtext bool, systemType string) (state.PostgresStatementMap, state.PostgresStatementTextMap, state.PostgresStatementStatsMap, error) {
 	var err error
 	var totalTimeField string
 	var ioTimeFields string
@@ -165,7 +165,7 @@ func GetStatements(ctx context.Context, server *state.Server, logger *util.Logge
 		return nil, nil, nil, fmt.Errorf("pg_stat_statements extension not supported (1.%d installed, 1.3+ supported). To update run `ALTER EXTENSION pg_stat_statements UPDATE`", foundExtMinorVersion)
 	}
 
-	if globalCollectionOpts.TestRun && foundExtMinorVersion < extMinorVersion {
+	if opts.TestRun && foundExtMinorVersion < extMinorVersion {
 		pgssMsg := fmt.Sprintf("extension outdated (1.%d installed, 1.%d available)", foundExtMinorVersion, extMinorVersion)
 		logger.PrintInfo("pg_stat_statements %s. To update run `ALTER EXTENSION pg_stat_statements UPDATE`", pgssMsg)
 		if extMinorVersion >= 9 {
@@ -190,7 +190,7 @@ func GetStatements(ctx context.Context, server *state.Server, logger *util.Logge
 			sourceTable = "pganalyze.get_stat_statements()"
 		}
 	} else {
-		if systemType != "heroku" && !connectedAsSuperUser(ctx, db, systemType) && !connectedAsMonitoringRole(ctx, db) && globalCollectionOpts.TestRun {
+		if systemType != "heroku" && !connectedAsSuperUser(ctx, db, systemType) && !connectedAsMonitoringRole(ctx, db) && opts.TestRun {
 			server.SelfTest.MarkCollectionAspectWarning(state.CollectionAspectPgStatStatements, "monitoring user may have insufficient permissions to capture all queries")
 			server.SelfTest.HintCollectionAspect(state.CollectionAspectPgStatStatements, "Please set up"+
 				" the monitoring helper functions (%s)"+

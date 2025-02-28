@@ -43,7 +43,7 @@ func catchIdentifyServerLine(sourceName string, content string, sourceToServer m
 	return sourceToServer
 }
 
-func processSystemMetrics(ctx context.Context, timestamp time.Time, content []byte, sourceToServer map[string]*state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger, namespace string) {
+func processSystemMetrics(ctx context.Context, timestamp time.Time, content []byte, sourceToServer map[string]*state.Server, opts state.CollectionOpts, logger *util.Logger, namespace string) {
 	var sample SystemSample
 	err := logfmt.Unmarshal(content, &sample)
 	if err != nil {
@@ -68,7 +68,7 @@ func processSystemMetrics(ctx context.Context, timestamp time.Time, content []by
 
 	prefixedLogger := logger.WithPrefix(server.Config.SectionName)
 
-	grant, err := output.GetGrant(ctx, server, globalCollectionOpts, prefixedLogger)
+	grant, err := output.GetGrant(ctx, server, opts, prefixedLogger)
 	if err != nil {
 		prefixedLogger.PrintError("Could not get default grant for system snapshot: %s", err)
 		return
@@ -111,7 +111,7 @@ func processSystemMetrics(ctx context.Context, timestamp time.Time, content []by
 		},
 	}
 
-	err = output.SubmitCompactSystemSnapshot(ctx, server, grant, globalCollectionOpts, prefixedLogger, system, timestamp)
+	err = output.SubmitCompactSystemSnapshot(ctx, server, grant, opts, prefixedLogger, system, timestamp)
 	if err != nil {
 		prefixedLogger.PrintError("Failed to upload/send compact system snapshot: %s", err)
 		return
@@ -120,7 +120,7 @@ func processSystemMetrics(ctx context.Context, timestamp time.Time, content []by
 
 var HerokuLogParser = logs.NewLogParser(logs.LogPrefixHeroku2, nil)
 
-func logStreamItemToLogLine(ctx context.Context, item HttpSyslogMessage, servers []*state.Server, sourceToServer map[string]*state.Server, now time.Time, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (map[string]*state.Server, *state.LogLine, string) {
+func logStreamItemToLogLine(ctx context.Context, item HttpSyslogMessage, servers []*state.Server, sourceToServer map[string]*state.Server, now time.Time, opts state.CollectionOpts, logger *util.Logger) (map[string]*state.Server, *state.LogLine, string) {
 	timestamp, err := time.Parse(time.RFC3339, item.HeaderTimestamp)
 	if err != nil {
 		return sourceToServer, nil, ""
@@ -132,7 +132,7 @@ func logStreamItemToLogLine(ctx context.Context, item HttpSyslogMessage, servers
 	}
 
 	if item.HeaderProcID == "heroku-postgres" {
-		processSystemMetrics(ctx, timestamp, item.Content, sourceToServer, globalCollectionOpts, logger, namespace)
+		processSystemMetrics(ctx, timestamp, item.Content, sourceToServer, opts, logger, namespace)
 		return sourceToServer, nil, ""
 	}
 
@@ -169,7 +169,7 @@ func logStreamItemToLogLine(ctx context.Context, item HttpSyslogMessage, servers
 	return sourceToServer, &logLine, sourceName
 }
 
-func setupLogTransformer(ctx context.Context, wg *sync.WaitGroup, servers []*state.Server, in <-chan HttpSyslogMessage, out chan state.ParsedLogStreamItem, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
+func setupLogTransformer(ctx context.Context, wg *sync.WaitGroup, servers []*state.Server, in <-chan HttpSyslogMessage, out chan state.ParsedLogStreamItem, opts state.CollectionOpts, logger *util.Logger) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -189,7 +189,7 @@ func setupLogTransformer(ctx context.Context, wg *sync.WaitGroup, servers []*sta
 
 				var logLine *state.LogLine
 				var sourceName string
-				sourceToServer, logLine, sourceName = logStreamItemToLogLine(ctx, item, servers, sourceToServer, now, globalCollectionOpts, logger)
+				sourceToServer, logLine, sourceName = logStreamItemToLogLine(ctx, item, servers, sourceToServer, now, opts, logger)
 				if logLine == nil || sourceName == "" {
 					continue
 				}
