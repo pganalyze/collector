@@ -5,7 +5,17 @@ PATH := $(PWD)/protoc/bin:$(PWD)/bin:$(PATH)
 SHELL := env PATH=$(PATH) /bin/sh
 
 PROTOC_VERSION_NEEDED := 28.2
-PROTOC_VERSION := $(shell command -v protoc > /dev/null 2>&1 && protoc --version)
+PROTOC_VERSION := $(shell command -v protoc > /dev/null 2>&1 && protoc --version || echo 'none')
+PROTOC_BASE_URL := https://github.com/protocolbuffers/protobuf/releases/download/
+
+ARCH := $(shell uname -m)
+ifeq ($(shell uname), Linux)
+	PROTOC_FILENAME := protoc-$(PROTOC_VERSION_NEEDED)-linux-$(ARCH).zip
+endif
+ifeq ($(shell uname), Darwin)
+	PROTOC_FILENAME := protoc-$(PROTOC_VERSION_NEEDED)-osx-$(ARCH).zip
+endif
+PROTOC_URL := $(PROTOC_BASE_URL)/v$(PROTOC_VERSION_NEEDED)/$(PROTOC_FILENAME)
 
 .PHONY: default build build_dist vendor test docker_release packages integration_test
 
@@ -73,13 +83,14 @@ else
 endif
 
 install_protoc:
-ifdef PROTOC_VERSION
 ifeq (,$(findstring $(PROTOC_VERSION_NEEDED), $(PROTOC_VERSION)))
 	@echo "⚠️  protoc version needed: $(PROTOC_VERSION_NEEDED) vs $(PROTOC_VERSION) installed"
-	@echo "ℹ️  Please download the correct protobuf binary for your OS from https://github.com/protocolbuffers/protobuf/releases/tag/v${PROTOC_VERSION_NEEDED}"
-	@echo "ℹ️  Note the download's name will look like this: protoc-${PROTOC_VERSION_NEEDED}-osx-x86_64.zip"
-	@echo "ℹ️  Copy the unzipped folder into this project, and rename it to \"protoc\""
+	@echo "ℹ️  Vendoring protoc $(PROTOC_VERSION_NEEDED)"
+  
+	@mkdir -p tmp
+	curl --location --output tmp/$(PROTOC_FILENAME) $(PROTOC_URL)
+	unzip -d protoc tmp/$(PROTOC_FILENAME)
+	rm tmp/$(PROTOC_FILENAME)
+  
 	@echo "ℹ️  If this is macOS, you will need to try running the binary yourself, then go to Security & Privacy to explicitly allow it."
-	exit 1
-endif
 endif
