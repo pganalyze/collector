@@ -9,13 +9,19 @@ PROTOC_VERSION := $(shell command -v protoc > /dev/null 2>&1 && protoc --version
 PROTOC_BASE_URL := https://github.com/protocolbuffers/protobuf/releases/download/
 
 ARCH := $(shell uname -m)
+ifneq (,$(filter $(ARCH),arm64 aarch64))
+	PROTOC_ARCH := aarch_64
+else
+	PROTOC_ARCH := $(ARCH)
+endif
+
 ifeq ($(shell uname), Linux)
-	PROTOC_FILENAME := protoc-$(PROTOC_VERSION_NEEDED)-linux-$(ARCH).zip
+	PROTOC_FILENAME := protoc-$(PROTOC_VERSION_NEEDED)-linux-$(PROTOC_ARCH).zip
 endif
 ifeq ($(shell uname), Darwin)
-	PROTOC_FILENAME := protoc-$(PROTOC_VERSION_NEEDED)-osx-$(ARCH).zip
+	PROTOC_FILENAME := protoc-$(PROTOC_VERSION_NEEDED)-osx-$(PROTOC_ARCH).zip
 endif
-PROTOC_URL := $(PROTOC_BASE_URL)/v$(PROTOC_VERSION_NEEDED)/$(PROTOC_FILENAME)
+PROTOC_URL := $(PROTOC_BASE_URL)v$(PROTOC_VERSION_NEEDED)/$(PROTOC_FILENAME)
 
 .PHONY: default build build_dist vendor test docker_release packages integration_test
 
