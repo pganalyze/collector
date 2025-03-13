@@ -52,3 +52,51 @@ func (curr PgStatStatementsStats) DiffSince(prev PgStatStatementsStats) DiffedPg
 		Reset:   curr.Reset,
 	}
 }
+
+type PostgresServerIoStatsKey struct {
+	BackendType string // a backend type like "autovacuum worker"
+	IoObject    string // "relation" or "temp relation"
+	IoContext   string // "normal", "vacuum", "bulkread" or "bulkwrite"
+}
+
+type PostgresServerIoStats struct {
+	Reads         int64
+	ReadTime      float64
+	Writes        int64
+	WriteTime     float64
+	Writebacks    int64
+	WritebackTime float64
+	Extends       int64
+	ExtendTime    float64
+	OpBytes       int64
+	Hits          int64
+	Evictions     int64
+	Reuses        int64
+	Fsyncs        int64
+	FsyncTime     float64
+}
+
+type PostgresServerIoStatsMap map[PostgresServerIoStatsKey]PostgresServerIoStats
+
+type DiffedPostgresServerIoStats PostgresServerIoStats
+type DiffedPostgresServerIoStatsMap map[PostgresServerIoStatsKey]DiffedPostgresServerIoStats
+
+type HistoricPostgresServerIoStatsMap map[PostgresStatementStatsTimeKey]DiffedPostgresServerIoStatsMap
+
+func (curr PostgresServerIoStats) DiffSince(prev PostgresServerIoStats) DiffedPostgresServerIoStats {
+	diff := DiffedPostgresServerIoStats{OpBytes: curr.OpBytes}
+	diff.Reads = curr.Reads - prev.Reads
+	diff.ReadTime = curr.ReadTime - prev.ReadTime
+	diff.Writes = curr.Writes - prev.Writes
+	diff.WriteTime = curr.WriteTime - prev.WriteTime
+	diff.Writebacks = curr.Writebacks - prev.Writebacks
+	diff.WritebackTime = curr.WritebackTime - prev.WritebackTime
+	diff.Extends = curr.Extends - prev.Extends
+	diff.ExtendTime = curr.ExtendTime - prev.ExtendTime
+	diff.Hits = curr.Hits - prev.Hits
+	diff.Evictions = curr.Evictions - prev.Evictions
+	diff.Reuses = curr.Reuses - prev.Reuses
+	diff.Fsyncs = curr.Fsyncs - prev.Fsyncs
+	diff.FsyncTime = curr.FsyncTime - prev.FsyncTime
+	return diff
+}

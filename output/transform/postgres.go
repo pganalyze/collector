@@ -1,8 +1,11 @@
 package transform
 
 import (
+	"time"
+
 	snapshot "github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type OidToIdx map[state.Oid]int32
@@ -165,6 +168,83 @@ func transformPostgresServerStats(s snapshot.FullSnapshot, newState state.Persis
 		XminHorizonStandby:                transientState.ServerStats.FullXminHorizonStandby(),
 		PgStatStatementsDealloc:           diffState.PgStatStatementsStats.Dealloc,
 		PgStatStatementsReset:             snapshot.NullTimeToNullTimestamp(diffState.PgStatStatementsStats.Reset),
+	}
+
+	for timeKey, diffedStats := range transientState.HistoricServerIoStats {
+		// Ignore any data older than an hour, as a safety measure in case of many
+		// failed full snapshot runs (which don't reset state)
+		if time.Since(timeKey.CollectedAt).Hours() >= 1 {
+			continue
+		}
+
+		h := snapshot.ServerIoStatistics{}
+		h.CollectedAt = timestamppb.New(timeKey.CollectedAt)
+		h.CollectedSecs = timeKey.CollectedIntervalSecs
+
+		for k, stats := range diffedStats {
+			stat := snapshot.ServerIoStatistic{
+				Reads:         stats.Reads,
+				ReadTime:      stats.ReadTime,
+				Writes:        stats.Writes,
+				WriteTime:     stats.WriteTime,
+				Writebacks:    stats.Writebacks,
+				WritebackTime: stats.WritebackTime,
+				Extends:       stats.Extends,
+				ExtendTime:    stats.ExtendTime,
+				OpBytes:       stats.OpBytes,
+				Hits:          stats.Hits,
+				Evictions:     stats.Evictions,
+				Reuses:        stats.Reuses,
+				Fsyncs:        stats.Fsyncs,
+				FsyncTime:     stats.FsyncTime,
+			}
+			switch k.BackendType {
+			case "unknown":
+				stat.BackendType = snapshot.BackendCountStatistic_UNKNOWN_TYPE
+			case "autovacuum launcher":
+				stat.BackendType = snapshot.BackendCountStatistic_AUTOVACUUM_LAUNCHER
+			case "autovacuum worker":
+				stat.BackendType = snapshot.BackendCountStatistic_AUTOVACUUM_WORKER
+			case "background worker":
+				stat.BackendType = snapshot.BackendCountStatistic_BACKGROUND_WORKER
+			case "background writer":
+				stat.BackendType = snapshot.BackendCountStatistic_BACKGROUND_WRITER
+			case "client backend":
+				stat.BackendType = snapshot.BackendCountStatistic_CLIENT_BACKEND
+			case "checkpointer":
+				stat.BackendType = snapshot.BackendCountStatistic_CHECKPOINTER
+			case "startup":
+				stat.BackendType = snapshot.BackendCountStatistic_STARTUP
+			case "walreceiver":
+				stat.BackendType = snapshot.BackendCountStatistic_WALRECEIVER
+			case "walsender":
+				stat.BackendType = snapshot.BackendCountStatistic_WALSENDER
+			case "walwriter":
+				stat.BackendType = snapshot.BackendCountStatistic_WALWRITER
+			}
+			switch k.IoObject {
+			case "unknown":
+				stat.IoObject = snapshot.ServerIoStatistic_UNKNOWN_OBJECT
+			case "relation":
+				stat.IoObject = snapshot.ServerIoStatistic_RELATION
+			case "temp relation":
+				stat.IoObject = snapshot.ServerIoStatistic_TEMP_RELATION
+			}
+			switch k.IoContext {
+			case "unknown":
+				stat.IoContext = snapshot.ServerIoStatistic_UNKNOWN_CONTEXT
+			case "normal":
+				stat.IoContext = snapshot.ServerIoStatistic_NORMAL
+			case "vacuum":
+				stat.IoContext = snapshot.ServerIoStatistic_VACUUM
+			case "bulkread":
+				stat.IoContext = snapshot.ServerIoStatistic_BULKREAD
+			case "bulkwrite":
+				stat.IoContext = snapshot.ServerIoStatistic_BULKWRITE
+			}
+			h.Statistics = append(h.Statistics, &stat)
+		}
+		s.ServerIoStatistics = append(s.ServerIoStatistics, &h)
 	}
 
 	return s
