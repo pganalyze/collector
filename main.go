@@ -56,7 +56,7 @@ func main() {
 	var configFilename string
 	var stateFilename string
 	var pidFilename string
-	var noPostgresSettings, noPostgresLocks, noPostgresFunctions, noPostgresBloat, noPostgresViews bool
+	var noPostgresSettings, noPostgresLocks bool
 	var noPostgresRelations, noLogs, noExplain, noSystemInformation bool
 	var writeHeapProfile bool
 	var testRunAndTrace bool
@@ -99,9 +99,6 @@ func main() {
 	flag.BoolVar(&noPostgresRelations, "no-postgres-relations", false, "Don't collect any Postgres relation information (not recommended)")
 	flag.BoolVar(&noPostgresSettings, "no-postgres-settings", false, "Don't collect Postgres configuration settings")
 	flag.BoolVar(&noPostgresLocks, "no-postgres-locks", false, "Don't collect Postgres lock information")
-	flag.BoolVar(&noPostgresFunctions, "no-postgres-functions", false, "Don't collect Postgres function/procedure information")
-	flag.BoolVar(&noPostgresBloat, "no-postgres-bloat", false, "Don't collect Postgres table/index bloat statistics")
-	flag.BoolVar(&noPostgresViews, "no-postgres-views", false, "Don't collect Postgres view/materialized view information (NOTE: This is not implemented right now - views are always collected)")
 	flag.BoolVar(&noLogs, "no-logs", false, "Don't collect log data")
 	flag.BoolVar(&noExplain, "no-explain", false, "Don't automatically EXPLAIN slow queries logged in the logfile")
 	flag.BoolVar(&noSystemInformation, "no-system-information", false, "Don't collect OS level performance data")
@@ -168,9 +165,6 @@ func main() {
 		CollectPostgresRelations:         !noPostgresRelations,
 		CollectPostgresSettings:          !noPostgresSettings,
 		CollectPostgresLocks:             !noPostgresLocks,
-		CollectPostgresFunctions:         !noPostgresFunctions,
-		CollectPostgresBloat:             !noPostgresBloat,
-		CollectPostgresViews:             !noPostgresViews,
 		CollectLogs:                      !noLogs,
 		CollectExplain:                   !noExplain,
 		CollectSystemInformation:         !noSystemInformation,
