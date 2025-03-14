@@ -1,0 +1,8 @@
+{
+  "": 0,
+  "unknown": 0,
+  "normal": 1,
+  "vacuum": 2,
+  "bulkread": 3,
+  "bulkwrite": 4
+}

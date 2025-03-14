@@ -9,5 +9,6 @@
   "startup": 7,
   "walreceiver": 8,
   "walsender": 9,
-  "walwriter": 10
+  "walwriter": 10,
+  "slotsync worker": 11
 }

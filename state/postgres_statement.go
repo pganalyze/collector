@@ -49,7 +49,7 @@ type PostgresStatementKey struct {
 	TopLevel    null.Bool // Whether this statement was executed directly (at the top level), or from within a function / stored procedure (on older Postgres versions this is not tracked, so we set it to NULL)
 }
 
-type PostgresStatementStatsTimeKey struct {
+type HistoricStatsTimeKey struct {
 	CollectedAt           time.Time
 	CollectedIntervalSecs uint32
 }
@@ -61,7 +61,7 @@ type PostgresStatementStatsMap map[PostgresStatementKey]PostgresStatementStats
 type DiffedPostgresStatementStats PostgresStatementStats
 type DiffedPostgresStatementStatsMap map[PostgresStatementKey]DiffedPostgresStatementStats
 
-type HistoricStatementStatsMap map[PostgresStatementStatsTimeKey]DiffedPostgresStatementStatsMap
+type HistoricStatementStatsMap map[HistoricStatsTimeKey]DiffedPostgresStatementStatsMap
 
 func (curr PostgresStatementStats) DiffSince(prev PostgresStatementStats) DiffedPostgresStatementStats {
 	return DiffedPostgresStatementStats{
@@ -122,4 +122,4 @@ type PostgresPlanStatsMap map[PostgresPlanKey]PostgresStatementStats
 type DiffedPostgresPlanStats PostgresStatementStats
 type DiffedPostgresPlanStatsMap map[PostgresPlanKey]DiffedPostgresStatementStats
 
-type HistoricPlanStatsMap map[PostgresStatementStatsTimeKey]DiffedPostgresPlanStatsMap
+type HistoricPlanStatsMap map[HistoricStatsTimeKey]DiffedPostgresPlanStatsMap

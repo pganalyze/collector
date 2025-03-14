@@ -45,6 +45,7 @@ message FullSnapshot {
   repeated DatabaseInformation database_informations = 111;
   repeated DatabaseStatistic database_statictics = 112;
   ServerStatistic server_statistic = 113;
+  repeated ServerIoStatistics server_io_statistics = 114;
 
   reserved 120;
   reserved 121; // This used to be backends before we moved them to their own compact snapshot
@@ -175,6 +176,47 @@ message ServerStatistic {
   NullTimestamp pg_stat_statements_reset = 9; // Time at which all statistics in the pg_stat_statements view were last reset
 }
 
+// Postgres server I/O statistics (from pg_stat_io, in Postgres 16+)
+message ServerIoStatistics {
+  google.protobuf.Timestamp collected_at = 1;
+  uint32 collected_secs = 2;
+  repeated ServerIoStatistic statistics = 3;
+}
+message ServerIoStatistic {
+  // ! When changing this, also update mappings/io_object.json
+  enum IoObject {
+    UNKNOWN_OBJECT = 0;        // unknown
+    RELATION = 1;              // relation
+    TEMP_RELATION = 2;         // temp relation
+  }
+
+  // ! When changing this, also update mappings/io_context.json
+  enum IoContext {
+    UNKNOWN_CONTEXT = 0;       // unknown
+    NORMAL = 1;                // normal
+    VACUUM = 2;                // vacuum
+    BULKREAD = 3;              // bulkread
+    BULKWRITE = 4;             // bulkwrite
+  }
+
+  BackendCountStatistic.BackendType backend_type = 1;
+  IoObject io_object = 2;
+  IoContext io_context = 3;
+  int64 reads = 4;
+  double read_time = 5;
+  int64 writes = 6;
+  double write_time = 7;
+  int64 writebacks = 8;
+  double writeback_time = 9;
+  int64 extends = 10;
+  double extend_time = 11;
+  int64 hits = 12;
+  int64 evictions = 13;
+  int64 reuses = 14;
+  int64 fsyncs = 15;
+  double fsync_time = 16;
+}
+
 message Setting {
   string name = 1;
   string current_value = 2;
@@ -266,6 +308,7 @@ message BackendCountStatistic {
     WALRECEIVER = 8;         // walreceiver
     WALSENDER = 9;           // walsender
     WALWRITER = 10;          // walwriter
+    SLOTSYNC_WORKER = 11;    // slotsync worker
   }
 
   bool has_role_idx = 1;

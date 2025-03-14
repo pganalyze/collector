@@ -281,12 +281,12 @@ func Run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 		}, logger, "activity snapshot of all servers")
 	}
 
-	// Query stats are captured every minute, except for minute 10 when full snapshot collection takes over
+	// This captures stats every minute, except for minute 10 when full snapshot collection takes over
 	scheduler.OneMinute.ScheduleSecondary(ctx, scheduler.TenMinute, func(ctx context.Context) {
 		wg.Add(1)
-		GatherQueryStatsFromAllServers(ctx, servers, globalCollectionOpts, logger)
+		Gather1minStatsFromAllServers(ctx, servers, globalCollectionOpts, logger)
 		wg.Done()
-	}, logger, "high frequency query statistics of all servers")
+	}, logger, "high frequency statistics of all servers")
 
 	SetupWebsocketForAllServers(ctx, servers, globalCollectionOpts, logger)
 	SetupQueryRunnerForAllServers(ctx, servers, globalCollectionOpts, logger)

@@ -62,6 +62,8 @@ func transformPostgresBackendCounts(s snapshot.FullSnapshot, transientState stat
 			backendCountStatistic.BackendType = snapshot.BackendCountStatistic_WALSENDER
 		case "walwriter":
 			backendCountStatistic.BackendType = snapshot.BackendCountStatistic_WALWRITER
+		case "slotsync worker":
+			backendCountStatistic.BackendType = snapshot.BackendCountStatistic_SLOTSYNC_WORKER
 		}
 
 		s.BackendCountStatistics = append(s.BackendCountStatistics, &backendCountStatistic)

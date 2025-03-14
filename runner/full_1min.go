@@ -12,7 +12,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func gatherQueryStatsForServer(ctx context.Context, server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.PersistedState, error) {
+func gather1minStatsForServer(ctx context.Context, server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.PersistedState, error) {
 	var err error
 	var connection *sql.DB
 
@@ -51,33 +51,45 @@ func gatherQueryStatsForServer(ctx context.Context, server *state.Server, global
 		return newState, errors.Wrap(err, "error collecting query plan stats")
 	}
 
+	newState.ServerIoStats, err = postgres.GetPgStatIo(ctx, c, connection)
+	if err != nil {
+		return newState, errors.Wrap(err, "error collecting Postgres server statistics")
+	}
+
 	// Don't calculate any diffs on the first run (but still update the state)
 	if len(server.PrevState.StatementStats) == 0 || server.PrevState.LastStatementStatsAt.IsZero() {
 		return newState, nil
 	}
 
-	diffedStatementStats := diffStatements(newState.StatementStats, server.PrevState.StatementStats)
-	collectedIntervalSecs := uint32(newState.LastStatementStatsAt.Sub(server.PrevState.LastStatementStatsAt) / time.Second)
+	timeKey := state.HistoricStatsTimeKey{
+		CollectedAt:           collectedAt,
+		CollectedIntervalSecs: uint32(newState.LastStatementStatsAt.Sub(server.PrevState.LastStatementStatsAt) / time.Second),
+	}
 
-	timeKey := state.PostgresStatementStatsTimeKey{CollectedAt: collectedAt, CollectedIntervalSecs: collectedIntervalSecs}
 	newState.UnidentifiedStatementStats = server.PrevState.UnidentifiedStatementStats
 	if newState.UnidentifiedStatementStats == nil {
 		newState.UnidentifiedStatementStats = make(state.HistoricStatementStatsMap)
 	}
-	newState.UnidentifiedStatementStats[timeKey] = diffedStatementStats
-
-	diffedPlanStats := diffPlanStats(newState.PlanStats, server.PrevState.PlanStats)
+	newState.UnidentifiedStatementStats[timeKey] = diffStatements(newState.StatementStats, server.PrevState.StatementStats)
 
 	newState.UnidentifiedPlanStats = server.PrevState.UnidentifiedPlanStats
 	if newState.UnidentifiedPlanStats == nil {
 		newState.UnidentifiedPlanStats = make(state.HistoricPlanStatsMap)
 	}
-	newState.UnidentifiedPlanStats[timeKey] = diffedPlanStats
+	newState.UnidentifiedPlanStats[timeKey] = diffPlanStats(newState.PlanStats, server.PrevState.PlanStats)
+
+	if c.PostgresVersion.Numeric >= state.PostgresVersion16 {
+		newState.QueuedServerIoStats = server.PrevState.QueuedServerIoStats
+		if newState.QueuedServerIoStats == nil {
+			newState.QueuedServerIoStats = make(state.HistoricPostgresServerIoStatsMap)
+		}
+		newState.QueuedServerIoStats[timeKey] = diffServerIoStats(newState.ServerIoStats, server.PrevState.ServerIoStats)
+	}
 
 	return newState, nil
 }
 
-func GatherQueryStatsFromAllServers(ctx context.Context, servers []*state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
+func Gather1minStatsFromAllServers(ctx context.Context, servers []*state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
 	var wg sync.WaitGroup
 
 	for idx := range servers {
@@ -90,7 +102,7 @@ func GatherQueryStatsFromAllServers(ctx context.Context, servers []*state.Server
 			prefixedLogger := logger.WithPrefixAndRememberErrors(server.Config.SectionName)
 
 			server.StateMutex.Lock()
-			newState, err := gatherQueryStatsForServer(ctx, server, globalCollectionOpts, prefixedLogger)
+			newState, err := gather1minStatsForServer(ctx, server, globalCollectionOpts, prefixedLogger)
 
 			if err != nil {
 				server.StateMutex.Unlock()

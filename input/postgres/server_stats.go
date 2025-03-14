@@ -75,11 +75,35 @@ SELECT
 FROM %s;
 `
 
+const ioStatisticSQLPg16 string = `
+SELECT backend_type,
+	   object,
+	   context,
+	   coalesce(reads, 0),
+	   coalesce(read_time, 0),
+	   coalesce(writes, 0),
+	   coalesce(write_time, 0),
+	   coalesce(writebacks, 0),
+	   coalesce(writeback_time, 0),
+	   coalesce(extends, 0),
+	   coalesce(extend_time, 0),
+	   coalesce(hits, 0),
+	   coalesce(evictions, 0),
+	   coalesce(reuses, 0),
+	   coalesce(fsyncs, 0),
+	   coalesce(fsync_time, 0)
+  FROM pg_stat_io
+`
+
 func GetServerStats(ctx context.Context, c *Collection, db *sql.DB, ps state.PersistedState, ts state.TransientState) (state.PersistedState, state.TransientState, error) {
 	var stats state.PostgresServerStats
 	var transactionIdSQL string
 
 	err := getPgStatStatementsInfo(ctx, db, &ps.PgStatStatementsStats)
+	if err != nil {
+		return ps, ts, err
+	}
+	ps.ServerIoStats, err = GetPgStatIo(ctx, c, db)
 	if err != nil {
 		return ps, ts, err
 	}
@@ -144,4 +168,33 @@ func getPgStatStatementsInfo(ctx context.Context, db *sql.DB, stats *state.PgSta
 		&stats.Dealloc, &stats.Reset,
 	)
 	return err
+}
+
+func GetPgStatIo(ctx context.Context, c *Collection, db *sql.DB) (stats state.PostgresServerIoStatsMap, err error) {
+	stats = make(state.PostgresServerIoStatsMap)
+	var rows *sql.Rows
+	if c.PostgresVersion.Numeric < state.PostgresVersion16 {
+		return
+	}
+	rows, err = db.Query(QueryMarkerSQL + ioStatisticSQLPg16)
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var k state.PostgresServerIoStatsKey
+		var s state.PostgresServerIoStats
+		err = rows.Scan(&k.BackendType, &k.IoObject, &k.IoContext,
+			&s.Reads, &s.ReadTime, &s.Writes, &s.WriteTime,
+			&s.Writebacks, &s.WritebackTime, &s.Extends,
+			&s.ExtendTime, &s.Hits, &s.Evictions,
+			&s.Reuses, &s.Fsyncs, &s.FsyncTime,
+		)
+		if err != nil {
+			return
+		}
+		stats[k] = s
+	}
+	err = rows.Err()
+	return
 }
