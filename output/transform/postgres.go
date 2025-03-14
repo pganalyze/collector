@@ -177,26 +177,25 @@ func transformPostgresServerStats(s snapshot.FullSnapshot, newState state.Persis
 			continue
 		}
 
-		h := snapshot.ServerIoStatistics{}
-		h.CollectedAt = timestamppb.New(timeKey.CollectedAt)
-		h.CollectedSecs = timeKey.CollectedIntervalSecs
+		stats := snapshot.ServerIoStatistics{}
+		stats.CollectedAt = timestamppb.New(timeKey.CollectedAt)
+		stats.CollectedSecs = timeKey.CollectedIntervalSecs
 
-		for k, stats := range diffedStats {
+		for k, s := range diffedStats {
 			stat := snapshot.ServerIoStatistic{
-				Reads:         stats.Reads,
-				ReadTime:      stats.ReadTime,
-				Writes:        stats.Writes,
-				WriteTime:     stats.WriteTime,
-				Writebacks:    stats.Writebacks,
-				WritebackTime: stats.WritebackTime,
-				Extends:       stats.Extends,
-				ExtendTime:    stats.ExtendTime,
-				OpBytes:       stats.OpBytes,
-				Hits:          stats.Hits,
-				Evictions:     stats.Evictions,
-				Reuses:        stats.Reuses,
-				Fsyncs:        stats.Fsyncs,
-				FsyncTime:     stats.FsyncTime,
+				Reads:         s.Reads,
+				ReadTime:      s.ReadTime,
+				Writes:        s.Writes,
+				WriteTime:     s.WriteTime,
+				Writebacks:    s.Writebacks,
+				WritebackTime: s.WritebackTime,
+				Extends:       s.Extends,
+				ExtendTime:    s.ExtendTime,
+				Hits:          s.Hits,
+				Evictions:     s.Evictions,
+				Reuses:        s.Reuses,
+				Fsyncs:        s.Fsyncs,
+				FsyncTime:     s.FsyncTime,
 			}
 			switch k.BackendType {
 			case "unknown":
@@ -221,6 +220,8 @@ func transformPostgresServerStats(s snapshot.FullSnapshot, newState state.Persis
 				stat.BackendType = snapshot.BackendCountStatistic_WALSENDER
 			case "walwriter":
 				stat.BackendType = snapshot.BackendCountStatistic_WALWRITER
+			case "slotsync worker":
+				stat.BackendType = snapshot.BackendCountStatistic_SLOTSYNC_WORKER
 			}
 			switch k.IoObject {
 			case "unknown":
@@ -242,9 +243,9 @@ func transformPostgresServerStats(s snapshot.FullSnapshot, newState state.Persis
 			case "bulkwrite":
 				stat.IoContext = snapshot.ServerIoStatistic_BULKWRITE
 			}
-			h.Statistics = append(h.Statistics, &stat)
+			stats.Statistics = append(stats.Statistics, &stat)
 		}
-		s.ServerIoStatistics = append(s.ServerIoStatistics, &h)
+		s.ServerIoStatistics = append(s.ServerIoStatistics, &stats)
 	}
 
 	return s

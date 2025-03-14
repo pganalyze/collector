@@ -210,12 +210,11 @@ message ServerIoStatistic {
   double writeback_time = 9;
   int64 extends = 10;
   double extend_time = 11;
-  int64 op_bytes = 12;
-  int64 hits = 13;
-  int64 evictions = 14;
-  int64 reuses = 15;
-  int64 fsyncs = 16;
-  double fsync_time = 17;
+  int64 hits = 12;
+  int64 evictions = 13;
+  int64 reuses = 14;
+  int64 fsyncs = 15;
+  double fsync_time = 16;
 }
 
 message Setting {
@@ -309,6 +308,7 @@ message BackendCountStatistic {
     WALRECEIVER = 8;         // walreceiver
     WALSENDER = 9;           // walsender
     WALWRITER = 10;          // walwriter
+    SLOTSYNC_WORKER = 11;    // slotsync worker
   }
 
   bool has_role_idx = 1;

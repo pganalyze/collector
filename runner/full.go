@@ -60,7 +60,7 @@ func collectDiffAndSubmit(ctx context.Context, server *state.Server, globalColle
 	transientState.HistoricServerIoStats = server.PrevState.QueuedServerIoStats
 
 	// Add current collection to historic values for easier handling (except for statements for historic reasons)
-	timeKey := state.PostgresStatementStatsTimeKey{
+	timeKey := state.HistoricStatsTimeKey{
 		CollectedAt:           newState.CollectedAt,
 		CollectedIntervalSecs: uint32(newState.LastStatementStatsAt.Sub(server.PrevState.LastStatementStatsAt) / time.Second),
 	}

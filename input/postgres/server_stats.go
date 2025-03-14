@@ -87,7 +87,6 @@ SELECT backend_type,
 	   coalesce(writeback_time, 0),
 	   coalesce(extends, 0),
 	   coalesce(extend_time, 0),
-	   coalesce(op_bytes, 0),
 	   coalesce(hits, 0),
 	   coalesce(evictions, 0),
 	   coalesce(reuses, 0),
@@ -174,52 +173,28 @@ func getPgStatStatementsInfo(ctx context.Context, db *sql.DB, stats *state.PgSta
 func GetPgStatIo(ctx context.Context, c *Collection, db *sql.DB) (stats state.PostgresServerIoStatsMap, err error) {
 	stats = make(state.PostgresServerIoStatsMap)
 	var rows *sql.Rows
-	if c.PostgresVersion.Numeric >= state.PostgresVersion16 {
-		rows, err = db.Query(QueryMarkerSQL + ioStatisticSQLPg16)
+	if c.PostgresVersion.Numeric < state.PostgresVersion16 {
+		return
+	}
+	rows, err = db.Query(QueryMarkerSQL + ioStatisticSQLPg16)
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var k state.PostgresServerIoStatsKey
+		var s state.PostgresServerIoStats
+		err = rows.Scan(&k.BackendType, &k.IoObject, &k.IoContext,
+			&s.Reads, &s.ReadTime, &s.Writes, &s.WriteTime,
+			&s.Writebacks, &s.WritebackTime, &s.Extends,
+			&s.ExtendTime, &s.Hits, &s.Evictions,
+			&s.Reuses, &s.Fsyncs, &s.FsyncTime,
+		)
 		if err != nil {
 			return
 		}
-		defer rows.Close()
-		for rows.Next() {
-			var k state.PostgresServerIoStatsKey
-			var s state.PostgresServerIoStats
-			err = rows.Scan(&k.BackendType, &k.IoObject, &k.IoContext,
-				&s.Reads, &s.ReadTime, &s.Writes, &s.WriteTime,
-				&s.Writebacks, &s.WritebackTime, &s.Extends,
-				&s.ExtendTime, &s.OpBytes, &s.Hits,
-				&s.Evictions, &s.Reuses, &s.Fsyncs, &s.FsyncTime,
-			)
-			if err != nil {
-				return
-			}
-			stats[k] = s
-		}
-		if err = rows.Err(); err != nil {
-			return
-		}
+		stats[k] = s
 	}
+	err = rows.Err()
 	return
-}
-
-type PostgresServerIoStatsKey struct {
-	BackendType string // a backend type like "autovacuum worker"
-	IoObject    string // "relation" or "temp relation"
-	IoContext   string // "normal", "vacuum", "bulkread" or "bulkwrite"
-}
-
-type PostgresServerIoStats struct {
-	Reads         int64
-	ReadTime      float64
-	Writes        int64
-	WriteTime     float64
-	Writebacks    int64
-	WritebackTime float64
-	Extends       int64
-	ExtendTime    float64
-	OpBytes       int64
-	Hits          int64
-	Evictions     int64
-	Reuses        int64
-	Fsyncs        int64
-	FsyncTime     float64
 }

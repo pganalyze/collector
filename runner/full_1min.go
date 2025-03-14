@@ -61,7 +61,7 @@ func gather1minStatsForServer(ctx context.Context, server *state.Server, globalC
 		return newState, nil
 	}
 
-	timeKey := state.PostgresStatementStatsTimeKey{
+	timeKey := state.HistoricStatsTimeKey{
 		CollectedAt:           collectedAt,
 		CollectedIntervalSecs: uint32(newState.LastStatementStatsAt.Sub(server.PrevState.LastStatementStatsAt) / time.Second),
 	}

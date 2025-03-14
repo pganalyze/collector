@@ -68,7 +68,6 @@ type PostgresServerIoStats struct {
 	WritebackTime float64
 	Extends       int64
 	ExtendTime    float64
-	OpBytes       int64
 	Hits          int64
 	Evictions     int64
 	Reuses        int64
@@ -81,10 +80,10 @@ type PostgresServerIoStatsMap map[PostgresServerIoStatsKey]PostgresServerIoStats
 type DiffedPostgresServerIoStats PostgresServerIoStats
 type DiffedPostgresServerIoStatsMap map[PostgresServerIoStatsKey]DiffedPostgresServerIoStats
 
-type HistoricPostgresServerIoStatsMap map[PostgresStatementStatsTimeKey]DiffedPostgresServerIoStatsMap
+type HistoricPostgresServerIoStatsMap map[HistoricStatsTimeKey]DiffedPostgresServerIoStatsMap
 
 func (curr PostgresServerIoStats) DiffSince(prev PostgresServerIoStats) DiffedPostgresServerIoStats {
-	diff := DiffedPostgresServerIoStats{OpBytes: curr.OpBytes}
+	diff := DiffedPostgresServerIoStats{}
 	diff.Reads = curr.Reads - prev.Reads
 	diff.ReadTime = curr.ReadTime - prev.ReadTime
 	diff.Writes = curr.Writes - prev.Writes
