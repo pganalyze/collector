@@ -487,9 +487,6 @@ func testAzureLogStream(ctx context.Context, wg *sync.WaitGroup, server *state.S
 	err := azure.SetupLogSubscriber(ctx, wg, globalCollectionOpts, logger, []*state.Server{server}, parsedLogStream)
 	if err != nil {
 		logger.PrintError("ERROR - Could not get logs through Azure Event Hub: %s", err)
-		if strings.HasPrefix(err.Error(), "failed to configure Azure AD JWT provider: failed") {
-			logger.PrintInfo("HINT - This error occurs when there are no Azure AD credentials configured. Please review the pganalyze documentation: https://pganalyze.com/docs/log-insights/setup/azure-database/troubleshooting#error-failed-to-configure-azure-ad-jwt-provider")
-		}
 		return false
 	}
 
