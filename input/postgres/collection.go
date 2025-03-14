@@ -120,9 +120,11 @@ func (c *Collection) findHelperFunction(name string, inputTypes []string) (state
 			parts := strings.Split(arg, " ")
 
 			// Check if function has more arguments required than we're expecting
-			//
-			// Note we allow extra arguments if they have default values.
-			if idx >= len(inputTypes) && parts[2] != "DEFAULT" {
+			if idx >= len(inputTypes) {
+				// Allow extra arguments if they have default values.
+				if len(parts) >= 3 && parts[2] == "DEFAULT" {
+					break
+				}
 				mismatch = true
 				break
 			}
