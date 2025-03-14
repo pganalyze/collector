@@ -36,7 +36,7 @@ var collectionHelperTests = []collectionHelperTestpair{
 		false,
 		"",
 	},
-	// Verify we don't match on a shorter set of arguments
+	// Verify we don't match on a longer set of arguments
 	{
 		"explain_analyze",
 		[]string{"text", "text[]", "text[]", "text[]", "text[]"},
