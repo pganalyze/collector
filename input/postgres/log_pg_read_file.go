@@ -33,7 +33,7 @@ SELECT (SELECT size FROM pg_catalog.pg_ls_logdir() WHERE name = $1),
 `
 
 // LogPgReadFile - Gets log files using the pg_read_file function
-func LogPgReadFile(ctx context.Context, server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.PersistedLogState, []state.LogFile, []state.PostgresQuerySample, error) {
+func LogPgReadFile(ctx context.Context, server *state.Server, opts state.CollectionOpts, logger *util.Logger) (state.PersistedLogState, []state.LogFile, []state.PostgresQuerySample, error) {
 	var err error
 	var psl state.PersistedLogState = server.LogPrevState
 	var logFiles []state.LogFile
@@ -41,14 +41,14 @@ func LogPgReadFile(ctx context.Context, server *state.Server, globalCollectionOp
 
 	linesNewerThan := time.Now().Add(-2 * time.Minute)
 
-	db, err := EstablishConnection(ctx, server, logger, globalCollectionOpts, "")
+	db, err := EstablishConnection(ctx, server, logger, opts, "")
 	if err != nil {
 		logger.PrintWarning("Could not connect to fetch logs: %s", err)
 		return server.LogPrevState, nil, nil, err
 	}
 	defer db.Close()
 
-	h, err := NewCollection(ctx, logger, server, globalCollectionOpts, db)
+	h, err := NewCollection(ctx, logger, server, opts, db)
 	if err != nil {
 		logger.PrintError("Error setting up collection helper: %s", err)
 		return server.LogPrevState, nil, nil, err

@@ -18,10 +18,10 @@ import (
 )
 
 // CollectFull - Collects a "full" snapshot of all data we need on a regular interval
-func CollectFull(ctx context.Context, server *state.Server, connection *sql.DB, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (ps state.PersistedState, ts state.TransientState, err error) {
+func CollectFull(ctx context.Context, server *state.Server, connection *sql.DB, opts state.CollectionOpts, logger *util.Logger) (ps state.PersistedState, ts state.TransientState, err error) {
 	ps.CollectedAt = time.Now()
 
-	c, err := postgres.NewCollection(ctx, logger, server, globalCollectionOpts, connection)
+	c, err := postgres.NewCollection(ctx, logger, server, opts, connection)
 	if err != nil {
 		logger.PrintError("Error setting up collection info: %s", err)
 		return
@@ -37,7 +37,7 @@ func CollectFull(ctx context.Context, server *state.Server, connection *sql.DB, 
 
 	bufferCacheReady := make(chan state.BufferCache)
 	go func() {
-		postgres.GetBufferCache(ctx, c, server, globalCollectionOpts, bufferCacheReady)
+		postgres.GetBufferCache(ctx, c, server, opts, bufferCacheReady)
 	}()
 
 	ps.LastStatementStatsAt = time.Now()
@@ -60,7 +60,7 @@ func CollectFull(ctx context.Context, server *state.Server, connection *sql.DB, 
 		// CollectorErrors information.
 		logger.PrintError("Error collecting pg_stat_statements: %s", err)
 		var e *pq.Error
-		if errors.As(err, &e) && e.Code == "55000" && globalCollectionOpts.TestRun { // object_not_in_prerequisite_state
+		if errors.As(err, &e) && e.Code == "55000" && opts.TestRun { // object_not_in_prerequisite_state
 			shared_preload_libraries, _ := postgres.GetPostgresSetting(ctx, connection, "shared_preload_libraries")
 			logger.PrintInfo("HINT - Current shared_preload_libraries setting: '%s'. Your Postgres server may need to be restarted for changes to take effect.", shared_preload_libraries)
 			server.SelfTest.HintCollectionAspect(state.CollectionAspectPgStatStatements, "Current shared_preload_libraries setting: '%s'. Your Postgres server may need to be restarted for changes to take effect.", shared_preload_libraries)
@@ -99,7 +99,7 @@ func CollectFull(ctx context.Context, server *state.Server, connection *sql.DB, 
 		}
 	}
 
-	if globalCollectionOpts.CollectPostgresSettings {
+	if opts.CollectPostgresSettings {
 		ts.Settings, err = postgres.GetSettings(ctx, connection)
 		if err != nil {
 			logger.PrintError("Error collecting config settings: %s", err)
@@ -157,15 +157,15 @@ func CollectFull(ctx context.Context, server *state.Server, connection *sql.DB, 
 		ps.Relations = filteredRelations
 	}
 
-	if globalCollectionOpts.CollectSystemInformation {
-		ps.System = system.GetSystemState(ctx, server, logger, globalCollectionOpts)
+	if opts.CollectSystemInformation {
+		ps.System = system.GetSystemState(ctx, server, logger, opts)
 	}
 
 	logs.SyncLogParser(server, ts.Settings)
 
 	ps.CollectorStats = getCollectorStats()
 	ts.CollectorConfig = getCollectorConfig(server.Config)
-	ts.CollectorPlatform = getCollectorPlatform(server, globalCollectionOpts, logger)
+	ts.CollectorPlatform = getCollectorPlatform(server, opts, logger)
 
 	return
 }

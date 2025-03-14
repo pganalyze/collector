@@ -38,8 +38,8 @@ $$
   WHERE schemaname NOT IN ('pg_catalog', 'information_schema') AND tablename <> 'pg_subscription';
 $$ LANGUAGE sql VOLATILE SECURITY DEFINER;`}
 
-func GenerateStatsHelperSql(ctx context.Context, server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (string, error) {
-	db, err := postgres.EstablishConnection(ctx, server, logger, globalCollectionOpts, "")
+func GenerateStatsHelperSql(ctx context.Context, server *state.Server, opts state.CollectionOpts, logger *util.Logger) (string, error) {
+	db, err := postgres.EstablishConnection(ctx, server, logger, opts, "")
 	if err != nil {
 		return "", err
 	}
@@ -64,8 +64,8 @@ func GenerateStatsHelperSql(ctx context.Context, server *state.Server, globalCol
 	return output.String(), nil
 }
 
-func GenerateExplainAnalyzeHelperSql(ctx context.Context, server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (string, error) {
-	db, err := postgres.EstablishConnection(ctx, server, logger, globalCollectionOpts, "")
+func GenerateExplainAnalyzeHelperSql(ctx context.Context, server *state.Server, opts state.CollectionOpts, logger *util.Logger) (string, error) {
+	db, err := postgres.EstablishConnection(ctx, server, logger, opts, "")
 	if err != nil {
 		return "", err
 	}
@@ -81,11 +81,11 @@ func GenerateExplainAnalyzeHelperSql(ctx context.Context, server *state.Server, 
 		output.WriteString(fmt.Sprintf("\\c %s\n", pq.QuoteIdentifier(dbName)))
 		output.WriteString("CREATE SCHEMA IF NOT EXISTS pganalyze;\n")
 		output.WriteString(fmt.Sprintf("GRANT USAGE ON SCHEMA pganalyze TO %s;\n", pq.QuoteIdentifier(server.Config.GetDbUsername())))
-		output.WriteString(fmt.Sprintf("GRANT CREATE ON SCHEMA pganalyze TO %s;\n", pq.QuoteIdentifier(globalCollectionOpts.GenerateExplainAnalyzeHelperRole)))
-		output.WriteString(fmt.Sprintf("SET ROLE %s;\n", pq.QuoteIdentifier(globalCollectionOpts.GenerateExplainAnalyzeHelperRole)))
+		output.WriteString(fmt.Sprintf("GRANT CREATE ON SCHEMA pganalyze TO %s;\n", pq.QuoteIdentifier(opts.GenerateExplainAnalyzeHelperRole)))
+		output.WriteString(fmt.Sprintf("SET ROLE %s;\n", pq.QuoteIdentifier(opts.GenerateExplainAnalyzeHelperRole)))
 		output.WriteString(util.ExplainAnalyzeHelper + "\n")
 		output.WriteString("RESET ROLE;\n")
-		output.WriteString(fmt.Sprintf("REVOKE CREATE ON SCHEMA pganalyze FROM %s;\n", pq.QuoteIdentifier(globalCollectionOpts.GenerateExplainAnalyzeHelperRole)))
+		output.WriteString(fmt.Sprintf("REVOKE CREATE ON SCHEMA pganalyze FROM %s;\n", pq.QuoteIdentifier(opts.GenerateExplainAnalyzeHelperRole)))
 		output.WriteString("\n")
 	}
 

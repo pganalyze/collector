@@ -31,10 +31,10 @@ WHERE reldatabase IS NOT NULL -- filters out unused pages
 GROUP BY 1, 2
 `
 
-func GetBufferCache(ctx context.Context, c *Collection, server *state.Server, globalCollectionOpts state.CollectionOpts, channel chan state.BufferCache) {
+func GetBufferCache(ctx context.Context, c *Collection, server *state.Server, opts state.CollectionOpts, channel chan state.BufferCache) {
 	start := time.Now()
 	bufferCache := make(state.BufferCache)
-	db, err := EstablishConnection(ctx, server, c.Logger, globalCollectionOpts, "")
+	db, err := EstablishConnection(ctx, server, c.Logger, opts, "")
 	if err != nil {
 		c.Logger.PrintError("GetBufferCache: %s", err)
 		channel <- bufferCache
@@ -52,7 +52,7 @@ func GetBufferCache(ctx context.Context, c *Collection, server *state.Server, gl
 	sizeGB := 0
 	db.QueryRowContext(ctx, QueryMarkerSQL+bufferCacheSizeSQL).Scan(&sizeGB)
 	if sizeGB > server.Config.MaxBufferCacheMonitoringGB {
-		if globalCollectionOpts.TestRun {
+		if opts.TestRun {
 			c.Logger.PrintWarning("GetBufferCache: skipping collection. To enable, set max_buffer_cache_monitoring_gb to a value over %d", sizeGB)
 		}
 		channel <- bufferCache

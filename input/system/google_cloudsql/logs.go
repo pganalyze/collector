@@ -138,7 +138,7 @@ func setupPubSubSubscriber(ctx context.Context, wg *sync.WaitGroup, logger *util
 	return nil
 }
 
-func SetupLogSubscriber(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *util.Logger, servers []*state.Server, parsedLogStream chan state.ParsedLogStreamItem) error {
+func SetupLogSubscriber(ctx context.Context, wg *sync.WaitGroup, opts state.CollectionOpts, logger *util.Logger, servers []*state.Server, parsedLogStream chan state.ParsedLogStreamItem) error {
 	gcpLogStream := make(chan LogStreamItem, state.LogStreamBufferLen)
 	setupLogTransformer(ctx, wg, servers, gcpLogStream, parsedLogStream, logger)
 
@@ -154,7 +154,7 @@ func SetupLogSubscriber(ctx context.Context, wg *sync.WaitGroup, globalCollectio
 			}
 			err := setupPubSubSubscriber(ctx, wg, prefixedLogger, server.Config, gcpLogStream)
 			if err != nil {
-				if globalCollectionOpts.TestRun {
+				if opts.TestRun {
 					return err
 				}
 

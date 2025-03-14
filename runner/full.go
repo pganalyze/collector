@@ -19,22 +19,22 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
-func collectDiffAndSubmit(ctx context.Context, server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.PersistedState, state.CollectionStatus, error) {
+func collectDiffAndSubmit(ctx context.Context, server *state.Server, opts state.CollectionOpts, logger *util.Logger) (state.PersistedState, state.CollectionStatus, error) {
 	var newState state.PersistedState
 	var err error
 	var connection *sql.DB
 
-	connection, err = postgres.EstablishConnection(ctx, server, logger, globalCollectionOpts, "")
+	connection, err = postgres.EstablishConnection(ctx, server, logger, opts, "")
 	if err != nil {
 		return newState, state.CollectionStatus{}, fmt.Errorf("Failed to connect to database: %s", err)
 	}
 
-	newState, transientState, err := input.CollectFull(ctx, server, connection, globalCollectionOpts, logger)
+	newState, transientState, err := input.CollectFull(ctx, server, connection, opts, logger)
 	if err != nil {
 		connection.Close()
 		return newState, state.CollectionStatus{}, err
 	}
-	if globalCollectionOpts.TestRun {
+	if opts.TestRun {
 		logger.PrintInfo("  Test collection successful for %s", transientState.Version.Full)
 	}
 
@@ -71,7 +71,7 @@ func collectDiffAndSubmit(ctx context.Context, server *state.Server, globalColle
 		transientState.HistoricServerIoStats[timeKey] = diffState.ServerIoStats // add current for easier tracking
 	}
 
-	err = output.SendFull(ctx, server, globalCollectionOpts, logger, newState, diffState, transientState, collectedIntervalSecs)
+	err = output.SendFull(ctx, server, opts, logger, newState, diffState, transientState, collectedIntervalSecs)
 	if err != nil {
 		return newState, collectionStatus, err
 	}
@@ -97,7 +97,7 @@ func capturePanic(f func()) (err interface{}, stackTrace []byte) {
 	return
 }
 
-func processServer(ctx context.Context, server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.PersistedState, state.Grant, state.CollectionStatus, error) {
+func processServer(ctx context.Context, server *state.Server, opts state.CollectionOpts, logger *util.Logger) (state.PersistedState, state.Grant, state.CollectionStatus, error) {
 	var newGrant state.Grant
 	var newState state.PersistedState
 	var collectionStatus state.CollectionStatus
@@ -109,15 +109,15 @@ func processServer(ctx context.Context, server *state.Server, globalCollectionOp
 		return newState, newGrant, collectionStatus, nil
 	}
 
-	err = checkReplicaCollectionDisabled(ctx, server, globalCollectionOpts, logger)
+	err = checkReplicaCollectionDisabled(ctx, server, opts, logger)
 	if err != nil {
 		return newState, newGrant, collectionStatus, err
 	}
 
 	if server.WebSocket.Load() != nil {
 		newGrant = *server.Grant.Load()
-	} else if !globalCollectionOpts.ForceEmptyGrant {
-		newGrant, err = output.GetGrant(ctx, server, globalCollectionOpts, logger)
+	} else if !opts.ForceEmptyGrant {
+		newGrant, err = output.GetGrant(ctx, server, opts, logger)
 		if err != nil {
 			if server.Grant.Load().Valid {
 				logger.PrintVerbose("Could not acquire snapshot grant, reusing previous grant: %s", err)
@@ -141,7 +141,7 @@ func processServer(ctx context.Context, server *state.Server, globalCollectionOp
 	}
 
 	runFunc := func() {
-		newState, collectionStatus, err = collectDiffAndSubmit(ctx, server, globalCollectionOpts, logger)
+		newState, collectionStatus, err = collectDiffAndSubmit(ctx, server, opts, logger)
 	}
 
 	var panicErr interface{}
@@ -198,7 +198,7 @@ func checkReplicaCollectionDisabled(ctx context.Context, server *state.Server, o
 }
 
 // CollectAllServers - Collects statistics from all servers and sends them as full snapshots to the pganalyze service
-func CollectAllServers(ctx context.Context, servers []*state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (allSuccessful bool) {
+func CollectAllServers(ctx context.Context, servers []*state.Server, opts state.CollectionOpts, logger *util.Logger) (allSuccessful bool) {
 	var wg sync.WaitGroup
 
 	allSuccessful = true
@@ -210,12 +210,12 @@ func CollectAllServers(ctx context.Context, servers []*state.Server, globalColle
 
 			prefixedLogger := logger.WithPrefixAndRememberErrors(server.Config.SectionName)
 
-			if globalCollectionOpts.TestRun {
+			if opts.TestRun {
 				prefixedLogger.PrintInfo("Testing statistics collection...")
 			}
 
 			server.StateMutex.Lock()
-			newState, grant, newCollectionStatus, err := processServer(ctx, server, globalCollectionOpts, prefixedLogger)
+			newState, grant, newCollectionStatus, err := processServer(ctx, server, opts, prefixedLogger)
 			if err != nil {
 				server.StateMutex.Unlock()
 
@@ -238,11 +238,11 @@ func CollectAllServers(ctx context.Context, servers []*state.Server, globalColle
 					allSuccessful = false
 					prefixedLogger.PrintError("Could not process server: %s", err)
 
-					if grant.Valid && !globalCollectionOpts.TestRun && globalCollectionOpts.SubmitCollectedData {
+					if grant.Valid && !opts.TestRun && opts.SubmitCollectedData {
 						if server.WebSocket.Load() == nil {
 							server.Grant.Store(&grant)
 						}
-						err = output.SendFailedFull(ctx, server, globalCollectionOpts, prefixedLogger)
+						err = output.SendFailedFull(ctx, server, opts, prefixedLogger)
 						if err != nil {
 							prefixedLogger.PrintWarning("Could not send error information to remote server: %s", err)
 						}
@@ -259,7 +259,7 @@ func CollectAllServers(ctx context.Context, servers []*state.Server, globalColle
 				server.PrevState = newState
 				server.StateMutex.Unlock()
 				server.CollectionStatusMutex.Lock()
-				if newCollectionStatus.LogSnapshotDisabled && !globalCollectionOpts.TestRun {
+				if newCollectionStatus.LogSnapshotDisabled && !opts.TestRun {
 					warning := fmt.Sprintf("Skipping logs: %s", newCollectionStatus.LogSnapshotDisabledReason)
 					prefixedLogger.PrintWarning(warning)
 				}
@@ -275,8 +275,8 @@ func CollectAllServers(ctx context.Context, servers []*state.Server, globalColle
 
 	wg.Wait()
 
-	if globalCollectionOpts.WriteStateUpdate {
-		state.WriteStateFile(servers, globalCollectionOpts, logger)
+	if opts.WriteStateUpdate {
+		state.WriteStateFile(servers, opts, logger)
 	}
 
 	return

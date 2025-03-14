@@ -15,14 +15,14 @@ import (
 )
 
 // DownloadLogFiles - Downloads all new log files for the remote system and returns them
-func DownloadLogFiles(ctx context.Context, server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (psl state.PersistedLogState, files []state.LogFile, querySamples []state.PostgresQuerySample, err error) {
+func DownloadLogFiles(ctx context.Context, server *state.Server, opts state.CollectionOpts, logger *util.Logger) (psl state.PersistedLogState, files []state.LogFile, querySamples []state.PostgresQuerySample, err error) {
 	if server.Config.SystemType == "amazon_rds" {
 		psl, files, querySamples, err = rds.DownloadLogFiles(ctx, server, logger)
 		if err != nil {
 			return
 		}
 	} else if server.Config.LogPgReadFile {
-		psl, files, querySamples, err = postgres.LogPgReadFile(ctx, server, globalCollectionOpts, logger)
+		psl, files, querySamples, err = postgres.LogPgReadFile(ctx, server, opts, logger)
 		if err != nil {
 			return
 		}
@@ -34,7 +34,7 @@ func DownloadLogFiles(ctx context.Context, server *state.Server, globalCollectio
 }
 
 // GetSystemState - Retrieves a system snapshot for this system and returns it
-func GetSystemState(ctx context.Context, server *state.Server, logger *util.Logger, globalCollectionOpts state.CollectionOpts) (system state.SystemState) {
+func GetSystemState(ctx context.Context, server *state.Server, logger *util.Logger, opts state.CollectionOpts) (system state.SystemState) {
 	config := server.Config
 	dbHost := config.GetDbHost()
 	if config.SystemType == "amazon_rds" {
@@ -57,7 +57,7 @@ func GetSystemState(ctx context.Context, server *state.Server, logger *util.Logg
 	} else if dbHost == "" || dbHost == "localhost" || dbHost == "127.0.0.1" || config.AlwaysCollectSystemData {
 		system = selfhosted.GetSystemState(server, logger)
 	} else {
-		if globalCollectionOpts.TestRun {
+		if opts.TestRun {
 			// Detected as self hosted, but not collecting system state as we
 			// didn't detect the collector is running on the same instance as
 			// the database server.
