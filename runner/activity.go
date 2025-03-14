@@ -15,7 +15,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func processActivityForServer(ctx context.Context, server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.PersistedActivityState, bool, error) {
+func processActivityForServer(ctx context.Context, server *state.Server, opts state.CollectionOpts, logger *util.Logger) (state.PersistedActivityState, bool, error) {
 	var newGrant state.Grant
 	var err error
 	var connection *sql.DB
@@ -29,7 +29,7 @@ func processActivityForServer(ctx context.Context, server *state.Server, globalC
 	}
 
 	if server.Config.SkipIfReplica {
-		connection, err = postgres.EstablishConnection(ctx, server, logger, globalCollectionOpts, "")
+		connection, err = postgres.EstablishConnection(ctx, server, logger, opts, "")
 		if err != nil {
 			return newState, false, errors.Wrap(err, "failed to connect to database")
 		}
@@ -48,14 +48,14 @@ func processActivityForServer(ctx context.Context, server *state.Server, globalC
 		newGrant = *server.Grant.Load()
 	}
 
-	if !newGrant.Valid && !globalCollectionOpts.ForceEmptyGrant {
-		newGrant, err = output.GetGrant(ctx, server, globalCollectionOpts, logger)
+	if !newGrant.Valid && !opts.ForceEmptyGrant {
+		newGrant, err = output.GetGrant(ctx, server, opts, logger)
 		if err != nil {
 			return newState, false, errors.Wrap(err, "could not get default grant for activity snapshot")
 		}
 
 		if !newGrant.Config.EnableActivity {
-			if globalCollectionOpts.TestRun {
+			if opts.TestRun {
 				server.SelfTest.MarkCollectionAspectNotAvailable(state.CollectionAspectActivity, "not available on this plan")
 				server.SelfTest.HintCollectionAspect(state.CollectionAspectActivity, "Compare plans at %s", selftest.URLPrinter.Sprint("https://pganalyze.com/pricing"))
 				logger.PrintError("  Failed - Activity snapshots disabled by pganalyze")
@@ -68,7 +68,7 @@ func processActivityForServer(ctx context.Context, server *state.Server, globalC
 	// N.B.: Without the SkipIfReplica flag, we wait to establish the connection to avoid opening
 	// and closing it for no reason when the grant EnableActivity is not set (e.g., production plans)
 	if connection == nil {
-		connection, err = postgres.EstablishConnection(ctx, server, logger, globalCollectionOpts, "")
+		connection, err = postgres.EstablishConnection(ctx, server, logger, opts, "")
 		if err != nil {
 			return newState, false, errors.Wrap(err, "failed to connect to database")
 		}
@@ -85,7 +85,7 @@ func processActivityForServer(ctx context.Context, server *state.Server, globalC
 		}
 	}
 
-	c, err := postgres.NewCollection(ctx, logger, server, globalCollectionOpts, connection)
+	c, err := postgres.NewCollection(ctx, logger, server, opts, connection)
 	if err != nil {
 		return newState, false, err
 	}
@@ -102,7 +102,7 @@ func processActivityForServer(ctx context.Context, server *state.Server, globalC
 
 	activity.CollectedAt = time.Now()
 
-	err = output.SubmitCompactActivitySnapshot(ctx, server, newGrant, globalCollectionOpts, logger, activity)
+	err = output.SubmitCompactActivitySnapshot(ctx, server, newGrant, opts, logger, activity)
 	if err != nil {
 		return newState, false, errors.Wrap(err, "failed to upload/send activity snapshot")
 	}
@@ -112,7 +112,7 @@ func processActivityForServer(ctx context.Context, server *state.Server, globalC
 }
 
 // CollectActivityFromAllServers - Collects activity from all servers and sends them to the pganalyze service
-func CollectActivityFromAllServers(ctx context.Context, servers []*state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (allSuccessful bool) {
+func CollectActivityFromAllServers(ctx context.Context, servers []*state.Server, opts state.CollectionOpts, logger *util.Logger) (allSuccessful bool) {
 	var wg sync.WaitGroup
 
 	allSuccessful = true
@@ -130,12 +130,12 @@ func CollectActivityFromAllServers(ctx context.Context, servers []*state.Server,
 		go func(server *state.Server) {
 			prefixedLogger := logger.WithPrefixAndRememberErrors(server.Config.SectionName)
 
-			if globalCollectionOpts.TestRun {
+			if opts.TestRun {
 				prefixedLogger.PrintInfo("Testing activity snapshots...")
 			}
 
 			server.ActivityStateMutex.Lock()
-			newState, success, err := processActivityForServer(ctx, server, globalCollectionOpts, prefixedLogger)
+			newState, success, err := processActivityForServer(ctx, server, opts, prefixedLogger)
 			if err != nil {
 				server.ActivityStateMutex.Unlock()
 				server.SelfTest.MarkCollectionAspectError(state.CollectionAspectActivity, err.Error())

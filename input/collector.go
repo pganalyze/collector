@@ -42,11 +42,11 @@ func getCollectorStats() state.CollectorStats {
 	}
 }
 
-func getCollectorPlatform(server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) state.CollectorPlatform {
+func getCollectorPlatform(server *state.Server, opts state.CollectionOpts, logger *util.Logger) state.CollectorPlatform {
 	hostInfo, err := host.Info()
 	if err != nil {
 		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectTelemetry, "could not get collector host information: %s", err)
-		if globalCollectionOpts.TestRun {
+		if opts.TestRun {
 			logger.PrintVerbose("Could not get collector host information: %s", err)
 		}
 		return state.CollectorPlatform{}
@@ -58,7 +58,7 @@ func getCollectorPlatform(server *state.Server, globalCollectionOpts state.Colle
 		virtSystem = hostInfo.VirtualizationSystem
 	}
 	return state.CollectorPlatform{
-		StartedAt:            globalCollectionOpts.StartedAt,
+		StartedAt:            opts.StartedAt,
 		Architecture:         runtime.GOARCH,
 		Hostname:             hostInfo.Hostname,
 		OperatingSystem:      hostInfo.OS,

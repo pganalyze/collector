@@ -217,9 +217,9 @@ func setupEventHubReceiver(ctx context.Context, wg *sync.WaitGroup, logger *util
 	return nil
 }
 
-func SetupLogSubscriber(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *util.Logger, servers []*state.Server, parsedLogStream chan state.ParsedLogStreamItem) error {
+func SetupLogSubscriber(ctx context.Context, wg *sync.WaitGroup, opts state.CollectionOpts, logger *util.Logger, servers []*state.Server, parsedLogStream chan state.ParsedLogStreamItem) error {
 	azureLogStream := make(chan AzurePostgresLogRecord, state.LogStreamBufferLen)
-	setupLogTransformer(ctx, wg, servers, azureLogStream, parsedLogStream, globalCollectionOpts, logger)
+	setupLogTransformer(ctx, wg, servers, azureLogStream, parsedLogStream, opts, logger)
 
 	// This map is used to avoid duplicate receivers to the same Azure Event Hub
 	eventHubReceivers := make(map[string]bool)
@@ -232,7 +232,7 @@ func SetupLogSubscriber(ctx context.Context, wg *sync.WaitGroup, globalCollectio
 			}
 			err := setupEventHubReceiver(ctx, wg, prefixedLogger, server.Config, azureLogStream)
 			if err != nil {
-				if globalCollectionOpts.TestRun {
+				if opts.TestRun {
 					return err
 				}
 
@@ -306,7 +306,7 @@ func ParseRecordToLogLines(in AzurePostgresLogRecord, parser state.LogParser) ([
 	return logLines, nil
 }
 
-func setupLogTransformer(ctx context.Context, wg *sync.WaitGroup, servers []*state.Server, in <-chan AzurePostgresLogRecord, out chan state.ParsedLogStreamItem, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
+func setupLogTransformer(ctx context.Context, wg *sync.WaitGroup, servers []*state.Server, in <-chan AzurePostgresLogRecord, out chan state.ParsedLogStreamItem, opts state.CollectionOpts, logger *util.Logger) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -332,7 +332,7 @@ func setupLogTransformer(ctx context.Context, wg *sync.WaitGroup, servers []*sta
 					}
 				}
 				if server == nil {
-					if globalCollectionOpts.TestRun {
+					if opts.TestRun {
 						logger.PrintVerbose("Discarding log line because of unknown server (did you set the correct azure_db_server_name?): %s", azureDbServerName)
 					}
 					continue
@@ -351,7 +351,7 @@ func setupLogTransformer(ctx context.Context, wg *sync.WaitGroup, servers []*sta
 				}
 
 				// Ignore loglines which are outside our time window (except in test runs)
-				if !logLines[0].OccurredAt.IsZero() && logLines[0].OccurredAt.Before(linesNewerThan) && !globalCollectionOpts.TestRun {
+				if !logLines[0].OccurredAt.IsZero() && logLines[0].OccurredAt.Before(linesNewerThan) && !opts.TestRun {
 					continue
 				}
 

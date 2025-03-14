@@ -12,7 +12,7 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
-func GetGrant(ctx context.Context, server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.Grant, error) {
+func GetGrant(ctx context.Context, server *state.Server, opts state.CollectionOpts, logger *util.Logger) (state.Grant, error) {
 	grant := state.Grant{Config: pganalyze_collector.ServerMessage_Config{Features: &pganalyze_collector.ServerMessage_Features{}}}
 	req, err := http.NewRequestWithContext(ctx, "GET", server.Config.APIBaseURL+"/v2/snapshots/grant", nil)
 	if err != nil {

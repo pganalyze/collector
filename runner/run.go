@@ -25,7 +25,7 @@ import (
 	"cloud.google.com/go/cloudsqlconn/postgres/pgxv5"
 )
 
-func Run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *util.Logger, configFilename string) (keepRunning bool, testRunSuccess chan bool, writeStateFile func(), shutdown func()) {
+func Run(ctx context.Context, wg *sync.WaitGroup, opts state.CollectionOpts, logger *util.Logger, configFilename string) (keepRunning bool, testRunSuccess chan bool, writeStateFile func(), shutdown func()) {
 	var servers []*state.Server
 
 	keepRunning = false
@@ -42,7 +42,7 @@ func Run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 	conf, err := config.Read(logger, configFilename)
 	if err != nil {
 		logger.PrintError("Config Error: %s", err)
-		keepRunning = !globalCollectionOpts.TestRun && !globalCollectionOpts.DiscoverLogLocation
+		keepRunning = !opts.TestRun && !opts.DiscoverLogLocation
 		return
 	}
 
@@ -93,10 +93,10 @@ func Run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 
 	serverConfigs := conf.Servers
 	for _, config := range serverConfigs {
-		if globalCollectionOpts.TestRun && globalCollectionOpts.TestSection != "" && globalCollectionOpts.TestSection != config.SectionName {
+		if opts.TestRun && opts.TestSection != "" && opts.TestSection != config.SectionName {
 			continue
 		}
-		servers = append(servers, state.MakeServer(config, globalCollectionOpts.TestRun))
+		servers = append(servers, state.MakeServer(config, opts.TestRun))
 		if !config.DisableLogs {
 			hasAnyLogsEnabled = true
 		}
@@ -117,21 +117,21 @@ func Run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 		}
 	}
 
-	if globalCollectionOpts.GenerateStatsHelperSql != "" {
+	if opts.GenerateStatsHelperSql != "" {
 		wg.Add(1)
 		testRunSuccess = make(chan bool)
 		go func() {
 			var matchingServer *state.Server
 			for _, server := range servers {
-				if globalCollectionOpts.GenerateStatsHelperSql == server.Config.SectionName {
+				if opts.GenerateStatsHelperSql == server.Config.SectionName {
 					matchingServer = server
 				}
 			}
 			if matchingServer == nil {
-				fmt.Fprintf(os.Stderr, "ERROR - Specified configuration section name '%s' not known\n", globalCollectionOpts.GenerateStatsHelperSql)
+				fmt.Fprintf(os.Stderr, "ERROR - Specified configuration section name '%s' not known\n", opts.GenerateStatsHelperSql)
 				testRunSuccess <- false
 			} else {
-				output, err := GenerateStatsHelperSql(ctx, matchingServer, globalCollectionOpts, logger.WithPrefix(matchingServer.Config.SectionName))
+				output, err := GenerateStatsHelperSql(ctx, matchingServer, opts, logger.WithPrefix(matchingServer.Config.SectionName))
 				if err != nil {
 					fmt.Fprintf(os.Stderr, "ERROR - %s\n", err)
 					testRunSuccess <- false
@@ -145,21 +145,21 @@ func Run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 		return
 	}
 
-	if globalCollectionOpts.GenerateExplainAnalyzeHelperSql != "" {
+	if opts.GenerateExplainAnalyzeHelperSql != "" {
 		wg.Add(1)
 		testRunSuccess = make(chan bool)
 		go func() {
 			var matchingServer *state.Server
 			for _, server := range servers {
-				if globalCollectionOpts.GenerateExplainAnalyzeHelperSql == server.Config.SectionName {
+				if opts.GenerateExplainAnalyzeHelperSql == server.Config.SectionName {
 					matchingServer = server
 				}
 			}
 			if matchingServer == nil {
-				fmt.Fprintf(os.Stderr, "ERROR - Specified configuration section name '%s' not known\n", globalCollectionOpts.GenerateExplainAnalyzeHelperSql)
+				fmt.Fprintf(os.Stderr, "ERROR - Specified configuration section name '%s' not known\n", opts.GenerateExplainAnalyzeHelperSql)
 				testRunSuccess <- false
 			} else {
-				output, err := GenerateExplainAnalyzeHelperSql(ctx, matchingServer, globalCollectionOpts, logger.WithPrefix(matchingServer.Config.SectionName))
+				output, err := GenerateExplainAnalyzeHelperSql(ctx, matchingServer, opts, logger.WithPrefix(matchingServer.Config.SectionName))
 				if err != nil {
 					fmt.Fprintf(os.Stderr, "ERROR - %s\n", err)
 					testRunSuccess <- false
@@ -173,32 +173,32 @@ func Run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 		return
 	}
 
-	state.ReadStateFile(servers, globalCollectionOpts, logger)
+	state.ReadStateFile(servers, opts, logger)
 
 	writeStateFile = func() {
-		state.WriteStateFile(servers, globalCollectionOpts, logger)
+		state.WriteStateFile(servers, opts, logger)
 	}
 
-	if globalCollectionOpts.TestRun {
+	if opts.TestRun {
 		logger.PrintInfo("Running collector test with %s", util.CollectorNameAndVersion)
 	}
 
-	checkAllInitialCollectionStatus(ctx, servers, globalCollectionOpts, logger)
+	checkAllInitialCollectionStatus(ctx, servers, opts, logger)
 
 	// We intentionally don't do a test-run in the normal mode, since we're fine with
 	// a later SIGHUP that fixes the config (or a temporarily unreachable server at start)
-	if globalCollectionOpts.TestRun {
+	if opts.TestRun {
 		wg.Add(1)
 		// This channel is buffered so the function can exit (and mark the wait group as done)
 		// without the caller consuming the channel, e.g. when the context gets canceled
 		testRunSuccess = make(chan bool, 1)
-		SetupWebsocketForAllServers(ctx, servers, globalCollectionOpts, logger)
+		SetupWebsocketForAllServers(ctx, servers, opts, logger)
 		go func() {
-			if globalCollectionOpts.TestExplain {
+			if opts.TestExplain {
 				success := true
 				for _, server := range servers {
 					prefixedLogger := logger.WithPrefix(server.Config.SectionName)
-					err := EmitTestExplain(ctx, server, globalCollectionOpts, prefixedLogger)
+					err := EmitTestExplain(ctx, server, opts, prefixedLogger)
 					if err != nil {
 						prefixedLogger.PrintError("Failed to run test explain: %s", err)
 						success = false
@@ -208,16 +208,16 @@ func Run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 				}
 
 				testRunSuccess <- success
-			} else if globalCollectionOpts.TestRunLogs {
-				success := doLogTest(ctx, servers, globalCollectionOpts, logger)
+			} else if opts.TestRunLogs {
+				success := doLogTest(ctx, servers, opts, logger)
 				testRunSuccess <- success
 			} else {
 				var allFullSuccessful bool
 				var allActivitySuccessful bool
-				allFullSuccessful = CollectAllServers(ctx, servers, globalCollectionOpts, logger)
+				allFullSuccessful = CollectAllServers(ctx, servers, opts, logger)
 				if ctx.Err() == nil {
 					if hasAnyActivityEnabled {
-						allActivitySuccessful = CollectActivityFromAllServers(ctx, servers, globalCollectionOpts, logger)
+						allActivitySuccessful = CollectActivityFromAllServers(ctx, servers, opts, logger)
 					} else {
 						allActivitySuccessful = true
 					}
@@ -227,7 +227,7 @@ func Run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 					// have Log Insights enabled on your plan (which would fail the log test when getting the log grant).
 					// In these situations we still want --test to be successful (i.e. issue a reload), but --test-logs
 					// would fail (and not reload).
-					doLogTest(ctx, servers, globalCollectionOpts, logger)
+					doLogTest(ctx, servers, opts, logger)
 				}
 
 				if ctx.Err() == nil {
@@ -245,16 +245,16 @@ func Run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 		return
 	}
 
-	if globalCollectionOpts.DebugLogs {
-		SetupLogCollection(ctx, wg, servers, globalCollectionOpts, logger, hasAnyHeroku, hasAnyGoogleCloudSQL, hasAnyAzureDatabase, hasAnyTembo)
+	if opts.DebugLogs {
+		SetupLogCollection(ctx, wg, servers, opts, logger, hasAnyHeroku, hasAnyGoogleCloudSQL, hasAnyAzureDatabase, hasAnyTembo)
 
 		// Keep running but only running log processing
 		keepRunning = true
 		return
 	}
 
-	if globalCollectionOpts.DiscoverLogLocation {
-		selfhosted.DiscoverLogLocation(ctx, servers, globalCollectionOpts, logger)
+	if opts.DiscoverLogLocation {
+		selfhosted.DiscoverLogLocation(ctx, servers, opts, logger)
 		testRunSuccess = make(chan bool, 1)
 		testRunSuccess <- true
 		return
@@ -262,12 +262,12 @@ func Run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 
 	scheduler.TenMinute.Schedule(ctx, func(ctx context.Context) {
 		wg.Add(1)
-		CollectAllServers(ctx, servers, globalCollectionOpts, logger)
+		CollectAllServers(ctx, servers, opts, logger)
 		wg.Done()
 	}, logger, "full snapshot of all servers")
 
 	if hasAnyLogsEnabled {
-		SetupLogCollection(ctx, wg, servers, globalCollectionOpts, logger, hasAnyHeroku, hasAnyGoogleCloudSQL, hasAnyAzureDatabase, hasAnyTembo)
+		SetupLogCollection(ctx, wg, servers, opts, logger, hasAnyHeroku, hasAnyGoogleCloudSQL, hasAnyAzureDatabase, hasAnyTembo)
 	} else if util.IsHeroku() {
 		// Even if logs are deactivated, Heroku still requires us to have a functioning web server
 		util.SetupHttpHandlerDummy()
@@ -276,7 +276,7 @@ func Run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 	if hasAnyActivityEnabled {
 		scheduler.TenSecond.Schedule(ctx, func(ctx context.Context) {
 			wg.Add(1)
-			CollectActivityFromAllServers(ctx, servers, globalCollectionOpts, logger)
+			CollectActivityFromAllServers(ctx, servers, opts, logger)
 			wg.Done()
 		}, logger, "activity snapshot of all servers")
 	}
@@ -284,12 +284,12 @@ func Run(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.Col
 	// This captures stats every minute, except for minute 10 when full snapshot collection takes over
 	scheduler.OneMinute.ScheduleSecondary(ctx, scheduler.TenMinute, func(ctx context.Context) {
 		wg.Add(1)
-		Gather1minStatsFromAllServers(ctx, servers, globalCollectionOpts, logger)
+		Gather1minStatsFromAllServers(ctx, servers, opts, logger)
 		wg.Done()
 	}, logger, "high frequency statistics of all servers")
 
-	SetupWebsocketForAllServers(ctx, servers, globalCollectionOpts, logger)
-	SetupQueryRunnerForAllServers(ctx, servers, globalCollectionOpts, logger)
+	SetupWebsocketForAllServers(ctx, servers, opts, logger)
+	SetupQueryRunnerForAllServers(ctx, servers, opts, logger)
 
 	keepRunning = true
 	return
@@ -372,9 +372,9 @@ func checkOneInitialCollectionStatus(ctx context.Context, server *state.Server, 
 	return nil
 }
 
-func doLogTest(ctx context.Context, servers []*state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) bool {
+func doLogTest(ctx context.Context, servers []*state.Server, opts state.CollectionOpts, logger *util.Logger) bool {
 	// Initial test
-	hasFailedServers, hasSuccessfulLocalServers := TestLogsForAllServers(ctx, servers, globalCollectionOpts, logger)
+	hasFailedServers, hasSuccessfulLocalServers := TestLogsForAllServers(ctx, servers, opts, logger)
 
 	// Re-test using lower privileges
 	if hasFailedServers {

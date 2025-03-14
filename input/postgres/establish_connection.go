@@ -14,12 +14,12 @@ import (
 	"github.com/pganalyze/collector/util/awsutil"
 )
 
-func EstablishConnection(ctx context.Context, server *state.Server, logger *util.Logger, globalCollectionOpts state.CollectionOpts, databaseName string) (connection *sql.DB, err error) {
-	connection, err = connectToDb(ctx, server.Config, logger, globalCollectionOpts, databaseName)
+func EstablishConnection(ctx context.Context, server *state.Server, logger *util.Logger, opts state.CollectionOpts, databaseName string) (connection *sql.DB, err error) {
+	connection, err = connectToDb(ctx, server.Config, logger, opts, databaseName)
 	if err != nil {
 		if err.Error() == "pq: SSL is not enabled on the server" && (server.Config.DbSslMode == "prefer" || server.Config.DbSslMode == "") {
 			server.Config.DbSslModePreferFailed = true
-			connection, err = connectToDb(ctx, server.Config, logger, globalCollectionOpts, databaseName)
+			connection, err = connectToDb(ctx, server.Config, logger, opts, databaseName)
 		}
 	}
 
@@ -27,7 +27,7 @@ func EstablishConnection(ctx context.Context, server *state.Server, logger *util
 		return
 	}
 
-	err = validateConnectionCount(ctx, connection, logger, server.Config.MaxCollectorConnections, globalCollectionOpts)
+	err = validateConnectionCount(ctx, connection, logger, server.Config.MaxCollectorConnections, opts)
 	if err != nil {
 		connection.Close()
 		return
@@ -42,7 +42,7 @@ func EstablishConnection(ctx context.Context, server *state.Server, logger *util
 	return
 }
 
-func connectToDb(ctx context.Context, config config.ServerConfig, logger *util.Logger, globalCollectionOpts state.CollectionOpts, databaseName string) (*sql.DB, error) {
+func connectToDb(ctx context.Context, config config.ServerConfig, logger *util.Logger, opts state.CollectionOpts, databaseName string) (*sql.DB, error) {
 	var dbPasswordOverride string
 	var hostOverride string
 	var sslmodeOverride string
@@ -83,7 +83,7 @@ func connectToDb(ctx context.Context, config config.ServerConfig, logger *util.L
 	if err != nil {
 		return nil, err
 	}
-	connectString += " application_name=" + globalCollectionOpts.CollectorApplicationName
+	connectString += " application_name=" + opts.CollectorApplicationName
 
 	db, err = sql.Open(driverName, connectString)
 	if err != nil {
@@ -101,10 +101,10 @@ func connectToDb(ctx context.Context, config config.ServerConfig, logger *util.L
 	return db, nil
 }
 
-func validateConnectionCount(ctx context.Context, connection *sql.DB, logger *util.Logger, maxCollectorConnections int, globalCollectionOpts state.CollectionOpts) error {
+func validateConnectionCount(ctx context.Context, connection *sql.DB, logger *util.Logger, maxCollectorConnections int, opts state.CollectionOpts) error {
 	var connectionCount int
 
-	err := connection.QueryRowContext(ctx, QueryMarkerSQL+"SELECT pg_catalog.count(*) FROM pg_catalog.pg_stat_activity WHERE application_name = '"+globalCollectionOpts.CollectorApplicationName+"'").Scan(&connectionCount)
+	err := connection.QueryRowContext(ctx, QueryMarkerSQL+"SELECT pg_catalog.count(*) FROM pg_catalog.pg_stat_activity WHERE application_name = '"+opts.CollectorApplicationName+"'").Scan(&connectionCount)
 	if err != nil {
 		return err
 	}

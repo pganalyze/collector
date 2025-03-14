@@ -147,7 +147,7 @@ func main() {
 		testRun = true
 	}
 
-	globalCollectionOpts := state.CollectionOpts{
+	opts := state.CollectionOpts{
 		StartedAt:                        time.Now(),
 		SubmitCollectedData:              !benchmark && true,
 		TestRun:                          testRun,
@@ -177,15 +177,15 @@ func main() {
 	}
 
 	if dryRun || dryRunLogs {
-		globalCollectionOpts.SubmitCollectedData = false
-		globalCollectionOpts.TestRun = true
+		opts.SubmitCollectedData = false
+		opts.TestRun = true
 	}
 
-	if globalCollectionOpts.TestRun || globalCollectionOpts.TestRunLogs ||
-		globalCollectionOpts.DebugLogs || globalCollectionOpts.DiscoverLogLocation {
-		globalCollectionOpts.CollectorApplicationName = "pganalyze_test_run"
+	if opts.TestRun || opts.TestRunLogs ||
+		opts.DebugLogs || opts.DiscoverLogLocation {
+		opts.CollectorApplicationName = "pganalyze_test_run"
 	} else {
-		globalCollectionOpts.CollectorApplicationName = "pganalyze_collector"
+		opts.CollectorApplicationName = "pganalyze_collector"
 	}
 
 	if analyzeLogfile != "" {
@@ -276,7 +276,7 @@ ReadConfigAndRun:
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := sync.WaitGroup{}
 	exitCode := 0
-	keepRunning, testRunSuccess, writeStateFile, shutdown := runner.Run(ctx, &wg, globalCollectionOpts, logger, configFilename)
+	keepRunning, testRunSuccess, writeStateFile, shutdown := runner.Run(ctx, &wg, opts, logger, configFilename)
 
 	if keepRunning {
 		// Block here until we get any of the registered signals
