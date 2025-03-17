@@ -12,14 +12,14 @@ import (
 	"github.com/pkg/errors"
 )
 
-func gather1minStatsForServer(ctx context.Context, server *state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) (state.PersistedState, error) {
+func gather1minStatsForServer(ctx context.Context, server *state.Server, opts state.CollectionOpts, logger *util.Logger) (state.PersistedState, error) {
 	var err error
 	var connection *sql.DB
 
 	newState := server.PrevState
 	collectedAt := time.Now()
 
-	connection, err = postgres.EstablishConnection(ctx, server, logger, globalCollectionOpts, "")
+	connection, err = postgres.EstablishConnection(ctx, server, logger, opts, "")
 	if err != nil {
 		return newState, errors.Wrap(err, "failed to connect to database")
 	}
@@ -36,7 +36,7 @@ func gather1minStatsForServer(ctx context.Context, server *state.Server, globalC
 		}
 	}
 
-	c, err := postgres.NewCollection(ctx, logger, server, globalCollectionOpts, connection)
+	c, err := postgres.NewCollection(ctx, logger, server, opts, connection)
 	if err != nil {
 		return newState, err
 	}
@@ -89,7 +89,7 @@ func gather1minStatsForServer(ctx context.Context, server *state.Server, globalC
 	return newState, nil
 }
 
-func Gather1minStatsFromAllServers(ctx context.Context, servers []*state.Server, globalCollectionOpts state.CollectionOpts, logger *util.Logger) {
+func Gather1minStatsFromAllServers(ctx context.Context, servers []*state.Server, opts state.CollectionOpts, logger *util.Logger) {
 	var wg sync.WaitGroup
 
 	for idx := range servers {
@@ -102,7 +102,7 @@ func Gather1minStatsFromAllServers(ctx context.Context, servers []*state.Server,
 			prefixedLogger := logger.WithPrefixAndRememberErrors(server.Config.SectionName)
 
 			server.StateMutex.Lock()
-			newState, err := gather1minStatsForServer(ctx, server, globalCollectionOpts, prefixedLogger)
+			newState, err := gather1minStatsForServer(ctx, server, opts, prefixedLogger)
 
 			if err != nil {
 				server.StateMutex.Unlock()

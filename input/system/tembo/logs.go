@@ -82,17 +82,17 @@ func connectWebsocket(ctx context.Context, logger *util.Logger, server *state.Se
 }
 
 // SetupWebsocketHandlerLogs - Sets up a websocket handler for Tembo logs
-func SetupWebsocketHandlerLogs(ctx context.Context, wg *sync.WaitGroup, logger *util.Logger, servers []*state.Server, globalCollectionOpts state.CollectionOpts, parsedLogStream chan state.ParsedLogStreamItem) {
+func SetupWebsocketHandlerLogs(ctx context.Context, wg *sync.WaitGroup, logger *util.Logger, servers []*state.Server, opts state.CollectionOpts, parsedLogStream chan state.ParsedLogStreamItem) {
 	for _, server := range servers {
 		prefixedLogger := logger.WithPrefix(server.Config.SectionName)
 
 		if server.Config.TemboLogsAPIURL != "" {
-			setupWebsocketForServer(ctx, wg, globalCollectionOpts, prefixedLogger, server, parsedLogStream)
+			setupWebsocketForServer(ctx, wg, opts, prefixedLogger, server, parsedLogStream)
 		}
 	}
 }
 
-func setupWebsocketForServer(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *util.Logger, server *state.Server, parsedLogStream chan state.ParsedLogStreamItem) {
+func setupWebsocketForServer(ctx context.Context, wg *sync.WaitGroup, opts state.CollectionOpts, logger *util.Logger, server *state.Server, parsedLogStream chan state.ParsedLogStreamItem) {
 	// Only ingest log lines that were written in the last minute before startup
 	linesNewerThan := time.Now().Add(-1 * time.Minute)
 	logParser := server.GetLogParser()
@@ -109,7 +109,7 @@ func setupWebsocketForServer(ctx context.Context, wg *sync.WaitGroup, globalColl
 			if conn == nil {
 				conn, cancelConn, err = connectWebsocket(ctx, logger, server)
 				if err != nil {
-					if globalCollectionOpts.TestRun {
+					if opts.TestRun {
 						logger.PrintError("Error connecting to Tembo logs websocket: %s", err)
 						return
 					}

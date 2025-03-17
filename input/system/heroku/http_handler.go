@@ -11,9 +11,9 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
-func SetupHttpHandlerLogs(ctx context.Context, wg *sync.WaitGroup, globalCollectionOpts state.CollectionOpts, logger *util.Logger, servers []*state.Server, parsedLogStream chan state.ParsedLogStreamItem) {
+func SetupHttpHandlerLogs(ctx context.Context, wg *sync.WaitGroup, opts state.CollectionOpts, logger *util.Logger, servers []*state.Server, parsedLogStream chan state.ParsedLogStreamItem) {
 	herokuLogStream := make(chan HttpSyslogMessage, state.LogStreamBufferLen)
-	setupLogTransformer(ctx, wg, servers, herokuLogStream, parsedLogStream, globalCollectionOpts, logger)
+	setupLogTransformer(ctx, wg, servers, herokuLogStream, parsedLogStream, opts, logger)
 
 	go func() {
 		http.HandleFunc("/", util.HttpRedirectToApp)

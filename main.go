@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/signal"
@@ -63,7 +62,7 @@ func main() {
 	var logToSyslog bool
 	var logToJSON bool
 	var logNoTimestamps bool
-	var reloadRun bool
+	var reload bool
 	var noReload bool
 	var benchmark bool
 
@@ -78,7 +77,7 @@ func main() {
 	flag.StringVar(&generateStatsHelperSql, "generate-stats-helper-sql", "", "Generates a SQL script for the given server (name of section in the config file, or \"default\" for env variables), that can be run with \"psql -f\" for installing the collector stats helpers on all configured databases")
 	flag.StringVar(&generateHelperExplainAnalyzeSql, "generate-explain-analyze-helper-sql", "", "Generates a SQL script for the given server (name of section in the config file, or \"default\" for env variables), that can be run with \"psql -f\" for installing the collector pganalyze.explain_analyze helper on all configured databases")
 	flag.StringVar(&generateHelperExplainAnalyzeRole, "generate-explain-analyze-helper-role", "pganalyze_explain", "Sets owner role of the pganalyze.explain_analyze helper function, defaults to \"pganalyze_explain\"")
-	flag.BoolVar(&reloadRun, "reload", false, "Reloads the collector daemon that's running on the host")
+	flag.BoolVar(&reload, "reload", false, "Reloads the collector daemon that's running on the host")
 	flag.BoolVar(&noReload, "no-reload", false, "Disables automatic config reloading during a test run")
 	flag.BoolVarP(&logger.Verbose, "verbose", "v", false, "Outputs additional debugging information, use this if you're encountering errors or other problems")
 	flag.BoolVarP(&logger.Quiet, "quiet", "q", false, "Only outputs error messages to the logs and hides informational and warning messages")
@@ -111,9 +110,7 @@ func main() {
 	flag.Parse()
 
 	// Automatically reload the configuration after a successful test run.
-	if testRun && !noReload {
-		reloadRun = true
-	}
+	reload = reload || (testRun && !noReload)
 
 	if showVersion {
 		fmt.Printf("%s\n", util.CollectorVersion)
@@ -150,7 +147,7 @@ func main() {
 		testRun = true
 	}
 
-	globalCollectionOpts := state.CollectionOpts{
+	opts := state.CollectionOpts{
 		StartedAt:                        time.Now(),
 		SubmitCollectedData:              !benchmark && true,
 		TestRun:                          testRun,
@@ -174,25 +171,25 @@ func main() {
 		OutputAsJson:                     !benchmark,
 	}
 
-	if reloadRun && !testRun {
+	if reload && !testRun {
 		Reload(logger)
 		return
 	}
 
 	if dryRun || dryRunLogs {
-		globalCollectionOpts.SubmitCollectedData = false
-		globalCollectionOpts.TestRun = true
+		opts.SubmitCollectedData = false
+		opts.TestRun = true
 	}
 
-	if globalCollectionOpts.TestRun || globalCollectionOpts.TestRunLogs ||
-		globalCollectionOpts.DebugLogs || globalCollectionOpts.DiscoverLogLocation {
-		globalCollectionOpts.CollectorApplicationName = "pganalyze_test_run"
+	if opts.TestRun || opts.TestRunLogs ||
+		opts.DebugLogs || opts.DiscoverLogLocation {
+		opts.CollectorApplicationName = "pganalyze_test_run"
 	} else {
-		globalCollectionOpts.CollectorApplicationName = "pganalyze_collector"
+		opts.CollectorApplicationName = "pganalyze_collector"
 	}
 
 	if analyzeLogfile != "" {
-		contentBytes, err := ioutil.ReadFile(analyzeLogfile)
+		contentBytes, err := os.ReadFile(analyzeLogfile)
 		if err != nil {
 			fmt.Printf("ERROR: %s\n", err)
 			return
@@ -233,7 +230,7 @@ func main() {
 	}
 
 	if filterLogFile != "" {
-		contentBytes, err := ioutil.ReadFile(filterLogFile)
+		contentBytes, err := os.ReadFile(filterLogFile)
 		if err != nil {
 			fmt.Printf("ERROR: %s\n", err)
 			return
@@ -251,7 +248,7 @@ func main() {
 
 	if pidFilename != "" {
 		pid := os.Getpid()
-		err := ioutil.WriteFile(pidFilename, []byte(strconv.Itoa(pid)), 0644)
+		err := os.WriteFile(pidFilename, []byte(strconv.Itoa(pid)), 0644)
 		if err != nil {
 			logger.PrintError("Could not write pidfile to \"%s\" as requested, exiting.", pidFilename)
 			return
@@ -279,7 +276,7 @@ ReadConfigAndRun:
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := sync.WaitGroup{}
 	exitCode := 0
-	keepRunning, testRunSuccess, writeStateFile, shutdown := runner.Run(ctx, &wg, globalCollectionOpts, logger, configFilename)
+	keepRunning, testRunSuccess, writeStateFile, shutdown := runner.Run(ctx, &wg, opts, logger, configFilename)
 
 	if keepRunning {
 		// Block here until we get any of the registered signals
@@ -318,7 +315,7 @@ ReadConfigAndRun:
 		for {
 			select {
 			case success := <-testRunSuccess:
-				if reloadRun {
+				if reload {
 					if success {
 						Reload(logger)
 					} else {
