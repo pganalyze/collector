@@ -55,7 +55,7 @@ func GetSystemState(ctx context.Context, server *state.Server, logger *util.Logg
 	} else if config.SystemType == "tembo" {
 		system = tembo.GetSystemState(ctx, server, logger)
 	} else if dbHost == "" || dbHost == "localhost" || dbHost == "127.0.0.1" || config.AlwaysCollectSystemData {
-		system = selfhosted.GetSystemState(server, logger)
+		system = selfhosted.GetSystemState(server, logger, false)
 	} else {
 		if opts.TestRun {
 			// Detected as self hosted, but not collecting system state as we

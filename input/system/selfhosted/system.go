@@ -27,7 +27,7 @@ type helperStatus struct {
 }
 
 // GetSystemState - Gets system information about a self-hosted (physical/virtual) system
-func GetSystemState(server *state.Server, logger *util.Logger) (system state.SystemState) {
+func GetSystemState(server *state.Server, logger *util.Logger, ignoreHelperRun bool) (system state.SystemState) {
 	config := server.Config
 	var status helperStatus
 
@@ -38,8 +38,10 @@ func GetSystemState(server *state.Server, logger *util.Logger) (system state.Sys
 
 	statusBytes, err := exec.Command("/usr/bin/pganalyze-collector-helper", "status", config.DbDataDirectory).Output()
 	if err != nil {
-		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectSystemStats, "error running system stats helper process: %s", err)
-		logger.PrintVerbose("Selfhosted/System: Could not run helper process: %s", err)
+		if !ignoreHelperRun {
+			server.SelfTest.MarkCollectionAspectError(state.CollectionAspectSystemStats, "error running system stats helper process: %s", err)
+			logger.PrintVerbose("Selfhosted/System: Could not run helper process: %s", err)
+		}
 	} else {
 		err = json.Unmarshal(statusBytes, &status)
 		if err != nil {
