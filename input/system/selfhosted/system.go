@@ -27,7 +27,7 @@ type helperStatus struct {
 }
 
 // GetSystemState - Gets system information about a self-hosted (physical/virtual) system
-func GetSystemState(server *state.Server, logger *util.Logger, ignoreHelperRun bool) (system state.SystemState) {
+func GetSystemState(server *state.Server, logger *util.Logger, skipHelperRun bool) (system state.SystemState) {
 	config := server.Config
 	var status helperStatus
 
@@ -36,22 +36,22 @@ func GetSystemState(server *state.Server, logger *util.Logger, ignoreHelperRun b
 		Architecture: runtime.GOARCH,
 	}
 
-	statusBytes, err := exec.Command("/usr/bin/pganalyze-collector-helper", "status", config.DbDataDirectory).Output()
-	if err != nil {
-		if !ignoreHelperRun {
+	if !skipHelperRun {
+		statusBytes, err := exec.Command("/usr/bin/pganalyze-collector-helper", "status", config.DbDataDirectory).Output()
+		if err != nil {
 			server.SelfTest.MarkCollectionAspectError(state.CollectionAspectSystemStats, "error running system stats helper process: %s", err)
 			logger.PrintVerbose("Selfhosted/System: Could not run helper process: %s", err)
-		}
-	} else {
-		err = json.Unmarshal(statusBytes, &status)
-		if err != nil {
-			server.SelfTest.MarkCollectionAspectError(state.CollectionAspectSystemStats, "error reading system stats helper output: %s", err)
-			logger.PrintVerbose("Selfhosted/System: Could not unmarshal helper status: %s", err)
-		}
+		} else {
+			err = json.Unmarshal(statusBytes, &status)
+			if err != nil {
+				server.SelfTest.MarkCollectionAspectError(state.CollectionAspectSystemStats, "error reading system stats helper output: %s", err)
+				logger.PrintVerbose("Selfhosted/System: Could not unmarshal helper status: %s", err)
+			}
 
-		system.XlogUsedBytes = status.XlogUsedBytes
-		system.Info.SelfHosted.DatabaseSystemIdentifier = status.SystemIdentifier
-		system.Info.ClusterID = status.SystemIdentifier
+			system.XlogUsedBytes = status.XlogUsedBytes
+			system.Info.SelfHosted.DatabaseSystemIdentifier = status.SystemIdentifier
+			system.Info.ClusterID = status.SystemIdentifier
+		}
 	}
 
 	hostInfo, err := host.Info()
