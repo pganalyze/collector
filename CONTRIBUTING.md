@@ -85,6 +85,7 @@ Debian/Ubuntu system):
    }
    ```
    you can pick another port if 5514 is not available
+ - `sudo service rsyslog restart`
  - update your local collector configuration to monitor your local Postgres
  - update the configuration to add `db_log_syslog_server = 0.0.0.0:5514`
    (or whatever port you selected above)
