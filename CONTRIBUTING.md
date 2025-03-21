@@ -61,6 +61,8 @@ make integration_test
 
 Note the integration tests require Docker, and will take a while to run through.
 
+#### Test receiving Postgres logs over syslog
+
 The ability to receive Postgres logs over syslog is not covered by
 automated tests. To test this manually, you'll need to relay the
 Postgres logs through a syslog daemon.
