@@ -61,6 +61,41 @@ make integration_test
 
 Note the integration tests require Docker, and will take a while to run through.
 
+#### Test receiving Postgres logs over syslog
+
+The ability to receive Postgres logs over syslog is not covered by
+automated tests. To test this manually, you'll need to relay the
+Postgres logs through a syslog daemon.
+
+Here's one way to do that (assuming a locally running Postgres on a
+Debian/Ubuntu system):
+
+ - `sudo apt install rsyslog`
+ - edit your Postgres config file and set `log_destination` to `syslog`
+ - add the following rsyslog configuration file at `/etc/rsyslog.d/51-postgres.conf`:
+   ```
+   if $programname == 'postgres' then {
+     *.* action(
+       type="omfwd"
+       StreamDriver="ptcp"
+       StreamDriverMode="0"
+       template="RSYSLOG_SyslogProtocol23Format"
+       target="localhost" port="5514" protocol="tcp"
+       action.resumeRetryCount="100"
+       queue.type="linkedList" queue.size="10000"
+     )
+   }
+   ```
+   you can pick another port if 5514 is not available
+ - `sudo service rsyslog restart`
+ - update your local collector configuration to monitor your local Postgres
+ - update the configuration to add `db_log_syslog_server = 0.0.0.0:5514`
+   (or whatever port you selected above)
+ - start the collector
+ - run `SELECT pg_reload_conf()` in Postgres
+
+The collector should now be receiving Postgres logs via rsyslog.
+
 ### Build the Helm Docs
 
 The Helm chart [`README.md` file](contrib/helm/pganalyze-collector/README.md) is
