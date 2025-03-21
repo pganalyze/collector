@@ -17,7 +17,7 @@ func GetSystemState(ctx context.Context, server *state.Server, logger *util.Logg
 	// using the same way as a self hosted server, since the container receives a bind mount
 	// of /proc and /sys from the host. Note this excludes disk usage metrics, which we instead
 	// get from the API.
-	system = selfhosted.GetSystemState(server, logger)
+	system = selfhosted.GetSystemState(server, logger, true)
 	system.Info.Type = state.CrunchyBridgeSystem
 
 	// When API key is provided, use API to obtain extra info including disk usage metrics
