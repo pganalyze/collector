@@ -1,4 +1,5 @@
-CREATE OR REPLACE FUNCTION pganalyze.get_relation_stats_ext() RETURNS TABLE(
+DROP FUNCTION IF EXISTS pganalyze.get_relation_stats_ext;
+CREATE FUNCTION pganalyze.get_relation_stats_ext() RETURNS TABLE(
   statistics_schemaname text, statistics_name text,
   inherited boolean, n_distinct pg_ndistinct, dependencies pg_dependencies,
   most_common_val_nulls boolean[], most_common_freqs float8[], most_common_base_freqs float8[]
