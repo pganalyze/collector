@@ -50,12 +50,19 @@ var collectionHelperTests = []collectionHelperTestpair{
 		false,
 		"",
 	},
-	// Verify we allow default arguments to be ommitted
+	// Verify we allow default arguments to be omitted
 	{
 		"get_stat_statements",
 		[]string{},
 		true,
 		"SETOF pg_stat_statements",
+	},
+	// Verify functions with no arguments match as expected
+	{
+		"get_column_stats",
+		[]string{},
+		true,
+		"TABLE(schemaname name, tablename name, attname name, inherited boolean, null_frac real, avg_width integer, n_distinct real, correlation real)",
 	},
 }
 
@@ -71,6 +78,11 @@ func TestCollectionFindHelper(t *testing.T) {
 	_, err = db.Exec(util.GetStatStatementsHelper)
 	if err != nil {
 		t.Fatalf("Could not load get_stat_statements helper: %s", err)
+	}
+
+	_, err = db.Exec(util.GetColumnStatsHelper)
+	if err != nil {
+		t.Fatalf("Could not load get_column_stats helper: %s", err)
 	}
 
 	ctx := context.Background()
