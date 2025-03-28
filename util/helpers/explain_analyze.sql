@@ -1,5 +1,4 @@
-DROP FUNCTION IF EXISTS pganalyze.explain_analyze;
-CREATE FUNCTION pganalyze.explain_analyze(query text, params text[], param_types text[], analyze_flags text[]) RETURNS text AS $$
+CREATE OR REPLACE FUNCTION pganalyze.explain_analyze(query text, params text[], param_types text[], analyze_flags text[]) RETURNS text AS $$
 DECLARE
   prepared_query text;
   params_str text;
