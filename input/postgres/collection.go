@@ -104,7 +104,10 @@ func (c *Collection) findHelperFunction(name string, inputTypes []string) (state
 		return state.PostgresFunction{}, false
 	}
 	for _, f := range funcs {
-		args := strings.Split(f.Arguments, ", ")
+		var args []string
+		if f.Arguments != "" {
+			args = strings.Split(f.Arguments, ", ")
+		}
 		if len(inputTypes) > len(args) {
 			// We're expecting more arguments than the function has
 			continue
