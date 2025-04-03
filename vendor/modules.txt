@@ -354,10 +354,48 @@ github.com/ogier/pflag
 # github.com/papertrail/go-tail v0.0.0-20180509224916-973c153b0431
 ## explicit
 github.com/papertrail/go-tail/follower
-# github.com/pganalyze/pg_query_go/v6 v6.0.0
+# github.com/pganalyze/pg_query_go/v6 v6.1.0
 ## explicit; go 1.14
 github.com/pganalyze/pg_query_go/v6
 github.com/pganalyze/pg_query_go/v6/parser
+github.com/pganalyze/pg_query_go/v6/parser/include
+github.com/pganalyze/pg_query_go/v6/parser/include/postgres
+github.com/pganalyze/pg_query_go/v6/parser/include/postgres/access
+github.com/pganalyze/pg_query_go/v6/parser/include/postgres/archive
+github.com/pganalyze/pg_query_go/v6/parser/include/postgres/catalog
+github.com/pganalyze/pg_query_go/v6/parser/include/postgres/commands
+github.com/pganalyze/pg_query_go/v6/parser/include/postgres/common
+github.com/pganalyze/pg_query_go/v6/parser/include/postgres/datatype
+github.com/pganalyze/pg_query_go/v6/parser/include/postgres/executor
+github.com/pganalyze/pg_query_go/v6/parser/include/postgres/foreign
+github.com/pganalyze/pg_query_go/v6/parser/include/postgres/jit
+github.com/pganalyze/pg_query_go/v6/parser/include/postgres/lib
+github.com/pganalyze/pg_query_go/v6/parser/include/postgres/libpq
+github.com/pganalyze/pg_query_go/v6/parser/include/postgres/mb
+github.com/pganalyze/pg_query_go/v6/parser/include/postgres/nodes
+github.com/pganalyze/pg_query_go/v6/parser/include/postgres/optimizer
+github.com/pganalyze/pg_query_go/v6/parser/include/postgres/parser
+github.com/pganalyze/pg_query_go/v6/parser/include/postgres/partitioning
+github.com/pganalyze/pg_query_go/v6/parser/include/postgres/port
+github.com/pganalyze/pg_query_go/v6/parser/include/postgres/port/atomics
+github.com/pganalyze/pg_query_go/v6/parser/include/postgres/port/win32
+github.com/pganalyze/pg_query_go/v6/parser/include/postgres/port/win32/arpa
+github.com/pganalyze/pg_query_go/v6/parser/include/postgres/port/win32/netinet
+github.com/pganalyze/pg_query_go/v6/parser/include/postgres/port/win32/sys
+github.com/pganalyze/pg_query_go/v6/parser/include/postgres/port/win32_msvc
+github.com/pganalyze/pg_query_go/v6/parser/include/postgres/port/win32_msvc/sys
+github.com/pganalyze/pg_query_go/v6/parser/include/postgres/portability
+github.com/pganalyze/pg_query_go/v6/parser/include/postgres/postmaster
+github.com/pganalyze/pg_query_go/v6/parser/include/postgres/regex
+github.com/pganalyze/pg_query_go/v6/parser/include/postgres/replication
+github.com/pganalyze/pg_query_go/v6/parser/include/postgres/rewrite
+github.com/pganalyze/pg_query_go/v6/parser/include/postgres/storage
+github.com/pganalyze/pg_query_go/v6/parser/include/postgres/tcop
+github.com/pganalyze/pg_query_go/v6/parser/include/postgres/tsearch
+github.com/pganalyze/pg_query_go/v6/parser/include/postgres/utils
+github.com/pganalyze/pg_query_go/v6/parser/include/protobuf
+github.com/pganalyze/pg_query_go/v6/parser/include/protobuf-c
+github.com/pganalyze/pg_query_go/v6/parser/include/xxhash
 # github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
 ## explicit; go 1.14
 github.com/pkg/browser
@@ -653,8 +691,8 @@ google.golang.org/grpc/serviceconfig
 google.golang.org/grpc/stats
 google.golang.org/grpc/status
 google.golang.org/grpc/tap
-# google.golang.org/protobuf v1.36.4
-## explicit; go 1.21
+# google.golang.org/protobuf v1.36.6
+## explicit; go 1.22
 google.golang.org/protobuf/cmd/protoc-gen-go
 google.golang.org/protobuf/cmd/protoc-gen-go/internal_gengo
 google.golang.org/protobuf/compiler/protogen
