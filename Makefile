@@ -49,9 +49,7 @@ build_dist_alpine:
 
 vendor:
 	GO111MODULE=on go mod tidy
-	# See CONTRIBUTING.md if modvendor can't be found
 	GO111MODULE=on go mod vendor
-	modvendor -copy="**/*.c **/*.h **/*.proto" -v
 
 test: build
 	go test -race -coverprofile=coverage.out ./...
