@@ -139,7 +139,7 @@ func summarizeDbChecks(status *state.SelfTestResult, aspect state.DbCollectionAs
 	} else if len(checks) > 1 {
 		summaryMsg = fmt.Sprintf("ok in %s and %d other monitored database(s)%s", firstDb, len(checks)-1, verboseHint)
 	} else {
-		summaryMsg = fmt.Sprintf("ok in %s (no other databases are configured to be monitored)", firstDb)
+		summaryMsg = fmt.Sprintf("ok in %s (no other databases are monitored)", firstDb)
 	}
 
 	return icon, summaryMsg

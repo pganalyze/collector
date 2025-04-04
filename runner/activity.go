@@ -24,7 +24,7 @@ func processActivityForServer(ctx context.Context, server *state.Server, opts st
 	newState := server.ActivityPrevState
 
 	if server.Pause.Load() {
-		logger.PrintVerbose("Snapshot processing disabled by pganalyze server")
+		logger.PrintVerbose("Duplicate collector detected: Please ensure only one collector is monitoring this Postgres server")
 		return newState, false, nil
 	}
 
