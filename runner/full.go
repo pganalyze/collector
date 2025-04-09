@@ -105,7 +105,7 @@ func processServer(ctx context.Context, server *state.Server, opts state.Collect
 	newGrant.Config = pganalyze_collector.ServerMessage_Config{Features: &pganalyze_collector.ServerMessage_Features{}}
 
 	if server.Pause.Load() {
-		logger.PrintWarning("Snapshot processing disabled by pganalyze server")
+		logger.PrintWarning("Duplicate collector detected: Please ensure only one collector is monitoring this Postgres server")
 		return newState, newGrant, collectionStatus, nil
 	}
 
