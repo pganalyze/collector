@@ -96,7 +96,7 @@ func GetReplication(ctx context.Context, c *Collection, db *sql.DB) (state.Postg
 				"You are not connecting as a user with the pg_monitor role or a superuser." +
 				" Please make sure the monitoring user used by the collector has been granted the pg_monitor role or is a superuser.")
 			if c.Config.SystemType == "aiven" {
-				c.Logger.PrintInfo("For aiven, you can also set up the monitoring helper functions (https://pganalyze.com/docs/install/aiven/01_create_monitoring_user).")
+				c.Logger.PrintInfo("For Aiven, you can also set up the monitoring helper functions (https://pganalyze.com/docs/install/aiven/01_create_monitoring_user).")
 			}
 		}
 		sourceTable = "pg_stat_replication"
