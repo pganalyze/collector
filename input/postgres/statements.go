@@ -168,12 +168,15 @@ func GetStatements(ctx context.Context, c *Collection, db *sql.DB, showtext bool
 	} else {
 		if c.Config.SystemType != "heroku" && !c.ConnectedAsSuperUser && !c.ConnectedAsMonitoringRole && c.GlobalOpts.TestRun {
 			c.SelfTest.MarkCollectionAspectWarning(state.CollectionAspectPgStatStatements, "monitoring user may have insufficient permissions to capture all queries")
-			c.SelfTest.HintCollectionAspect(state.CollectionAspectPgStatStatements, "Please set up"+
-				" the monitoring helper functions (%s)"+
-				" or connect as superuser to get query statistics for all roles.", selftest.URLPrinter.Sprint("https://pganalyze.com/docs/install/aiven/03_create_pg_stat_statements_helpers"))
-			c.Logger.PrintInfo("Warning: You are not connecting as superuser. Please setup" +
-				" the monitoring helper functions (https://pganalyze.com/docs/install/aiven/03_create_pg_stat_statements_helpers)" +
-				" or connect as superuser, to get query statistics for all roles.")
+			c.SelfTest.HintCollectionAspect(state.CollectionAspectPgStatStatements, "Please make sure the monitoring user used by the collector has been granted the pg_monitor role or is a superuser.")
+			c.Logger.PrintInfo("Warning: Monitoring user may have insufficient permissions to capture all queries.\n" +
+				"You are not connecting as a superuser." +
+				" Please make sure the monitoring user used by the collector has been granted the pg_monitor role or is a superuser in order to get query statistics for all roles.")
+			if c.Config.SystemType == "aiven" {
+				docsLink := "https://pganalyze.com/docs/install/aiven/03_create_pg_stat_statements_helpers"
+				c.SelfTest.HintCollectionAspect(state.CollectionAspectPgStatStatements, "For aiven, you can also set up the monitoring helper functions (%s).", selftest.URLPrinter.Sprint(docsLink))
+				c.Logger.PrintInfo("For Aiven, you can also set up the monitoring helper functions (%s).", docsLink)
+			}
 		}
 		if !showtext {
 			sourceTable = extSchema + ".pg_stat_statements(false)"
