@@ -2,6 +2,7 @@ CREATE OR REPLACE FUNCTION pganalyze.explain_analyze(query text, params text[], 
 DECLARE
   prepared_query text;
   params_str text;
+  params_str2 text;
   param_types_str text;
   explain_prefix text;
   explain_flag text;
@@ -29,14 +30,18 @@ BEGIN
   END LOOP;
   explain_prefix := explain_prefix || ') ';
 
-  SELECT COALESCE('(' || pg_catalog.array_to_string(
-    ARRAY(
-      SELECT pg_catalog.quote_literal(p)
-      FROM pg_catalog.unnest(params) _(p)
-    ),
-    ',',
-    'NULL'
-  ) || ')', '') INTO params_str;
+  IF cardinality(params) > 0 THEN
+    SELECT '(' || pg_catalog.array_to_string(
+      ARRAY(
+        SELECT pg_catalog.quote_literal(p)
+        FROM pg_catalog.unnest(params) _(p)
+      ),
+      ',',
+      'NULL'
+    ) || ')' INTO params_str;
+  ELSE
+    SELECT '' INTO params_str;
+  END IF;
   SELECT COALESCE('(' || pg_catalog.string_agg(
     CASE
       WHEN p ~ '^[a-z0-9_]+(\[\])?$' THEN p
