@@ -2,7 +2,6 @@ CREATE OR REPLACE FUNCTION pganalyze.explain_analyze(query text, params text[], 
 DECLARE
   prepared_query text;
   params_str text;
-  params_str2 text;
   param_types_str text;
   explain_prefix text;
   explain_flag text;
