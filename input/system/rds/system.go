@@ -121,7 +121,7 @@ func GetSystemState(server *state.Server, logger *util.Logger) (system state.Sys
 
 	system.XlogUsedBytes = uint64(cloudWatchReader.GetRdsIntMetric("TransactionLogsDiskUsage", "Bytes"))
 
-	if instance.EnhancedMonitoringResourceArn != nil {
+	if instance.EnhancedMonitoringResourceArn != nil && instance.MonitoringInterval != nil && *instance.MonitoringInterval != 0 {
 		system.Info.AmazonRds.EnhancedMonitoring = true
 
 		svc := cloudwatchlogs.New(sess)
