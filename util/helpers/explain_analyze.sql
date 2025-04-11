@@ -43,7 +43,7 @@ BEGIN
   END IF;
   SELECT COALESCE('(' || pg_catalog.string_agg(
     CASE
-      WHEN p ~ '^[a-z0-9_]+(\[\])?$' THEN p
+      WHEN p ~ '^[a-z_][a-z0-9_]*(\[\])?$' THEN p
       ELSE pg_catalog.quote_ident(p)
     END,
     ','
