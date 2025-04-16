@@ -207,6 +207,7 @@ func setupEventHubReceiver(ctx context.Context, wg *sync.WaitGroup, logger *util
 		}
 		for _, record := range eventData.Records {
 			if record.Category == "PostgreSQLLogs" && record.OperationName == "LogEvent" {
+				logger.PrintVerbose("%+v\n", record)
 				azureLogStream <- record
 			}
 		}
