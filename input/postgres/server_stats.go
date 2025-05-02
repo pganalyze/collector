@@ -61,8 +61,17 @@ COALESCE((
 COALESCE((
 	SELECT
 		backend_xmin
-	FROM %s
-	WHERE backend_xmin IS NOT NULL
+	FROM (
+		SELECT
+			backend_xmin
+		FROM %s
+			UNION ALL
+		SELECT
+			feedback_xmin as backend_xmin
+		FROM
+			%s
+		WHERE feedback_xmin IS NOT NULL
+	) _(backend_xmin)
 	ORDER BY pg_catalog.age(backend_xmin) DESC
 	LIMIT 1
 ), '0'::xid) as standby
@@ -120,7 +129,14 @@ func GetServerStats(ctx context.Context, c *Collection, db *sql.DB, ps state.Per
 		} else {
 			sourceStatReplicationTable = "pg_catalog.pg_stat_replication"
 		}
-		err = db.QueryRowContext(ctx, QueryMarkerSQL+fmt.Sprintf(xminHorizonSQL, sourceStatReplicationTable)).Scan(
+
+		var auroraStatsRel string
+		if c.PostgresVersion.IsAwsAurora {
+			auroraStatsRel = "aurora_replica_status()"
+		} else {
+			auroraStatsRel = "(VALUES(NULL::xid)) AS _(feedback_xmin)"
+		}
+		err = db.QueryRowContext(ctx, QueryMarkerSQL+fmt.Sprintf(xminHorizonSQL, sourceStatReplicationTable, auroraStatsRel)).Scan(
 			&stats.XminHorizonBackend, &stats.XminHorizonReplicationSlot, &stats.XminHorizonReplicationSlotCatalog,
 			&stats.XminHorizonPreparedXact, &stats.XminHorizonStandby,
 		)
