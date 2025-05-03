@@ -67,9 +67,8 @@ COALESCE((
 		FROM %s
 			UNION ALL
 		SELECT
-			feedback_xmin as backend_xmin
-		FROM
-			%s
+			feedback_xmin::text::xid as backend_xmin
+		FROM %s
 		WHERE feedback_xmin IS NOT NULL
 	) _(backend_xmin)
 	ORDER BY pg_catalog.age(backend_xmin) DESC
@@ -134,7 +133,7 @@ func GetServerStats(ctx context.Context, c *Collection, db *sql.DB, ps state.Per
 		if c.PostgresVersion.IsAwsAurora {
 			auroraStatsRel = "aurora_replica_status()"
 		} else {
-			auroraStatsRel = "(VALUES(NULL::xid)) AS _(feedback_xmin)"
+			auroraStatsRel = "(VALUES(NULL)) AS _(feedback_xmin)"
 		}
 		err = db.QueryRowContext(ctx, QueryMarkerSQL+fmt.Sprintf(xminHorizonSQL, sourceStatReplicationTable, auroraStatsRel)).Scan(
 			&stats.XminHorizonBackend, &stats.XminHorizonReplicationSlot, &stats.XminHorizonReplicationSlotCatalog,
