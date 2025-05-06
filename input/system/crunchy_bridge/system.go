@@ -49,6 +49,12 @@ func GetSystemState(ctx context.Context, server *state.Server, logger *util.Logg
 		logger.PrintError("CrunchyBridge/System: Encountered error when getting cluster CPU metrics %v\n", err)
 		return
 	}
+	system.CPUStats = make(state.CPUStatisticMap)
+	// In the pganalyze UI, we re-calculate these percentage based on all available percentages
+	// Meaning, even the user only has 10%, it can inflate to 40% if there is no other item that is using lots of %
+	// To avoid this, use idle as "others %" - it might not be correct as there would be other CPU usages, but it at least helps
+	// from showing the wrong percentage for more important ones like system and user
+	cpuIdlePercent := 100 - cpuMetrics.Iowait - cpuMetrics.System - cpuMetrics.User - cpuMetrics.Steal
 	system.CPUStats["all"] = state.CPUStatistic{
 		DiffedOnInput: true,
 		DiffedValues: &state.DiffedSystemCPUStats{
@@ -56,8 +62,12 @@ func GetSystemState(ctx context.Context, server *state.Server, logger *util.Logg
 			SystemPercent: cpuMetrics.System,
 			UserPercent:   cpuMetrics.User,
 			StealPercent:  cpuMetrics.Steal,
+			IdlePercent:   cpuIdlePercent,
 		},
 	}
+	system.CPUInfo.SocketCount = 1
+	system.CPUInfo.LogicalCoreCount = clusterInfo.CPU
+	system.CPUInfo.PhysicalCoreCount = clusterInfo.CPU
 
 	loadAverageMetrics, err := client.GetLoadAverageMetrics(ctx)
 	if err != nil {
@@ -78,8 +88,8 @@ func GetSystemState(ctx context.Context, server *state.Server, logger *util.Logg
 	// ApplicationBytes is not the best way for representing "used bytes",
 	// but in the UI side, we use this as "process" memory if this value exits
 	// which would be the closest to the used bytes
-	system.Memory.ApplicationBytes = uint64(float64(totalMemoryInBytes) * memoryMetrics.MemoryUsedPct)
-	system.Memory.SwapUsedBytes = uint64(float64(totalMemoryInBytes) * memoryMetrics.SwapUsedPct)
+	system.Memory.ApplicationBytes = uint64(float64(totalMemoryInBytes) * memoryMetrics.MemoryUsedPct / 100)
+	system.Memory.SwapUsedBytes = uint64(float64(totalMemoryInBytes) * memoryMetrics.SwapUsedPct / 100)
 
 	iopsMetrics, err := client.GetIOPSMetrics(ctx)
 	if err != nil {
