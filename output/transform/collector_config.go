@@ -46,6 +46,7 @@ func transformCollectorConfig(s snapshot.FullSnapshot, state state.TransientStat
 		GcpHasCredentialsFile:      c.GcpHasCredentialsFile,
 		GcpProjectId:               c.GcpProjectId,
 		GcpRegion:                  c.GcpRegion,
+		GcpUsePublicIp:             c.GcpUsePublicIP,
 		CrunchyBridgeClusterId:     c.CrunchyBridgeClusterId,
 		AivenProjectId:             c.AivenProjectId,
 		AivenServiceId:             c.AivenServiceId,

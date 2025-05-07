@@ -381,6 +381,8 @@ message CollectorConfig {
   string gcp_alloydb_cluster_id = 73;
   string gcp_alloydb_instance_id = 74;
   string gcp_region = 76; // using 76 as 75 is taken below
+  bool gcp_use_public_ip = 77;
+
 
   string crunchy_bridge_cluster_id = 75;
 
