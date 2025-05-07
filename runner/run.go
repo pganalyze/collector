@@ -32,6 +32,7 @@ func Run(ctx context.Context, wg *sync.WaitGroup, opts state.CollectionOpts, log
 	writeStateFile = func() {}
 	shutdown = func() {}
 	var driverCleanup func() error
+	var driverCleanupPublic func() error
 
 	scheduler, err := scheduler.GetScheduler()
 	if err != nil {
@@ -61,12 +62,23 @@ func Run(ctx context.Context, wg *sync.WaitGroup, opts state.CollectionOpts, log
 		}
 
 		if cfg.DbUseIamAuth && cfg.SystemType == "google_cloudsql" && driverCleanup == nil {
-			driverCleanup, err = pgxv5.RegisterDriver("cloudsql-postgres", cloudsqlconn.WithIAMAuthN())
+			driverCleanup, err = pgxv5.RegisterDriver("cloudsql-postgres", cloudsqlconn.WithIAMAuthN(),
+				cloudsqlconn.WithDefaultDialOptions(cloudsqlconn.WithPrivateIP()),
+			)
 			if err != nil {
 				logger.PrintError("Failed to register cloudsql-postgres driver: %s", err)
 				return
 			}
 		}
+
+		if cfg.DbUseIamAuth && cfg.SystemType == "google_cloudsql" && driverCleanupPublic == nil {
+			driverCleanupPublic, err = pgxv5.RegisterDriver("cloudsql-postgres-public", cloudsqlconn.WithIAMAuthN())
+			if err != nil {
+				logger.PrintError("Failed to register cloudsql-postgres-public driver: %s", err)
+				return
+			}
+		}
+
 	}
 
 	shutdown = func() {
@@ -80,6 +92,10 @@ func Run(ctx context.Context, wg *sync.WaitGroup, opts state.CollectionOpts, log
 		}
 		if driverCleanup != nil {
 			driverCleanup()
+		}
+
+		if driverCleanupPublic != nil {
+			driverCleanupPublic()
 		}
 	}
 
