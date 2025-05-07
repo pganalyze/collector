@@ -250,6 +250,9 @@ func getDefaultConfig() *ServerConfig {
 	if gcpRegion := os.Getenv("GCP_REGION"); gcpRegion != "" {
 		config.GcpRegion = gcpRegion
 	}
+	if gcpUsePublicIp := os.Getenv("GCP_USE_PUBLIC_IP"); gcpUsePublicIp != "" {
+		config.GcpUsePublicIP = parseConfigBool(gcpUsePublicIp)
+	}
 	if crunchyBridgeClusterID := os.Getenv("CRUNCHY_BRIDGE_CLUSTER_ID"); crunchyBridgeClusterID != "" {
 		config.CrunchyBridgeClusterID = crunchyBridgeClusterID
 	}

@@ -93,6 +93,10 @@ func Run(ctx context.Context, wg *sync.WaitGroup, opts state.CollectionOpts, log
 		if driverCleanup != nil {
 			driverCleanup()
 		}
+
+		if driverCleanupPublic != nil {
+			driverCleanupPublic()
+		}
 	}
 
 	// Avoid even running the scheduler when we already know its not needed
