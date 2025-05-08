@@ -65,6 +65,8 @@ func main() {
 	var reload bool
 	var noReload bool
 	var benchmark bool
+	var collectorHealthCheckEnabled bool
+	var collectorHealthCheckAddress string
 
 	logFlags := log.LstdFlags
 	logger := &util.Logger{}
@@ -107,6 +109,8 @@ func main() {
 	flag.StringVar(&stateFilename, "statefile", defaultStateFile, "Specify alternative path for state file")
 	flag.StringVar(&pidFilename, "pidfile", "", "Specifies a path that a pidfile should be written to (default is no pidfile being written)")
 	flag.BoolVar(&benchmark, "benchmark", false, "Runs collector in benchmark mode (skip submitting the statistics to the server)")
+	flag.BoolVar(&collectorHealthCheckEnabled, "collector-health-check-enabled", true, "Enable the health check endpoint on the collector")
+	flag.StringVar(&collectorHealthCheckAddress, "collector-health-check-address", ":8080", "Address the health check webserver should listen on")
 	flag.Parse()
 
 	// Automatically reload the configuration after a successful test run.
@@ -277,6 +281,13 @@ ReadConfigAndRun:
 	wg := sync.WaitGroup{}
 	exitCode := 0
 	keepRunning, testRunSuccess, writeStateFile, shutdown := runner.Run(ctx, &wg, opts, logger, configFilename)
+
+	if collectorHealthCheckEnabled {
+		err := util.SetupHealthCheck(ctx, logger, &wg, collectorHealthCheckAddress)
+		if err != nil {
+			logger.PrintError("Failed to setup health check server: %s", err)
+		}
+	}
 
 	if keepRunning {
 		// Block here until we get any of the registered signals
