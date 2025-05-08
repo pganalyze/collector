@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.66.0      2025-05-07
+
+* Collect statistics from pg_stat_io (Postgres 16+)
+* Amazon Aurora: Pick up the correct oldest xmin for Aurora replication
+  - Aurora does not include the correct replication details in
+    pg_stat_replication, so check aurora_replica_status and use the older
+    of the two values to track XminHorizonStandby on the platform.
+* Amazon RDS: Also check monitoring interval for Enhanced Monitoring
+* Google Cloud SQL: Assume Private IP for IAM authentication-based connections
+  - If the legacy behavior (which connects over Public IP) is required, the new
+    `gcp_use_public_ip` / `GCP_USE_PUBLIC_IP` setting makes the collector
+    connect over Public IP instead
+* Crunchy Bridge: Fetch all system metrics via API
+  - The collector previously collected some metrics from the container itself,
+    but this has shown to be unreliable due to recent provider changes.
+  - Instead, retrieve a more limited set of metrics from the official APIs
+    provided by Crunchy Bridge. Setting an API key per the documentation
+    is required for this to work.
+* Kubernetes: Add ability to use raw environment variables maps in deployment
+* Better support for running EXPLAIN with pganalyze.explain_analyze helper
+* Improve warning when collector is paused due to a duplicate already running
+* Improve error messages when the monitoring user is not properly set up
+* Remove --no-postgres-(functions|bloat|views) flags to collector
+  - These flags do not have any effect and are very unlikely to be in use.
+
+
 ## 0.65.0      2025-02-20
 
 * Google Cloud SQL: Support IAM Authentication
