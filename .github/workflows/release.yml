@@ -81,9 +81,7 @@ jobs:
         path: pganalyze-collector-linux-arm64
 
   build_packages_x86_64:
-    # Use older Ubuntu release to ensure availability of CGroupsv1 (which are necessary
-    # currently to support older systemd on some of the test containers)
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     permissions: {}
     # ensure we don't release on create events for branches (only tags)
     if: ${{ startsWith( github.ref, 'refs/tags' ) }}
