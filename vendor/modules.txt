@@ -1,8 +1,24 @@
-# cloud.google.com/go v0.112.2
-## explicit; go 1.19
+# cloud.google.com/go v0.120.0
+## explicit; go 1.23.0
+cloud.google.com/go
 cloud.google.com/go/internal/detect
 cloud.google.com/go/internal/optional
 cloud.google.com/go/internal/pubsub
+# cloud.google.com/go/alloydb v1.15.2
+## explicit; go 1.23.0
+cloud.google.com/go/alloydb/apiv1alpha
+cloud.google.com/go/alloydb/apiv1alpha/alloydbpb
+cloud.google.com/go/alloydb/connectors/apiv1alpha/connectorspb
+cloud.google.com/go/alloydb/internal
+# cloud.google.com/go/alloydbconn v1.15.2
+## explicit; go 1.23.0
+cloud.google.com/go/alloydbconn
+cloud.google.com/go/alloydbconn/debug
+cloud.google.com/go/alloydbconn/driver/pgxv5
+cloud.google.com/go/alloydbconn/errtype
+cloud.google.com/go/alloydbconn/internal/alloydb
+cloud.google.com/go/alloydbconn/internal/tel
+cloud.google.com/go/alloydbconn/internal/tel/v2
 # cloud.google.com/go/auth v0.16.1
 ## explicit; go 1.23.0
 cloud.google.com/go/auth
@@ -35,12 +51,22 @@ cloud.google.com/go/cloudsqlconn/postgres/pgxv5
 # cloud.google.com/go/compute/metadata v0.6.0
 ## explicit; go 1.21
 cloud.google.com/go/compute/metadata
-# cloud.google.com/go/iam v1.1.6
-## explicit; go 1.19
+# cloud.google.com/go/iam v1.4.0
+## explicit; go 1.22.7
 cloud.google.com/go/iam
 cloud.google.com/go/iam/apiv1/iampb
-# cloud.google.com/go/pubsub v1.36.1
-## explicit; go 1.19
+# cloud.google.com/go/longrunning v0.6.7
+## explicit; go 1.23.0
+cloud.google.com/go/longrunning
+cloud.google.com/go/longrunning/autogen
+cloud.google.com/go/longrunning/autogen/longrunningpb
+# cloud.google.com/go/monitoring v1.24.2
+## explicit; go 1.23.0
+cloud.google.com/go/monitoring/apiv3/v2
+cloud.google.com/go/monitoring/apiv3/v2/monitoringpb
+cloud.google.com/go/monitoring/internal
+# cloud.google.com/go/pubsub v1.47.0
+## explicit; go 1.22.7
 cloud.google.com/go/pubsub
 cloud.google.com/go/pubsub/apiv1
 cloud.google.com/go/pubsub/apiv1/pubsubpb
@@ -142,6 +168,12 @@ github.com/AzureAD/microsoft-authentication-library-for-go/apps/internal/options
 github.com/AzureAD/microsoft-authentication-library-for-go/apps/internal/shared
 github.com/AzureAD/microsoft-authentication-library-for-go/apps/internal/version
 github.com/AzureAD/microsoft-authentication-library-for-go/apps/public
+# github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/metric v0.51.0
+## explicit; go 1.22
+github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/metric
+# github.com/GoogleCloudPlatform/opentelemetry-operations-go/internal/resourcemapping v0.51.0
+## explicit; go 1.22
+github.com/GoogleCloudPlatform/opentelemetry-operations-go/internal/resourcemapping
 # github.com/aws/aws-sdk-go v1.55.3
 ## explicit; go 1.19
 github.com/aws/aws-sdk-go/aws
@@ -269,7 +301,9 @@ github.com/googleapis/gax-go/v2/apierror/internal/proto
 github.com/googleapis/gax-go/v2/callctx
 github.com/googleapis/gax-go/v2/internal
 github.com/googleapis/gax-go/v2/internallog
+github.com/googleapis/gax-go/v2/internallog/grpclog
 github.com/googleapis/gax-go/v2/internallog/internal
+github.com/googleapis/gax-go/v2/iterator
 # github.com/gopherjs/gopherjs v0.0.0-20181103185306-d547d1d9531e
 ## explicit
 # github.com/gorhill/cronexpr v0.0.0-20160318121724-f0984319b442
@@ -473,6 +507,7 @@ go.opentelemetry.io/otel/propagation
 go.opentelemetry.io/otel/semconv/v1.17.0
 go.opentelemetry.io/otel/semconv/v1.20.0
 go.opentelemetry.io/otel/semconv/v1.21.0
+go.opentelemetry.io/otel/semconv/v1.24.0
 go.opentelemetry.io/otel/semconv/v1.26.0
 # go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.19.0
 ## explicit; go 1.20
@@ -505,6 +540,14 @@ go.opentelemetry.io/otel/sdk/internal/env
 go.opentelemetry.io/otel/sdk/internal/x
 go.opentelemetry.io/otel/sdk/resource
 go.opentelemetry.io/otel/sdk/trace
+# go.opentelemetry.io/otel/sdk/metric v1.35.0
+## explicit; go 1.22.0
+go.opentelemetry.io/otel/sdk/metric
+go.opentelemetry.io/otel/sdk/metric/exemplar
+go.opentelemetry.io/otel/sdk/metric/internal
+go.opentelemetry.io/otel/sdk/metric/internal/aggregate
+go.opentelemetry.io/otel/sdk/metric/internal/x
+go.opentelemetry.io/otel/sdk/metric/metricdata
 # go.opentelemetry.io/otel/trace v1.35.0
 ## explicit; go 1.22.0
 go.opentelemetry.io/otel/trace
@@ -587,7 +630,7 @@ golang.org/x/text/width
 # golang.org/x/time v0.11.0
 ## explicit; go 1.23.0
 golang.org/x/time/rate
-# google.golang.org/api v0.231.0
+# google.golang.org/api v0.233.0
 ## explicit; go 1.23.0
 google.golang.org/api/googleapi
 google.golang.org/api/googleapi/transport
@@ -604,15 +647,23 @@ google.golang.org/api/support/bundler
 google.golang.org/api/transport
 google.golang.org/api/transport/grpc
 google.golang.org/api/transport/http
-# google.golang.org/genproto v0.0.0-20240213162025-012b6fc9bca9
-## explicit; go 1.19
+# google.golang.org/genproto v0.0.0-20250303144028-a0af3efb3deb
+## explicit; go 1.23.0
+google.golang.org/genproto/googleapis/cloud/location
+google.golang.org/genproto/googleapis/type/calendarperiod
+google.golang.org/genproto/googleapis/type/dayofweek
 google.golang.org/genproto/googleapis/type/expr
-# google.golang.org/genproto/googleapis/api v0.0.0-20250218202821-56aae31c358a
-## explicit; go 1.22
+google.golang.org/genproto/googleapis/type/timeofday
+# google.golang.org/genproto/googleapis/api v0.0.0-20250428153025-10db94c68c34
+## explicit; go 1.23.0
 google.golang.org/genproto/googleapis/api
 google.golang.org/genproto/googleapis/api/annotations
+google.golang.org/genproto/googleapis/api/distribution
 google.golang.org/genproto/googleapis/api/httpbody
-# google.golang.org/genproto/googleapis/rpc v0.0.0-20250505200425-f936aa4a68b2
+google.golang.org/genproto/googleapis/api/label
+google.golang.org/genproto/googleapis/api/metric
+google.golang.org/genproto/googleapis/api/monitoredres
+# google.golang.org/genproto/googleapis/rpc v0.0.0-20250512202823-5a2f75b736a9
 ## explicit; go 1.23.0
 google.golang.org/genproto/googleapis/rpc/code
 google.golang.org/genproto/googleapis/rpc/errdetails

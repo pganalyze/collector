@@ -66,20 +66,32 @@ func connectToDb(ctx context.Context, config config.ServerConfig, logger *util.L
 				dbPasswordOverride = dbToken
 			}
 		} else if config.SystemType == "google_cloudsql" {
-			if config.GcpProjectID == "" || config.GcpRegion == "" || config.GcpCloudSQLInstanceID == "" {
-				return nil, errors.New("To use IAM auth with Google Cloud SQL, you must specify project ID, region, and instance ID")
+			// if config.GcpProjectID == "" || config.GcpRegion == "" || config.GcpCloudSQLInstanceID == "" {
+			// 	return nil, errors.New("To use IAM auth with Google Cloud SQL, you must specify project ID, region, and instance ID")
+			// }
+			if config.GcpCloudSQLInstanceID != "" {
+				hostOverride = strings.Join([]string{config.GcpProjectID, config.GcpRegion, config.GcpCloudSQLInstanceID}, ":")
+			} else {
+				hostOverride = fmt.Sprintf("projects/%s/locations/%s/clusters/%s/instances/%s", config.GcpProjectID, config.GcpRegion, config.GcpAlloyDBClusterID, config.GcpAlloyDBInstanceID)
 			}
-			hostOverride = strings.Join([]string{config.GcpProjectID, config.GcpRegion, config.GcpCloudSQLInstanceID}, ":")
 			// When using cloud-sql-go-connector, this needs to be set as disable
 			// https://github.com/GoogleCloudPlatform/cloud-sql-go-connector/issues/889
 			sslmodeOverride = "disable"
-			if config.GcpUsePublicIP {
-				driverName = "cloudsql-postgres-public"
+			if config.GcpCloudSQLInstanceID != "" {
+				if config.GcpUsePublicIP {
+					driverName = "cloudsql-postgres-public"
+				} else {
+					driverName = "cloudsql-postgres"
+				}
 			} else {
-				driverName = "cloudsql-postgres"
+				if config.GcpUsePublicIP {
+					driverName = "alloydb-postgres-public"
+				} else {
+					driverName = "alloydb-postgres"
+				}
 			}
 		} else {
-			return nil, errors.New("IAM auth is only supported for Amazon RDS, Aurora, and Google Cloud SQL - turn off IAM auth setting to use password-based authentication")
+			return nil, errors.New("IAM auth is only supported for Amazon RDS, Aurora, Google Cloud SQL, and Google AlloyDB - turn off IAM auth setting to use password-based authentication")
 		}
 	}
 
