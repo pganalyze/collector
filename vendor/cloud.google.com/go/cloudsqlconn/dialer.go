@@ -419,9 +419,11 @@ func (d *Dialer) Dial(ctx context.Context, icn string, opts ...DialOption) (conn
 	tlsConn := tls.Client(conn, ci.TLSConfig())
 	err = tlsConn.HandshakeContext(ctx)
 	if err != nil {
+		// TLS handshake errors are fatal and require a refresh. Remove the instance
+		// from the cache so that future calls to Dial() will block until the
+		// certificate is refreshed successfully.
 		d.logger.Debugf(ctx, "[%v] TLS handshake failed: %v", cn.String(), err)
-		// refresh the instance info in case it caused the handshake failure
-		c.ForceRefresh()
+		d.removeCached(ctx, cn, c, err)
 		_ = tlsConn.Close() // best effort close attempt
 		return nil, errtype.NewDialError("handshake failed", cn.String(), err)
 	}
@@ -433,10 +435,26 @@ func (d *Dialer) Dial(ctx context.Context, icn string, opts ...DialOption) (conn
 		trace.RecordDialLatency(ctx, icn, d.dialerID, latency)
 	}()
 
-	iConn := newInstrumentedConn(tlsConn, func() {
+	closeFunc := func() {
 		n := atomic.AddUint64(c.openConnsCount, ^uint64(0)) // c.openConnsCount = c.openConnsCount - 1
 		trace.RecordOpenConnections(context.Background(), int64(n), d.dialerID, cn.String())
-	}, d.dialerID, cn.String())
+	}
+	errFunc := func(err error) {
+		// io.EOF occurs when the server closes the connection. This is safe to
+		// ignore.
+		if err == io.EOF {
+			return
+		}
+		d.logger.Debugf(ctx, "[%v] IO Error on Read or Write: %v", cn.String(), err)
+		if d.isTLSError(err) {
+			// TLS handshake errors are fatal. Remove the instance from the cache
+			// so that future calls to Dial() will block until the certificate
+			// is refreshed successfully.
+			d.removeCached(ctx, cn, c, err)
+			_ = tlsConn.Close() // best effort close attempt
+		}
+	}
+	iConn := newInstrumentedConn(tlsConn, closeFunc, errFunc, d.dialerID, cn.String())
 
 	// If this connection was opened using a Domain Name, then store it for later
 	// in case it needs to be forcibly closed.
@@ -447,12 +465,19 @@ func (d *Dialer) Dial(ctx context.Context, icn string, opts ...DialOption) (conn
 	}
 	return iConn, nil
 }
+func (d *Dialer) isTLSError(err error) bool {
+	if nErr, ok := err.(net.Error); ok {
+		return !nErr.Timeout() && // it's a permanent net error
+			strings.Contains(nErr.Error(), "tls") // it's a TLS-related error
+	}
+	return false
+}
 
-// removeCached stops all background refreshes and deletes the connection
-// info cache from the map of caches.
+// removeCached stops all background refreshes, closes open sockets, and deletes
+// the cache entry.
 func (d *Dialer) removeCached(
 	ctx context.Context,
-	i instance.ConnName, c connectionInfoCache, err error,
+	i instance.ConnName, c *monitoredCache, err error,
 ) {
 	d.logger.Debugf(
 		ctx,
@@ -460,10 +485,19 @@ func (d *Dialer) removeCached(
 		i.String(),
 		err,
 	)
+
+	// If this instance of monitoredCache is still in the cache, remove it.
+	// If this instance was already removed from the cache or
+	// if *a separate goroutine* replaced it with a new instance, do nothing.
+	key := createKey(i)
 	d.lock.Lock()
-	defer d.lock.Unlock()
+	if cachedC, ok := d.cache[key]; ok && cachedC == c {
+		delete(d.cache, key)
+	}
+	d.lock.Unlock()
+
+	// Close the monitoredCache, this call is idempotent.
 	c.Close()
-	delete(d.cache, createKey(i))
 }
 
 // validClientCert checks that the ephemeral client certificate retrieved from
@@ -505,7 +539,7 @@ func (d *Dialer) EngineVersion(ctx context.Context, icn string) (string, error) 
 	}
 	ci, err := c.ConnectionInfo(ctx)
 	if err != nil {
-		d.removeCached(ctx, cn, c.connectionInfoCache, err)
+		d.removeCached(ctx, cn, c, err)
 		return "", err
 	}
 	return ci.DBVersion, nil
@@ -529,17 +563,18 @@ func (d *Dialer) Warmup(ctx context.Context, icn string, opts ...DialOption) err
 	}
 	_, err = c.ConnectionInfo(ctx)
 	if err != nil {
-		d.removeCached(ctx, cn, c.connectionInfoCache, err)
+		d.removeCached(ctx, cn, c, err)
 	}
 	return err
 }
 
 // newInstrumentedConn initializes an instrumentedConn that on closing will
 // decrement the number of open connects and record the result.
-func newInstrumentedConn(conn net.Conn, closeFunc func(), dialerID, connName string) *instrumentedConn {
+func newInstrumentedConn(conn net.Conn, closeFunc func(), errFunc func(error), dialerID, connName string) *instrumentedConn {
 	return &instrumentedConn{
 		Conn:      conn,
 		closeFunc: closeFunc,
+		errFunc:   errFunc,
 		dialerID:  dialerID,
 		connName:  connName,
 	}
@@ -550,6 +585,7 @@ func newInstrumentedConn(conn net.Conn, closeFunc func(), dialerID, connName str
 type instrumentedConn struct {
 	net.Conn
 	closeFunc func()
+	errFunc   func(error)
 	mu        sync.RWMutex
 	closed    bool
 	dialerID  string
@@ -562,6 +598,8 @@ func (i *instrumentedConn) Read(b []byte) (int, error) {
 	bytesRead, err := i.Conn.Read(b)
 	if err == nil {
 		go trace.RecordBytesReceived(context.Background(), int64(bytesRead), i.connName, i.dialerID)
+	} else {
+		i.errFunc(err)
 	}
 	return bytesRead, err
 }
@@ -572,6 +610,8 @@ func (i *instrumentedConn) Write(b []byte) (int, error) {
 	bytesWritten, err := i.Conn.Write(b)
 	if err == nil {
 		go trace.RecordBytesSent(context.Background(), int64(bytesWritten), i.connName, i.dialerID)
+	} else {
+		i.errFunc(err)
 	}
 	return bytesWritten, err
 }

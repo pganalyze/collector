@@ -1,5 +1,39 @@
 # Changelog
 
+## [1.17.0](https://github.com/GoogleCloudPlatform/cloud-sql-go-connector/compare/v1.16.1...v1.17.0) (2025-04-24)
+
+
+### Features
+
+* Update TLS validation to use both SAN and CN fields. ([#979](https://github.com/GoogleCloudPlatform/cloud-sql-go-connector/issues/979)) ([df60a20](https://github.com/GoogleCloudPlatform/cloud-sql-go-connector/commit/df60a2061dbfd78ce30a87319be8d8e027957d86))
+
+## [1.16.1](https://github.com/GoogleCloudPlatform/cloud-sql-go-connector/compare/v1.16.0...v1.16.1) (2025-04-16)
+
+
+### Bug Fixes
+
+* bump dependencies to latest ([#968](https://github.com/GoogleCloudPlatform/cloud-sql-go-connector/issues/968)) ([bb3c9f4](https://github.com/GoogleCloudPlatform/cloud-sql-go-connector/commit/bb3c9f4cb37fbb86a396fc716992c2ac82dcbcff))
+
+## [1.16.0](https://github.com/GoogleCloudPlatform/cloud-sql-go-connector/compare/v1.15.0...v1.16.0) (2025-03-19)
+
+
+### Features
+
+* add domain name validation ([#925](https://github.com/GoogleCloudPlatform/cloud-sql-go-connector/issues/925)) ([986152f](https://github.com/GoogleCloudPlatform/cloud-sql-go-connector/commit/986152ff1b733ad70b43bad1d22a450376ce5021))
+* Use standard TLS hostname validation for instances with DNS names ([#954](https://github.com/GoogleCloudPlatform/cloud-sql-go-connector/issues/954)) ([d733a16](https://github.com/GoogleCloudPlatform/cloud-sql-go-connector/commit/d733a161c5020a1013151a11ec385eba5ea50ce5))
+
+## [1.15.0](https://github.com/GoogleCloudPlatform/cloud-sql-go-connector/compare/v1.14.2...v1.15.0) (2025-02-12)
+
+
+### Features
+
+* add support for Go 1.24 and drop Go 1.22 ([#942](https://github.com/GoogleCloudPlatform/cloud-sql-go-connector/issues/942)) ([e10fbd2](https://github.com/GoogleCloudPlatform/cloud-sql-go-connector/commit/e10fbd2f790bc17fc7eb72ea785b11efddfb451f))
+
+
+### Bug Fixes
+
+* Refresh client cert when CA rotation ([#934](https://github.com/GoogleCloudPlatform/cloud-sql-go-connector/issues/934)) ([c22e2d4](https://github.com/GoogleCloudPlatform/cloud-sql-go-connector/commit/c22e2d4e861df7cf317af16c1015d40811dae3d8)), closes [#932](https://github.com/GoogleCloudPlatform/cloud-sql-go-connector/issues/932)
+
 ## [1.14.2](https://github.com/GoogleCloudPlatform/cloud-sql-go-connector/compare/v1.14.1...v1.14.2) (2025-01-30)
 
 
