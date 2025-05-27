@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"regexp"
 	"strings"
 	"sync"
@@ -65,6 +66,15 @@ func setupPubSubSubscriber(ctx context.Context, wg *sync.WaitGroup, logger *util
 	sub := client.Subscription(subID)
 	go func(ctx context.Context, wg *sync.WaitGroup, logger *util.Logger, sub *pubsub.Subscription) {
 		wg.Add(1)
+
+		// Debug logging for Google Pub/Sub messages
+		f, err := os.Open("/log/pganalyze_google_cloudsql_debug.log")
+		if err != nil {
+			logger.PrintError("Failed to open file for logging: %s", err)
+			return
+		}
+		defer f.Close()
+
 		for {
 			logger.PrintVerbose("Initializing Google Pub/Sub handler")
 			err := sub.Receive(ctx, func(ctx context.Context, pubsubMsg *pubsub.Message) {
@@ -76,6 +86,10 @@ func setupPubSubSubscriber(ctx context.Context, wg *sync.WaitGroup, logger *util
 					logger.PrintError("Error parsing JSON: %s", err)
 					return
 				}
+
+				log_msg := fmt.Sprintf("%+v", msg)
+				f.WriteString(log_msg)
+				// End of debug logging
 
 				if msg.Resource.ResourceType == "cloudsql_database" {
 					if !strings.HasSuffix(msg.LogName, "postgres.log") {
