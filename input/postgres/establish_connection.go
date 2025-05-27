@@ -66,9 +66,6 @@ func connectToDb(ctx context.Context, config config.ServerConfig, logger *util.L
 				dbPasswordOverride = dbToken
 			}
 		} else if config.SystemType == "google_cloudsql" {
-			// if config.GcpProjectID == "" || config.GcpRegion == "" || config.GcpCloudSQLInstanceID == "" {
-			// 	return nil, errors.New("To use IAM auth with Google Cloud SQL, you must specify project ID, region, and instance ID")
-			// }
 			if config.GcpCloudSQLInstanceID != "" {
 				hostOverride = strings.Join([]string{config.GcpProjectID, config.GcpRegion, config.GcpCloudSQLInstanceID}, ":")
 			} else {
@@ -83,12 +80,14 @@ func connectToDb(ctx context.Context, config config.ServerConfig, logger *util.L
 				} else {
 					driverName = "cloudsql-postgres"
 				}
-			} else {
+			} else if config.GcpAlloyDBClusterID != "" || config.GcpAlloyDBInstanceID != "" {
 				if config.GcpUsePublicIP {
 					driverName = "alloydb-postgres-public"
 				} else {
 					driverName = "alloydb-postgres"
 				}
+			} else {
+				return nil, errors.New("To use IAM auth with either Google Cloud SQL or AlloyDB, you must specify project ID, region, and then either the instance ID (CloudSQL) or cluster ID and instance ID (AlloyDB) in the configuration")
 			}
 		} else {
 			return nil, errors.New("IAM auth is only supported for Amazon RDS, Aurora, Google Cloud SQL, and Google AlloyDB - turn off IAM auth setting to use password-based authentication")
