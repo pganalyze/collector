@@ -94,7 +94,7 @@ func Run(ctx context.Context, wg *sync.WaitGroup, opts state.CollectionOpts, log
 			}
 		}
 
-		if cfg.DbUseIamAuth && cfg.SystemType == "google_cloudsql" && driverCleanupPublicAlloyDb == nil {
+		if cfg.DbUseIamAuth && cfg.SystemType == "google_cloudsql" && cfg.GcpAlloyDBClusterID != "" && driverCleanupPublicAlloyDb == nil {
 			driverCleanupPublicAlloyDb, err = alloydb_pgxv5.RegisterDriver("alloydb-postgres-public", alloydbconn.WithIAMAuthN(),
 				alloydbconn.WithDefaultDialOptions(alloydbconn.WithPublicIP()),
 			)
