@@ -80,7 +80,7 @@ func connectToDb(ctx context.Context, config config.ServerConfig, logger *util.L
 				} else {
 					driverName = "cloudsql-postgres"
 				}
-			} else if config.GcpAlloyDBClusterID != "" || config.GcpAlloyDBInstanceID != "" {
+			} else if (config.GcpAlloyDBClusterID != "" || config.GcpAlloyDBInstanceID != "") && config.GcpProjectID != "" && config.GcpRegion != "" {
 				if config.GcpUsePublicIP {
 					driverName = "alloydb-postgres-public"
 				} else {
