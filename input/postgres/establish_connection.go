@@ -74,7 +74,7 @@ func connectToDb(ctx context.Context, config config.ServerConfig, logger *util.L
 			// When using cloud-sql-go-connector, this needs to be set as disable
 			// https://github.com/GoogleCloudPlatform/cloud-sql-go-connector/issues/889
 			sslmodeOverride = "disable"
-			if config.GcpCloudSQLInstanceID != "" {
+			if config.GcpCloudSQLInstanceID != "" && config.GcpProjectID != "" && config.GcpRegion != "" {
 				if config.GcpUsePublicIP {
 					driverName = "cloudsql-postgres-public"
 				} else {
