@@ -242,86 +242,28 @@ func (c ConnectionInfo) TLSConfig() *tls.Config {
 		pool.AddCert(caCert)
 	}
 
-	// For CAS instances, we can rely on the DNS name to verify the server identity.
-	if c.ServerCAMode != "" && c.ServerCAMode != "GOOGLE_MANAGED_INTERNAL_CA" {
-		// By default, use Standard TLS hostname verification name to
-		// verify the server identity.
-
-		// If the connector was configured with a domain name, use that domain name
-		// to validate the certificate. Otherwise, use the DNS name from the
-		// instance ConnectionInfo API response.
-		serverName := c.ConnectionName.DomainName()
-		if serverName == "" {
-			serverName = c.DNSName
-		}
-
-		return &tls.Config{
-			ServerName:   serverName,
-			Certificates: []tls.Certificate{c.ClientCertificate},
-			RootCAs:      pool,
-			MinVersion:   tls.VersionTLS13,
-		}
+	var serverName string
+	if c.ConnectionName.HasDomainName() {
+		// If the connector was configured with a DNS name, use the DNS name from
+		// the configuration to validate the server certificate.
+		serverName = c.ConnectionName.DomainName()
+	} else {
+		// If the connector was configured with an Instance Connection Name,
+		// use the DNS name from the instance metadata.
+		serverName = c.DNSName
 	}
-	// For legacy instances use the custom TLS validation
+
 	return &tls.Config{
-		ServerName:   c.ConnectionName.String(),
+		ServerName:   serverName,
 		Certificates: []tls.Certificate{c.ClientCertificate},
 		RootCAs:      pool,
-		// We need to set InsecureSkipVerify to true due to
-		// https://github.com/GoogleCloudPlatform/cloudsql-proxy/issues/194
-		// https://tip.golang.org/doc/go1.11#crypto/x509
-		//
-		// Since we have a secure channel to the Cloud SQL API which we use to
-		// retrieve the certificates, we instead need to implement our own
-		// VerifyPeerCertificate function that will verify that the certificate
-		// is OK.
+		MinVersion:   tls.VersionTLS13,
+		// Replace entire default TLS verification with our custom TLS
+		// verification defined in verifyPeerCertificateFunc(). This allows the
+		// connector to gracefully and securely handle deviations from standard TLS
+		// hostname validation in some existing Cloud SQL certificates.
 		InsecureSkipVerify:    true,
-		VerifyPeerCertificate: verifyPeerCertificateFunc(c.ConnectionName, pool),
-		MinVersion:            tls.VersionTLS13,
-	}
-}
-
-// verifyPeerCertificateFunc creates a VerifyPeerCertificate func that
-// verifies that the peer certificate is in the cert pool. We need to define
-// our own because CloudSQL instances use the instance name (e.g.,
-// my-project:my-instance) instead of a valid domain name for the certificate's
-// Common Name.
-func verifyPeerCertificateFunc(
-	cn instance.ConnName, pool *x509.CertPool,
-) func(rawCerts [][]byte, _ [][]*x509.Certificate) error {
-	return func(rawCerts [][]byte, _ [][]*x509.Certificate) error {
-		if len(rawCerts) == 0 {
-			return errtype.NewDialError(
-				"no certificate to verify", cn.String(), nil,
-			)
-		}
-
-		cert, err := x509.ParseCertificate(rawCerts[0])
-		if err != nil {
-			return errtype.NewDialError(
-				"failed to parse X.509 certificate", cn.String(), err,
-			)
-		}
-
-		opts := x509.VerifyOptions{Roots: pool}
-		if _, err = cert.Verify(opts); err != nil {
-			return errtype.NewDialError(
-				"failed to verify certificate", cn.String(), err,
-			)
-		}
-
-		certInstanceName := fmt.Sprintf("%s:%s", cn.Project(), cn.Name())
-		if cert.Subject.CommonName != certInstanceName {
-			return errtype.NewDialError(
-				fmt.Sprintf(
-					"certificate had CN %q, expected %q",
-					cert.Subject.CommonName, certInstanceName,
-				),
-				cn.String(),
-				nil,
-			)
-		}
-		return nil
+		VerifyPeerCertificate: verifyPeerCertificateFunc(serverName, c.ConnectionName, pool),
 	}
 }
 

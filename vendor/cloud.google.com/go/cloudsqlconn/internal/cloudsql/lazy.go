@@ -26,7 +26,7 @@ import (
 	sqladmin "google.golang.org/api/sqladmin/v1beta4"
 )
 
-// LazyRefreshCache is caches connection info and refreshes the cache only when
+// LazyRefreshCache caches connection info and refreshes the cache only when
 // a caller requests connection info and the current certificate is expired.
 type LazyRefreshCache struct {
 	connName        instance.ConnName

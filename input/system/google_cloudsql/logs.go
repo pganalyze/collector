@@ -65,6 +65,7 @@ func setupPubSubSubscriber(ctx context.Context, wg *sync.WaitGroup, logger *util
 	sub := client.Subscription(subID)
 	go func(ctx context.Context, wg *sync.WaitGroup, logger *util.Logger, sub *pubsub.Subscription) {
 		wg.Add(1)
+
 		for {
 			logger.PrintVerbose("Initializing Google Pub/Sub handler")
 			err := sub.Receive(ctx, func(ctx context.Context, pubsubMsg *pubsub.Message) {

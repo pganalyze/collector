@@ -21,8 +21,10 @@ import (
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
 
+	"cloud.google.com/go/alloydbconn"
+	alloydb_pgxv5 "cloud.google.com/go/alloydbconn/driver/pgxv5"
 	"cloud.google.com/go/cloudsqlconn"
-	"cloud.google.com/go/cloudsqlconn/postgres/pgxv5"
+	cloudsql_pgxv5 "cloud.google.com/go/cloudsqlconn/postgres/pgxv5"
 )
 
 func Run(ctx context.Context, wg *sync.WaitGroup, opts state.CollectionOpts, logger *util.Logger, configFilename string) (keepRunning bool, testRunSuccess chan bool, writeStateFile func(), shutdown func()) {
@@ -33,6 +35,8 @@ func Run(ctx context.Context, wg *sync.WaitGroup, opts state.CollectionOpts, log
 	shutdown = func() {}
 	var driverCleanup func() error
 	var driverCleanupPublic func() error
+	var driverCleanupAlloyDb func() error
+	var driverCleanupPublicAlloyDb func() error
 
 	scheduler, err := scheduler.GetScheduler()
 	if err != nil {
@@ -61,20 +65,42 @@ func Run(ctx context.Context, wg *sync.WaitGroup, opts state.CollectionOpts, log
 			}
 		}
 
-		if cfg.DbUseIamAuth && cfg.SystemType == "google_cloudsql" && driverCleanup == nil {
-			driverCleanup, err = pgxv5.RegisterDriver("cloudsql-postgres", cloudsqlconn.WithIAMAuthN(),
+		if cfg.DbUseIamAuth && cfg.SystemType == "google_cloudsql" && cfg.GcpCloudSQLInstanceID != "" && driverCleanup == nil {
+			driverCleanup, err = cloudsql_pgxv5.RegisterDriver("cloudsql-postgres", cloudsqlconn.WithIAMAuthN(),
 				cloudsqlconn.WithDefaultDialOptions(cloudsqlconn.WithPrivateIP()),
 			)
+
 			if err != nil {
 				logger.PrintError("Failed to register cloudsql-postgres driver: %s", err)
 				return
 			}
 		}
 
-		if cfg.DbUseIamAuth && cfg.SystemType == "google_cloudsql" && driverCleanupPublic == nil {
-			driverCleanupPublic, err = pgxv5.RegisterDriver("cloudsql-postgres-public", cloudsqlconn.WithIAMAuthN())
+		if cfg.DbUseIamAuth && cfg.SystemType == "google_cloudsql" && cfg.GcpCloudSQLInstanceID != "" && driverCleanupPublic == nil {
+			driverCleanupPublic, err = cloudsql_pgxv5.RegisterDriver("cloudsql-postgres-public", cloudsqlconn.WithIAMAuthN())
+
 			if err != nil {
 				logger.PrintError("Failed to register cloudsql-postgres-public driver: %s", err)
+				return
+			}
+		}
+
+		if cfg.DbUseIamAuth && cfg.SystemType == "google_cloudsql" && cfg.GcpAlloyDBClusterID != "" && driverCleanupAlloyDb == nil {
+			driverCleanupAlloyDb, err = alloydb_pgxv5.RegisterDriver("alloydb-postgres", alloydbconn.WithIAMAuthN())
+
+			if err != nil {
+				logger.PrintError("Failed to register alloydb-postgres driver: %s", err)
+				return
+			}
+		}
+
+		if cfg.DbUseIamAuth && cfg.SystemType == "google_cloudsql" && cfg.GcpAlloyDBClusterID != "" && driverCleanupPublicAlloyDb == nil {
+			driverCleanupPublicAlloyDb, err = alloydb_pgxv5.RegisterDriver("alloydb-postgres-public", alloydbconn.WithIAMAuthN(),
+				alloydbconn.WithDefaultDialOptions(alloydbconn.WithPublicIP()),
+			)
+
+			if err != nil {
+				logger.PrintError("Failed to register alloydb-postgres-public driver: %s", err)
 				return
 			}
 		}
@@ -96,6 +122,14 @@ func Run(ctx context.Context, wg *sync.WaitGroup, opts state.CollectionOpts, log
 
 		if driverCleanupPublic != nil {
 			driverCleanupPublic()
+		}
+
+		if driverCleanupAlloyDb != nil {
+			driverCleanupAlloyDb()
+		}
+
+		if driverCleanupPublicAlloyDb != nil {
+			driverCleanupPublicAlloyDb()
 		}
 	}
 

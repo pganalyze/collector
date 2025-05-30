@@ -27,6 +27,8 @@ var (
 	// Additionally, we have to support legacy "domain-scoped" projects
 	// (e.g. "google.com:PROJECT")
 	connNameRegex = regexp.MustCompile("([^:]+(:[^:]+)?):([^:]+):([^:]+)")
+	// The domain name pattern in accordance with RFC 1035, RFC 1123 and RFC 2181.
+	domainNameRegex = regexp.MustCompile(`^(?:[_a-z0-9](?:[_a-z0-9-]{0,61}[a-z0-9])?\.)+(?:[a-z](?:[a-z0-9-]{0,61}[a-z0-9])?)?$`)
 )
 
 // ConnName represents the "instance connection name", in the format
@@ -65,9 +67,19 @@ func (c *ConnName) DomainName() string {
 	return c.domainName
 }
 
-// HasDomainName returns the Cloud SQL domain name
+// HasDomainName returns whether the Cloud SQL instance has a domain name
 func (c *ConnName) HasDomainName() bool {
 	return c.domainName != ""
+}
+
+// IsValidDomain validates that a string is a well-formed domain name
+func IsValidDomain(dn string) bool {
+	b := []byte(dn)
+	m := domainNameRegex.FindSubmatch(b)
+	if m == nil {
+		return false
+	}
+	return true
 }
 
 // ParseConnName initializes a new ConnName struct.

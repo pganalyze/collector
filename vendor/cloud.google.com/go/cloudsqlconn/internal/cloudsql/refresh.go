@@ -100,8 +100,26 @@ func fetchMetadata(
 
 	// resolve DnsName into IP address for PSC
 	// Note that we have to check for PSC enablement first because CAS instances also set the DnsName.
-	if db.PscEnabled && db.DnsName != "" {
-		ipAddrs[PSC] = db.DnsName
+	if db.PscEnabled {
+		// Search the dns_names field for the PSC DNS Name.
+		pscDNSName := ""
+		for _, dnm := range db.DnsNames {
+			if dnm.Name != "" &&
+				dnm.ConnectionType == "PRIVATE_SERVICE_CONNECT" && dnm.DnsScope == "INSTANCE" {
+				pscDNSName = dnm.Name
+				break
+			}
+		}
+
+		// If the psc dns name was not found, use the legacy dns_name field
+		if pscDNSName == "" && db.DnsName != "" {
+			pscDNSName = db.DnsName
+		}
+
+		// If the psc dns name was found, add it to the ipaddrs map.
+		if pscDNSName != "" {
+			ipAddrs[PSC] = pscDNSName
+		}
 	}
 
 	if len(ipAddrs) == 0 {
@@ -128,11 +146,22 @@ func fetchMetadata(
 		caCerts = append(caCerts, caCert)
 	}
 
+	// Find a DNS name to use to validate the certificate from the dns_names field. Any
+	// name in the list may be used to validate the server TLS certificate.
+	// Fall back to legacy dns_name field if necessary.
+	var serverName string
+	if len(db.DnsNames) > 0 {
+		serverName = db.DnsNames[0].Name
+	}
+	if serverName == "" {
+		serverName = db.DnsName
+	}
+
 	m = metadata{
 		ipAddrs:      ipAddrs,
 		serverCACert: caCerts,
 		version:      db.DatabaseVersion,
-		dnsName:      db.DnsName,
+		dnsName:      serverName,
 		serverCAMode: db.ServerCaMode,
 	}
 
