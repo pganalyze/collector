@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.66.1      2025-05-30
+
+* Add support for Google AlloyDB IAM connections
+  - This allows monitoring of Google AlloyDB databases using the existing
+    `db_use_iam_auth` / `DB_USE_IAM_AUTH` setting: If enabled, the collector
+    fetches a short-lived token for logging into the database instance from the
+    GCP API, instead of using a hardcoded password in the collector
+    configuration file
+  - To set this up, see our [updated Google AlloyDB setup
+    documentation](https://pganalyze.com/docs/install/google_cloud_sql/01_create_monitoring_user)
+
+
 ## 0.66.0      2025-05-07
 
 * Collect statistics from pg_stat_io (Postgres 16+)
