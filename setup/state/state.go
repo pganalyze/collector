@@ -30,7 +30,7 @@ func init() {
 
 		AutoExplainLogAnalyze:          null.StringFrom("on"),
 		AutoExplainLogBuffers:          null.StringFrom("on"),
-		AutoExplainLogTiming:           null.StringFrom("off"),
+		AutoExplainLogTiming:           null.StringFrom("on"),
 		AutoExplainLogTriggers:         null.StringFrom("on"),
 		AutoExplainLogVerbose:          null.StringFrom("on"),
 		AutoExplainLogFormat:           null.StringFrom("json"),
