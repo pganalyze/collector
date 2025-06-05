@@ -76,6 +76,10 @@ func skipDueToK8sFilter(kubernetes *common.KeyValueList, server *state.Server, p
 	var k8sPodName string
 	var k8sNamespaceName string
 
+	if kubernetes == nil {
+		return false
+	}
+
 	k8sLabels := make(map[string]string)
 	for _, rv := range kubernetes.Values {
 		if rv.Key == "pod_name" {
