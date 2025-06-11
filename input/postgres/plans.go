@@ -19,7 +19,7 @@ SELECT
 	rows, shared_blks_hit, shared_blks_read, shared_blks_dirtied, shared_blks_written,
 	local_blks_hit, local_blks_read, local_blks_dirtied, local_blks_written,
 	temp_blks_read, temp_blks_written,
-	blk_read_time, blk_write_time
+	%s
 FROM
 	aurora_stat_plans(%t)
 WHERE
@@ -28,6 +28,7 @@ WHERE
 // GetPlans collects query execution plans and stats
 func GetPlans(ctx context.Context, c *Collection, db *sql.DB, showtext bool) (state.PostgresPlanMap, state.PostgresPlanStatsMap, error) {
 	var err error
+	var ioTimeFields string
 
 	// Only collect this with Aurora using aurora_stat_plans function for now
 	if !c.PostgresVersion.IsAwsAurora {
@@ -49,7 +50,14 @@ func GetPlans(ctx context.Context, c *Collection, db *sql.DB, showtext bool) (st
 		return nil, nil, nil
 	}
 
-	stmt, err := db.PrepareContext(ctx, QueryMarkerSQL+fmt.Sprintf(planSQL, showtext))
+	// Timefields for I/O time columns, defined as constants in statements.go
+	if c.PostgresVersion.Numeric >= state.PostgresVersion17 {
+		ioTimeFields = statementSQLIoTimeFieldsMinorVersion11
+	} else {
+		ioTimeFields = statementSQLIoTimeFieldsDefault
+	}
+
+	stmt, err := db.PrepareContext(ctx, QueryMarkerSQL+fmt.Sprintf(planSQL, ioTimeFields, showtext))
 	if err != nil {
 		return nil, nil, err
 	}
