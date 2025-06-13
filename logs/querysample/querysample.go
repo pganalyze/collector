@@ -11,6 +11,7 @@ import (
 	"github.com/pganalyze/collector/logs/util"
 	"github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
+	cUtil "github.com/pganalyze/collector/util"
 )
 
 func TransformAutoExplainToQuerySample(logLine state.LogLine, explainText string, queryRuntime string) (state.PostgresQuerySample, error) {
@@ -30,6 +31,21 @@ func TransformAutoExplainToQuerySample(logLine state.LogLine, explainText string
 
 func transformExplainJSONToQuerySample(logLine state.LogLine, explainText string, queryRuntimeMs float64) (state.PostgresQuerySample, error) {
 	var explainJSONOutput state.ExplainPlanContainer
+
+	// With Heroku + JSON format, the value of "Query Text" can contain \n (new line).
+	// JSON's value can't contain \n, so replacing it with a white space
+	if cUtil.IsHeroku() {
+		re := regexp.MustCompile(`(?s)("Query Text"\s*:\s*")(.*?)"`)
+		explainText = re.ReplaceAllStringFunc(explainText, func(m string) string {
+			// Extract inner value and flatten it
+			submatches := re.FindStringSubmatch(m)
+			key := submatches[1]
+			val := submatches[2]
+			// Remove newlines and replace with space
+			cleaned := regexp.MustCompile(`[\r\n]+`).ReplaceAllString(val, " ")
+			return key + cleaned + `"`
+		})
+	}
 
 	if err := json.Unmarshal([]byte(explainText), &explainJSONOutput); err != nil {
 		return state.PostgresQuerySample{}, err

@@ -4350,39 +4350,132 @@ func TestAnalyzeLogLines(t *testing.T) {
 	}
 }
 
-var testsHeroku = []testpair{{ // Heroku text explain + new line in Query Text (due to the query being too long)
-	[]state.LogLine{{
-		Content: "duration: 1681.452 ms  plan:\n" +
-			"\tQuery Text: UPDATE pgbench_branches SET bbalance = bbalance +\n 2656 WHERE bid = 59;\n" +
-			"\tUpdate on public.pgbench_branches  (cost=0.27..8.29 rows=1 width=370) (actual rows=0 loops=1)\n" +
-			"\t  Buffers: shared hit=7\n" +
-			"\t  ->  Index Scan using pgbench_branches_pkey on public.pgbench_branches  (cost=0.27..8.29 rows=1 width=370) (actual rows=1 loops=1)\n" +
-			"\t        Output: bid, (bbalance + 2656), filler, ctid\n" +
-			"\t        Index Cond: (pgbench_branches.bid = 59)",
-	}},
-	[]state.LogLine{{
-		Query:              "UPDATE pgbench_branches SET bbalance = bbalance +\n 2656 WHERE bid = 59;",
-		Classification:     pganalyze_collector.LogLineInformation_STATEMENT_AUTO_EXPLAIN,
-		ReviewedForSecrets: true,
-		SecretMarkers: []state.LogSecretMarker{{
-			ByteStart: 30,
-			ByteEnd:   469,
-			Kind:      state.StatementTextLogSecret,
+var testsHeroku = []testpair{
+	// Heroku text explain + new line in Query Text (due to the query being too long)
+	{
+		[]state.LogLine{{
+			Content: "duration: 1681.452 ms  plan:\n" +
+				"\tQuery Text: UPDATE pgbench_branches SET bbalance = bbalance +\n 2656 WHERE bid = 59;\n" +
+				"\tUpdate on public.pgbench_branches  (cost=0.27..8.29 rows=1 width=370) (actual rows=0 loops=1)\n" +
+				"\t  Buffers: shared hit=7\n" +
+				"\t  ->  Index Scan using pgbench_branches_pkey on public.pgbench_branches  (cost=0.27..8.29 rows=1 width=370) (actual rows=1 loops=1)\n" +
+				"\t        Output: bid, (bbalance + 2656), filler, ctid\n" +
+				"\t        Index Cond: (pgbench_branches.bid = 59)",
 		}},
-	}},
-	[]state.PostgresQuerySample{{
-		Query:         "UPDATE pgbench_branches SET bbalance = bbalance +\n 2656 WHERE bid = 59;",
-		RuntimeMs:     1681.452,
-		HasExplain:    true,
-		ExplainSource: pganalyze_collector.QuerySample_AUTO_EXPLAIN_EXPLAIN_SOURCE,
-		ExplainFormat: pganalyze_collector.QuerySample_TEXT_EXPLAIN_FORMAT,
-		ExplainOutputText: "Update on public.pgbench_branches  (cost=0.27..8.29 rows=1 width=370) (actual rows=0 loops=1)\n" +
-			"\t  Buffers: shared hit=7\n" +
-			"\t  ->  Index Scan using pgbench_branches_pkey on public.pgbench_branches  (cost=0.27..8.29 rows=1 width=370) (actual rows=1 loops=1)\n" +
-			"\t        Output: bid, (bbalance + 2656), filler, ctid\n" +
-			"\t        Index Cond: (pgbench_branches.bid = 59)",
-	}},
-},
+		[]state.LogLine{{
+			Query:              "UPDATE pgbench_branches SET bbalance = bbalance +\n 2656 WHERE bid = 59;",
+			Classification:     pganalyze_collector.LogLineInformation_STATEMENT_AUTO_EXPLAIN,
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 30,
+				ByteEnd:   469,
+				Kind:      state.StatementTextLogSecret,
+			}},
+		}},
+		[]state.PostgresQuerySample{{
+			Query:         "UPDATE pgbench_branches SET bbalance = bbalance +\n 2656 WHERE bid = 59;",
+			RuntimeMs:     1681.452,
+			HasExplain:    true,
+			ExplainSource: pganalyze_collector.QuerySample_AUTO_EXPLAIN_EXPLAIN_SOURCE,
+			ExplainFormat: pganalyze_collector.QuerySample_TEXT_EXPLAIN_FORMAT,
+			ExplainOutputText: "Update on public.pgbench_branches  (cost=0.27..8.29 rows=1 width=370) (actual rows=0 loops=1)\n" +
+				"\t  Buffers: shared hit=7\n" +
+				"\t  ->  Index Scan using pgbench_branches_pkey on public.pgbench_branches  (cost=0.27..8.29 rows=1 width=370) (actual rows=1 loops=1)\n" +
+				"\t        Output: bid, (bbalance + 2656), filler, ctid\n" +
+				"\t        Index Cond: (pgbench_branches.bid = 59)",
+		}},
+	},
+	// auto_explain, Heroku JSON format + Query Text with new line as \n
+	{
+		[]state.LogLine{{
+			Content: "duration: 2334.085 ms  plan:\n" +
+				"	{\n" +
+				"	  \"Query Text\": \"SELECT abalance \\n\nFROM pgbench_accounts WHERE aid = 2262632;\",\n" +
+				"	  \"Plan\": {\n" +
+				"	    \"Node Type\": \"Index Scan\",\n" +
+				"	    \"Parallel Aware\": false,\n" +
+				"	    \"Scan Direction\": \"Forward\",\n" +
+				"	    \"Index Name\": \"pgbench_accounts_pkey\",\n" +
+				"	    \"Relation Name\": \"pgbench_accounts\",\n" +
+				"	    \"Schema\": \"public\",\n" +
+				"	    \"Alias\": \"pgbench_accounts\",\n" +
+				"	    \"Startup Cost\": 0.43,\n" +
+				"	    \"Total Cost\": 8.45,\n" +
+				"	    \"Plan Rows\": 1,\n" +
+				"	    \"Plan Width\": 4,\n" +
+				"	    \"Actual Rows\": 1,\n" +
+				"	    \"Actual Loops\": 1,\n" +
+				"	    \"Output\": [\"abalance\"],\n" +
+				"	    \"Index Cond\": \"(pgbench_accounts.aid = 2262632)\",\n" +
+				"	    \"Rows Removed by Index Recheck\": 0,\n" +
+				"	    \"Shared Hit Blocks\": 4,\n" +
+				"	    \"Shared Read Blocks\": 0,\n" +
+				"	    \"Shared Dirtied Blocks\": 0,\n" +
+				"	    \"Shared Written Blocks\": 0,\n" +
+				"	    \"Local Hit Blocks\": 0,\n" +
+				"	    \"Local Read Blocks\": 0,\n" +
+				"	    \"Local Dirtied Blocks\": 0,\n" +
+				"	    \"Local Written Blocks\": 0,\n" +
+				"	    \"Temp Read Blocks\": 0,\n" +
+				"	    \"Temp Written Blocks\": 0,\n" +
+				"	    \"I/O Read Time\": 0.000,\n" +
+				"	    \"I/O Write Time\": 0.000\n" +
+				"	  },\n" +
+				"	  \"Triggers\": [\n" +
+				"	  ]\n" +
+				"	}\n",
+		}},
+		[]state.LogLine{{
+			Query:              "SELECT abalance \n FROM pgbench_accounts WHERE aid = 2262632;",
+			Classification:     pganalyze_collector.LogLineInformation_STATEMENT_AUTO_EXPLAIN,
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 30,
+				ByteEnd:   1028,
+				Kind:      state.StatementTextLogSecret,
+			}},
+		}},
+		[]state.PostgresQuerySample{{
+			Query:         "SELECT abalance \n FROM pgbench_accounts WHERE aid = 2262632;",
+			RuntimeMs:     2334.085,
+			HasExplain:    true,
+			ExplainSource: pganalyze_collector.QuerySample_AUTO_EXPLAIN_EXPLAIN_SOURCE,
+			ExplainFormat: pganalyze_collector.QuerySample_JSON_EXPLAIN_FORMAT,
+			ExplainOutputJSON: &state.ExplainPlanContainer{
+				Plan: []byte("{\n" +
+					"	    \"Node Type\": \"Index Scan\",\n" +
+					"	    \"Parallel Aware\": false,\n" +
+					"	    \"Scan Direction\": \"Forward\",\n" +
+					"	    \"Index Name\": \"pgbench_accounts_pkey\",\n" +
+					"	    \"Relation Name\": \"pgbench_accounts\",\n" +
+					"	    \"Schema\": \"public\",\n" +
+					"	    \"Alias\": \"pgbench_accounts\",\n" +
+					"	    \"Startup Cost\": 0.43,\n" +
+					"	    \"Total Cost\": 8.45,\n" +
+					"	    \"Plan Rows\": 1,\n" +
+					"	    \"Plan Width\": 4,\n" +
+					"	    \"Actual Rows\": 1,\n" +
+					"	    \"Actual Loops\": 1,\n" +
+					"	    \"Output\": [\"abalance\"],\n" +
+					"	    \"Index Cond\": \"(pgbench_accounts.aid = 2262632)\",\n" +
+					"	    \"Rows Removed by Index Recheck\": 0,\n" +
+					"	    \"Shared Hit Blocks\": 4,\n" +
+					"	    \"Shared Read Blocks\": 0,\n" +
+					"	    \"Shared Dirtied Blocks\": 0,\n" +
+					"	    \"Shared Written Blocks\": 0,\n" +
+					"	    \"Local Hit Blocks\": 0,\n" +
+					"	    \"Local Read Blocks\": 0,\n" +
+					"	    \"Local Dirtied Blocks\": 0,\n" +
+					"	    \"Local Written Blocks\": 0,\n" +
+					"	    \"Temp Read Blocks\": 0,\n" +
+					"	    \"Temp Written Blocks\": 0,\n" +
+					"	    \"I/O Read Time\": 0.000,\n" +
+					"	    \"I/O Write Time\": 0.000\n" +
+					"	  }"),
+				Triggers: &([]state.ExplainPlanTrigger{}),
+			},
+		}},
+	},
 }
 
 func TestAnalyzeLogLinesHeroku(t *testing.T) {
