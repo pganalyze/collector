@@ -110,7 +110,7 @@ time="2024-04-26T02:01:07Z" level=info msg="Generating README Documentation for 
 5. Release docker images using `make docker_release` (this requires access to the Quay.io push key, as well as "docker buildx" with QEMU emulation support, see below)
 6. Sign and release packages using `make -C packages repo` (this requires access to the Keybase GPG key)
 
-To run step 5 from an Ubuntu 24.04 VM, do the following (use the t3.large instance or higher):
+To run step 5 from an Ubuntu 24.04 VM, do the following (use the c6i.xlarge instance or higher):
 
 ```
 # Add Docker's official GPG key:
