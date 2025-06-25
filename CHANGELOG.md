@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.66.2      2025-06-25
+
+* Amazon Aurora: Add support for Postgres 17
+  - The collector now supports Amazon Aurora with Postgres 17
+  - Previously, Amazon Aurora users on Postgres 17 were unable to collect query
+    statistics due to a column "blk_read_time" does not exist error, caused by
+    changes to pg_stat_statements
+* Log Insights: Improve parsing with Heroku auto_explain logs with JSON format
+  - Support newlines in the middle of the EXPLAIN query with the JSON format
+
+
 ## 0.66.1      2025-05-30
 
 * Add support for Google AlloyDB IAM connections
