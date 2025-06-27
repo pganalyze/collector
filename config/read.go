@@ -819,8 +819,7 @@ func Read(logger *util.Logger, filename string) (Config, error) {
 			// Ensure we have no duplicate identifiers within one collector
 			for _, server := range conf.Servers {
 				if config.Identifier == server.Identifier {
-					logger.PrintError("Skipping config section %s, detected as duplicate. Note: To monitor multiple databases on the same server, db_name accepts a comma-separated list.", config.SectionName)
-					continue
+					return conf, fmt.Errorf("%s and %s are duplicates. To monitor multiple databases on the same server, db_name accepts a comma-separated list.", server.SectionName, config.SectionName)
 				}
 			}
 
