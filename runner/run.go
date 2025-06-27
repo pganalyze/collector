@@ -48,6 +48,10 @@ func Run(ctx context.Context, wg *sync.WaitGroup, opts state.CollectionOpts, log
 	if err != nil {
 		logger.PrintError("Config Error: %s", err)
 		keepRunning = !opts.TestRun && !opts.DiscoverLogLocation
+		if opts.TestRun {
+			testRunSuccess = make(chan bool, 1)
+			testRunSuccess <- false
+		}
 		return
 	}
 
