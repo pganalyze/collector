@@ -138,7 +138,7 @@ func SetupOtelHandlerForServer(ctx context.Context, wg *sync.WaitGroup, opts sta
 	}
 
 	logStream := setupLogTransformer(ctx, wg, server, opts, logger, parsedLogStream)
-	return setupOtelHandler(ctx, server, logStream, parsedLogStream, logger)
+	return setupOtelHandler(ctx, server, logStream, parsedLogStream, logger, opts)
 }
 
 // SetupLogTails - Sets up continuously running log tails for all servers with a
