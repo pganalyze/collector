@@ -22,6 +22,7 @@ var EnsureMonitoringUserPassword = &s.Step{
 		// We're using config.Read here (and only here) to be able to use the same
 		// GetPqOpenString we use in the main collector code
 		cfg, err := config.Read(
+			false,
 			&mainUtil.Logger{Destination: log.New(os.Stderr, "", 0)},
 			state.ConfigFilename,
 		)

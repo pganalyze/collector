@@ -3,6 +3,7 @@ package config
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -752,7 +753,7 @@ func preprocessConfig(config *ServerConfig) (*ServerConfig, error) {
 }
 
 // Read - Reads the configuration from the specified filename, or fall back to the default config
-func Read(logger *util.Logger, filename string) (Config, error) {
+func Read(testRun bool, logger *util.Logger, filename string) (Config, error) {
 	var conf Config
 	var err error
 
@@ -819,7 +820,12 @@ func Read(logger *util.Logger, filename string) (Config, error) {
 			// Ensure we have no duplicate identifiers within one collector
 			for _, server := range conf.Servers {
 				if config.Identifier == server.Identifier {
-					return conf, fmt.Errorf("%s and %s are duplicates. To monitor multiple databases on the same server, db_name accepts a comma-separated list.", server.SectionName, config.SectionName)
+					error := fmt.Sprintf("Duplicate servers detected: %s and %s. To monitor multiple databases on the same server, db_name accepts a comma-separated list", server.SectionName, config.SectionName)
+					if testRun {
+						return conf, errors.New(error)
+					} else {
+						logger.PrintError(error)
+					}
 				}
 			}
 
