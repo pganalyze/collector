@@ -103,14 +103,14 @@ time="2024-04-26T02:01:07Z" level=info msg="Generating README Documentation for 
 
 ### Release
 
-1. Create a PR to update the version numbers and CHANGELOG.md
+1. Create a PR to update the version numbers, CHANGELOG.md, and Helm Docs (see above)
 2. Once PR is merged, create a new tag `git tag v0.x.y`, then push it `git push origin v0.x.y`
 3. Once a new tag is pushed, GitHub Action Release will be kicked and create a new release (this will take about 2 hours, due to the package build and test)
 4. Modify the newly created release's description to match to CHANGELOG.md
 5. Release docker images using `make docker_release` (this requires access to the Quay.io push key, as well as "docker buildx" with QEMU emulation support, see below)
 6. Sign and release packages using `make -C packages repo` (this requires access to the Keybase GPG key)
 
-To run step 5 from an Ubuntu 22.04 VM, do the following:
+To run step 5 from an Ubuntu 24.04 VM, do the following (use the c6i.xlarge instance or higher):
 
 ```
 # Add Docker's official GPG key:
@@ -132,8 +132,9 @@ sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin
 sudo apt update
 sudo apt install qemu-user-static binfmt-support make
 
-# Get these credentials from Quay.io
-sudo docker login -u="REPLACE_ME" -p="REPLACE_ME" quay.io
+# Get password (entered interactively) from Quay.io
+# (under the robot accounts of the pganalyze organization)
+sudo docker login -u="pganalyze+push" quay.io
 
 git clone https://github.com/pganalyze/collector.git
 cd collector
