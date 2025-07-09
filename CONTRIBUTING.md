@@ -132,7 +132,7 @@ sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin
 sudo apt update
 sudo apt install qemu-user-static binfmt-support make
 
-# Get password (entered interactively) from from Quay.io
+# Get password (entered interactively) from Quay.io
 # (under the robot accounts of the pganalyze organization)
 sudo docker login -u="pganalyze+push" quay.io
 
