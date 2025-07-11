@@ -2,6 +2,7 @@ package selfhosted
 
 import (
 	"context"
+	"google.golang.org/protobuf/encoding/protojson"
 	"io"
 	"net/http"
 	"strconv"
@@ -75,6 +76,10 @@ func skipDueToK8sFilter(kubernetes *common.KeyValueList, server *state.Server, p
 	var k8sPodName string
 	var k8sNamespaceName string
 
+	if kubernetes == nil {
+		return false
+	}
+
 	k8sLabels := make(map[string]string)
 	for _, rv := range kubernetes.Values {
 		if rv.Key == "pod_name" {
@@ -115,9 +120,18 @@ func setupOtelHandler(ctx context.Context, server *state.Server, rawLogStream ch
 				prefixedLogger.PrintError("Could not read otel body")
 			}
 			logsData := &otlpLogs.LogsData{}
-			if err := proto.Unmarshal(b, logsData); err != nil {
-				prefixedLogger.PrintError("Could not unmarshal otel body")
+			contentType := r.Header.Get("Content-Type")
+			switch contentType {
+			case "application/json":
+				if err := protojson.Unmarshal(b, logsData); err != nil {
+					prefixedLogger.PrintError("Could not unmarshal otel body, json expected")
+				}
+			default:
+				if err := proto.Unmarshal(b, logsData); err != nil {
+					prefixedLogger.PrintError("Could not unmarshal otel body, binary payload is expected")
+				}
 			}
+
 			for _, r := range logsData.ResourceLogs {
 				for _, s := range r.ScopeLogs {
 					for _, l := range s.LogRecords {
