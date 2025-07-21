@@ -120,24 +120,12 @@ func otelV1LogHandler(w http.ResponseWriter, r *http.Request, server *state.Serv
 		prefixedLogger.PrintError("Could not unmarshal otel body")
 	}
 
-	/* Debugging Fluentbit payloads continues to be challenging. Having this
-	/ available can quickly help us see if the payload matches our expectations
-	/ and reduce the time spent debugging.
-	/
-	/ Generally the issue seems to be that when a Fluentbit INPUT is configured
-	/ with a Tag other than the standard "kube.*", the additional kubernetes
-	/ metadata is not added to the log record, we then fail to get all of the
-	/ key value information. However, there have also been cases where the log
-	/ string values were formatted incorrectly and it couldn't be unmarshalled.
-	/
-	/ Being able to quickly inspect the raw payloads can help us identify issues
-	*/
 	if opts.DebugLogs {
 		jsonData, err := json.MarshalIndent(logsData, "", "  ")
 		if err != nil {
 			prefixedLogger.PrintError("Failed to convert protobuf to JSON: %v", err)
 		}
-
+		prefixedLogger.PrintInfo("Received OpenTelemetry log data in the following format:\n")
 		prefixedLogger.PrintInfo(string(jsonData))
 	}
 
@@ -215,7 +203,7 @@ func setupOtelHandler(ctx context.Context, server *state.Server, rawLogStream ch
 			}()
 			otelServers = append(otelServers, otelLogServer)
 		} else {
-			prefixedLogger.PrintInfo("OpenTelemetry log handler on %s already registered, skipping. Check your configuration for duplicate entries.", otelLogServer)
+			prefixedLogger.PrintInfo("OpenTelemetry log handler on %s already registered, skipping. Check your configuration for duplicate 'db_log_otel_server' entries.", otelLogServer)
 		}
 	}
 	return nil
