@@ -7,10 +7,20 @@ metadata:
     {{- include "pganalyze-collector.labels" . | nindent 4 }}
 spec:
   type: {{ .Values.service.type }}
+  {{- if .Values.service.ports }}
+  ports:
+    {{- range .Values.service.ports }}
+    - name: {{ .name }}
+      port: {{ .port }}
+      targetPort: {{ .targetPort }}
+      protocol: TCP
+    {{- end }}
+  {{- else }}
   ports:
     - port: {{ .Values.service.port }}
       targetPort: {{ .Values.service.targetPort }}
       protocol: TCP
+  {{- end }}
   selector:
     app.kubernetes.io/name: {{ include "pganalyze-collector.name" . }}
 {{- end }}
