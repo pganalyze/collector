@@ -132,13 +132,32 @@ func SetupLogTailForServer(ctx context.Context, wg *sync.WaitGroup, opts state.C
 	return setupLogLocationTail(ctx, server.Config.LogLocation, logStream, logger)
 }
 
-func SetupOtelHandlerForServer(ctx context.Context, wg *sync.WaitGroup, opts state.CollectionOpts, logger *util.Logger, server *state.Server, parsedLogStream chan state.ParsedLogStreamItem) error {
-	if opts.DebugLogs || opts.TestRun {
-		logger.PrintInfo("Setting up OTLP HTTP server receiving logs with %s", server.Config.LogOtelServer)
-	}
+func SetupOtelHandlerForServers(ctx context.Context, wg *sync.WaitGroup, opts state.CollectionOpts, logger *util.Logger, servers []*state.Server, parsedLogStream chan state.ParsedLogStreamItem) {
+	// A list of all OpenTelemetry servers that we have started to prevent
+	var otelServers []string
 
-	logStream := setupLogTransformer(ctx, wg, server, opts, logger, parsedLogStream)
-	return setupOtelHandler(ctx, server, logStream, parsedLogStream, logger, opts)
+	for _, server := range servers {
+		otelLogServer := server.Config.LogOtelServer
+		if otelLogServer == "" {
+			continue
+		}
+
+		prefixedLogger := logger.WithPrefix(server.Config.SectionName)
+
+		if util.SliceContains(otelServers, otelLogServer) {
+			prefixedLogger.PrintInfo("OpenTelemetry log handler on %s already registered, skipping. Check your configuration for duplicate 'db_log_otel_server' entries.", otelLogServer)
+			continue
+		}
+
+		if opts.DebugLogs || opts.TestRun {
+			logger.PrintInfo("Setting up OTLP HTTP server receiving logs with %s", server.Config.LogOtelServer)
+		}
+
+		logStream := setupLogTransformer(ctx, wg, server, opts, logger, parsedLogStream)
+		setupOtelHandler(ctx, server, logStream, parsedLogStream, logger, opts)
+
+		otelServers = append(otelServers, otelLogServer)
+	}
 }
 
 // SetupLogTails - Sets up continuously running log tails for all servers with a
@@ -168,13 +187,10 @@ func SetupLogTails(ctx context.Context, wg *sync.WaitGroup, opts state.Collectio
 			if err != nil {
 				prefixedLogger.PrintError("ERROR - %s", err)
 			}
-		} else if server.Config.LogOtelServer != "" {
-			err := SetupOtelHandlerForServer(ctx, wg, opts, logger, server, parsedLogStream)
-			if err != nil {
-				prefixedLogger.PrintError("ERROR - %s", err)
-			}
 		}
 	}
+
+	SetupOtelHandlerForServers(ctx, wg, opts, logger, servers, parsedLogStream)
 }
 
 func tailFile(ctx context.Context, path string, out chan<- SelfHostedLogStreamItem, prefixedLogger *util.Logger) error {

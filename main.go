@@ -65,6 +65,7 @@ func main() {
 	var reload bool
 	var noReload bool
 	var benchmark bool
+	var veryVerbose bool
 
 	logFlags := log.LstdFlags
 	logger := &util.Logger{}
@@ -80,6 +81,7 @@ func main() {
 	flag.BoolVar(&reload, "reload", false, "Reloads the collector daemon that's running on the host")
 	flag.BoolVar(&noReload, "no-reload", false, "Disables automatic config reloading during a test run")
 	flag.BoolVarP(&logger.Verbose, "verbose", "v", false, "Outputs additional debugging information, use this if you're encountering errors or other problems")
+	flag.BoolVarP(&veryVerbose, "very-verbose", "", false, "Enable very verbose logging (will also enable verbose logging)")
 	flag.BoolVarP(&logger.Quiet, "quiet", "q", false, "Only outputs error messages to the logs and hides informational and warning messages")
 	flag.BoolVar(&logToSyslog, "syslog", false, "Write all log output to syslog instead of stderr (disabled by default)")
 	flag.BoolVar(&logToJSON, "json-logs", false, "Write all log output to stderr as newline delimited json (disabled by default, ignored if --syslog is set)")
@@ -147,6 +149,10 @@ func main() {
 		testRun = true
 	}
 
+	if veryVerbose {
+		logger.Verbose = true
+	}
+
 	opts := state.CollectionOpts{
 		StartedAt:                        time.Now(),
 		SubmitCollectedData:              !benchmark && true,
@@ -169,6 +175,7 @@ func main() {
 		WriteStateUpdate:                 (!dryRun && !dryRunLogs && !testRun) || forceStateUpdate,
 		ForceEmptyGrant:                  dryRun || dryRunLogs || testRunLogs || benchmark,
 		OutputAsJson:                     !benchmark,
+		VeryVerbose:                      veryVerbose,
 	}
 
 	if reload && !testRun {

@@ -16,9 +16,6 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// A list of all OpenTelemetry servers that we have started to prevent
-var otelServers []string
-
 // There currently are three kinds of log formats we aim to support here:
 //
 // 1. Plain log messages (unstructured message, body of log record is a string)
@@ -120,13 +117,13 @@ func otelV1LogHandler(w http.ResponseWriter, r *http.Request, server *state.Serv
 		prefixedLogger.PrintError("Could not unmarshal otel body")
 	}
 
-	if opts.DebugLogs {
+	if opts.VeryVerbose {
 		jsonData, err := json.MarshalIndent(logsData, "", "  ")
 		if err != nil {
-			prefixedLogger.PrintError("Failed to convert protobuf to JSON: %v", err)
+			prefixedLogger.PrintVerbose("Failed to convert protobuf to JSON: %v", err)
 		}
-		prefixedLogger.PrintInfo("Received OpenTelemetry log data in the following format:\n")
-		prefixedLogger.PrintInfo(string(jsonData))
+		prefixedLogger.PrintVerbose("Received OpenTelemetry log data in the following format:\n")
+		prefixedLogger.PrintVerbose(string(jsonData))
 	}
 
 	for _, r := range logsData.ResourceLogs {
@@ -184,27 +181,20 @@ func otelV1LogHandler(w http.ResponseWriter, r *http.Request, server *state.Serv
 	return w
 }
 
-func setupOtelHandler(ctx context.Context, server *state.Server, rawLogStream chan<- SelfHostedLogStreamItem, parsedLogStream chan state.ParsedLogStreamItem, prefixedLogger *util.Logger, opts state.CollectionOpts) error {
+func setupOtelHandler(ctx context.Context, server *state.Server, rawLogStream chan<- SelfHostedLogStreamItem, parsedLogStream chan state.ParsedLogStreamItem, prefixedLogger *util.Logger, opts state.CollectionOpts) {
 	otelLogServer := server.Config.LogOtelServer
 
-	if otelLogServer != "" {
-		if !util.SliceContains(otelServers, otelLogServer) {
-			serverMux := http.NewServeMux()
-			serverMux.HandleFunc("/v1/logs", func(w http.ResponseWriter, r *http.Request) {
-				otelV1LogHandler(w, r, server, rawLogStream, parsedLogStream, prefixedLogger, opts)
-			})
+	serverMux := http.NewServeMux()
+	serverMux.HandleFunc("/v1/logs", func(w http.ResponseWriter, r *http.Request) {
+		otelV1LogHandler(w, r, server, rawLogStream, parsedLogStream, prefixedLogger, opts)
+	})
 
-			go func() {
-				err := http.ListenAndServe(otelLogServer, serverMux)
-				prefixedLogger.PrintInfo("Registered OpenTelemetry log handler on %s", otelLogServer)
-				if err != nil {
-					prefixedLogger.PrintError("Error starting server on %s: %v\n", otelLogServer, err)
-				}
-			}()
-			otelServers = append(otelServers, otelLogServer)
-		} else {
-			prefixedLogger.PrintInfo("OpenTelemetry log handler on %s already registered, skipping. Check your configuration for duplicate 'db_log_otel_server' entries.", otelLogServer)
+	go func() {
+		err := http.ListenAndServe(otelLogServer, serverMux)
+		if err != nil {
+			prefixedLogger.PrintError("Error starting server on %s: %v\n", otelLogServer, err)
 		}
-	}
-	return nil
+	}()
+
+	prefixedLogger.PrintVerbose("Registered OpenTelemetry log handler on %s", otelLogServer)
 }
