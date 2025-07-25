@@ -538,12 +538,7 @@ func testOtelLog(ctx context.Context, wg *sync.WaitGroup, server *state.Server, 
 	logTestSucceeded := make(chan bool, 1)
 	parsedLogStream := setupLogStreamer(ctx, wg, opts, logger, []*state.Server{server}, logTestSucceeded, stream.LogTestCollectorIdentify)
 
-	err := selfhosted.SetupOtelHandlerForServer(ctx, wg, opts, logger, server, parsedLogStream)
-	if err != nil {
-		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectLogs, "error setting up OTLP HTTP server for server: %s", err)
-		logger.PrintError("ERROR - Could not set up OTLP HTTP server for server: %s", err)
-		return false
-	}
+	selfhosted.SetupOtelHandlerForServers(ctx, wg, opts, logger, []*state.Server{server}, parsedLogStream)
 
 	EmitTestLogMsg(ctx, server, opts, logger)
 

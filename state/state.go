@@ -239,6 +239,7 @@ type CollectionOpts struct {
 	ForceEmptyGrant  bool
 
 	OutputAsJson bool
+	VeryVerbose  bool
 }
 
 type Grant struct {
