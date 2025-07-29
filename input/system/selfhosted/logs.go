@@ -149,7 +149,7 @@ func SetupOtelHandlerForServers(ctx context.Context, wg *sync.WaitGroup, opts st
 			continue
 		}
 
-		if opts.DebugLogs || opts.TestRun {
+		if opts.DebugLogs || opts.TestRun || logger.Verbose {
 			logger.PrintInfo("Setting up OTLP HTTP server receiving logs with %s", server.Config.LogOtelServer)
 		}
 

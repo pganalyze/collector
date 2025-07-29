@@ -195,6 +195,4 @@ func setupOtelHandler(ctx context.Context, server *state.Server, rawLogStream ch
 			prefixedLogger.PrintError("Error starting server on %s: %v\n", otelLogServer, err)
 		}
 	}()
-
-	prefixedLogger.PrintVerbose("Registered OpenTelemetry log handler on %s", otelLogServer)
 }
