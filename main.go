@@ -65,6 +65,7 @@ func main() {
 	var reload bool
 	var noReload bool
 	var benchmark bool
+	var veryVerbose bool
 
 	logFlags := log.LstdFlags
 	logger := &util.Logger{}
@@ -80,6 +81,7 @@ func main() {
 	flag.BoolVar(&reload, "reload", false, "Reloads the collector daemon that's running on the host")
 	flag.BoolVar(&noReload, "no-reload", false, "Disables automatic config reloading during a test run")
 	flag.BoolVarP(&logger.Verbose, "verbose", "v", false, "Outputs additional debugging information, use this if you're encountering errors or other problems")
+	flag.BoolVarP(&veryVerbose, "very-verbose", "", false, "Enable very verbose logging (will also enable verbose logging)")
 	flag.BoolVarP(&logger.Quiet, "quiet", "q", false, "Only outputs error messages to the logs and hides informational and warning messages")
 	flag.BoolVar(&logToSyslog, "syslog", false, "Write all log output to syslog instead of stderr (disabled by default)")
 	flag.BoolVar(&logToJSON, "json-logs", false, "Write all log output to stderr as newline delimited json (disabled by default, ignored if --syslog is set)")
@@ -92,7 +94,7 @@ func main() {
 	flag.StringVar(&analyzeDebugClassifications, "analyze-debug-classifications", "", "When used with --analyze-logfile, print detailed information about given classifications (can be comma-separated list of integer classifications, or keyword 'all')")
 	flag.StringVar(&filterLogFile, "filter-logfile", "", "Test command that filters all known secrets in the logfile according to the filter-log-secret option")
 	flag.StringVar(&filterLogSecret, "filter-log-secret", "all", "Sets the type of secrets filtered by the filter-logfile test command (default: all)")
-	flag.BoolVar(&debugLogs, "debug-logs", false, "Outputs all log analysis that would be sent, doesn't send any other data (use for debugging only)")
+	flag.BoolVar(&debugLogs, "debug-logs", false, "Outputs all log analysis that would be sent, doesn't send any other data. For some providers, it also outputs incoming logs from the source (use for debugging only)")
 	flag.BoolVar(&discoverLogLocation, "discover-log-location", false, "Tries to automatically discover the location of the Postgres log directory, to support configuring the 'db_log_location' setting")
 	flag.BoolVar(&forceStateUpdate, "force-state-update", false, "Updates the state file even if other options would have prevented it (intended to be used together with --dry-run for debugging)")
 	flag.BoolVar(&noPostgresRelations, "no-postgres-relations", false, "Don't collect any Postgres relation information (not recommended)")
@@ -147,6 +149,10 @@ func main() {
 		testRun = true
 	}
 
+	if veryVerbose {
+		logger.Verbose = true
+	}
+
 	opts := state.CollectionOpts{
 		StartedAt:                        time.Now(),
 		SubmitCollectedData:              !benchmark && true,
@@ -169,6 +175,7 @@ func main() {
 		WriteStateUpdate:                 (!dryRun && !dryRunLogs && !testRun) || forceStateUpdate,
 		ForceEmptyGrant:                  dryRun || dryRunLogs || testRunLogs || benchmark,
 		OutputAsJson:                     !benchmark,
+		VeryVerbose:                      veryVerbose,
 	}
 
 	if reload && !testRun {

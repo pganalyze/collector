@@ -2,6 +2,7 @@ package selfhosted
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"net/http"
 	"strconv"
@@ -67,7 +68,6 @@ func logLineFromJsonlog(record *common.KeyValueList, logParser state.LogParser) 
 		detailLine.LogLevel = pganalyze_collector.LogLineInformation_DETAIL
 		return logLine, &detailLine
 	}
-
 	return logLine, nil
 }
 
@@ -105,73 +105,94 @@ func skipDueToK8sFilter(kubernetes *common.KeyValueList, server *state.Server, p
 	return false
 }
 
-func setupOtelHandler(ctx context.Context, server *state.Server, rawLogStream chan<- SelfHostedLogStreamItem, parsedLogStream chan state.ParsedLogStreamItem, prefixedLogger *util.Logger) error {
-	otelLogServer := server.Config.LogOtelServer
+func otelV1LogHandler(w http.ResponseWriter, r *http.Request, server *state.Server, rawLogStream chan<- SelfHostedLogStreamItem, parsedLogStream chan state.ParsedLogStreamItem, prefixedLogger *util.Logger, opts state.CollectionOpts) http.ResponseWriter {
 	logParser := server.GetLogParser()
-	go func() {
-		http.HandleFunc("/v1/logs", func(w http.ResponseWriter, r *http.Request) {
-			b, err := io.ReadAll(r.Body)
-			if err != nil {
-				prefixedLogger.PrintError("Could not read otel body")
-			}
-			logsData := &otlpLogs.LogsData{}
-			if err := proto.Unmarshal(b, logsData); err != nil {
-				prefixedLogger.PrintError("Could not unmarshal otel body")
-			}
-			for _, r := range logsData.ResourceLogs {
-				for _, s := range r.ScopeLogs {
-					for _, l := range s.LogRecords {
-						var logger string
-						var record *common.KeyValueList
-						var kubernetes *common.KeyValueList
-						hasErrorSeverity := false
-						if l.Body.GetKvlistValue() != nil {
-							for _, v := range l.Body.GetKvlistValue().Values {
-								if v.Key == "logger" {
-									logger = v.Value.GetStringValue()
-								}
-								if v.Key == "record" {
-									record = v.Value.GetKvlistValue()
-								}
-								if v.Key == "kubernetes" {
-									kubernetes = v.Value.GetKvlistValue()
-								}
-								if v.Key == "error_severity" {
-									hasErrorSeverity = true
-								}
-							}
-							// TODO: Support other logger names (this is only tested with CNPG)
-							if logger == "postgres" {
-								// jsonlog wrapped in K8s context (via fluentbit)
-								logLine, detailLine := logLineFromJsonlog(record, logParser)
-								if skipDueToK8sFilter(kubernetes, server, prefixedLogger) {
-									continue
-								}
+	b, err := io.ReadAll(r.Body)
 
-								parsedLogStream <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: logLine}
-								if detailLine != nil {
-									parsedLogStream <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: *detailLine}
-								}
-							} else if logger == "" && hasErrorSeverity {
-								// simple jsonlog (Postgres jsonlog has error_severity key)
-								logLine, detailLine := logLineFromJsonlog(l.Body.GetKvlistValue(), logParser)
-								parsedLogStream <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: logLine}
-								if detailLine != nil {
-									parsedLogStream <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: *detailLine}
-								}
-							}
-						} else if l.Body.GetStringValue() != "" {
-							// plain log message
-							item := SelfHostedLogStreamItem{}
-							item.Line = l.Body.GetStringValue()
-							item.OccurredAt = time.Unix(0, int64(l.TimeUnixNano))
-							rawLogStream <- item
+	if err != nil {
+		prefixedLogger.PrintError("Could not read otel body")
+	}
+	logsData := &otlpLogs.LogsData{}
+	if err := proto.Unmarshal(b, logsData); err != nil {
+		prefixedLogger.PrintError("Could not unmarshal otel body")
+	}
+
+	if opts.VeryVerbose {
+		jsonData, err := json.MarshalIndent(logsData, "", "  ")
+		if err != nil {
+			prefixedLogger.PrintVerbose("Failed to convert protobuf to JSON: %v", err)
+		}
+		prefixedLogger.PrintVerbose("Received OpenTelemetry log data in the following format:\n")
+		prefixedLogger.PrintVerbose(string(jsonData))
+	}
+
+	for _, r := range logsData.ResourceLogs {
+		for _, s := range r.ScopeLogs {
+			for _, l := range s.LogRecords {
+				var logger string
+				var record *common.KeyValueList
+				var kubernetes *common.KeyValueList
+				hasErrorSeverity := false
+				if l.Body.GetKvlistValue() != nil {
+					for _, v := range l.Body.GetKvlistValue().Values {
+						if v.Key == "logger" {
+							logger = v.Value.GetStringValue()
+						}
+						if v.Key == "record" {
+							record = v.Value.GetKvlistValue()
+						}
+						if v.Key == "kubernetes" {
+							kubernetes = v.Value.GetKvlistValue()
+						}
+						if v.Key == "error_severity" {
+							hasErrorSeverity = true
 						}
 					}
+					// TODO: Support other logger names (this is only tested with CNPG)
+					if logger == "postgres" {
+						// jsonlog wrapped in K8s context (via fluentbit)
+						logLine, detailLine := logLineFromJsonlog(record, logParser)
+						if skipDueToK8sFilter(kubernetes, server, prefixedLogger) {
+							continue
+						}
+
+						parsedLogStream <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: logLine}
+						if detailLine != nil {
+							parsedLogStream <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: *detailLine}
+						}
+					} else if logger == "" && hasErrorSeverity {
+						// simple jsonlog (Postgres jsonlog has error_severity key)
+						logLine, detailLine := logLineFromJsonlog(l.Body.GetKvlistValue(), logParser)
+						parsedLogStream <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: logLine}
+						if detailLine != nil {
+							parsedLogStream <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: *detailLine}
+						}
+					}
+				} else if l.Body.GetStringValue() != "" {
+					// plain log message
+					item := SelfHostedLogStreamItem{}
+					item.Line = l.Body.GetStringValue()
+					item.OccurredAt = time.Unix(0, int64(l.TimeUnixNano))
+					rawLogStream <- item
 				}
 			}
-		})
-		http.ListenAndServe(otelLogServer, nil)
+		}
+	}
+	return w
+}
+
+func setupOtelHandler(ctx context.Context, server *state.Server, rawLogStream chan<- SelfHostedLogStreamItem, parsedLogStream chan state.ParsedLogStreamItem, prefixedLogger *util.Logger, opts state.CollectionOpts) {
+	otelLogServer := server.Config.LogOtelServer
+
+	serverMux := http.NewServeMux()
+	serverMux.HandleFunc("/v1/logs", func(w http.ResponseWriter, r *http.Request) {
+		otelV1LogHandler(w, r, server, rawLogStream, parsedLogStream, prefixedLogger, opts)
+	})
+
+	go func() {
+		err := http.ListenAndServe(otelLogServer, serverMux)
+		if err != nil {
+			prefixedLogger.PrintError("Error starting server on %s: %v\n", otelLogServer, err)
+		}
 	}()
-	return nil
 }
