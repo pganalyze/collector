@@ -287,7 +287,7 @@ func ParseRecordToLogLines(in AzurePostgresLogRecord, parser state.LogParser) ([
 	}
 	logLine, ok := parser.ParseLine(logLineContent)
 	if !ok {
-		return []state.LogLine{}, fmt.Errorf("Can't parse log line: \"%s\"", logLineContent)
+		return []state.LogLine{}, fmt.Errorf("can't parse log line: \"%s\"", logLineContent)
 	}
 
 	logLines := []state.LogLine{logLine}
@@ -322,6 +322,14 @@ func setupLogTransformer(ctx context.Context, wg *sync.WaitGroup, servers []*sta
 			case in, ok := <-in:
 				if !ok {
 					return
+				}
+				if opts.VeryVerbose {
+					jsonData, err := json.MarshalIndent(in, "", "  ")
+					if err != nil {
+						logger.PrintVerbose("Failed to convert AzurePostgresLogRecord struct to JSON: %v", err)
+					}
+					logger.PrintVerbose("Received Azure EventHub log data in the following format:\n")
+					logger.PrintVerbose(string(jsonData))
 				}
 
 				azureDbServerName := GetServerNameFromRecord(in)
