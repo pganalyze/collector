@@ -42,29 +42,30 @@ type LogStreamItem struct {
 	Content               string
 }
 
-func setupPubSubSubscriber(ctx context.Context, wg *sync.WaitGroup, logger *util.Logger, config config.ServerConfig, gcpLogStream chan LogStreamItem) error {
+func setupPubSubSubscriber(ctx context.Context, wg *sync.WaitGroup, logger *util.Logger, config config.ServerConfig, gcpLogStream chan LogStreamItem, opts state.CollectionOpts) error {
 	if strings.Count(config.GcpPubsubSubscription, "/") != 3 {
-		return fmt.Errorf("Unsupported subscription format - must be \"projects/PROJECT_NAME/subscriptions/SUBSCRIPTION_NAME\", got: %s", config.GcpPubsubSubscription)
+		return fmt.Errorf("unsupported subscription format - must be \"projects/PROJECT_NAME/subscriptions/SUBSCRIPTION_NAME\", got: %s", config.GcpPubsubSubscription)
 	}
 	idParts := strings.SplitN(config.GcpPubsubSubscription, "/", 4)
 	projectID := idParts[1]
 	subID := idParts[3]
 
-	var opts []option.ClientOption
+	var clientOpts []option.ClientOption
 	if config.GcpCredentialsFile != "" {
 		logger.PrintVerbose("Using GCP credentials file located at: %s", config.GcpCredentialsFile)
-		opts = append(opts, option.WithCredentialsFile(config.GcpCredentialsFile))
+		clientOpts = append(clientOpts, option.WithCredentialsFile(config.GcpCredentialsFile))
 	} else {
 		logger.PrintVerbose("No GCP credentials file provided; assuming GKE workload identity or VM-associated service account")
 	}
-	client, err := pubsub.NewClient(ctx, projectID, opts...)
+	client, err := pubsub.NewClient(ctx, projectID, clientOpts...)
 	if err != nil {
-		return fmt.Errorf("Failed to create Google PubSub client: %v", err)
+		return fmt.Errorf("failed to create Google PubSub client: %v", err)
 	}
 
 	sub := client.Subscription(subID)
+	wg.Add(1)
 	go func(ctx context.Context, wg *sync.WaitGroup, logger *util.Logger, sub *pubsub.Subscription) {
-		wg.Add(1)
+		defer wg.Done()
 
 		for {
 			logger.PrintVerbose("Initializing Google Pub/Sub handler")
@@ -78,7 +79,17 @@ func setupPubSubSubscriber(ctx context.Context, wg *sync.WaitGroup, logger *util
 					return
 				}
 
-				if msg.Resource.ResourceType == "cloudsql_database" {
+				if opts.VeryVerbose {
+					jsonData, err := json.MarshalIndent(msg, "", "  ")
+					if err != nil {
+						logger.PrintVerbose("Failed to convert googleLogMessage struct to JSON: %v", err)
+					}
+					logger.PrintVerbose("Received Google Pub/Sub log data in the following format:\n")
+					logger.PrintVerbose(string(jsonData))
+				}
+
+				switch msg.Resource.ResourceType {
+				case "cloudsql_database":
 					if !strings.HasSuffix(msg.LogName, "postgres.log") {
 						return
 					}
@@ -97,7 +108,7 @@ func setupPubSubSubscriber(ctx context.Context, wg *sync.WaitGroup, logger *util
 						OccurredAt:            t,
 					}
 					return
-				} else if msg.Resource.ResourceType == "alloydb.googleapis.com/Instance" {
+				case "alloydb.googleapis.com/Instance":
 					if !strings.HasSuffix(msg.LogName, "postgres.log") {
 						return
 					}
@@ -133,7 +144,6 @@ func setupPubSubSubscriber(ctx context.Context, wg *sync.WaitGroup, logger *util
 			logger.PrintError("Failed to receive from Google PubSub, retrying in 1 minute: %v", err)
 			time.Sleep(1 * time.Minute)
 		}
-		wg.Done()
 	}(ctx, wg, logger, sub)
 
 	return nil
@@ -153,7 +163,7 @@ func SetupLogSubscriber(ctx context.Context, wg *sync.WaitGroup, opts state.Coll
 			if ok {
 				continue
 			}
-			err := setupPubSubSubscriber(ctx, wg, prefixedLogger, server.Config, gcpLogStream)
+			err := setupPubSubSubscriber(ctx, wg, prefixedLogger, server.Config, gcpLogStream, opts)
 			if err != nil {
 				if opts.TestRun {
 					return err
