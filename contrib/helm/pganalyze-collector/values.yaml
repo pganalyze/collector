@@ -68,7 +68,7 @@ serviceAccount:
   name: ""
 
 service:
-  # -- Specifies whether a service should be created for receiving logs via OpenTelemtry
+  # -- Specifies whether a service should be created for receiving logs via OpenTelemetry.
   # This service is used when Postgres is running within the cluster and Postgres logs
   # are sent out to the collector using log collectors like Fluent Bit
   create: false
@@ -84,6 +84,16 @@ service:
   # -- The target port of the log OTEL server port.
   # This should match to the port number specified with db_log_otel_server
   targetPort: 4318
+  # -- The list of port and target ports for OTEL logging.
+  # When this is specified, above port and targetPort will be ignored.
+  # If you need to have multiple log OTEL servers, use this.
+  ports:
+    - name: otel1
+      port: 4318
+      targetPort: 4318
+    - name: otel2
+      port: 4319
+      targetPort: 4319
 
 podAnnotations: {}
 
