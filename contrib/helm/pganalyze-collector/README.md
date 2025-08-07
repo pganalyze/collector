@@ -47,10 +47,10 @@ pganalyze statistics collector
 | securityContext.runAsNonRoot | bool | `true` |  |
 | securityContext.runAsUser | int | `1000` |  |
 | securityContext.seccompProfile.type | string | `"RuntimeDefault"` |  |
-| service.create | bool | `false` | Specifies whether a service should be created for receiving logs via OpenTelemtry This service is used when Postgres is running within the cluster and Postgres logs are sent out to the collector using log collectors like Fluent Bit |
+| service.create | bool | `false` | Specifies whether a service should be created for receiving logs via OpenTelemetry. This service is used when Postgres is running within the cluster and Postgres logs are sent out to the collector using log collectors like Fluent Bit |
 | service.name | string | `"pganalyze-collector-otel-service"` | The name of the service to use. If not set and create is true, a name is generated using the fullname template. This is the name referenced by the log sender like Fluent Bit |
 | service.port | int | `4318` | The port of service. This is the port referenced by the log sender like Fluent Bit |
-| service.ports | list | `[{"name":"otel1","port":4318,"targetPort":4318},{"name":"otel2","port":4319,"targetPort":4319}]` | The list of port and target ports for OTEL logging When this is specified, above port and targetPort will be ignored. If you need to have multiple log OTEL servers, use this. |
+| service.ports | list | `[{"name":"otel1","port":4318,"targetPort":4318},{"name":"otel2","port":4319,"targetPort":4319}]` | The list of port and target ports for OTEL logging. When this is specified, above port and targetPort will be ignored. If you need to have multiple log OTEL servers, use this. |
 | service.targetPort | int | `4318` | The target port of the log OTEL server port. This should match to the port number specified with db_log_otel_server |
 | service.type | string | `"ClusterIP"` | The type of service to create. |
 | serviceAccount.annotations | object | `{}` | Annotations to add to the service account |
