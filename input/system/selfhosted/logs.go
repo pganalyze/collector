@@ -183,7 +183,7 @@ func SetupLogTails(ctx context.Context, wg *sync.WaitGroup, opts state.Collectio
 			}
 		} else if server.Config.LogSyslogServer != "" {
 			logStream := setupLogTransformer(ctx, wg, server, opts, prefixedLogger, parsedLogStream)
-			err := setupSyslogHandler(ctx, server.Config, logStream, prefixedLogger)
+			err := setupSyslogHandler(ctx, server.Config, logStream, prefixedLogger, opts)
 			if err != nil {
 				prefixedLogger.PrintError("ERROR - %s", err)
 			}

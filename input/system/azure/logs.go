@@ -191,7 +191,7 @@ func runEventHubHandlers(ctx context.Context, partitionIDs []string, logger *uti
 	wg.Wait()
 }
 
-func setupEventHubReceiver(ctx context.Context, wg *sync.WaitGroup, logger *util.Logger, config config.ServerConfig, azureLogStream chan AzurePostgresLogRecord) error {
+func setupEventHubReceiver(ctx context.Context, wg *sync.WaitGroup, logger *util.Logger, config config.ServerConfig, azureLogStream chan AzurePostgresLogRecord, opts state.CollectionOpts) error {
 	partitionIDs, err := getEventHubPartitionIDs(ctx, config)
 	if err != nil {
 		return err
@@ -204,6 +204,14 @@ func setupEventHubReceiver(ctx context.Context, wg *sync.WaitGroup, logger *util
 		err = json.Unmarshal(event.Body, &eventData)
 		if err != nil {
 			logger.PrintWarning("Error parsing Azure Event Hub event: %s", err)
+		}
+		if opts.VeryVerbose {
+			jsonData, err := json.MarshalIndent(eventData, "", "  ")
+			if err != nil {
+				logger.PrintVerbose("Failed to convert AzureEventHubData struct to JSON: %v", err)
+			}
+			logger.PrintVerbose("Received Azure EventHub log data in the following format:\n")
+			logger.PrintVerbose(string(jsonData))
 		}
 		for _, record := range eventData.Records {
 			if record.Category == "PostgreSQLLogs" && record.OperationName == "LogEvent" {
@@ -230,7 +238,7 @@ func SetupLogSubscriber(ctx context.Context, wg *sync.WaitGroup, opts state.Coll
 			if _, ok := eventHubReceivers[server.Config.AzureEventhubNamespace+"/"+server.Config.AzureEventhubName]; ok {
 				continue
 			}
-			err := setupEventHubReceiver(ctx, wg, prefixedLogger, server.Config, azureLogStream)
+			err := setupEventHubReceiver(ctx, wg, prefixedLogger, server.Config, azureLogStream, opts)
 			if err != nil {
 				if opts.TestRun {
 					return err
@@ -287,7 +295,7 @@ func ParseRecordToLogLines(in AzurePostgresLogRecord, parser state.LogParser) ([
 	}
 	logLine, ok := parser.ParseLine(logLineContent)
 	if !ok {
-		return []state.LogLine{}, fmt.Errorf("Can't parse log line: \"%s\"", logLineContent)
+		return []state.LogLine{}, fmt.Errorf("can't parse log line: \"%s\"", logLineContent)
 	}
 
 	logLines := []state.LogLine{logLine}
