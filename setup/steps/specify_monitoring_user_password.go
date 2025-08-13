@@ -7,24 +7,24 @@ import (
 	"fmt"
 
 	survey "github.com/AlecAivazis/survey/v2"
-	s "github.com/pganalyze/collector/setup/state"
+	"github.com/pganalyze/collector/setup/state"
 )
 
-var SpecifyMonitoringUserPasswd = &s.Step{
+var SpecifyMonitoringUserPasswd = &state.Step{
 	ID:          "specify_monitoring_user_password",
 	Description: "Specify monitoring user password (db_password) in the collector config file",
-	Check: func(state *s.SetupState) (bool, error) {
-		return state.CurrentSection.HasKey("db_password"), nil
+	Check: func(s *state.SetupState) (bool, error) {
+		return s.CurrentSection.HasKey("db_password"), nil
 	},
-	Run: func(state *s.SetupState) error {
+	Run: func(s *state.SetupState) error {
 		var passwordStrategy int
-		if state.Inputs.Scripted {
-			if state.Inputs.GenerateMonitoringPassword.Valid && state.Inputs.GenerateMonitoringPassword.Bool {
-				if state.Inputs.Settings.DBPassword.Valid && state.Inputs.Settings.DBPassword.String != "" {
+		if s.Inputs.Scripted {
+			if s.Inputs.GenerateMonitoringPassword.Valid && s.Inputs.GenerateMonitoringPassword.Bool {
+				if s.Inputs.Settings.DBPassword.Valid && s.Inputs.Settings.DBPassword.String != "" {
 					return errors.New("cannot specify both generate password and set explicit password")
 				}
 				passwordStrategy = 0
-			} else if state.Inputs.Settings.DBPassword.Valid && state.Inputs.Settings.DBPassword.String != "" {
+			} else if s.Inputs.Settings.DBPassword.Valid && s.Inputs.Settings.DBPassword.String != "" {
 				passwordStrategy = 1
 			} else {
 				return errors.New("no db_password specified and generate_monitoring_password flag not set")
@@ -45,8 +45,8 @@ var SpecifyMonitoringUserPasswd = &s.Step{
 			rand.Read(passwdBytes)
 			pgaPasswd = hex.EncodeToString(passwdBytes)
 		} else if passwordStrategy == 1 {
-			if state.Inputs.Scripted {
-				pgaPasswd = state.Inputs.Settings.DBPassword.String
+			if s.Inputs.Scripted {
+				pgaPasswd = s.Inputs.Settings.DBPassword.String
 			} else {
 				err := survey.AskOne(&survey.Input{
 					Message: "Enter password for the collector to use (will be saved to collector config):",
@@ -59,11 +59,11 @@ var SpecifyMonitoringUserPasswd = &s.Step{
 			panic(fmt.Sprintf("unexpected password option selection: %d", passwordStrategy))
 		}
 
-		_, err := state.CurrentSection.NewKey("db_password", pgaPasswd)
+		_, err := s.CurrentSection.NewKey("db_password", pgaPasswd)
 		if err != nil {
 			return err
 		}
 
-		return state.SaveConfig()
+		return s.SaveConfig()
 	},
 }

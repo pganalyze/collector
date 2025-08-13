@@ -15,7 +15,7 @@ import (
 	survey "github.com/AlecAivazis/survey/v2"
 
 	"github.com/pganalyze/collector/setup/log"
-	s "github.com/pganalyze/collector/setup/state"
+	"github.com/pganalyze/collector/setup/state"
 	"github.com/pganalyze/collector/setup/steps"
 )
 
@@ -24,7 +24,7 @@ const defaultConfigFile = "/etc/pganalyze-collector.conf"
 var ErrSetupPrep = errors.New("Failure before beginning guided setup")
 
 func main() {
-	steps := []*s.Step{
+	steps := []*state.Step{
 		steps.CheckPlatform,
 		steps.ConfirmSuperuserConnection,
 		steps.CheckPostgresVersion,
@@ -62,7 +62,7 @@ func main() {
 		steps.ConfirmEmitTestExplain,
 	}
 
-	var setupState s.SetupState
+	var setupState state.SetupState
 	var quiet bool
 	var logFile string
 	var inputsFile string
@@ -102,9 +102,9 @@ func main() {
 	}
 	setupState.Logger = &logger
 
-	var inputs s.SetupInputs
+	var inputs state.SetupInputs
 	if recommended {
-		inputs = s.RecommendedInputs
+		inputs = state.RecommendedInputs
 	}
 	if inputsFile != "" {
 		inputsReader, err := os.Open(inputsFile)
@@ -213,10 +213,10 @@ again. We can pick up where you left off.`)
 	for _, step := range steps {
 		skipLogInsights := setupState.Inputs.ConfirmSetUpLogInsights.Valid && !setupState.Inputs.ConfirmSetUpLogInsights.Bool
 		skipAutomatedExplain := setupState.Inputs.ConfirmSetUpAutomatedExplain.Valid && !setupState.Inputs.ConfirmSetUpAutomatedExplain.Bool
-		if step.Kind == s.LogInsightsStep && skipLogInsights {
+		if step.Kind == state.LogInsightsStep && skipLogInsights {
 			continue
 		}
-		if step.Kind == s.AutomatedExplainStep && (skipLogInsights || skipAutomatedExplain) {
+		if step.Kind == state.AutomatedExplainStep && (skipLogInsights || skipAutomatedExplain) {
 			continue
 		}
 
@@ -233,7 +233,7 @@ Collector setup complete!
 For next steps, go back to the pganalyze app in your web browser.`)
 }
 
-func doStep(setupState *s.SetupState, step *s.Step) error {
+func doStep(setupState *state.SetupState, step *state.Step) error {
 	if step.Check == nil {
 		panic("step missing completion check")
 	}
@@ -275,8 +275,8 @@ func doStep(setupState *s.SetupState, step *s.Step) error {
 	return nil
 }
 
-func loadCollectorConfig(state *s.SetupState) error {
-	config, err := ini.Load(state.ConfigFilename)
+func loadCollectorConfig(s *state.SetupState) error {
+	config, err := ini.Load(s.ConfigFilename)
 	if err != nil {
 		return err
 	}
@@ -286,18 +286,18 @@ func loadCollectorConfig(state *s.SetupState) error {
 		// N.B.: DEFAULT section, pganalyze section, server section
 		return fmt.Errorf("not supported for config file defining more than one server")
 	}
-	state.Config = config
+	s.Config = config
 	for _, section := range config.Sections() {
 		if section.Name() == "pganalyze" {
-			state.PGAnalyzeSection = section
+			s.PGAnalyzeSection = section
 		} else if section.Name() == "DEFAULT" {
 			continue
 		} else {
-			state.CurrentSection = section
+			s.CurrentSection = section
 		}
 	}
 
-	if state.CurrentSection.HasKey("db_url") {
+	if s.CurrentSection.HasKey("db_url") {
 		return errors.New("not supported when db_url is already configured")
 	}
 

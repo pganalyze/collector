@@ -12,45 +12,45 @@ import (
 	survey "github.com/AlecAivazis/survey/v2"
 	"github.com/go-ini/ini"
 	"github.com/pganalyze/collector/setup/query"
-	s "github.com/pganalyze/collector/setup/state"
+	"github.com/pganalyze/collector/setup/state"
 )
 
-var SpecifyDbLogLocation = &s.Step{
+var SpecifyDbLogLocation = &state.Step{
 	ID:          "li_specify_db_log_location",
-	Kind:        s.LogInsightsStep,
+	Kind:        state.LogInsightsStep,
 	Description: "Specify the location of Postgres log files (db_log_location) in the collector config file",
-	Check: func(state *s.SetupState) (bool, error) {
-		return state.CurrentSection.HasKey("db_log_location"), nil
+	Check: func(s *state.SetupState) (bool, error) {
+		return s.CurrentSection.HasKey("db_log_location"), nil
 	},
-	Run: func(state *s.SetupState) error {
+	Run: func(s *state.SetupState) error {
 		var logLocation string
-		if state.Inputs.Scripted {
-			loc, err := getLogLocationScripted(state)
+		if s.Inputs.Scripted {
+			loc, err := getLogLocationScripted(s)
 			if err != nil {
 				return err
 			}
 			logLocation = loc
 		} else {
-			loc, err := getLogLocationInteractive(state)
+			loc, err := getLogLocationInteractive(s)
 			if err != nil {
 				return err
 			}
 			logLocation = loc
 		}
 
-		_, err := state.CurrentSection.NewKey("db_log_location", logLocation)
+		_, err := s.CurrentSection.NewKey("db_log_location", logLocation)
 		if err != nil {
 			return err
 		}
-		return state.SaveConfig()
+		return s.SaveConfig()
 	},
 }
 
-func getLogLocationScripted(state *s.SetupState) (string, error) {
-	doGuess := state.Inputs.GuessLogLocation.Valid && state.Inputs.GuessLogLocation.Bool
+func getLogLocationScripted(s *state.SetupState) (string, error) {
+	doGuess := s.Inputs.GuessLogLocation.Valid && s.Inputs.GuessLogLocation.Bool
 
-	if state.Inputs.Settings.DBLogLocation.Valid {
-		explicitVal := state.Inputs.Settings.DBLogLocation.String
+	if s.Inputs.Settings.DBLogLocation.Valid {
+		explicitVal := s.Inputs.Settings.DBLogLocation.String
 		if doGuess && explicitVal != "" {
 			return "", errors.New("cannot specify both guess_log_location and set explicit db_log_location")
 		}
@@ -61,17 +61,17 @@ func getLogLocationScripted(state *s.SetupState) (string, error) {
 		return "", errors.New("db_log_location not provided and guess_log_location flag not set")
 	}
 
-	guessedLogLocation, err := discoverLogLocation(state.CurrentSection, state.QueryRunner)
+	guessedLogLocation, err := discoverLogLocation(s.CurrentSection, s.QueryRunner)
 	if err != nil {
 		return "", fmt.Errorf("could not determine Postgres log location automatically: %s", err)
 	}
 	return guessedLogLocation, nil
 }
 
-func getLogLocationInteractive(state *s.SetupState) (string, error) {
-	guessedLogLocation, err := discoverLogLocation(state.CurrentSection, state.QueryRunner)
+func getLogLocationInteractive(s *state.SetupState) (string, error) {
+	guessedLogLocation, err := discoverLogLocation(s.CurrentSection, s.QueryRunner)
 	if err != nil {
-		state.Verbose("could not determine Postgres log location automatically: %s", err)
+		s.Verbose("could not determine Postgres log location automatically: %s", err)
 	} else {
 		var logLocationConfirmed bool
 		err = survey.AskOne(&survey.Confirm{

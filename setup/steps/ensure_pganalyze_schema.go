@@ -6,14 +6,14 @@ import (
 
 	survey "github.com/AlecAivazis/survey/v2"
 	"github.com/lib/pq"
-	s "github.com/pganalyze/collector/setup/state"
+	"github.com/pganalyze/collector/setup/state"
 )
 
-var EnsurePganalyzeSchema = &s.Step{
+var EnsurePganalyzeSchema = &state.Step{
 	ID:          "ensure_pganalyze_schema",
 	Description: "Ensure the pganalyze schema exists and db_user in the collector config file has USAGE privilege on it",
-	Check: func(state *s.SetupState) (bool, error) {
-		row, err := state.QueryRunner.QueryRow("SELECT COUNT(*) FROM pg_namespace WHERE nspname = 'pganalyze'")
+	Check: func(s *state.SetupState) (bool, error) {
+		row, err := s.QueryRunner.QueryRow("SELECT COUNT(*) FROM pg_namespace WHERE nspname = 'pganalyze'")
 		if err != nil {
 			return false, err
 		}
@@ -21,12 +21,12 @@ var EnsurePganalyzeSchema = &s.Step{
 		if count != 1 {
 			return false, nil
 		}
-		userKey, err := state.CurrentSection.GetKey("db_username")
+		userKey, err := s.CurrentSection.GetKey("db_username")
 		if err != nil {
 			return false, err
 		}
 		pgaUser := userKey.String()
-		row, err = state.QueryRunner.QueryRow(fmt.Sprintf("SELECT has_schema_privilege(%s, 'pganalyze', 'USAGE')", pq.QuoteLiteral(pgaUser)))
+		row, err = s.QueryRunner.QueryRow(fmt.Sprintf("SELECT has_schema_privilege(%s, 'pganalyze', 'USAGE')", pq.QuoteLiteral(pgaUser)))
 		if err != nil {
 			return false, err
 		}
@@ -37,13 +37,13 @@ var EnsurePganalyzeSchema = &s.Step{
 
 		return true, nil
 	},
-	Run: func(state *s.SetupState) error {
+	Run: func(s *state.SetupState) error {
 		var doSetup bool
-		if state.Inputs.Scripted {
-			if !state.Inputs.EnsureHelperFunctions.Valid || !state.Inputs.EnsureHelperFunctions.Bool {
+		if s.Inputs.Scripted {
+			if !s.Inputs.EnsureHelperFunctions.Valid || !s.Inputs.EnsureHelperFunctions.Bool {
 				return errors.New("create_helper_functions flag not set and pganalyze schema or helper functions do not exist")
 			}
-			doSetup = state.Inputs.EnsureHelperFunctions.Bool
+			doSetup = s.Inputs.EnsureHelperFunctions.Bool
 		} else {
 			err := survey.AskOne(&survey.Confirm{
 				Message: "Create pganalyze schema and helper functions (will be saved to Postgres)?",
@@ -60,13 +60,13 @@ var EnsurePganalyzeSchema = &s.Step{
 			return nil
 		}
 
-		userKey, err := state.CurrentSection.GetKey("db_username")
+		userKey, err := s.CurrentSection.GetKey("db_username")
 		if err != nil {
 			return err
 		}
 		pgaUser := userKey.String()
 
-		return state.QueryRunner.Exec(
+		return s.QueryRunner.Exec(
 			fmt.Sprintf(
 				`CREATE SCHEMA IF NOT EXISTS pganalyze; GRANT USAGE ON SCHEMA pganalyze TO %s;`,
 				pq.QuoteIdentifier(pgaUser),

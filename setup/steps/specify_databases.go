@@ -6,18 +6,18 @@ import (
 	"strings"
 
 	survey "github.com/AlecAivazis/survey/v2"
-	s "github.com/pganalyze/collector/setup/state"
+	"github.com/pganalyze/collector/setup/state"
 )
 
-var SpecifyDatabases = &s.Step{
+var SpecifyDatabases = &state.Step{
 	ID:          "specify_databases",
 	Description: "Specify database(s) to monitor (db_name) in the collector config file",
-	Check: func(state *s.SetupState) (bool, error) {
-		hasDb := state.CurrentSection.HasKey("db_name")
+	Check: func(s *state.SetupState) (bool, error) {
+		hasDb := s.CurrentSection.HasKey("db_name")
 		if !hasDb {
 			return false, nil
 		}
-		key, err := state.CurrentSection.GetKey("db_name")
+		key, err := s.CurrentSection.GetKey("db_name")
 		if err != nil {
 			return false, err
 		}
@@ -30,11 +30,11 @@ var SpecifyDatabases = &s.Step{
 		// this is important for extensions and helper functions. Note that we
 		// need to do this in Check, rather than the Run, since a subsequent
 		// execution, resuming an incomplete setup, will not run Run again
-		state.QueryRunner.Database = db
+		s.QueryRunner.Database = db
 		return true, nil
 	},
-	Run: func(state *s.SetupState) error {
-		rows, err := state.QueryRunner.Query("SELECT datname FROM pg_database WHERE datallowconn AND NOT datistemplate")
+	Run: func(s *state.SetupState) error {
+		rows, err := s.QueryRunner.Query("SELECT datname FROM pg_database WHERE datallowconn AND NOT datistemplate")
 		if err != nil {
 			return err
 		}
@@ -44,11 +44,11 @@ var SpecifyDatabases = &s.Step{
 		}
 
 		var dbNames []string
-		if state.Inputs.Scripted {
-			if !state.Inputs.Settings.DBName.Valid {
+		if s.Inputs.Scripted {
+			if !s.Inputs.Settings.DBName.Valid {
 				return errors.New("no db_name setting specified")
 			}
-			dbNameInputs := strings.Split(state.Inputs.Settings.DBName.String, ",")
+			dbNameInputs := strings.Split(s.Inputs.Settings.DBName.String, ",")
 			for i, dbNameInput := range dbNameInputs {
 				trimmed := strings.TrimSpace(dbNameInput)
 				if trimmed == "*" {
@@ -128,11 +128,11 @@ var SpecifyDatabases = &s.Step{
 		}
 
 		dbNamesStr := strings.Join(dbNames, ",")
-		_, err = state.CurrentSection.NewKey("db_name", dbNamesStr)
+		_, err = s.CurrentSection.NewKey("db_name", dbNamesStr)
 		if err != nil {
 			return err
 		}
 
-		return state.SaveConfig()
+		return s.SaveConfig()
 	},
 }

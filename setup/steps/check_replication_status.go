@@ -3,14 +3,14 @@ package steps
 import (
 	"errors"
 
-	s "github.com/pganalyze/collector/setup/state"
+	"github.com/pganalyze/collector/setup/state"
 )
 
-var CheckReplicationStatus = &s.Step{
+var CheckReplicationStatus = &state.Step{
 	ID:          "check_replication_status",
 	Description: "Check whether the database is a replica, which is currently unsupported by pganalyze guided setup",
-	Check: func(state *s.SetupState) (bool, error) {
-		result, err := state.QueryRunner.QueryRow("SELECT pg_is_in_recovery()")
+	Check: func(s *state.SetupState) (bool, error) {
+		result, err := s.QueryRunner.QueryRow("SELECT pg_is_in_recovery()")
 		if err != nil {
 			return false, err
 		}

@@ -8,21 +8,21 @@ import (
 
 	survey "github.com/AlecAivazis/survey/v2"
 	"github.com/guregu/null"
-	s "github.com/pganalyze/collector/setup/state"
+	"github.com/pganalyze/collector/setup/state"
 )
 
-var ConfirmEmitTestExplain = &s.Step{
-	Kind:        s.AutomatedExplainStep,
+var ConfirmEmitTestExplain = &state.Step{
+	Kind:        state.AutomatedExplainStep,
 	ID:          "ae_confirm_emit_test_explain",
 	Description: "Invoke the collector EXPLAIN test to generate an EXPLAIN plan based on pg_sleep",
-	Check: func(state *s.SetupState) (bool, error) {
-		return state.DidTestExplainCommand ||
-			state.Inputs.Scripted && (!state.Inputs.ConfirmRunTestExplainCommand.Valid || !state.Inputs.ConfirmRunTestExplainCommand.Bool), nil
+	Check: func(s *state.SetupState) (bool, error) {
+		return s.DidTestExplainCommand ||
+			s.Inputs.Scripted && (!s.Inputs.ConfirmRunTestExplainCommand.Valid || !s.Inputs.ConfirmRunTestExplainCommand.Bool), nil
 	},
-	Run: func(state *s.SetupState) error {
+	Run: func(s *state.SetupState) error {
 		var doTestCommand bool
-		if state.Inputs.Scripted {
-			doTestCommand = state.Inputs.ConfirmRunTestExplainCommand.Valid && state.Inputs.ConfirmRunTestExplainCommand.Bool
+		if s.Inputs.Scripted {
+			doTestCommand = s.Inputs.ConfirmRunTestExplainCommand.Valid && s.Inputs.ConfirmRunTestExplainCommand.Bool
 		} else {
 			err := survey.AskOne(&survey.Confirm{
 				Message: "Issue pg_sleep statement on server to test EXPLAIN configuration",
@@ -32,14 +32,14 @@ var ConfirmEmitTestExplain = &s.Step{
 			if err != nil {
 				return err
 			}
-			state.Inputs.ConfirmRunTestExplainCommand = null.BoolFrom(doTestCommand)
+			s.Inputs.ConfirmRunTestExplainCommand = null.BoolFrom(doTestCommand)
 		}
 		if !doTestCommand {
 			return nil
 		}
 
-		state.Log("")
-		args := []string{"--test-explain", fmt.Sprintf("--config=%s", state.ConfigFilename)}
+		s.Log("")
+		args := []string{"--test-explain", fmt.Sprintf("--config=%s", s.ConfigFilename)}
 		cmd := exec.Command("pganalyze-collector", args...)
 		var stdOut bytes.Buffer
 		cmd.Stdout = &stdOut
@@ -53,9 +53,9 @@ var ConfirmEmitTestExplain = &s.Step{
 			}
 			return fmt.Errorf("test explain command failed: %s", addlInfo)
 		}
-		state.Log("")
+		s.Log("")
 
-		state.DidTestExplainCommand = true
+		s.DidTestExplainCommand = true
 		return nil
 	},
 }

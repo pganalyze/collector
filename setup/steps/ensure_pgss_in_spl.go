@@ -5,28 +5,28 @@ import (
 	"strings"
 
 	survey "github.com/AlecAivazis/survey/v2"
-	s "github.com/pganalyze/collector/setup/state"
+	"github.com/pganalyze/collector/setup/state"
 	"github.com/pganalyze/collector/setup/util"
 )
 
-var EnablePgssInSpl = &s.Step{
+var EnablePgssInSpl = &state.Step{
 	ID:          "ensure_pgss_in_spl",
 	Description: "Ensure the pg_stat_statements extension is included in the shared_preload_libraries setting in Postgres",
-	Check: func(state *s.SetupState) (bool, error) {
-		spl, err := util.GetPendingSharedPreloadLibraries(state.QueryRunner)
+	Check: func(s *state.SetupState) (bool, error) {
+		spl, err := util.GetPendingSharedPreloadLibraries(s.QueryRunner)
 		if err != nil {
 			return false, err
 		}
 
 		return strings.Contains(spl, "pg_stat_statements"), nil
 	},
-	Run: func(state *s.SetupState) error {
+	Run: func(s *state.SetupState) error {
 		var doAdd bool
-		if state.Inputs.Scripted {
-			if !state.Inputs.EnsurePgStatStatementsLoaded.Valid || !state.Inputs.EnsurePgStatStatementsLoaded.Bool {
+		if s.Inputs.Scripted {
+			if !s.Inputs.EnsurePgStatStatementsLoaded.Valid || !s.Inputs.EnsurePgStatStatementsLoaded.Bool {
 				return errors.New("enable_pg_stat_statements flag not set but pg_stat_statements not in shared_preload_libraries")
 			}
-			doAdd = state.Inputs.EnsurePgStatStatementsLoaded.Bool
+			doAdd = s.Inputs.EnsurePgStatStatementsLoaded.Bool
 		} else {
 			err := survey.AskOne(&survey.Confirm{
 				Message: "Add pg_stat_statements to shared_preload_libraries (will be saved to Postgres--requires restart in a later step)?",
@@ -41,7 +41,7 @@ var EnablePgssInSpl = &s.Step{
 			return nil
 		}
 
-		existingSpl, err := util.GetPendingSharedPreloadLibraries(state.QueryRunner)
+		existingSpl, err := util.GetPendingSharedPreloadLibraries(s.QueryRunner)
 		if err != nil {
 			return err
 		}
@@ -52,6 +52,6 @@ var EnablePgssInSpl = &s.Step{
 		} else {
 			newSpl = existingSpl + ",pg_stat_statements"
 		}
-		return util.ApplyConfigSetting("shared_preload_libraries", newSpl, state.QueryRunner)
+		return util.ApplyConfigSetting("shared_preload_libraries", newSpl, s.QueryRunner)
 	},
 }

@@ -7,40 +7,40 @@ import (
 
 	survey "github.com/AlecAivazis/survey/v2"
 	"github.com/pganalyze/collector/logs"
-	s "github.com/pganalyze/collector/setup/state"
+	"github.com/pganalyze/collector/setup/state"
 	"github.com/pganalyze/collector/setup/util"
 )
 
-var ConfigureLogMinDurationStatement = &s.Step{
+var ConfigureLogMinDurationStatement = &state.Step{
 	ID:          "li_ensure_supported_log_min_duration_statement",
-	Kind:        s.LogInsightsStep,
+	Kind:        state.LogInsightsStep,
 	Description: "Ensure the log_min_duration_statement setting in Postgres is supported by the collector",
-	Check: func(state *s.SetupState) (bool, error) {
-		row, err := state.QueryRunner.QueryRow(`SELECT setting FROM pg_settings WHERE name = 'log_min_duration_statement'`)
+	Check: func(s *state.SetupState) (bool, error) {
+		row, err := s.QueryRunner.QueryRow(`SELECT setting FROM pg_settings WHERE name = 'log_min_duration_statement'`)
 		if err != nil {
 			return false, err
 		}
 
 		lmdsVal := row.GetInt(0)
 		needsUpdate := !isSupportedLmds(lmdsVal) ||
-			(state.Inputs.Scripted &&
-				state.Inputs.GUCS.LogMinDurationStatement.Valid &&
-				int(state.Inputs.GUCS.LogMinDurationStatement.Int64) != lmdsVal)
+			(s.Inputs.Scripted &&
+				s.Inputs.GUCS.LogMinDurationStatement.Valid &&
+				int(s.Inputs.GUCS.LogMinDurationStatement.Int64) != lmdsVal)
 		return !needsUpdate, nil
 	},
-	Run: func(state *s.SetupState) error {
-		row, err := state.QueryRunner.QueryRow(`SELECT setting FROM pg_settings WHERE name = 'log_min_duration_statement'`)
+	Run: func(s *state.SetupState) error {
+		row, err := s.QueryRunner.QueryRow(`SELECT setting FROM pg_settings WHERE name = 'log_min_duration_statement'`)
 		if err != nil {
 			return err
 		}
 		oldVal := fmt.Sprintf("%sms", row.GetString(0))
 
 		var newVal string
-		if state.Inputs.Scripted {
-			if !state.Inputs.GUCS.LogMinDurationStatement.Valid {
+		if s.Inputs.Scripted {
+			if !s.Inputs.GUCS.LogMinDurationStatement.Valid {
 				return errors.New("log_min_duration_statement not provided and current value is unsupported")
 			}
-			newValNum := int(state.Inputs.GUCS.LogMinDurationStatement.Int64)
+			newValNum := int(s.Inputs.GUCS.LogMinDurationStatement.Int64)
 			if !isSupportedLmds(newValNum) {
 				return fmt.Errorf("log_min_duration_statement provided as unsupported value '%d'", newValNum)
 			}
@@ -57,7 +57,7 @@ var ConfigureLogMinDurationStatement = &s.Step{
 			}
 		}
 
-		return util.ApplyConfigSetting("log_min_duration_statement", newVal, state.QueryRunner)
+		return util.ApplyConfigSetting("log_min_duration_statement", newVal, s.QueryRunner)
 	},
 }
 

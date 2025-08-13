@@ -6,28 +6,28 @@ import (
 
 	survey "github.com/AlecAivazis/survey/v2"
 	"github.com/guregu/null"
-	s "github.com/pganalyze/collector/setup/state"
+	"github.com/pganalyze/collector/setup/state"
 	"github.com/pganalyze/collector/setup/util"
 )
 
-var ConfirmSetUpAutoExplain = &s.Step{
+var ConfirmSetUpAutoExplain = &state.Step{
 	ID: "li_confirm_set_up_auto_explain",
 	// N.B.: this step, asking the user whether to set up automated explain, is *not* an AutomatedExplainStep
 	// itself, but it is a state.LogInsightsStep because it depends on log insights
-	Kind:        s.LogInsightsStep,
+	Kind:        state.LogInsightsStep,
 	Description: "Confirm whether to set up the optional Automated EXPLAIN feature",
-	Check: func(state *s.SetupState) (bool, error) {
+	Check: func(s *state.SetupState) (bool, error) {
 		// skip the question if we've already answered one way or the other
-		if state.Inputs.ConfirmSetUpAutomatedExplain.Valid {
+		if s.Inputs.ConfirmSetUpAutomatedExplain.Valid {
 			return true, nil
 		}
 
 		// otherwise, definitely prompt if it's not set up
-		if !state.CurrentSection.HasKey("enable_log_explain") {
+		if !s.CurrentSection.HasKey("enable_log_explain") {
 			return false, nil
 		}
 
-		isLogExplainKey, err := state.CurrentSection.GetKey("enable_log_explain")
+		isLogExplainKey, err := s.CurrentSection.GetKey("enable_log_explain")
 		if err != nil {
 			return false, err
 		}
@@ -40,13 +40,13 @@ var ConfirmSetUpAutoExplain = &s.Step{
 		}
 
 		// assume auto_explain if we got this far
-		spl, err := util.GetPendingSharedPreloadLibraries(state.QueryRunner)
+		spl, err := util.GetPendingSharedPreloadLibraries(s.QueryRunner)
 		if err != nil {
 			return false, err
 		}
 		return strings.Contains(spl, "auto_explain"), nil
 	},
-	Run: func(state *s.SetupState) error {
+	Run: func(state *state.SetupState) error {
 		if state.Inputs.Scripted {
 			return errors.New("skip_auto_explain value must be specified")
 		}
