@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/pganalyze/collector/output/pganalyze_collector"
 	snapshot "github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/output/transform"
 	"github.com/pganalyze/collector/state"
@@ -136,7 +135,7 @@ func debugOutputAsJSON(logger *util.Logger, compressedData bytes.Buffer) {
 
 	io.Copy(&data, r)
 
-	s := &pganalyze_collector.FullSnapshot{}
+	s := &snapshot.FullSnapshot{}
 	if err = proto.Unmarshal(data.Bytes(), s); err != nil {
 		logger.PrintError("Failed to re-read protocol buffers: %s", err)
 		return

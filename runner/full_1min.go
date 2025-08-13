@@ -141,6 +141,4 @@ func Gather1minStatsFromAllServers(ctx context.Context, servers []*state.Server,
 	}
 
 	wg.Wait()
-
-	return
 }

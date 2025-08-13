@@ -6,7 +6,6 @@ import (
 
 	survey "github.com/AlecAivazis/survey/v2"
 	"github.com/guregu/null"
-	"github.com/pganalyze/collector/setup/state"
 	s "github.com/pganalyze/collector/setup/state"
 	"github.com/pganalyze/collector/setup/util"
 )
@@ -15,7 +14,7 @@ var ConfirmSetUpAutoExplain = &s.Step{
 	ID: "li_confirm_set_up_auto_explain",
 	// N.B.: this step, asking the user whether to set up automated explain, is *not* an AutomatedExplainStep
 	// itself, but it is a state.LogInsightsStep because it depends on log insights
-	Kind:        state.LogInsightsStep,
+	Kind:        s.LogInsightsStep,
 	Description: "Confirm whether to set up the optional Automated EXPLAIN feature",
 	Check: func(state *s.SetupState) (bool, error) {
 		// skip the question if we've already answered one way or the other

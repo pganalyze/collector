@@ -1173,12 +1173,8 @@ func AnalyzeLogLines(logLinesIn []state.LogLine) (logLinesOut []state.LogLine, s
 
 	for _, logLines := range backendLogLines {
 		backendLogLinesOut, backendSamples := AnalyzeBackendLogLines(logLines)
-		for _, logLine := range backendLogLinesOut {
-			logLinesOut = append(logLinesOut, logLine)
-		}
-		for _, sample := range backendSamples {
-			samples = append(samples, sample)
-		}
+		logLinesOut = append(logLinesOut, backendLogLinesOut...)
+		samples = append(samples, backendSamples...)
 	}
 
 	return

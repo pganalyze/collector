@@ -38,6 +38,9 @@ var EnsureMonitoringUserPassword = &s.Step{
 			return false, err
 		}
 		conn, err := sql.Open("postgres", pqStr)
+		if err != nil {
+			return false, err
+		}
 		err = conn.Ping()
 		if err != nil {
 			isAuthErr := strings.Contains(err.Error(), "authentication failed")

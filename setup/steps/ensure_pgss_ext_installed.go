@@ -14,9 +14,7 @@ var EnsurePgssExtInstalled = &s.Step{
 	Description: "Ensure the pg_stat_statements extension is installed in Postgres",
 	Check: func(state *s.SetupState) (bool, error) {
 		row, err := state.QueryRunner.QueryRow(
-			fmt.Sprintf(
-				"SELECT extnamespace::regnamespace::text FROM pg_extension WHERE extname = 'pg_stat_statements'",
-			),
+			"SELECT extnamespace::regnamespace::text FROM pg_extension WHERE extname = 'pg_stat_statements'",
 		)
 		if err == query.ErrNoRows {
 			return false, nil

@@ -191,12 +191,8 @@ func handleLogAnalysis(analyzableLogLines []state.LogLine) ([]state.LogLine, []s
 
 	for _, analyzableLogLines := range backendLogLines {
 		backendLogLinesOut, backendSamples := logs.AnalyzeBackendLogLines(analyzableLogLines)
-		for _, logLine := range backendLogLinesOut {
-			logLinesOut = append(logLinesOut, logLine)
-		}
-		for _, sample := range backendSamples {
-			querySamples = append(querySamples, sample)
-		}
+		logLinesOut = append(logLinesOut, backendLogLinesOut...)
+		querySamples = append(querySamples, backendSamples...)
 	}
 
 	return logLinesOut, querySamples
