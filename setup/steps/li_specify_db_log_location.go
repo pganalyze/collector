@@ -12,13 +12,12 @@ import (
 	survey "github.com/AlecAivazis/survey/v2"
 	"github.com/go-ini/ini"
 	"github.com/pganalyze/collector/setup/query"
-	"github.com/pganalyze/collector/setup/state"
 	s "github.com/pganalyze/collector/setup/state"
 )
 
 var SpecifyDbLogLocation = &s.Step{
 	ID:          "li_specify_db_log_location",
-	Kind:        state.LogInsightsStep,
+	Kind:        s.LogInsightsStep,
 	Description: "Specify the location of Postgres log files (db_log_location) in the collector config file",
 	Check: func(state *s.SetupState) (bool, error) {
 		return state.CurrentSection.HasKey("db_log_location"), nil

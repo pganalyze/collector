@@ -60,7 +60,6 @@ func (logger *Logger) printJSON(logLevel string, format string, args ...interfac
 	bs, _ := json.Marshal(entry)
 	bs = append(bs, '\n')
 	_, _ = os.Stderr.Write(bs)
-	return
 }
 
 func (logger *Logger) PrintVerbose(format string, args ...interface{}) {

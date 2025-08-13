@@ -92,7 +92,7 @@ func LogPgReadFile(ctx context.Context, server *state.Server, opts state.Collect
 		}
 		var logData string
 		var newOffset int64
-		prevOffset, _ := psl.ReadFileMarkers[fileName]
+		prevOffset := psl.ReadFileMarkers[fileName]
 		err = db.QueryRowContext(ctx, QueryMarkerSQL+logReadSql, fileName, prevOffset).Scan(&newOffset, &logData)
 		if err != nil {
 			err = fmt.Errorf("LogReadSql/QueryRow: %s", err)

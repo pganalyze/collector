@@ -49,7 +49,7 @@ func upsertQueryReferenceAndInformation(s *snapshot.FullSnapshot, statementTexts
 	} else if value.statement.Collector {
 		normalizedQuery = "<pganalyze-collector>"
 	} else {
-		normalizedQuery, _ = statementTexts[key.fingerprint]
+		normalizedQuery = statementTexts[key.fingerprint]
 	}
 	queryInformation := snapshot.QueryInformation{
 		QueryIdx:        idx,

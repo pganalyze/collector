@@ -15,14 +15,13 @@ import (
 	survey "github.com/AlecAivazis/survey/v2"
 
 	"github.com/pganalyze/collector/setup/log"
-	"github.com/pganalyze/collector/setup/state"
 	s "github.com/pganalyze/collector/setup/state"
 	"github.com/pganalyze/collector/setup/steps"
 )
 
 const defaultConfigFile = "/etc/pganalyze-collector.conf"
 
-var SetupPrepErr = errors.New("Failure before beginning guided setup")
+var ErrSetupPrep = errors.New("Failure before beginning guided setup")
 
 func main() {
 	steps := []*s.Step{
@@ -63,7 +62,7 @@ func main() {
 		steps.ConfirmEmitTestExplain,
 	}
 
-	var setupState state.SetupState
+	var setupState s.SetupState
 	var quiet bool
 	var logFile string
 	var inputsFile string
@@ -103,7 +102,7 @@ func main() {
 	}
 	setupState.Logger = &logger
 
-	var inputs state.SetupInputs
+	var inputs s.SetupInputs
 	if recommended {
 		inputs = s.RecommendedInputs
 	}
@@ -144,7 +143,7 @@ func main() {
 
 	id := os.Geteuid()
 	if id > 0 {
-		setupState.ReportStep("__no_root", SetupPrepErr)
+		setupState.ReportStep("__no_root", ErrSetupPrep)
 		setupState.Log(`ERROR: The pganalyze collector guided setup must be run as root (or with sudo, if available)
 
 It will provide details on the process and prompt you before making any changes to the
@@ -155,7 +154,7 @@ the manual collector install instructions: https://pganalyze.com/docs/install`)
 
 	err := loadCollectorConfig(&setupState)
 	if err != nil {
-		setupState.ReportStep("__no_config", SetupPrepErr)
+		setupState.ReportStep("__no_config", ErrSetupPrep)
 		setupState.Log("ERROR: could not load collector config: %s", err)
 		os.Exit(1)
 	}
@@ -205,7 +204,7 @@ again. We can pick up where you left off.`)
 			setupState.Log("  automated setup failed: %s", err)
 		}
 		if !doSetup {
-			setupState.ReportStep("__no_continue", SetupPrepErr)
+			setupState.ReportStep("__no_continue", ErrSetupPrep)
 			setupState.Log("Exiting...")
 			os.Exit(0)
 		}
@@ -214,10 +213,10 @@ again. We can pick up where you left off.`)
 	for _, step := range steps {
 		skipLogInsights := setupState.Inputs.ConfirmSetUpLogInsights.Valid && !setupState.Inputs.ConfirmSetUpLogInsights.Bool
 		skipAutomatedExplain := setupState.Inputs.ConfirmSetUpAutomatedExplain.Valid && !setupState.Inputs.ConfirmSetUpAutomatedExplain.Bool
-		if step.Kind == state.LogInsightsStep && skipLogInsights {
+		if step.Kind == s.LogInsightsStep && skipLogInsights {
 			continue
 		}
-		if step.Kind == state.AutomatedExplainStep && (skipLogInsights || skipAutomatedExplain) {
+		if step.Kind == s.AutomatedExplainStep && (skipLogInsights || skipAutomatedExplain) {
 			continue
 		}
 

@@ -4,14 +4,13 @@ import (
 	"errors"
 
 	survey "github.com/AlecAivazis/survey/v2"
-	"github.com/pganalyze/collector/setup/state"
 	s "github.com/pganalyze/collector/setup/state"
 	"github.com/pganalyze/collector/setup/util"
 )
 
 var EnsureSupportedLogDuration = &s.Step{
 	ID:          "li_ensure_supported_log_duration",
-	Kind:        state.LogInsightsStep,
+	Kind:        s.LogInsightsStep,
 	Description: "Ensure the log_duration setting in Postgres is supported by the collector",
 	Check: func(state *s.SetupState) (bool, error) {
 		row, err := state.QueryRunner.QueryRow(`SELECT setting FROM pg_settings WHERE name = 'log_duration'`)
