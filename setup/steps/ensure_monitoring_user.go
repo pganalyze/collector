@@ -6,21 +6,21 @@ import (
 	survey "github.com/AlecAivazis/survey/v2"
 	"github.com/lib/pq"
 	"github.com/pganalyze/collector/setup/query"
-	s "github.com/pganalyze/collector/setup/state"
+	"github.com/pganalyze/collector/setup/state"
 )
 
-var EnsureMonitoringUser = &s.Step{
-	ID:          "ensure_monitoring_user",
+var EnsureMonitoringUser = &state.Step{
+	ID:          "eensure_monitoring_user",
 	Description: "Ensure the monitoring user (db_user in the collector config file) exists in Postgres",
-	Check: func(state *s.SetupState) (bool, error) {
-		pgaUserKey, err := state.CurrentSection.GetKey("db_username")
+	Check: func(s *state.SetupState) (bool, error) {
+		pgaUserKey, err := s.CurrentSection.GetKey("db_username")
 		if err != nil {
 			return false, err
 		}
 		pgaUser := pgaUserKey.String()
 
 		var result query.Row
-		result, err = state.QueryRunner.QueryRow(fmt.Sprintf("SELECT true FROM pg_user WHERE usename = %s", pq.QuoteLiteral(pgaUser)))
+		result, err = s.QueryRunner.QueryRow(fmt.Sprintf("SELECT true FROM pg_user WHERE usename = %s", pq.QuoteLiteral(pgaUser)))
 		if err == query.ErrNoRows {
 			return false, nil
 		} else if err != nil {
@@ -28,20 +28,20 @@ var EnsureMonitoringUser = &s.Step{
 		}
 		return result.GetBool(0), nil
 	},
-	Run: func(state *s.SetupState) error {
-		pgaUserKey, err := state.CurrentSection.GetKey("db_username")
+	Run: func(s *state.SetupState) error {
+		pgaUserKey, err := s.CurrentSection.GetKey("db_username")
 		if err != nil {
 			return err
 		}
 		pgaUser := pgaUserKey.String()
 
 		var doCreateUser bool
-		if state.Inputs.Scripted {
-			if !state.Inputs.EnsureMonitoringUser.Valid ||
-				!state.Inputs.EnsureMonitoringUser.Bool {
+		if s.Inputs.Scripted {
+			if !s.Inputs.EnsureMonitoringUser.Valid ||
+				!s.Inputs.EnsureMonitoringUser.Bool {
 				return fmt.Errorf("create_monitoring_user flag not set and specified monitoring user %s does not exist", pgaUser)
 			}
-			doCreateUser = state.Inputs.EnsureMonitoringUser.Bool
+			doCreateUser = s.Inputs.EnsureMonitoringUser.Bool
 		} else {
 			err = survey.AskOne(&survey.Confirm{
 				Message: fmt.Sprintf("User %s does not exist in Postgres; create user (will be saved to Postgres)?", pgaUser),
@@ -57,7 +57,7 @@ var EnsureMonitoringUser = &s.Step{
 			return nil
 		}
 
-		return state.QueryRunner.Exec(
+		return s.QueryRunner.Exec(
 			fmt.Sprintf(
 				"CREATE USER %s CONNECTION LIMIT 5",
 				pq.QuoteIdentifier(pgaUser),

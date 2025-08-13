@@ -8,16 +8,16 @@ import (
 	survey "github.com/AlecAivazis/survey/v2"
 	"github.com/lib/pq"
 	"github.com/pganalyze/collector/logs"
-	s "github.com/pganalyze/collector/setup/state"
+	"github.com/pganalyze/collector/setup/state"
 	"github.com/pganalyze/collector/setup/util"
 )
 
-var EnsureSupportedLogLinePrefix = &s.Step{
+var EnsureSupportedLogLinePrefix = &state.Step{
 	ID:          "li_ensure_supported_log_line_prefix",
-	Kind:        s.LogInsightsStep,
+	Kind:        state.LogInsightsStep,
 	Description: "Ensure the log_line_prefix setting in Postgres is supported by the collector",
-	Check: func(state *s.SetupState) (bool, error) {
-		row, err := state.QueryRunner.QueryRow(`SELECT setting FROM pg_settings WHERE name = 'log_line_prefix'`)
+	Check: func(s *state.SetupState) (bool, error) {
+		row, err := s.QueryRunner.QueryRow(`SELECT setting FROM pg_settings WHERE name = 'log_line_prefix'`)
 		if err != nil {
 			return false, err
 		}
@@ -29,21 +29,21 @@ var EnsureSupportedLogLinePrefix = &s.Step{
 		supported := hasDb && hasUser && hasTs
 
 		needsUpdate := !supported ||
-			(state.Inputs.Scripted &&
-				state.Inputs.GUCS.LogLinePrefix.Valid &&
-				currValue != state.Inputs.GUCS.LogLinePrefix.String)
+			(s.Inputs.Scripted &&
+				s.Inputs.GUCS.LogLinePrefix.Valid &&
+				currValue != s.Inputs.GUCS.LogLinePrefix.String)
 
 		return !needsUpdate, nil
 	},
-	Run: func(state *s.SetupState) error {
+	Run: func(s *state.SetupState) error {
 		var selectedPrefix string
-		if state.Inputs.Scripted {
-			if !state.Inputs.GUCS.LogLinePrefix.Valid {
+		if s.Inputs.Scripted {
+			if !s.Inputs.GUCS.LogLinePrefix.Valid {
 				return errors.New("log_line_prefix not provided and current setting is not supported")
 			}
-			selectedPrefix = state.Inputs.GUCS.LogLinePrefix.String
+			selectedPrefix = s.Inputs.GUCS.LogLinePrefix.String
 		} else {
-			row, err := state.QueryRunner.QueryRow(`SELECT setting FROM pg_settings WHERE name = 'log_line_prefix'`)
+			row, err := s.QueryRunner.QueryRow(`SELECT setting FROM pg_settings WHERE name = 'log_line_prefix'`)
 			if err != nil {
 				return err
 			}
@@ -62,6 +62,6 @@ var EnsureSupportedLogLinePrefix = &s.Step{
 				return err
 			}
 		}
-		return util.ApplyConfigSetting("log_line_prefix", pq.QuoteLiteral(selectedPrefix), state.QueryRunner)
+		return util.ApplyConfigSetting("log_line_prefix", pq.QuoteLiteral(selectedPrefix), s.QueryRunner)
 	},
 }

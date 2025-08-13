@@ -5,24 +5,24 @@ import (
 	"fmt"
 
 	survey "github.com/AlecAivazis/survey/v2"
-	s "github.com/pganalyze/collector/setup/state"
+	"github.com/pganalyze/collector/setup/state"
 )
 
-var SpecifyMonitoringUser = &s.Step{
+var SpecifyMonitoringUser = &state.Step{
 	ID:          "specify_monitoring_user",
 	Description: "Specify the monitoring user to connect as (db_username) in the collector config file",
-	Check: func(state *s.SetupState) (bool, error) {
-		hasUser := state.CurrentSection.HasKey("db_username")
+	Check: func(s *state.SetupState) (bool, error) {
+		hasUser := s.CurrentSection.HasKey("db_username")
 		return hasUser, nil
 	},
-	Run: func(state *s.SetupState) error {
+	Run: func(s *state.SetupState) error {
 		var pgaUser string
 
-		if state.Inputs.Scripted {
-			if !state.Inputs.Settings.DBUsername.Valid {
+		if s.Inputs.Scripted {
+			if !s.Inputs.Settings.DBUsername.Valid {
 				return errors.New("no db_username setting specified")
 			}
-			pgaUser = state.Inputs.Settings.DBUsername.String
+			pgaUser = s.Inputs.Settings.DBUsername.String
 		} else {
 			var monitoringUserIdx int
 			err := survey.AskOne(&survey.Select{
@@ -49,10 +49,10 @@ var SpecifyMonitoringUser = &s.Step{
 			}
 		}
 
-		_, err := state.CurrentSection.NewKey("db_username", pgaUser)
+		_, err := s.CurrentSection.NewKey("db_username", pgaUser)
 		if err != nil {
 			return err
 		}
-		return state.SaveConfig()
+		return s.SaveConfig()
 	},
 }

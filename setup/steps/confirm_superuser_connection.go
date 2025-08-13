@@ -9,20 +9,20 @@ import (
 
 	survey "github.com/AlecAivazis/survey/v2"
 	"github.com/pganalyze/collector/setup/query"
-	s "github.com/pganalyze/collector/setup/state"
+	"github.com/pganalyze/collector/setup/state"
 )
 
-var ConfirmSuperuserConnection = &s.Step{
+var ConfirmSuperuserConnection = &state.Step{
 	ID:          "confirm_superuser_connection",
 	Description: "Confirm the Postgres superuser connection to use only for this guided setup session",
-	Check: func(state *s.SetupState) (bool, error) {
-		if state.QueryRunner == nil {
+	Check: func(s *state.SetupState) (bool, error) {
+		if s.QueryRunner == nil {
 			return false, nil
 		}
-		err := state.QueryRunner.PingSuper()
+		err := s.QueryRunner.PingSuper()
 		return err == nil, err
 	},
-	Run: func(state *s.SetupState) error {
+	Run: func(s *state.SetupState) error {
 		localPgs, err := discoverLocalPgFromUnixSockets()
 		if err != nil {
 			return err
@@ -35,22 +35,22 @@ var ConfirmSuperuserConnection = &s.Step{
 		} else {
 			selectedPg = localPgs[0]
 		}
-		if state.Inputs.Scripted {
+		if s.Inputs.Scripted {
 			if selectedPg.Port != 0 {
 				// skip finding the server if there's only one, but validate it matches config, if present
-				if (state.Inputs.PGSetupConnPort.Valid && int(state.Inputs.PGSetupConnPort.Int64) != selectedPg.Port) ||
-					(state.Inputs.PGSetupConnSocketDir.Valid && state.Inputs.PGSetupConnSocketDir.String != selectedPg.SocketDir) {
+				if (s.Inputs.PGSetupConnPort.Valid && int(s.Inputs.PGSetupConnPort.Int64) != selectedPg.Port) ||
+					(s.Inputs.PGSetupConnSocketDir.Valid && s.Inputs.PGSetupConnSocketDir.String != selectedPg.SocketDir) {
 					// just clear the selection and depend on error handling below
 					selectedPg = LocalPostgres{}
 				}
 			} else {
-				if !state.Inputs.PGSetupConnPort.Valid {
+				if !s.Inputs.PGSetupConnPort.Valid {
 					return errors.New("no port specified for setup Postgres connection")
 				}
 				for _, pg := range localPgs {
-					if int(state.Inputs.PGSetupConnPort.Int64) == pg.Port &&
-						(!state.Inputs.PGSetupConnSocketDir.Valid ||
-							state.Inputs.PGSetupConnSocketDir.String == pg.SocketDir) {
+					if int(s.Inputs.PGSetupConnPort.Int64) == pg.Port &&
+						(!s.Inputs.PGSetupConnSocketDir.Valid ||
+							s.Inputs.PGSetupConnSocketDir.String == pg.SocketDir) {
 						selectedPg = pg
 						break
 					}
@@ -58,12 +58,12 @@ var ConfirmSuperuserConnection = &s.Step{
 			}
 			if selectedPg.Port == 0 {
 				var portStr string
-				if state.Inputs.PGSetupConnPort.Valid {
-					portStr = " on " + strconv.Itoa(int(state.Inputs.PGSetupConnPort.Int64))
+				if s.Inputs.PGSetupConnPort.Valid {
+					portStr = " on " + strconv.Itoa(int(s.Inputs.PGSetupConnPort.Int64))
 				}
 				var socketDirStr string
-				if state.Inputs.PGSetupConnSocketDir.Valid {
-					socketDirStr = " in " + state.Inputs.PGSetupConnSocketDir.String
+				if s.Inputs.PGSetupConnSocketDir.Valid {
+					socketDirStr = " in " + s.Inputs.PGSetupConnSocketDir.String
 				}
 
 				return fmt.Errorf("no Postgres server found listening%s%s", portStr, socketDirStr)
@@ -87,11 +87,11 @@ var ConfirmSuperuserConnection = &s.Step{
 		}
 
 		var pgSuperuser string
-		if state.Inputs.Scripted {
-			if !state.Inputs.PGSetupConnUser.Valid {
+		if s.Inputs.Scripted {
+			if !s.Inputs.PGSetupConnUser.Valid {
 				return errors.New("no user specified for setup Postgres connection")
 			}
-			pgSuperuser = state.Inputs.PGSetupConnUser.String
+			pgSuperuser = s.Inputs.PGSetupConnUser.String
 		} else {
 			err = survey.AskOne(&survey.Select{
 				Message: "Select Postgres superuser to connect as for initial setup:",
@@ -112,7 +112,7 @@ var ConfirmSuperuserConnection = &s.Step{
 			}
 		}
 
-		state.QueryRunner = query.NewRunner(pgSuperuser, selectedPg.SocketDir, selectedPg.Port)
+		s.QueryRunner = query.NewRunner(pgSuperuser, selectedPg.SocketDir, selectedPg.Port)
 
 		return nil
 	},

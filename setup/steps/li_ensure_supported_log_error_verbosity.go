@@ -4,38 +4,38 @@ import (
 	"errors"
 
 	survey "github.com/AlecAivazis/survey/v2"
-	s "github.com/pganalyze/collector/setup/state"
+	"github.com/pganalyze/collector/setup/state"
 	"github.com/pganalyze/collector/setup/util"
 )
 
-var EnsureSupportedLogErrorVerbosity = &s.Step{
+var EnsureSupportedLogErrorVerbosity = &state.Step{
 	ID:          "li_ensure_supported_log_error_verbosity",
-	Kind:        s.LogInsightsStep,
+	Kind:        state.LogInsightsStep,
 	Description: "Ensure the log_error_verbosity setting in Postgres is supported by the collector",
-	Check: func(state *s.SetupState) (bool, error) {
-		row, err := state.QueryRunner.QueryRow(`SELECT setting FROM pg_settings WHERE name = 'log_error_verbosity'`)
+	Check: func(s *state.SetupState) (bool, error) {
+		row, err := s.QueryRunner.QueryRow(`SELECT setting FROM pg_settings WHERE name = 'log_error_verbosity'`)
 		if err != nil {
 			return false, err
 		}
 
 		currVal := row.GetString(0)
 		needsUpdate := currVal == "verbose" ||
-			(state.Inputs.Scripted &&
-				state.Inputs.GUCS.LogErrorVerbosity.Valid &&
-				currVal != state.Inputs.GUCS.LogErrorVerbosity.String)
+			(s.Inputs.Scripted &&
+				s.Inputs.GUCS.LogErrorVerbosity.Valid &&
+				currVal != s.Inputs.GUCS.LogErrorVerbosity.String)
 
 		return !needsUpdate, nil
 	},
-	Run: func(state *s.SetupState) error {
+	Run: func(s *state.SetupState) error {
 		var newVal string
-		if state.Inputs.Scripted {
-			if !state.Inputs.GUCS.LogErrorVerbosity.Valid {
+		if s.Inputs.Scripted {
+			if !s.Inputs.GUCS.LogErrorVerbosity.Valid {
 				return errors.New("log_error_verbosity value not provided and current value not supported")
 			}
-			if state.Inputs.GUCS.LogErrorVerbosity.String == "verbose" {
+			if s.Inputs.GUCS.LogErrorVerbosity.String == "verbose" {
 				return errors.New("log_error_verbosity provided as unsupported value 'verbose'")
 			}
-			newVal = state.Inputs.GUCS.LogErrorVerbosity.String
+			newVal = s.Inputs.GUCS.LogErrorVerbosity.String
 		} else {
 			err := survey.AskOne(&survey.Select{
 				Message: "Setting 'log_error_verbosity' is set to unsupported value 'verbose'; select supported value (will be saved to Postgres):",
@@ -46,6 +46,6 @@ var EnsureSupportedLogErrorVerbosity = &s.Step{
 			}
 		}
 
-		return util.ApplyConfigSetting("log_error_verbosity", newVal, state.QueryRunner)
+		return util.ApplyConfigSetting("log_error_verbosity", newVal, s.QueryRunner)
 	},
 }

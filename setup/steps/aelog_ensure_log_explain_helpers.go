@@ -6,29 +6,29 @@ import (
 
 	survey "github.com/AlecAivazis/survey/v2"
 	"github.com/lib/pq"
-	s "github.com/pganalyze/collector/setup/state"
+	"github.com/pganalyze/collector/setup/state"
 	"github.com/pganalyze/collector/setup/util"
 )
 
-var EnsureLogExplainHelpers = &s.Step{
-	Kind:        s.AutomatedExplainStep,
+var EnsureLogExplainHelpers = &state.Step{
+	Kind:        state.AutomatedExplainStep,
 	ID:          "aelog_ensure_log_explain_helpers",
 	Description: "Ensure EXPLAIN helper functions for log-based EXPLAIN exist in all monitored Postgres databases",
-	Check: func(state *s.SetupState) (bool, error) {
-		logExplain, err := util.UsingLogExplain(state.CurrentSection)
+	Check: func(s *state.SetupState) (bool, error) {
+		logExplain, err := util.UsingLogExplain(s.CurrentSection)
 		if err != nil {
 			return false, err
 		}
 		if !logExplain {
 			return true, nil
 		}
-		monitoredDBs, err := getMonitoredDBs(state)
+		monitoredDBs, err := getMonitoredDBs(s)
 		if err != nil {
 			return false, err
 		}
 
 		for _, db := range monitoredDBs {
-			dbRunner := state.QueryRunner.InDB(db)
+			dbRunner := s.QueryRunner.InDB(db)
 			isValid, err := util.ValidateHelperFunction(util.ExplainHelper, dbRunner)
 			if !isValid || err != nil {
 				return isValid, err
@@ -36,13 +36,13 @@ var EnsureLogExplainHelpers = &s.Step{
 		}
 		return true, nil
 	},
-	Run: func(state *s.SetupState) error {
+	Run: func(s *state.SetupState) error {
 		var doCreate bool
-		if state.Inputs.Scripted {
-			if !state.Inputs.EnsureLogExplainHelpers.Valid || !state.Inputs.EnsureLogExplainHelpers.Bool {
+		if s.Inputs.Scripted {
+			if !s.Inputs.EnsureLogExplainHelpers.Valid || !s.Inputs.EnsureLogExplainHelpers.Bool {
 				return errors.New("create_explain_helper flag not set and helper function does not exist or does not match expected signature on all monitored databases")
 			}
-			doCreate = state.Inputs.EnsureLogExplainHelpers.Bool
+			doCreate = s.Inputs.EnsureLogExplainHelpers.Bool
 		} else {
 			err := survey.AskOne(&survey.Confirm{
 				Message: "Create (or update) EXPLAIN helper function in each monitored database (will be saved to Postgres)?",
@@ -56,12 +56,12 @@ var EnsureLogExplainHelpers = &s.Step{
 		if !doCreate {
 			return nil
 		}
-		monitoredDBs, err := getMonitoredDBs(state)
+		monitoredDBs, err := getMonitoredDBs(s)
 		if err != nil {
 			return err
 		}
 		for _, db := range monitoredDBs {
-			err := createHelperInDB(state, db)
+			err := createHelperInDB(s, db)
 			if err != nil {
 				return err
 			}
@@ -70,8 +70,8 @@ var EnsureLogExplainHelpers = &s.Step{
 	},
 }
 
-func createHelperInDB(state *s.SetupState, db string) error {
-	dbRunner := state.QueryRunner.InDB(db)
+func createHelperInDB(s *state.SetupState, db string) error {
+	dbRunner := s.QueryRunner.InDB(db)
 	isValid, err := util.ValidateHelperFunction(util.ExplainHelper, dbRunner)
 	if err != nil {
 		return err
@@ -79,7 +79,7 @@ func createHelperInDB(state *s.SetupState, db string) error {
 	if isValid {
 		return nil
 	}
-	userKey, err := state.CurrentSection.GetKey("db_username")
+	userKey, err := s.CurrentSection.GetKey("db_username")
 	if err != nil {
 		return err
 	}
@@ -93,8 +93,8 @@ func createHelperInDB(state *s.SetupState, db string) error {
 	)
 }
 
-func getMonitoredDBs(state *s.SetupState) ([]string, error) {
-	key, err := state.CurrentSection.GetKey("db_name")
+func getMonitoredDBs(s *state.SetupState) ([]string, error) {
+	key, err := s.CurrentSection.GetKey("db_name")
 	if err != nil {
 		return nil, err
 	}
@@ -109,7 +109,7 @@ func getMonitoredDBs(state *s.SetupState) ([]string, error) {
 
 	// Expand the "*" entry here
 	dbs = dbs[:len(dbs)-1]
-	rows, err := state.QueryRunner.Query("SELECT datname FROM pg_database WHERE datallowconn AND NOT datistemplate")
+	rows, err := s.QueryRunner.Query("SELECT datname FROM pg_database WHERE datallowconn AND NOT datistemplate")
 	if err != nil {
 		return nil, err
 	}

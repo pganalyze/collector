@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"os/exec"
 
-	s "github.com/pganalyze/collector/setup/state"
+	"github.com/pganalyze/collector/setup/state"
 )
 
-func RestartPostgres(state *s.SetupState) error {
+func RestartPostgres(s *state.SetupState) error {
 	return restartPostgresSystemd()
 }
 

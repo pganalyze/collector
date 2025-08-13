@@ -4,14 +4,14 @@ import (
 	"errors"
 
 	"github.com/AlecAivazis/survey/v2"
-	s "github.com/pganalyze/collector/setup/state"
+	"github.com/pganalyze/collector/setup/state"
 )
 
-var CheckRestartNeeded = &s.Step{
+var CheckRestartNeeded = &state.Step{
 	ID:          "check_restart_needed",
 	Description: "Check whether a Postgres restart will be necessary in a future step to install the collector",
-	Check: func(state *s.SetupState) (bool, error) {
-		row, err := state.QueryRunner.QueryRow(
+	Check: func(s *state.SetupState) (bool, error) {
+		row, err := s.QueryRunner.QueryRow(
 			`SELECT
 current_setting('shared_preload_libraries') LIKE '%pg_stat_statements%',
 current_setting('shared_preload_libraries') LIKE '%auto_explain%'`,
@@ -22,14 +22,14 @@ current_setting('shared_preload_libraries') LIKE '%auto_explain%'`,
 		hasPgss := row.GetBool(0)
 		hasAutoExplain := row.GetBool(1)
 		if !hasPgss {
-			state.Log(
+			s.Log(
 				`
 NOTICE: A Postgres restart will be required to set up query performance monitoring.
 A prompt will ask to confirm the restart before this guided setup performs it.
 `,
 			)
 		} else if !hasAutoExplain {
-			state.Log(
+			s.Log(
 				`
 NOTICE: A Postgres restart will not be required to set up query performance monitoring.
 
@@ -39,7 +39,7 @@ having to restart Postgres.
 `,
 			)
 		} else {
-			state.Log(
+			s.Log(
 				`
 NOTICE: A Postgres restart will *not* be required to set up any features.
 
@@ -48,7 +48,7 @@ Automated EXPLAIN.
 `,
 			)
 		}
-		if state.Inputs.Scripted {
+		if s.Inputs.Scripted {
 			return true, nil
 		}
 

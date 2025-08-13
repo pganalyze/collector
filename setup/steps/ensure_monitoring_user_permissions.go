@@ -7,20 +7,20 @@ import (
 	survey "github.com/AlecAivazis/survey/v2"
 	"github.com/lib/pq"
 	"github.com/pganalyze/collector/setup/query"
-	s "github.com/pganalyze/collector/setup/state"
+	"github.com/pganalyze/collector/setup/state"
 )
 
-var EnsureMonitoringUserPermissions = &s.Step{
+var EnsureMonitoringUserPermissions = &state.Step{
 	ID:          "ensure_monitoring_user_permissions",
 	Description: "Ensure the monitoring user has sufficient permissions in Postgres for access to queries and monitoring metadata",
-	Check: func(state *s.SetupState) (bool, error) {
-		pgaUserKey, err := state.CurrentSection.GetKey("db_username")
+	Check: func(s *state.SetupState) (bool, error) {
+		pgaUserKey, err := s.CurrentSection.GetKey("db_username")
 		if err != nil {
 			return false, err
 		}
 		pgaUser := pgaUserKey.String()
 
-		row, err := state.QueryRunner.QueryRow(
+		row, err := s.QueryRunner.QueryRow(
 			fmt.Sprintf(
 				"SELECT usesuper OR pg_has_role(usename, 'pg_monitor', 'usage') FROM pg_user WHERE usename = %s",
 				pq.QuoteLiteral(pgaUser),
@@ -34,19 +34,19 @@ var EnsureMonitoringUserPermissions = &s.Step{
 
 		return row.GetBool(0), nil
 	},
-	Run: func(state *s.SetupState) error {
-		pgaUserKey, err := state.CurrentSection.GetKey("db_username")
+	Run: func(s *state.SetupState) error {
+		pgaUserKey, err := s.CurrentSection.GetKey("db_username")
 		if err != nil {
 			return err
 		}
 		pgaUser := pgaUserKey.String()
 
 		var doGrant bool
-		if state.Inputs.Scripted {
-			if !state.Inputs.EnsureMonitoringPermissions.Valid || !state.Inputs.EnsureMonitoringPermissions.Bool {
+		if s.Inputs.Scripted {
+			if !s.Inputs.EnsureMonitoringPermissions.Valid || !s.Inputs.EnsureMonitoringPermissions.Bool {
 				return errors.New("set_up_monitoring_user flag not set and monitoring user does not have adequate permissions")
 			}
-			doGrant = state.Inputs.EnsureMonitoringPermissions.Bool
+			doGrant = s.Inputs.EnsureMonitoringPermissions.Bool
 		} else {
 			err = survey.AskOne(&survey.Confirm{
 				Message: fmt.Sprintf("Grant role pg_monitor to user %s (will be saved to Postgres)?", pgaUser),
@@ -60,7 +60,7 @@ var EnsureMonitoringUserPermissions = &s.Step{
 			return nil
 		}
 
-		return state.QueryRunner.Exec(
+		return s.QueryRunner.Exec(
 			fmt.Sprintf(
 				"GRANT pg_monitor to %s",
 				pq.QuoteIdentifier(pgaUser),

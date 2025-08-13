@@ -9,28 +9,28 @@ import (
 	"github.com/guregu/null"
 	"github.com/lib/pq"
 
-	s "github.com/pganalyze/collector/setup/state"
+	"github.com/pganalyze/collector/setup/state"
 	"github.com/pganalyze/collector/setup/util"
 )
 
 // N.B.: this needs to happen *after* the Postgres restart so that ALTER SYSTEM
 // recognizes these as valid configuration settings
-var EnsureRecommendedAutoExplainSettings = &s.Step{
-	Kind:        s.AutomatedExplainStep,
+var EnsureRecommendedAutoExplainSettings = &state.Step{
+	Kind:        state.AutomatedExplainStep,
 	ID:          "aemod_ensure_recommended_settings",
 	Description: "Ensure auto_explain settings in Postgres are configured as recommended, if desired",
-	Check: func(state *s.SetupState) (bool, error) {
-		if state.DidAutoExplainRecommendedSettings ||
-			(state.Inputs.EnsureAutoExplainRecommendedSettings.Valid && !state.Inputs.EnsureAutoExplainRecommendedSettings.Bool) {
+	Check: func(s *state.SetupState) (bool, error) {
+		if s.DidAutoExplainRecommendedSettings ||
+			(s.Inputs.EnsureAutoExplainRecommendedSettings.Valid && !s.Inputs.EnsureAutoExplainRecommendedSettings.Bool) {
 			return true, nil
 		}
-		logExplain, err := util.UsingLogExplain(state.CurrentSection)
+		logExplain, err := util.UsingLogExplain(s.CurrentSection)
 		if err != nil || logExplain {
 			return logExplain, err
 		}
 
-		autoExplainGucsQuery := getAutoExplainGUCSQuery(state)
-		rows, err := state.QueryRunner.Query(
+		autoExplainGucsQuery := getAutoExplainGUCSQuery(s)
+		rows, err := s.QueryRunner.Query(
 			autoExplainGucsQuery,
 		)
 		if err != nil {
@@ -39,11 +39,11 @@ var EnsureRecommendedAutoExplainSettings = &s.Step{
 
 		return len(rows) == 0, nil
 	},
-	Run: func(state *s.SetupState) error {
+	Run: func(s *state.SetupState) error {
 		var doReview bool
-		if state.Inputs.Scripted {
-			if state.Inputs.EnsureAutoExplainRecommendedSettings.Valid {
-				doReview = state.Inputs.EnsureAutoExplainRecommendedSettings.Bool
+		if s.Inputs.Scripted {
+			if s.Inputs.EnsureAutoExplainRecommendedSettings.Valid {
+				doReview = s.Inputs.EnsureAutoExplainRecommendedSettings.Bool
 			}
 		} else {
 			err := survey.AskOne(&survey.Confirm{
@@ -54,23 +54,23 @@ var EnsureRecommendedAutoExplainSettings = &s.Step{
 			if err != nil {
 				return err
 			}
-			state.Inputs.EnsureAutoExplainRecommendedSettings = null.BoolFrom(doReview)
+			s.Inputs.EnsureAutoExplainRecommendedSettings = null.BoolFrom(doReview)
 		}
 
 		if !doReview {
 			return nil
 		}
 
-		autoExplainGucsQuery := getAutoExplainGUCSQuery(state)
-		rows, err := state.QueryRunner.Query(
+		autoExplainGucsQuery := getAutoExplainGUCSQuery(s)
+		rows, err := s.QueryRunner.Query(
 			autoExplainGucsQuery,
 		)
 		if err != nil {
 			return fmt.Errorf("error checking existing settings: %s", err)
 		}
 		if len(rows) == 0 {
-			state.Log("all auto_explain configuration settings using recommended values")
-			state.DidAutoExplainRecommendedSettings = true
+			s.Log("all auto_explain configuration settings using recommended values")
+			s.DidAutoExplainRecommendedSettings = true
 			return nil
 		}
 		settingsToReview := make(map[string]string)
@@ -80,12 +80,12 @@ var EnsureRecommendedAutoExplainSettings = &s.Step{
 
 		// N.B.: we ask about log_timing first since this is typically most impactful
 		if currValue, ok := settingsToReview["auto_explain.log_timing"]; ok {
-			logTiming, err := getLogTimingValue(state, currValue)
+			logTiming, err := getLogTimingValue(s, currValue)
 			if err != nil {
 				return err
 			}
 			if logTiming != currValue {
-				err = util.ApplyConfigSetting("auto_explain.log_timing", logTiming, state.QueryRunner)
+				err = util.ApplyConfigSetting("auto_explain.log_timing", logTiming, s.QueryRunner)
 				if err != nil {
 					return err
 				}
@@ -93,13 +93,13 @@ var EnsureRecommendedAutoExplainSettings = &s.Step{
 		}
 
 		if currValue, ok := settingsToReview["auto_explain.log_analyze"]; ok {
-			logAnalyze, err := getLogAnalyzeValue(state, currValue)
+			logAnalyze, err := getLogAnalyzeValue(s, currValue)
 			if err != nil {
 				return err
 			}
 
 			if logAnalyze != currValue {
-				err = util.ApplyConfigSetting("auto_explain.log_analyze", logAnalyze, state.QueryRunner)
+				err = util.ApplyConfigSetting("auto_explain.log_analyze", logAnalyze, s.QueryRunner)
 				if err != nil {
 					return err
 				}
@@ -107,7 +107,7 @@ var EnsureRecommendedAutoExplainSettings = &s.Step{
 		}
 
 		// we could reason based on the above, but it's safe to just re-query
-		row, err := state.QueryRunner.QueryRow("SHOW auto_explain.log_analyze")
+		row, err := s.QueryRunner.QueryRow("SHOW auto_explain.log_analyze")
 		if err != nil {
 			return err
 		}
@@ -115,13 +115,13 @@ var EnsureRecommendedAutoExplainSettings = &s.Step{
 
 		if isLogAnalyzeOn {
 			if currValue, ok := settingsToReview["auto_explain.log_buffers"]; ok {
-				logBuffers, err := getLogBuffersValue(state, currValue)
+				logBuffers, err := getLogBuffersValue(s, currValue)
 				if err != nil {
 					return err
 				}
 
 				if logBuffers != currValue {
-					err = util.ApplyConfigSetting("auto_explain.log_buffers", logBuffers, state.QueryRunner)
+					err = util.ApplyConfigSetting("auto_explain.log_buffers", logBuffers, s.QueryRunner)
 					if err != nil {
 						return err
 					}
@@ -129,13 +129,13 @@ var EnsureRecommendedAutoExplainSettings = &s.Step{
 			}
 
 			if currValue, ok := settingsToReview["auto_explain.log_triggers"]; ok {
-				logTriggers, err := getLogTriggersValue(state, currValue)
+				logTriggers, err := getLogTriggersValue(s, currValue)
 				if err != nil {
 					return err
 				}
 
 				if logTriggers != currValue {
-					err = util.ApplyConfigSetting("auto_explain.log_triggers", logTriggers, state.QueryRunner)
+					err = util.ApplyConfigSetting("auto_explain.log_triggers", logTriggers, s.QueryRunner)
 					if err != nil {
 						return err
 					}
@@ -143,12 +143,12 @@ var EnsureRecommendedAutoExplainSettings = &s.Step{
 			}
 
 			if currValue, ok := settingsToReview["auto_explain.log_verbose"]; ok {
-				logVerbose, err := getLogVerboseValue(state, currValue)
+				logVerbose, err := getLogVerboseValue(s, currValue)
 				if err != nil {
 					return err
 				}
 				if logVerbose != currValue {
-					err = util.ApplyConfigSetting("auto_explain.log_verbose", logVerbose, state.QueryRunner)
+					err = util.ApplyConfigSetting("auto_explain.log_verbose", logVerbose, s.QueryRunner)
 					if err != nil {
 						return err
 					}
@@ -157,13 +157,13 @@ var EnsureRecommendedAutoExplainSettings = &s.Step{
 		}
 
 		if currValue, ok := settingsToReview["auto_explain.log_format"]; ok {
-			logFormat, err := getLogFormatValue(state, currValue)
+			logFormat, err := getLogFormatValue(s, currValue)
 			if err != nil {
 				return err
 			}
 
 			if logFormat != currValue {
-				err = util.ApplyConfigSetting("auto_explain.log_format", logFormat, state.QueryRunner)
+				err = util.ApplyConfigSetting("auto_explain.log_format", logFormat, s.QueryRunner)
 				if err != nil {
 					return err
 				}
@@ -171,13 +171,13 @@ var EnsureRecommendedAutoExplainSettings = &s.Step{
 		}
 
 		if currValue, ok := settingsToReview["auto_explain.log_min_duration"]; ok {
-			logMinDuration, err := getLogMinDurationValue(state, currValue)
+			logMinDuration, err := getLogMinDurationValue(s, currValue)
 			if err != nil {
 				return err
 			}
 
 			if logMinDuration != currValue {
-				err = util.ApplyConfigSetting("auto_explain.log_min_duration", logMinDuration, state.QueryRunner)
+				err = util.ApplyConfigSetting("auto_explain.log_min_duration", logMinDuration, s.QueryRunner)
 				if err != nil {
 					return err
 				}
@@ -185,30 +185,30 @@ var EnsureRecommendedAutoExplainSettings = &s.Step{
 		}
 
 		if currValue, ok := settingsToReview["auto_explain.log_nested_statements"]; ok {
-			logNested, err := getLogNestedStatements(state, currValue)
+			logNested, err := getLogNestedStatements(s, currValue)
 			if err != nil {
 				return err
 			}
 
 			if logNested != currValue {
-				err = util.ApplyConfigSetting("auto_explain.log_nested_statements", logNested, state.QueryRunner)
+				err = util.ApplyConfigSetting("auto_explain.log_nested_statements", logNested, s.QueryRunner)
 				if err != nil {
 					return err
 				}
 			}
 		}
-		state.DidAutoExplainRecommendedSettings = true
+		s.DidAutoExplainRecommendedSettings = true
 		return nil
 	},
 }
 
-func getAutoExplainGUCSQuery(state *s.SetupState) string {
+func getAutoExplainGUCSQuery(s *state.SetupState) string {
 	query := `SELECT name, setting
 FROM pg_settings
 WHERE `
 	var predicate string
 
-	if state.Inputs.Scripted {
+	if s.Inputs.Scripted {
 		var predParts []string
 		appendPredicate := func(name, value string) []string {
 			return append(predParts,
@@ -219,43 +219,43 @@ WHERE `
 				),
 			)
 		}
-		if state.Inputs.GUCS.AutoExplainLogAnalyze.Valid {
+		if s.Inputs.GUCS.AutoExplainLogAnalyze.Valid {
 			predParts = appendPredicate(
 				"auto_explain.log_analyze",
-				state.Inputs.GUCS.AutoExplainLogAnalyze.String,
+				s.Inputs.GUCS.AutoExplainLogAnalyze.String,
 			)
 		}
-		if state.Inputs.GUCS.AutoExplainLogBuffers.Valid {
+		if s.Inputs.GUCS.AutoExplainLogBuffers.Valid {
 			predParts = appendPredicate(
 				"auto_explain.log_buffers",
-				state.Inputs.GUCS.AutoExplainLogBuffers.String,
+				s.Inputs.GUCS.AutoExplainLogBuffers.String,
 			)
 		}
-		if state.Inputs.GUCS.AutoExplainLogTiming.Valid {
+		if s.Inputs.GUCS.AutoExplainLogTiming.Valid {
 			predParts = appendPredicate(
 				"auto_explain.log_timing",
-				state.Inputs.GUCS.AutoExplainLogTiming.String,
+				s.Inputs.GUCS.AutoExplainLogTiming.String,
 			)
 		}
-		if state.Inputs.GUCS.AutoExplainLogTriggers.Valid {
+		if s.Inputs.GUCS.AutoExplainLogTriggers.Valid {
 			predParts = appendPredicate(
 				"auto_explain.log_triggers",
-				state.Inputs.GUCS.AutoExplainLogTriggers.String,
+				s.Inputs.GUCS.AutoExplainLogTriggers.String,
 			)
 		}
-		if state.Inputs.GUCS.AutoExplainLogVerbose.Valid {
+		if s.Inputs.GUCS.AutoExplainLogVerbose.Valid {
 			predParts = appendPredicate(
 				"auto_explain.log_verbose",
-				state.Inputs.GUCS.AutoExplainLogVerbose.String,
+				s.Inputs.GUCS.AutoExplainLogVerbose.String,
 			)
 		}
-		if state.Inputs.GUCS.AutoExplainLogFormat.Valid {
+		if s.Inputs.GUCS.AutoExplainLogFormat.Valid {
 			predParts = appendPredicate(
 				"auto_explain.log_format",
-				state.Inputs.GUCS.AutoExplainLogFormat.String,
+				s.Inputs.GUCS.AutoExplainLogFormat.String,
 			)
 		}
-		if state.Inputs.GUCS.AutoExplainLogMinDuration.Valid {
+		if s.Inputs.GUCS.AutoExplainLogMinDuration.Valid {
 			// N.B.: here we check for exact equality with the setting, rather than
 			// under the threshold, since the semantics of that behavior are more
 			// straightforward when providing a setting from an inputs file
@@ -263,14 +263,14 @@ WHERE `
 				predParts,
 				fmt.Sprintf(
 					"(name = 'auto_explain.log_min_duration' AND setting::integer <> %d)",
-					state.Inputs.GUCS.AutoExplainLogMinDuration.Int64,
+					s.Inputs.GUCS.AutoExplainLogMinDuration.Int64,
 				),
 			)
 		}
-		if state.Inputs.GUCS.AutoExplainLogNestedStatements.Valid {
+		if s.Inputs.GUCS.AutoExplainLogNestedStatements.Valid {
 			predParts = appendPredicate(
 				"auto_explain.log_nested_statements",
-				state.Inputs.GUCS.AutoExplainLogNestedStatements.String,
+				s.Inputs.GUCS.AutoExplainLogNestedStatements.String,
 			)
 		}
 
@@ -286,29 +286,29 @@ WHERE `
 (name = 'auto_explain.log_format' AND setting <> %s) OR
 (name = 'auto_explain.log_min_duration' AND setting::integer < %d) OR
 (name = 'auto_explain.log_nested_statements' AND setting <> %s)`,
-			pq.QuoteLiteral(s.RecommendedGUCS.AutoExplainLogAnalyze.String),
-			pq.QuoteLiteral(s.RecommendedGUCS.AutoExplainLogBuffers.String),
-			pq.QuoteLiteral(s.RecommendedGUCS.AutoExplainLogTiming.String),
-			pq.QuoteLiteral(s.RecommendedGUCS.AutoExplainLogTriggers.String),
-			pq.QuoteLiteral(s.RecommendedGUCS.AutoExplainLogVerbose.String),
-			pq.QuoteLiteral(s.RecommendedGUCS.AutoExplainLogFormat.String),
-			s.RecommendedGUCS.AutoExplainLogMinDuration.Int64,
-			pq.QuoteLiteral(s.RecommendedGUCS.AutoExplainLogNestedStatements.String),
+			pq.QuoteLiteral(state.RecommendedGUCS.AutoExplainLogAnalyze.String),
+			pq.QuoteLiteral(state.RecommendedGUCS.AutoExplainLogBuffers.String),
+			pq.QuoteLiteral(state.RecommendedGUCS.AutoExplainLogTiming.String),
+			pq.QuoteLiteral(state.RecommendedGUCS.AutoExplainLogTriggers.String),
+			pq.QuoteLiteral(state.RecommendedGUCS.AutoExplainLogVerbose.String),
+			pq.QuoteLiteral(state.RecommendedGUCS.AutoExplainLogFormat.String),
+			state.RecommendedGUCS.AutoExplainLogMinDuration.Int64,
+			pq.QuoteLiteral(state.RecommendedGUCS.AutoExplainLogNestedStatements.String),
 		)
 	}
 
 	return query + predicate
 }
 
-func getLogAnalyzeValue(state *s.SetupState, currValue string) (string, error) {
-	if state.Inputs.Scripted {
-		if !state.Inputs.GUCS.AutoExplainLogAnalyze.Valid {
+func getLogAnalyzeValue(s *state.SetupState, currValue string) (string, error) {
+	if s.Inputs.Scripted {
+		if !s.Inputs.GUCS.AutoExplainLogAnalyze.Valid {
 			panic("auto_explain.log_analyze setting needs review but was not provided")
 		}
-		return state.Inputs.GUCS.AutoExplainLogAnalyze.String, nil
+		return s.Inputs.GUCS.AutoExplainLogAnalyze.String, nil
 	}
 	var logAnalyzeIdx int
-	opts, optLabels := getBooleanOpts(currValue, s.RecommendedGUCS.AutoExplainLogAnalyze.String)
+	opts, optLabels := getBooleanOpts(currValue, state.RecommendedGUCS.AutoExplainLogAnalyze.String)
 	err := survey.AskOne(&survey.Select{
 		Message: fmt.Sprintf("Setting auto_explain.log_analyze is currently set to '%s':", currValue),
 		Help:    "Include EXPLAIN ANALYZE output rather than just EXPLAIN output when a plan is logged; required for several other settings",
@@ -320,16 +320,16 @@ func getLogAnalyzeValue(state *s.SetupState, currValue string) (string, error) {
 	return opts[logAnalyzeIdx], nil
 }
 
-func getLogBuffersValue(state *s.SetupState, currValue string) (string, error) {
-	if state.Inputs.Scripted {
-		if !state.Inputs.GUCS.AutoExplainLogBuffers.Valid {
+func getLogBuffersValue(s *state.SetupState, currValue string) (string, error) {
+	if s.Inputs.Scripted {
+		if !s.Inputs.GUCS.AutoExplainLogBuffers.Valid {
 			panic("auto_explain.log_buffers setting needs review but was not provided")
 		}
-		return state.Inputs.GUCS.AutoExplainLogBuffers.String, nil
+		return s.Inputs.GUCS.AutoExplainLogBuffers.String, nil
 	}
 
 	var logBuffersIdx int
-	var opts, optLabels = getBooleanOpts(currValue, s.RecommendedGUCS.AutoExplainLogBuffers.String)
+	var opts, optLabels = getBooleanOpts(currValue, state.RecommendedGUCS.AutoExplainLogBuffers.String)
 	err := survey.AskOne(&survey.Select{
 		Message: fmt.Sprintf("Setting auto_explain.log_buffers is currently set to '%s'", currValue),
 		Help:    "Include BUFFERS usage information when a plan is logged",
@@ -341,15 +341,15 @@ func getLogBuffersValue(state *s.SetupState, currValue string) (string, error) {
 	return opts[logBuffersIdx], nil
 }
 
-func getLogTimingValue(state *s.SetupState, currValue string) (string, error) {
-	if state.Inputs.Scripted {
-		if !state.Inputs.GUCS.AutoExplainLogTiming.Valid {
+func getLogTimingValue(s *state.SetupState, currValue string) (string, error) {
+	if s.Inputs.Scripted {
+		if !s.Inputs.GUCS.AutoExplainLogTiming.Valid {
 			panic("auto_explain.log_timing setting needs review but was not provided")
 		}
-		return state.Inputs.GUCS.AutoExplainLogTiming.String, nil
+		return s.Inputs.GUCS.AutoExplainLogTiming.String, nil
 	}
 	var logTimingIdx int
-	opts, optLabels := getBooleanOpts(currValue, s.RecommendedGUCS.AutoExplainLogTiming.String)
+	opts, optLabels := getBooleanOpts(currValue, state.RecommendedGUCS.AutoExplainLogTiming.String)
 	err := survey.AskOne(&survey.Select{
 		Message: fmt.Sprintf("Setting auto_explain.log_timing is currently set to '%s'", currValue),
 		Help:    "Include timing information for each plan node when a plan is logged; can have high performance impact",
@@ -361,16 +361,16 @@ func getLogTimingValue(state *s.SetupState, currValue string) (string, error) {
 	return opts[logTimingIdx], nil
 }
 
-func getLogTriggersValue(state *s.SetupState, currValue string) (string, error) {
-	if state.Inputs.Scripted {
-		if !state.Inputs.GUCS.AutoExplainLogTriggers.Valid {
+func getLogTriggersValue(s *state.SetupState, currValue string) (string, error) {
+	if s.Inputs.Scripted {
+		if !s.Inputs.GUCS.AutoExplainLogTriggers.Valid {
 			panic("auto_explain.log_triggers setting needs review but was not provided")
 		}
-		return state.Inputs.GUCS.AutoExplainLogTriggers.String, nil
+		return s.Inputs.GUCS.AutoExplainLogTriggers.String, nil
 	}
 
 	var logTriggersIdx int
-	opts, optLabels := getBooleanOpts(currValue, s.RecommendedGUCS.AutoExplainLogTriggers.String)
+	opts, optLabels := getBooleanOpts(currValue, state.RecommendedGUCS.AutoExplainLogTriggers.String)
 	err := survey.AskOne(&survey.Select{
 		Message: fmt.Sprintf("Setting auto_explain.log_triggers is currently set to '%s'", currValue),
 		Help:    "Include trigger execution statistics when a plan is logged",
@@ -382,16 +382,16 @@ func getLogTriggersValue(state *s.SetupState, currValue string) (string, error) 
 	return opts[logTriggersIdx], nil
 }
 
-func getLogVerboseValue(state *s.SetupState, currValue string) (string, error) {
-	if state.Inputs.Scripted {
-		if !state.Inputs.GUCS.AutoExplainLogVerbose.Valid {
+func getLogVerboseValue(s *state.SetupState, currValue string) (string, error) {
+	if s.Inputs.Scripted {
+		if !s.Inputs.GUCS.AutoExplainLogVerbose.Valid {
 			panic("auto_explain.log_verbose setting needs review but was not provided")
 		}
-		return state.Inputs.GUCS.AutoExplainLogVerbose.String, nil
+		return s.Inputs.GUCS.AutoExplainLogVerbose.String, nil
 	}
 
 	var logVerboseIdx int
-	opts, optLabels := getBooleanOpts(currValue, s.RecommendedGUCS.AutoExplainLogVerbose.String)
+	opts, optLabels := getBooleanOpts(currValue, state.RecommendedGUCS.AutoExplainLogVerbose.String)
 	err := survey.AskOne(&survey.Select{
 		Message: fmt.Sprintf("Setting auto_explain.log_verbose is currently set to '%s'", currValue),
 		Help:    "Include VERBOSE EXPLAIN details when a plan is logged",
@@ -403,12 +403,12 @@ func getLogVerboseValue(state *s.SetupState, currValue string) (string, error) {
 	return opts[logVerboseIdx], nil
 }
 
-func getLogFormatValue(state *s.SetupState, currValue string) (string, error) {
-	if state.Inputs.Scripted {
-		if !state.Inputs.GUCS.AutoExplainLogFormat.Valid {
+func getLogFormatValue(s *state.SetupState, currValue string) (string, error) {
+	if s.Inputs.Scripted {
+		if !s.Inputs.GUCS.AutoExplainLogFormat.Valid {
 			panic("auto_explain.log_format setting needs review but was not provided")
 		}
-		logFormat := state.Inputs.GUCS.AutoExplainLogFormat.String
+		logFormat := s.Inputs.GUCS.AutoExplainLogFormat.String
 		if logFormat != "text" && logFormat != "json" {
 			return "", fmt.Errorf("unsupported auto_explain.log_format: %s", logFormat)
 		}
@@ -446,23 +446,23 @@ func getLogFormatValue(state *s.SetupState, currValue string) (string, error) {
 	}
 }
 
-func getLogMinDurationValue(state *s.SetupState, currValue string) (string, error) {
-	if state.Inputs.Scripted {
-		if !state.Inputs.GUCS.AutoExplainLogMinDuration.Valid {
+func getLogMinDurationValue(s *state.SetupState, currValue string) (string, error) {
+	if s.Inputs.Scripted {
+		if !s.Inputs.GUCS.AutoExplainLogMinDuration.Valid {
 			panic("auto_explain.log_min_duration setting needs review but was not provided")
 		}
-		return strconv.Itoa(int(state.Inputs.GUCS.AutoExplainLogMinDuration.Int64)), nil
+		return strconv.Itoa(int(s.Inputs.GUCS.AutoExplainLogMinDuration.Int64)), nil
 	}
 
 	var durationOpts = []string{
-		fmt.Sprintf("set to %dms (recommended inital value; will be saved to Postgres)", s.RecommendedGUCS.AutoExplainLogMinDuration.Int64),
+		fmt.Sprintf("set to %dms (recommended inital value; will be saved to Postgres)", state.RecommendedGUCS.AutoExplainLogMinDuration.Int64),
 		"set to other value...",
 		fmt.Sprintf("leave at %sms", currValue),
 	}
 	var durationOptIdx int
 	err := survey.AskOne(&survey.Select{
 		Message: fmt.Sprintf("Setting auto_explain.log_min_duration is currently set to '%s ms'", currValue),
-		Help:    fmt.Sprintf("Threshold to log EXPLAIN plans, in ms; recommend %d, must be at least 10", s.RecommendedGUCS.AutoExplainLogMinDuration.Int64),
+		Help:    fmt.Sprintf("Threshold to log EXPLAIN plans, in ms; recommend %d, must be at least 10", state.RecommendedGUCS.AutoExplainLogMinDuration.Int64),
 		Options: durationOpts,
 	}, &durationOptIdx)
 	if err != nil {
@@ -470,7 +470,7 @@ func getLogMinDurationValue(state *s.SetupState, currValue string) (string, erro
 	}
 
 	if durationOptIdx == 0 {
-		return strconv.Itoa(int(s.RecommendedGUCS.AutoExplainLogMinDuration.Int64)), nil
+		return strconv.Itoa(int(state.RecommendedGUCS.AutoExplainLogMinDuration.Int64)), nil
 	} else if durationOptIdx == 1 {
 		var logMinDuration string
 		err = survey.AskOne(&survey.Input{
@@ -488,16 +488,16 @@ func getLogMinDurationValue(state *s.SetupState, currValue string) (string, erro
 	}
 }
 
-func getLogNestedStatements(state *s.SetupState, currValue string) (string, error) {
-	if state.Inputs.Scripted {
-		if !state.Inputs.GUCS.AutoExplainLogNestedStatements.Valid {
+func getLogNestedStatements(s *state.SetupState, currValue string) (string, error) {
+	if s.Inputs.Scripted {
+		if !s.Inputs.GUCS.AutoExplainLogNestedStatements.Valid {
 			panic("auto_explain.log_nested_statements setting needs review but was not provided")
 		}
-		return state.Inputs.GUCS.AutoExplainLogNestedStatements.String, nil
+		return s.Inputs.GUCS.AutoExplainLogNestedStatements.String, nil
 	}
 
 	var logNestedIdx int
-	opts, optLabels := getBooleanOpts(currValue, s.RecommendedGUCS.AutoExplainLogNestedStatements.String)
+	opts, optLabels := getBooleanOpts(currValue, state.RecommendedGUCS.AutoExplainLogNestedStatements.String)
 	err := survey.AskOne(&survey.Select{
 		Message: fmt.Sprintf("Setting auto_explain.log_nested_statements is currently set to '%s'", currValue),
 		Help:    "Causes nested statements (statements executed inside a function) to be considered for logging",

@@ -4,29 +4,29 @@ import (
 	"errors"
 
 	survey "github.com/AlecAivazis/survey/v2"
-	s "github.com/pganalyze/collector/setup/state"
+	"github.com/pganalyze/collector/setup/state"
 )
 
-var SpecifyAPIKey = &s.Step{
+var SpecifyAPIKey = &state.Step{
 	ID:          "specify_api_key",
 	Description: "Specify the pganalyze API key (api_key) in the collector config file",
-	Check: func(state *s.SetupState) (bool, error) {
-		return state.PGAnalyzeSection.HasKey("api_key"), nil
+	Check: func(s *state.SetupState) (bool, error) {
+		return s.PGAnalyzeSection.HasKey("api_key"), nil
 	},
-	Run: func(state *s.SetupState) error {
+	Run: func(s *state.SetupState) error {
 		var apiKey string
 		var apiBaseURL string
 
-		if state.Inputs.Settings.APIKey.Valid {
-			apiKey = state.Inputs.Settings.APIKey.String
+		if s.Inputs.Settings.APIKey.Valid {
+			apiKey = s.Inputs.Settings.APIKey.String
 		}
-		if state.Inputs.Settings.APIBaseURL.Valid {
-			apiBaseURL = state.Inputs.Settings.APIBaseURL.String
+		if s.Inputs.Settings.APIBaseURL.Valid {
+			apiBaseURL = s.Inputs.Settings.APIBaseURL.String
 		}
 
 		var configWriteConfirmed bool
 
-		if state.Inputs.Scripted {
+		if s.Inputs.Scripted {
 			if apiKey != "" {
 				configWriteConfirmed = true
 			} else {
@@ -53,16 +53,16 @@ var SpecifyAPIKey = &s.Step{
 		if !configWriteConfirmed {
 			return nil
 		}
-		_, err := state.PGAnalyzeSection.NewKey("api_key", apiKey)
+		_, err := s.PGAnalyzeSection.NewKey("api_key", apiKey)
 		if err != nil {
 			return err
 		}
 		if apiBaseURL != "" {
-			_, err := state.PGAnalyzeSection.NewKey("api_base_url", apiBaseURL)
+			_, err := s.PGAnalyzeSection.NewKey("api_base_url", apiBaseURL)
 			if err != nil {
 				return err
 			}
 		}
-		return state.SaveConfig()
+		return s.SaveConfig()
 	},
 }
