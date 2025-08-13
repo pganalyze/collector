@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/json"
 	"fmt"
 	"os"
 	"regexp"
@@ -13,13 +14,14 @@ import (
 	"gopkg.in/mcuadros/go-syslog.v2"
 
 	"github.com/pganalyze/collector/config"
+	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
 )
 
 var logLinePartsRegexp = regexp.MustCompile(`^\s*\[(\d+)-(\d+)\] (.*)`)
 var logLineNumberPartsRegexp = regexp.MustCompile(`^\[(\d+)-(\d+)\]$`)
 
-func setupSyslogHandler(ctx context.Context, config config.ServerConfig, out chan<- SelfHostedLogStreamItem, prefixedLogger *util.Logger) error {
+func setupSyslogHandler(ctx context.Context, config config.ServerConfig, out chan<- SelfHostedLogStreamItem, prefixedLogger *util.Logger, opts state.CollectionOpts) error {
 	logSyslogServer := config.LogSyslogServer
 	channel := make(syslog.LogPartsChannel)
 	handler := syslog.NewChannelHandler(channel)
@@ -89,6 +91,14 @@ func setupSyslogHandler(ctx context.Context, config config.ServerConfig, out cha
 		for {
 			select {
 			case logParts := <-channel:
+				if opts.VeryVerbose {
+					jsonData, err := json.MarshalIndent(logParts, "", "  ")
+					if err != nil {
+						prefixedLogger.PrintVerbose("Failed to convert LogParts struct to JSON: %v", err)
+					}
+					prefixedLogger.PrintVerbose("Received syslog log data in the following format:\n")
+					prefixedLogger.PrintVerbose(string(jsonData))
+				}
 				item := SelfHostedLogStreamItem{}
 
 				item.OccurredAt, _ = logParts["timestamp"].(time.Time)
@@ -129,7 +139,7 @@ func setupSyslogHandler(ctx context.Context, config config.ServerConfig, out cha
 				// and disambiguate based on logParts["client"]
 			case <-ctx.Done():
 				server.Kill()
-				break
+				return
 			}
 		}
 	}(ctx, server, channel)
