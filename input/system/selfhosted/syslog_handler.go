@@ -88,7 +88,6 @@ func setupSyslogHandler(ctx context.Context, config config.ServerConfig, out cha
 	server.Boot()
 
 	go func(ctx context.Context, server *syslog.Server, channel syslog.LogPartsChannel) {
-	outer:
 		for {
 			select {
 			case logParts := <-channel:
@@ -140,7 +139,7 @@ func setupSyslogHandler(ctx context.Context, config config.ServerConfig, out cha
 				// and disambiguate based on logParts["client"]
 			case <-ctx.Done():
 				server.Kill()
-				break outer
+				return
 			}
 		}
 	}(ctx, server, channel)
