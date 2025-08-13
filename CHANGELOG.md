@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.66.3      2025-08-13
+
+* Log Insights: Support for multiple OpenTelemetry log receiving endpoints
+  - Previously, only a single HTTP server (port) could receive logs. With this
+    change, a server can be specified per server section using `db_log_otel_server` / `LOG_OTEL_SERVER`
+  - The Helm chart has been updated to support this as well. Within the service
+    section, multiple ports can be specified using the new `ports` value
+* Add `--very-verbose` flag
+  - Enables very verbose logging (also implicitly enables verbose logging)
+  - When used with the Log Insights integration for syslog, OpenTelemetry, Azure,
+    or Google Cloud, this flag will output incoming logs from these services
+* Show error when duplicate server definitions are found in the collector config
+  during test run
+
+
 ## 0.66.2      2025-06-25
 
 * Amazon Aurora: Add support for Postgres 17

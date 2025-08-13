@@ -1,5 +1,5 @@
 export NAME ?= pganalyze-collector
-export VERSION ?= 0.66.2
+export VERSION ?= 0.66.3
 export GIT_VERSION ?= v$(VERSION)
 #export GIT_VERSION=HEAD
 #export GIT_VERSION=618e85ce5ed5365bc7d9d9da866fdeb73bac5a55
