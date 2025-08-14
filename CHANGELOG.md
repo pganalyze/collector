@@ -4,7 +4,8 @@
 
 * Log Insights: Support for multiple OpenTelemetry log receiving endpoints
   - Previously, only a single HTTP server (port) could receive logs. With this
-    change, a server can be specified per server section using `db_log_otel_server` / `LOG_OTEL_SERVER`
+    change, an OTEL HTTP server can be specified per monitored server section
+    using `db_log_otel_server` / `LOG_OTEL_SERVER`
   - The Helm chart has been updated to support this as well. Within the service
     section, multiple ports can be specified using the new `ports` value
 * Add `--very-verbose` flag
