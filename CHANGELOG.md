@@ -14,6 +14,7 @@
     or Google Cloud, this flag will output incoming logs from these services
 * Show error when duplicate server definitions are found in the collector config
   during test run
+* Install script: Add Oracle Linux support
 
 
 ## 0.66.2      2025-06-25
