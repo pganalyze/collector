@@ -114,7 +114,7 @@ func GetStatements(ctx context.Context, c *Collection, db *sql.DB, showtext bool
 	}
 
 	if c.PostgresVersion.Numeric >= state.PostgresVersion14 && foundExtMinorVersion < 9 {
-		c.SelfTest.MarkCollectionAspectError(state.CollectionAspectPgStatStatements, "extension version not supported in database %s  (1.%d installed, 1.9+ supported)", c.Config.DbName, foundExtMinorVersion)
+		c.SelfTest.MarkCollectionAspectError(state.CollectionAspectPgStatStatements, "extension version too old in database %s (1.%d installed, 1.9+ required)", c.Config.DbName, foundExtMinorVersion)
 		c.SelfTest.HintCollectionAspect(state.CollectionAspectPgStatStatements, "Update the extension by running `ALTER EXTENSION pg_stat_statements UPDATE` in database %s", c.Config.DbName)
 	}
 
@@ -136,9 +136,9 @@ func GetStatements(ctx context.Context, c *Collection, db *sql.DB, showtext bool
 		optionalFields = statementSQLOptionalFieldsMinorVersion8
 	} else if foundExtMinorVersion >= 3 {
 		optionalFields = statementSQLOptionalFieldsMinorVersion3
-	} else {
-		c.SelfTest.MarkCollectionAspectError(state.CollectionAspectPgStatStatements, "extension version not supported in database %s (1.%d installed, 1.3+ supported)", c.Config.DbName, foundExtMinorVersion)
-		return nil, nil, nil, fmt.Errorf("pg_stat_statements version not supported in database %s (1.%d installed, 1.3+ supported). To update run `ALTER EXTENSION pg_stat_statements UPDATE` in database %s", c.Config.DbName, foundExtMinorVersion, c.Config.DbName)
+	} else if c.PostgresVersion.Numeric < state.PostgresVersion14 {
+		c.SelfTest.MarkCollectionAspectError(state.CollectionAspectPgStatStatements, "extension version too old in database %s (1.%d installed, 1.3+ required)", c.Config.DbName, foundExtMinorVersion)
+		return nil, nil, nil, fmt.Errorf("pg_stat_statements version too old in database %s (1.%d installed, 1.3+ required). To update run `ALTER EXTENSION pg_stat_statements UPDATE` in database %s", c.Config.DbName, foundExtMinorVersion, c.Config.DbName)
 	}
 
 	if c.GlobalOpts.TestRun && foundExtMinorVersion < extMinorVersion {
