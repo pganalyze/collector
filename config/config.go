@@ -109,6 +109,7 @@ type ServerConfig struct {
 	GcpAlloyDBClusterID   string `ini:"gcp_alloydb_cluster_id"`
 	GcpAlloyDBInstanceID  string `ini:"gcp_alloydb_instance_id"`
 	GcpPubsubSubscription string `ini:"gcp_pubsub_subscription"`
+	GcpPubsubMaxAge       string `ini:"gcp_pubsub_max_age"`
 	GcpCredentialsFile    string `ini:"gcp_credentials_file"`
 	GcpRegion             string `ini:"gcp_region"`
 	GcpUsePublicIP        bool   `ini:"gcp_use_public_ip"`

@@ -242,6 +242,9 @@ func getDefaultConfig() *ServerConfig {
 	if gcpPubsubSubscription := os.Getenv("GCP_PUBSUB_SUBSCRIPTION"); gcpPubsubSubscription != "" {
 		config.GcpPubsubSubscription = gcpPubsubSubscription
 	}
+	if gcpPubsubMaxAge := os.Getenv("GCP_PUBSUB_MAX_AGE"); gcpPubsubMaxAge != "" {
+		config.GcpPubsubMaxAge = gcpPubsubMaxAge
+	}
 	if gcpCredentialsFile := os.Getenv("GCP_CREDENTIALS_FILE"); gcpCredentialsFile != "" {
 		config.GcpCredentialsFile = gcpCredentialsFile
 	}
