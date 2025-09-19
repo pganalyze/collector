@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"cloud.google.com/go/pubsub"
+	pubsub "cloud.google.com/go/pubsub/v2"
 	"google.golang.org/api/option"
 
 	"github.com/pganalyze/collector/config"
@@ -62,9 +62,9 @@ func setupPubSubSubscriber(ctx context.Context, wg *sync.WaitGroup, logger *util
 		return fmt.Errorf("failed to create Google PubSub client: %v", err)
 	}
 
-	sub := client.Subscription(subID)
+	sub := client.Subscriber(subID)
 	wg.Add(1)
-	go func(ctx context.Context, wg *sync.WaitGroup, logger *util.Logger, sub *pubsub.Subscription) {
+	go func(ctx context.Context, wg *sync.WaitGroup, logger *util.Logger, sub *pubsub.Subscriber) {
 		defer wg.Done()
 
 		for {
