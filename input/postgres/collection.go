@@ -44,7 +44,7 @@ func helpersFromFunctions(functions []state.PostgresFunction) map[string][]state
 func NewCollection(ctx context.Context, logger *util.Logger, server *state.Server, globalOpts state.CollectionOpts, db *sql.DB) (*Collection, error) {
 	version, err := getPostgresVersion(ctx, db)
 	if err != nil {
-		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectPgVersion, err.Error())
+		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectPgVersion, "%s", err.Error())
 		return &Collection{}, fmt.Errorf("failed collecting Postgres Version: %s", err)
 	}
 	logger.PrintVerbose("Detected PostgreSQL Version %d (%s)", version.Numeric, version.Full)
@@ -52,7 +52,7 @@ func NewCollection(ctx context.Context, logger *util.Logger, server *state.Serve
 		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectPgVersion, "PostgreSQL server version (%s) is too old, 10 or newer is required.", version.Short)
 		return &Collection{}, fmt.Errorf("your PostgreSQL server version (%s) is too old, 10 or newer is required", version.Short)
 	}
-	server.SelfTest.MarkCollectionAspect(state.CollectionAspectPgVersion, state.CollectionStateOkay, version.Short)
+	server.SelfTest.MarkCollectionAspect(state.CollectionAspectPgVersion, state.CollectionStateOkay, "%s", version.Short)
 
 	roles, err := getRoles(ctx, db, server.Config.SystemType)
 	if err != nil {

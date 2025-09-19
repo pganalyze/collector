@@ -138,7 +138,7 @@ func CollectActivityFromAllServers(ctx context.Context, servers []*state.Server,
 			newState, success, err := processActivityForServer(ctx, server, opts, prefixedLogger)
 			if err != nil {
 				server.ActivityStateMutex.Unlock()
-				server.SelfTest.MarkCollectionAspectError(state.CollectionAspectActivity, err.Error())
+				server.SelfTest.MarkCollectionAspectError(state.CollectionAspectActivity, "%s", err.Error())
 
 				server.CollectionStatusMutex.Lock()
 				isIgnoredReplica := err == state.ErrReplicaCollectionDisabled

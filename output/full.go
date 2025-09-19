@@ -27,7 +27,7 @@ func SendFull(ctx context.Context, server *state.Server, collectionOpts state.Co
 	s.CollectedIntervalSecs = collectedIntervalSecs
 	err := verifyIntegrity(&s)
 	if err != nil {
-		logger.PrintError(fmt.Sprintf("Snapshot integrity check failed: %s; please contact support", err))
+		logger.PrintError("Snapshot integrity check failed: %s; please contact support", err)
 		// Don't return an error here, since that would skip the state update, and
 		// if the integrity failure is due to a state diffing issue, we would not
 		// be able to make progress. Instead, send a failed snapshot directly.
