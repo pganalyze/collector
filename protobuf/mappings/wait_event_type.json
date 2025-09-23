@@ -10,5 +10,6 @@
   "Extension": 8,
   "IPC": 9,
   "Timeout": 10,
-  "IO": 11
+  "IO": 11,
+  "InjectionPoint": 12
 }

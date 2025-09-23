@@ -34,6 +34,7 @@ message Backend {
     PG_WAIT_IPC = 9; // IPC
     PG_WAIT_TIMEOUT = 10; // Timeout
     PG_WAIT_IO = 11; // IO
+    PG_WAIT_INJECTION_POINT = 12; // InjectionPoint
   }
 
   // ! When changing this, also update mappings/wait_event.json
