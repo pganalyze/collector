@@ -21,8 +21,7 @@ func NewLogger() Logger {
 }
 
 func (l *Logger) StartStep(description string) {
-	line := fmt.Sprintf("\033[1m*\033[0m %s", description)
-	l.Verbose(line)
+	l.Verbose("\033[1m*\033[0m %s", description)
 	l.indent += 1
 }
 

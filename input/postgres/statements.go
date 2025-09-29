@@ -290,7 +290,7 @@ func getStatementSource(ctx context.Context, c *Collection, db *sql.DB, showtext
 		} else if foundExtMinorVersion < extMinorVersion {
 			pgssMsg := fmt.Sprintf("extension outdated in database %s (1.%d installed, 1.%d available)", c.Config.DbName, foundExtMinorVersion, extMinorVersion)
 			c.Logger.PrintInfo("pg_stat_statements %s. To update run `ALTER EXTENSION pg_stat_statements UPDATE`", pgssMsg)
-			c.SelfTest.MarkCollectionAspectWarning(state.CollectionAspectPgStatStatements, pgssMsg)
+			c.SelfTest.MarkCollectionAspectWarning(state.CollectionAspectPgStatStatements, "%s", pgssMsg)
 			c.SelfTest.HintCollectionAspect(state.CollectionAspectPgStatStatements, "To update run `ALTER EXTENSION pg_stat_statements UPDATE`")
 		}
 	}

@@ -824,7 +824,7 @@ func Read(testRun bool, logger *util.Logger, filename string) (Config, error) {
 					if testRun {
 						return conf, errors.New(error)
 					} else {
-						logger.PrintError(error)
+						logger.PrintError("%s", error)
 					}
 				}
 			}

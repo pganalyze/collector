@@ -203,7 +203,7 @@ func printServerTestSummary(s *state.Server, verbosity SummaryVerbosity) {
 	verbose := verbosity == VerbosityVerbose
 	config := s.Config
 	status := s.SelfTest
-	serverName := ServerPrinter.Sprintf(config.SectionName)
+	serverName := ServerPrinter.Sprintf("%s", config.SectionName)
 	fmt.Fprintf(os.Stderr, "Server %s:\n", serverName)
 	fmt.Fprintln(os.Stderr)
 
