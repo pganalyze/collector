@@ -23,9 +23,15 @@ func TestStatements(t *testing.T) {
 	pKey1.QueryID = key2.QueryID
 	pKey2.QueryID = key2.QueryID
 
-	newState := state.PersistedState{}
-	transientState := state.TransientState{Statements: make(state.PostgresStatementMap), StatementTexts: make(state.PostgresStatementTextMap), Plans: make(state.PostgresPlanMap)}
-	diffState := state.DiffState{StatementStats: make(state.DiffedPostgresStatementStatsMap), PlanStats: make(state.DiffedPostgresPlanStatsMap)}
+	newState := state.PersistedState{CollectedAt: time.Now()}
+	transientState := state.TransientState{
+		Statements:     make(state.PostgresStatementMap),
+		StatementTexts: make(state.PostgresStatementTextMap),
+		StatementStats: make(state.HistoricStatementStatsMap),
+		Plans:          make(state.PostgresPlanMap),
+		PlanStats:      make(state.HistoricPlanStatsMap),
+	}
+	diffState := state.DiffState{}
 
 	q1 := "SELECT 1"
 	q2 := "SELECT * FROM test"
@@ -42,10 +48,16 @@ func TestStatements(t *testing.T) {
 	transientState.StatementTexts[fp2] = q2
 	transientState.Plans[pKey1] = state.PostgresPlan{ExplainPlan: "Index Scan", PlanCapturedTime: capturedTime}
 	transientState.Plans[pKey2] = state.PostgresPlan{ExplainPlan: "Bitmap Heap Scan", PlanCapturedTime: capturedTime}
-	diffState.StatementStats[key1] = state.DiffedPostgresStatementStats{Calls: 1}
-	diffState.StatementStats[key2] = state.DiffedPostgresStatementStats{Calls: 13}
-	diffState.PlanStats[pKey1] = state.DiffedPostgresStatementStats{Calls: 2}
-	diffState.PlanStats[pKey2] = state.DiffedPostgresStatementStats{Calls: 24}
+
+	statementStats := make(state.DiffedPostgresStatementStatsMap)
+	statementStats[key1] = state.DiffedPostgresStatementStats{Calls: 1}
+	statementStats[key2] = state.DiffedPostgresStatementStats{Calls: 13}
+	transientState.StatementStats[state.HistoricStatsTimeKey{CollectedAt: newState.CollectedAt, CollectedIntervalSecs: 60}] = statementStats
+
+	planStats := make(state.DiffedPostgresPlanStatsMap)
+	planStats[pKey1] = state.DiffedPostgresStatementStats{Calls: 2}
+	planStats[pKey2] = state.DiffedPostgresStatementStats{Calls: 24}
+	transientState.PlanStats[state.HistoricStatsTimeKey{CollectedAt: newState.CollectedAt, CollectedIntervalSecs: 60}] = planStats
 
 	actual := transform.StateToSnapshot(newState, diffState, transientState)
 	makeCanonical(actual)

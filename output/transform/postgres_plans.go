@@ -94,7 +94,7 @@ func transformQueryPlanStatistic(stats state.DiffedPostgresStatementStats, idx i
 	}
 }
 
-func upsertQueryPlanReference(s *snapshot.FullSnapshot, queryIdx int32, planId int64) int32 {
+func upsertQueryPlanReferenceAndInformation(s *snapshot.FullSnapshot, queryIdx int32, planId int64, value planValue) int32 {
 	newRef := snapshot.QueryPlanReference{
 		QueryIdx:       queryIdx,
 		OriginalPlanId: planId,
@@ -109,38 +109,30 @@ func upsertQueryPlanReference(s *snapshot.FullSnapshot, queryIdx int32, planId i
 	idx := int32(len(s.QueryPlanReferences))
 	s.QueryPlanReferences = append(s.QueryPlanReferences, &newRef)
 
+	var planType snapshot.QueryPlanInformation_PlanType
+	switch value.plan.PlanType {
+	case "no plan":
+		planType = snapshot.QueryPlanInformation_NO_PLAN
+	case "estimate":
+		planType = snapshot.QueryPlanInformation_ESTIMATE
+	case "actual":
+		planType = snapshot.QueryPlanInformation_ACTUAL
+	}
+	info := snapshot.QueryPlanInformation{
+		QueryPlanIdx:     idx,
+		ExplainPlan:      value.plan.ExplainPlan,
+		PlanCapturedTime: timestamppb.New(value.plan.PlanCapturedTime),
+		PlanType:         planType,
+	}
+	s.QueryPlanInformations = append(s.QueryPlanInformations, &info)
+
 	return idx
 }
 
 func transformPostgresPlans(s snapshot.FullSnapshot, newState state.PersistedState, diffState state.DiffState, transientState state.TransientState, queryIDKeyToIdx QueryIDKeyToIdx) snapshot.FullSnapshot {
-	groupedPlans := groupPlans(transientState.Plans, diffState.PlanStats, queryIDKeyToIdx)
-	for key, value := range groupedPlans {
-		idx := upsertQueryPlanReference(&s, key.queryIdx, key.planID)
+	var planStats []*snapshot.HistoricQueryPlanStatistics
 
-		var planType snapshot.QueryPlanInformation_PlanType
-		switch value.plan.PlanType {
-		case "no plan":
-			planType = snapshot.QueryPlanInformation_NO_PLAN
-		case "estimate":
-			planType = snapshot.QueryPlanInformation_ESTIMATE
-		case "actual":
-			planType = snapshot.QueryPlanInformation_ACTUAL
-		}
-		info := snapshot.QueryPlanInformation{
-			QueryPlanIdx:     idx,
-			ExplainPlan:      value.plan.ExplainPlan,
-			PlanCapturedTime: timestamppb.New(value.plan.PlanCapturedTime),
-			PlanType:         planType,
-		}
-		s.QueryPlanInformations = append(s.QueryPlanInformations, &info)
-
-		// Plan stats (from a full snapshot run)
-		stats := transformQueryPlanStatistic(value.planStats, idx)
-		s.QueryPlanStatistics = append(s.QueryPlanStatistics, &stats)
-	}
-
-	// Historic plan stats (similar to historic statement stats, collected every 1 min)
-	for timeKey, diffedStats := range transientState.HistoricPlanStats {
+	for timeKey, diffedStats := range transientState.PlanStats {
 		// Ignore any data older than an hour, as a safety measure in case of many
 		// failed full snapshot runs (which don't reset state)
 		if time.Since(timeKey.CollectedAt).Hours() >= 1 {
@@ -153,12 +145,19 @@ func transformPostgresPlans(s snapshot.FullSnapshot, newState state.PersistedSta
 
 		groupedPlans := groupPlans(transientState.Plans, diffedStats, queryIDKeyToIdx)
 		for key, value := range groupedPlans {
-			idx := upsertQueryPlanReference(&s, key.queryIdx, key.planID)
+			idx := upsertQueryPlanReferenceAndInformation(&s, key.queryIdx, key.planID, value)
 			stats := transformQueryPlanStatistic(value.planStats, idx)
 			h.Statistics = append(h.Statistics, &stats)
 		}
-		s.HistoricQueryPlanStatistics = append(s.HistoricQueryPlanStatistics, &h)
+		planStats = append(planStats, &h)
 	}
+
+	if len(planStats) == 0 {
+		return s
+	}
+
+	s.QueryPlanStatistics = planStats[len(planStats)-1].Statistics
+	s.HistoricQueryPlanStatistics = planStats[:len(planStats)-1]
 
 	return s
 }

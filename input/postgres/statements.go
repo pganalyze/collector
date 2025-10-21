@@ -269,20 +269,16 @@ func GetStatements(ctx context.Context, c *Collection, db *sql.DB, showtext bool
 				return nil, nil, nil, err
 			}
 			query := string(bytes)
+			ignoreIoTiming := ignoreIOTiming(c.PostgresVersion, query)
 			key := queryKeys[idx]
 			select {
 			// Since normalizing can take time, explicitly check for cancellations
 			case <-ctx.Done():
 				return nil, nil, nil, ctx.Err()
 			default:
-				fingerprintAndNormalize(c, key, query, statements, statementTextsByFp)
+				fingerprintAndNormalize(c, key, query, statements, statementTextsByFp, ignoreIoTiming)
 			}
-			stats := queryStats[idx]
-			if ignoreIOTiming(c.PostgresVersion, query) {
-				stats.BlkReadTime = 0
-				stats.BlkWriteTime = 0
-			}
-			statementStats[key] = stats
+			statementStats[key] = queryStats[idx]
 		}
 	}
 
@@ -315,20 +311,22 @@ func ignoreIOTiming(postgresVersion state.PostgresVersion, receivedQuery string)
 var collectorQueryFingerprint = util.FingerprintText(util.QueryTextCollector)
 var insufficientPrivsQueryFingerprint = util.FingerprintText(util.QueryTextInsufficientPrivs)
 
-func fingerprintAndNormalize(c *Collection, key state.PostgresStatementKey, text string, statements state.PostgresStatementMap, statementTextsByFp state.PostgresStatementTextMap) {
+func fingerprintAndNormalize(c *Collection, key state.PostgresStatementKey, text string, statements state.PostgresStatementMap, statementTextsByFp state.PostgresStatementTextMap, ignoreIoTiming bool) {
 	if insufficientPrivilege(text) {
 		statements[key] = state.PostgresStatement{
 			InsufficientPrivilege: true,
 			Fingerprint:           insufficientPrivsQueryFingerprint,
+			IgnoreIoTiming:        ignoreIoTiming,
 		}
 	} else if collectorStatement(text) {
 		statements[key] = state.PostgresStatement{
-			Collector:   true,
-			Fingerprint: collectorQueryFingerprint,
+			Collector:      true,
+			Fingerprint:    collectorQueryFingerprint,
+			IgnoreIoTiming: ignoreIoTiming,
 		}
 	} else {
 		fp := util.FingerprintQuery(text, c.Config.FilterQueryText, -1)
-		statements[key] = state.PostgresStatement{Fingerprint: fp}
+		statements[key] = state.PostgresStatement{Fingerprint: fp, IgnoreIoTiming: ignoreIoTiming}
 		_, ok := statementTextsByFp[fp]
 		if !ok {
 			statementTextsByFp[fp] = util.NormalizeQuery(text, c.Config.FilterQueryText, -1)

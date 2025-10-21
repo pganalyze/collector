@@ -111,10 +111,6 @@ func GetServerStats(ctx context.Context, c *Collection, db *sql.DB, ps state.Per
 	if err != nil {
 		return ps, ts, err
 	}
-	ps.ServerIoStats, err = GetPgStatIo(ctx, c, db)
-	if err != nil {
-		return ps, ts, err
-	}
 
 	// Only collect transaction ID or xmin horizon related stats with non-replicas
 	if isReplica, err := getIsReplica(ctx, db); err == nil && !isReplica {

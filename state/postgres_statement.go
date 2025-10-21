@@ -13,6 +13,7 @@ type PostgresStatement struct {
 	QueryTextUnavailable  bool   // True if this represents a statement without query text
 	InsufficientPrivilege bool   // True if we're missing permissions to see the statement
 	Collector             bool   // True if this statement was produced by the pganalyze collector
+	IgnoreIoTiming        bool   // True if I/O timing stats should be ignored (set to zero) due to a platform misreporting them
 }
 
 // PostgresStatementStats - Statistics from pg_stat_statements extension for a given

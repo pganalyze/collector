@@ -170,7 +170,7 @@ func transformPostgresServerStats(s snapshot.FullSnapshot, newState state.Persis
 		PgStatStatementsReset:             snapshot.NullTimeToNullTimestamp(diffState.PgStatStatementsStats.Reset),
 	}
 
-	for timeKey, diffedStats := range transientState.HistoricServerIoStats {
+	for timeKey, diffedStats := range transientState.ServerIoStats {
 		// Ignore any data older than an hour, as a safety measure in case of many
 		// failed full snapshot runs (which don't reset state)
 		if time.Since(timeKey.CollectedAt).Hours() >= 1 {
