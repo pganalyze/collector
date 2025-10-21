@@ -69,7 +69,7 @@ func CollectFull(ctx context.Context, server *state.Server, connection *sql.DB, 
 		logger.PrintError("Error setting query text timeout: %s", err)
 		return
 	}
-	ts.Statements, ts.StatementTexts, _, err = postgres.GetStatements(ctx, c, connection, true)
+	ts.Statements, ts.StatementTexts, err = postgres.GetStatementTexts(ctx, c, connection)
 	if err != nil {
 		// Despite query performance data being an essential part of pganalyze, there are
 		// situations where it may not be available (or it timed out), so treat it as a
@@ -120,7 +120,7 @@ func CollectFull(ctx context.Context, server *state.Server, connection *sql.DB, 
 
 			// Make sure the next high frequency run has an empty reference point
 			newHighFreqState.LastStatementStatsAt = time.Now()
-			_, _, resetStatementStats, err := postgres.GetStatements(ctx, c, connection, false)
+			resetStatementStats, err := postgres.GetStatementStats(ctx, c, connection)
 			if err != nil {
 				logger.PrintError("Error collecting pg_stat_statements after reset: %s", err)
 				err = nil

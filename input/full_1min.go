@@ -17,7 +17,7 @@ func CollectAndDiff1minStats(ctx context.Context, c *postgres.Collection, connec
 	newState := prevState
 	newState.LastStatementStatsAt = time.Now()
 
-	_, _, newState.StatementStats, err = postgres.GetStatements(ctx, c, connection, false)
+	newState.StatementStats, err = postgres.GetStatementStats(ctx, c, connection)
 	if err != nil {
 		return newState, errors.Wrap(err, "error collecting pg_stat_statements")
 	}
