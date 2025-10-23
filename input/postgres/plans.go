@@ -11,7 +11,7 @@ import (
 
 // Do not query with plan_type 'no plan', as it's a query without a meaningful plan (planid=0)
 // e.g. FETCH 50 IN "query-cursor_1"
-const planSQL string = `
+const auroraPlanSQL string = `
 SELECT
 	userid, dbid, toplevel, queryid, planid,
 	explain_plan, plan_type, plan_captured_time,
@@ -25,39 +25,70 @@ FROM
 WHERE
 	plan_type IN ('estimate', 'actual')`
 
+const statPlanSQL string = `
+SELECT
+	userid, dbid, toplevel, queryid, planid,
+	plan, 'estimate', current_timestamp,
+	calls, total_exec_time,
+	0, 0, 0, 0, 0,
+	0, 0, 0, 0,
+	0, 0,
+	0.0, 0.0
+FROM
+	%s.pg_stat_plans(%t)`
+
+const plansExtensionSQL string = `
+SELECT nspname
+  FROM pg_extension pge
+ INNER JOIN pg_namespace pgn ON pge.extnamespace = pgn.oid
+ WHERE pge.extname = 'pg_stat_plans'
+`
+
 // GetPlans collects query execution plans and stats
 func GetPlans(ctx context.Context, c *Collection, db *sql.DB, showtext bool) (state.PostgresPlanMap, state.PostgresPlanStatsMap, error) {
 	var err error
-	var ioTimeFields string
+	var querySql string
 
-	// Only collect this with Aurora using aurora_stat_plans function for now
-	if !c.PostgresVersion.IsAwsAurora {
-		return nil, nil, nil
-	}
-
-	computePlanIdEnabled, err := GetPostgresSetting(ctx, db, "aurora_compute_plan_id")
-	if err != nil {
-		if c.GlobalOpts.TestRun {
-			c.Logger.PrintInfo("Function aurora_stat_plans() is not supported because Aurora version is too old. Upgrade to Aurora PostgreSQL version 14.10, 15.5, or later versions to collect query plans and stats.")
+	if c.PostgresVersion.IsAwsAurora {
+		computePlanIdEnabled, err := GetPostgresSetting(ctx, db, "aurora_compute_plan_id")
+		if err != nil {
+			if c.GlobalOpts.TestRun {
+				c.Logger.PrintInfo("Function aurora_stat_plans() is not supported because Aurora version is too old. Upgrade to Aurora PostgreSQL version 14.10, 15.5, or later versions to collect query plans and stats.")
+			}
+			return nil, nil, nil
 		}
-		return nil, nil, nil
-	}
-	// aurora_compute_plan_id needs to be on to use aurora_stat_plans function
-	if computePlanIdEnabled != "on" {
-		if c.GlobalOpts.TestRun {
-			c.Logger.PrintInfo("Function aurora_stat_plans() is not supported because aurora_compute_plan_id is turned off. Skipping collecting query plans and stats.")
+		// aurora_compute_plan_id needs to be on to use aurora_stat_plans function
+		if computePlanIdEnabled != "on" {
+			if c.GlobalOpts.TestRun {
+				c.Logger.PrintInfo("Function aurora_stat_plans() is not supported because aurora_compute_plan_id is turned off. Skipping collecting query plans and stats.")
+			}
+			return nil, nil, nil
 		}
-		return nil, nil, nil
-	}
 
-	// Timefields for I/O time columns, defined as constants in statements.go
-	if c.PostgresVersion.Numeric >= state.PostgresVersion17 {
-		ioTimeFields = statementSQLIoTimeFieldsMinorVersion11
+		// Timefields for I/O time columns, defined as constants in statements.go
+		var ioTimeFields string
+		if c.PostgresVersion.Numeric >= state.PostgresVersion17 {
+			ioTimeFields = statementSQLIoTimeFieldsMinorVersion11
+		} else {
+			ioTimeFields = statementSQLIoTimeFieldsDefault
+		}
+		querySql = fmt.Sprintf(auroraPlanSQL, ioTimeFields, showtext)
 	} else {
-		ioTimeFields = statementSQLIoTimeFieldsDefault
+		var extSchema string
+		err = db.QueryRowContext(ctx, QueryMarkerSQL+plansExtensionSQL).Scan(&extSchema)
+		if err == sql.ErrNoRows {
+			// In case the extension does not exist we return without an error here - because pg_stat_plans
+			// is not widely available yet, we don't want to confuse the test output.
+			return nil, nil, nil
+		}
+		if err != nil {
+			return nil, nil, err
+		}
+
+		querySql = fmt.Sprintf(statPlanSQL, extSchema, showtext)
 	}
 
-	stmt, err := db.PrepareContext(ctx, QueryMarkerSQL+fmt.Sprintf(planSQL, ioTimeFields, showtext))
+	stmt, err := db.PrepareContext(ctx, QueryMarkerSQL+querySql)
 	if err != nil {
 		return nil, nil, err
 	}
