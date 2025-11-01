@@ -35,6 +35,11 @@ func CollectFull(ctx context.Context, server *state.Server, connection *sql.DB, 
 		return
 	}
 
+	bufferCacheReady := make(chan state.BufferCache)
+	go func() {
+		postgres.GetBufferCache(ctx, c, server, opts, bufferCacheReady)
+	}()
+
 	// Perform one high frequency stats collection at the exact time of the full snapshot.
 	//
 	// The scheduler skips the otherwise scheduled execution when the full snapshot time happens,
@@ -59,10 +64,6 @@ func CollectFull(ctx context.Context, server *state.Server, connection *sql.DB, 
 		server.HighFreqPrevState = newHighFreqState
 	}
 	server.HighFreqStateMutex.Unlock()
-	bufferCacheReady := make(chan state.BufferCache)
-	go func() {
-		postgres.GetBufferCache(ctx, c, server, opts, bufferCacheReady)
-	}()
 
 	err = postgres.SetQueryTextStatementTimeout(ctx, connection, logger, server)
 	if err != nil {
