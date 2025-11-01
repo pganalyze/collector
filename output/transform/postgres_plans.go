@@ -1,6 +1,7 @@
 package transform
 
 import (
+	"sort"
 	"time"
 
 	snapshot "github.com/pganalyze/collector/output/pganalyze_collector"
@@ -155,6 +156,11 @@ func transformPostgresPlans(s snapshot.FullSnapshot, newState state.PersistedSta
 	if len(planStats) == 0 {
 		return s
 	}
+
+	// Sort the data so we can reliably store the most recent one separately
+	sort.Slice(planStats, func(i, j int) bool {
+		return planStats[i].CollectedAt.Seconds < planStats[j].CollectedAt.Seconds
+	})
 
 	s.QueryPlanStatistics = planStats[len(planStats)-1].Statistics
 	s.HistoricQueryPlanStatistics = planStats[:len(planStats)-1]

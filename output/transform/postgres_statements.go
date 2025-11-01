@@ -1,6 +1,7 @@
 package transform
 
 import (
+	"sort"
 	"time"
 
 	snapshot "github.com/pganalyze/collector/output/pganalyze_collector"
@@ -116,6 +117,11 @@ func transformPostgresStatements(s snapshot.FullSnapshot, newState state.Persist
 	if len(queryStats) == 0 {
 		return s, queryIDKeyToIDx
 	}
+
+	// Sort the data so we can reliably store the most recent one separately
+	sort.Slice(queryStats, func(i, j int) bool {
+		return queryStats[i].CollectedAt.Seconds < queryStats[j].CollectedAt.Seconds
+	})
 
 	s.QueryStatistics = queryStats[len(queryStats)-1].Statistics
 	s.HistoricQueryStatistics = queryStats[:len(queryStats)-1]
