@@ -274,26 +274,25 @@ func getStatementSource(ctx context.Context, c *Collection, db *sql.DB, showtext
 		foundExtMinorVersion = extMinorVersion
 	}
 
-	if c.PostgresVersion.Numeric >= state.PostgresVersion14 && foundExtMinorVersion < 9 {
-		c.SelfTest.MarkCollectionAspectError(state.CollectionAspectPgStatStatements, "extension version too old in database %s (1.%d installed, 1.9+ required)", c.Config.DbName, foundExtMinorVersion)
-		c.SelfTest.HintCollectionAspect(state.CollectionAspectPgStatStatements, "Update the extension by running `ALTER EXTENSION pg_stat_statements UPDATE` in database %s", c.Config.DbName)
-	} else if foundExtMinorVersion < 3 {
+	if foundExtMinorVersion < 3 {
 		c.SelfTest.MarkCollectionAspectError(state.CollectionAspectPgStatStatements, "extension version too old in database %s (1.%d installed, 1.3+ required)", c.Config.DbName, foundExtMinorVersion)
 		return "", 0, fmt.Errorf("pg_stat_statements version too old in database %s (1.%d installed, 1.3+ required). To update run `ALTER EXTENSION pg_stat_statements UPDATE` in database %s", c.Config.DbName, foundExtMinorVersion, c.Config.DbName)
 	}
 
-	if c.GlobalOpts.TestRun && foundExtMinorVersion < extMinorVersion {
-		pgssMsg := fmt.Sprintf("extension outdated (1.%d installed, 1.%d available)", foundExtMinorVersion, extMinorVersion)
-		c.Logger.PrintInfo("pg_stat_statements %s. To update run `ALTER EXTENSION pg_stat_statements UPDATE`", pgssMsg)
+	if c.GlobalOpts.TestRun {
 		if extMinorVersion >= 9 && foundExtMinorVersion < 9 {
 			// Using the older version pgss with Postgres 14+ can cause the incorrect query stats
 			// when track = all is used + there are toplevel queries and nested queries
 			// https://github.com/pganalyze/collector/pull/472#discussion_r1399976152
 			c.Logger.PrintError("Outdated pg_stat_statements may cause incorrect query statistics")
-			pgssMsg += "; outdated pg_stat_statements may cause incorrect query statistics"
+			c.SelfTest.MarkCollectionAspectError(state.CollectionAspectPgStatStatements, "extension version too old in database %s (1.%d installed, 1.9+ required). Outdated pg_stat_statements will cause incorrect query statistics.", c.Config.DbName, foundExtMinorVersion)
+			c.SelfTest.HintCollectionAspect(state.CollectionAspectPgStatStatements, "Update the extension by running `ALTER EXTENSION pg_stat_statements UPDATE`.")
+		} else if foundExtMinorVersion < extMinorVersion {
+			pgssMsg := fmt.Sprintf("extension outdated in database %s (1.%d installed, 1.%d available)", c.Config.DbName, foundExtMinorVersion, extMinorVersion)
+			c.Logger.PrintInfo("pg_stat_statements %s. To update run `ALTER EXTENSION pg_stat_statements UPDATE`", pgssMsg)
+			c.SelfTest.MarkCollectionAspectWarning(state.CollectionAspectPgStatStatements, pgssMsg)
+			c.SelfTest.HintCollectionAspect(state.CollectionAspectPgStatStatements, "To update run `ALTER EXTENSION pg_stat_statements UPDATE`")
 		}
-		c.SelfTest.MarkCollectionAspectWarning(state.CollectionAspectPgStatStatements, pgssMsg)
-		c.SelfTest.HintCollectionAspect(state.CollectionAspectPgStatStatements, "To update run `ALTER EXTENSION pg_stat_statements UPDATE`")
 	}
 
 	if c.HelperExists("get_stat_statements", []string{"boolean"}) || (showtext && c.HelperExists("get_stat_statements", nil)) {
