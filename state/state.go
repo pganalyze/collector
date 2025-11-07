@@ -241,6 +241,8 @@ type CollectionOpts struct {
 
 	OutputAsJson bool
 	VeryVerbose  bool
+
+	RequireWebsocket bool
 }
 
 type Grant struct {
