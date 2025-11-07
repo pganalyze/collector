@@ -101,9 +101,9 @@ func Gather1minStatsFromAllServers(ctx context.Context, servers []*state.Server,
 	// (which holds the state mutex that the state file write also wants to acquire). That means
 	// in case of collector crashes we may have an incorrect reference point on a subsequent start.
 	//
-	// XXX: Can we address this by using a read/write mutex that is held in read mode during the
-	// collection, and only elevated to write (i.e. blocking other readers) once we swap out the
-	// state stored on the server struct?
+	// We could potentially address this by using a read/write mutex that is held in read mode
+	// during the collection, and only elevated to write (i.e. blocking other readers) once we swap
+	// out the state stored on the server struct.
 
 	wg.Wait()
 }
