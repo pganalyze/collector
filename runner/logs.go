@@ -391,29 +391,29 @@ func TestLogsForAllServers(ctx context.Context, servers []*state.Server, opts st
 			continue
 		}
 
-		ctx, cancel := context.WithCancel(context.Background())
+		sctx, cancel := context.WithCancel(ctx)
 		wg := sync.WaitGroup{}
 		success := false
 
 		if server.Config.LogLocation != "" {
-			if testLocalLogTail(ctx, &wg, server, opts, prefixedLogger) {
+			if testLocalLogTail(sctx, &wg, server, opts, prefixedLogger) {
 				hasSuccessfulLocalServers = true
 				success = true
 			} else {
 				success = false
 			}
 		} else if server.Config.SupportsLogDownload() {
-			success = testLogDownload(ctx, &wg, server, opts, prefixedLogger)
+			success = testLogDownload(sctx, &wg, server, opts, prefixedLogger)
 		} else if server.Config.AzureEventhubNamespace != "" && server.Config.AzureEventhubName != "" {
 			if server.Config.AzureDbServerName == "" {
 				prefixedLogger.PrintError("ERROR - Detected Azure Event Hub setup but azure_db_server_name is not set")
 			} else {
-				success = testAzureLogStream(ctx, &wg, server, opts, prefixedLogger)
+				success = testAzureLogStream(sctx, &wg, server, opts, prefixedLogger)
 			}
-		} else if server.Config.GcpCloudSQLInstanceID != "" && server.Config.GcpPubsubSubscription != "" {
-			success = testGoogleCloudsqlLogStream(ctx, &wg, server, opts, prefixedLogger)
+		} else if (server.Config.GcpCloudSQLInstanceID != "" || (server.Config.GcpAlloyDBClusterID != "" && server.Config.GcpAlloyDBInstanceID != "")) && server.Config.GcpPubsubSubscription != "" {
+			success = testGoogleCloudsqlLogStream(sctx, &wg, server, opts, prefixedLogger)
 		} else if server.Config.LogOtelServer != "" {
-			success = testOtelLog(ctx, &wg, server, opts, prefixedLogger)
+			success = testOtelLog(sctx, &wg, server, opts, prefixedLogger)
 		}
 
 		if !success {
@@ -452,6 +452,8 @@ func testLocalLogTail(ctx context.Context, wg *sync.WaitGroup, server *state.Ser
 	EmitTestLogMsg(ctx, server, opts, logger)
 
 	select {
+	case <-ctx.Done():
+		return false
 	case <-logTestSucceeded:
 		break
 	case <-time.After(10 * time.Second):
@@ -493,6 +495,8 @@ func testAzureLogStream(ctx context.Context, wg *sync.WaitGroup, server *state.S
 	EmitTestLogMsg(ctx, server, opts, logger)
 
 	select {
+	case <-ctx.Done():
+		return false
 	case <-logTestSucceeded:
 		break
 	case <-time.After(10 * time.Second):
@@ -520,6 +524,8 @@ func testGoogleCloudsqlLogStream(ctx context.Context, wg *sync.WaitGroup, server
 	EmitTestLogMsg(ctx, server, opts, logger)
 
 	select {
+	case <-ctx.Done():
+		return false
 	case <-logTestSucceeded:
 		break
 	case <-time.After(10 * time.Second):
@@ -543,6 +549,8 @@ func testOtelLog(ctx context.Context, wg *sync.WaitGroup, server *state.Server, 
 	EmitTestLogMsg(ctx, server, opts, logger)
 
 	select {
+	case <-ctx.Done():
+		return false
 	case <-logTestSucceeded:
 		break
 	case <-time.After(10 * time.Second):
