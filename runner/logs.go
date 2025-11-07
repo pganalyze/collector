@@ -469,7 +469,7 @@ func testLogDownload(ctx context.Context, wg *sync.WaitGroup, server *state.Serv
 	prefixedLogger.PrintInfo("Testing log download...")
 	_, _, err := downloadLogsForServer(ctx, server, opts, prefixedLogger)
 	if err != nil {
-		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectLogs, err.Error())
+		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectLogs, "%s", err.Error())
 		printLogDownloadError(server, err, prefixedLogger)
 		return false
 	}

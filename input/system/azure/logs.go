@@ -107,7 +107,7 @@ func getAzureCredential(config config.ServerConfig) (azcore.TokenCredential, err
 			errorMessages = append(errorMessages, "ManagedIdentityCredential: "+err.Error())
 		}
 		if len(creds) == 0 {
-			return nil, fmt.Errorf("failed to set up Azure credentials:\n\t" + strings.Join(errorMessages, "\n\t"))
+			return nil, fmt.Errorf("failed to set up Azure credentials:\n\t%s", strings.Join(errorMessages, "\n\t"))
 		} else {
 			credential, err = azidentity.NewChainedTokenCredential(creds, nil)
 			if err != nil {

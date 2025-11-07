@@ -16,7 +16,7 @@ func GetGrant(ctx context.Context, server *state.Server, opts state.CollectionOp
 	grant := state.Grant{Config: pganalyze_collector.ServerMessage_Config{Features: &pganalyze_collector.ServerMessage_Features{}}}
 	req, err := http.NewRequestWithContext(ctx, "GET", server.Config.APIBaseURL+"/v2/snapshots/grant", nil)
 	if err != nil {
-		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectApiConnection, err.Error())
+		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectApiConnection, "%s", err.Error())
 		return grant, err
 	}
 

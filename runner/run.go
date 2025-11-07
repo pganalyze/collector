@@ -362,7 +362,7 @@ func checkAllInitialCollectionStatus(ctx context.Context, servers []*state.Serve
 func checkOneInitialCollectionStatus(ctx context.Context, server *state.Server, opts state.CollectionOpts, logger *util.Logger) error {
 	conn, err := postgres.EstablishConnection(ctx, server, logger, opts, "")
 	if err != nil {
-		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectMonitoringDbConnection, err.Error())
+		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectMonitoringDbConnection, "%s", err.Error())
 		return errors.Wrap(err, "failed to connect to database")
 	}
 	defer conn.Close()

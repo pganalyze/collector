@@ -1,4 +1,4 @@
-FROM golang:1.23-alpine AS base
+FROM golang:1.25-alpine AS base
 LABEL org.opencontainers.image.authors="team@pganalyze.com"
 
 ENV GOPATH=/go
