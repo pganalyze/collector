@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/pganalyze/collector/state"
+	"github.com/pganalyze/collector/util"
 )
 
 const bufferCacheExtensionSQL string = `
@@ -31,13 +32,12 @@ WHERE reldatabase IS NOT NULL -- filters out unused pages
 GROUP BY 1, 2
 `
 
-func GetBufferCache(ctx context.Context, c *Collection, server *state.Server, opts state.CollectionOpts, channel chan state.BufferCache) {
+func GetBufferCache(ctx context.Context, server *state.Server, logger *util.Logger, opts state.CollectionOpts) (bufferCache state.BufferCache) {
 	start := time.Now()
-	bufferCache := make(state.BufferCache)
-	db, err := EstablishConnection(ctx, server, c.Logger, opts, "")
+	bufferCache = make(state.BufferCache)
+	db, err := EstablishConnection(ctx, server, logger, opts, "")
 	if err != nil {
-		c.Logger.PrintError("GetBufferCache: %s", err)
-		channel <- bufferCache
+		logger.PrintError("GetBufferCache: %s", err)
 		return
 	}
 	defer db.Close()
@@ -45,7 +45,6 @@ func GetBufferCache(ctx context.Context, c *Collection, server *state.Server, op
 	schemaName := ""
 	db.QueryRowContext(ctx, QueryMarkerSQL+bufferCacheExtensionSQL).Scan(&schemaName)
 	if schemaName == "" {
-		channel <- bufferCache
 		return
 	}
 
@@ -53,23 +52,20 @@ func GetBufferCache(ctx context.Context, c *Collection, server *state.Server, op
 	db.QueryRowContext(ctx, QueryMarkerSQL+bufferCacheSizeSQL).Scan(&sizeGB)
 	if sizeGB > server.Config.MaxBufferCacheMonitoringGB {
 		if opts.TestRun {
-			c.Logger.PrintWarning("GetBufferCache: skipping collection. To enable, set max_buffer_cache_monitoring_gb to a value over %d", sizeGB)
+			logger.PrintWarning("GetBufferCache: skipping collection. To enable, set max_buffer_cache_monitoring_gb to a value over %d", sizeGB)
 		}
-		channel <- bufferCache
 		return
 	}
 
 	stmt, err := db.PrepareContext(ctx, QueryMarkerSQL+fmt.Sprintf(bufferCacheSQL, schemaName))
 	if err != nil {
-		c.Logger.PrintError("GetBufferCache: %s", err)
-		channel <- bufferCache
+		logger.PrintError("GetBufferCache: %s", err)
 		return
 	}
 	defer stmt.Close()
 	rows, err := stmt.QueryContext(ctx)
 	if err != nil {
-		c.Logger.PrintError("GetBufferCache: %s", err)
-		channel <- bufferCache
+		logger.PrintError("GetBufferCache: %s", err)
 		return
 	}
 	defer rows.Close()
@@ -79,8 +75,7 @@ func GetBufferCache(ctx context.Context, c *Collection, server *state.Server, op
 		var bytes int64
 		err = rows.Scan(&reldatabase, &relfilenode, &bytes)
 		if err != nil {
-			c.Logger.PrintError("GetBufferCache: %s", err)
-			channel <- bufferCache
+			logger.PrintError("GetBufferCache: %s", err)
 			return
 		}
 		b, ok := bufferCache[reldatabase]
@@ -91,6 +86,6 @@ func GetBufferCache(ctx context.Context, c *Collection, server *state.Server, op
 		}
 	}
 
-	c.Logger.PrintVerbose("GetBufferCache: finished after %s", time.Since(start))
-	channel <- bufferCache
+	logger.PrintVerbose("GetBufferCache: finished after %s", time.Since(start))
+	return
 }

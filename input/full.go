@@ -29,6 +29,15 @@ import (
 func CollectFull(ctx context.Context, server *state.Server, connection *sql.DB, opts state.CollectionOpts, logger *util.Logger) (ps state.PersistedState, ts state.TransientState, err error) {
 	ps.CollectedAt = time.Now()
 
+	bufferCacheReady := make(chan state.BufferCache)
+	go func() {
+		if server.Config.MaxBufferCacheMonitoringGB > 0 {
+			bufferCacheReady <- postgres.GetBufferCache(ctx, server, logger, opts)
+		} else {
+			bufferCacheReady <- make(state.BufferCache)
+		}
+	}()
+
 	c, err := postgres.NewCollection(ctx, logger, server, opts, connection)
 	if err != nil {
 		logger.PrintError("Error setting up collection info: %s", err)
@@ -42,11 +51,6 @@ func CollectFull(ctx context.Context, server *state.Server, connection *sql.DB, 
 		logger.PrintError("Error collecting pg_databases: %s", err)
 		return
 	}
-
-	bufferCacheReady := make(chan state.BufferCache)
-	go func() {
-		postgres.GetBufferCache(ctx, c, server, opts, bufferCacheReady)
-	}()
 
 	// Perform one high frequency stats collection at the exact time of the full snapshot.
 	//
