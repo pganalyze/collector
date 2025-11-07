@@ -25,11 +25,8 @@ type SchemaStats struct {
 type PersistedState struct {
 	CollectedAt time.Time
 
-	DatabaseStats  PostgresDatabaseStatsMap
-	StatementStats PostgresStatementStatsMap
-	SchemaStats    map[Oid]*SchemaStats
-	PlanStats      PostgresPlanStatsMap
-	ServerIoStats  PostgresServerIoStatsMap
+	DatabaseStats PostgresDatabaseStatsMap
+	SchemaStats   map[Oid]*SchemaStats
 
 	Relations []PostgresRelation
 	Functions []PostgresFunction
@@ -38,10 +35,16 @@ type PersistedState struct {
 	CollectorStats        CollectorStats
 	PgStatStatementsStats PgStatStatementsStats
 
-	// Incremented every run, indicates whether we should run a pg_stat_statements_reset()
+	// Incremented every full snapshot, indicates whether we should run pg_stat_statements_reset()
 	// on behalf of the user. Only activates once it reaches GrantFeatures.StatementReset,
 	// and is reset afterwards.
 	StatementResetCounter int
+}
+
+type PersistedHighFreqState struct {
+	StatementStats PostgresStatementStatsMap
+	PlanStats      PostgresPlanStatsMap
+	ServerIoStats  PostgresServerIoStatsMap
 
 	// Keep track of when we last collected statement stats, to calculate time distance
 	LastStatementStatsAt time.Time
@@ -65,12 +68,12 @@ type TransientState struct {
 	Databases []PostgresDatabase
 	Types     []PostgresType
 
-	Statements             PostgresStatementMap
-	StatementTexts         PostgresStatementTextMap
-	HistoricStatementStats HistoricStatementStatsMap
-	HistoricPlanStats      HistoricPlanStatsMap
-	Plans                  PostgresPlanMap
-	HistoricServerIoStats  HistoricPostgresServerIoStatsMap
+	Statements     PostgresStatementMap
+	StatementTexts PostgresStatementTextMap
+	StatementStats HistoricStatementStatsMap
+	PlanStats      HistoricPlanStatsMap
+	Plans          PostgresPlanMap
+	ServerIoStats  HistoricPostgresServerIoStatsMap
 
 	// This is a new zero value that was recorded after a pg_stat_statements_reset(),
 	// in order to enable the next snapshot to be able to diff against something
@@ -180,10 +183,7 @@ type DiffedSchemaStats struct {
 
 // DiffState - Result of diff-ing two persistent state structs
 type DiffState struct {
-	StatementStats DiffedPostgresStatementStatsMap
-	SchemaStats    map[Oid]*DiffedSchemaStats
-	PlanStats      DiffedPostgresPlanStatsMap
-	ServerIoStats  DiffedPostgresServerIoStatsMap
+	SchemaStats map[Oid]*DiffedSchemaStats
 
 	SystemCPUStats     DiffedSystemCPUStatsMap
 	SystemNetworkStats DiffedNetworkStatsMap
@@ -197,12 +197,13 @@ type DiffState struct {
 }
 
 // StateOnDiskFormatVersion - Increment this when an old state preserved to disk should be ignored
-const StateOnDiskFormatVersion = 6
+const StateOnDiskFormatVersion = 7
 
 type StateOnDisk struct {
 	FormatVersion uint
 
-	PrevStateByServer map[config.ServerIdentifier]PersistedState
+	PrevStateByServer         map[config.ServerIdentifier]PersistedState
+	HighFreqPrevStateByServer map[config.ServerIdentifier]PersistedHighFreqState
 }
 
 type CollectionOpts struct {
@@ -295,6 +296,9 @@ type Server struct {
 	ActivityPrevState  PersistedActivityState
 	ActivityStateMutex *sync.Mutex
 
+	HighFreqPrevState  PersistedHighFreqState
+	HighFreqStateMutex *sync.Mutex
+
 	CollectionStatus      CollectionStatus
 	CollectionStatusMutex *sync.Mutex
 
@@ -332,6 +336,7 @@ func MakeServer(config config.ServerConfig, testRun bool) *Server {
 		StateMutex:            &sync.Mutex{},
 		LogStateMutex:         &sync.Mutex{},
 		ActivityStateMutex:    &sync.Mutex{},
+		HighFreqStateMutex:    &sync.Mutex{},
 		CollectionStatusMutex: &sync.Mutex{},
 		SnapshotStream:        make(chan []byte),
 		QueryRuns:             make(map[int64]*QueryRun),

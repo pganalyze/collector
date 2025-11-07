@@ -18,6 +18,14 @@ import (
 )
 
 // CollectFull - Collects a "full" snapshot of all data we need on a regular interval
+//
+// Note that data collection in this function is ordered in a certain way to optimize for
+// both correctness (metric data capturing should be close to the "collected at" timestamp),
+// whilst staying aware of the potential slow operations (query texts, schema collection).
+//
+// When gathering new information/metrics, add fast metric collections right before query
+// text collection, and any slow operations (or those that are not a measured metric at a
+// certain point) after the schema collection.
 func CollectFull(ctx context.Context, server *state.Server, connection *sql.DB, opts state.CollectionOpts, logger *util.Logger) (ps state.PersistedState, ts state.TransientState, err error) {
 	ps.CollectedAt = time.Now()
 
@@ -40,13 +48,57 @@ func CollectFull(ctx context.Context, server *state.Server, connection *sql.DB, 
 		postgres.GetBufferCache(ctx, c, server, opts, bufferCacheReady)
 	}()
 
-	ps.LastStatementStatsAt = time.Now()
+	// Perform one high frequency stats collection at the exact time of the full snapshot.
+	//
+	// The scheduler skips the otherwise scheduled execution when the full snapshot time happens,
+	// so we can run it inline here and pass its data along as part of this full snapshot.
+	server.HighFreqStateMutex.Lock()
+	newHighFreqState, err := CollectAndDiff1minStats(ctx, c, connection, ps.CollectedAt, server.HighFreqPrevState)
+	if err != nil {
+		logger.PrintError("Could not collect high frequency statistics for server: %s", err)
+		err = nil
+	} else {
+		// Move high frequency stats to be submitted with this full snapshot. We do this early in
+		// the input step (vs in the runner) to avoid additional high frequency query stats being
+		// collected, whose query texts were not yet picked up with this full snapshot.
+		ts.StatementStats = newHighFreqState.UnidentifiedStatementStats
+		ts.PlanStats = newHighFreqState.UnidentifiedPlanStats
+		ts.ServerIoStats = newHighFreqState.QueuedServerIoStats
+		newHighFreqState.UnidentifiedStatementStats = make(state.HistoricStatementStatsMap)
+		newHighFreqState.UnidentifiedPlanStats = make(state.HistoricPlanStatsMap)
+		newHighFreqState.QueuedServerIoStats = make(state.HistoricPostgresServerIoStatsMap)
+		server.HighFreqPrevState = newHighFreqState
+	}
+	server.HighFreqStateMutex.Unlock()
+
+	// Collect other metrics that are fast to gather first, to avoid skewing their data points when query text collection is slow
+	ts.Replication, err = postgres.GetReplication(ctx, c, connection)
+	if err != nil {
+		// We intentionally accept this as a non-fatal issue (at least for now), because we've historically
+		// had issues make this work reliably
+		logger.PrintWarning("Skipping replication statistics, due to error: %s", err)
+		err = nil
+	}
+
+	ps, ts, err = postgres.GetServerStats(ctx, c, connection, ps, ts)
+	if err != nil {
+		logger.PrintError("Error collecting Postgres server statistics: %s", err)
+		return
+	}
+
+	ts.BackendCounts, err = postgres.GetBackendCounts(ctx, c, connection)
+	if err != nil {
+		logger.PrintError("Error collecting backend counts: %s", err)
+		return
+	}
+
+	// Collect query texts (this may be slow)
 	err = postgres.SetQueryTextStatementTimeout(ctx, connection, logger, server)
 	if err != nil {
 		logger.PrintError("Error setting query text timeout: %s", err)
 		return
 	}
-	ts.Statements, ts.StatementTexts, ps.StatementStats, err = postgres.GetStatements(ctx, c, connection, true)
+	ts.Statements, ts.StatementTexts, err = postgres.GetStatementTexts(ctx, c, connection)
 	if err != nil {
 		// Despite query performance data being an essential part of pganalyze, there are
 		// situations where it may not be available (or it timed out), so treat it as a
@@ -67,8 +119,8 @@ func CollectFull(ctx context.Context, server *state.Server, connection *sql.DB, 
 		}
 		err = nil
 	} else {
-		// Only collect plan stats when we successfully collected query stats
-		ts.Plans, ps.PlanStats, err = postgres.GetPlans(ctx, c, connection, true)
+		// Only collect plan texts when we successfully collected query texts
+		ts.Plans, _, err = postgres.GetPlans(ctx, c, connection, true)
 		if err != nil {
 			// Accept this as a non-fatal issue as this is not a critical stats (at least for now)
 			logger.PrintError("Skipping query plan statistics, due to error: %s", err)
@@ -81,9 +133,13 @@ func CollectFull(ctx context.Context, server *state.Server, connection *sql.DB, 
 		return
 	}
 
+	// Reset query stats and texts if needed (this must run after the query text collection)
 	ps.StatementResetCounter = server.PrevState.StatementResetCounter + 1
 	config := server.Grant.Load().Config
 	if config.Features.StatementResetFrequency != 0 && ps.StatementResetCounter >= int(config.Features.StatementResetFrequency) {
+		// Block concurrent collection of query stats, as that may see the actual Postgres-side
+		// reset before we updated the struct that the collector diffs against.
+		server.HighFreqStateMutex.Lock()
 		ps.StatementResetCounter = 0
 		err = postgres.ResetStatements(ctx, c, connection)
 		if err != nil {
@@ -91,12 +147,19 @@ func CollectFull(ctx context.Context, server *state.Server, connection *sql.DB, 
 			err = nil
 		} else {
 			logger.PrintInfo("Successfully called pg_stat_statements_reset() for all queries, next reset in %d hours", config.Features.StatementResetFrequency/scheduler.FullSnapshotsPerHour)
-			_, _, ts.ResetStatementStats, err = postgres.GetStatements(ctx, c, connection, false)
+
+			// Make sure the next high frequency run has an empty reference point
+			newHighFreqState.LastStatementStatsAt = time.Now()
+			resetStatementStats, err := postgres.GetStatementStats(ctx, c, connection)
 			if err != nil {
 				logger.PrintError("Error collecting pg_stat_statements after reset: %s", err)
 				err = nil
+				newHighFreqState.StatementStats = make(state.PostgresStatementStatsMap)
+			} else {
+				newHighFreqState.StatementStats = resetStatementStats
 			}
 		}
+		server.HighFreqStateMutex.Unlock()
 	}
 
 	if opts.CollectPostgresSettings {
@@ -105,26 +168,6 @@ func CollectFull(ctx context.Context, server *state.Server, connection *sql.DB, 
 			logger.PrintError("Error collecting config settings: %s", err)
 			return
 		}
-	}
-
-	ts.Replication, err = postgres.GetReplication(ctx, c, connection)
-	if err != nil {
-		// We intentionally accept this as a non-fatal issue (at least for now), because we've historically
-		// had issues make this work reliably
-		logger.PrintWarning("Skipping replication statistics, due to error: %s", err)
-		err = nil
-	}
-
-	ps, ts, err = postgres.GetServerStats(ctx, c, connection, ps, ts)
-	if err != nil {
-		logger.PrintError("Error collecting Postgres server statistics: %s", err)
-		return
-	}
-
-	ts.BackendCounts, err = postgres.GetBackendCounts(ctx, c, connection)
-	if err != nil {
-		logger.PrintError("Error collecting backend counts: %s", err)
-		return
 	}
 
 	// CollectAllSchemas relies on GetBufferCache to access the filenode OIDs before that data is discarded

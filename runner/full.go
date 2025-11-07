@@ -55,31 +55,9 @@ func collectDiffAndSubmit(ctx context.Context, server *state.Server, opts state.
 
 	diffState := diffState(logger, server.PrevState, newState, collectedIntervalSecs)
 
-	transientState.HistoricStatementStats = server.PrevState.UnidentifiedStatementStats
-	transientState.HistoricPlanStats = server.PrevState.UnidentifiedPlanStats
-	transientState.HistoricServerIoStats = server.PrevState.QueuedServerIoStats
-
-	// Add current collection to historic values for easier handling (except for statements for historic reasons)
-	timeKey := state.HistoricStatsTimeKey{
-		CollectedAt:           newState.CollectedAt,
-		CollectedIntervalSecs: uint32(newState.LastStatementStatsAt.Sub(server.PrevState.LastStatementStatsAt) / time.Second),
-	}
-	if transientState.HistoricServerIoStats == nil {
-		transientState.HistoricServerIoStats = make(state.HistoricPostgresServerIoStatsMap)
-	}
-	if diffState.ServerIoStats != nil {
-		transientState.HistoricServerIoStats[timeKey] = diffState.ServerIoStats // add current for easier tracking
-	}
-
 	err = output.SendFull(ctx, server, opts, logger, newState, diffState, transientState, collectedIntervalSecs)
 	if err != nil {
 		return newState, collectionStatus, err
-	}
-
-	// After we've done all processing, and in case we did a reset, make sure the
-	// next snapshot has an empty reference point
-	if transientState.ResetStatementStats != nil {
-		newState.StatementStats = transientState.ResetStatementStats
 	}
 
 	return newState, collectionStatus, nil

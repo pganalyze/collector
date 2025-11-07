@@ -1,6 +1,7 @@
 package transform
 
 import (
+	"sort"
 	"time"
 
 	snapshot "github.com/pganalyze/collector/output/pganalyze_collector"
@@ -76,28 +77,10 @@ type queryIDKey struct {
 type QueryIDKeyToIdx map[queryIDKey]int32
 
 func transformPostgresStatements(s snapshot.FullSnapshot, newState state.PersistedState, diffState state.DiffState, transientState state.TransientState, roleOidToIdx OidToIdx, databaseOidToIdx OidToIdx) (snapshot.FullSnapshot, QueryIDKeyToIdx) {
-	// Statement stats from this snapshot
-	groupedStatements := groupStatements(transientState.Statements, diffState.StatementStats)
+	var queryStats []*snapshot.HistoricQueryStatistics
 	queryIDKeyToIDx := make(QueryIDKeyToIdx)
-	for key, value := range groupedStatements {
-		idx := upsertQueryReferenceAndInformation(&s, transientState.StatementTexts, roleOidToIdx, databaseOidToIdx, key, value)
-		// Store the map of QueryIdx (idx here) and databaseOid, userOid, queryID combinations
-		// to use them later on with plans transformation
-		for _, queryId := range value.queryIDs {
-			sKey := queryIDKey{
-				databaseOid: key.databaseOid,
-				userOid:     key.userOid,
-				queryID:     queryId,
-			}
-			queryIDKeyToIDx[sKey] = idx
-		}
 
-		statistic := transformQueryStatistic(value.statementStats, idx)
-		s.QueryStatistics = append(s.QueryStatistics, &statistic)
-	}
-
-	// Historic statement stats which are sent now since we got the query text only now
-	for timeKey, diffedStats := range transientState.HistoricStatementStats {
+	for timeKey, diffedStats := range transientState.StatementStats {
 		// Ignore any data older than an hour, as a safety measure in case of many
 		// failed full snapshot runs (which don't reset state)
 		if time.Since(timeKey.CollectedAt).Hours() >= 1 {
@@ -108,14 +91,40 @@ func transformPostgresStatements(s snapshot.FullSnapshot, newState state.Persist
 		h.CollectedAt = timestamppb.New(timeKey.CollectedAt)
 		h.CollectedIntervalSecs = timeKey.CollectedIntervalSecs
 
-		groupedStatements = groupStatements(transientState.Statements, diffedStats)
+		groupedStatements := groupStatements(transientState.Statements, diffedStats)
 		for key, value := range groupedStatements {
 			idx := upsertQueryReferenceAndInformation(&s, transientState.StatementTexts, roleOidToIdx, databaseOidToIdx, key, value)
+			// Store the map of QueryIdx (idx here) and databaseOid, userOid, queryID combinations
+			// to use them later on with plans transformation
+			for _, queryId := range value.queryIDs {
+				sKey := queryIDKey{
+					databaseOid: key.databaseOid,
+					userOid:     key.userOid,
+					queryID:     queryId,
+				}
+				queryIDKeyToIDx[sKey] = idx
+			}
+			if value.statement.IgnoreIoTiming {
+				value.statementStats.BlkReadTime = 0
+				value.statementStats.BlkWriteTime = 0
+			}
 			statistic := transformQueryStatistic(value.statementStats, idx)
 			h.Statistics = append(h.Statistics, &statistic)
 		}
-		s.HistoricQueryStatistics = append(s.HistoricQueryStatistics, &h)
+		queryStats = append(queryStats, &h)
 	}
+
+	if len(queryStats) == 0 {
+		return s, queryIDKeyToIDx
+	}
+
+	// Sort the data so we can reliably store the most recent one separately
+	sort.Slice(queryStats, func(i, j int) bool {
+		return queryStats[i].CollectedAt.Seconds < queryStats[j].CollectedAt.Seconds
+	})
+
+	s.QueryStatistics = queryStats[len(queryStats)-1].Statistics
+	s.HistoricQueryStatistics = queryStats[:len(queryStats)-1]
 
 	return s, queryIDKeyToIDx
 }
