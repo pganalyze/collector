@@ -84,7 +84,9 @@ func connect(ctx context.Context, server *state.Server, opts state.CollectionOpt
 	}
 	headers["User-Agent"] = []string{util.CollectorNameAndVersion}
 	conn, response, err := dialer.DialContext(connCtx, url.String(), headers)
-	connectStatus = response.StatusCode
+	if response != nil {
+		connectStatus = response.StatusCode
+	}
 	if err != nil {
 		cancelConn()
 		logger.PrintWarning("Error starting websocket: %s %v", err, response)
