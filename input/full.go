@@ -38,6 +38,15 @@ func CollectFull(ctx context.Context, server *state.Server, connection *sql.DB, 
 		}
 	}()
 
+	systemStateReady := make(chan state.SystemState)
+	go func() {
+		if opts.CollectSystemInformation {
+			systemStateReady <- system.GetSystemState(ctx, server, logger, opts)
+		} else {
+			systemStateReady <- state.SystemState{}
+		}
+	}()
+
 	c, err := postgres.NewCollection(ctx, logger, server, opts, connection)
 	if err != nil {
 		logger.PrintError("Error setting up collection info: %s", err)
@@ -204,8 +213,9 @@ func CollectFull(ctx context.Context, server *state.Server, connection *sql.DB, 
 		ps.Relations = filteredRelations
 	}
 
-	if opts.CollectSystemInformation {
-		ps.System = system.GetSystemState(ctx, server, logger, opts)
+	select {
+	case <-ctx.Done():
+	case ps.System = <-systemStateReady:
 	}
 
 	logs.SyncLogParser(server, ts.Settings)
