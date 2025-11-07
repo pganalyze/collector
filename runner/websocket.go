@@ -32,17 +32,22 @@ func SetupWebsocketForAllServers(ctx context.Context, servers []*state.Server, o
 				case <-ctx.Done():
 					return
 				default:
+					var connectStatus int
 					if server.WebSocket.Load() == nil {
-						connect(ctx, server, opts, logger)
+						connectStatus = connect(ctx, server, opts, logger)
 					}
-					time.Sleep(3 * 60 * time.Second) // Delay between reconnect attempts
+					retryDelay := 60 * time.Second
+					if connectStatus >= 400 && connectStatus < 500 {
+						retryDelay = 8 * 60 * time.Second // Retry less often when server responds with 4xx errors
+					}
+					time.Sleep(retryDelay)
 				}
 			}
 		}(servers[idx])
 	}
 }
 
-func connect(ctx context.Context, server *state.Server, opts state.CollectionOpts, logger *util.Logger) {
+func connect(ctx context.Context, server *state.Server, opts state.CollectionOpts, logger *util.Logger) (connectStatus int) {
 	connCtx, cancelConn := context.WithCancel(ctx)
 	proxyConfig := httpproxy.Config{
 		HTTPProxy:  server.Config.HTTPProxy,
@@ -79,6 +84,7 @@ func connect(ctx context.Context, server *state.Server, opts state.CollectionOpt
 	}
 	headers["User-Agent"] = []string{util.CollectorNameAndVersion}
 	conn, response, err := dialer.DialContext(connCtx, url.String(), headers)
+	connectStatus = response.StatusCode
 	if err != nil {
 		cancelConn()
 		logger.PrintWarning("Error starting websocket: %s %v", err, response)
@@ -161,6 +167,7 @@ func connect(ctx context.Context, server *state.Server, opts state.CollectionOpt
 			}
 		}
 	}()
+	return
 }
 
 func closeConnection(server *state.Server, logger *util.Logger) {
