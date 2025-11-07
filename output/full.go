@@ -5,6 +5,7 @@ import (
 	"compress/zlib"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -85,6 +86,8 @@ func submitFull(ctx context.Context, s snapshot.FullSnapshot, server *state.Serv
 		server.SnapshotStream <- compressedData.Bytes()
 		logger.PrintInfo("Submitted full snapshot successfully")
 		return nil
+	} else if collectionOpts.RequireWebsocket {
+		return errors.New("Error uploading snapshot: WebSocket not connected")
 	}
 
 	s3Location, err := uploadSnapshot(ctx, server.Config.HTTPClientWithRetry, *server.Grant.Load(), logger, compressedData, snapshotUUID.String())
