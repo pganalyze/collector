@@ -48,16 +48,6 @@ func setupPubSubSubscriber(ctx context.Context, wg *sync.WaitGroup, servers []*s
 	projectID := idParts[1]
 	subID := idParts[3]
 
-	var maxAge time.Duration
-	if config.GcpPubsubMaxAge != "" {
-		maxAge, err := time.ParseDuration(config.GcpPubsubMaxAge)
-		if err != nil {
-			return fmt.Errorf("failed to parse PubSub max age value: %v", err)
-		} else if maxAge > time.Hour*24 {
-			return fmt.Errorf("too high PubSub max age value, exceeds 24 hours: %v", err)
-		}
-	}
-
 	var clientOpts []option.ClientOption
 	if config.GcpCredentialsFile != "" {
 		logger.PrintVerbose("Using GCP credentials file located at: %s", config.GcpCredentialsFile)
@@ -72,7 +62,7 @@ func setupPubSubSubscriber(ctx context.Context, wg *sync.WaitGroup, servers []*s
 
 	sub := client.Subscriber(subID)
 	wg.Add(1)
-	go func(ctx context.Context, wg *sync.WaitGroup, logger *util.Logger, sub *pubsub.Subscriber) {
+	go func(ctx context.Context, wg *sync.WaitGroup, logger *util.Logger, sub *pubsub.Subscriber, maxAge time.Duration) {
 		defer wg.Done()
 
 		for {
@@ -196,7 +186,7 @@ func setupPubSubSubscriber(ctx context.Context, wg *sync.WaitGroup, servers []*s
 			logger.PrintError("Failed to receive from Google PubSub, retrying in 1 minute: %v", err)
 			time.Sleep(1 * time.Minute)
 		}
-	}(ctx, wg, logger, sub)
+	}(ctx, wg, logger, sub, config.GcpPubsubMaxAgeParsed)
 
 	return nil
 }

@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 )
@@ -110,6 +111,7 @@ type ServerConfig struct {
 	GcpAlloyDBInstanceID  string `ini:"gcp_alloydb_instance_id"`
 	GcpPubsubSubscription string `ini:"gcp_pubsub_subscription"`
 	GcpPubsubMaxAge       string `ini:"gcp_pubsub_max_age"`
+	GcpPubsubMaxAgeParsed time.Duration
 	GcpCredentialsFile    string `ini:"gcp_credentials_file"`
 	GcpRegion             string `ini:"gcp_region"`
 	GcpUsePublicIP        bool   `ini:"gcp_use_public_ip"`

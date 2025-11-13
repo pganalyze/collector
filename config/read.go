@@ -635,6 +635,15 @@ func preprocessConfig(config *ServerConfig) (*ServerConfig, error) {
 		config.GcpCloudSQLInstanceID = instanceParts[2]
 	}
 
+	if config.GcpPubsubMaxAge != "" {
+		config.GcpPubsubMaxAgeParsed, err = time.ParseDuration(config.GcpPubsubMaxAge)
+		if err != nil {
+			return config, fmt.Errorf("failed to parse GCP PubSub max age value: %v", err)
+		} else if config.GcpPubsubMaxAgeParsed > time.Hour*24 {
+			return config, fmt.Errorf("too high GCP PubSub max age value, exceeds 24 hours: %v", err)
+		}
+	}
+
 	dbNameParts := []string{}
 	for _, s := range strings.Split(config.DbName, ",") {
 		dbNameParts = append(dbNameParts, strings.TrimSpace(s))
