@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"cloud.google.com/go/pubsub"
+	pubsub "cloud.google.com/go/pubsub/v2"
 	"google.golang.org/api/option"
 
 	"github.com/pganalyze/collector/config"
@@ -34,15 +34,13 @@ type googleLogMessage struct {
 }
 
 type LogStreamItem struct {
-	GcpProjectID          string
-	GcpCloudSQLInstanceID string
-	GcpAlloyDBClusterID   string
-	GcpAlloyDBInstanceID  string
-	OccurredAt            time.Time
-	Content               string
+	OccurredAt       time.Time
+	Content          string
+	Server           *state.Server
+	IsAlloyDBCluster bool
 }
 
-func setupPubSubSubscriber(ctx context.Context, wg *sync.WaitGroup, logger *util.Logger, config config.ServerConfig, gcpLogStream chan LogStreamItem, opts state.CollectionOpts) error {
+func setupPubSubSubscriber(ctx context.Context, wg *sync.WaitGroup, servers []*state.Server, logger *util.Logger, config config.ServerConfig, gcpLogStream chan LogStreamItem, opts state.CollectionOpts) error {
 	if strings.Count(config.GcpPubsubSubscription, "/") != 3 {
 		return fmt.Errorf("unsupported subscription format - must be \"projects/PROJECT_NAME/subscriptions/SUBSCRIPTION_NAME\", got: %s", config.GcpPubsubSubscription)
 	}
@@ -62,20 +60,19 @@ func setupPubSubSubscriber(ctx context.Context, wg *sync.WaitGroup, logger *util
 		return fmt.Errorf("failed to create Google PubSub client: %v", err)
 	}
 
-	sub := client.Subscription(subID)
+	sub := client.Subscriber(subID)
 	wg.Add(1)
-	go func(ctx context.Context, wg *sync.WaitGroup, logger *util.Logger, sub *pubsub.Subscription) {
+	go func(ctx context.Context, wg *sync.WaitGroup, logger *util.Logger, sub *pubsub.Subscriber, maxAge time.Duration) {
 		defer wg.Done()
 
 		for {
 			logger.PrintVerbose("Initializing Google Pub/Sub handler")
 			err := sub.Receive(ctx, func(ctx context.Context, pubsubMsg *pubsub.Message) {
-				pubsubMsg.Ack()
-
 				var msg googleLogMessage
 				err = json.Unmarshal(pubsubMsg.Data, &msg)
 				if err != nil {
 					logger.PrintError("Error parsing JSON: %s", err)
+					pubsubMsg.Ack()
 					return
 				}
 
@@ -91,49 +88,94 @@ func setupPubSubSubscriber(ctx context.Context, wg *sync.WaitGroup, logger *util
 				switch msg.Resource.ResourceType {
 				case "cloudsql_database":
 					if !strings.HasSuffix(msg.LogName, "postgres.log") {
+						pubsubMsg.Ack()
 						return
 					}
 					databaseID, ok := msg.Resource.Labels["database_id"]
 					if !ok || strings.Count(databaseID, ":") != 1 {
+						pubsubMsg.Ack()
 						return
 					}
 
 					parts := strings.SplitN(databaseID, ":", 2) // project_id:instance_id
 					t, _ := time.Parse(time.RFC3339Nano, msg.Timestamp)
 
-					gcpLogStream <- LogStreamItem{
-						GcpProjectID:          parts[0],
-						GcpCloudSQLInstanceID: parts[1],
-						Content:               msg.TextPayload,
-						OccurredAt:            t,
+					var server *state.Server
+					for _, s := range servers {
+						if parts[0] == s.Config.GcpProjectID && parts[1] != "" && parts[1] == s.Config.GcpCloudSQLInstanceID {
+							server = s
+						}
 					}
+
+					if server == nil {
+						if t.Add(maxAge).After(time.Now()) {
+							// Return recent messages to be processed by a different collector
+							pubsubMsg.Nack()
+						} else {
+							// Ack message but discard it (this causes it to be lost and cleaned up)
+							pubsubMsg.Ack()
+						}
+						return
+					}
+
+					gcpLogStream <- LogStreamItem{
+						Content:    msg.TextPayload,
+						OccurredAt: t,
+						Server:     server,
+					}
+					pubsubMsg.Ack()
 					return
 				case "alloydb.googleapis.com/Instance":
 					if !strings.HasSuffix(msg.LogName, "postgres.log") {
+						pubsubMsg.Ack()
 						return
 					}
 					clusterID, ok := msg.Resource.Labels["cluster_id"]
 					if !ok {
+						pubsubMsg.Ack()
 						return
 					}
 					instanceID, ok := msg.Resource.Labels["instance_id"]
 					if !ok {
+						pubsubMsg.Ack()
 						return
 					}
 					projectID, ok := msg.Labels["CONSUMER_PROJECT"]
 					if !ok {
+						pubsubMsg.Ack()
 						return
 					}
 
 					t, _ := time.Parse(time.RFC3339Nano, msg.Timestamp)
 
-					gcpLogStream <- LogStreamItem{
-						GcpProjectID:         projectID,
-						GcpAlloyDBClusterID:  clusterID,
-						GcpAlloyDBInstanceID: instanceID,
-						Content:              msg.TextPayload,
-						OccurredAt:           t,
+					var server *state.Server
+					for _, s := range servers {
+						if projectID == s.Config.GcpProjectID && clusterID != "" && clusterID == s.Config.GcpAlloyDBClusterID && instanceID != "" && instanceID == s.Config.GcpAlloyDBInstanceID {
+							server = s
+						}
 					}
+
+					if server == nil {
+						if t.Add(maxAge).After(time.Now()) {
+							// Return recent messages to be processed by a different collector
+							pubsubMsg.Nack()
+						} else {
+							// Ack message but discard it (this causes it to be lost and cleaned up)
+							pubsubMsg.Ack()
+						}
+						return
+					}
+
+					gcpLogStream <- LogStreamItem{
+						Content:          msg.TextPayload,
+						OccurredAt:       t,
+						Server:           server,
+						IsAlloyDBCluster: true,
+					}
+					pubsubMsg.Ack()
+					return
+				default:
+					pubsubMsg.Ack()
 					return
 				}
 			})
@@ -144,7 +186,7 @@ func setupPubSubSubscriber(ctx context.Context, wg *sync.WaitGroup, logger *util
 			logger.PrintError("Failed to receive from Google PubSub, retrying in 1 minute: %v", err)
 			time.Sleep(1 * time.Minute)
 		}
-	}(ctx, wg, logger, sub)
+	}(ctx, wg, logger, sub, config.GcpPubsubMaxAgeParsed)
 
 	return nil
 }
@@ -154,26 +196,22 @@ func SetupLogSubscriber(ctx context.Context, wg *sync.WaitGroup, opts state.Coll
 	setupLogTransformer(ctx, wg, servers, gcpLogStream, parsedLogStream, logger)
 
 	// This map is used to avoid duplicate receivers to the same subscriber
-	gcpPubSubHandlers := make(map[string]bool)
-
+	serversByPubSub := make(map[string][]*state.Server)
 	for _, server := range servers {
-		prefixedLogger := logger.WithPrefix(server.Config.SectionName)
 		if server.Config.GcpPubsubSubscription != "" {
-			_, ok := gcpPubSubHandlers[server.Config.GcpPubsubSubscription]
-			if ok {
-				continue
-			}
-			err := setupPubSubSubscriber(ctx, wg, prefixedLogger, server.Config, gcpLogStream, opts)
-			if err != nil {
-				if opts.TestRun {
-					return err
-				}
+			serversByPubSub[server.Config.GcpPubsubSubscription] = append(serversByPubSub[server.Config.GcpPubsubSubscription], server)
+		}
+	}
 
-				prefixedLogger.PrintWarning("Skipping logs, could not setup log subscriber: %s", err)
-				continue
+	for _, s := range serversByPubSub {
+		err := setupPubSubSubscriber(ctx, wg, s, logger, s[0].Config, gcpLogStream, opts)
+		if err != nil {
+			if opts.TestRun {
+				return err
 			}
 
-			gcpPubSubHandlers[server.Config.GcpPubsubSubscription] = true
+			logger.PrintWarning("Skipping logs, could not setup log subscriber: %s", err)
+			continue
 		}
 	}
 
@@ -200,24 +238,7 @@ func setupLogTransformer(ctx context.Context, wg *sync.WaitGroup, servers []*sta
 					return
 				}
 
-				var server *state.Server
-				var isAlloyDBCluster bool
-
-				for _, s := range servers {
-					if in.GcpProjectID == s.Config.GcpProjectID && in.GcpCloudSQLInstanceID != "" && in.GcpCloudSQLInstanceID == s.Config.GcpCloudSQLInstanceID {
-						server = s
-					}
-					if in.GcpProjectID == s.Config.GcpProjectID && in.GcpAlloyDBClusterID != "" && in.GcpAlloyDBClusterID == s.Config.GcpAlloyDBClusterID && in.GcpAlloyDBInstanceID != "" && in.GcpAlloyDBInstanceID == s.Config.GcpAlloyDBInstanceID {
-						server = s
-						isAlloyDBCluster = true
-					}
-				}
-
-				if server == nil {
-					continue
-				}
-
-				parser := server.GetLogParser()
+				parser := in.Server.GetLogParser()
 				if parser == nil {
 					continue
 				}
@@ -234,13 +255,13 @@ func setupLogTransformer(ctx context.Context, wg *sync.WaitGroup, servers []*sta
 					continue
 				}
 
-				if isAlloyDBCluster {
+				if in.IsAlloyDBCluster {
 					parts := alloyPrefix.FindStringSubmatch(string(logLine.Content))
 					if len(parts) == 2 {
 						logLine.Content = parts[1]
 					}
 				}
-				out <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: logLine}
+				out <- state.ParsedLogStreamItem{Identifier: in.Server.Config.Identifier, LogLine: logLine}
 			}
 		}
 	}()

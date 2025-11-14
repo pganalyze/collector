@@ -242,6 +242,9 @@ func getDefaultConfig() *ServerConfig {
 	if gcpPubsubSubscription := os.Getenv("GCP_PUBSUB_SUBSCRIPTION"); gcpPubsubSubscription != "" {
 		config.GcpPubsubSubscription = gcpPubsubSubscription
 	}
+	if gcpPubsubMaxAge := os.Getenv("GCP_PUBSUB_MAX_AGE"); gcpPubsubMaxAge != "" {
+		config.GcpPubsubMaxAge = gcpPubsubMaxAge
+	}
 	if gcpCredentialsFile := os.Getenv("GCP_CREDENTIALS_FILE"); gcpCredentialsFile != "" {
 		config.GcpCredentialsFile = gcpCredentialsFile
 	}
@@ -630,6 +633,15 @@ func preprocessConfig(config *ServerConfig) (*ServerConfig, error) {
 		config.GcpProjectID = instanceParts[0]
 		config.GcpRegion = instanceParts[1]
 		config.GcpCloudSQLInstanceID = instanceParts[2]
+	}
+
+	if config.GcpPubsubMaxAge != "" {
+		config.GcpPubsubMaxAgeParsed, err = time.ParseDuration(config.GcpPubsubMaxAge)
+		if err != nil {
+			return config, fmt.Errorf("failed to parse GCP PubSub max age value: %v", err)
+		} else if config.GcpPubsubMaxAgeParsed > time.Hour*24 {
+			return config, fmt.Errorf("too high GCP PubSub max age value, exceeds 24 hours: %v", err)
+		}
 	}
 
 	dbNameParts := []string{}
