@@ -29,7 +29,7 @@ import (
 func CollectFull(ctx context.Context, server *state.Server, connection *sql.DB, opts state.CollectionOpts, logger *util.Logger) (ps state.PersistedState, ts state.TransientState, err error) {
 	ps.CollectedAt = time.Now()
 
-	bufferCacheReady := make(chan state.BufferCache)
+	bufferCacheReady := make(chan state.BufferCache, 1)
 	go func() {
 		if server.Config.MaxBufferCacheMonitoringGB > 0 {
 			bufferCacheReady <- postgres.GetBufferCache(ctx, server, logger, opts)
@@ -38,7 +38,7 @@ func CollectFull(ctx context.Context, server *state.Server, connection *sql.DB, 
 		}
 	}()
 
-	systemStateReady := make(chan state.SystemState)
+	systemStateReady := make(chan state.SystemState, 1)
 	go func() {
 		if opts.CollectSystemInformation {
 			systemStateReady <- system.GetSystemState(ctx, server, logger, opts)
