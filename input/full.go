@@ -29,6 +29,24 @@ import (
 func CollectFull(ctx context.Context, server *state.Server, connection *sql.DB, opts state.CollectionOpts, logger *util.Logger) (ps state.PersistedState, ts state.TransientState, err error) {
 	ps.CollectedAt = time.Now()
 
+	bufferCacheReady := make(chan state.BufferCache, 1)
+	go func() {
+		if server.Config.MaxBufferCacheMonitoringGB > 0 {
+			bufferCacheReady <- postgres.GetBufferCache(ctx, server, logger, opts)
+		} else {
+			bufferCacheReady <- make(state.BufferCache)
+		}
+	}()
+
+	systemStateReady := make(chan state.SystemState, 1)
+	go func() {
+		if opts.CollectSystemInformation {
+			systemStateReady <- system.GetSystemState(ctx, server, logger, opts)
+		} else {
+			systemStateReady <- state.SystemState{}
+		}
+	}()
+
 	c, err := postgres.NewCollection(ctx, logger, server, opts, connection)
 	if err != nil {
 		logger.PrintError("Error setting up collection info: %s", err)
@@ -42,11 +60,6 @@ func CollectFull(ctx context.Context, server *state.Server, connection *sql.DB, 
 		logger.PrintError("Error collecting pg_databases: %s", err)
 		return
 	}
-
-	bufferCacheReady := make(chan state.BufferCache)
-	go func() {
-		postgres.GetBufferCache(ctx, c, server, opts, bufferCacheReady)
-	}()
 
 	// Perform one high frequency stats collection at the exact time of the full snapshot.
 	//
@@ -200,8 +213,9 @@ func CollectFull(ctx context.Context, server *state.Server, connection *sql.DB, 
 		ps.Relations = filteredRelations
 	}
 
-	if opts.CollectSystemInformation {
-		ps.System = system.GetSystemState(ctx, server, logger, opts)
+	select {
+	case <-ctx.Done():
+	case ps.System = <-systemStateReady:
 	}
 
 	logs.SyncLogParser(server, ts.Settings)
