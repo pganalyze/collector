@@ -14,7 +14,6 @@ import (
 	"github.com/pganalyze/collector/input/postgres"
 	"github.com/pganalyze/collector/logs"
 	"github.com/pganalyze/collector/output"
-	"github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
 )
@@ -75,36 +74,23 @@ func capturePanic(f func()) (err interface{}, stackTrace []byte) {
 	return
 }
 
-func processServer(ctx context.Context, server *state.Server, opts state.CollectionOpts, logger *util.Logger) (state.PersistedState, state.Grant, state.CollectionStatus, error) {
-	var newGrant state.Grant
+func processServer(ctx context.Context, server *state.Server, opts state.CollectionOpts, logger *util.Logger) (state.PersistedState, state.CollectionStatus, error) {
 	var newState state.PersistedState
 	var collectionStatus state.CollectionStatus
 	var err error
-	newGrant.Config = pganalyze_collector.ServerMessage_Config{Features: &pganalyze_collector.ServerMessage_Features{}}
 
 	if server.Pause.Load() {
 		logger.PrintWarning("Duplicate collector detected: Please ensure only one collector is monitoring this Postgres server")
-		return newState, newGrant, collectionStatus, nil
+		return newState, collectionStatus, nil
 	}
 
 	err = checkReplicaCollectionDisabled(ctx, server, opts, logger)
 	if err != nil {
-		return newState, newGrant, collectionStatus, err
+		return newState, collectionStatus, err
 	}
-
-	if server.WebSocket.Load() != nil {
-		newGrant = *server.Grant.Load()
-	} else if !opts.ForceEmptyGrant {
-		newGrant, err = output.GetGrant(ctx, server, opts, logger)
-		if err != nil {
-			if server.Grant.Load().Valid {
-				logger.PrintVerbose("Could not acquire snapshot grant, reusing previous grant: %s", err)
-			} else {
-				return newState, newGrant, collectionStatus, err
-			}
-		} else {
-			server.Grant.Store(&newGrant)
-		}
+	err = output.EnsureGrant(ctx, server, opts, logger, true)
+	if err != nil {
+		return newState, collectionStatus, err
 	}
 
 	var sentryClient *raven.Client
@@ -135,7 +121,7 @@ func processServer(ctx context.Context, server *state.Server, opts state.Collect
 		logger.PrintWarning("Panic: %s\n%s", err, stackTrace)
 	}
 
-	return newState, newGrant, collectionStatus, err
+	return newState, collectionStatus, err
 }
 
 func runCompletionCallback(callbackType string, callbackCmd string, sectionName string, snapshotType string, errIn error, logger *util.Logger) {
@@ -193,7 +179,7 @@ func CollectAllServers(ctx context.Context, servers []*state.Server, opts state.
 			}
 
 			server.StateMutex.Lock()
-			newState, grant, newCollectionStatus, err := processServer(ctx, server, opts, prefixedLogger)
+			newState, newCollectionStatus, err := processServer(ctx, server, opts, prefixedLogger)
 			if err != nil {
 				server.StateMutex.Unlock()
 
@@ -216,10 +202,7 @@ func CollectAllServers(ctx context.Context, servers []*state.Server, opts state.
 					allSuccessful = false
 					prefixedLogger.PrintError("Could not process server: %s", err)
 
-					if grant.Valid && !opts.TestRun && opts.SubmitCollectedData {
-						if server.WebSocket.Load() == nil {
-							server.Grant.Store(&grant)
-						}
+					if server.Grant.Load().ValidConfig && !opts.TestRun && opts.SubmitCollectedData {
 						err = output.SendFailedFull(ctx, server, opts, prefixedLogger)
 						if err != nil {
 							prefixedLogger.PrintWarning("Could not send error information to remote server: %s", err)
@@ -231,9 +214,6 @@ func CollectAllServers(ctx context.Context, servers []*state.Server, opts state.
 					}
 				}
 			} else {
-				if server.WebSocket.Load() == nil {
-					server.Grant.Store(&grant)
-				}
 				server.PrevState = newState
 				server.StateMutex.Unlock()
 				server.CollectionStatusMutex.Lock()

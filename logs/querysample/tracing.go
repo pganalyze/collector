@@ -18,14 +18,14 @@ import (
 
 const otelSpanName = "EXPLAIN Plan"
 
-func urlToSample(server *state.Server, grant state.Grant, sample state.PostgresQuerySample) string {
+func urlToSample(server *state.Server, serverUrl string, sample state.PostgresQuerySample) string {
 	fp := util.FingerprintQuery(sample.Query, server.Config.FilterQueryText, -1)
 	fpBin := make([]byte, 8)
 	binary.BigEndian.PutUint64(fpBin, fp)
 
 	return fmt.Sprintf(
 		"%s/databases/%s/queries/%s/samples/%d?role=%s",
-		grant.Config.ServerUrl,
+		serverUrl,
 		sample.Database,
 		hex.EncodeToString(fpBin),
 		sample.OccurredAt.Unix(),
@@ -66,7 +66,7 @@ func startAndEndTime(traceState trace.TraceState, sample state.PostgresQuerySamp
 	return
 }
 
-func ExportQuerySamplesAsTraceSpans(ctx context.Context, server *state.Server, logger *util.Logger, grant state.Grant, samples []state.PostgresQuerySample) {
+func ExportQuerySamplesAsTraceSpans(ctx context.Context, server *state.Server, logger *util.Logger, serverUrl string, samples []state.PostgresQuerySample) {
 	exportCount := 0
 	for _, sample := range samples {
 		if !sample.HasExplain {
@@ -88,7 +88,7 @@ func ExportQuerySamplesAsTraceSpans(ctx context.Context, server *state.Server, l
 			// See https://opentelemetry.io/docs/specs/otel/trace/semantic_conventions/database/
 			// however note that "db.postgresql.plan" is non-standard.
 			span.SetAttributes(attribute.String("db.system", "postgresql"))
-			span.SetAttributes(attribute.String("db.postgresql.plan", urlToSample(server, grant, sample)))
+			span.SetAttributes(attribute.String("db.postgresql.plan", urlToSample(server, serverUrl, sample)))
 			span.End(trace.WithTimestamp(endTime))
 			exportCount += 1
 		}

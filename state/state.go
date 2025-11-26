@@ -244,11 +244,13 @@ type CollectionOpts struct {
 }
 
 type Grant struct {
-	Valid    bool
-	Config   pganalyze_collector.ServerMessage_Config `json:"config"`
-	S3URL    string                                   `json:"s3_url"`
-	S3Fields map[string]string                        `json:"s3_fields"`
-	LocalDir string                                   `json:"local_dir"`
+	ValidConfig bool
+	Config      pganalyze_collector.ServerMessage_Config `json:"config"`
+
+	ValidForS3Until time.Time
+	S3URL           string            `json:"s3_url"`
+	S3Fields        map[string]string `json:"s3_fields"`
+	LocalDir        string            `json:"local_dir"`
 }
 
 func (g Grant) S3() GrantS3 {

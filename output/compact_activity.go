@@ -10,7 +10,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-func SubmitCompactActivitySnapshot(ctx context.Context, server *state.Server, grant state.Grant, collectionOpts state.CollectionOpts, logger *util.Logger, activityState state.TransientActivityState) error {
+func SubmitCompactActivitySnapshot(ctx context.Context, server *state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, activityState state.TransientActivityState) error {
 	as, r := transform.ActivityStateToCompactActivitySnapshot(server, activityState)
 
 	if server.Config.FilterQuerySample != "" && server.Config.FilterQuerySample != "none" {
@@ -47,5 +47,5 @@ func SubmitCompactActivitySnapshot(ctx context.Context, server *state.Server, gr
 		BaseRefs: &r,
 		Data:     &pganalyze_collector.CompactSnapshot_ActivitySnapshot{ActivitySnapshot: &as},
 	}
-	return uploadAndSubmitCompactSnapshot(ctx, s, grant, server, collectionOpts, logger, activityState.CollectedAt, false, "activity")
+	return uploadAndSubmitCompactSnapshot(ctx, s, server, collectionOpts, logger, activityState.CollectedAt, false, "activity")
 }

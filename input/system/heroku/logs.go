@@ -68,7 +68,7 @@ func processSystemMetrics(ctx context.Context, timestamp time.Time, content []by
 
 	prefixedLogger := logger.WithPrefix(server.Config.SectionName)
 
-	grant, err := output.GetGrant(ctx, server, opts, prefixedLogger)
+	err = output.EnsureGrant(ctx, server, opts, prefixedLogger, false)
 	if err != nil {
 		prefixedLogger.PrintError("Could not get default grant for system snapshot: %s", err)
 		return
@@ -111,7 +111,7 @@ func processSystemMetrics(ctx context.Context, timestamp time.Time, content []by
 		},
 	}
 
-	err = output.SubmitCompactSystemSnapshot(ctx, server, grant, opts, prefixedLogger, system, timestamp)
+	err = output.SubmitCompactSystemSnapshot(ctx, server, opts, prefixedLogger, system, timestamp)
 	if err != nil {
 		prefixedLogger.PrintError("Failed to upload/send compact system snapshot: %s", err)
 		return

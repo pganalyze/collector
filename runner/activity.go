@@ -16,7 +16,6 @@ import (
 )
 
 func processActivityForServer(ctx context.Context, server *state.Server, opts state.CollectionOpts, logger *util.Logger) (state.PersistedActivityState, bool, error) {
-	var newGrant state.Grant
 	var err error
 	var connection *sql.DB
 	var activity state.TransientActivityState
@@ -44,26 +43,20 @@ func processActivityForServer(ctx context.Context, server *state.Server, opts st
 		}
 	}
 
-	if server.WebSocket.Load() != nil {
-		newGrant = *server.Grant.Load()
+	err = output.EnsureGrant(ctx, server, opts, logger, false)
+	if err != nil {
+		return newState, false, errors.Wrap(err, "could not get default grant for activity snapshot")
 	}
 
-	if !newGrant.Valid && !opts.ForceEmptyGrant {
-		newGrant, err = output.GetGrant(ctx, server, opts, logger)
-		if err != nil {
-			return newState, false, errors.Wrap(err, "could not get default grant for activity snapshot")
+	if !server.Grant.Load().Config.EnableActivity {
+		if opts.TestRun {
+			server.SelfTest.MarkCollectionAspectNotAvailable(state.CollectionAspectActivity, "not available on this plan")
+			server.SelfTest.HintCollectionAspect(state.CollectionAspectActivity, "Compare plans at %s", selftest.URLPrinter.Sprint("https://pganalyze.com/pricing"))
+			logger.PrintError("  Failed - Activity snapshots disabled by pganalyze")
+		} else {
+			logger.PrintVerbose("Activity snapshots disabled by pganalyze, skipping")
 		}
-
-		if !newGrant.Config.EnableActivity {
-			if opts.TestRun {
-				server.SelfTest.MarkCollectionAspectNotAvailable(state.CollectionAspectActivity, "not available on this plan")
-				server.SelfTest.HintCollectionAspect(state.CollectionAspectActivity, "Compare plans at %s", selftest.URLPrinter.Sprint("https://pganalyze.com/pricing"))
-				logger.PrintError("  Failed - Activity snapshots disabled by pganalyze")
-			} else {
-				logger.PrintVerbose("Activity snapshots disabled by pganalyze, skipping")
-			}
-			return newState, false, nil
-		}
+		return newState, false, nil
 	}
 	// N.B.: Without the SkipIfReplica flag, we wait to establish the connection to avoid opening
 	// and closing it for no reason when the grant EnableActivity is not set (e.g., production plans)
@@ -102,7 +95,7 @@ func processActivityForServer(ctx context.Context, server *state.Server, opts st
 
 	activity.CollectedAt = time.Now()
 
-	err = output.SubmitCompactActivitySnapshot(ctx, server, newGrant, opts, logger, activity)
+	err = output.SubmitCompactActivitySnapshot(ctx, server, opts, logger, activity)
 	if err != nil {
 		return newState, false, errors.Wrap(err, "failed to upload/send activity snapshot")
 	}
@@ -120,7 +113,7 @@ func CollectActivityFromAllServers(ctx context.Context, servers []*state.Server,
 	for idx := range servers {
 		server := servers[idx]
 		grant := server.Grant.Load()
-		if server.Config.DisableActivity || (grant.Valid && !grant.Config.EnableActivity) {
+		if server.Config.DisableActivity || (grant.ValidConfig && !grant.Config.EnableActivity) {
 			server.SelfTest.MarkCollectionAspectNotAvailable(state.CollectionAspectActivity, "not available on this plan")
 			server.SelfTest.HintCollectionAspect(state.CollectionAspectActivity, "Compare plans at %s", selftest.URLPrinter.Sprint("https://pganalyze.com/pricing"))
 			continue

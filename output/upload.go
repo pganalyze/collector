@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
@@ -24,7 +25,7 @@ type s3UploadResponse struct {
 func uploadSnapshot(ctx context.Context, httpClient *http.Client, grant state.Grant, logger *util.Logger, data bytes.Buffer, filename string) (string, error) {
 	var err error
 
-	if !grant.Valid {
+	if !grant.ValidForS3Until.After(time.Now()) {
 		return "", fmt.Errorf("Error - can't upload without valid S3 grant")
 	}
 
