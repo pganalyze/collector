@@ -135,6 +135,7 @@ func connect(ctx context.Context, server *state.Server, opts state.CollectionOpt
 			} else if message.GetConfig() != nil {
 				grant := *server.Grant.Load()
 				grant.Config = *message.GetConfig()
+				grant.ValidConfig = true
 				server.Grant.Store(&grant)
 			} else if message.GetPause() != nil {
 				server.Pause.Store(message.GetPause().Pause)

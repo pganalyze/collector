@@ -22,9 +22,11 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-func uploadAndSubmitCompactSnapshot(ctx context.Context, s pganalyze_collector.CompactSnapshot, grant state.Grant, server *state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, collectedAt time.Time, quiet bool, kind string) error {
+func uploadAndSubmitCompactSnapshot(ctx context.Context, s pganalyze_collector.CompactSnapshot, server *state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, collectedAt time.Time, quiet bool, kind string) error {
 	var err error
 	var data []byte
+
+	grant := *server.Grant.Load()
 
 	snapshotUUID, err := uuid.NewV7()
 	if err != nil {
