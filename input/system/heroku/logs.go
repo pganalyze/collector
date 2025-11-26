@@ -12,6 +12,7 @@ import (
 	"github.com/kr/logfmt"
 	"github.com/pganalyze/collector/logs"
 	"github.com/pganalyze/collector/output"
+	"github.com/pganalyze/collector/runner/snapshot_api"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
 )
@@ -68,7 +69,7 @@ func processSystemMetrics(ctx context.Context, timestamp time.Time, content []by
 
 	prefixedLogger := logger.WithPrefix(server.Config.SectionName)
 
-	grant, err := output.GetGrant(ctx, server, opts, prefixedLogger)
+	err = snapshot_api.InitializeGrant(ctx, server, opts, prefixedLogger)
 	if err != nil {
 		prefixedLogger.PrintError("Could not get default grant for system snapshot: %s", err)
 		return
@@ -111,7 +112,7 @@ func processSystemMetrics(ctx context.Context, timestamp time.Time, content []by
 		},
 	}
 
-	err = output.SubmitCompactSystemSnapshot(ctx, server, grant, opts, prefixedLogger, system, timestamp)
+	err = output.SubmitCompactSystemSnapshot(ctx, server, opts, prefixedLogger, system, timestamp)
 	if err != nil {
 		prefixedLogger.PrintError("Failed to upload/send compact system snapshot: %s", err)
 		return

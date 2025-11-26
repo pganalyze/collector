@@ -21,5 +21,5 @@ func SubmitQueryRunSnapshot(ctx context.Context, server *state.Server, collectio
 			BackendPid: int32(query.BackendPid),
 		}}},
 	}
-	uploadAndSubmitCompactSnapshot(ctx, s, state.Grant{}, server, collectionOpts, logger, time.Now(), false, "query_run")
+	uploadAndSubmitCompactSnapshot(ctx, s, server, collectionOpts, logger, time.Now(), false, "query_run")
 }

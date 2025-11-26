@@ -282,6 +282,15 @@ type QueryRun struct {
 	BackendPid          int
 }
 
+type Snapshot struct {
+	Data []byte
+
+	// Below only needed for HTTP based uploads
+	SnapshotUuid    string
+	CollectedAt     time.Time
+	CompactSnapshot bool
+}
+
 type Server struct {
 	Config           config.ServerConfig
 	RequestedSslMode string
@@ -304,9 +313,12 @@ type Server struct {
 
 	SelfTest *SelfTestResult
 
-	SnapshotStream chan []byte
-	WebSocket      atomic.Pointer[websocket.Conn]
-	Pause          atomic.Bool
+	SnapshotStream     chan Snapshot
+	WebSocket          atomic.Pointer[websocket.Conn]
+	WebSocketStart     chan struct{}
+	WebSocketShutdown  chan struct{}
+	WebSocketRequested atomic.Bool
+	Pause              atomic.Bool
 
 	// State to track queries the collector is running on behalf of a user
 	QueryRuns      map[int64]*QueryRun
@@ -338,7 +350,9 @@ func MakeServer(config config.ServerConfig, testRun bool) *Server {
 		ActivityStateMutex:    &sync.Mutex{},
 		HighFreqStateMutex:    &sync.Mutex{},
 		CollectionStatusMutex: &sync.Mutex{},
-		SnapshotStream:        make(chan []byte),
+		SnapshotStream:        make(chan Snapshot),
+		WebSocketStart:        make(chan struct{}),
+		WebSocketShutdown:     make(chan struct{}),
 		QueryRuns:             make(map[int64]*QueryRun),
 		QueryRunsMutex:        &sync.Mutex{},
 		LogParseMutex:         &sync.RWMutex{},

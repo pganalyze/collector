@@ -21,6 +21,7 @@ import (
 	"github.com/pganalyze/collector/logs/querysample"
 	"github.com/pganalyze/collector/logs/stream"
 	"github.com/pganalyze/collector/output"
+	"github.com/pganalyze/collector/runner/snapshot_api"
 	"github.com/pganalyze/collector/selftest"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
@@ -145,8 +146,8 @@ func downloadLogsForServerWithLocksAndCallbacks(ctx context.Context, wg *sync.Wa
 }
 
 func downloadLogsForServer(ctx context.Context, server *state.Server, opts state.CollectionOpts, logger *util.Logger) (state.PersistedLogState, bool, error) {
-	grant, err := output.GetGrant(ctx, server, opts, logger)
-	if err != nil || !grant.Valid {
+	err := snapshot_api.InitializeGrant(ctx, server, opts, logger)
+	if err != nil || !server.Grant.Load().Valid {
 		return server.LogPrevState, false, err
 	}
 	transientLogState := state.TransientLogState{CollectedAt: time.Now()}
@@ -157,7 +158,7 @@ func downloadLogsForServer(ctx context.Context, server *state.Server, opts state
 		return newLogState, false, errors.Wrap(err, "could not collect logs")
 	}
 
-	err = postprocessAndSendLogs(ctx, server, opts, logger, transientLogState, grant)
+	err = postprocessAndSendLogs(ctx, server, opts, logger, transientLogState)
 	if err != nil {
 		return newLogState, false, err
 	}
@@ -261,7 +262,7 @@ func processLogStream(ctx context.Context, server *state.Server, logLines []stat
 		return tooFreshLogLines
 	}
 
-	grant, err := output.GetGrant(ctx, server, opts, logger)
+	err = snapshot_api.InitializeGrant(ctx, server, opts, logger)
 	if err != nil {
 		// Note we intentionally discard log lines here (and in the other
 		// error case below), because the HTTP client already retries to work
@@ -270,11 +271,11 @@ func processLogStream(ctx context.Context, server *state.Server, logLines []stat
 		logger.PrintError("Log sending error (discarding lines): %s", err)
 		return tooFreshLogLines
 	}
-	if !grant.Valid {
+	if !server.Grant.Load().Valid {
 		return tooFreshLogLines // Don't retry (e.g. because this feature is not available)
 	}
 
-	err = postprocessAndSendLogs(ctx, server, opts, logger, transientLogState, grant)
+	err = postprocessAndSendLogs(ctx, server, opts, logger, transientLogState)
 	if err != nil {
 		logger.PrintError("Log sending error (discarding lines): %s", err)
 		return tooFreshLogLines
@@ -283,7 +284,7 @@ func processLogStream(ctx context.Context, server *state.Server, logLines []stat
 	return tooFreshLogLines
 }
 
-func postprocessAndSendLogs(ctx context.Context, server *state.Server, opts state.CollectionOpts, logger *util.Logger, transientLogState state.TransientLogState, grant state.Grant) (err error) {
+func postprocessAndSendLogs(ctx context.Context, server *state.Server, opts state.CollectionOpts, logger *util.Logger, transientLogState state.TransientLogState) (err error) {
 	if server.Config.EnableLogExplain && len(transientLogState.QuerySamples) != 0 {
 		transientLogState.QuerySamples = postgres.RunExplain(ctx, server, transientLogState.QuerySamples, opts, logger)
 	}
@@ -318,7 +319,7 @@ func postprocessAndSendLogs(ctx context.Context, server *state.Server, opts stat
 
 	// Export query samples as traces, if OpenTelemetry endpoint is configured
 	if server.Config.OTelTracingProvider != nil && len(transientLogState.QuerySamples) != 0 {
-		querysample.ExportQuerySamplesAsTraceSpans(ctx, server, logger, grant, transientLogState.QuerySamples)
+		querysample.ExportQuerySamplesAsTraceSpans(ctx, server, logger, server.Grant.Load().Config.ServerUrl, transientLogState.QuerySamples)
 	}
 
 	for idx := range transientLogState.LogFiles {
@@ -348,7 +349,7 @@ func postprocessAndSendLogs(ctx context.Context, server *state.Server, opts stat
 	}
 
 	if logsExist {
-		err = output.UploadAndSendLogs(ctx, server, grant, opts, logger, transientLogState)
+		err = output.UploadAndSendLogs(ctx, server, opts, logger, transientLogState)
 		if err != nil {
 			server.SelfTest.MarkCollectionAspectError(state.CollectionAspectLogs, "error sending logs: %s", err)
 			return errors.Wrap(err, "failed to upload/send logs")

@@ -16,6 +16,7 @@ import (
 	"github.com/pganalyze/collector/input/postgres"
 	"github.com/pganalyze/collector/input/system/selfhosted"
 	"github.com/pganalyze/collector/logs"
+	"github.com/pganalyze/collector/runner/snapshot_api"
 	"github.com/pganalyze/collector/scheduler"
 	"github.com/pganalyze/collector/selftest"
 	"github.com/pganalyze/collector/state"
@@ -246,7 +247,7 @@ func Run(ctx context.Context, wg *sync.WaitGroup, opts state.CollectionOpts, log
 		// This channel is buffered so the function can exit (and mark the wait group as done)
 		// without the caller consuming the channel, e.g. when the context gets canceled
 		testRunSuccess = make(chan bool, 1)
-		SetupWebsocketForAllServers(ctx, servers, opts, logger)
+		snapshot_api.SetupSnapshotAPIForAllServers(ctx, servers, opts, logger)
 		go func() {
 			if opts.TestExplain {
 				success := true
@@ -342,7 +343,7 @@ func Run(ctx context.Context, wg *sync.WaitGroup, opts state.CollectionOpts, log
 		wg.Done()
 	}, logger, "high frequency statistics of all servers")
 
-	SetupWebsocketForAllServers(ctx, servers, opts, logger)
+	snapshot_api.SetupSnapshotAPIForAllServers(ctx, servers, opts, logger)
 	SetupQueryRunnerForAllServers(ctx, servers, opts, logger)
 
 	keepRunning = true
