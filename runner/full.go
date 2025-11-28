@@ -138,29 +138,6 @@ func runCompletionCallback(callbackType string, callbackCmd string, sectionName 
 	}
 }
 
-func checkReplicaCollectionDisabled(ctx context.Context, server *state.Server, opts state.CollectionOpts, logger *util.Logger) error {
-	if !server.Config.SkipIfReplica {
-		return nil
-	}
-
-	connection, err := postgres.EstablishConnection(ctx, server, logger, opts, "")
-	if err != nil {
-		return fmt.Errorf("Failed to connect to database: %s", err)
-	}
-	defer connection.Close()
-
-	var isReplica bool
-	isReplica, err = postgres.GetIsReplica(ctx, logger, connection)
-	if err != nil {
-		return fmt.Errorf("Error checking replication status")
-	}
-	if isReplica {
-		return state.ErrReplicaCollectionDisabled
-	} else {
-		return nil
-	}
-}
-
 // CollectAllServers - Collects statistics from all servers and sends them as full snapshots to the pganalyze service
 func CollectAllServers(ctx context.Context, servers []*state.Server, opts state.CollectionOpts, logger *util.Logger) (allSuccessful bool) {
 	var wg sync.WaitGroup
@@ -183,20 +160,7 @@ func CollectAllServers(ctx context.Context, servers []*state.Server, opts state.
 			if err != nil {
 				server.StateMutex.Unlock()
 
-				server.CollectionStatusMutex.Lock()
-				isIgnoredReplica := err == state.ErrReplicaCollectionDisabled
-				if isIgnoredReplica {
-					reason := err.Error()
-					server.CollectionStatus = state.CollectionStatus{
-						CollectionDisabled:        true,
-						CollectionDisabledReason:  reason,
-						LogSnapshotDisabled:       true,
-						LogSnapshotDisabledReason: reason,
-					}
-				}
-				server.CollectionStatusMutex.Unlock()
-
-				if isIgnoredReplica {
+				if err == state.ErrReplicaCollectionDisabled {
 					prefixedLogger.PrintVerbose("All monitoring suspended while server is replica")
 				} else {
 					allSuccessful = false
@@ -209,7 +173,7 @@ func CollectAllServers(ctx context.Context, servers []*state.Server, opts state.
 						}
 					}
 
-					if !isIgnoredReplica && server.Config.ErrorCallback != "" {
+					if server.Config.ErrorCallback != "" {
 						go runCompletionCallback("error", server.Config.ErrorCallback, server.Config.SectionName, "full", err, prefixedLogger)
 					}
 				}
@@ -218,10 +182,12 @@ func CollectAllServers(ctx context.Context, servers []*state.Server, opts state.
 				server.StateMutex.Unlock()
 				server.CollectionStatusMutex.Lock()
 				if newCollectionStatus.LogSnapshotDisabled && !opts.TestRun {
-					warning := fmt.Sprintf("Skipping logs: %s", newCollectionStatus.LogSnapshotDisabledReason)
-					prefixedLogger.PrintWarning(warning)
+					prefixedLogger.PrintWarning("Skipping logs: %s", newCollectionStatus.LogSnapshotDisabledReason)
 				}
-				server.CollectionStatus = newCollectionStatus
+				// We don't copy CollectionDisabled state here because that is directly modified
+				// by the relevant function (checkReplicaCollectionDisabledWithConn)
+				server.CollectionStatus.LogSnapshotDisabled = newCollectionStatus.LogSnapshotDisabled
+				server.CollectionStatus.LogSnapshotDisabledReason = newCollectionStatus.LogSnapshotDisabledReason
 				server.CollectionStatusMutex.Unlock()
 				if server.Config.SuccessCallback != "" {
 					go runCompletionCallback("success", server.Config.SuccessCallback, server.Config.SectionName, "full", nil, prefixedLogger)

@@ -118,7 +118,7 @@ func downloadLogsForServerWithLocksAndCallbacks(ctx context.Context, wg *sync.Wa
 	prefixedLogger := logger.WithPrefixAndRememberErrors(server.Config.SectionName)
 
 	server.CollectionStatusMutex.Lock()
-	if server.CollectionStatus.LogSnapshotDisabled {
+	if server.CollectionStatus.LogSnapshotDisabled || server.CollectionStatus.CollectionDisabled {
 		server.LogStateMutex.Lock()
 		server.LogPrevState = state.PersistedLogState{}
 		server.LogStateMutex.Unlock()
@@ -229,7 +229,7 @@ func setupLogStreamer(ctx context.Context, wg *sync.WaitGroup, opts state.Collec
 
 func processLogStream(ctx context.Context, server *state.Server, logLines []state.LogLine, now time.Time, opts state.CollectionOpts, logger *util.Logger, logTestSucceeded chan<- bool, logTestFunc func(s *state.Server, lf state.LogFile, lt chan<- bool)) []state.LogLine {
 	server.CollectionStatusMutex.Lock()
-	if server.CollectionStatus.LogSnapshotDisabled {
+	if server.CollectionStatus.LogSnapshotDisabled || server.CollectionStatus.CollectionDisabled {
 		server.CollectionStatusMutex.Unlock()
 		return []state.LogLine{}
 	}
@@ -372,6 +372,11 @@ func TestLogsForAllServers(ctx context.Context, servers []*state.Server, opts st
 		prefixedLogger := logger.WithPrefixAndRememberErrors(server.Config.SectionName)
 		if server.CollectionStatus.LogSnapshotDisabled {
 			prefixedLogger.PrintWarning("WARNING - Configuration issue: %s", server.CollectionStatus.LogSnapshotDisabledReason)
+			prefixedLogger.PrintWarning("  Log collection will be disabled for this server")
+			continue
+		}
+		if server.CollectionStatus.CollectionDisabled {
+			prefixedLogger.PrintWarning("WARNING - Configuration issue: %s", server.CollectionStatus.CollectionDisabledReason)
 			prefixedLogger.PrintWarning("  Log collection will be disabled for this server")
 			continue
 		}

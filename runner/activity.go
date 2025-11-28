@@ -28,18 +28,15 @@ func processActivityForServer(ctx context.Context, server *state.Server, opts st
 	}
 
 	if server.Config.SkipIfReplica {
+		// This connection gets reused for the activity snapshot collection later
 		connection, err = postgres.EstablishConnection(ctx, server, logger, opts, "")
 		if err != nil {
 			return newState, false, errors.Wrap(err, "failed to connect to database")
 		}
 		defer connection.Close()
-		var isReplica bool
-		isReplica, err = postgres.GetIsReplica(ctx, logger, connection)
+		err = checkReplicaCollectionDisabledWithConn(ctx, server, logger, connection)
 		if err != nil {
 			return newState, false, err
-		}
-		if isReplica {
-			return newState, false, state.ErrReplicaCollectionDisabled
 		}
 	}
 
@@ -58,6 +55,7 @@ func processActivityForServer(ctx context.Context, server *state.Server, opts st
 		}
 		return newState, false, nil
 	}
+
 	// N.B.: Without the SkipIfReplica flag, we wait to establish the connection to avoid opening
 	// and closing it for no reason when the grant EnableActivity is not set (e.g., production plans)
 	if connection == nil {
@@ -133,25 +131,12 @@ func CollectActivityFromAllServers(ctx context.Context, servers []*state.Server,
 				server.ActivityStateMutex.Unlock()
 				server.SelfTest.MarkCollectionAspectError(state.CollectionAspectActivity, "%s", err.Error())
 
-				server.CollectionStatusMutex.Lock()
-				isIgnoredReplica := err == state.ErrReplicaCollectionDisabled
-				if isIgnoredReplica {
-					reason := err.Error()
-					server.CollectionStatus = state.CollectionStatus{
-						CollectionDisabled:        true,
-						CollectionDisabledReason:  reason,
-						LogSnapshotDisabled:       true,
-						LogSnapshotDisabledReason: reason,
-					}
-				}
-				server.CollectionStatusMutex.Unlock()
-
-				if isIgnoredReplica {
+				if err == state.ErrReplicaCollectionDisabled {
 					prefixedLogger.PrintVerbose("All monitoring suspended while server is replica")
 				} else {
 					allSuccessful = false
 					prefixedLogger.PrintError("Could not collect activity for server: %s", err)
-					if !isIgnoredReplica && server.Config.ErrorCallback != "" {
+					if server.Config.ErrorCallback != "" {
 						go runCompletionCallback("error", server.Config.ErrorCallback, server.Config.SectionName, "activity", err, prefixedLogger)
 					}
 				}
