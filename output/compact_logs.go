@@ -12,9 +12,9 @@ import (
 // UploadAndSendLogs - Filters the log file, then uploads it
 func UploadAndSendLogs(ctx context.Context, server *state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, logState state.TransientLogState) error {
 	ls, r := transform.LogStateToLogSnapshot(server, logState)
-	s := pganalyze_collector.CompactSnapshot{
+	s := &pganalyze_collector.CompactSnapshot{
 		BaseRefs: &r,
 		Data:     &pganalyze_collector.CompactSnapshot_LogSnapshot{LogSnapshot: &ls},
 	}
-	return uploadAndSubmitCompactSnapshot(ctx, s, server, collectionOpts, logger, logState.CollectedAt, false, "logs")
+	return uploadAndSubmitCompactSnapshot(ctx, s, server, collectionOpts, logger, logState.CollectedAt)
 }

@@ -458,6 +458,22 @@ func CreateHTTPClient(conf ServerConfig, logger *util.Logger, retry bool) *http.
 	}
 }
 
+func APIHeaders(conf ServerConfig, testRun bool) map[string][]string {
+	headers := make(map[string][]string)
+	headers["Pganalyze-Api-Key"] = []string{conf.APIKey}
+	headers["Pganalyze-System-Id"] = []string{conf.SystemID}
+	headers["Pganalyze-System-Type"] = []string{conf.SystemType}
+	headers["Pganalyze-System-Scope"] = []string{conf.SystemScope}
+	headers["Pganalyze-System-Id-Fallback"] = []string{conf.SystemIDFallback}
+	headers["Pganalyze-System-Type-Fallback"] = []string{conf.SystemTypeFallback}
+	headers["Pganalyze-System-Scope-Fallback"] = []string{conf.SystemScopeFallback}
+	if testRun {
+		headers["Pganalyze-Test-Run"] = []string{"true"}
+	}
+	headers["User-Agent"] = []string{util.CollectorNameAndVersion}
+	return headers
+}
+
 // CreateEC2IMDSHTTPClient - Create HTTP client for EC2 instance meta data service (IMDS)
 func CreateEC2IMDSHTTPClient(conf ServerConfig) *http.Client {
 	// Match https://github.com/aws/aws-sdk-go/pull/3066

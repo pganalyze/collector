@@ -11,7 +11,7 @@ import (
 )
 
 func SubmitQueryRunSnapshot(ctx context.Context, server *state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, query state.QueryRun) {
-	s := pganalyze_collector.CompactSnapshot{
+	s := &pganalyze_collector.CompactSnapshot{
 		Data: &pganalyze_collector.CompactSnapshot_QueryRunSnapshot{QueryRunSnapshot: &pganalyze_collector.QueryRunSnapshot{QueryRun: &pganalyze_collector.QueryRun{
 			Id:         query.Id,
 			StartedAt:  timestamppb.New(query.StartedAt),
@@ -21,5 +21,5 @@ func SubmitQueryRunSnapshot(ctx context.Context, server *state.Server, collectio
 			BackendPid: int32(query.BackendPid),
 		}}},
 	}
-	uploadAndSubmitCompactSnapshot(ctx, s, server, collectionOpts, logger, time.Now(), false, "query_run")
+	uploadAndSubmitCompactSnapshot(ctx, s, server, collectionOpts, logger, time.Now())
 }

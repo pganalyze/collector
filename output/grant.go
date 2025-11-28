@@ -51,14 +51,7 @@ func getGrant(ctx context.Context, conf config.ServerConfig, testRun bool) (*sta
 		return grant, err
 	}
 
-	req.Header.Set("Pganalyze-Api-Key", conf.APIKey)
-	req.Header.Set("Pganalyze-System-Id", conf.SystemID)
-	req.Header.Set("Pganalyze-System-Type", conf.SystemType)
-	req.Header.Set("Pganalyze-System-Scope", conf.SystemScope)
-	req.Header.Set("Pganalyze-System-Id-Fallback", conf.SystemIDFallback)
-	req.Header.Set("Pganalyze-System-Type-Fallback", conf.SystemTypeFallback)
-	req.Header.Set("Pganalyze-System-Scope-Fallback", conf.SystemScopeFallback)
-	req.Header.Set("User-Agent", util.CollectorNameAndVersion)
+	req.Header = config.APIHeaders(conf, testRun)
 	req.Header.Add("Accept", "application/json")
 
 	resp, err := conf.HTTPClientWithRetry.Do(req)

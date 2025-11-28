@@ -2,101 +2,108 @@ package output
 
 import (
 	"bytes"
+	"compress/zlib"
 	"context"
-	"encoding/xml"
 	"fmt"
-	"io/ioutil"
-	"mime/multipart"
-	"net/http"
-	"os"
-	"path/filepath"
+	"sort"
 	"time"
 
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
+	"google.golang.org/protobuf/proto"
 )
 
-type s3UploadResponse struct {
-	Location string
-	Bucket   string
-	Key      string
+func SetupSnapshotUploadForAllServers(ctx context.Context, servers []*state.Server, opts state.CollectionOpts, logger *util.Logger) {
+	if opts.ForceEmptyGrant {
+		return
+	}
+	for idx := range servers {
+		go func(server *state.Server) {
+			var compactLogTime time.Time
+			compactLogStats := make(map[string]uint8)
+			logger = logger.WithPrefixAndRememberErrors(server.Config.SectionName)
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case s := <-server.FullSnapshotUpload:
+					data, err := proto.Marshal(s)
+					if err != nil {
+						logger.PrintError("Error marshaling protocol buffers")
+						continue
+					}
+
+					err = uploadViaWebsocketOrHttp(ctx, server, logger, opts.TestRun, data, s.SnapshotUuid, s.CollectedAt.AsTime(), false)
+					if err != nil {
+						logger.PrintError("Error uploading snapshot: %s", err)
+					} else if !opts.TestRun {
+						logger.PrintInfo("Submitted full snapshot successfully")
+					}
+				case s := <-server.CompactSnapshotUpload:
+					data, err := proto.Marshal(s)
+					if err != nil {
+						logger.PrintError("Error marshaling protocol buffers")
+						continue
+					}
+
+					err = uploadViaWebsocketOrHttp(ctx, server, logger, opts.TestRun, data, s.SnapshotUuid, s.CollectedAt.AsTime(), false)
+					if err != nil {
+						logger.PrintError("Error uploading snapshot: %s", err)
+						continue
+					}
+					if opts.TestRun {
+						continue
+					}
+
+					kind := kindFromCompactSnapshot(s)
+					logger.PrintVerbose("Submitted compact %s snapshot successfully", kind)
+					compactLogStats[kind] = compactLogStats[kind] + 1
+					if compactLogTime.IsZero() {
+						compactLogTime = time.Now().Truncate(time.Minute)
+					} else if time.Since(compactLogTime) > time.Minute {
+						details := summarizeCounts(compactLogStats)
+						if len(details) > 0 {
+							logger.PrintInfo("Submitted compact snapshots successfully: " + details)
+						}
+						compactLogTime = time.Now().Truncate(time.Minute)
+						compactLogStats = make(map[string]uint8)
+					}
+				}
+			}
+		}(servers[idx])
+	}
 }
 
-func uploadSnapshot(ctx context.Context, httpClient *http.Client, grant state.Grant, logger *util.Logger, data bytes.Buffer, filename string) (string, error) {
-	var err error
-
-	if !grant.ValidForS3Until.After(time.Now()) {
-		return "", fmt.Errorf("Error - can't upload without valid S3 grant")
+func summarizeCounts(counts map[string]uint8) string {
+	var keys []string
+	for k := range counts {
+		keys = append(keys, k)
 	}
-
-	if grant.S3URL == "" && grant.LocalDir != "" {
-		location := grant.LocalDir + filename
-		err = os.MkdirAll(filepath.Dir(location), 0755)
-		if err != nil {
-			logger.PrintError("Error creating target directory: %s", err)
-			return "", err
+	sort.Strings(keys)
+	details := ""
+	for i, kind := range keys {
+		details += fmt.Sprintf("%d %s", counts[kind], kind)
+		if i < len(keys)-1 {
+			details += ", "
 		}
-
-		err = ioutil.WriteFile(location, data.Bytes(), 0644)
-		if err != nil {
-			logger.PrintError("Error writing local file: %s", err)
-			return "", err
-		}
-		return location, nil
 	}
-
-	logger.PrintVerbose("Successfully prepared S3 request - size of request body: %.4f MB", float64(data.Len())/1024.0/1024.0)
-
-	return uploadToS3(ctx, httpClient, grant.S3URL, grant.S3Fields, logger, data.Bytes(), filename)
+	return details
 }
 
-func uploadToS3(ctx context.Context, httpClient *http.Client, S3URL string, S3Fields map[string]string, logger *util.Logger, data []byte, filename string) (string, error) {
-	var err error
-	var formBytes bytes.Buffer
+func uploadViaWebsocketOrHttp(ctx context.Context, server *state.Server, logger *util.Logger, testRun bool, data []byte, snapshotUUID string, collectedAt time.Time, compactSnapshot bool) error {
+	var compressedData bytes.Buffer
+	w := zlib.NewWriter(&compressedData)
+	w.Write(data)
+	w.Close()
 
-	writer := multipart.NewWriter(&formBytes)
-
-	for key, val := range S3Fields {
-		err = writer.WriteField(key, val)
+	if server.WebSocket.Load() != nil {
+		server.SnapshotStream <- compressedData.Bytes()
+	} else {
+		s3Location, err := uploadSnapshot(ctx, server.Config.HTTPClientWithRetry, server.Grant.Load(), logger, compressedData.Bytes(), snapshotUUID)
 		if err != nil {
-			return "", err
+			return err
 		}
+		submitSnapshot(ctx, server, testRun, logger, s3Location, collectedAt, compactSnapshot)
 	}
-
-	part, _ := writer.CreateFormFile("file", filename)
-	_, err = part.Write(data)
-	if err != nil {
-		return "", err
-	}
-
-	writer.Close()
-
-	req, err := http.NewRequestWithContext(ctx, "POST", S3URL, &formBytes)
-	if err != nil {
-		return "", err
-	}
-	req.Header.Set("Content-Type", writer.FormDataContentType())
-
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", err
-	}
-
-	if resp.StatusCode != http.StatusCreated {
-		return "", fmt.Errorf("Bad S3 upload return code %s (should be 201 Created), body: %s", resp.Status, body)
-	}
-
-	var s3Resp s3UploadResponse
-	err = xml.Unmarshal(body, &s3Resp)
-	if err != nil {
-		return "", err
-	}
-
-	return s3Resp.Key, nil
+	return nil
 }
