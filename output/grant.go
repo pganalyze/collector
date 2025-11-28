@@ -23,9 +23,24 @@ func EnsureGrant(ctx context.Context, server *state.Server, opts state.Collectio
 	// Accept existing grant data if we're using a WebSocket connection and it's
 	// up and running and received at least one config message, or if the caller
 	// allows reusing the last S3-based grant without a refetch, and its still valid.
-	if server.Grant.Load().ValidConfig && (server.WebSocket.Load() != nil ||
+	if server.Grant.Load().ValidConfig && (server.WebSocket.Connected() ||
 		(!refetchAlways && server.Grant.Load().ValidForS3Until.After(time.Now()))) {
 		return nil
+	}
+
+	err := server.WebSocket.Connect()
+	if err != nil {
+		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectWebSocket, "error starting WebSocket: %s", err)
+	} else {
+		// Wait for initial config so we don't incorrectly use an HTTP-based grant
+		ok := waitWithTimeout(ctx, server.InitialConfigReceived, 1*time.Second)
+		if ok && server.Grant.Load().ValidConfig {
+			server.SelfTest.MarkCollectionAspectOk(state.CollectionAspectWebSocket)
+			server.SelfTest.MarkCollectionAspectOk(state.CollectionAspectApiConnection)
+			return nil
+		} else {
+			server.SelfTest.MarkCollectionAspectError(state.CollectionAspectWebSocket, "error starting WebSocket: initial configuration not received in time")
+		}
 	}
 
 	newGrant, err := getGrant(ctx, server.Config, opts.TestRun)
@@ -42,6 +57,19 @@ func EnsureGrant(ctx context.Context, server *state.Server, opts state.Collectio
 	server.Grant.Store(newGrant)
 
 	return nil
+}
+
+func waitWithTimeout(ctx context.Context, c chan struct{}, timeout time.Duration) bool {
+	tctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	for {
+		select {
+		case <-tctx.Done():
+			return false
+		case <-c:
+			return true
+		}
+	}
 }
 
 func getGrant(ctx context.Context, conf config.ServerConfig, testRun bool) (*state.Grant, error) {

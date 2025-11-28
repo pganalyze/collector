@@ -7,10 +7,10 @@ import (
 	"time"
 
 	raven "github.com/getsentry/raven-go"
-	"github.com/gorilla/websocket"
 	"github.com/guregu/null"
 	"github.com/pganalyze/collector/config"
 	"github.com/pganalyze/collector/output/pganalyze_collector"
+	"github.com/pganalyze/collector/util"
 )
 
 type SchemaStats struct {
@@ -308,8 +308,8 @@ type Server struct {
 
 	FullSnapshotUpload    chan *pganalyze_collector.FullSnapshot
 	CompactSnapshotUpload chan *pganalyze_collector.CompactSnapshot
-	SnapshotStream        chan []byte
-	WebSocket             atomic.Pointer[websocket.Conn]
+	WebSocket             *util.ReconnectingSocket
+	InitialConfigReceived chan struct{}
 	Pause                 atomic.Bool
 
 	// State to track queries the collector is running on behalf of a user
@@ -340,7 +340,7 @@ func MakeServer(config config.ServerConfig, testRun bool) *Server {
 		CollectionStatusMutex: &sync.Mutex{},
 		FullSnapshotUpload:    make(chan *pganalyze_collector.FullSnapshot),
 		CompactSnapshotUpload: make(chan *pganalyze_collector.CompactSnapshot),
-		SnapshotStream:        make(chan []byte),
+		InitialConfigReceived: make(chan struct{}, 1),
 		QueryRuns:             make(map[int64]*QueryRun),
 		QueryRunsMutex:        &sync.Mutex{},
 		LogParseMutex:         &sync.RWMutex{},
