@@ -27,13 +27,9 @@ func gather1minStatsForServer(ctx context.Context, server *state.Server, opts st
 	defer connection.Close()
 
 	if server.Config.SkipIfReplica {
-		var isReplica bool
-		isReplica, err = postgres.GetIsReplica(ctx, logger, connection)
+		err = checkReplicaCollectionDisabledWithConn(ctx, server, logger, connection)
 		if err != nil {
 			return newState, err
-		}
-		if isReplica {
-			return newState, state.ErrReplicaCollectionDisabled
 		}
 	}
 
@@ -63,20 +59,7 @@ func Gather1minStatsFromAllServers(ctx context.Context, servers []*state.Server,
 			if err != nil {
 				server.HighFreqStateMutex.Unlock()
 
-				server.CollectionStatusMutex.Lock()
-				isIgnoredReplica := err == state.ErrReplicaCollectionDisabled
-				if isIgnoredReplica {
-					reason := err.Error()
-					server.CollectionStatus = state.CollectionStatus{
-						CollectionDisabled:        true,
-						CollectionDisabledReason:  reason,
-						LogSnapshotDisabled:       true,
-						LogSnapshotDisabledReason: reason,
-					}
-				}
-				server.CollectionStatusMutex.Unlock()
-
-				if isIgnoredReplica {
+				if err == state.ErrReplicaCollectionDisabled {
 					prefixedLogger.PrintVerbose("All monitoring suspended while server is replica")
 				} else {
 					prefixedLogger.PrintError("Could not collect high frequency statistics for server: %s", err)
