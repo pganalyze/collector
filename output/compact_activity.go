@@ -43,9 +43,9 @@ func SubmitCompactActivitySnapshot(ctx context.Context, server *state.Server, co
 	}
 	server.QueryRunsMutex.Unlock()
 
-	s := pganalyze_collector.CompactSnapshot{
+	s := &pganalyze_collector.CompactSnapshot{
 		BaseRefs: &r,
 		Data:     &pganalyze_collector.CompactSnapshot_ActivitySnapshot{ActivitySnapshot: &as},
 	}
-	return uploadAndSubmitCompactSnapshot(ctx, s, server, collectionOpts, logger, activityState.CollectedAt, false, "activity")
+	return uploadAndSubmitCompactSnapshot(ctx, s, server, collectionOpts, logger, activityState.CollectedAt)
 }

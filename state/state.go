@@ -306,9 +306,11 @@ type Server struct {
 
 	SelfTest *SelfTestResult
 
-	SnapshotStream chan []byte
-	WebSocket      atomic.Pointer[websocket.Conn]
-	Pause          atomic.Bool
+	FullSnapshotUpload    chan *pganalyze_collector.FullSnapshot
+	CompactSnapshotUpload chan *pganalyze_collector.CompactSnapshot
+	SnapshotStream        chan []byte
+	WebSocket             atomic.Pointer[websocket.Conn]
+	Pause                 atomic.Bool
 
 	// State to track queries the collector is running on behalf of a user
 	QueryRuns      map[int64]*QueryRun
@@ -326,10 +328,6 @@ type Server struct {
 	// differences (see https://groups.google.com/g/golang-nuts/c/eIqkhXh9PLg),
 	// as we access this in high frequency log-related code paths.
 	LogIgnoreFlags uint32
-
-	// State to track compact snapshot submissions, and log them routinely
-	CompactLogStats map[string]uint8
-	CompactLogTime  time.Time
 }
 
 func MakeServer(config config.ServerConfig, testRun bool) *Server {
@@ -340,6 +338,8 @@ func MakeServer(config config.ServerConfig, testRun bool) *Server {
 		ActivityStateMutex:    &sync.Mutex{},
 		HighFreqStateMutex:    &sync.Mutex{},
 		CollectionStatusMutex: &sync.Mutex{},
+		FullSnapshotUpload:    make(chan *pganalyze_collector.FullSnapshot),
+		CompactSnapshotUpload: make(chan *pganalyze_collector.CompactSnapshot),
 		SnapshotStream:        make(chan []byte),
 		QueryRuns:             make(map[int64]*QueryRun),
 		QueryRunsMutex:        &sync.Mutex{},
