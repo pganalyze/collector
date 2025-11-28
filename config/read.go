@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/go-ini/ini"
+	"github.com/gorilla/websocket"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
@@ -458,6 +459,21 @@ func CreateHTTPClient(conf ServerConfig, logger *util.Logger, retry bool) *http.
 	}
 }
 
+func CreateWebSocketDialer(conf ServerConfig) websocket.Dialer {
+	proxyConfig := httpproxy.Config{
+		HTTPProxy:  conf.HTTPProxy,
+		HTTPSProxy: conf.HTTPSProxy,
+		NoProxy:    conf.NoProxy,
+	}
+	return websocket.Dialer{
+		ReadBufferSize:  10240,
+		WriteBufferSize: 10240,
+		Proxy: func(req *http.Request) (*url.URL, error) {
+			return proxyConfig.ProxyFunc()(req.URL)
+		},
+	}
+}
+
 func APIHeaders(conf ServerConfig, testRun bool) map[string][]string {
 	headers := make(map[string][]string)
 	headers["Pganalyze-Api-Key"] = []string{conf.APIKey}
@@ -776,6 +792,17 @@ func preprocessConfig(config *ServerConfig) (*ServerConfig, error) {
 	if config.DisableCitusSchemaStats != "" {
 		config.DisableCitusSchemaStats = parseConfigDisableCitusSchemaStats(config.DisableCitusSchemaStats)
 	}
+
+	wsUrl, err := url.Parse(config.APIBaseURL + "/v2/snapshots/websocket")
+	if err != nil {
+		return config, fmt.Errorf("Error parsing websocket URL: %s", err)
+	}
+	if wsUrl.Scheme == "http" {
+		wsUrl.Scheme = "ws"
+	} else {
+		wsUrl.Scheme = "wss"
+	}
+	config.WebSocketUrl = wsUrl.String()
 
 	return config, nil
 }

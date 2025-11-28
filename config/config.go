@@ -241,6 +241,9 @@ type ServerConfig struct {
 	HTTPClient          *http.Client
 	HTTPClientWithRetry *http.Client
 
+	// WebSocket URL to be used for API WebSocket connection
+	WebSocketUrl string
+
 	// OpenTelemetry tracing provider, if enabled
 	OTelTracingProvider             *sdktrace.TracerProvider
 	OTelTracingProviderShutdownFunc func(context.Context) error
