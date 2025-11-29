@@ -49,7 +49,7 @@ WHERE
 ), nap AS (
 	SELECT pg_catalog.pg_sleep(value) FROM naptime WHERE value >= 0
 )
-SELECT value FROM naptime`, setting).Scan(&naptime)
+SELECT value FROM naptime, nap`, setting).Scan(&naptime)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return fmt.Errorf("could not check current value for setting '%s'", setting)
