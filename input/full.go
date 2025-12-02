@@ -29,21 +29,27 @@ import (
 func CollectFull(ctx context.Context, server *state.Server, connection *sql.DB, opts state.CollectionOpts, logger *util.Logger) (ps state.PersistedState, ts state.TransientState, err error) {
 	ps.CollectedAt = time.Now()
 
+	// These were previously run in separate goroutines, but because buffer cache checks
+	// during Aurora Serverless scaling can cause segfaults, we now run them in the same
+	// goroutine so that we can recognize Serverless nodes from the API (there does not
+	// seem to be a way to check whether Aurora is Serverless in SQL).
 	bufferCacheReady := make(chan state.BufferCache, 1)
+	systemStateReady := make(chan state.SystemState, 1)
 	go func() {
-		if server.Config.MaxBufferCacheMonitoringGB > 0 {
+		var systemState state.SystemState
+		if opts.CollectSystemInformation {
+			systemState = system.GetSystemState(ctx, server, logger, opts)
+		}
+		systemStateReady <- systemState
+		isAuroraServerless := false
+		if systemState.Info.AmazonRds != nil {
+			isAuroraServerless = systemState.Info.AmazonRds.IsAuroraServerless
+		}
+
+		if server.Config.MaxBufferCacheMonitoringGB > 0 && !isAuroraServerless {
 			bufferCacheReady <- postgres.GetBufferCache(ctx, server, logger, opts)
 		} else {
 			bufferCacheReady <- make(state.BufferCache)
-		}
-	}()
-
-	systemStateReady := make(chan state.SystemState, 1)
-	go func() {
-		if opts.CollectSystemInformation {
-			systemStateReady <- system.GetSystemState(ctx, server, logger, opts)
-		} else {
-			systemStateReady <- state.SystemState{}
 		}
 	}()
 

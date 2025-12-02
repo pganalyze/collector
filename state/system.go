@@ -95,6 +95,7 @@ type SystemInfoAmazonRds struct {
 	ParameterPgssEnabled        bool
 	ParameterAutoExplainEnabled bool
 	IsAuroraPostgres            bool
+	IsAuroraServerless          bool
 }
 
 // SystemInfoCrunchyBridge - System information for Crunchy Bridge systems

@@ -42,6 +42,8 @@ func GetSystemState(server *state.Server, logger *util.Logger) (system state.Sys
 
 	isAurora := util.StringPtrToString(instance.Engine) == "aurora-postgresql"
 
+	isServerless := util.StringPtrToString(instance.DBInstanceClass) == "db.serverless"
+
 	system.Info.AmazonRds = &state.SystemInfoAmazonRds{
 		Region:                     config.AwsRegion,
 		InstanceClass:              util.StringPtrToString(instance.DBInstanceClass),
@@ -64,6 +66,7 @@ func GetSystemState(server *state.Server, logger *util.Logger) (system state.Sys
 		IAMAuthentication:          util.BoolPtrToBool(instance.IAMDatabaseAuthenticationEnabled),
 		DeletionProtection:         util.BoolPtrToBool(instance.DeletionProtection),
 		IsAuroraPostgres:           isAurora,
+		IsAuroraServerless:         isServerless,
 	}
 
 	tags := make(map[string]string)
