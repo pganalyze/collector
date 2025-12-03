@@ -25,7 +25,7 @@ func ReplaceSecrets(logLines []state.LogLine, filterLogSecret []state.LogSecretK
 				return logLine.SecretMarkers[i].ByteStart < logLine.SecretMarkers[j].ByteEnd
 			})
 			content := []byte(logLine.Content)
-			bytesChecked := 0
+			bytesChecked := -1
 			offset := 0
 			for _, m := range logLine.SecretMarkers {
 				for _, k := range filterLogSecret {
