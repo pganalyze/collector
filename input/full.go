@@ -29,21 +29,26 @@ import (
 func CollectFull(ctx context.Context, server *state.Server, connection *sql.DB, opts state.CollectionOpts, logger *util.Logger) (ps state.PersistedState, ts state.TransientState, err error) {
 	ps.CollectedAt = time.Now()
 
+	// Buffer cache statistics and system information are separate, but querying pg_buffercache during
+	// an Amazon Aurora Serverless scaling event can cause a server crash (which seems to be due to
+	// a Serverless bug), so we first get system information and skip the buffer cache if necessary.
 	bufferCacheReady := make(chan state.BufferCache, 1)
+	systemStateReady := make(chan state.SystemState, 1)
 	go func() {
-		if server.Config.MaxBufferCacheMonitoringGB > 0 {
+		var systemState state.SystemState
+		if opts.CollectSystemInformation {
+			systemState = system.GetSystemState(ctx, server, logger, opts)
+		}
+		systemStateReady <- systemState
+		isAuroraServerless := false
+		if systemState.Info.AmazonRds != nil {
+			isAuroraServerless = systemState.Info.AmazonRds.IsAuroraServerless
+		}
+
+		if server.Config.MaxBufferCacheMonitoringGB > 0 && !isAuroraServerless {
 			bufferCacheReady <- postgres.GetBufferCache(ctx, server, logger, opts)
 		} else {
 			bufferCacheReady <- make(state.BufferCache)
-		}
-	}()
-
-	systemStateReady := make(chan state.SystemState, 1)
-	go func() {
-		if opts.CollectSystemInformation {
-			systemStateReady <- system.GetSystemState(ctx, server, logger, opts)
-		} else {
-			systemStateReady <- state.SystemState{}
 		}
 	}()
 
