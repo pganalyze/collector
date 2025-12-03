@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"os/user"
+	"path"
 	"runtime/pprof"
 	"runtime/trace"
 	"strconv"
@@ -279,6 +280,8 @@ func main() {
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, os.Interrupt, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
 
+	pruneTempFiles(logger)
+
 ReadConfigAndRun:
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := sync.WaitGroup{}
@@ -368,4 +371,46 @@ func Reload(logger *util.Logger) {
 	}
 	logger.PrintInfo("Successfully reloaded pganalyze collector (PID %d)\n", pid)
 	os.Exit(0)
+}
+
+// Delete any temp files we may have left behind on an unclean shutdown
+func pruneTempFiles(logger *util.Logger) {
+	usr, err := user.Current()
+	if err != nil {
+		logger.PrintWarning("Could not check current user to prune temp files: %s\n", err)
+		return
+	}
+	uid, err := strconv.ParseUint(usr.Uid, 10, 32)
+	if err != nil {
+		logger.PrintWarning("Could not parse current user uid to prune temp files: %s\n", err)
+		return
+	}
+	uid32 := uint32(uid)
+	tmpdir := os.TempDir()
+	entries, err := os.ReadDir(tmpdir)
+	if err != nil {
+		logger.PrintWarning("Could not open temp directory to prune temp files: %s\n", err)
+		return
+	}
+	for _, entry := range entries {
+		name := entry.Name()
+		if !strings.HasPrefix(name, "pga_collector") {
+			continue
+		}
+		fi, err := entry.Info()
+		if err != nil {
+			logger.PrintWarning("Could not check info for file %s in temp dir %s: %s\n", name, tmpdir, err)
+			continue
+		}
+		if stat, ok := fi.Sys().(*syscall.Stat_t); ok {
+			if stat.Uid == uid32 {
+				err = os.Remove(path.Join(tmpdir, name))
+				if err != nil {
+					logger.PrintWarning("Could not remove stray temp file %s in temp dir %s: %s\n", name, tmpdir, err)
+					continue
+				}
+				logger.PrintVerbose("Removed stray temp file %s in temp dir %s\n", name, tmpdir)
+			}
+		}
+	}
 }
