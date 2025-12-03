@@ -29,9 +29,9 @@ import (
 func CollectFull(ctx context.Context, server *state.Server, connection *sql.DB, opts state.CollectionOpts, logger *util.Logger) (ps state.PersistedState, ts state.TransientState, err error) {
 	ps.CollectedAt = time.Now()
 
-    // Buffer cache statistics and system information are separate, but querying pg_buffercache during
-    // an Amazon Aurora Serverless scaling event can cause a server crash (which seems to be due to
-    // a Serverless bug), so we first get system information and skip the buffer cache if necessary.
+	// Buffer cache statistics and system information are separate, but querying pg_buffercache during
+	// an Amazon Aurora Serverless scaling event can cause a server crash (which seems to be due to
+	// a Serverless bug), so we first get system information and skip the buffer cache if necessary.
 	bufferCacheReady := make(chan state.BufferCache, 1)
 	systemStateReady := make(chan state.SystemState, 1)
 	go func() {
