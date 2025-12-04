@@ -177,7 +177,7 @@ func GetStatementTexts(ctx context.Context, c *Collection, db *sql.DB) (state.Po
 
 	var tmpFile *os.File
 
-	tmpFile, err = os.CreateTemp("", "pga_collector")
+	tmpFile, err = os.CreateTemp("", util.TempFilePrefix)
 	if err != nil {
 		return nil, nil, err
 	}

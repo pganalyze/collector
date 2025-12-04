@@ -545,7 +545,7 @@ func CreateOTelTracingProvider(ctx context.Context, conf ServerConfig) (*sdktrac
 }
 
 func writeValueToTempfile(value string) (string, error) {
-	file, err := os.CreateTemp("", "pga_collector")
+	file, err := os.CreateTemp("", util.TempFilePrefix)
 	if err != nil {
 		return "", err
 	}
