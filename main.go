@@ -66,6 +66,7 @@ func main() {
 	var noReload bool
 	var benchmark bool
 	var veryVerbose bool
+	var requireWebsocket bool
 
 	logFlags := log.LstdFlags
 	logger := &util.Logger{}
@@ -109,6 +110,7 @@ func main() {
 	flag.StringVar(&stateFilename, "statefile", defaultStateFile, "Specify alternative path for state file")
 	flag.StringVar(&pidFilename, "pidfile", "", "Specifies a path that a pidfile should be written to (default is no pidfile being written)")
 	flag.BoolVar(&benchmark, "benchmark", false, "Runs collector in benchmark mode (skip submitting the statistics to the server)")
+	flag.BoolVar(&requireWebsocket, "require-websocket", true, "Require WebSocket connection to the pganalyze server")
 	flag.Parse()
 
 	// Automatically reload the configuration after a successful test run.
@@ -176,6 +178,7 @@ func main() {
 		ForceEmptyGrant:                  dryRun || dryRunLogs || testRunLogs || benchmark,
 		OutputAsJson:                     !benchmark,
 		VeryVerbose:                      veryVerbose,
+		RequireWebsocket:                 requireWebsocket,
 	}
 
 	if reload && !testRun {
