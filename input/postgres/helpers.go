@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -58,11 +59,20 @@ SELECT setting
 	FROM pg_settings
  WHERE name = '%s'`
 
+var ErrUnknownSetting = errors.New("Setting is not defined")
+
+// GetPostgresSetting - gets the current value of the specified setting
+//
+// Returns ErrUnknownSetting when the setting is not available, as is typically
+// the case with extension settings when the extension isn't loaded, or if the
+// setting is not supported on the Postgres version.
 func GetPostgresSetting(ctx context.Context, db *sql.DB, settingName string) (string, error) {
 	var value string
 
 	err := db.QueryRow(QueryMarkerSQL + fmt.Sprintf(settingValueSQL, settingName)).Scan(&value)
-	if err != nil {
+	if err == sql.ErrNoRows {
+		return "", ErrUnknownSetting
+	} else if err != nil {
 		return "", fmt.Errorf("Could not read \"%s\" setting: %s", settingName, err)
 	}
 
