@@ -85,12 +85,17 @@ func getStatus(dataDirectory string) {
 			}
 		}
 
-		var cmdOut []byte
-		cmdOut, err = exec.Command("locate", "-r", "bin/pg_controldata$").Output()
+		postmasterBin, err := filepath.EvalSymlinks(filepath.Join("/proc", strconv.Itoa(status.PostmasterPid), "exe"))
 		if err != nil {
-			pgControldataBinary = "pg_controldata"
+			var cmdOut []byte
+			cmdOut, err = exec.Command("locate", "-r", "bin/pg_controldata$").Output()
+			if err != nil {
+				pgControldataBinary = "pg_controldata"
+			} else {
+				pgControldataBinary = string(cmdOut[:len(cmdOut)-1])
+			}
 		} else {
-			pgControldataBinary = string(cmdOut[:len(cmdOut)-1])
+			pgControldataBinary = filepath.Join(filepath.Dir(postmasterBin), "pg_controldata")
 		}
 
 		pgControldataOut, err = exec.Command(pgControldataBinary, status.DataDirectory).Output()
