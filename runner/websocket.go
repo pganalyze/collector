@@ -19,16 +19,16 @@ func SetupWebsocketForAllServers(ctx context.Context, servers []*state.Server, o
 	if opts.ForceEmptyGrant {
 		return
 	}
-	for idx := range servers {
-		logger = logger.WithPrefixAndRememberErrors(servers[idx].Config.SectionName)
-		servers[idx].WebSocket = util.NewReconnectingSocket(
-			ctx, logger,
-			config.CreateWebSocketDialer(servers[idx].Config), servers[idx].Config.WebSocketUrl, config.APIHeaders(servers[idx].Config, opts.TestRun),
+	for _, server := range servers {
+		prefixedLogger := logger.WithPrefixAndRememberErrors(server.Config.SectionName)
+		server.WebSocket = util.NewReconnectingSocket(
+			ctx, prefixedLogger,
+			config.CreateWebSocketDialer(server.Config), server.Config.WebSocketUrl, config.APIHeaders(server.Config, opts.TestRun),
 			1*time.Minute, 8*time.Minute,
 		)
 
 		// Server messages are read in processServerMessages, snapshots are sent via output.SetupSnapshotUploadForAllServers
-		go processServerMessages(ctx, servers[idx], logger)
+		go processServerMessages(ctx, server, prefixedLogger)
 	}
 }
 

@@ -17,60 +17,61 @@ func SetupSnapshotUploadForAllServers(ctx context.Context, servers []*state.Serv
 	if opts.ForceEmptyGrant {
 		return
 	}
-	for idx := range servers {
-		go func(server *state.Server) {
-			var compactLogTime time.Time
-			compactLogStats := make(map[string]uint8)
-			logger = logger.WithPrefixAndRememberErrors(server.Config.SectionName)
-			for {
-				select {
-				case <-ctx.Done():
-					return
-				case s := <-server.FullSnapshotUpload:
-					data, err := proto.Marshal(s)
-					if err != nil {
-						logger.PrintError("Error marshaling protocol buffers")
-						continue
-					}
+	for _, server := range servers {
+		go snapshotUploadForServer(ctx, server, logger.WithPrefixAndRememberErrors(server.Config.SectionName), opts.TestRun)
+	}
+}
 
-					err = uploadViaWebsocketOrHttp(ctx, server, logger, opts.TestRun, data, s.SnapshotUuid, s.CollectedAt.AsTime(), false)
-					if err != nil {
-						logger.PrintError("Error uploading snapshot: %s", err)
-					} else if !opts.TestRun {
-						logger.PrintInfo("Submitted full snapshot successfully")
-					}
-				case s := <-server.CompactSnapshotUpload:
-					data, err := proto.Marshal(s)
-					if err != nil {
-						logger.PrintError("Error marshaling protocol buffers")
-						continue
-					}
-
-					err = uploadViaWebsocketOrHttp(ctx, server, logger, opts.TestRun, data, s.SnapshotUuid, s.CollectedAt.AsTime(), false)
-					if err != nil {
-						logger.PrintError("Error uploading snapshot: %s", err)
-						continue
-					}
-					if opts.TestRun {
-						continue
-					}
-
-					kind := kindFromCompactSnapshot(s)
-					logger.PrintVerbose("Submitted compact %s snapshot successfully", kind)
-					compactLogStats[kind] = compactLogStats[kind] + 1
-					if compactLogTime.IsZero() {
-						compactLogTime = time.Now().Truncate(time.Minute)
-					} else if time.Since(compactLogTime) > time.Minute {
-						details := summarizeCounts(compactLogStats)
-						if len(details) > 0 {
-							logger.PrintInfo("Submitted compact snapshots successfully: " + details)
-						}
-						compactLogTime = time.Now().Truncate(time.Minute)
-						compactLogStats = make(map[string]uint8)
-					}
-				}
+func snapshotUploadForServer(ctx context.Context, server *state.Server, logger *util.Logger, testRun bool) {
+	var compactLogTime time.Time
+	compactLogStats := make(map[string]uint8)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case s := <-server.FullSnapshotUpload:
+			data, err := proto.Marshal(s)
+			if err != nil {
+				logger.PrintError("Error marshaling protocol buffers")
+				continue
 			}
-		}(servers[idx])
+
+			err = uploadViaWebsocketOrHttp(ctx, server, logger, testRun, data, s.SnapshotUuid, s.CollectedAt.AsTime(), false)
+			if err != nil {
+				logger.PrintError("Error uploading snapshot: %s", err)
+			} else if !testRun {
+				logger.PrintInfo("Submitted full snapshot successfully")
+			}
+		case s := <-server.CompactSnapshotUpload:
+			data, err := proto.Marshal(s)
+			if err != nil {
+				logger.PrintError("Error marshaling protocol buffers")
+				continue
+			}
+
+			err = uploadViaWebsocketOrHttp(ctx, server, logger, testRun, data, s.SnapshotUuid, s.CollectedAt.AsTime(), false)
+			if err != nil {
+				logger.PrintError("Error uploading snapshot: %s", err)
+				continue
+			}
+			if testRun {
+				continue
+			}
+
+			kind := kindFromCompactSnapshot(s)
+			logger.PrintVerbose("Submitted compact %s snapshot successfully", kind)
+			compactLogStats[kind] = compactLogStats[kind] + 1
+			if compactLogTime.IsZero() {
+				compactLogTime = time.Now().Truncate(time.Minute)
+			} else if time.Since(compactLogTime) > time.Minute {
+				details := summarizeCounts(compactLogStats)
+				if len(details) > 0 {
+					logger.PrintInfo("Submitted compact snapshots successfully: " + details)
+				}
+				compactLogTime = time.Now().Truncate(time.Minute)
+				compactLogStats = make(map[string]uint8)
+			}
+		}
 	}
 }
 
