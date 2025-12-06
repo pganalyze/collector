@@ -1,5 +1,53 @@
 # Changelog
 
+## 0.67.0      2025-12-XX
+
+* Add support for capturing plan statistics with pg_stat_plans
+  - This supports collecting plan statistics from the new pg_stat_plans
+    extension (https://github.com/pganalyze/pg_stat_plans) on Postgres 16+ in
+    addition to Amazon Aurora
+* Avoid skipping query stats in case of slow query text/schema collection
+  - This reworks how pg_stat_statements data is retrieved, to ensure query
+    statistics are continuously collected at 1 minute intervals, even if the
+    full snapshot collection is slow (e.g. due to query text file size or many
+    tables/indexes)
+* Improve the correctness of replication/server/backend count metrics
+  - Previously these metrics were collected after potentially slow operations in
+    the full snapshot, causing different collection times instead of staying
+    close to the intended 10 minute interval
+* GCP Pub/Sub: Allow multiple collectors subscribing to the same topic
+  - This adds the new `gcp_pubsub_max_age` / `GCP_PUBSUB_MAX_AGE` setting,
+    default 0, maximum 24 hours. Keeping the age limit low is recommended,
+    10 minutes (gcp_pubsub_max_age = 10m) is a good value to use
+  - If set to a non-zero value, the collector returns a GCP PubSub message
+    that's not for a configured server to the topic (by sending a "Nack"
+    message), allowing a different collector to pick it up. This enables an
+    architecture where one topic can be shared across multiple collectors
+  - However, if the message is older than the max age limit, it is always
+    acknowledged (discarded)
+* Improve buffer cache connection handling to avoid connection leak
+  - Previously this may have blocked on an unconsumed channel, which could have
+    caused the database connection to stay open longer than planned
+* Disable buffer cache collection for Aurora Serverless
+  - We've had a report of a Postgres segfault caused by scanning the buffer
+    cache during an Aurora Serverless scaling event, which was confirmed by AWS
+    to be a current Aurora bug. For now collection of pg_buffercache is turned
+    off until a bugfix is available
+* Helper: Don't require "locate" to determine the pg_controldata path
+  - This fixes cluster ID detection (via the Postgres system identifier)
+    for a typical PGDG-based Debian/Ubuntu install
+* Prune stray temporary files on collector start
+  - Previously an out of memory crash, typically due to systemd limits, could
+    cause temporary files to stay around and never be deleted
+  - Now the collector will remove such files when it starts back up, avoiding
+    potential disk space issues with the temporary file directory
+  - Collector temporary files are now prefixed with "pganalyze_collector_" to
+    support this functionality, and make identification easier
+* Fix nap logic of "--text-explain" to actually wait the configured time
+* Include database name in warning when pg_stat_statements is out of date
+* Handle test cancellation correctly during log tests (avoid hangs)
+
+
 ## 0.66.3      2025-08-13
 
 * Log Insights: Support for multiple OpenTelemetry log receiving endpoints
