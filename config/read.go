@@ -391,6 +391,9 @@ func getDefaultConfig() *ServerConfig {
 	if noProxy := os.Getenv("no_proxy"); noProxy != "" {
 		config.NoProxy = noProxy
 	}
+	if apiRequireWebSocket := os.Getenv("API_REQUIRE_WEBSOCKET"); apiRequireWebSocket != "" {
+		config.APIRequireWebsocket = parseConfigBool(apiRequireWebSocket)
+	}
 
 	return config
 }

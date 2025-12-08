@@ -31,6 +31,9 @@ func EnsureGrant(ctx context.Context, server *state.Server, opts state.Collectio
 	err := server.WebSocket.Connect()
 	if err != nil {
 		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectWebSocket, "error starting WebSocket: %s", err)
+		if server.Config.APIRequireWebsocket {
+			return fmt.Errorf("Error starting WebSocket: %w", err)
+		}
 	} else {
 		// Wait for initial config so we don't incorrectly use an HTTP-based grant
 		ok := waitWithTimeout(ctx, server.InitialConfigReceived, 1*time.Second)
@@ -40,6 +43,9 @@ func EnsureGrant(ctx context.Context, server *state.Server, opts state.Collectio
 			return nil
 		} else {
 			server.SelfTest.MarkCollectionAspectError(state.CollectionAspectWebSocket, "error starting WebSocket: initial configuration not received in time")
+			if server.Config.APIRequireWebsocket {
+				return fmt.Errorf("Error starting WebSocket: initial configuration not received in time")
+			}
 		}
 	}
 
