@@ -129,9 +129,13 @@ type ServerConfig struct {
 	TemboLogsAPIURL    string `ini:"tembo_logs_api_url"`
 	TemboMetricsAPIURL string `ini:"tembo_metrics_api_url"`
 
-	PlanetScaleOrg      string `ini:"planetscale_org"`
-	PlanetScaleDatabase string `ini:"planetscale_database"`
-	PlanetScaleBranch   string `ini:"planetscale_branch"`
+	PlanetScaleOrg         string `ini:"planetscale_org"`
+	PlanetScaleDatabase    string `ini:"planetscale_database"`
+	PlanetScaleBranch      string `ini:"planetscale_branch"`
+	PlanetScaleTokenID     string `ini:"planetscale_token_id"`
+	PlanetScaleTokenSecret string `ini:"planetscale_token_secret"`
+	PlanetScaleAPIURL      string `ini:"planetscale_api_url"`  // default: https://api.planetscale.com
+	PlanetScaleLogsURL     string `ini:"planetscale_logs_url"` // default: https://logs.psdb.cloud
 
 	SectionName string
 	Identifier  ServerIdentifier
@@ -258,7 +262,13 @@ type ServerConfig struct {
 
 // SupportsLogDownload - Determines whether the specified config can download logs
 func (config ServerConfig) SupportsLogDownload() bool {
-	return config.AwsDbInstanceID != "" || config.AwsDbClusterID != "" || config.LogPgReadFile
+	return config.AwsDbInstanceID != "" || config.AwsDbClusterID != "" || config.LogPgReadFile || config.SupportsPlanetScaleLogs()
+}
+
+// SupportsPlanetScaleLogs - Determines whether PlanetScale logs are configured
+func (config ServerConfig) SupportsPlanetScaleLogs() bool {
+	return config.PlanetScaleOrg != "" && config.PlanetScaleDatabase != "" && config.PlanetScaleBranch != "" &&
+		config.PlanetScaleTokenID != "" && config.PlanetScaleTokenSecret != ""
 }
 
 // GetPqOpenString - Gets the database configuration as a string that can be passed to lib/pq for connecting
