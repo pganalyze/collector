@@ -35,6 +35,11 @@ var replaceTests = []replaceTestpair{
 		output:          "duration: 2007.111 ms  plan:\n[redacted]\n",
 	},
 	{
+		filterLogSecret: "statement_text",
+		input:           "2025-12-03 07:31:44 UTC:1.1.1.1(123):myuser@mydb:[123]:ERROR:  canceling statement due to statement timeout\n2025-12-03 07:31:44 UTC:1.1.1.1(123):myuser@mydb:[123]:STATEMENT:  SELECT 1\n",
+		output:          "canceling statement due to statement timeout\n[redacted]",
+	},
+	{
 		filterLogSecret: "statement_parameter",
 		input:           "2018-03-11 20:00:02 UTC:1.1.1.1(2):a@b:[3]:LOG:  duration: 4079.697 ms  execute <unnamed>: \nSELECT * FROM x WHERE y = $1 LIMIT $2\n2018-03-11 20:00:02 UTC:1.1.1.1(2):a@b:[3]:DETAIL:  parameters: $1 = 'long string', $2 = '1', $3 = 'long string'\n",
 		output:          "duration: 4079.697 ms  execute <unnamed>: \nSELECT * FROM x WHERE y = $1 LIMIT $2\nparameters: $1 = '[redacted]', $2 = '[redacted]', $3 = '[redacted]'\n",
