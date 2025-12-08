@@ -241,6 +241,9 @@ type ServerConfig struct {
 	HTTPClient          *http.Client
 	HTTPClientWithRetry *http.Client
 
+	// Require WebSocket connection (if false, will try WebSocket but fall back to legacy HTTPS API)
+	APIRequireWebsocket bool `ini:"api_require_websocket"`
+
 	// WebSocket URL to be used for API WebSocket connection
 	WebSocketUrl string
 

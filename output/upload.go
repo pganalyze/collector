@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/zlib"
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"time"
@@ -100,6 +101,8 @@ func uploadViaWebsocketOrHttp(ctx context.Context, server *state.Server, logger 
 	if server.WebSocket.Connected() {
 		logger.PrintVerbose("Uploading snapshot to websocket")
 		server.WebSocket.Write <- compressedData.Bytes()
+	} else if server.Config.APIRequireWebsocket {
+		return errors.New("Error uploading snapshot: WebSocket not connected")
 	} else {
 		s3Location, err := uploadSnapshot(ctx, server.Config.HTTPClientWithRetry, server.Grant.Load(), logger, compressedData.Bytes(), snapshotUUID)
 		if err != nil {
