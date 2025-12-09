@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.67.0      2025-12-XX
+## 0.67.0      2025-12-08
 
 * Add support for capturing plan statistics with pg_stat_plans
   - This supports collecting plan statistics from the new pg_stat_plans
@@ -43,6 +43,22 @@
     potential disk space issues with the temporary file directory
   - Collector temporary files are now prefixed with "pganalyze_collector_" to
     support this functionality, and make identification easier
+* Introduce new "api_require_websocket" / "API_REQUIRE_WEBSOCKET" setting
+  - This setting (currently defaulting to off) can be used to require that
+    the more efficient WebSocket connection method is used for submitting
+    snapshots to the pganalyze server
+  - We intend to migrate fully to WebSockets in the future, and a future
+    collector release will change the defaulf of this setting to true, i.e.
+    require their use by default (with this setting remaining for a while
+    after that as a fallback, until it is fully required)
+* OTel Log Server: Support receiving JSON log format in addition to Protobuf
+  - This supports using Vector instead of Fluentbit for forwarding log events
+    from a CloudNativePG (CNPG) installation on Kubernetes
+  - With thanks to Rauan Mayemir for the initial contribution of this fix
+* Log event redaction: Fix off-by-one error when redacting full lines
+  - This caused log lines where the full line should be redacted (as is
+    typically the case with STATEMENT lines when using log filtering) to not
+    be redacted correctly.
 * Fix nap logic of "--text-explain" to actually wait the configured time
 * Include database name in warning when pg_stat_statements is out of date
 * Handle test cancellation correctly during log tests (avoid hangs)
