@@ -191,7 +191,6 @@ func otelV1LogHandler(w http.ResponseWriter, r *http.Request, server *state.Serv
 			}
 		}
 	}
-	return
 }
 
 func setupOtelHandler(ctx context.Context, server *state.Server, rawLogStream chan<- SelfHostedLogStreamItem, parsedLogStream chan state.ParsedLogStreamItem, prefixedLogger *util.Logger, opts state.CollectionOpts) {
