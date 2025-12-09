@@ -409,7 +409,9 @@ func checkOneInitialCollectionStatus(ctx context.Context, server *state.Server, 
 	parser := server.GetLogParser()
 	if parser == nil {
 		logger.PrintWarning("Could not initialize log parser for server")
-	} else {
+	} else if server.Config.LogOtelServer == "" {
+		// Validate that log_line_prefix contains necessary parts, except if we're getting
+		// jsonlog data over OpenTelemetry (which always has all we need)
 		prefixErr := parser.ValidatePrefix()
 		if prefixErr != nil {
 			logger.PrintWarning("Checking log_line_prefix: %s", prefixErr)

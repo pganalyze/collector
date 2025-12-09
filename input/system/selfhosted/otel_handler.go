@@ -13,6 +13,7 @@ import (
 	"github.com/pganalyze/collector/util"
 	common "go.opentelemetry.io/proto/otlp/common/v1"
 	otlpLogs "go.opentelemetry.io/proto/otlp/logs/v1"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -105,24 +106,36 @@ func skipDueToK8sFilter(kubernetes *common.KeyValueList, server *state.Server, p
 	return false
 }
 
-func otelV1LogHandler(w http.ResponseWriter, r *http.Request, server *state.Server, rawLogStream chan<- SelfHostedLogStreamItem, parsedLogStream chan state.ParsedLogStreamItem, prefixedLogger *util.Logger, opts state.CollectionOpts) http.ResponseWriter {
+func otelV1LogHandler(w http.ResponseWriter, r *http.Request, server *state.Server, rawLogStream chan<- SelfHostedLogStreamItem, parsedLogStream chan state.ParsedLogStreamItem, prefixedLogger *util.Logger, opts state.CollectionOpts) {
 	logParser := server.GetLogParser()
 	b, err := io.ReadAll(r.Body)
 
 	if err != nil {
-		prefixedLogger.PrintError("Could not read otel body")
+		prefixedLogger.PrintError("OTel log server could not read request body")
+		return
 	}
+
 	logsData := &otlpLogs.LogsData{}
-	if err := proto.Unmarshal(b, logsData); err != nil {
-		prefixedLogger.PrintError("Could not unmarshal otel body")
+	contentType := r.Header.Get("Content-Type")
+	switch contentType {
+	case "application/json":
+		if err := protojson.Unmarshal(b, logsData); err != nil {
+			prefixedLogger.PrintError("OTel log server could not unmarshal request body, JSON does not match expected format: %s\n  received body: %s", err, string(b))
+			return
+		}
+	default:
+		if err := proto.Unmarshal(b, logsData); err != nil {
+			prefixedLogger.PrintError("OTel log server could not unmarshal request body, expected binary OTLP Protobuf format: %s", err)
+			return
+		}
 	}
 
 	if opts.VeryVerbose {
 		jsonData, err := json.MarshalIndent(logsData, "", "  ")
 		if err != nil {
-			prefixedLogger.PrintVerbose("Failed to convert protobuf to JSON: %v", err)
+			prefixedLogger.PrintVerbose("OTel log server failed to convert protobuf to JSON: %v", err)
 		}
-		prefixedLogger.PrintVerbose("Received OpenTelemetry log data in the following format:\n")
+		prefixedLogger.PrintVerbose("OTel log server received log data in the following format:\n")
 		prefixedLogger.PrintVerbose(string(jsonData))
 	}
 
@@ -150,9 +163,9 @@ func otelV1LogHandler(w http.ResponseWriter, r *http.Request, server *state.Serv
 					}
 					// TODO: Support other logger names (this is only tested with CNPG)
 					if logger == "postgres" {
-						// jsonlog wrapped in K8s context (via fluentbit)
+						// jsonlog wrapped in K8s context (via fluentbit / Vector)
 						logLine, detailLine := logLineFromJsonlog(record, logParser)
-						if skipDueToK8sFilter(kubernetes, server, prefixedLogger) {
+						if kubernetes != nil && skipDueToK8sFilter(kubernetes, server, prefixedLogger) {
 							continue
 						}
 
@@ -178,7 +191,6 @@ func otelV1LogHandler(w http.ResponseWriter, r *http.Request, server *state.Serv
 			}
 		}
 	}
-	return w
 }
 
 func setupOtelHandler(ctx context.Context, server *state.Server, rawLogStream chan<- SelfHostedLogStreamItem, parsedLogStream chan state.ParsedLogStreamItem, prefixedLogger *util.Logger, opts state.CollectionOpts) {
@@ -192,7 +204,7 @@ func setupOtelHandler(ctx context.Context, server *state.Server, rawLogStream ch
 	go func() {
 		err := http.ListenAndServe(otelLogServer, serverMux)
 		if err != nil {
-			prefixedLogger.PrintError("Error starting server on %s: %v\n", otelLogServer, err)
+			prefixedLogger.PrintError("Error starting OTel log server on %s: %v\n", otelLogServer, err)
 		}
 	}()
 }
