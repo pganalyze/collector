@@ -13,8 +13,8 @@ import (
 	"github.com/pganalyze/collector/util"
 	common "go.opentelemetry.io/proto/otlp/common/v1"
 	otlpLogs "go.opentelemetry.io/proto/otlp/logs/v1"
-	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 )
 
 // There currently are three kinds of log formats we aim to support here:
@@ -111,7 +111,7 @@ func otelV1LogHandler(w http.ResponseWriter, r *http.Request, server *state.Serv
 	b, err := io.ReadAll(r.Body)
 
 	if err != nil {
-		prefixedLogger.PrintError("Could not read otel body")
+		prefixedLogger.PrintError("OTel log server could not read request body")
 		return
 	}
 
@@ -120,12 +120,12 @@ func otelV1LogHandler(w http.ResponseWriter, r *http.Request, server *state.Serv
 	switch contentType {
 	case "application/json":
 		if err := protojson.Unmarshal(b, logsData); err != nil {
-			prefixedLogger.PrintError("Could not unmarshal OTel body, JSON does not match expected format: %s\n  received OTel body: %s", err, string(b))
+			prefixedLogger.PrintError("OTel log server could not unmarshal request body, JSON does not match expected format: %s\n  received body: %s", err, string(b))
 			return
 		}
 	default:
 		if err := proto.Unmarshal(b, logsData); err != nil {
-			prefixedLogger.PrintError("Could not unmarshal OTel body")
+			prefixedLogger.PrintError("OTel log server could not unmarshal request body, expected binary OTLP Protobuf format: %s", err)
 			return
 		}
 	}
@@ -133,9 +133,9 @@ func otelV1LogHandler(w http.ResponseWriter, r *http.Request, server *state.Serv
 	if opts.VeryVerbose {
 		jsonData, err := json.MarshalIndent(logsData, "", "  ")
 		if err != nil {
-			prefixedLogger.PrintVerbose("Failed to convert protobuf to JSON: %v", err)
+			prefixedLogger.PrintVerbose("OTel log server failed to convert protobuf to JSON: %v", err)
 		}
-		prefixedLogger.PrintVerbose("Received OpenTelemetry log data in the following format:\n")
+		prefixedLogger.PrintVerbose("OTel log server received log data in the following format:\n")
 		prefixedLogger.PrintVerbose(string(jsonData))
 	}
 
@@ -205,7 +205,7 @@ func setupOtelHandler(ctx context.Context, server *state.Server, rawLogStream ch
 	go func() {
 		err := http.ListenAndServe(otelLogServer, serverMux)
 		if err != nil {
-			prefixedLogger.PrintError("Error starting server on %s: %v\n", otelLogServer, err)
+			prefixedLogger.PrintError("Error starting OTel log server on %s: %v\n", otelLogServer, err)
 		}
 	}()
 }
