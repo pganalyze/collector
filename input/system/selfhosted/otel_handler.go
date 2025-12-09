@@ -14,6 +14,7 @@ import (
 	common "go.opentelemetry.io/proto/otlp/common/v1"
 	otlpLogs "go.opentelemetry.io/proto/otlp/logs/v1"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 // There currently are three kinds of log formats we aim to support here:
@@ -105,16 +106,28 @@ func skipDueToK8sFilter(kubernetes *common.KeyValueList, server *state.Server, p
 	return false
 }
 
-func otelV1LogHandler(w http.ResponseWriter, r *http.Request, server *state.Server, rawLogStream chan<- SelfHostedLogStreamItem, parsedLogStream chan state.ParsedLogStreamItem, prefixedLogger *util.Logger, opts state.CollectionOpts) http.ResponseWriter {
+func otelV1LogHandler(w http.ResponseWriter, r *http.Request, server *state.Server, rawLogStream chan<- SelfHostedLogStreamItem, parsedLogStream chan state.ParsedLogStreamItem, prefixedLogger *util.Logger, opts state.CollectionOpts) {
 	logParser := server.GetLogParser()
 	b, err := io.ReadAll(r.Body)
 
 	if err != nil {
 		prefixedLogger.PrintError("Could not read otel body")
+		return
 	}
+
 	logsData := &otlpLogs.LogsData{}
-	if err := proto.Unmarshal(b, logsData); err != nil {
-		prefixedLogger.PrintError("Could not unmarshal otel body")
+	contentType := r.Header.Get("Content-Type")
+	switch contentType {
+	case "application/json":
+		if err := protojson.Unmarshal(b, logsData); err != nil {
+			prefixedLogger.PrintError("Could not unmarshal OTel body, JSON does not match expected format: %s\n  received OTel body: %s", err, string(b))
+			return
+		}
+	default:
+		if err := proto.Unmarshal(b, logsData); err != nil {
+			prefixedLogger.PrintError("Could not unmarshal OTel body")
+			return
+		}
 	}
 
 	if opts.VeryVerbose {
@@ -150,9 +163,9 @@ func otelV1LogHandler(w http.ResponseWriter, r *http.Request, server *state.Serv
 					}
 					// TODO: Support other logger names (this is only tested with CNPG)
 					if logger == "postgres" {
-						// jsonlog wrapped in K8s context (via fluentbit)
+						// jsonlog wrapped in K8s context (via fluentbit / Vector)
 						logLine, detailLine := logLineFromJsonlog(record, logParser)
-						if skipDueToK8sFilter(kubernetes, server, prefixedLogger) {
+						if kubernetes != nil && skipDueToK8sFilter(kubernetes, server, prefixedLogger) {
 							continue
 						}
 
@@ -178,7 +191,7 @@ func otelV1LogHandler(w http.ResponseWriter, r *http.Request, server *state.Serv
 			}
 		}
 	}
-	return w
+	return
 }
 
 func setupOtelHandler(ctx context.Context, server *state.Server, rawLogStream chan<- SelfHostedLogStreamItem, parsedLogStream chan state.ParsedLogStreamItem, prefixedLogger *util.Logger, opts state.CollectionOpts) {
