@@ -147,8 +147,9 @@ func downloadLogsForServerWithLocksAndCallbacks(ctx context.Context, wg *sync.Wa
 }
 
 func downloadLogsForServer(ctx context.Context, server *state.Server, opts state.CollectionOpts, logger *util.Logger) (state.PersistedLogState, bool, error) {
-	if !opts.ForceEmptyGrant {
-		err := output.EnsureGrant(ctx, server, opts, logger, false)
+	var err error
+	if !opts.ForceEmptyGrant && !opts.DebugLogs {
+		err = output.EnsureGrant(ctx, server, opts, logger, false)
 		if err != nil || !server.Grant.Load().ValidConfig {
 			return server.LogPrevState, false, err
 		}
