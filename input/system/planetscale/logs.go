@@ -19,8 +19,12 @@ import (
 )
 
 const (
-	defaultAPIURL  = "https://api.planetscale.com"
-	defaultLogsURL = "https://logs.psdb.cloud"
+	defaultAPIURL      = "https://api.planetscale.com"
+	defaultLogsURL     = "https://logs.psdb.cloud"
+	branchDetailsPath  = "/v1/organizations/%s/databases/%s/branches/%s"
+	logsSignaturesPath = "/v1/organizations/%s/databases/%s/branches/%s/logs/signatures"
+	defaultQuery       = "planetscale.component:postgres planetscale.role:primary"
+	logsPath           = "/logs/branch/%s/query"
 )
 
 // LogEntry represents a single log entry from the PlanetScale logs API
@@ -36,10 +40,8 @@ type LogEntry struct {
 
 // signatureResponse represents the response from the logs signature API
 type signatureResponse struct {
-	Data struct {
-		Sig string `json:"sig"`
-		Exp string `json:"exp"`
-	} `json:"data"`
+	Sig string `json:"sig"`
+	Exp string `json:"exp"`
 }
 
 // branchResponse represents the response from the branch API
@@ -158,8 +160,16 @@ func DownloadLogFiles(ctx context.Context, server *state.Server, logger *util.Lo
 
 	// Get branch ID (cached for collector lifetime)
 	if auth.branchID == "" {
-		branchID, err := GetBranchID(ctx, config.HTTPClient, apiURL, config.PlanetScaleTokenID, config.PlanetScaleTokenSecret,
-			config.PlanetScaleOrg, config.PlanetScaleDatabase, config.PlanetScaleBranch)
+		branchID, err := GetBranchID(
+			ctx,
+			config.HTTPClient,
+			apiURL,
+			config.PlanetScaleTokenID,
+			config.PlanetScaleTokenSecret,
+			config.PlanetScaleOrg,
+			config.PlanetScaleDatabase,
+			config.PlanetScaleBranch,
+		)
 		if err != nil {
 			return psl, nil, nil, fmt.Errorf("failed to get branch ID: %w", err)
 		}
@@ -170,8 +180,16 @@ func DownloadLogFiles(ctx context.Context, server *state.Server, logger *util.Lo
 	// Get signature, refreshing if we don't have one or if it's expired
 	now := time.Now().UTC().Unix()
 	if auth.signature == "" || auth.expiry <= now {
-		sig, exp, err := GetSignature(ctx, config.HTTPClient, apiURL, config.PlanetScaleTokenID, config.PlanetScaleTokenSecret,
-			config.PlanetScaleOrg, config.PlanetScaleDatabase, config.PlanetScaleBranch)
+		sig, exp, err := GetSignature(
+			ctx,
+			config.HTTPClient,
+			apiURL,
+			config.PlanetScaleTokenID,
+			config.PlanetScaleTokenSecret,
+			config.PlanetScaleOrg,
+			config.PlanetScaleDatabase,
+			config.PlanetScaleBranch,
+		)
 		if err != nil {
 			return psl, nil, nil, fmt.Errorf("failed to get signature: %w", err)
 		}
@@ -224,10 +242,12 @@ func DownloadLogFiles(ctx context.Context, server *state.Server, logger *util.Lo
 }
 
 // GetBranchID fetches the branch ID from the PlanetScale API
-func GetBranchID(ctx context.Context, httpClient *http.Client, apiURL, tokenID, tokenSecret, org, database, branch string) (string, error) {
-	reqURL := fmt.Sprintf("%s/v1/organizations/%s/databases/%s/branches/%s",
-		apiURL, org, database, branch)
-
+func GetBranchID(
+	ctx context.Context,
+	httpClient *http.Client,
+	apiURL, tokenID, tokenSecret, org, database, branch string,
+) (string, error) {
+	reqURL := apiURL + fmt.Sprintf(branchDetailsPath, org, database, branch)
 	req, err := http.NewRequestWithContext(ctx, "GET", reqURL, nil)
 	if err != nil {
 		return "", fmt.Errorf("creating request: %w", err)
@@ -259,11 +279,13 @@ func GetBranchID(ctx context.Context, httpClient *http.Client, apiURL, tokenID, 
 }
 
 // GetSignature fetches a log access signature from the PlanetScale API
-func GetSignature(ctx context.Context, httpClient *http.Client, apiURL, tokenID, tokenSecret, org, database, branch string) (string, int64, error) {
-	reqURL := fmt.Sprintf("%s/internal/organizations/%s/databases/%s/branches/%s/logs/signatures",
-		apiURL, org, database, branch)
-
-	req, err := http.NewRequestWithContext(ctx, "GET", reqURL, nil)
+func GetSignature(
+	ctx context.Context,
+	httpClient *http.Client,
+	apiURL, tokenID, tokenSecret, org, database, branch string,
+) (string, int64, error) {
+	reqURL := apiURL + fmt.Sprintf(logsSignaturesPath, org, database, branch)
+	req, err := http.NewRequestWithContext(ctx, "POST", reqURL, nil)
 	if err != nil {
 		return "", 0, fmt.Errorf("creating request: %w", err)
 	}
@@ -290,24 +312,31 @@ func GetSignature(ctx context.Context, httpClient *http.Client, apiURL, tokenID,
 		return "", 0, fmt.Errorf("decoding response: %w", err)
 	}
 
-	expiry, err := strconv.ParseInt(sigResp.Data.Exp, 10, 64)
+	expiry, err := strconv.ParseInt(sigResp.Exp, 10, 64)
 	if err != nil {
 		return "", 0, fmt.Errorf("parsing expiry: %w", err)
 	}
 
-	return sigResp.Data.Sig, expiry, nil
+	return sigResp.Sig, expiry, nil
 }
 
 // QueryLogs fetches logs from the PlanetScale logs API and returns a streaming reader.
 // If since is non-zero, only logs after that time will be returned.
-func QueryLogs(ctx context.Context, httpClient *http.Client, logsURL, branchID, sig string, expiry int64, since time.Time, limit int) (*LogStreamReader, error) {
+func QueryLogs(
+	ctx context.Context,
+	httpClient *http.Client,
+	logsURL, branchID, sig string,
+	expiry int64,
+	since time.Time,
+	limit int,
+) (*LogStreamReader, error) {
 	params := url.Values{}
 	params.Set("sig", sig)
 	params.Set("exp", strconv.FormatInt(expiry, 10))
 
 	// Build query with optional time filter
 	var query strings.Builder
-	query.WriteString("planetscale.component:postgres planetscale.role:primary")
+	query.WriteString(defaultQuery)
 	if !since.IsZero() {
 		fmt.Fprintf(&query, " _time:>%s", since.Format(time.RFC3339Nano))
 	}
@@ -316,9 +345,7 @@ func QueryLogs(ctx context.Context, httpClient *http.Client, logsURL, branchID, 
 	params.Set("query", query.String())
 	params.Set("limit", strconv.Itoa(limit))
 
-	reqURL := fmt.Sprintf("%s/logs/branch/%s/query?%s",
-		logsURL, branchID, params.Encode())
-
+	reqURL := logsURL + fmt.Sprintf(logsPath, branchID) + "?" + params.Encode()
 	req, err := http.NewRequestWithContext(ctx, "GET", reqURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("creating request: %w", err)
