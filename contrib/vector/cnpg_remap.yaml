@@ -1,0 +1,93 @@
+# Note: When changing this, also update values.yaml example
+transforms:
+  cnpg_remap:
+    type: remap
+    inputs:
+      - kubernetes_logs
+    source: |
+      structured = parse_json!(.message)
+
+      severity_text = if includes(["emerg", "err", "crit", "alert"], structured.level) {
+          "ERROR"
+        } else if structured.level == "warning" {
+          "WARN"
+        } else if structured.level == "debug" {
+          "DEBUG"
+        } else if includes(["info", "notice"], structured.level) {
+          "INFO"
+        } else {
+          structured.level
+        }
+
+      structuredLogger = del(structured.logger)
+      structuredLevel = del(structured.level)
+
+      podLabels = []
+      for_each(zip(keys!(.kubernetes.pod_labels), values!(.kubernetes.pod_labels))) -> |_index, values| {
+        podLabels = push(podLabels, {
+          "key": values[0],
+          "value": {"stringValue": values[1]}
+        })
+      }
+
+      bodyValues = [
+        {"key": "logger", "value": {"stringValue": structuredLogger }},
+        {"key": "error_severity", "value": {"stringValue": structuredLevel}},
+        {"key": "kubernetes", "value": {
+          "kvlistValue": {
+            "values": [
+              {"key": "namespace_name", "value": {"stringValue": .kubernetes.pod_namespace}},
+              {"key": "pod_name", "value": {"stringValue": .kubernetes.pod_name}},
+              {"key": "labels", "value": { "kvlistValue": { "values": podLabels}}}
+            ]
+          }
+        }}
+      ]
+
+      if structuredLogger == "postgres" {
+        recordValues = []
+        for_each(zip(keys!(structured.record), values!(structured.record))) -> |_index, values| {
+          recordValues = push(recordValues, {
+            "key": values[0],
+            "value": {"stringValue": values[1]}
+          })
+        }
+
+        bodyValues = push(bodyValues, {
+          "key": "record",
+          "value": { "kvlistValue": {"values": recordValues}}
+        })
+      } else {
+        for_each(zip(keys!(structured), values!(structured))) -> |_index, values| {
+          stringValue = if is_string(values[1]) {
+              values[1]
+            } else {
+              encode_json(values[1])
+            }
+
+          bodyValues = push(bodyValues, {
+            "key": values[0],
+            "value": {"stringValue": stringValue}
+          })
+        }
+      }
+
+      output = {
+        "resource": {
+          "attributes": [
+            {"key": "source_type", "value": {"stringValue": .source_type }},
+            {"key": "service.name", "value": {"stringValue": .kubernetes.pod_labels."cnpg.io/cluster" }},
+            {"key": "host.hostname", "value": {"stringValue": .kubernetes.pod_name }}
+          ]
+        },
+        "scopeLogs": [{
+          "logRecords": [{
+            "timeUnixNano": to_unix_timestamp(parse_timestamp!(.timestamp, "%+"), unit: "nanoseconds"),
+            "observedTimeUnixNano": to_unix_timestamp(parse_timestamp!(structured.ts, "%+"), unit: "nanoseconds"),
+            "body": {"kvlistValue": {"values": bodyValues}},
+            "severityText": severity_text
+          }]
+        }]
+      }
+
+      . = output

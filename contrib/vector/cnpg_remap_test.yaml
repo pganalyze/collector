@@ -1,0 +1,28 @@
+tests:
+  - name: "Test for cnpg_remap transform"
+    inputs:
+      - insert_at: "cnpg_remap"
+        type: "log"
+        log_fields:
+          kubernetes:
+            pod_labels:
+              cnpg.io/cluster: "cluster-test1"
+              cnpg.io/instanceName: "cluster-test1-1"
+              cnpg.io/instanceRole: "primary"
+              cnpg.io/podRole: "instance"
+              role: "primary"
+            pod_name: "cluster-test1-1"
+            pod_namespace: "default"
+            pod_owner: "Cluster/cluster-test1"
+          message: "{\"level\":\"info\",\"ts\":\"2025-12-09T00:32:20.823314307Z\",\"logger\":\"postgres\",\"msg\":\"record\",\"logging_pod\":\"cluster-test1-1\",\"record\":{\"log_time\":\"2025-12-09 00:32:20.822 UTC\",\"user_name\":\"postgres\",\"database_name\":\"postgres\",\"process_id\":\"4003\",\"connection_from\":\"[local]\",\"session_id\":\"69376dbf.fa3\",\"session_line_num\":\"1\",\"command_tag\":\"SELECT\",\"session_start_time\":\"2025-12-09 00:30:55 UTC\",\"virtual_transaction_id\":\"2/81\",\"transaction_id\":\"0\",\"error_severity\":\"LOG\",\"sql_state_code\":\"00000\",\"message\":\"duration: 2002.071 ms  plan:\\nQuery Text: SELECT pg_sleep(2);\\nResult  (cost=0.00..0.01 rows=1 width=4) (actual rows=1.00 loops=1)\",\"application_name\":\"psql\",\"backend_type\":\"client backend\",\"query_id\":\"-8886085649470066503\"}}"
+          source_type: kubernetes_logs
+          stream: stderr
+          timestamp: "2025-12-09T00:32:20.823517719Z"
+    outputs:
+      - extract_from: "cnpg_remap"
+        conditions:
+          - type: "vrl"
+            source: |
+              expected = parse_json!(get_env_var!("OUTPUT"))
+              assert_eq!(., expected)
+

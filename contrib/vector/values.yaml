@@ -1,0 +1,175 @@
+# Use this with the vector Helm chart to set up export of CloudNativePG (CNPG)
+# logs from a Kubernetes cluster to a pganalyze-collector running separately.
+#
+# See https://vector.dev/docs/setup/installation/package-managers/helm/
+#
+# !! Make sure to update the sink target uri to your pganalyze-collector's
+#    db_log_otel_server / LOG_OTEL_SERVER listen address below before deploying.
+
+# Each role is created with the following workloads:
+# Agent = DaemonSet
+# Aggregator = StatefulSet
+# Stateless-Aggregator = Deployment
+role: "Agent"
+
+service:
+  enabled: false
+
+# customConfig -- Override Vector's default configs, if used **all** options need to be specified. This section supports
+# using helm templates to populate dynamic values. See Vector's [configuration documentation](https://vector.dev/docs/reference/configuration/)
+# for all options.
+customConfig:
+  data_dir: /vector-data-dir
+  api:
+    enabled: false
+  sources:
+    kubernetes_logs:
+      type: kubernetes_logs
+      exclude_paths_glob_patterns:
+        - "/var/log/pods/kube-system_*/**"
+  sinks:
+    pganalyze:
+      inputs:
+        - cnpg_remap
+      type: opentelemetry
+      protocol:
+        type: http
+        # ! Update this to point to the pganalyze-collector with db_log_otel_server / LOG_OTEL_SERVER configured
+        uri: "http://pganalyze-collector-service:4318/v1/logs"
+        method: post
+        encoding:
+          codec: json
+        framing:
+          method: "character_delimited"
+          character_delimited:
+            delimiter: ","
+        payload_prefix: '{"resourceLogs":'
+        payload_suffix: '}'
+        batch:
+          max_events: 50
+          timeout_secs: 5
+        request:
+          headers:
+            content-type: "application/json"
+  transforms:
+    # Optionally filter source data to only process certain clusters/pods
+    #
+    # The pganalyze-collector itself can also filter using the db_log_otel_k8s_pod / LOG_OTEL_K8S_POD
+    # and db_log_otel_k8s_labels / LOG_OTEL_K8S_LABELS settings, see
+    # https://pganalyze.com/docs/collector/settings#self-managed-servers
+    #
+    # Filtering any clusters/pods not monitored here is recommended to reduce unnecessary log traffic.
+    cnpg_route:
+      type: route
+      inputs:
+        - kubernetes_logs
+      reroute_unmatched: false
+      route:
+        cnpg: |
+          exists(.kubernetes.pod_labels."cnpg.io/cluster") &&
+          exists(.kubernetes.pod_labels."cnpg.io/podRole") &&
+          .kubernetes.pod_labels."cnpg.io/podRole" == "instance" &&
+          ## Optionally filter out replicas
+          # exists(.kubernetes.pod_labels."cnpg.io/instanceRole") &&
+          # .kubernetes.pod_labels."cnpg.io/instanceRole" == "primary" &&
+          includes(
+            [
+              "cluster-test1",
+              "cluster-test2",
+            ],
+            .kubernetes.pod_labels."cnpg.io/cluster"
+          )
+    # Required remapping to OTLP Logs format (JSON encoded), inlining the CNPG jsonlog output
+    #
+    # Copied from cnpg_remap.yaml
+    cnpg_remap:
+      type: remap
+      inputs:
+        - cnpg_route.cnpg
+      source: |
+        structured = parse_json!(.message)
+
+        severity_text = if includes(["emerg", "err", "crit", "alert"], structured.level) {
+            "ERROR"
+          } else if structured.level == "warning" {
+            "WARN"
+          } else if structured.level == "debug" {
+            "DEBUG"
+          } else if includes(["info", "notice"], structured.level) {
+            "INFO"
+          } else {
+            structured.level
+          }
+
+        structuredLogger = del(structured.logger)
+        structuredLevel = del(structured.level)
+
+        podLabels = []
+        for_each(zip(keys!(.kubernetes.pod_labels), values!(.kubernetes.pod_labels))) -> |_index, values| {
+          podLabels = push(podLabels, {
+            "key": values[0],
+            "value": {"stringValue": values[1]}
+          })
+        }
+
+        bodyValues = [
+          {"key": "logger", "value": {"stringValue": structuredLogger }},
+          {"key": "error_severity", "value": {"stringValue": structuredLevel}},
+          {"key": "kubernetes", "value": {
+            "kvlistValue": {
+              "values": [
+                {"key": "namespace_name", "value": {"stringValue": .kubernetes.pod_namespace}},
+                {"key": "pod_name", "value": {"stringValue": .kubernetes.pod_name}},
+                {"key": "labels", "value": { "kvlistValue": { "values": podLabels}}}
+              ]
+            }
+          }}
+        ]
+
+        if structuredLogger == "postgres" {
+          recordValues = []
+          for_each(zip(keys!(structured.record), values!(structured.record))) -> |_index, values| {
+            recordValues = push(recordValues, {
+              "key": values[0],
+              "value": {"stringValue": values[1]}
+            })
+          }
+
+          bodyValues = push(bodyValues, {
+            "key": "record",
+            "value": { "kvlistValue": {"values": recordValues}}
+          })
+        } else {
+          for_each(zip(keys!(structured), values!(structured))) -> |_index, values| {
+            stringValue = if is_string(values[1]) {
+                values[1]
+              } else {
+                encode_json(values[1])
+              }
+
+            bodyValues = push(bodyValues, {
+              "key": values[0],
+              "value": {"stringValue": stringValue}
+            })
+          }
+        }
+
+        output = {
+          "resource": {
+            "attributes": [
+              {"key": "source_type", "value": {"stringValue": .source_type }},
+              {"key": "service.name", "value": {"stringValue": .kubernetes.pod_labels."cnpg.io/cluster" }},
+              {"key": "host.hostname", "value": {"stringValue": .kubernetes.pod_name }}
+            ]
+          },
+          "scopeLogs": [{
+            "logRecords": [{
+              "timeUnixNano": to_unix_timestamp(parse_timestamp!(.timestamp, "%+"), unit: "nanoseconds"),
+              "observedTimeUnixNano": to_unix_timestamp(parse_timestamp!(structured.ts, "%+"), unit: "nanoseconds"),
+              "body": {"kvlistValue": {"values": bodyValues}},
+              "severityText": severity_text
+            }]
+          }]
+        }
+
+        . = output

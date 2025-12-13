@@ -58,3 +58,20 @@ jobs:
         make test
         DOCKER_BUILDKIT=1 make integration_test
         shellcheck contrib/install.sh
+
+  test_contrib:
+    runs-on: ubuntu-22.04
+    steps:
+    - name: Install vector
+      run: |
+        sudo bash -c "$(curl -L https://setup.vector.dev)"
+        sudo apt-get install vector
+
+    - name: Check out code
+      uses: actions/checkout@v4
+      with:
+        submodules: true
+
+    - name: Run tests (contrib/vector)
+      run: |
+        make -C contrib/vector test
