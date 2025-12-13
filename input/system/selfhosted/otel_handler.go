@@ -196,15 +196,10 @@ func otelV1LogHandler(w http.ResponseWriter, r *http.Request, server *state.Serv
 func setupOtelHandler(ctx context.Context, server *state.Server, rawLogStream chan<- SelfHostedLogStreamItem, parsedLogStream chan state.ParsedLogStreamItem, prefixedLogger *util.Logger, opts state.CollectionOpts) {
 	otelLogServer := server.Config.LogOtelServer
 
-	serverMux := http.NewServeMux()
-	serverMux.HandleFunc("/v1/logs", func(w http.ResponseWriter, r *http.Request) {
+	serveMux := http.NewServeMux()
+	serveMux.HandleFunc("/v1/logs", func(w http.ResponseWriter, r *http.Request) {
 		otelV1LogHandler(w, r, server, rawLogStream, parsedLogStream, prefixedLogger, opts)
 	})
 
-	go func() {
-		err := http.ListenAndServe(otelLogServer, serverMux)
-		if err != nil {
-			prefixedLogger.PrintError("Error starting OTel log server on %s: %v\n", otelLogServer, err)
-		}
-	}()
+	util.GoServeHTTP(ctx, prefixedLogger, otelLogServer, serveMux)
 }
