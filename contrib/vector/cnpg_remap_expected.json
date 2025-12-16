@@ -1,0 +1,224 @@
+{
+    "resource": {
+        "attributes": [
+            {
+                "key": "source_type",
+                "value": {
+                    "stringValue": "kubernetes_logs"
+                }
+            },
+            {
+                "key": "service.name",
+                "value": {
+                    "stringValue": "cluster-test1"
+                }
+            },
+            {
+                "key": "host.hostname",
+                "value": {
+                    "stringValue": "cluster-test1-1"
+                }
+            }
+        ]
+    },
+    "scopeLogs": [
+        {
+            "logRecords": [
+                {
+                    "body": {
+                        "kvlistValue": {
+                            "values": [
+                                {
+                                    "key": "logger",
+                                    "value": {
+                                        "stringValue": "postgres"
+                                    }
+                                },
+                                {
+                                    "key": "error_severity",
+                                    "value": {
+                                        "stringValue": "info"
+                                    }
+                                },
+                                {
+                                    "key": "kubernetes",
+                                    "value": {
+                                        "kvlistValue": {
+                                            "values": [
+                                                {
+                                                    "key": "namespace_name",
+                                                    "value": {
+                                                        "stringValue": "default"
+                                                    }
+                                                },
+                                                {
+                                                    "key": "pod_name",
+                                                    "value": {
+                                                        "stringValue": "cluster-test1-1"
+                                                    }
+                                                },
+                                                {
+                                                    "key": "labels",
+                                                    "value": {
+                                                        "kvlistValue": {
+                                                            "values": [
+                                                                {
+                                                                    "key": "cnpg.io/cluster",
+                                                                    "value": {
+                                                                        "stringValue": "cluster-test1"
+                                                                    }
+                                                                },
+                                                                {
+                                                                    "key": "cnpg.io/instanceName",
+                                                                    "value": {
+                                                                        "stringValue": "cluster-test1-1"
+                                                                    }
+                                                                },
+                                                                {
+                                                                    "key": "cnpg.io/instanceRole",
+                                                                    "value": {
+                                                                        "stringValue": "primary"
+                                                                    }
+                                                                },
+                                                                {
+                                                                    "key": "cnpg.io/podRole",
+                                                                    "value": {
+                                                                        "stringValue": "instance"
+                                                                    }
+                                                                },
+                                                                {
+                                                                    "key": "role",
+                                                                    "value": {
+                                                                        "stringValue": "primary"
+                                                                    }
+                                                                }
+                                                            ]
+                                                        }
+                                                    }
+                                                }
+                                            ]
+                                        }
+                                    }
+                                },
+                                {
+                                    "key": "record",
+                                    "value": {
+                                        "kvlistValue": {
+                                            "values": [
+                                                {
+                                                    "key": "application_name",
+                                                    "value": {
+                                                        "stringValue": "psql"
+                                                    }
+                                                },
+                                                {
+                                                    "key": "backend_type",
+                                                    "value": {
+                                                        "stringValue": "client backend"
+                                                    }
+                                                },
+                                                {
+                                                    "key": "command_tag",
+                                                    "value": {
+                                                        "stringValue": "SELECT"
+                                                    }
+                                                },
+                                                {
+                                                    "key": "connection_from",
+                                                    "value": {
+                                                        "stringValue": "[local]"
+                                                    }
+                                                },
+                                                {
+                                                    "key": "database_name",
+                                                    "value": {
+                                                        "stringValue": "postgres"
+                                                    }
+                                                },
+                                                {
+                                                    "key": "error_severity",
+                                                    "value": {
+                                                        "stringValue": "LOG"
+                                                    }
+                                                },
+                                                {
+                                                    "key": "log_time",
+                                                    "value": {
+                                                        "stringValue": "2025-12-09 00:32:20.822 UTC"
+                                                    }
+                                                },
+                                                {
+                                                    "key": "message",
+                                                    "value": {
+                                                        "stringValue": "duration: 2002.071 ms  plan:\nQuery Text: SELECT pg_sleep(2);\nResult  (cost=0.00..0.01 rows=1 width=4) (actual rows=1.00 loops=1)"
+                                                    }
+                                                },
+                                                {
+                                                    "key": "process_id",
+                                                    "value": {
+                                                        "stringValue": "4003"
+                                                    }
+                                                },
+                                                {
+                                                    "key": "query_id",
+                                                    "value": {
+                                                        "stringValue": "-8886085649470066503"
+                                                    }
+                                                },
+                                                {
+                                                    "key": "session_id",
+                                                    "value": {
+                                                        "stringValue": "69376dbf.fa3"
+                                                    }
+                                                },
+                                                {
+                                                    "key": "session_line_num",
+                                                    "value": {
+                                                        "stringValue": "1"
+                                                    }
+                                                },
+                                                {
+                                                    "key": "session_start_time",
+                                                    "value": {
+                                                        "stringValue": "2025-12-09 00:30:55 UTC"
+                                                    }
+                                                },
+                                                {
+                                                    "key": "sql_state_code",
+                                                    "value": {
+                                                        "stringValue": "00000"
+                                                    }
+                                                },
+                                                {
+                                                    "key": "transaction_id",
+                                                    "value": {
+                                                        "stringValue": "0"
+                                                    }
+                                                },
+                                                {
+                                                    "key": "user_name",
+                                                    "value": {
+                                                        "stringValue": "postgres"
+                                                    }
+                                                },
+                                                {
+                                                    "key": "virtual_transaction_id",
+                                                    "value": {
+                                                        "stringValue": "2/81"
+                                                    }
+                                                }
+                                            ]
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "observedTimeUnixNano": 1765240340823314307,
+                    "severityText": "INFO",
+                    "timeUnixNano": 1765240340823517719
+                }
+            ]
+        }
+    ]
+}
