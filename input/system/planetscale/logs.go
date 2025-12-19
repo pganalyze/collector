@@ -50,13 +50,6 @@ type branchResponse struct {
 	Name string `json:"name"`
 }
 
-// cachedAuth holds cached authentication data for the PlanetScale logs API
-type cachedAuth struct {
-	branchID  string
-	signature string
-	expiry    int64
-}
-
 // LogStreamReader implements logs.LineReader for streaming PlanetScale log entries
 type LogStreamReader struct {
 	body       io.ReadCloser
@@ -136,11 +129,6 @@ func (e *HTTPError) Error() string {
 	return fmt.Sprintf("HTTP %d", e.StatusCode)
 }
 
-type authCacheKey = struct{ org, db, branch string }
-
-// serverAuthCache maps server identifiers to their cached auth data
-var serverAuthCache = map[authCacheKey]cachedAuth{}
-
 // DownloadLogFiles fetches logs from PlanetScale's logs API.
 // Called every 30 seconds by the log download scheduler.
 func DownloadLogFiles(ctx context.Context, server *state.Server, logger *util.Logger) (
@@ -154,12 +142,8 @@ func DownloadLogFiles(ctx context.Context, server *state.Server, logger *util.Lo
 	apiURL := cmp.Or(config.PlanetScaleAPIURL, defaultAPIURL)
 	logsURL := cmp.Or(config.PlanetScaleLogsURL, defaultLogsURL)
 
-	cacheKey := authCacheKey{config.PlanetScaleOrg, config.PlanetScaleDatabase, config.PlanetScaleBranch}
-	auth := serverAuthCache[cacheKey]
-	defer func() { serverAuthCache[cacheKey] = auth }()
-
 	// Get branch ID (cached for collector lifetime)
-	if auth.branchID == "" {
+	if psl.PlanetScale.BranchID == "" {
 		branchID, err := GetBranchID(
 			ctx,
 			config.HTTPClient,
@@ -173,13 +157,13 @@ func DownloadLogFiles(ctx context.Context, server *state.Server, logger *util.Lo
 		if err != nil {
 			return psl, nil, nil, fmt.Errorf("failed to get branch ID: %w", err)
 		}
-		auth.branchID = branchID
+		psl.PlanetScale.BranchID = branchID
 		logger.PrintVerbose("PlanetScale: resolved branch %s to ID %s", config.PlanetScaleBranch, branchID)
 	}
 
 	// Get signature, refreshing if we don't have one or if it's expired
 	now := time.Now().UTC().Unix()
-	if auth.signature == "" || auth.expiry <= now {
+	if psl.PlanetScale.Signature == "" || psl.PlanetScale.Expiry <= now {
 		sig, exp, err := GetSignature(
 			ctx,
 			config.HTTPClient,
@@ -193,21 +177,20 @@ func DownloadLogFiles(ctx context.Context, server *state.Server, logger *util.Lo
 		if err != nil {
 			return psl, nil, nil, fmt.Errorf("failed to get signature: %w", err)
 		}
-		auth.signature = sig
-		auth.expiry = exp
+		psl.PlanetScale.Signature = sig
+		psl.PlanetScale.Expiry = exp
 		logger.PrintVerbose("PlanetScale: obtained new signature, expires at %d", exp)
 	}
 
 	logReader, err := QueryLogs(
-		ctx, config.HTTPClient, logsURL, auth.branchID,
-		auth.signature, auth.expiry, psl.PlanetScaleLastTimestamp, 1000)
+		ctx, config.HTTPClient, logsURL, psl.PlanetScale.BranchID,
+		psl.PlanetScale.Signature, psl.PlanetScale.Expiry, psl.PlanetScale.LastTimestamp, 1000)
 	if err != nil {
 		// If we get a 403, clear the cached signature and return error to retry next cycle
 		var httpErr *HTTPError
 		if errors.As(err, &httpErr) && httpErr.StatusCode == http.StatusForbidden {
-			auth.signature = ""
-			auth.expiry = 0
-			serverAuthCache[cacheKey] = auth
+			psl.PlanetScale.Signature = ""
+			psl.PlanetScale.Expiry = 0
 		}
 		return psl, nil, nil, fmt.Errorf("failed to query logs: %w", err)
 	}
@@ -230,7 +213,7 @@ func DownloadLogFiles(ctx context.Context, server *state.Server, logger *util.Lo
 
 	// Update persisted state with the newest timestamp
 	if newestTime := logReader.GetNewestTimestamp(); !newestTime.IsZero() {
-		psl.PlanetScaleLastTimestamp = newestTime
+		psl.PlanetScale.LastTimestamp = newestTime
 	}
 
 	var logFiles []state.LogFile
