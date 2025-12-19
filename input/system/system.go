@@ -54,6 +54,9 @@ func GetSystemState(ctx context.Context, server *state.Server, logger *util.Logg
 		server.SelfTest.MarkCollectionAspectNotAvailable(state.CollectionAspectSystemStats, "not available on this platform")
 	} else if config.SystemType == "tembo" {
 		system = tembo.GetSystemState(ctx, server, logger)
+	} else if config.SystemType == "planetscale" {
+		system.Info.Type = state.PlanetScaleSystem
+		server.SelfTest.MarkCollectionAspectNotAvailable(state.CollectionAspectSystemStats, "not available on this platform")
 	} else if dbHost == "" || dbHost == "localhost" || dbHost == "127.0.0.1" || config.AlwaysCollectSystemData {
 		system = selfhosted.GetSystemState(server, logger, false)
 	} else {

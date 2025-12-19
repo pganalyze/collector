@@ -87,6 +87,14 @@ func identifySystem(config ServerConfig) (systemID string, systemType string, sy
 		if systemID == "" {
 			systemID = config.TemboNamespace
 		}
+	} else if (config.PlanetScaleOrg != "") || systemType == "planetscale" {
+		systemType = "planetscale"
+		if systemID == "" {
+			systemID = config.PlanetScaleDatabase + "/" + config.PlanetScaleBranch
+		}
+		if systemScope == "" {
+			systemScope = config.PlanetScaleOrg
+		}
 	} else {
 		systemType = "self_hosted"
 		if systemID == "" {

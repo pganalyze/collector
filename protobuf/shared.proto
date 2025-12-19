@@ -136,6 +136,7 @@ message SystemInformation {
     CRUNCHY_BRIDGE_SYSTEM = 5;
     AIVEN_SYSTEM = 6;
     TEMBO_SYSTEM = 7;
+    PLANETSCALE_SYSTEM = 8;
   }
 
   SystemType type = 1;

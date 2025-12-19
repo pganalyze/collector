@@ -148,6 +148,8 @@ func transformSystem(systemState state.SystemState, diffState state.DiffState) *
 		system.SystemInformation.Type = snapshot.SystemInformation_AIVEN_SYSTEM
 	} else if systemState.Info.Type == state.TemboSystem {
 		system.SystemInformation.Type = snapshot.SystemInformation_TEMBO_SYSTEM
+	} else if systemState.Info.Type == state.PlanetScaleSystem {
+		system.SystemInformation.Type = snapshot.SystemInformation_PLANETSCALE_SYSTEM
 	}
 
 	system.SystemInformation.ResourceTags = systemState.Info.ResourceTags

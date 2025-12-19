@@ -282,6 +282,15 @@ func getDefaultConfig() *ServerConfig {
 	if temboMetricsAPIURL := os.Getenv("TEMBO_METRICS_API_URL"); temboMetricsAPIURL != "" {
 		config.TemboMetricsAPIURL = temboMetricsAPIURL
 	}
+	if planetScaleOrg := os.Getenv("PLANETSCALE_ORG"); planetScaleOrg != "" {
+		config.PlanetScaleOrg = planetScaleOrg
+	}
+	if planetScaleDatabase := os.Getenv("PLANETSCALE_DATABASE"); planetScaleDatabase != "" {
+		config.PlanetScaleDatabase = planetScaleDatabase
+	}
+	if planetScaleBranch := os.Getenv("PLANETSCALE_BRANCH"); planetScaleBranch != "" {
+		config.PlanetScaleBranch = planetScaleBranch
+	}
 	if logLocation := os.Getenv("LOG_LOCATION"); logLocation != "" {
 		config.LogLocation = logLocation
 	}

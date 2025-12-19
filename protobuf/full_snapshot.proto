@@ -374,6 +374,10 @@ message CollectorConfig {
   bool azure_has_ad_certificate = 59;
   string azure_subscription_id = 60;
 
+  string planetscale_org = 64;
+  string planetscale_database = 65;
+  string planetscale_branch = 66;
+
   string gcp_cloudsql_instance_id = 69;
   string gcp_pubsub_subscription = 70;
   bool gcp_has_credentials_file = 71;
@@ -382,7 +386,6 @@ message CollectorConfig {
   string gcp_alloydb_instance_id = 74;
   string gcp_region = 76; // using 76 as 75 is taken below
   bool gcp_use_public_ip = 77;
-
 
   string crunchy_bridge_cluster_id = 75;
 
