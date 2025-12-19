@@ -490,13 +490,8 @@ func (config ServerConfig) GetDbUsername() string {
 func (config ServerConfig) GetEffectiveDbUsername() string {
 	username := config.GetDbUsername()
 	if config.SystemType == "planetscale" {
-		parts := strings.Split(username, ".")
-		if len(parts) > 1 {
-			parts = parts[:len(parts)-1]
-			username = strings.Join(parts, ".")
-		}
+		return extractPlanetScaleUsername(username)
 	}
-
 	return username
 }
 
@@ -513,4 +508,23 @@ func (config ServerConfig) GetDbName() string {
 	}
 
 	return config.DbName
+}
+
+// extractPlanetScaleUsername parses out the username portion out of a connection string.
+//
+// PlanetScale usernames are of the format: `<role>.<branch>|<route>`,
+// with parsing from the end, since role names are user supplied. But the `branch`
+// and `route` values are strictly not allowed to have special characters.
+func extractPlanetScaleUsername(username string) string {
+	// strip off the optional route suffix, this isn't required to exist
+	if idx := strings.LastIndexByte(username, '|'); idx > 0 {
+		username = username[:idx]
+	}
+	// strip off the branch, this is required to exist for us, but there really
+	// isn't anything more sensible to do here if it were malformed. It'd just
+	// end up failing elsewhere trying to actually connect to PS.
+	if idx := strings.LastIndexByte(username, '.'); idx > 0 {
+		username = username[:idx]
+	}
+	return username
 }
