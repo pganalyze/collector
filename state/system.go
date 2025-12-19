@@ -33,6 +33,7 @@ const (
 	CrunchyBridgeSystem
 	AivenSystem
 	TemboSystem
+	PlanetScaleSystem
 )
 
 type SystemInfo struct {

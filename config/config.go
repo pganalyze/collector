@@ -129,6 +129,10 @@ type ServerConfig struct {
 	TemboLogsAPIURL    string `ini:"tembo_logs_api_url"`
 	TemboMetricsAPIURL string `ini:"tembo_metrics_api_url"`
 
+	PlanetScaleOrg      string `ini:"planetscale_org"`
+	PlanetScaleDatabase string `ini:"planetscale_database"`
+	PlanetScaleBranch   string `ini:"planetscale_branch"`
+
 	SectionName string
 	Identifier  ServerIdentifier
 

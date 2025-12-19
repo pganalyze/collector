@@ -139,6 +139,9 @@ type CollectorConfig struct {
 	CrunchyBridgeClusterId     string
 	AivenProjectId             string
 	AivenServiceId             string
+	PlanetScaleOrg             string
+	PlanetScaleDatabase        string
+	PlanetScaleBranch          string
 	ApiSystemId                string
 	ApiSystemType              string
 	ApiSystemScope             string
