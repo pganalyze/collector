@@ -458,7 +458,7 @@ func (config ServerConfig) GetDbPortOrDefault() int {
 	return port
 }
 
-// GetDbUsername - Gets the database hostname from the given configuration
+// GetDbUsername - Gets the original database username from the given configuration
 func (config ServerConfig) GetDbUsername() string {
 	if config.DbURL != "" {
 		u, err := url.Parse(config.DbURL)
@@ -471,6 +471,23 @@ func (config ServerConfig) GetDbUsername() string {
 	}
 
 	return config.DbUsername
+}
+
+// GetEffectiveDbUsername - Gets the effective database username from the given configuration
+//
+// This takes into account any remapping that needs to happen for providers that use an
+// intermediary proxy with special username suffixes.
+func (config ServerConfig) GetEffectiveDbUsername() string {
+	username := config.GetDbUsername()
+	if config.SystemType == "planetscale" {
+		parts := strings.Split(username, ".")
+		if len(parts) > 1 {
+			parts = parts[:len(parts)-1]
+			username = strings.Join(parts, ".")
+		}
+	}
+
+	return username
 }
 
 // GetDbName - Gets the database name from the given configuration
