@@ -92,9 +92,6 @@ func identifySystem(config ServerConfig) (systemID string, systemType string, sy
 		if systemID == "" {
 			systemID = config.PlanetScaleOrg + "/" + config.PlanetScaleDatabase + "/" + config.PlanetScaleBranch
 		}
-		if systemScope == "" {
-			systemScope = config.PlanetScaleOrg
-		}
 	} else {
 		systemType = "self_hosted"
 		if systemID == "" {
