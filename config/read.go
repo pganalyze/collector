@@ -291,6 +291,12 @@ func getDefaultConfig() *ServerConfig {
 	if planetScaleBranch := os.Getenv("PLANETSCALE_BRANCH"); planetScaleBranch != "" {
 		config.PlanetScaleBranch = planetScaleBranch
 	}
+	if planetScaleTokenID := os.Getenv("PLANETSCALE_TOKEN_ID"); planetScaleTokenID != "" {
+		config.PlanetScaleTokenID = planetScaleTokenID
+	}
+	if planetScaleTokenSecret := os.Getenv("PLANETSCALE_TOKEN_SECRET"); planetScaleTokenSecret != "" {
+		config.PlanetScaleTokenSecret = planetScaleTokenSecret
+	}
 	if logLocation := os.Getenv("LOG_LOCATION"); logLocation != "" {
 		config.LogLocation = logLocation
 	}
