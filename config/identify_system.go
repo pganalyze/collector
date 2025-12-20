@@ -90,7 +90,7 @@ func identifySystem(config ServerConfig) (systemID string, systemType string, sy
 	} else if (config.PlanetScaleOrg != "") || systemType == "planetscale" {
 		systemType = "planetscale"
 		if systemID == "" {
-			systemID = config.PlanetScaleDatabase + "/" + config.PlanetScaleBranch
+			systemID = config.PlanetScaleOrg + "/" + config.PlanetScaleDatabase + "/" + config.PlanetScaleBranch
 		}
 		if systemScope == "" {
 			systemScope = config.PlanetScaleOrg
