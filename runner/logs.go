@@ -27,10 +27,8 @@ import (
 	"github.com/pkg/errors"
 )
 
-const (
-	LogDownloadInterval  time.Duration = 30 * time.Second
-	LogStreamingInterval time.Duration = 10 * time.Second
-)
+const LogDownloadInterval time.Duration = 30 * time.Second
+const LogStreamingInterval time.Duration = 10 * time.Second
 
 // SetupLogCollection - Starts streaming or scheduled downloads for logs of the specified servers
 func SetupLogCollection(ctx context.Context, wg *sync.WaitGroup, servers []*state.Server, opts state.CollectionOpts, logger *util.Logger, hasAnyHeroku bool, hasAnyGoogleCloudSQL bool, hasAnyAzureDatabase bool, hasAnyTembo bool) {
@@ -147,12 +145,9 @@ func downloadLogsForServerWithLocksAndCallbacks(ctx context.Context, wg *sync.Wa
 }
 
 func downloadLogsForServer(ctx context.Context, server *state.Server, opts state.CollectionOpts, logger *util.Logger) (state.PersistedLogState, bool, error) {
-	var err error
-	if !opts.ForceEmptyGrant && !opts.DebugLogs {
-		err = output.EnsureGrant(ctx, server, opts, logger, false)
-		if err != nil || !server.Grant.Load().ValidConfig {
-			return server.LogPrevState, false, err
-		}
+	err := output.EnsureGrant(ctx, server, opts, logger, false)
+	if err != nil || !server.Grant.Load().ValidConfig {
+		return server.LogPrevState, false, err
 	}
 	transientLogState := state.TransientLogState{CollectedAt: time.Now()}
 
