@@ -129,9 +129,13 @@ type ServerConfig struct {
 	TemboLogsAPIURL    string `ini:"tembo_logs_api_url"`
 	TemboMetricsAPIURL string `ini:"tembo_metrics_api_url"`
 
-	PlanetScaleOrg      string `ini:"planetscale_org"`
-	PlanetScaleDatabase string `ini:"planetscale_database"`
-	PlanetScaleBranch   string `ini:"planetscale_branch"`
+	PlanetScaleOrg         string `ini:"planetscale_org"`
+	PlanetScaleDatabase    string `ini:"planetscale_database"`
+	PlanetScaleBranch      string `ini:"planetscale_branch"`
+	PlanetScaleTokenID     string `ini:"planetscale_token_id"`
+	PlanetScaleTokenSecret string `ini:"planetscale_token_secret"`
+	PlanetScaleAPIURL      string `ini:"planetscale_api_url"`  // default: https://api.planetscale.com
+	PlanetScaleLogsURL     string `ini:"planetscale_logs_url"` // default: https://logs.psdb.cloud
 
 	SectionName string
 	Identifier  ServerIdentifier
@@ -258,7 +262,13 @@ type ServerConfig struct {
 
 // SupportsLogDownload - Determines whether the specified config can download logs
 func (config ServerConfig) SupportsLogDownload() bool {
-	return config.AwsDbInstanceID != "" || config.AwsDbClusterID != "" || config.LogPgReadFile
+	return config.AwsDbInstanceID != "" || config.AwsDbClusterID != "" || config.LogPgReadFile || config.SupportsPlanetScaleLogs()
+}
+
+// SupportsPlanetScaleLogs - Determines whether PlanetScale logs are configured
+func (config ServerConfig) SupportsPlanetScaleLogs() bool {
+	return config.PlanetScaleOrg != "" && config.PlanetScaleDatabase != "" && config.PlanetScaleBranch != "" &&
+		config.PlanetScaleTokenID != "" && config.PlanetScaleTokenSecret != ""
 }
 
 // GetPqOpenString - Gets the database configuration as a string that can be passed to lib/pq for connecting
@@ -458,7 +468,7 @@ func (config ServerConfig) GetDbPortOrDefault() int {
 	return port
 }
 
-// GetDbUsername - Gets the database hostname from the given configuration
+// GetDbUsername - Gets the original database username from the given configuration
 func (config ServerConfig) GetDbUsername() string {
 	if config.DbURL != "" {
 		u, err := url.Parse(config.DbURL)
@@ -471,6 +481,18 @@ func (config ServerConfig) GetDbUsername() string {
 	}
 
 	return config.DbUsername
+}
+
+// GetEffectiveDbUsername - Gets the effective database username from the given configuration
+//
+// This takes into account any remapping that needs to happen for providers that use an
+// intermediary proxy with special username suffixes.
+func (config ServerConfig) GetEffectiveDbUsername() string {
+	username := config.GetDbUsername()
+	if config.SystemType == "planetscale" {
+		return extractPlanetScaleUsername(username)
+	}
+	return username
 }
 
 // GetDbName - Gets the database name from the given configuration
@@ -486,4 +508,23 @@ func (config ServerConfig) GetDbName() string {
 	}
 
 	return config.DbName
+}
+
+// extractPlanetScaleUsername parses out the username portion out of a connection string.
+//
+// PlanetScale usernames are of the format: `<role>.<branch>|<route>`,
+// with parsing from the end, since role names are user supplied. But the `branch`
+// and `route` values are strictly not allowed to have special characters.
+func extractPlanetScaleUsername(username string) string {
+	// strip off the optional route suffix, this isn't required to exist
+	if idx := strings.LastIndexByte(username, '|'); idx > 0 {
+		username = username[:idx]
+	}
+	// strip off the branch, this is required to exist for us, but there really
+	// isn't anything more sensible to do here if it were malformed. It'd just
+	// end up failing elsewhere trying to actually connect to PS.
+	if idx := strings.LastIndexByte(username, '.'); idx > 0 {
+		username = username[:idx]
+	}
+	return username
 }

@@ -67,7 +67,7 @@ func NewCollection(ctx context.Context, logger *util.Logger, server *state.Serve
 	for _, role := range roles {
 		roleByName[role.Name] = role
 	}
-	collectorRole := roleByName[server.Config.GetDbUsername()]
+	collectorRole := roleByName[server.Config.GetEffectiveDbUsername()]
 	connectedAsSuperUser := collectorRole.SuperUser || collectorRole.CloudSuperUser
 	connectedAsMonitoringRole := collectorRole.MonitoringUser
 

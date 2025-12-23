@@ -27,7 +27,7 @@ func transformPostgresQuerySamples(server *state.Server, s snapshot.CompactLogSn
 		}
 
 		if sampleIn.Username == "" {
-			sampleIn.Username = server.Config.GetDbUsername()
+			sampleIn.Username = server.Config.GetEffectiveDbUsername()
 		}
 
 		if sampleIn.Database == "" {

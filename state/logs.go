@@ -47,6 +47,14 @@ type PersistedLogState struct {
 
 	// Markers for pg_read_file-based access
 	ReadFileMarkers map[string]int64
+
+	// PlanetScale state
+	PlanetScale struct {
+		LastTimestamp time.Time
+		BranchID      string
+		Signature     string
+		Expiry        int64
+	}
 }
 
 // LogFile - Log file that we are uploading for reference in log line metadata

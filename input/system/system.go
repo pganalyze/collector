@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/pganalyze/collector/input/system/azure"
+	"github.com/pganalyze/collector/input/system/planetscale"
 	"github.com/pganalyze/collector/input/system/tembo"
 
 	"github.com/pganalyze/collector/input/postgres"
@@ -18,6 +19,11 @@ import (
 func DownloadLogFiles(ctx context.Context, server *state.Server, opts state.CollectionOpts, logger *util.Logger) (psl state.PersistedLogState, files []state.LogFile, querySamples []state.PostgresQuerySample, err error) {
 	if server.Config.SystemType == "amazon_rds" {
 		psl, files, querySamples, err = rds.DownloadLogFiles(ctx, server, logger)
+		if err != nil {
+			return
+		}
+	} else if server.Config.SupportsPlanetScaleLogs() {
+		psl, files, querySamples, err = planetscale.DownloadLogFiles(ctx, server, logger)
 		if err != nil {
 			return
 		}
@@ -55,8 +61,7 @@ func GetSystemState(ctx context.Context, server *state.Server, logger *util.Logg
 	} else if config.SystemType == "tembo" {
 		system = tembo.GetSystemState(ctx, server, logger)
 	} else if config.SystemType == "planetscale" {
-		system.Info.Type = state.PlanetScaleSystem
-		server.SelfTest.MarkCollectionAspectNotAvailable(state.CollectionAspectSystemStats, "not available on this platform")
+		system = planetscale.GetSystemState(ctx, server, logger)
 	} else if dbHost == "" || dbHost == "localhost" || dbHost == "127.0.0.1" || config.AlwaysCollectSystemData {
 		system = selfhosted.GetSystemState(server, logger, false)
 	} else {
