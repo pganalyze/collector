@@ -51,7 +51,7 @@ SELECT client_addr,
 			 flush_lsn,
 			 replay_lsn,
 			 pg_catalog.pg_wal_lsn_diff(sent_lsn, replay_lsn) AS remote_byte_lag,
-			 pg_catalog.pg_wal_lsn_diff(pg_catalog.pg_current_wal_lsn(), sent_lsn) AS local_byte_lag
+			 pg_catalog.pg_wal_lsn_diff(pg_catalog.pg_last_wal_receive_lsn(), sent_lsn) AS local_byte_lag
 	FROM %s
  WHERE client_addr IS NOT NULL`
 
