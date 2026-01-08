@@ -1729,7 +1729,56 @@ var tests = []testpair{
 	},
 	{
 		[]state.LogLine{{
-			Content:  `automatic vacuum of table "maciek.public.t": index scans: 0
+			Content: `automatic vacuum of table "maciek.public.t": index scans: 0
+	pages: 0 removed, 74236 remain, 0 skipped due to pins, 0 skipped frozen
+	tuples: 2502724 removed, 0 remain, 0 are dead but not yet removable, oldest xmin: 228570
+	buffer usage: 75143 hits, 73378 misses, 73364 dirtied
+	avg read rate: 2.480 MB/s, avg write rate: 2.479 MB/s
+	system usage: CPU: user: 1.43 s, system: 1.54 s, elapsed: 231.20 s`,
+		}},
+		[]state.LogLine{{
+			Classification: pganalyze_collector.LogLineInformation_AUTOVACUUM_COMPLETED,
+			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
+			Database:       "alloydbadmin",
+			SchemaName:     "public",
+			RelationName:   "heartbeat",
+			Details: map[string]interface{}{
+				"aggressive":               false,
+				"anti_wraparound":          false,
+				"num_index_scans":          0,
+				"pages_removed":            0,
+				"rel_pages":                1,
+				"pinskipped_pages":         0,
+				"frozenskipped_pages":      0,
+				"tuples_deleted":           60,
+				"new_rel_tuples":           1,
+				"new_dead_tuples":          0,
+				"oldest_xmin":              1782,
+				"lpdead_index_scan":        "not needed",
+				"lpdead_item_pages":        0,
+				"lpdead_item_page_percent": 0,
+				"lpdead_items":             0,
+				"blk_read_time":            0,
+				"blk_write_time":           0,
+				"read_rate_mb":             0,
+				"write_rate_mb":            0,
+				"vacuum_page_hit":          42,
+				"vacuum_page_miss":         0,
+				"vacuum_page_dirty":        0,
+				"wal_records":              3,
+				"wal_fpi":                  0,
+				"wal_bytes":                286,
+				"rusage_user":              0.00,
+				"rusage_kernel":            0.00,
+				"elapsed_secs":             0.01,
+			},
+			ReviewedForSecrets: true,
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
+			Content: `automatic vacuum of table "maciek.public.t": index scans: 0
         pages: 0 removed, 74240 remain, 74240 scanned (100.00% of total), 0 eagerly scanned
         tuples: 0 removed, 16777216 remain, 0 are dead but not yet removable
         removable cutoff: 5805, which was 1 XIDs old when operation ended
@@ -1781,10 +1830,20 @@ var tests = []testpair{
 			ReviewedForSecrets: true,
 		}},
 		nil,
-	}
+	},
+	/*
+
+		alloydb:
+		  pages: 0 removed, 1 remain, 1 scanned (100.00% of total) 0 skipped due to pins, 0 skipped frozen 0 skipped using mintxid 0 skipped pages due to vm all-visible, 1 nonempty pages,
+		11:
+			pages: 0 removed, 74236 remain, 0 skipped due to pins, 0 skipped frozen
+		18:
+			pages: 0 removed, 74240 remain, 74240 scanned (100.00% of total), 0 eagerly scanned
+	*/
 	{
 		[]state.LogLine{{
-			Content:  "automatic vacuum of table \"alloydbadmin.public.health_data_write_slru\": index scans: 0, elapsed time: 0 s, index vacuum time: 0 ms, pages: 0 removed, 1 remain, 1 scanned (100.00% of total) 0 skipped due to pins, 0 skipped frozen 0 skipped using mintxid 0 skipped pages due to vm all-visible, 1 nonempty pages, tuples: 59 removed, 1 remain, 0 are dead but not yet removable, removable cutoff: 61387872, which was 0 XIDs old when operation ended, new relfrozenxid: 61387869, which is 164 XIDs ahead of previous value, frozen: 0 pages from table (0.00% of total) had 0 tuples frozen index scan not needed: 0 pages from table (0.00% of total) had 0 dead item identifiers removed, max_dead_tuples:291, I/O timings: read: 0.000 ms, write: 0.000 ms, avg read rate: 0.000 MB/s, avg write rate: 0.000 MB/s, buffer usage: 13 hits, 0 misses, 0 dirtied, WAL usage: 4 records, 0 full page images, 476 bytes, system usage: CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.00 s prefetch hit: 1 prefetch io: 0 second prefetch hit: 0 second prefetch io: 0 ",
+			Content: `automatic vacuum of table "alloydbadmin.public.health_data_write": index scans: 1, elapsed time: 0 s, index vacuum time: 0 ms, pages: 0 removed, 1 remain, 1 scanned (100.00% of total) 0 skipped due to pins, 0 skipped frozen 0 skipped using mintxid 0 skipped pages due to vm all-visible, 1 nonempty pages, tuples: 60 removed, 1 remain, 0 are dead but not yet removable, removable cutoff: 61765272, which was 0 XIDs old when operation ended, new relfrozenxid: 61765271, which is 166 XIDs ahead of previous value, frozen: 0 pages from table (0.00% of total) had 0 tuples frozen
+index scan needed: 1 pages from table (100.00% of total) had 60 dead item identifiers removed, max_dead_tuples:291, index "health_data_write_index": pages: 2 in total, 0 newly deleted, 0 currently deleted, 0 reusable, I/O timings: read: 0.000 ms, write: 0.000 ms, avg read rate: 0.000 MB/s, avg write rate: 0.000 MB/s, buffer usage: 50 hits, 0 misses, 0 dirtied, WAL usage: 7 records, 0 full page images, 864 bytes, system usage: CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.00 s prefetch hit: 1 prefetch io: 0 second prefetch hit: 1 second prefetch io: 0`,
 			LogLevel: pganalyze_collector.LogLineInformation_LOG,
 		}},
 		[]state.LogLine{{

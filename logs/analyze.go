@@ -80,7 +80,7 @@ var autoVacuum = analyzeGroup{
 		prefixes: []string{"automatic vacuum of table", "automatic aggressive vacuum of table", "automatic aggressive vacuum to prevent wraparound of table"},
 		regexp: regexp.MustCompile(`^automatic (aggressive )?vacuum (to prevent wraparound )?of table "(.+?)": index scans: (\d+),?\s*` +
 			`(?:elapsed time: \d+ \w+, index vacuum time: \d+ \w+,)?\s*` + // Google AlloyDB for PostgreSQL
-			`pages: (\d+) removed, (\d+) remain, (?:(\d+) skipped due to pins, (\d+) skipped frozen|(\d+) scanned \(([\d.]+)% of total\)),?\s*` +
+			`pages: (\d+) removed, (\d+) remain, (?:(\d+) skipped due to pins, (\d+) skipped frozen|(\d+) scanned \(([\d.]+)% of total\), (\d+) eagerly scanned|(\d+) scanned \(([\d.]+)% of total\)(?: (\d+) skipped due to pins, (\d+) skipped frozen (\d+) skipped using mintxid (\d+) skipped pages due to vm all-visible, (\d+) nonempty pages,)?),?\s*` +
 			`(?:\d+ skipped using mintxid)?\s*` + // Google AlloyDB for PostgreSQL
 			`(?:\d+ skipped pages due to vm all-visible, \d+ nonempty pages)?,?\s*` + // more Google AlloyDB for PostgreSQL
 			`tuples: (\d+) removed, (\d+) remain, (\d+) are dead but not yet removable(?:, oldest xmin: (\d+))?,?\s*` +
