@@ -110,6 +110,7 @@ message LogLineInformation {
     PROTOCOL_ERROR_UNSUPPORTED_VERSION = 31; // "unsupported frontend protocol ...: server supports ... to ..."
     PROTOCOL_ERROR_INCOMPLETE_MESSAGE = 32; // "incomplete message from client"
     TOO_MANY_CONNECTIONS_DATABASE = 33; // "too many connections for database"
+    CONNECTION_AUTHENTICATED = 34; // "connection authenticated: "
 
     // Checkpointer related
     CHECKPOINT_STARTING = 40; // "checkpoint starting: "

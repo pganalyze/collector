@@ -612,6 +612,7 @@ var tests = []testpair{
 				"total_secs": 216.130, "longest_secs": 0.014, "average_secs": 0.0,
 				"bufs_written": 111906, "segs_added": 0, "segs_removed": 22, "segs_recycled": 29,
 				"sync_rels": 94, "distance_kb": 850730, "estimate_kb": 910977,
+				"lsn": "", "redo_lsn": "", "slru_buffers": 0,
 			},
 			ReviewedForSecrets: true,
 		}},
@@ -628,6 +629,24 @@ var tests = []testpair{
 				"total_secs": 216.130, "longest_secs": 0.014, "average_secs": 0.0,
 				"bufs_written": 111906, "segs_added": 0, "segs_removed": 22, "segs_recycled": 29,
 				"sync_rels": 94, "distance_kb": 850730, "estimate_kb": 910977,
+				"lsn": "", "redo_lsn": "", "slru_buffers": 0,
+			},
+			ReviewedForSecrets: true,
+		}},
+		nil,
+	},
+	{ // 18+ syntax
+		[]state.LogLine{{
+			Content: "checkpoint complete: wrote 3 buffers (0.0%), wrote 0 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.302 s, sync=0.015 s, total=0.353 s; sync files=2, longest=0.015 s, average=0.008 s; distance=22 kB, estimate=832327 kB; lsn=1/D72C34D0, redo lsn=1/D72C3478",
+		}},
+		[]state.LogLine{{
+			Classification: pganalyze_collector.LogLineInformation_CHECKPOINT_COMPLETE,
+			Details: map[string]interface{}{
+				"bufs_written_pct": 0, "write_secs": 0.302, "sync_secs": 0.015,
+				"total_secs": 0.353, "longest_secs": 0.015, "average_secs": 0.008,
+				"bufs_written": 3, "segs_added": 0, "segs_removed": 0, "segs_recycled": 0,
+				"sync_rels": 2, "distance_kb": 22, "estimate_kb": 832327,
+				"lsn": "1/D72C34D0", "redo_lsn": "1/D72C3478", "slru_buffers": 0,
 			},
 			ReviewedForSecrets: true,
 		}},
@@ -678,6 +697,7 @@ var tests = []testpair{
 				"total_secs": 0.288, "longest_secs": 0.024, "average_secs": 0.003,
 				"bufs_written": 693, "segs_added": 0, "segs_removed": 0, "segs_recycled": 5,
 				"sync_rels": 74, "distance_kb": 81503, "estimate_kb": 81503,
+				"lsn": "", "redo_lsn": "", "slru_buffers": 0,
 			},
 			ReviewedForSecrets: true,
 		}},
@@ -1665,6 +1685,106 @@ var tests = []testpair{
 				" buffer usage: 42 hits, 0 misses, 0 dirtied," +
 				" WAL usage: 3 records, 0 full page images, 286 bytes," +
 				" system usage: CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.01 s",
+			LogLevel: pganalyze_collector.LogLineInformation_LOG,
+		}},
+		[]state.LogLine{{
+			Classification: pganalyze_collector.LogLineInformation_AUTOVACUUM_COMPLETED,
+			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
+			Database:       "alloydbadmin",
+			SchemaName:     "public",
+			RelationName:   "heartbeat",
+			Details: map[string]interface{}{
+				"aggressive":               false,
+				"anti_wraparound":          false,
+				"num_index_scans":          0,
+				"pages_removed":            0,
+				"rel_pages":                1,
+				"pinskipped_pages":         0,
+				"frozenskipped_pages":      0,
+				"tuples_deleted":           60,
+				"new_rel_tuples":           1,
+				"new_dead_tuples":          0,
+				"oldest_xmin":              1782,
+				"lpdead_index_scan":        "not needed",
+				"lpdead_item_pages":        0,
+				"lpdead_item_page_percent": 0,
+				"lpdead_items":             0,
+				"blk_read_time":            0,
+				"blk_write_time":           0,
+				"read_rate_mb":             0,
+				"write_rate_mb":            0,
+				"vacuum_page_hit":          42,
+				"vacuum_page_miss":         0,
+				"vacuum_page_dirty":        0,
+				"wal_records":              3,
+				"wal_fpi":                  0,
+				"wal_bytes":                286,
+				"rusage_user":              0.00,
+				"rusage_kernel":            0.00,
+				"elapsed_secs":             0.01,
+			},
+			ReviewedForSecrets: true,
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
+			Content:  `automatic vacuum of table "maciek.public.t": index scans: 0
+        pages: 0 removed, 74240 remain, 74240 scanned (100.00% of total), 0 eagerly scanned
+        tuples: 0 removed, 16777216 remain, 0 are dead but not yet removable
+        removable cutoff: 5805, which was 1 XIDs old when operation ended
+        frozen: 16771 pages from table (22.59% of total) had 3790126 tuples frozen
+        visibility map: 16771 pages set all-visible, 16771 pages set all-frozen (0 were all-visible)
+        index scan not needed: 0 pages from table (0.00% of total) had 0 dead item identifiers removed
+        avg read rate: 53.257 MB/s, avg write rate: 13.520 MB/s
+        buffer usage: 74279 hits, 74238 reads, 18846 dirtied
+        WAL usage: 52414 records, 18877 full page images, 164664500 bytes, 470 buffers full
+        system usage: CPU: user: 1.78 s, system: 1.14 s, elapsed: 10.89 s`,
+			LogLevel: pganalyze_collector.LogLineInformation_LOG,
+		}},
+		[]state.LogLine{{
+			Classification: pganalyze_collector.LogLineInformation_AUTOVACUUM_COMPLETED,
+			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
+			Database:       "alloydbadmin",
+			SchemaName:     "public",
+			RelationName:   "heartbeat",
+			Details: map[string]interface{}{
+				"aggressive":               false,
+				"anti_wraparound":          false,
+				"num_index_scans":          0,
+				"pages_removed":            0,
+				"rel_pages":                1,
+				"pinskipped_pages":         0,
+				"frozenskipped_pages":      0,
+				"tuples_deleted":           60,
+				"new_rel_tuples":           1,
+				"new_dead_tuples":          0,
+				"oldest_xmin":              1782,
+				"lpdead_index_scan":        "not needed",
+				"lpdead_item_pages":        0,
+				"lpdead_item_page_percent": 0,
+				"lpdead_items":             0,
+				"blk_read_time":            0,
+				"blk_write_time":           0,
+				"read_rate_mb":             0,
+				"write_rate_mb":            0,
+				"vacuum_page_hit":          42,
+				"vacuum_page_miss":         0,
+				"vacuum_page_dirty":        0,
+				"wal_records":              3,
+				"wal_fpi":                  0,
+				"wal_bytes":                286,
+				"rusage_user":              0.00,
+				"rusage_kernel":            0.00,
+				"elapsed_secs":             0.01,
+			},
+			ReviewedForSecrets: true,
+		}},
+		nil,
+	}
+	{
+		[]state.LogLine{{
+			Content:  "automatic vacuum of table \"alloydbadmin.public.health_data_write_slru\": index scans: 0, elapsed time: 0 s, index vacuum time: 0 ms, pages: 0 removed, 1 remain, 1 scanned (100.00% of total) 0 skipped due to pins, 0 skipped frozen 0 skipped using mintxid 0 skipped pages due to vm all-visible, 1 nonempty pages, tuples: 59 removed, 1 remain, 0 are dead but not yet removable, removable cutoff: 61387872, which was 0 XIDs old when operation ended, new relfrozenxid: 61387869, which is 164 XIDs ahead of previous value, frozen: 0 pages from table (0.00% of total) had 0 tuples frozen index scan not needed: 0 pages from table (0.00% of total) had 0 dead item identifiers removed, max_dead_tuples:291, I/O timings: read: 0.000 ms, write: 0.000 ms, avg read rate: 0.000 MB/s, avg write rate: 0.000 MB/s, buffer usage: 13 hits, 0 misses, 0 dirtied, WAL usage: 4 records, 0 full page images, 476 bytes, system usage: CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.00 s prefetch hit: 1 prefetch io: 0 second prefetch hit: 0 second prefetch io: 0 ",
 			LogLevel: pganalyze_collector.LogLineInformation_LOG,
 		}},
 		[]state.LogLine{{
@@ -3373,6 +3493,32 @@ var tests = []testpair{
 			Classification:     pganalyze_collector.LogLineInformation_RELATION_DOES_NOT_EXIST,
 			UUID:               uuid.UUID{1},
 			Query:              "SELECT * FROM x",
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_STATEMENT,
+			ParentUUID:         uuid.UUID{1},
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteEnd: 15,
+				Kind:    state.StatementTextLogSecret,
+			}},
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
+			Content:  "column x.y does not exist",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+			UUID:     uuid.UUID{1},
+		}, {
+			Content:  "SELECT y FROM x",
+			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
+		}},
+		[]state.LogLine{{
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_COLUMN_DOES_NOT_EXIST,
+			UUID:               uuid.UUID{1},
+			Query:              "SELECT y FROM x",
 			ReviewedForSecrets: true,
 		}, {
 			LogLevel:           pganalyze_collector.LogLineInformation_STATEMENT,

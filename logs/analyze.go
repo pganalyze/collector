@@ -81,7 +81,8 @@ var autoVacuum = analyzeGroup{
 		regexp: regexp.MustCompile(`^automatic (aggressive )?vacuum (to prevent wraparound )?of table "(.+?)": index scans: (\d+),?\s*` +
 			`(?:elapsed time: \d+ \w+, index vacuum time: \d+ \w+,)?\s*` + // Google AlloyDB for PostgreSQL
 			`pages: (\d+) removed, (\d+) remain, (?:(\d+) skipped due to pins, (\d+) skipped frozen|(\d+) scanned \(([\d.]+)% of total\)),?\s*` +
-			`(?:\d+ skipped using mintxid)?,?\s*` + // Google AlloyDB for PostgreSQL
+			`(?:\d+ skipped using mintxid)?\s*` + // Google AlloyDB for PostgreSQL
+			`(?:\d+ skipped pages due to vm all-visible, \d+ nonempty pages)?,?\s*` + // more Google AlloyDB for PostgreSQL
 			`tuples: (\d+) removed, (\d+) remain, (\d+) are dead but not yet removable(?:, oldest xmin: (\d+))?,?\s*` +
 			`(?:tuples missed: (\d+) dead from (\d+) pages not removed due to cleanup lock contention)?,?\s*` + // Postgres 15+
 			`(?:removable cutoff: (\d+), which was (\d+) XIDs old when operation ended)?,?\s*` + // Postgres 15+
@@ -120,12 +121,14 @@ var checkpointStarting = analyzeGroup{
 }
 var checkpointComplete = analyzeGroup{
 	primary: match{
-		regexp: regexp.MustCompile(`^(checkpoint|restartpoint) complete: wrote (\d+) buffers \(([\d\.]+)%\); ` +
+		regexp: regexp.MustCompile(`^(checkpoint|restartpoint) complete: wrote (\d+) buffers \(([\d\.]+)%\)` +
+			`(?:, wrote (\d+) SLRU buffers)?; ` + // new in 18
 			`(\d+) (?:transaction log|WAL) file\(s\) added, (\d+) removed, (\d+) recycled; ` +
 			`write=([\d\.]+) s, sync=([\d\.]+) s, total=([\d\.]+) s; ` +
 			`sync files=(\d+), longest=([\d\.]+) s, average=([\d\.]+) s` +
-			`; distance=(\d+) kB, estimate=(\d+) kB`),
-		secrets: []state.LogSecretKind{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+			`; distance=(\d+) kB, estimate=(\d+) kB` +
+			`(?:; lsn=([A-F0-9]+/[A-F0-9]+), redo lsn=([A-F0-9]+/[A-F0-9]+))?`),
+		secrets: []state.LogSecretKind{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 	},
 }
 var checkpointsTooFrequent = analyzeGroup{
@@ -166,6 +169,14 @@ var connectionAuthorized = analyzeGroup{
 		prefixes: []string{"connection authorized: "},
 		regexp:   regexp.MustCompile(`^connection authorized: user=\w+( database=\w+)?( application_name=.+)?( SSL enabled \(protocol=([\w.]+), cipher=[\w-]+, compression=\w+\))?`),
 		secrets:  []state.LogSecretKind{0, 0, 0, 0},
+	},
+}
+var connectionAuthenticated = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_CONNECTION_AUTHENTICATED,
+	primary: match{
+		prefixes: []string{"connection authenticated: "},
+		regexp:   regexp.MustCompile(`^connection authenticated: (?:user|identity)="\w+" method=\w+ \(\w+:\d+\)`),
+		secrets:  []state.LogSecretKind{},
 	},
 }
 var connectionRejected = analyzeGroup{
@@ -215,7 +226,7 @@ var disconnection = analyzeGroup{
 var connectionClientFailedToConnect = analyzeGroup{
 	classification: pganalyze_collector.LogLineInformation_CONNECTION_CLIENT_FAILED_TO_CONNECT,
 	primary: match{
-		prefixes: []string{"incomplete startup packet"},
+		prefixes: []string{"incomplete startup packet", "invalid length of startup packet", "no PostgreSQL user name specified in startup packet"},
 	},
 }
 var connectionLostOpenTx = analyzeGroup{
@@ -789,8 +800,8 @@ var columnDoesNotExist = analyzeGroup{
 	classification: pganalyze_collector.LogLineInformation_COLUMN_DOES_NOT_EXIST,
 	primary: match{
 		prefixes: []string{"column"},
-		regexp:   regexp.MustCompile(`^column "([^"]+)" does not exist(?: at character \d+)?`),
-		secrets:  []state.LogSecretKind{0},
+		regexp:   regexp.MustCompile(`^column (?:"[^"]+"|[\w.]+) does not exist(?: at character \d+)?`),
+		secrets:  []state.LogSecretKind{},
 	},
 }
 var columnDoesNotExistOnTable = analyzeGroup{
@@ -1189,6 +1200,7 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 		authenticationFailed,
 		databaseNotAcceptingConnections,
 		roleNotAllowedLogin,
+		connectionAuthenticated,
 		connectionClientFailedToConnect,
 		connectionLostOpenTx,
 		connectionLost,
@@ -1345,7 +1357,7 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 		}
 
 		logLine, parts = matchLogLine(logLine, checkpointComplete.primary)
-		if len(parts) == 15 {
+		if len(parts) == 18 {
 			if parts[1] == "checkpoint" {
 				logLine.Classification = pganalyze_collector.LogLineInformation_CHECKPOINT_COMPLETE
 			} else if parts[1] == "restartpoint" {
@@ -1354,19 +1366,26 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 
 			bufsWritten, _ := strconv.ParseInt(parts[2], 10, 64)
 			bufsWrittenPct, _ := strconv.ParseFloat(parts[3], 64)
-			segsAdded, _ := strconv.ParseInt(parts[4], 10, 64)
-			segsRemoved, _ := strconv.ParseInt(parts[5], 10, 64)
-			segsRecycled, _ := strconv.ParseInt(parts[6], 10, 64)
-			writeSecs, _ := strconv.ParseFloat(parts[7], 64)
-			syncSecs, _ := strconv.ParseFloat(parts[8], 64)
-			totalSecs, _ := strconv.ParseFloat(parts[9], 64)
-			syncRels, _ := strconv.ParseInt(parts[10], 10, 64)
-			longestSecs, _ := strconv.ParseFloat(parts[11], 64)
-			averageSecs, _ := strconv.ParseFloat(parts[12], 64)
-			distanceKb, _ := strconv.ParseInt(parts[13], 10, 64)
-			estimateKb, _ := strconv.ParseInt(parts[14], 10, 64)
+			slruBuffers, _ := strconv.ParseInt(parts[4], 10, 64)
+
+			segsAdded, _ := strconv.ParseInt(parts[5], 10, 64)
+			segsRemoved, _ := strconv.ParseInt(parts[6], 10, 64)
+			segsRecycled, _ := strconv.ParseInt(parts[7], 10, 64)
+			writeSecs, _ := strconv.ParseFloat(parts[8], 64)
+			syncSecs, _ := strconv.ParseFloat(parts[9], 64)
+			totalSecs, _ := strconv.ParseFloat(parts[10], 64)
+			syncRels, _ := strconv.ParseInt(parts[11], 10, 64)
+			longestSecs, _ := strconv.ParseFloat(parts[12], 64)
+			averageSecs, _ := strconv.ParseFloat(parts[13], 64)
+			distanceKb, _ := strconv.ParseInt(parts[14], 10, 64)
+			estimateKb, _ := strconv.ParseInt(parts[15], 10, 64)
+			lsn := parts[16]
+			redoLsn := parts[17]
+
 			logLine.Details = map[string]interface{}{
-				"bufs_written": bufsWritten, "segs_added": segsAdded,
+				"bufs_written": bufsWritten,
+				"slru_buffers": slruBuffers,
+				"segs_added":   segsAdded,
 				"segs_removed": segsRemoved, "segs_recycled": segsRecycled,
 				"sync_rels":        syncRels,
 				"bufs_written_pct": bufsWrittenPct, "write_secs": writeSecs,
@@ -1374,6 +1393,8 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 				"longest_secs": longestSecs, "average_secs": averageSecs,
 				"distance_kb": distanceKb,
 				"estimate_kb": estimateKb,
+				"lsn":         lsn,
+				"redo_lsn":    redoLsn,
 			}
 
 			contextLine = matchOtherContextLogLine(contextLine)
