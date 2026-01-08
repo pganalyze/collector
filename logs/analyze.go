@@ -80,9 +80,10 @@ var autoVacuum = analyzeGroup{
 		prefixes: []string{"automatic vacuum of table", "automatic aggressive vacuum of table", "automatic aggressive vacuum to prevent wraparound of table"},
 		regexp: regexp.MustCompile(`^automatic (aggressive )?vacuum (to prevent wraparound )?of table "(.+?)": index scans: (\d+),?\s*` +
 			`(?:elapsed time: \d+ \w+, index vacuum time: \d+ \w+,)?\s*` + // Google AlloyDB for PostgreSQL
-			`pages: (\d+) removed, (\d+) remain, (?:(\d+) skipped due to pins, (\d+) skipped frozen|(\d+) scanned \(([\d.]+)% of total\), (\d+) eagerly scanned|(\d+) scanned \(([\d.]+)% of total\)(?: (\d+) skipped due to pins, (\d+) skipped frozen (\d+) skipped using mintxid (\d+) skipped pages due to vm all-visible, (\d+) nonempty pages,)?),?\s*` +
-			`(?:\d+ skipped using mintxid)?\s*` + // Google AlloyDB for PostgreSQL
-			`(?:\d+ skipped pages due to vm all-visible, \d+ nonempty pages)?,?\s*` + // more Google AlloyDB for PostgreSQL
+			`pages: (\d+) removed, (\d+) remain, ` + // common `pages` output
+			`(?:(\d+) skipped due to pins, (\d+) skipped frozen|(\d+) scanned \(([\d.]+)% of total\), (\d+) eagerly scanned)?\s*` + // pre/post-18 (optional because AlloyDB does something different: see next two lines)
+			`(?:(\d+) scanned \(([\d.]+)% of total\)(?: (\d+) skipped due to pins, (\d+) skipped frozen)?)?\s*` + // Google AlloyDB for PostgreSQL
+			`(?:(\d+) skipped using mintxid (\d+) skipped pages due to vm all-visible, (\d+) nonempty pages,)?\s*` + // Google AlloyDB for PostgreSQL
 			`tuples: (\d+) removed, (\d+) remain, (\d+) are dead but not yet removable(?:, oldest xmin: (\d+))?,?\s*` +
 			`(?:tuples missed: (\d+) dead from (\d+) pages not removed due to cleanup lock contention)?,?\s*` + // Postgres 15+
 			`(?:removable cutoff: (\d+), which was (\d+) XIDs old when operation ended)?,?\s*` + // Postgres 15+
