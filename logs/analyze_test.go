@@ -1827,15 +1827,6 @@ var tests = []testpair{
 		}},
 		nil,
 	},
-	/*
-
-		alloydb:
-		  pages: 0 removed, 1 remain, 1 scanned (100.00% of total) 0 skipped due to pins, 0 skipped frozen 0 skipped using mintxid 0 skipped pages due to vm all-visible, 1 nonempty pages,
-		11:
-			pages: 0 removed, 74236 remain, 0 skipped due to pins, 0 skipped frozen
-		18:
-			pages: 0 removed, 74240 remain, 74240 scanned (100.00% of total), 0 eagerly scanned
-	*/
 	{
 		[]state.LogLine{{
 			Content: `automatic vacuum of table "alloydbadmin.public.health_data_write": index scans: 1, elapsed time: 0 s, index vacuum time: 0 ms, pages: 0 removed, 1 remain, 1 scanned (100.00% of total) 0 skipped due to pins, 0 skipped frozen 0 skipped using mintxid 0 skipped pages due to vm all-visible, 1 nonempty pages, tuples: 60 removed, 1 remain, 0 are dead but not yet removable, removable cutoff: 61765272, which was 0 XIDs old when operation ended, new relfrozenxid: 61765271, which is 166 XIDs ahead of previous value, frozen: 0 pages from table (0.00% of total) had 0 tuples frozen
@@ -1847,36 +1838,51 @@ index scan needed: 1 pages from table (100.00% of total) had 60 dead item identi
 			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
 			Database:       "alloydbadmin",
 			SchemaName:     "public",
-			RelationName:   "heartbeat",
+			RelationName:   "health_data_write",
 			Details: map[string]interface{}{
-				"aggressive":               false,
-				"anti_wraparound":          false,
-				"num_index_scans":          0,
-				"pages_removed":            0,
-				"rel_pages":                1,
-				"pinskipped_pages":         0,
-				"frozenskipped_pages":      0,
+				"aggressive":            false,
+				"anti_wraparound":       false,
+				"num_index_scans":       1,
+				"pages_removed":         0,
+				"rel_pages":             1,
+				"scanned_pages":         1,
+				"scanned_pages_percent": 100,
+
+				"frozen_page_percent": 0,
+				"frozen_pages":        0,
+				"index_vacuums": map[string]interface{}{
+					"health_data_write_index": map[string]int{
+						"num_pages":           2,
+						"pages_deleted":       0,
+						"pages_free":          0,
+						"pages_newly_deleted": 0,
+					},
+				},
 				"tuples_deleted":           60,
+				"tuples_frozen":            0,
 				"new_rel_tuples":           1,
 				"new_dead_tuples":          0,
-				"oldest_xmin":              1782,
-				"lpdead_index_scan":        "not needed",
-				"lpdead_item_pages":        0,
-				"lpdead_item_page_percent": 0,
-				"lpdead_items":             0,
+				"new_relfrozenxid":         61765271,
+				"new_relfrozenxid_diff":    166,
+				"oldest_xmin":              61765272,
+				"oldest_xmin_age":          0,
+				"lpdead_index_scan":        "needed",
+				"lpdead_item_page_percent": 100,
+				"lpdead_item_pages":        1,
+				"lpdead_items":             60,
 				"blk_read_time":            0,
 				"blk_write_time":           0,
 				"read_rate_mb":             0,
 				"write_rate_mb":            0,
-				"vacuum_page_hit":          42,
+				"vacuum_page_hit":          50,
 				"vacuum_page_miss":         0,
 				"vacuum_page_dirty":        0,
-				"wal_records":              3,
+				"wal_records":              7,
 				"wal_fpi":                  0,
-				"wal_bytes":                286,
+				"wal_bytes":                864,
 				"rusage_user":              0.00,
 				"rusage_kernel":            0.00,
-				"elapsed_secs":             0.01,
+				"elapsed_secs":             0.00,
 			},
 			ReviewedForSecrets: true,
 		}},

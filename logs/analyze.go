@@ -80,10 +80,13 @@ var autoVacuum = analyzeGroup{
 		prefixes: []string{"automatic vacuum of table", "automatic aggressive vacuum of table", "automatic aggressive vacuum to prevent wraparound of table"},
 		regexp: regexp.MustCompile(`^automatic (?P<aggressive>aggressive )?vacuum (?P<wraparound>to prevent wraparound )?of table "(?P<relname>.+?)": index scans: (?P<idx_scans>\d+),?\s*` +
 			`(?:elapsed time: \d+ \w+, index vacuum time: \d+ \w+,)?\s*` + // Google AlloyDB for PostgreSQL
-			`pages: (?P<pages_removed>\d+) removed, (?P<pages_remain>\d+) remain, ` + // common `pages` output
-			`(?:(?P<pages_skipped_pins>\d+) skipped due to pins, (?P<pages_skipped_frozen>\d+) skipped frozen|(?P<pages_scanned>\d+) scanned \((?P<pages_scanned_pct>[\d.]+)% of total\)(?:, (?P<pages_eagerly_scanned>\d+) eagerly scanned)?)?\s*` + // pre/post-18 (optional because AlloyDB does something different: see next two lines)
-			`(?:(?P<alloy_pages_scanned>\d+) scanned \((?P<alloy_pages_scanned_pct>[\d.]+)% of total\)(?: (?P<alloy_pages_skipped_pins>\d+) skipped due to pins, (?P<alloy_pages_skipped_frozen>\d+) skipped frozen)?)?\s*` + // Google AlloyDB for PostgreSQL
-			`(?:(?P<alloy_pages_skipped_mintxid>\d+) skipped using mintxid (?P<alloy_pages_skipped_all_visible>\d+) skipped pages due to vm all-visible, (?P<alloy_pages_nonempty>\d+) nonempty pages,)?\s*` + // Google AlloyDB for PostgreSQL
+
+			// Different Postgres versions and AlloyDB have several different variants of the `pages` line:
+			`pages: (?P<pages_removed>\d+) removed, (?P<pages_remain>\d+) remain,\s*` +
+			`(?:(?P<pages_scanned>\d+) scanned \((?P<pages_scanned_pct>[\d.]+)% of total\)(?:, (?P<pages_eagerly_scanned>\d+) eagerly scanned)?)?\s*,?\s*` +
+			`(?:(?P<pages_skipped_pins>\d+) skipped due to pins)?(?:, (?P<pages_skipped_frozen>\d+) skipped frozen)?\s*` +
+			`(?:(?P<alloy_pages_skipped_mintxid>\d+) skipped using mintxid(?: (?P<alloy_pages_skipped_all_visible>\d+) skipped pages due to vm all-visible, (?P<alloy_pages_nonempty>\d+) nonempty pages)?,?)?\s*` +
+
 			`tuples: (?P<tuples_removed>\d+) removed, (?P<tuples_remain>\d+) remain, (?P<tuples_new_dead>\d+) are dead but not yet removable(?:, oldest xmin: (?P<oldest_xmin>\d+))?,?\s*` +
 			`(?:tuples missed: (?P<missed_dead_tuples>\d+) dead from (?P<missed_dead_pages>\d+) pages not removed due to cleanup lock contention)?,?\s*` + // Postgres 15+
 			`(?:removable cutoff: (?P<cutoff>\d+), which was (?P<cutoff_age>\d+) XIDs old when operation ended)?,?\s*` + // Postgres 15+
@@ -92,6 +95,7 @@ var autoVacuum = analyzeGroup{
 			`(?:frozen: (?P<frozen_pages>\d+) pages from table \((?P<frozen_pages_pct>[\d.]+)% of total\) had (?P<frozen_tuples>\d+) tuples frozen)?,?\s*` + // Postgres 16+
 			`(?:visibility map: (?P<vm_all_visible>\d+) pages set all-visible, (?P<vm_all_frozen>\d+) pages set all-frozen \((?P<vm_all_visible_prev>\d+) were all-visible\))?\s*` + // Postgres 18
 			`(?:index scan (?P<idxscan_status>not needed|needed|bypassed|bypassed by failsafe): (?P<idxscan_pages>\d+) pages from table \((?P<idxscan_pages_pct>[\d.]+)% of total\) (?:have|had) (?P<idxscan_dead>\d+) dead item identifiers(?: removed)?)?,?\s*` + // Postgres 14+
+			`(?:max_dead_tuples:(?P<max_dead_tuples>\d+),\s*)?` +
 			`(?P<idx_details>(?:index ".+?": pages: \d+ in total, \d+ newly deleted, \d+ currently deleted, \d+ reusable,?\s*)*)?` + // Postgres 14+
 			`(?:I/O timings: read: (?P<io_read_ms>[\d.]+) ms, write: (?P<io_write_ms>[\d.]+) ms)?,?\s*` + // Postgres 14+
 			`(?:avg read rate: (?P<io_read_rate>[\d.]+) MB/s, avg write rate: (?P<io_write_rate>[\d.]+) MB/s)?,?\s*` + // Postgres 14+
@@ -100,7 +104,7 @@ var autoVacuum = analyzeGroup{
 			`(?:WAL usage: (?P<wal_records>\d+) records, (?P<wal_fpis>\d+) full page images, (?P<wal_bytes>\d+) bytes)?,?\s*` + // Postgres 14+
 			`(?:, (?P<wal_buffers_full>\d+) buffers full)?\s*` + // Postgres 18+
 			`system usage: CPU(?:(?: (?P<cpu_s>[\d.]+)s/(?P<cpu_u>[\d.]+)u sec elapsed (?P<cpu_tot>[\d.]+) sec)|(?:: user: (?P<cpu_user>[\d.]+) s, system: (?P<cpu_system>[\d.]+) s, elapsed: (?P<cpu_elapsed>[\d.]+) s))`),
-		secrets: []state.LogSecretKind{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+		secrets: []state.LogSecretKind{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 	},
 }
 var autoAnalyze = analyzeGroup{
@@ -1662,7 +1666,7 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 	}
 	if matchesPrefix(logLine, autoVacuum.primary.prefixes) {
 		logLine, parts = matchLogLine(logLine, autoVacuum.primary)
-		if len(parts) == 61 {
+		if len(parts) == 58 {
 			var readRatePart, writeRatePart, kernelPart, userPart, elapsedPart string
 
 			primary := autoVacuum.primary.regexp
