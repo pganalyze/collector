@@ -78,27 +78,29 @@ var autoVacuum = analyzeGroup{
 	classification: pganalyze_collector.LogLineInformation_AUTOVACUUM_COMPLETED,
 	primary: match{
 		prefixes: []string{"automatic vacuum of table", "automatic aggressive vacuum of table", "automatic aggressive vacuum to prevent wraparound of table"},
-		regexp: regexp.MustCompile(`^automatic (aggressive )?vacuum (to prevent wraparound )?of table "(.+?)": index scans: (\d+),?\s*` +
+		regexp: regexp.MustCompile(`^automatic (?P<aggressive>aggressive )?vacuum (?P<wraparound>to prevent wraparound )?of table "(?P<relname>.+?)": index scans: (?P<idx_scans>\d+),?\s*` +
 			`(?:elapsed time: \d+ \w+, index vacuum time: \d+ \w+,)?\s*` + // Google AlloyDB for PostgreSQL
-			`pages: (\d+) removed, (\d+) remain, ` + // common `pages` output
-			`(?:(\d+) skipped due to pins, (\d+) skipped frozen|(\d+) scanned \(([\d.]+)% of total\), (\d+) eagerly scanned)?\s*` + // pre/post-18 (optional because AlloyDB does something different: see next two lines)
-			`(?:(\d+) scanned \(([\d.]+)% of total\)(?: (\d+) skipped due to pins, (\d+) skipped frozen)?)?\s*` + // Google AlloyDB for PostgreSQL
-			`(?:(\d+) skipped using mintxid (\d+) skipped pages due to vm all-visible, (\d+) nonempty pages,)?\s*` + // Google AlloyDB for PostgreSQL
-			`tuples: (\d+) removed, (\d+) remain, (\d+) are dead but not yet removable(?:, oldest xmin: (\d+))?,?\s*` +
-			`(?:tuples missed: (\d+) dead from (\d+) pages not removed due to cleanup lock contention)?,?\s*` + // Postgres 15+
-			`(?:removable cutoff: (\d+), which was (\d+) XIDs old when operation ended)?,?\s*` + // Postgres 15+
-			`(?:new relfrozenxid: (\d+), which is (\d+) XIDs ahead of previous value)?,?\s*` + // Postgres 15+
-			`(?:new relminmxid: (\d+), which is (\d+) MXIDs ahead of previous value)?,?\s*` + // Postgres 15+
-			`(?:frozen: (\d+) pages from table \(([\d.]+)% of total\) had (\d+) tuples frozen)?,?\s*` + // Postgres 16+
-			`(?:index scan (not needed|needed|bypassed|bypassed by failsafe): (\d+) pages from table \(([\d.]+)% of total\) (?:have|had) (\d+) dead item identifiers(?: removed)?)?,?\s*` + // Postgres 14+
-			`((?:index ".+?": pages: \d+ in total, \d+ newly deleted, \d+ currently deleted, \d+ reusable,?\s*)*)?` + // Postgres 14+
-			`(?:I/O timings: read: ([\d.]+) ms, write: ([\d.]+) ms)?,?\s*` + // Postgres 14+
-			`(?:avg read rate: ([\d.]+) MB/s, avg write rate: ([\d.]+) MB/s)?,?\s*` + // Postgres 14+
-			`buffer usage: (\d+) hits, (\d+) misses, (\d+) dirtied,?\s*` +
-			`(?:avg read rate: ([\d.]+) MB/s, avg write rate: ([\d.]+) MB/s)?,?\s*` + // Postgres 13 and older
-			`(?:WAL usage: (\d+) records, (\d+) full page images, (\d+) bytes)?,?\s*` + // Postgres 14+
-			`system usage: CPU(?:(?: ([\d.]+)s/([\d.]+)u sec elapsed ([\d.]+) sec)|(?:: user: ([\d.]+) s, system: ([\d.]+) s, elapsed: ([\d.]+) s))`),
-		secrets: []state.LogSecretKind{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+			`pages: (?P<pages_removed>\d+) removed, (?P<pages_remain>\d+) remain, ` + // common `pages` output
+			`(?:(?P<pages_skipped_pins>\d+) skipped due to pins, (?P<pages_skipped_frozen>\d+) skipped frozen|(?P<pages_scanned>\d+) scanned \((?P<pages_scanned_pct>[\d.]+)% of total\)(?:, (?P<pages_eagerly_scanned>\d+) eagerly scanned)?)?\s*` + // pre/post-18 (optional because AlloyDB does something different: see next two lines)
+			`(?:(?P<alloy_pages_scanned>\d+) scanned \((?P<alloy_pages_scanned_pct>[\d.]+)% of total\)(?: (?P<alloy_pages_skipped_pins>\d+) skipped due to pins, (?P<alloy_pages_skipped_frozen>\d+) skipped frozen)?)?\s*` + // Google AlloyDB for PostgreSQL
+			`(?:(?P<alloy_pages_skipped_mintxid>\d+) skipped using mintxid (?P<alloy_pages_skipped_all_visible>\d+) skipped pages due to vm all-visible, (?P<alloy_pages_nonempty>\d+) nonempty pages,)?\s*` + // Google AlloyDB for PostgreSQL
+			`tuples: (?P<tuples_removed>\d+) removed, (?P<tuples_remain>\d+) remain, (?P<tuples_new_dead>\d+) are dead but not yet removable(?:, oldest xmin: (?P<oldest_xmin>\d+))?,?\s*` +
+			`(?:tuples missed: (?P<missed_dead_tuples>\d+) dead from (?P<missed_dead_pages>\d+) pages not removed due to cleanup lock contention)?,?\s*` + // Postgres 15+
+			`(?:removable cutoff: (?P<cutoff>\d+), which was (?P<cutoff_age>\d+) XIDs old when operation ended)?,?\s*` + // Postgres 15+
+			`(?:new relfrozenxid: (?P<new_frozenxid>\d+), which is (?P<new_frozenxid_diff>\d+) XIDs ahead of previous value)?,?\s*` + // Postgres 15+
+			`(?:new relminmxid: (?P<new_minmxid>\d+), which is (?P<new_minmxid_diff>\d+) MXIDs ahead of previous value)?,?\s*` + // Postgres 15+
+			`(?:frozen: (?P<frozen_pages>\d+) pages from table \((?P<frozen_pages_pct>[\d.]+)% of total\) had (?P<frozen_tuples>\d+) tuples frozen)?,?\s*` + // Postgres 16+
+			`(?:visibility map: (?P<vm_all_visible>\d+) pages set all-visible, (?P<vm_all_frozen>\d+) pages set all-frozen \((?P<vm_all_visible_prev>\d+) were all-visible\))?\s*` + // Postgres 18
+			`(?:index scan (?P<idxscan_status>not needed|needed|bypassed|bypassed by failsafe): (?P<idxscan_pages>\d+) pages from table \((?P<idxscan_pages_pct>[\d.]+)% of total\) (?:have|had) (?P<idxscan_dead>\d+) dead item identifiers(?: removed)?)?,?\s*` + // Postgres 14+
+			`(?P<idx_details>(?:index ".+?": pages: \d+ in total, \d+ newly deleted, \d+ currently deleted, \d+ reusable,?\s*)*)?` + // Postgres 14+
+			`(?:I/O timings: read: (?P<io_read_ms>[\d.]+) ms, write: (?P<io_write_ms>[\d.]+) ms)?,?\s*` + // Postgres 14+
+			`(?:avg read rate: (?P<io_read_rate>[\d.]+) MB/s, avg write rate: (?P<io_write_rate>[\d.]+) MB/s)?,?\s*` + // Postgres 14+
+			`buffer usage: (?P<buffer_hits>\d+) hits, (?P<buffer_misses>\d+) (?:misses|reads), (?P<buffers_dirtied>\d+) dirtied,?\s*` +
+			`(?:avg read rate: (?P<io_read_rate_13>[\d.]+) MB/s, avg write rate: (?P<io_write_rate_13>[\d.]+) MB/s)?,?\s*` + // Postgres 13 and older
+			`(?:WAL usage: (?P<wal_records>\d+) records, (?P<wal_fpis>\d+) full page images, (?P<wal_bytes>\d+) bytes)?,?\s*` + // Postgres 14+
+			`(?:, (?P<wal_buffers_full>\d+) buffers full)?\s*` + // Postgres 18+
+			`system usage: CPU(?:(?: (?P<cpu_s>[\d.]+)s/(?P<cpu_u>[\d.]+)u sec elapsed (?P<cpu_tot>[\d.]+) sec)|(?:: user: (?P<cpu_user>[\d.]+) s, system: (?P<cpu_system>[\d.]+) s, elapsed: (?P<cpu_elapsed>[\d.]+) s))`),
+		secrets: []state.LogSecretKind{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 	},
 }
 var autoAnalyze = analyzeGroup{
@@ -108,7 +110,7 @@ var autoAnalyze = analyzeGroup{
 		regexp: regexp.MustCompile(`^automatic analyze of table "(.+?)"\s*` +
 			`(?:I/O timings: read: ([\d.]+) ms, write: ([\d.]+) ms)?\s*` + // Postgres 14+
 			`(?:avg read rate: ([\d.]+) MB/s, avg write rate: ([\d.]+) MB/s)?\s*` + // Postgres 14+
-			`(?:buffer usage: (\d+) hits, (\d+) misses, (\d+) dirtied)?\s*` + // Postgres 14+
+			`(?:buffer usage: (\d+) hits, (\d+) (?:misses|reads), (\d+) dirtied)?\s*` + // Postgres 14+
 			`system usage: CPU(?:(?: ([\d.]+)s/([\d.]+)u sec elapsed ([\d.]+) sec)|(?:: user: ([\d.]+) s, system: ([\d.]+) s, elapsed: ([\d.]+) s))`),
 		secrets: []state.LogSecretKind{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 	},
@@ -1660,15 +1662,17 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 	}
 	if matchesPrefix(logLine, autoVacuum.primary.prefixes) {
 		logLine, parts = matchLogLine(logLine, autoVacuum.primary)
-		if len(parts) == 49 {
+		if len(parts) == 61 {
 			var readRatePart, writeRatePart, kernelPart, userPart, elapsedPart string
 
-			aggressiveVacuum := parts[1] == "aggressive "
+			primary := autoVacuum.primary.regexp
 
-			// Part 2 (anti-wraparound) is only present on Postgres 12+, and dealt with at the end
+			aggressiveVacuum := parts[primary.SubexpIndex("aggressive")] == "aggressive "
+
+			// anti-wraparound is dealt with at the end
 
 			logLine.Classification = autoVacuum.classification
-			subParts := strings.SplitN(parts[3], ".", 3)
+			subParts := strings.SplitN(parts[primary.SubexpIndex("relname")], ".", 3)
 			logLine.Database = subParts[0]
 			if len(subParts) >= 2 {
 				logLine.SchemaName = subParts[1]
@@ -1677,47 +1681,47 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 				logLine.RelationName = subParts[2]
 			}
 
-			numIndexScans, _ := strconv.ParseInt(parts[4], 10, 64)
-			pagesRemoved, _ := strconv.ParseInt(parts[5], 10, 64)
-			relPages, _ := strconv.ParseInt(parts[6], 10, 64)
+			numIndexScans, _ := strconv.ParseInt(parts[primary.SubexpIndex("idx_scans")], 10, 64)
+			pagesRemoved, _ := strconv.ParseInt(parts[primary.SubexpIndex("pages_removed")], 10, 64)
+			relPages, _ := strconv.ParseInt(parts[primary.SubexpIndex("pages_remain")], 10, 64)
 
-			// Parts 7 to 10 (scanned, pinskipped and frozenskipped pages) are version dependent and dealt with later
+			// scanned, pinskipped and frozenskipped pages are version dependent and dealt with later
 
-			tuplesDeleted, _ := strconv.ParseInt(parts[11], 10, 64)
-			newRelTuples, _ := strconv.ParseInt(parts[12], 10, 64)
+			tuplesDeleted, _ := strconv.ParseInt(parts[primary.SubexpIndex("tuples_removed")], 10, 64)
+			newRelTuples, _ := strconv.ParseInt(parts[primary.SubexpIndex("tuples_remain")], 10, 64)
 
 			// In Postgres 15+ the internal name changed from "new_dead_tuples" to "recently_dead_tuples",
 			// to distinguish it from the added "missed_dead_tuples" - we're keeping the old name for compatibility
-			newDeadTuples, _ := strconv.ParseInt(parts[13], 10, 64)
+			newDeadTuples, _ := strconv.ParseInt(parts[primary.SubexpIndex("tuples_new_dead")], 10, 64)
 
-			// Parts 14 to 22 (missed dead tuples, OldestXmin, frozenxid and minmxid advancement) are version dependent and dealt with later
-			// Parts 23 to 25 (frozen pages information) is only present on Postgres 16+ and dealt with later
-			// Parts 26 to 32 (index scan info, I/O read/write timings) are only present on Postgres 14+ and dealt with later
+			// (missed dead tuples, OldestXmin, frozenxid and minmxid advancement) are version dependent and dealt with later
+			// (frozen pages information) is only present on Postgres 16+ and dealt with later
+			// (index scan info, I/O read/write timings) are only present on Postgres 14+ and dealt with later
 
-			if parts[33] != "" { // Postgres 14+, with I/O information before buffers
-				readRatePart = parts[33]
-				writeRatePart = parts[34]
+			if parts[primary.SubexpIndex("io_read_rate")] != "" { // Postgres 14+, with I/O information before buffers
+				readRatePart = parts[primary.SubexpIndex("io_read_rate")]
+				writeRatePart = parts[primary.SubexpIndex("io_write_rate")]
 			} else { // Postgres 13 and older
-				readRatePart = parts[38]
-				writeRatePart = parts[39]
+				readRatePart = parts[primary.SubexpIndex("io_read_rate_13")]
+				writeRatePart = parts[primary.SubexpIndex("io_write_rate_13")]
 			}
 			readRateMb, _ := strconv.ParseFloat(readRatePart, 64)
 			writeRateMb, _ := strconv.ParseFloat(writeRatePart, 64)
 
-			vacuumPageHit, _ := strconv.ParseInt(parts[35], 10, 64)
-			vacuumPageMiss, _ := strconv.ParseInt(parts[36], 10, 64)
-			vacuumPageDirty, _ := strconv.ParseInt(parts[37], 10, 64)
+			vacuumPageHit, _ := strconv.ParseInt(parts[primary.SubexpIndex("buffer_hits")], 10, 64)
+			vacuumPageMiss, _ := strconv.ParseInt(parts[primary.SubexpIndex("buffer_misses")], 10, 64)
+			vacuumPageDirty, _ := strconv.ParseInt(parts[primary.SubexpIndex("buffers_dirtied")], 10, 64)
 
-			// Parts 40 to 42 (WAL Usage) are only present on Postgres 13+ and dealt with later
+			// WAL Usage is only present on Postgres 13+ and dealt with later
 
-			if parts[43] != "" {
-				kernelPart = parts[43]
-				userPart = parts[44]
-				elapsedPart = parts[45]
+			if parts[primary.SubexpIndex("cpu_u")] != "" {
+				kernelPart = parts[primary.SubexpIndex("cpu_s")]
+				userPart = parts[primary.SubexpIndex("cpu_u")]
+				elapsedPart = parts[primary.SubexpIndex("cpu_tot")]
 			} else {
-				userPart = parts[46]
-				kernelPart = parts[47]
-				elapsedPart = parts[48]
+				userPart = parts[primary.SubexpIndex("cpu_user")]
+				kernelPart = parts[primary.SubexpIndex("cpu_system")]
+				elapsedPart = parts[primary.SubexpIndex("cpu_elapsed")]
 			}
 			rusageKernelMode, _ := strconv.ParseFloat(kernelPart, 64)
 			rusageUserMode, _ := strconv.ParseFloat(userPart, 64)
@@ -1735,73 +1739,81 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 			}
 			// List anti-wraparound status either if the message indicates that it is, or if
 			// our Postgres version is new enough (13+) as determined by the presence of WAL
-			// record information (parts[40])
+			// record information.
 			//
 			// Note that Postgres 12 is the odd one out, because it already had anti-wraparound
 			// status displayed, but we have no way to distinguish it from versions that didn't
 			// have it - there, only include the case when the vacuum indeed is a anti-wraparound
 			// vacuum.
-			if parts[2] != "" || parts[40] != "" {
-				antiWraparound := parts[2] == "to prevent wraparound "
+			if parts[primary.SubexpIndex("wraparound")] != "" || parts[primary.SubexpIndex("wal_records")] != "" {
+				antiWraparound := parts[primary.SubexpIndex("wraparound")] == "to prevent wraparound "
 				logLine.Details["anti_wraparound"] = antiWraparound
 			}
-			if parts[9] != "" { // Postgres 15+, with scanned pages, but no pinskipped/frozenskipped counter
-				scannedPages, _ := strconv.ParseInt(parts[9], 10, 64)
-				scannedPagesPercent, _ := strconv.ParseFloat(parts[10], 64)
+			if parts[primary.SubexpIndex("pages_scanned")] != "" { // Postgres 15+, with scanned pages, but no pinskipped/frozenskipped counter
+				scannedPages, _ := strconv.ParseInt(parts[primary.SubexpIndex("pages_scanned")], 10, 64)
+				scannedPagesPercent, _ := strconv.ParseFloat(parts[primary.SubexpIndex("pages_scanned_pct")], 64)
 				logLine.Details["scanned_pages"] = scannedPages
 				logLine.Details["scanned_pages_percent"] = scannedPagesPercent
 			} else { // Postgres 14 and older
-				pinskippedPages, _ := strconv.ParseInt(parts[7], 10, 64)
-				frozenskippedPages, _ := strconv.ParseInt(parts[8], 10, 64)
+				pinskippedPages, _ := strconv.ParseInt(parts[primary.SubexpIndex("pages_skipped_pins")], 10, 64)
+				frozenskippedPages, _ := strconv.ParseInt(parts[primary.SubexpIndex("pages_skipped_frozen")], 10, 64)
 				logLine.Details["pinskipped_pages"] = pinskippedPages
 				logLine.Details["frozenskipped_pages"] = frozenskippedPages
 			}
-			if parts[14] != "" { // Postgres 10 to 14
-				oldestXmin, _ := strconv.ParseInt(parts[14], 10, 64)
+			if parts[primary.SubexpIndex("oldest_xmin")] != "" { // Postgres 10 to 14
+				oldestXmin, _ := strconv.ParseInt(parts[primary.SubexpIndex("oldest_xmin")], 10, 64)
 				logLine.Details["oldest_xmin"] = oldestXmin
-			} else if parts[17] != "" { // Postgres 15+
-				oldestXmin, _ := strconv.ParseInt(parts[17], 10, 64)
-				oldestXminAge, _ := strconv.ParseInt(parts[18], 10, 64)
+			} else if parts[primary.SubexpIndex("cutoff")] != "" { // Postgres 15+
+				oldestXmin, _ := strconv.ParseInt(parts[primary.SubexpIndex("cutoff")], 10, 64)
+				oldestXminAge, _ := strconv.ParseInt(parts[primary.SubexpIndex("cutoff_age")], 10, 64)
 				logLine.Details["oldest_xmin"] = oldestXmin
 				logLine.Details["oldest_xmin_age"] = oldestXminAge
 			}
-			if parts[15] != "" { // Postgres 15+, if dead tuples were skipped due to cleanup lock contention
-				missedDeadTuples, _ := strconv.ParseInt(parts[15], 10, 64)
-				missedDeadPages, _ := strconv.ParseInt(parts[16], 10, 64)
+			if parts[primary.SubexpIndex("missed_dead_tuples")] != "" { // Postgres 15+, if dead tuples were skipped due to cleanup lock contention
+				missedDeadTuples, _ := strconv.ParseInt(parts[primary.SubexpIndex("missed_dead_tuples")], 10, 64)
+				missedDeadPages, _ := strconv.ParseInt(parts[primary.SubexpIndex("missed_dead_pages")], 10, 64)
 				logLine.Details["missed_dead_tuples"] = missedDeadTuples
 				logLine.Details["missed_dead_pages"] = missedDeadPages
 			}
-			if parts[19] != "" { // Postgres 15+, if frozenxid was updated
-				newRelfrozenXid, _ := strconv.ParseInt(parts[19], 10, 64)
-				newRelfrozenXidDiff, _ := strconv.ParseInt(parts[20], 10, 64)
+			if parts[primary.SubexpIndex("new_frozenxid")] != "" { // Postgres 15+, if frozenxid was updated
+				newRelfrozenXid, _ := strconv.ParseInt(parts[primary.SubexpIndex("new_frozenxid")], 10, 64)
+				newRelfrozenXidDiff, _ := strconv.ParseInt(parts[primary.SubexpIndex("new_frozenxid_diff")], 10, 64)
 				logLine.Details["new_relfrozenxid"] = newRelfrozenXid
 				logLine.Details["new_relfrozenxid_diff"] = newRelfrozenXidDiff
 			}
-			if parts[21] != "" { // Postgres 15+, if minmxid was updated
-				newRelminMxid, _ := strconv.ParseInt(parts[21], 10, 64)
-				newRelminMxidDiff, _ := strconv.ParseInt(parts[22], 10, 64)
+			if parts[primary.SubexpIndex("new_minmxid")] != "" { // Postgres 15+, if minmxid was updated
+				newRelminMxid, _ := strconv.ParseInt(parts[primary.SubexpIndex("new_minmxid")], 10, 64)
+				newRelminMxidDiff, _ := strconv.ParseInt(parts[primary.SubexpIndex("new_minmxid_diff")], 10, 64)
 				logLine.Details["new_relminmxid"] = newRelminMxid
 				logLine.Details["new_relminmxid_diff"] = newRelminMxidDiff
 			}
-			if parts[23] != "" { // Postgres 16+
-				frozenPages, _ := strconv.ParseInt(parts[23], 10, 64)
-				frozenPagePercent, _ := strconv.ParseFloat(parts[24], 64)
-				tuplesFrozen, _ := strconv.ParseInt(parts[25], 10, 64)
+			if parts[primary.SubexpIndex("frozen_pages")] != "" { // Postgres 16+
+				frozenPages, _ := strconv.ParseInt(parts[primary.SubexpIndex("frozen_pages")], 10, 64)
+				frozenPagePercent, _ := strconv.ParseFloat(parts[primary.SubexpIndex("frozen_pages_pct")], 64)
+				tuplesFrozen, _ := strconv.ParseInt(parts[primary.SubexpIndex("frozen_tuples")], 10, 64)
 				logLine.Details["frozen_pages"] = frozenPages
 				logLine.Details["frozen_page_percent"] = frozenPagePercent
 				logLine.Details["tuples_frozen"] = tuplesFrozen
 			}
-			if parts[26] != "" {
-				lpdeadItemPages, _ := strconv.ParseInt(parts[27], 10, 64)
-				lpdeadItemPagePercent, _ := strconv.ParseFloat(parts[28], 64)
-				lpdeadItems, _ := strconv.ParseInt(parts[29], 10, 64)
-				logLine.Details["lpdead_index_scan"] = parts[26] // not needed / needed / bypassed / bypassed by failsafe
+			if parts[primary.SubexpIndex("vm_all_visible")] != "" { // Postgres 18+
+				vmAllVisiblePages, _ := strconv.ParseInt(parts[primary.SubexpIndex("vm_all_visible")], 10, 64)
+				vmAllFrozenPages, _ := strconv.ParseInt(parts[primary.SubexpIndex("vm_all_frozen")], 10, 64)
+				vmPrevAllVisiblePages, _ := strconv.ParseInt(parts[primary.SubexpIndex("vm_all_visible_prev")], 10, 64)
+				logLine.Details["vm_all_visible_pages"] = vmAllVisiblePages
+				logLine.Details["vm_all_frozen_pages"] = vmAllFrozenPages
+				logLine.Details["vm_prev_all_visible_pages"] = vmPrevAllVisiblePages
+			}
+			if parts[primary.SubexpIndex("idxscan_status")] != "" {
+				lpdeadItemPages, _ := strconv.ParseInt(parts[primary.SubexpIndex("idxscan_pages")], 10, 64)
+				lpdeadItemPagePercent, _ := strconv.ParseFloat(parts[primary.SubexpIndex("idxscan_pages_pct")], 64)
+				lpdeadItems, _ := strconv.ParseInt(parts[primary.SubexpIndex("idxscan_dead")], 10, 64)
+				logLine.Details["lpdead_index_scan"] = parts[primary.SubexpIndex("idxscan_status")] // not needed / needed / bypassed / bypassed by failsafe
 				logLine.Details["lpdead_item_pages"] = lpdeadItemPages
 				logLine.Details["lpdead_item_page_percent"] = lpdeadItemPagePercent
 				logLine.Details["lpdead_items"] = lpdeadItems
 			}
-			if parts[30] != "" {
-				indexParts := autoVacuumIndexRegexp.FindAllStringSubmatch(parts[30], -1)
+			if parts[primary.SubexpIndex("idx_details")] != "" {
+				indexParts := autoVacuumIndexRegexp.FindAllStringSubmatch(parts[primary.SubexpIndex("idx_details")], -1)
 				index_vacuums := make(map[string]interface{})
 				for _, p := range indexParts {
 					numPages, _ := strconv.ParseInt(p[2], 10, 64)
@@ -1817,16 +1829,16 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 				}
 				logLine.Details["index_vacuums"] = index_vacuums
 			}
-			if parts[31] != "" {
-				blkReadTime, _ := strconv.ParseFloat(parts[31], 64)
-				blkWriteTime, _ := strconv.ParseFloat(parts[32], 64)
+			if parts[primary.SubexpIndex("io_read_ms")] != "" {
+				blkReadTime, _ := strconv.ParseFloat(parts[primary.SubexpIndex("io_read_ms")], 64)
+				blkWriteTime, _ := strconv.ParseFloat(parts[primary.SubexpIndex("io_write_ms")], 64)
 				logLine.Details["blk_read_time"] = blkReadTime
 				logLine.Details["blk_write_time"] = blkWriteTime
 			}
-			if parts[40] != "" {
-				walRecords, _ := strconv.ParseInt(parts[40], 10, 64)
-				walFpi, _ := strconv.ParseInt(parts[41], 10, 64)
-				walBytes, _ := strconv.ParseInt(parts[42], 10, 64)
+			if parts[primary.SubexpIndex("wal_records")] != "" {
+				walRecords, _ := strconv.ParseInt(parts[primary.SubexpIndex("wal_records")], 10, 64)
+				walFpi, _ := strconv.ParseInt(parts[primary.SubexpIndex("wal_fpis")], 10, 64)
+				walBytes, _ := strconv.ParseInt(parts[primary.SubexpIndex("wal_bytes")], 10, 64)
 				logLine.Details["wal_records"] = walRecords
 				logLine.Details["wal_fpi"] = walFpi
 				logLine.Details["wal_bytes"] = walBytes
