@@ -103,8 +103,9 @@ var autoVacuum = analyzeGroup{
 			`(?:avg read rate: (?P<io_read_rate_13>[\d.]+) MB/s, avg write rate: (?P<io_write_rate_13>[\d.]+) MB/s)?,?\s*` + // Postgres 13 and older
 			`(?:WAL usage: (?P<wal_records>\d+) records, (?P<wal_fpis>\d+) full page images, (?P<wal_bytes>\d+) bytes)?,?\s*` + // Postgres 14+
 			`(?:, (?P<wal_buffers_full>\d+) buffers full)?\s*` + // Postgres 18+
-			`system usage: CPU(?:(?: (?P<cpu_s>[\d.]+)s/(?P<cpu_u>[\d.]+)u sec elapsed (?P<cpu_tot>[\d.]+) sec)|(?:: user: (?P<cpu_user>[\d.]+) s, system: (?P<cpu_system>[\d.]+) s, elapsed: (?P<cpu_elapsed>[\d.]+) s))`),
-		secrets: []state.LogSecretKind{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+			`system usage: CPU(?:(?: (?P<cpu_s>[\d.]+)s/(?P<cpu_u>[\d.]+)u sec elapsed (?P<cpu_tot>[\d.]+) sec)|(?:: user: (?P<cpu_user>[\d.]+) s, system: (?P<cpu_system>[\d.]+) s, elapsed: (?P<cpu_elapsed>[\d.]+) s))\s*` +
+			`(?:prefetch hit: (?P<alloy_prefetch_hit>\d+) prefetch io: (?P<alloy_prefetch_io>\d+) second prefetch hit: (?P<alloy_second_prefetch_hit>\d+) second prefetch io: (?P<alloy_second_prefetch_io>\d+))?`),
+		secrets: []state.LogSecretKind{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 	},
 }
 var autoAnalyze = analyzeGroup{
@@ -1666,7 +1667,7 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 	}
 	if matchesPrefix(logLine, autoVacuum.primary.prefixes) {
 		logLine, parts = matchLogLine(logLine, autoVacuum.primary)
-		if len(parts) == 58 {
+		if len(parts) == 62 {
 			var readRatePart, writeRatePart, kernelPart, userPart, elapsedPart string
 
 			primary := autoVacuum.primary.regexp
