@@ -93,7 +93,7 @@ var autoVacuum = analyzeGroup{
 			`(?:new relfrozenxid: (?P<new_frozenxid>\d+), which is (?P<new_frozenxid_diff>\d+) XIDs ahead of previous value)?,?\s*` + // Postgres 15+
 			`(?:new relminmxid: (?P<new_minmxid>\d+), which is (?P<new_minmxid_diff>\d+) MXIDs ahead of previous value)?,?\s*` + // Postgres 15+
 			`(?:frozen: (?P<frozen_pages>\d+) pages from table \((?P<frozen_pages_pct>[\d.]+)% of total\) had (?P<frozen_tuples>\d+) tuples frozen)?,?\s*` + // Postgres 16+
-			`(?:visibility map: (?P<vm_all_visible>\d+) pages set all-visible, (?P<vm_all_frozen>\d+) pages set all-frozen \((?P<vm_all_visible_prev>\d+) were all-visible\))?\s*` + // Postgres 18
+			`(?:visibility map: (?P<vm_all_visible>\d+) pages set all-visible, (?P<vm_all_frozen>\d+) pages set all-frozen \((?P<vm_all_visible_prev>\d+) were all-visible\))?\s*` + // Postgres 18+
 			`(?:index scan (?P<idxscan_status>not needed|needed|bypassed|bypassed by failsafe): (?P<idxscan_pages>\d+) pages from table \((?P<idxscan_pages_pct>[\d.]+)% of total\) (?:have|had) (?P<idxscan_dead>\d+) dead item identifiers(?: removed)?)?,?\s*` + // Postgres 14+
 			`(?:max_dead_tuples:(?P<max_dead_tuples>\d+),\s*)?` +
 			`(?P<idx_details>(?:index ".+?": pages: \d+ in total, \d+ newly deleted, \d+ currently deleted, \d+ reusable,?\s*)*)?` + // Postgres 14+
@@ -102,7 +102,7 @@ var autoVacuum = analyzeGroup{
 			`buffer usage: (?P<buffer_hits>\d+) hits, (?P<buffer_misses>\d+) (?:misses|reads), (?P<buffers_dirtied>\d+) dirtied,?\s*` +
 			`(?:avg read rate: (?P<io_read_rate_13>[\d.]+) MB/s, avg write rate: (?P<io_write_rate_13>[\d.]+) MB/s)?,?\s*` + // Postgres 13 and older
 			`(?:WAL usage: (?P<wal_records>\d+) records, (?P<wal_fpis>\d+) full page images, (?P<wal_bytes>\d+) bytes)?,?\s*` + // Postgres 14+
-			`(?:, (?P<wal_buffers_full>\d+) buffers full)?\s*` + // Postgres 18+
+			`(?:(?P<wal_buffers_full>\d+) buffers full)?\s*` + // Postgres 18+
 			`system usage: CPU(?:(?: (?P<cpu_s>[\d.]+)s/(?P<cpu_u>[\d.]+)u sec elapsed (?P<cpu_tot>[\d.]+) sec)|(?:: user: (?P<cpu_user>[\d.]+) s, system: (?P<cpu_system>[\d.]+) s, elapsed: (?P<cpu_elapsed>[\d.]+) s))\s*` +
 			`(?:prefetch hit: (?P<alloy_prefetch_hit>\d+) prefetch io: (?P<alloy_prefetch_io>\d+) second prefetch hit: (?P<alloy_second_prefetch_hit>\d+) second prefetch io: (?P<alloy_second_prefetch_io>\d+))?`),
 		secrets: []state.LogSecretKind{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
@@ -130,12 +130,12 @@ var checkpointStarting = analyzeGroup{
 var checkpointComplete = analyzeGroup{
 	primary: match{
 		regexp: regexp.MustCompile(`^(checkpoint|restartpoint) complete: wrote (\d+) buffers \(([\d\.]+)%\)` +
-			`(?:, wrote (\d+) SLRU buffers)?; ` + // new in 18
+			`(?:, wrote (\d+) SLRU buffers)?; ` + // Postgres 18+
 			`(\d+) (?:transaction log|WAL) file\(s\) added, (\d+) removed, (\d+) recycled; ` +
 			`write=([\d\.]+) s, sync=([\d\.]+) s, total=([\d\.]+) s; ` +
 			`sync files=(\d+), longest=([\d\.]+) s, average=([\d\.]+) s` +
 			`; distance=(\d+) kB, estimate=(\d+) kB` +
-			`(?:; lsn=([A-F0-9]+/[A-F0-9]+), redo lsn=([A-F0-9]+/[A-F0-9]+))?`),
+			`(?:; lsn=([A-F0-9]+/[A-F0-9]+), redo lsn=([A-F0-9]+/[A-F0-9]+))?`), // Postgres 18+
 		secrets: []state.LogSecretKind{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 	},
 }
@@ -234,7 +234,7 @@ var disconnection = analyzeGroup{
 var connectionClientFailedToConnect = analyzeGroup{
 	classification: pganalyze_collector.LogLineInformation_CONNECTION_CLIENT_FAILED_TO_CONNECT,
 	primary: match{
-		prefixes: []string{"incomplete startup packet", "invalid length of startup packet", "no PostgreSQL user name specified in startup packet"},
+		prefixes: []string{"incomplete startup packet", "invalid length of startup packet", "no PostgreSQL user name specified in startup packet", "invalid startup packet layout: expected terminator as last byte"},
 	},
 }
 var connectionLostOpenTx = analyzeGroup{
