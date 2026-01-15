@@ -335,7 +335,7 @@ message Backend {
     WAIT_EVENT_BASEBACKUP_WRITE = 974; // BasebackupWrite (PG15+)
     WAIT_EVENT_BUFFILE_TRUNCATE = 975; // BufFileTruncate (PG17+)
     WAIT_EVENT_COPY_FILE_COPY = 976; // CopyFileCopy (PG18+)
-    WAIT_EVENT_DSM_ALLOCATE = 977; // DsmAllocate (PG15+)
+    WAIT_EVENT_DSM_ALLOCATE = 977; // DsmAllocate (PG16+)
     WAIT_EVENT_RELATION_MAP_REPLACE = 978; // RelationMapReplace (PG17+, renamed from RelationMapSync)
     WAIT_EVENT_VERSION_FILE_SYNC = 979; // VersionFileSync (PG17+, backpatched to 15)
     WAIT_EVENT_VERSION_FILE_WRITE = 980; // VersionFileWrite (PG15+)
