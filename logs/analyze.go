@@ -95,7 +95,7 @@ var autoVacuum = analyzeGroup{
 			`(?:frozen: (?P<frozen_pages>\d+) pages from table \((?P<frozen_pages_pct>[\d.]+)% of total\) had (?P<frozen_tuples>\d+) tuples frozen)?,?\s*` + // Postgres 16+
 			`(?:visibility map: (?P<vm_all_visible>\d+) pages set all-visible, (?P<vm_all_frozen>\d+) pages set all-frozen \((?P<vm_all_visible_prev>\d+) were all-visible\))?\s*` + // Postgres 18+
 			`(?:index scan (?P<idxscan_status>not needed|needed|bypassed|bypassed by failsafe): (?P<idxscan_pages>\d+) pages from table \((?P<idxscan_pages_pct>[\d.]+)% of total\) (?:have|had) (?P<idxscan_dead>\d+) dead item identifiers(?: removed)?)?,?\s*` + // Postgres 14+
-			`(?:max_dead_tuples:(?P<max_dead_tuples>\d+),\s*)?` +
+			`(?:max_dead_tuples:(?P<max_dead_tuples>\d+),\s*)?` + // AlloyDB
 			`(?P<idx_details>(?:index ".+?": pages: \d+ in total, \d+ newly deleted, \d+ currently deleted, \d+ reusable,?\s*)*)?` + // Postgres 14+
 			`(?:I/O timings: read: (?P<io_read_ms>[\d.]+) ms, write: (?P<io_write_ms>[\d.]+) ms)?,?\s*` + // Postgres 14+
 			`(?:avg read rate: (?P<io_read_rate>[\d.]+) MB/s, avg write rate: (?P<io_write_rate>[\d.]+) MB/s)?,?\s*` + // Postgres 14+
@@ -1759,6 +1759,10 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 				scannedPagesPercent, _ := strconv.ParseFloat(parts[primary.SubexpIndex("pages_scanned_pct")], 64)
 				logLine.Details["scanned_pages"] = scannedPages
 				logLine.Details["scanned_pages_percent"] = scannedPagesPercent
+				if parts[primary.SubexpIndex("pages_eagerly_scanned")] != "" {
+					eagerlyScannedPages, _ := strconv.ParseInt(parts[primary.SubexpIndex("pages_eagerly_scanned")], 10, 64)
+					logLine.Details["eagerly_scanned_pages"] = eagerlyScannedPages
+				}
 			} else { // Postgres 14 and older
 				pinskippedPages, _ := strconv.ParseInt(parts[primary.SubexpIndex("pages_skipped_pins")], 10, 64)
 				frozenskippedPages, _ := strconv.ParseInt(parts[primary.SubexpIndex("pages_skipped_frozen")], 10, 64)
@@ -1847,6 +1851,10 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 				logLine.Details["wal_records"] = walRecords
 				logLine.Details["wal_fpi"] = walFpi
 				logLine.Details["wal_bytes"] = walBytes
+				if parts[primary.SubexpIndex("wal_buffers_full")] != "" {
+					walBuffersFull, _ := strconv.ParseInt(parts[primary.SubexpIndex("wal_buffers_full")], 10, 64)
+					logLine.Details["wal_buffers_full"] = walBuffersFull
+				}
 			}
 			contextLine = matchOtherContextLogLine(contextLine)
 			return logLine, statementLine, detailLine, contextLine, hintLine, samples
