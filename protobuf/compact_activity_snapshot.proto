@@ -38,9 +38,14 @@ message Backend {
   }
 
   // ! When changing this, also update mappings/wait_event.json
+  // All the event names are defined in src/backend/utils/activity/wait_event_names.txt
   enum WaitEvent {
     WAIT_EVENT_UNKNOWN = 0;
-    // Source: lwlocknames.txt
+    // WaitEventType: LWLock
+    // Note: in wait_event.json, the following wait events (up until WAIT_EVENT_LWTRANCHE_XACT_BUFFER)
+    // have two definitions - with and without "Lock" suffix.
+    // This suffix was retired in PG13 but accidentally added back in PG 17.0-17.3.
+    // It's safe to remove Lock suffix from here and wait_event.json from PG 18.
     reserved 100; // 0 index was previously BufFreelistLock, leave free for future re-assignment
     WAIT_EVENT_LWLOCK_SHMEM_INDEX_LOCK = 101; // ShmemIndexLock
     WAIT_EVENT_LWLOCK_OID_GEN_LOCK = 102; // OidGenLock
@@ -52,11 +57,11 @@ message Backend {
     WAIT_EVENT_LWLOCK_WAL_WRITE_LOCK = 108; // WALWriteLock
     WAIT_EVENT_LWLOCK_CONTROL_FILE_LOCK = 109; // ControlFileLock
     WAIT_EVENT_LWLOCK_CHECKPOINT_LOCK = 110; // CheckpointLock (removed in 14)
-    WAIT_EVENT_LWLOCK_XACT_SLRU_LOCK = 111; // CLogControlLock, XactSLRULock
-    WAIT_EVENT_LWLOCK_SUBTRANS_SLRU_LOCK = 112; // SubtransControlLock, SubtransSLRULock
+    WAIT_EVENT_LWLOCK_XACT_SLRU_LOCK = 111; // CLogControlLock, XactSLRULock (moved to LWTRANCHE in PG17)
+    WAIT_EVENT_LWLOCK_SUBTRANS_SLRU_LOCK = 112; // SubtransControlLock, SubtransSLRULock (moved to LWTRANCHE in PG17)
     WAIT_EVENT_LWLOCK_MULTI_XACT_GEN_LOCK = 113; // MultiXactGenLock
-    WAIT_EVENT_LWLOCK_MULTI_XACT_OFFSET_SLRU_LOCK = 114; // MultiXactOffsetControlLock, MultiXactOffsetSLRULock
-    WAIT_EVENT_LWLOCK_MULTI_XACT_MEMBER_SLRU_LOCK = 115; // MultiXactMemberControlLock, MultiXactMemberSLRULock
+    WAIT_EVENT_LWLOCK_MULTI_XACT_OFFSET_SLRU_LOCK = 114; // MultiXactOffsetControlLock, MultiXactOffsetSLRULock (moved to LWTRANCHE in PG17)
+    WAIT_EVENT_LWLOCK_MULTI_XACT_MEMBER_SLRU_LOCK = 115; // MultiXactMemberControlLock, MultiXactMemberSLRULock (moved to LWTRANCHE in PG17)
     WAIT_EVENT_LWLOCK_REL_CACHE_INIT_LOCK = 116; // RelCacheInitLock
     WAIT_EVENT_LWLOCK_CHECKPOINTER_COMM_LOCK = 117; // CheckpointerCommLock
     WAIT_EVENT_LWLOCK_TWO_PHASE_STATE_LOCK = 118; // TwoPhaseStateLock
@@ -67,19 +72,19 @@ message Backend {
     WAIT_EVENT_LWLOCK_AUTOVACUUM_SCHEDULE_LOCK = 123; // AutovacuumScheduleLock
     WAIT_EVENT_LWLOCK_SYNC_SCAN_LOCK = 124; // SyncScanLock
     WAIT_EVENT_LWLOCK_RELATION_MAPPING_LOCK = 125; // RelationMappingLock
-    WAIT_EVENT_LWLOCK_NOTIFY_SLRU_LOCK = 126; // AsyncCtlLock, NotifySLRULock
+    WAIT_EVENT_LWLOCK_NOTIFY_SLRU_LOCK = 126; // AsyncCtlLock, NotifySLRULock (moved to LWTRANCHE in PG17)
     WAIT_EVENT_LWLOCK_NOTIFY_QUEUE_LOCK = 127; // AsyncQueueLock, NotifyQueueLock
     WAIT_EVENT_LWLOCK_SERIALIZABLE_XACT_HASH_LOCK = 128; // SerializableXactHashLock
     WAIT_EVENT_LWLOCK_SERIALIZABLE_FINISHED_LIST_LOCK = 129; // SerializableFinishedListLock
     WAIT_EVENT_LWLOCK_SERIALIZABLE_PREDICATE_LIST_LOCK = 130; // SerializablePredicateLockListLock, SerializablePredicateListLock
-    WAIT_EVENT_LWLOCK_SERIAL_SLRU_LOCK = 131; // OldSerXidLock, SerialSLRULock
-    WAIT_EVENT_LWLOCK_SYNC_REP_LOCK = 132; // SyncRepLock
+    WAIT_EVENT_LWLOCK_SERIAL_SLRU_LOCK = 131; // OldSerXidLock, SerialSLRULock (moved to LWTRANCHE in PG17)
+    WAIT_EVENT_LWLOCK_SYNC_REP_LOCK = 132; // SyncRepLock (The display name has duplicate in WAIT_EVENT_SYNC_REP)
     WAIT_EVENT_LWLOCK_BACKGROUND_WORKER_LOCK = 133; // BackgroundWorkerLock
     WAIT_EVENT_LWLOCK_DYNAMIC_SHARD_MEMORY_CONTROL_LOCK = 134; // DynamicSharedMemoryControlLock
     WAIT_EVENT_LWLOCK_AUTO_FILE_LOCK = 135; // AutoFileLock
     WAIT_EVENT_LWLOCK_REPLICATION_SLOT_ALLOCATION_LOCK = 136; // ReplicationSlotAllocationLock
     WAIT_EVENT_LWLOCK_REPLICATION_SLOT_CONTROL_LOCK = 137; // ReplicationSlotControlLock
-    WAIT_EVENT_LWLOCK_COMMIT_TS_SLRU_LOCK = 138; // CommitTsControlLock, CommitTsSLRULock
+    WAIT_EVENT_LWLOCK_COMMIT_TS_SLRU_LOCK = 138; // CommitTsControlLock, CommitTsSLRULock (moved to LWTRANCHE in PG17)
     WAIT_EVENT_LWLOCK_COMMIT_TS_LOCK = 139; // CommitTsLock
     WAIT_EVENT_LWLOCK_REPLICATION_ORIGIN_LOCK = 140; // ReplicationOriginLock
     WAIT_EVENT_LWLOCK_MULTI_XACT_TRUNCATION_LOCK = 141; // MultiXactTruncationLock
@@ -90,7 +95,13 @@ message Backend {
     // (Jumping the number here as 146- is taken by LWTRANCHE)
     WAIT_EVENT_LWLOCK_WRAP_LIMITS_VACUUM_LOCK = 180; // WrapLimitsVacuumLock
     WAIT_EVENT_LWLOCK_NOTIFY_QUEUE_TAIL_LOCK = 181; // NotifyQueueTailLock
-    // Source: lwlock.h (BuiltinTrancheIds), lwlock.c (BuiltinTrancheNames)
+    WAIT_EVENT_LWLOCK_WAIT_EVENT_CUSTOM_LOCK = 182; // WaitEventExtensionLock (PG16), WaitEventCustomLock (PG17+)
+    WAIT_EVENT_LWLOCK_WAL_SUMMARIZER_LOCK = 183; // WALSummarizerLock (PG17+)
+    WAIT_EVENT_LWLOCK_DSM_REGISTRY_LOCK = 184; // DSMRegistryLock (PG17+)
+    WAIT_EVENT_LWLOCK_INJECTION_POINT_LOCK = 185; // InjectionPointLock (PG17+)
+    WAIT_EVENT_LWLOCK_SERIAL_CONTROL_LOCK = 186; // SerialControlLock (PG17+)
+    WAIT_EVENT_LWLOCK_AIO_WORKER_SUBMISSION_QUEUE = 187; // AioWorkerSubmissionQueue (PG18+)
+    // WaitEventType: LWLock
     WAIT_EVENT_LWTRANCHE_XACT_BUFFER = 146; // clog, XactBuffer
     WAIT_EVENT_LWTRANCHE_COMMITTS_BUFFER = 147; // commit_timestamp, CommitTSBuffer
     WAIT_EVENT_LWTRANCHE_SUBTRANS_BUFFER = 148; // subtrans, SubtransBuffer
@@ -100,7 +111,7 @@ message Backend {
     WAIT_EVENT_LWTRANCHE_SERIAL_BUFFER = 152; // oldserxid, SerialBuffer
     WAIT_EVENT_LWTRANCHE_WAL_INSERT = 153; // wal_insert, WALInsert
     WAIT_EVENT_LWTRANCHE_BUFFER_CONTENT = 154; // buffer_content, BufferContent
-    WAIT_EVENT_LWTRANCHE_BUFFER_IO = 155; // buffer_io, BufferIO
+    WAIT_EVENT_LWTRANCHE_BUFFER_IO = 155; // buffer_io, BufferIO (moved to IPC in PG14 and became BufferIo in PG17)
     WAIT_EVENT_LWTRANCHE_REPLICATION_ORIGIN_STATE = 156; // replication_origin, ReplicationOriginState
     WAIT_EVENT_LWTRANCHE_REPLICATION_SLOT_IO = 157; // replication_slot_io, ReplicationSlotIO
     WAIT_EVENT_LWTRANCHE_LOCK_FASTPATH = 158; // proc, LockFastPath
@@ -116,28 +127,37 @@ message Backend {
     WAIT_EVENT_LWTRANCHE_SHARED_TIDBITMAP = 168; // tbm, SharedTidBitmap
     WAIT_EVENT_LWTRANCHE_PARALLEL_APPEND = 169; // parallel_append, ParallelAppend
     WAIT_EVENT_LWTRANCHE_PER_XACT_PREDICATE_LIST = 170; // serializable_xact, PerXactPredicateList
-    // Source: lock.h (LockTagType enum), lockfuncs.c (LockTagTypeNames variable)
+    // (Jumping the number here as 180- is taken by LWLOCK above)
+    WAIT_EVENT_LWTRANCHE_PARALLEL_BTREE_SCAN = 1101; // ParallelBtreeScan (PG17+)
+    WAIT_EVENT_LWTRANCHE_PGSTATS_DSA = 1102; // PgStatsDSA (PG15+)
+    WAIT_EVENT_LWTRANCHE_PGSTATS_HASH = 1103; // PgStatsHash (PG15+)
+    WAIT_EVENT_LWTRANCHE_PGSTATS_DATA = 1104; // PgStatsData (PG15+)
+    WAIT_EVENT_LWTRANCHE_LAUNCHER_DSA = 1105; // LogicalRepLauncherDSA (PG16+)
+    WAIT_EVENT_LWTRANCHE_LAUNCHER_HASH = 1106; // LogicalRepLauncherHash (PG16+)
+    WAIT_EVENT_LWTRANCHE_DSM_REGISTRY_DSA = 1107; // DSMRegistryDSA (PG17+)
+    WAIT_EVENT_LWTRANCHE_DSM_REGISTRY_HASH = 1108; // DSMRegistryHash (PG17+)
+    WAIT_EVENT_LWTRANCHE_PARALLEL_VACUUM_DSA = 1109; // ParallelVacuumDSA (PG17+)
+    WAIT_EVENT_LWTRANCHE_AIO_URING_COMPLETION = 1110; // AioUringCompletion (PG18+)
+    // WaitEventType: Lock
     WAIT_EVENT_LOCKTAG_RELATION = 200; // relation
-    WAIT_EVENT_LOCKTAG_RELATION_EXTEND = 201;  // extend
+    WAIT_EVENT_LOCKTAG_RELATION_EXTEND = 201; // extend
     WAIT_EVENT_LOCKTAG_PAGE = 202; // page
     WAIT_EVENT_LOCKTAG_TUPLE = 203; // tuple
     WAIT_EVENT_LOCKTAG_TRANSACTION = 204; // transactionid
     WAIT_EVENT_LOCKTAG_VIRTUALTRANSACTION = 205; // virtualxid
-    WAIT_EVENT_LOCKTAG_SPECULATIVE_TOKEN = 206;  // speculative token, spectoken
+    WAIT_EVENT_LOCKTAG_SPECULATIVE_TOKEN = 206; // speculative token, spectoken
     WAIT_EVENT_LOCKTAG_OBJECT = 207; // object
     WAIT_EVENT_LOCKTAG_USERLOCK = 208; // userlock
     WAIT_EVENT_LOCKTAG_ADVISORY = 209; // advisory
     WAIT_EVENT_LOCKTAG_DABASE_FROZEN_IDS = 210; // frozenid
-    // Source: wait_event.c (pgstat_get_wait_event function)
-    // Before 14: pgstat.c (pgstat_get_wait_event function)
+    WAIT_EVENT_LOCKTAG_APPLY_TRANSACTION = 211; // applytransaction (PG16+)
+    // WaitEventType: BufferPin
     WAIT_EVENT_BUFFER_PIN = 300; // BufferPin
-    // Source: wait_event.c (pgstat_get_wait_event function)
-    // Before 14: pgstat.c (pgstat_get_wait_event function)
+    // WaitEventType: Extension
     WAIT_EVENT_EXTENSION = 400; // Extension
     // Wait events from extensions bundled with Postgres as part of contrib
     WAIT_EVENT_PG_STAT_STATEMENTS = 401; // pg_stat_statements
-    // Source: wait_event.h (WaitEventActivity enum), wait_event.c (pgstat_get_wait_activity function)
-    // Before 14: pgstat.h (WaitEventActivity enum), pgstat.c (pgstat_get_wait_activity function)
+    // WaitEventType: Activity
     WAIT_EVENT_ARCHIVER_MAIN = 500; // ArchiverMain
     WAIT_EVENT_AUTOVACUUM_MAIN = 501; // AutoVacuumMain
     WAIT_EVENT_BGWRITER_HIBERNATE = 502; // BgWriterHibernate
@@ -145,26 +165,31 @@ message Backend {
     WAIT_EVENT_CHECKPOINTER_MAIN = 504; // CheckpointerMain
     WAIT_EVENT_LOGICAL_APPLY_MAIN = 505; // LogicalApplyMain
     WAIT_EVENT_LOGICAL_LAUNCHER_MAIN = 506; // LogicalLauncherMain
-    WAIT_EVENT_PGSTAT_MAIN = 507; // PgStatMain
-    WAIT_EVENT_RECOVERY_WAL_ALL = 508; // RecoveryWalAll
+    WAIT_EVENT_PGSTAT_MAIN = 507; // PgStatMain (removed in 15)
+    WAIT_EVENT_RECOVERY_WAL_ALL = 508; // RecoveryWalAll (removed in 14)
     WAIT_EVENT_RECOVERY_WAL_STREAM = 509; // RecoveryWalStream
     WAIT_EVENT_SYSLOGGER_MAIN = 510; // SysLoggerMain
     WAIT_EVENT_WAL_RECEIVER_MAIN = 511; // WalReceiverMain
     WAIT_EVENT_WAL_SENDER_MAIN = 512; // WalSenderMain
     WAIT_EVENT_WAL_WRITER_MAIN = 513; // WalWriterMain
-    // Source: wait_event.h (WaitEventClient enum), wait_event.c (pgstat_get_wait_client function)
-    // Before 14: pgstat.h (WaitEventClient enum), pgstat.c (pgstat_get_wait_client function)
+    WAIT_EVENT_CHECKPOINTER_SHUTDOWN = 514; // CheckpointerShutdown (PG18+)
+    WAIT_EVENT_IO_WORKER_MAIN = 515; // IOWorkerMain (PG18+)
+    WAIT_EVENT_LOGICAL_PARALLEL_APPLY_MAIN = 516; // LogicalParallelApplyMain (PG16+)
+    WAIT_EVENT_REPLICATION_SLOTSYNC_MAIN = 517; // ReplicationSlotsyncMain (PG17+)
+    WAIT_EVENT_REPLICATION_SLOTSYNC_SHUTDOWN = 518; // ReplicationSlotsyncShutdown (PG17+)
+    WAIT_EVENT_WAL_SUMMARIZER_WAL = 519; // WalSummarizerWal (PG17+)
+    // WaitEventType: Client
     WAIT_EVENT_CLIENT_READ = 600; // ClientRead
     WAIT_EVENT_CLIENT_WRITE = 601; // ClientWrite
     WAIT_EVENT_LIBPQWALRECEIVER_CONNECT = 602; // LibPQWalReceiverConnect
     WAIT_EVENT_LIBPQWALRECEIVER_RECEIVE = 603; // LibPQWalReceiverReceive
     WAIT_EVENT_SSL_OPEN_SERVER = 604; // SSLOpenServer
-    WAIT_EVENT_WAL_RECEIVER_WAIT_START = 605; // WalReceiverWaitStart
+    WAIT_EVENT_WAL_RECEIVER_WAIT_START = 605; // WalReceiverWaitStart (moved to IPC in PG18)
     WAIT_EVENT_WAL_SENDER_WAIT_WAL = 606; // WalSenderWaitForWAL
     WAIT_EVENT_WAL_SENDER_WRITE_DATA = 607; // WalSenderWriteData
     WAIT_EVENT_GSS_OPEN_SERVER = 608; // GSSOpenServer
-    // Source: wait_event.h (WaitEventIPC enum), wait_event.c (pgstat_get_wait_ipc function)
-    // Before 14: pgstat.h (WaitEventIPC enum), pgstat.c (pgstat_get_wait_ipc function)
+    WAIT_EVENT_WAIT_FOR_STANDBY_CONFIRMATION = 609; // WaitForStandbyConfirmation (PG16+)
+    // WaitEventType: IPC
     WAIT_EVENT_BGWORKER_SHUTDOWN = 700; // BgWorkerShutdown
     WAIT_EVENT_BGWORKER_STARTUP = 701; // BgWorkerStartup
     WAIT_EVENT_BTREE_PAGE = 702; // BtreePage
@@ -177,12 +202,12 @@ message Backend {
     WAIT_EVENT_HASH_BUILD_ELECT = 709; // Hash/Build/Electing, HashBuildElect
     WAIT_EVENT_HASH_BUILD_HASH_INNER = 710; // Hash/Build/HashingInner, HashBuildHashInner
     WAIT_EVENT_HASH_BUILD_HASH_OUTER = 711; // Hash/Build/HashingOuter, HashBuildHashOuter
-    WAIT_EVENT_HASH_GROW_BATCHES_ALLOCATE = 712; // Hash/GrowBatches/Allocating, HashGrowBatchesAllocate
+    WAIT_EVENT_HASH_GROW_BATCHES_ALLOCATE = 712; // Hash/GrowBatches/Allocating, HashGrowBatchesAllocate (renamed to Reallocate in 18)
     WAIT_EVENT_HASH_GROW_BATCHES_DECIDE = 713; // Hash/GrowBatches/Deciding, HashGrowBatchesDecide
     WAIT_EVENT_HASH_GROW_BATCHES_ELECT = 714; // Hash/GrowBatches/Electing, HashGrowBatchesElect
     WAIT_EVENT_HASH_GROW_BATCHES_FINISH = 715; // Hash/GrowBatches/Finishing, HashGrowBatchesFinish
     WAIT_EVENT_HASH_GROW_BATCHES_REPARTITION = 716; // Hash/GrowBatches/Repartitioning, HashGrowBatchesRepartition
-    WAIT_EVENT_HASH_GROW_BUCKETS_ALLOCATE = 717; // Hash/GrowBuckets/Allocating, HashGrowBucketsAllocate
+    WAIT_EVENT_HASH_GROW_BUCKETS_ALLOCATE = 717; // Hash/GrowBuckets/Allocating, HashGrowBucketsAllocate (renamed to Reallocate in 18)
     WAIT_EVENT_HASH_GROW_BUCKETS_ELECT = 718; // Hash/GrowBuckets/Electing, HashGrowBucketsElect
     WAIT_EVENT_HASH_GROW_BUCKETS_REINSERT = 719; // Hash/GrowBuckets/Reinserting, HashGrowBucketsReinsert
     WAIT_EVENT_LOGICAL_SYNC_DATA = 720; // LogicalSyncData
@@ -208,8 +233,20 @@ message Backend {
     WAIT_EVENT_RECOVERY_CONFLICT_SNAPSHOT = 740; // RecoveryConflictSnapshot
     WAIT_EVENT_RECOVERY_CONFLICT_TABLESPACE = 741; // RecoveryConflictTablespace
     WAIT_EVENT_RECOVERY_PAUSE = 742; // RecoveryPause
-    // Source: wait_event.h (WaitEventTimeout enum), wait_event.c (pgstat_get_wait_timeout function)
-    // Before 14: pgstat.h (WaitEventTimeout enum), pgstat.c (pgstat_get_wait_timeout function)
+    WAIT_EVENT_ARCHIVE_CLEANUP_COMMAND = 743; // ArchiveCleanupCommand (PG15+)
+    WAIT_EVENT_ARCHIVE_COMMAND = 744; // ArchiveCommand (PG15+)
+    WAIT_EVENT_CHECKPOINT_DELAY_COMPLETE = 745; // CheckpointDelayComplete (PG18+)
+    WAIT_EVENT_CHECKPOINT_DELAY_START = 746; // CheckpointDelayStart (PG18+)
+    WAIT_EVENT_HASH_GROW_BATCHES_REALLOCATE = 747; // HashGrowBatchesReallocate (PG18+, renamed from Allocate)
+    WAIT_EVENT_HASH_GROW_BUCKETS_REALLOCATE = 748; // HashGrowBucketsReallocate (PG18+, renamed from Allocate)
+    WAIT_EVENT_LOGICAL_APPLY_SEND_DATA = 749; // LogicalApplySendData (PG16+)
+    WAIT_EVENT_LOGICAL_PARALLEL_APPLY_STATE_CHANGE = 750; // LogicalParallelApplyStateChange (PG16+)
+    WAIT_EVENT_MULTIXACT_CREATION = 751; // MultixactCreation (PG17+)
+    WAIT_EVENT_RECOVERY_END_COMMAND = 752; // RecoveryEndCommand (PG15+)
+    WAIT_EVENT_RESTORE_COMMAND = 753; // RestoreCommand (PG15+)
+    WAIT_EVENT_WAL_RECEIVER_EXIT = 754; // WalReceiverExit (PG14+)
+    WAIT_EVENT_WAL_SUMMARY_READY = 755; // WalSummaryReady (PG17+)
+    // WaitEventType: Timeout
     WAIT_EVENT_BASE_BACKUP_THROTTLE = 800; // BaseBackupThrottle
     WAIT_EVENT_PG_SLEEP = 801; // PgSleep
     WAIT_EVENT_RECOVERY_APPLY_DELAY = 802; // RecoveryApplyDelay
@@ -217,8 +254,10 @@ message Backend {
     WAIT_EVENT_REGISTER_SYNC_REQUEST = 804; // RegisterSyncRequest
     WAIT_EVENT_VACUUM_DELAY = 805; // VacuumDelay
     WAIT_EVENT_CHECKPOINT_WRITE_DELAY = 806; // CheckpointWriteDelay
-    // Source: wait_event.h (WaitEventIO enum), wait_event.c (pgstat_get_wait_io function)
-    // Before 14: pgstat.h (WaitEventIO enum), pgstat.c (pgstat_get_wait_io function)
+    WAIT_EVENT_SPIN_DELAY = 807; // SpinDelay (PG15+)
+    WAIT_EVENT_VACUUM_TRUNCATE = 808; // VacuumTruncate (PG17+)
+    WAIT_EVENT_WAL_SUMMARIZER_ERROR = 809; // WalSummarizerError (PG17+)
+    // WaitEventType: IO
     WAIT_EVENT_BUFFILE_READ = 900; // BufFileRead
     WAIT_EVENT_BUFFILE_WRITE = 901; // BufFileWrite
     WAIT_EVENT_CONTROL_FILE_READ = 902; // ControlFileRead
@@ -288,11 +327,27 @@ message Backend {
     WAIT_EVENT_WAL_SYNC_METHOD_ASSIGN = 966; // WALSyncMethodAssign
     WAIT_EVENT_WAL_WRITE = 967; // WALWrite
     WAIT_EVENT_PROC_SIGNAL_BARRIER = 968; // ProcSignalBarrier (moved to IPC category in 13)
+    WAIT_EVENT_AIO_IO_COMPLETION = 969; // AioIoCompletion (PG18+)
+    WAIT_EVENT_AIO_IO_URING_SUBMIT = 970; // AioIoUringSubmit (PG18+)
+    WAIT_EVENT_AIO_IO_URING_EXECUTION = 971; // AioIoUringExecution (PG18+)
+    WAIT_EVENT_BASEBACKUP_READ = 972; // BasebackupRead (PG15+)
+    WAIT_EVENT_BASEBACKUP_SYNC = 973; // BasebackupSync (PG15+)
+    WAIT_EVENT_BASEBACKUP_WRITE = 974; // BasebackupWrite (PG15+)
+    WAIT_EVENT_BUFFILE_TRUNCATE = 975; // BufFileTruncate (PG17+)
+    WAIT_EVENT_COPY_FILE_COPY = 976; // CopyFileCopy (PG18+)
+    WAIT_EVENT_DSM_ALLOCATE = 977; // DsmAllocate (PG16+)
+    WAIT_EVENT_RELATION_MAP_REPLACE = 978; // RelationMapReplace (PG17+, renamed from RelationMapSync)
+    WAIT_EVENT_VERSION_FILE_SYNC = 979; // VersionFileSync (PG17+, backpatched to 15)
+    WAIT_EVENT_VERSION_FILE_WRITE = 980; // VersionFileWrite (PG15+)
+    WAIT_EVENT_WAL_SUMMARY_READ = 981; // WalSummaryRead (PG17+)
+    WAIT_EVENT_WAL_SUMMARY_WRITE = 982; // WalSummaryWrite (PG17+)
     // Custom third-party events for extensions and Postgres forks
     WAIT_EVENT_IO_XACT_SYNC = 10000; // XactSync (AWS Aurora)
     WAIT_EVENT_AURORA_READER_MAIN = 10001; // AuroraReaderMain (AWS Aurora)
     WAIT_EVENT_AURORA_RUNTIME_MAIN = 10002; // AuroraRuntimeMain (AWS Aurora)
     WAIT_EVENT_CITUS_QUERY_STATS = 10003; // citus_query_stats (Citus Enterprise)
+    // WaitEventType: InjectionPoint
+    // Since this is not predefined and created runtime, no names are listed
   }
 
   uint64 identity = 1; // Server-wide unique identifier (backend_start + PID)
@@ -343,13 +398,13 @@ message VacuumProgressInformation {
 
 message VacuumProgressStatistic {
   enum VacuumPhase {
-    INITIALIZING = 0;   // "initializing"
-    SCAN_HEAP = 1;      // "scanning heap"
-    VACUUM_INDEX = 2;   // "vacuuming indexes"
-    VACUUM_HEAP = 3;    // "vacuuming heap"
-    INDEX_CLEANUP = 4;  // "cleaning up indexes"
-    TRUNCATE = 5;       // "truncating heap"
-    FINAL_CLEANUP = 6;  // "performing final cleanup"
+    INITIALIZING = 0; // "initializing"
+    SCAN_HEAP = 1; // "scanning heap"
+    VACUUM_INDEX = 2; // "vacuuming indexes"
+    VACUUM_HEAP = 3; // "vacuuming heap"
+    INDEX_CLEANUP = 4; // "cleaning up indexes"
+    TRUNCATE = 5; // "truncating heap"
+    FINAL_CLEANUP = 6; // "performing final cleanup"
   }
 
   uint64 vacuum_identity = 1; // Server-wide unique identifier for this vacuum run (query_start + PID)
