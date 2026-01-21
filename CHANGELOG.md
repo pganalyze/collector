@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.68.0      2026-01-20
+
+* Add support for PlanetScale databases
+  - This adds PlanetScale as a new supported server type, including log fetching
+    from PlanetScale's log services
+  - New configuration settings: `planetscale_org` / `PLANETSCALE_ORG`,
+    `planetscale_database` / `PLANETSCALE_DATABASE`, and
+    `planetscale_branch` / `PLANETSCALE_BRANCH` for identifying instances
+* Update wait event name list to support Postgres 18
+  - Previously most LWLock-type wait events were not appearing correctly
+* Improve collector log analysis
+  - Add matching for autovacuum messages produced by newer AlloyDB versions
+    and Postgres 18
+  - Handle terminology changes in Postgres 14+ where "misses" became "reads"
+    in buffer usage reporting
+  - Capture SLRU and LSN information from checkpoint completion messages
+  - Add new log event type for connection authenticated messages
+  - Expand patterns for connection failure scenarios
+* Add Vector OTLP export configuration example to contrib/vector
+  - This supports using Vector instead of Fluentbit for forwarding log events
+    via OpenTelemetry Protocol
+
+
 ## 0.67.0      2025-12-08
 
 * Add support for capturing plan statistics with pg_stat_plans
