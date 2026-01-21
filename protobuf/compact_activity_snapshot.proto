@@ -42,10 +42,10 @@ message Backend {
   enum WaitEvent {
     WAIT_EVENT_UNKNOWN = 0;
     // WaitEventType: LWLock
-    // Note: in wait_event.json, following wait events (up until WAIT_EVENT_LWTRANCHE_XACT_BUFFER)
-    // has two definitions - with or without "Lock" suffix.
+    // Note: in wait_event.json, the following wait events (up until WAIT_EVENT_LWTRANCHE_XACT_BUFFER)
+    // have two definitions - with and without "Lock" suffix.
     // This suffix was retired in PG13 but accidentally added back in PG 17.0-17.3.
-    // Safe to remove Lock suffix from here and wait_event.json from PG 18.
+    // It's safe to remove Lock suffix from here and wait_event.json from PG 18.
     reserved 100; // 0 index was previously BufFreelistLock, leave free for future re-assignment
     WAIT_EVENT_LWLOCK_SHMEM_INDEX_LOCK = 101; // ShmemIndexLock
     WAIT_EVENT_LWLOCK_OID_GEN_LOCK = 102; // OidGenLock
