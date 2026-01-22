@@ -173,7 +173,7 @@ message Backend {
     WAIT_EVENT_WAL_SENDER_MAIN = 512; // WalSenderMain
     WAIT_EVENT_WAL_WRITER_MAIN = 513; // WalWriterMain
     WAIT_EVENT_CHECKPOINTER_SHUTDOWN = 514; // CheckpointerShutdown (PG18+)
-    WAIT_EVENT_IO_WORKER_MAIN = 515; // IOWorkerMain (PG18+)
+    WAIT_EVENT_IO_WORKER_MAIN = 515; // IoWorkerMain (PG18+)
     WAIT_EVENT_LOGICAL_PARALLEL_APPLY_MAIN = 516; // LogicalParallelApplyMain (PG16+)
     WAIT_EVENT_REPLICATION_SLOTSYNC_MAIN = 517; // ReplicationSlotsyncMain (PG17+)
     WAIT_EVENT_REPLICATION_SLOTSYNC_SHUTDOWN = 518; // ReplicationSlotsyncShutdown (PG17+)
