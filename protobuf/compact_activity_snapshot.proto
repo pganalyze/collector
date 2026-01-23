@@ -88,7 +88,7 @@ message Backend {
     WAIT_EVENT_LWLOCK_COMMIT_TS_LOCK = 139; // CommitTsLock
     WAIT_EVENT_LWLOCK_REPLICATION_ORIGIN_LOCK = 140; // ReplicationOriginLock
     WAIT_EVENT_LWLOCK_MULTI_XACT_TRUNCATION_LOCK = 141; // MultiXactTruncationLock
-    WAIT_EVENT_LWLOCK_OLD_SNAPSHOT_TIME_MAP_LOCK = 142; // OldSnapshotTimeMapLock
+    WAIT_EVENT_LWLOCK_OLD_SNAPSHOT_TIME_MAP_LOCK = 142; // OldSnapshotTimeMapLock (removed in 17)
     WAIT_EVENT_LWLOCK_BACKEND_RANDOM_LOCK = 143; // BackendRandomLock (removed in 12)
     WAIT_EVENT_LWLOCK_LOGICAL_REP_WORKER_LOCK = 144; // LogicalRepWorkerLock
     WAIT_EVENT_LWLOCK_XACT_TRUNCATION_LOCK = 145; // CLogTruncationLock, XactTruncationLock
@@ -173,7 +173,7 @@ message Backend {
     WAIT_EVENT_WAL_SENDER_MAIN = 512; // WalSenderMain
     WAIT_EVENT_WAL_WRITER_MAIN = 513; // WalWriterMain
     WAIT_EVENT_CHECKPOINTER_SHUTDOWN = 514; // CheckpointerShutdown (PG18+)
-    WAIT_EVENT_IO_WORKER_MAIN = 515; // IOWorkerMain (PG18+)
+    WAIT_EVENT_IO_WORKER_MAIN = 515; // IoWorkerMain (PG18+)
     WAIT_EVENT_LOGICAL_PARALLEL_APPLY_MAIN = 516; // LogicalParallelApplyMain (PG16+)
     WAIT_EVENT_REPLICATION_SLOTSYNC_MAIN = 517; // ReplicationSlotsyncMain (PG17+)
     WAIT_EVENT_REPLICATION_SLOTSYNC_SHUTDOWN = 518; // ReplicationSlotsyncShutdown (PG17+)
@@ -255,7 +255,7 @@ message Backend {
     WAIT_EVENT_VACUUM_DELAY = 805; // VacuumDelay
     WAIT_EVENT_CHECKPOINT_WRITE_DELAY = 806; // CheckpointWriteDelay
     WAIT_EVENT_SPIN_DELAY = 807; // SpinDelay (PG15+)
-    WAIT_EVENT_VACUUM_TRUNCATE = 808; // VacuumTruncate (PG17+)
+    WAIT_EVENT_VACUUM_TRUNCATE = 808; // VacuumTruncate (PG15+)
     WAIT_EVENT_WAL_SUMMARIZER_ERROR = 809; // WalSummarizerError (PG17+)
     // WaitEventType: IO
     WAIT_EVENT_BUFFILE_READ = 900; // BufFileRead
@@ -290,7 +290,7 @@ message Backend {
     WAIT_EVENT_LOGICAL_REWRITE_TRUNCATE = 929; // LogicalRewriteTruncate
     WAIT_EVENT_LOGICAL_REWRITE_WRITE = 930; // LogicalRewriteWrite
     WAIT_EVENT_RELATION_MAP_READ = 931; // RelationMapRead
-    WAIT_EVENT_RELATION_MAP_SYNC = 932; // RelationMapSync
+    WAIT_EVENT_RELATION_MAP_SYNC = 932; // RelationMapSync (renamed to RelationMapReplace)
     WAIT_EVENT_RELATION_MAP_WRITE = 933; // RelationMapWrite
     WAIT_EVENT_REORDER_BUFFER_READ = 934; // ReorderBufferRead
     WAIT_EVENT_REORDER_BUFFER_WRITE = 935; // ReorderBufferWrite
