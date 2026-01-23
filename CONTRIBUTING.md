@@ -148,12 +148,8 @@ shown in `pg_stat_activity`. While the collector sends wait event names and wait
 event types as string values inside the compact snapshot, we define the wait
 event related definitions in the protobuf directory.
 
-These files are used on the pganalyze app side to map the string type and name
-to a protobuf enum value (e.g. 111), which is then stored in the pganalyze
-database to reduce storage space.
-
 These files are used on the pganalyze app side, to map the string type and name
-to the protobuf enum value (e.g. `111`), which is then stored in the pganalyze
+to a protobuf enum value (e.g. `111`), which is then stored in the pganalyze
 database to reduce storage space. Later on, this value is mapped back to the
 original name when displaying it in the client/UI.
 
@@ -188,7 +184,7 @@ completely new name and the "Newly introduced names" steps can be followed.
 Below is the example of such renames:
 
 ```
-    WAIT_EVENT_RELATION_MAP_SYNC = 932; // RelationMapSync
+    WAIT_EVENT_RELATION_MAP_SYNC = 932; // RelationMapSync (renamed to RelationMapReplace)
     WAIT_EVENT_RELATION_MAP_REPLACE = 978; // RelationMapReplace (PG17+, renamed from RelationMapSync)
 ```
 
