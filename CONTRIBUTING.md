@@ -140,3 +140,68 @@ git clone https://github.com/pganalyze/collector.git
 cd collector
 sudo make docker_release
 ```
+
+### Updating wait event types and names
+
+Postgres can change wait event names or add new wait event types, which are
+shown in `pg_stat_activity`. While the collector sends wait event names and wait
+event types as string values inside the compact snapshot, we define the wait
+event related definitions in the protobuf directory.
+
+These files are used on the pganalyze app side, to map the string type and name
+to a protobuf enum value (e.g. `111`), which is then stored in the pganalyze
+database to reduce storage space. Later on, this value is mapped back to the
+original name when displaying it in the client/UI.
+
+* `protobuf/compact_activity_snapshot.proto`: defines enums of `WaitEventType` and `WaitEvent`
+* `protobuf/mappings/wait_event_type.json`: defines a mapping of wait event types to enum values
+* `protobuf/mappings/wait_event.json`: defines a mapping of wait event names to enum values
+
+To update the wait event names, first check the history of [wait_event_names.txt](https://github.com/postgres/postgres/blob/master/src/backend/utils/activity/wait_event_names.txt)
+to find out what has been introduced/removed/renamed/moved to a different type.
+
+**Newly introduced names**
+
+1. Add a new name to `protobuf/compact_activity_snapshot.proto` under the corresponding type
+   - Be creative if the available numbers are running out, but do not reuse an enum value
+   - `WaitEventType: LWLock` has two subcategories, `LWLOCK` and `LWTRANCHE`
+   - They were previously different types. When adding a new name under these types,
+     carefully check which category it belongs to
+   - In the comment, add `(PG1X+)` at the end to indicate when it was introduced
+2. Add a mapping to `protobuf/mappings/wait_event.json`
+   - This name should match what is shown in `pg_stat_activity`
+   - For most names, PascalCase should be used (except `LWLock` or `Lock` type names)
+
+**Removed names**
+
+1. Add `(removed in XX)` to the comment of `protobuf/compact_activity_snapshot.proto`
+2. No changes to `protobuf/mappings/wait_event.json` (will still be used for older versions)
+
+**Renamed names**
+
+If the name changed significantly, or the type is moved, it can be treated as a
+completely new name and the "Newly introduced names" steps can be followed.
+Below is the example of such renames:
+
+```
+    WAIT_EVENT_RELATION_MAP_SYNC = 932; // RelationMapSync (renamed to RelationMapReplace)
+    WAIT_EVENT_RELATION_MAP_REPLACE = 978; // RelationMapReplace (PG17+, renamed from RelationMapSync)
+```
+
+This section covers cases where the rename is minimal, like from "Hash/Batch/Allocating" to "HashBatchAllocate".
+
+1. Add a new name to the comment in `protobuf/compact_activity_snapshot.proto`
+2. Add a mapping to `protobuf/mappings/wait_event.json`
+   - The key is a new name, and the value is the existing enum value
+   - Make sure to add this _below the old name line_ (and do not remove the old name)
+   - When we map back from the enum value to the name on the pganalyze app side,
+     we will use the newer name (the ones defined later on in the JSON)
+
+**Names moved to a different type**
+
+When a name is moved to a different type, we do not need to create a new enum,
+since the event type is sent separately from the event name and the existing
+enum value can still be used.
+
+1. Add a `(moved to NEWTYPE in PG1X)` comment to `protobuf/compact_activity_snapshot.proto`
+2. No changes to `protobuf/mappings/wait_event.json`
