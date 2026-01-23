@@ -3,8 +3,10 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 
+	"github.com/lib/pq"
 	"github.com/pganalyze/collector/state"
 )
 
@@ -178,6 +180,15 @@ func getPgStatStatementsInfo(ctx context.Context, db *sql.DB, stats *state.PgSta
 	err = db.QueryRowContext(ctx, QueryMarkerSQL+fmt.Sprintf(pgStatStatementsInfoSQL, pgStatStatementsInfoView)).Scan(
 		&stats.Dealloc, &stats.Reset,
 	)
+	if err != nil {
+		var e *pq.Error
+		if errors.As(err, &e) && e.Code == "55000" { // object_not_in_prerequisite_state
+			// pg_stat_statements is not loaded via shared_preload_libraries; ignore the error
+			// to allow collection to continue (this is handled the same way for other
+			// pg_stat_statements queries in input/full.go)
+			return nil
+		}
+	}
 	return err
 }
 
