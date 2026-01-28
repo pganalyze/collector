@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/pganalyze/collector/output/pganalyze_collector"
@@ -72,6 +73,18 @@ func logLineFromJsonlog(record *common.KeyValueList, logParser state.LogParser) 
 	return logLine, nil
 }
 
+func warnAboutMultipleServers(servers []*state.Server, warnedAboutMultipleServers *bool, prefixedLogger *util.Logger) {
+	if *warnedAboutMultipleServers || len(servers) <= 1 {
+		return
+	}
+	var otherSectionNames []string
+	for _, s := range servers[1:] {
+		otherSectionNames = append(otherSectionNames, s.Config.SectionName)
+	}
+	prefixedLogger.PrintWarning("Logs will also be forwarded to other servers (%s) that share the same db_log_otel_server (use K8s pod/label filtering to separate)", strings.Join(otherSectionNames, ", "))
+	*warnedAboutMultipleServers = true
+}
+
 func skipDueToK8sFilter(kubernetes *common.KeyValueList, server *state.Server, prefixedLogger *util.Logger) bool {
 	var k8sPodName string
 	var k8sNamespaceName string
@@ -106,8 +119,8 @@ func skipDueToK8sFilter(kubernetes *common.KeyValueList, server *state.Server, p
 	return false
 }
 
-func otelV1LogHandler(w http.ResponseWriter, r *http.Request, server *state.Server, rawLogStream chan<- SelfHostedLogStreamItem, parsedLogStream chan state.ParsedLogStreamItem, prefixedLogger *util.Logger, opts state.CollectionOpts) {
-	logParser := server.GetLogParser()
+func otelV1LogHandler(w http.ResponseWriter, r *http.Request, servers []*state.Server, rawLogStream chan<- SelfHostedLogStreamItem, parsedLogStream chan state.ParsedLogStreamItem, prefixedLogger *util.Logger, opts state.CollectionOpts, warnedAboutMultipleServers *bool) {
+	logParser := servers[0].GetLogParser()
 	b, err := io.ReadAll(r.Body)
 
 	if err != nil {
@@ -165,24 +178,31 @@ func otelV1LogHandler(w http.ResponseWriter, r *http.Request, server *state.Serv
 					if logger == "postgres" {
 						// jsonlog wrapped in K8s context (via fluentbit / Vector)
 						logLine, detailLine := logLineFromJsonlog(record, logParser)
-						if kubernetes != nil && skipDueToK8sFilter(kubernetes, server, prefixedLogger) {
-							continue
-						}
-
-						parsedLogStream <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: logLine}
-						if detailLine != nil {
-							parsedLogStream <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: *detailLine}
+						// Send to all servers that pass the K8s filter
+						for _, server := range servers {
+							if kubernetes != nil && skipDueToK8sFilter(kubernetes, server, prefixedLogger) {
+								continue
+							}
+							parsedLogStream <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: logLine}
+							if detailLine != nil {
+								parsedLogStream <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: *detailLine}
+							}
 						}
 					} else if logger == "" && hasErrorSeverity {
 						// simple jsonlog (Postgres jsonlog has error_severity key)
 						logLine, detailLine := logLineFromJsonlog(l.Body.GetKvlistValue(), logParser)
-						parsedLogStream <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: logLine}
-						if detailLine != nil {
-							parsedLogStream <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: *detailLine}
+						// Send to all servers
+						warnAboutMultipleServers(servers, warnedAboutMultipleServers, prefixedLogger)
+						for _, server := range servers {
+							parsedLogStream <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: logLine}
+							if detailLine != nil {
+								parsedLogStream <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: *detailLine}
+							}
 						}
 					}
 				} else if l.Body.GetStringValue() != "" {
-					// plain log message
+					// plain log message (goes through log transformer which handles per-server routing)
+					warnAboutMultipleServers(servers, warnedAboutMultipleServers, prefixedLogger)
 					item := SelfHostedLogStreamItem{}
 					item.Line = l.Body.GetStringValue()
 					item.OccurredAt = time.Unix(0, int64(l.TimeUnixNano))
@@ -193,12 +213,15 @@ func otelV1LogHandler(w http.ResponseWriter, r *http.Request, server *state.Serv
 	}
 }
 
-func setupOtelHandler(ctx context.Context, server *state.Server, rawLogStream chan<- SelfHostedLogStreamItem, parsedLogStream chan state.ParsedLogStreamItem, prefixedLogger *util.Logger, opts state.CollectionOpts) {
-	otelLogServer := server.Config.LogOtelServer
+func setupOtelHandler(ctx context.Context, servers []*state.Server, rawLogStream chan<- SelfHostedLogStreamItem, parsedLogStream chan state.ParsedLogStreamItem, prefixedLogger *util.Logger, opts state.CollectionOpts) {
+	otelLogServer := servers[0].Config.LogOtelServer
+
+	// Track whether we've warned about multiple servers sharing this OTel endpoint
+	warnedAboutMultipleServers := false
 
 	serverMux := http.NewServeMux()
 	serverMux.HandleFunc("/v1/logs", func(w http.ResponseWriter, r *http.Request) {
-		otelV1LogHandler(w, r, server, rawLogStream, parsedLogStream, prefixedLogger, opts)
+		otelV1LogHandler(w, r, servers, rawLogStream, parsedLogStream, prefixedLogger, opts, &warnedAboutMultipleServers)
 	})
 
 	go func() {
