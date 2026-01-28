@@ -1,6 +1,7 @@
 package util
 
 import (
+	"encoding/binary"
 	pg_query "github.com/pganalyze/pg_query_go/v6"
 )
 
@@ -18,6 +19,13 @@ func FingerprintQuery(query string, filterQueryText string, trackActivityQuerySi
 	}
 
 	return
+}
+
+func FingerprintQueryNew(query string, filterQueryText string, trackActivityQuerySize int) (fp int64) {
+	fpuint := FingerprintQuery(query, filterQueryText, trackActivityQuerySize)
+	bytes := make([]byte, 8)
+	binary.BigEndian.PutUint64(bytes, fpuint)
+	return int64(binary.BigEndian.Uint64(bytes))
 }
 
 // FingerprintText - Generates a fingerprint for static texts (used for error scenarios)

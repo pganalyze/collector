@@ -44,9 +44,11 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/monitor/azquery v1.1.0
 	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/cosmosforpostgresql/armcosmosforpostgresql v1.1.0
 	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/postgresql/armpostgresqlflexibleservers/v4 v4.0.0-beta.5
+	github.com/brentp/intintmap v0.0.0-20251106190759-56907b1f8479
 	github.com/fatih/color v1.16.0
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
+	github.com/klauspost/compress v1.18.3
 	github.com/pganalyze/pg_query_go/v6 v6.2.2
 	github.com/prometheus/procfs v0.7.3
 	go.opentelemetry.io/otel v1.38.0

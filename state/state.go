@@ -57,6 +57,8 @@ type PersistedHighFreqState struct {
 
 	// Data queued up for submission with the next full snapshot
 	QueuedServerIoStats HistoricPostgresServerIoStatsMap
+
+	QueryCache *QueryCache
 }
 
 // TransientState - State thats only used within a collector run (and not needed for diffs)
