@@ -29,7 +29,7 @@ require (
 	golang.org/x/crypto v0.45.0 // indirect
 	golang.org/x/net v0.47.0
 	google.golang.org/api v0.249.0
-	google.golang.org/protobuf v1.36.9
+	google.golang.org/protobuf v1.36.11
 	gopkg.in/ini.v1 v1.62.0 // indirect
 	gopkg.in/mcuadros/go-syslog.v2 v2.3.0
 )
@@ -47,7 +47,7 @@ require (
 	github.com/fatih/color v1.16.0
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
-	github.com/pganalyze/pg_query_go/v6 v6.1.0
+	github.com/pganalyze/pg_query_go/v6 v6.2.2
 	github.com/prometheus/procfs v0.7.3
 	go.opentelemetry.io/otel v1.38.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.19.0

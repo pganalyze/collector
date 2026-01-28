@@ -4,6 +4,42 @@
 
 * ...
 
+
+## 6.2.2     2026-01-27
+
+* Upgrade to libpg_query 17-6.2.2
+  - Add IsUtilityStmt function to determine if query text contains utility statements
+    - This is a fast check for callers that don't actually need the parse tree itself
+  - Add Summary function to get summary information about a statement quickly
+    - This allows gathering certain information, for example which tables are referenced in a
+      statement, without requiring a Protobuf serialization step in a higher level library
+    - Additionally this can also be used to perform "smart truncation" of a query by
+      omitting deeply nested information (e.g. a CTE definition, or a target list) whilst
+        preserving more essential parts like the FROM clause
+  - Normalize:
+    - Fix handling of special strings in DefElem
+      - This avoids a crash when running the normalize function on certain utility statements
+    - Add support for CALL statements
+  - Deparser:
+    - Introduce pretty printing / formatting
+      - Introduces a new optional pretty print mode that emits a human readable
+        output. A detailed explanation of the mechanism can be found at the start
+        of the deparser file.
+    - Rework handling of expressions inside typecasts
+      - Prefer (..)::type syntax, unless we are already in a function call.
+    - Use lowercase keywords in xmlroot functions
+      - This matches other XML functions as well as the Postgres documentation,
+        since these are closer to function argument names than regular keywords.
+    - Fix deparse of ALTER TABLE a ALTER b SET STATISTICS DEFAULT
+    - Fix the null pointer dereference when handling identity columns
+  - Allow alternate definitions of NAMEDATALEN identifier limit
+    - This allows building libpg_query with an override of the built-time limit of
+      Postgres identifiers (typically 63 characters)
+  - Bump Postgres to 17.7 and switch back to release tarballs
+* Avoid conflicts with other cgo libraries utilizing xxhash by using XXH_NAMESPACE [#144](https://github.com/pganalyze/pg_query_go/pull/144)
+* Remove redundant copy of result in ParseToProtobuf [#139](https://github.com/pganalyze/pg_query_go/pull/139)
+
+
 ## 6.1.0     2025-02-24
 
 * Upgrade to libpg_query 17-6.1.0
