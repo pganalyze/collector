@@ -148,7 +148,7 @@ const (
 	Backend_WAIT_EVENT_LWLOCK_COMMIT_TS_LOCK                    Backend_WaitEvent = 139 // CommitTsLock
 	Backend_WAIT_EVENT_LWLOCK_REPLICATION_ORIGIN_LOCK           Backend_WaitEvent = 140 // ReplicationOriginLock
 	Backend_WAIT_EVENT_LWLOCK_MULTI_XACT_TRUNCATION_LOCK        Backend_WaitEvent = 141 // MultiXactTruncationLock
-	Backend_WAIT_EVENT_LWLOCK_OLD_SNAPSHOT_TIME_MAP_LOCK        Backend_WaitEvent = 142 // OldSnapshotTimeMapLock
+	Backend_WAIT_EVENT_LWLOCK_OLD_SNAPSHOT_TIME_MAP_LOCK        Backend_WaitEvent = 142 // OldSnapshotTimeMapLock (removed in 17)
 	Backend_WAIT_EVENT_LWLOCK_BACKEND_RANDOM_LOCK               Backend_WaitEvent = 143 // BackendRandomLock (removed in 12)
 	Backend_WAIT_EVENT_LWLOCK_LOGICAL_REP_WORKER_LOCK           Backend_WaitEvent = 144 // LogicalRepWorkerLock
 	Backend_WAIT_EVENT_LWLOCK_XACT_TRUNCATION_LOCK              Backend_WaitEvent = 145 // CLogTruncationLock, XactTruncationLock
@@ -233,7 +233,7 @@ const (
 	Backend_WAIT_EVENT_WAL_SENDER_MAIN               Backend_WaitEvent = 512 // WalSenderMain
 	Backend_WAIT_EVENT_WAL_WRITER_MAIN               Backend_WaitEvent = 513 // WalWriterMain
 	Backend_WAIT_EVENT_CHECKPOINTER_SHUTDOWN         Backend_WaitEvent = 514 // CheckpointerShutdown (PG18+)
-	Backend_WAIT_EVENT_IO_WORKER_MAIN                Backend_WaitEvent = 515 // IOWorkerMain (PG18+)
+	Backend_WAIT_EVENT_IO_WORKER_MAIN                Backend_WaitEvent = 515 // IoWorkerMain (PG18+)
 	Backend_WAIT_EVENT_LOGICAL_PARALLEL_APPLY_MAIN   Backend_WaitEvent = 516 // LogicalParallelApplyMain (PG16+)
 	Backend_WAIT_EVENT_REPLICATION_SLOTSYNC_MAIN     Backend_WaitEvent = 517 // ReplicationSlotsyncMain (PG17+)
 	Backend_WAIT_EVENT_REPLICATION_SLOTSYNC_SHUTDOWN Backend_WaitEvent = 518 // ReplicationSlotsyncShutdown (PG17+)
@@ -315,7 +315,7 @@ const (
 	Backend_WAIT_EVENT_VACUUM_DELAY                     Backend_WaitEvent = 805 // VacuumDelay
 	Backend_WAIT_EVENT_CHECKPOINT_WRITE_DELAY           Backend_WaitEvent = 806 // CheckpointWriteDelay
 	Backend_WAIT_EVENT_SPIN_DELAY                       Backend_WaitEvent = 807 // SpinDelay (PG15+)
-	Backend_WAIT_EVENT_VACUUM_TRUNCATE                  Backend_WaitEvent = 808 // VacuumTruncate (PG17+)
+	Backend_WAIT_EVENT_VACUUM_TRUNCATE                  Backend_WaitEvent = 808 // VacuumTruncate (PG15+)
 	Backend_WAIT_EVENT_WAL_SUMMARIZER_ERROR             Backend_WaitEvent = 809 // WalSummarizerError (PG17+)
 	// WaitEventType: IO
 	Backend_WAIT_EVENT_BUFFILE_READ                    Backend_WaitEvent = 900 // BufFileRead
@@ -350,7 +350,7 @@ const (
 	Backend_WAIT_EVENT_LOGICAL_REWRITE_TRUNCATE        Backend_WaitEvent = 929 // LogicalRewriteTruncate
 	Backend_WAIT_EVENT_LOGICAL_REWRITE_WRITE           Backend_WaitEvent = 930 // LogicalRewriteWrite
 	Backend_WAIT_EVENT_RELATION_MAP_READ               Backend_WaitEvent = 931 // RelationMapRead
-	Backend_WAIT_EVENT_RELATION_MAP_SYNC               Backend_WaitEvent = 932 // RelationMapSync
+	Backend_WAIT_EVENT_RELATION_MAP_SYNC               Backend_WaitEvent = 932 // RelationMapSync (renamed to RelationMapReplace)
 	Backend_WAIT_EVENT_RELATION_MAP_WRITE              Backend_WaitEvent = 933 // RelationMapWrite
 	Backend_WAIT_EVENT_REORDER_BUFFER_READ             Backend_WaitEvent = 934 // ReorderBufferRead
 	Backend_WAIT_EVENT_REORDER_BUFFER_WRITE            Backend_WaitEvent = 935 // ReorderBufferWrite
