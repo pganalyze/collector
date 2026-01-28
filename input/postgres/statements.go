@@ -12,6 +12,7 @@ import (
 	"github.com/pganalyze/collector/selftest"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
+	pg_query "github.com/pganalyze/pg_query_go/v6"
 )
 
 // pg_stat_statements 1.3+ (Postgres 9.5+)
@@ -333,7 +334,7 @@ func ignoreIOTiming(postgresVersion state.PostgresVersion, receivedQuery string)
 		return false
 	}
 
-	isUtil, err := util.IsUtilityStmt(receivedQuery)
+	isUtil, err := pg_query.IsUtilityStmt(receivedQuery)
 	if err != nil {
 		return false
 	}
