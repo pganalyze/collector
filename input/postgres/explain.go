@@ -12,6 +12,7 @@ import (
 	"github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
+	pg_query "github.com/pganalyze/pg_query_go/v6"
 )
 
 func RunExplain(ctx context.Context, server *state.Server, inputs []state.PostgresQuerySample, collectionOpts state.CollectionOpts, logger *util.Logger) (outputs []state.PostgresQuerySample) {
@@ -94,7 +95,7 @@ func runExplainForSample(ctx context.Context, db *sql.DB, inputs []state.Postgre
 		var isUtil []bool
 		// To be on the safe side never EXPLAIN a statement that can't be parsed,
 		// or multiple statements in one (leading to accidental execution)
-		isUtil, err := util.IsUtilityStmt(sample.Query)
+		isUtil, err := pg_query.IsUtilityStmt(sample.Query)
 		if err == nil && len(isUtil) == 1 && !isUtil[0] {
 			var explainOutput []byte
 
