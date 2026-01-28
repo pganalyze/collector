@@ -1,7 +1,7 @@
 package parser
 
 /*
-#cgo CFLAGS: -Iinclude -Iinclude/postgres -g -fstack-protector -std=gnu99 -Wno-unknown-warning-option
+#cgo CFLAGS: -Iinclude -Iinclude/postgres -g -fstack-protector -std=gnu99 -Wno-unknown-warning-option -Wno-typedef-redefinition -DXXH_NAMESPACE=PG_QUERY_
 #cgo windows CFLAGS: -Iinclude/postgres/port/win32
 #cgo LDFLAGS:
 #include "pg_query.h"
@@ -101,7 +101,7 @@ func ScanToProtobuf(input string) (result []byte, err error) {
 }
 
 // ParseToProtobuf - Parses the given SQL statement into a parse tree (Protobuf format)
-func ParseToProtobuf(input string) (result []byte, err error) {
+func ParseToProtobuf(input string) ([]byte, error) {
 	inputC := C.CString(input)
 	defer C.free(unsafe.Pointer(inputC))
 
@@ -110,13 +110,10 @@ func ParseToProtobuf(input string) (result []byte, err error) {
 	defer C.pg_query_free_protobuf_parse_result(resultC)
 
 	if resultC.error != nil {
-		err = newPgQueryError(resultC.error)
-		return
+		return nil, newPgQueryError(resultC.error)
 	}
 
-	result = []byte(C.GoStringN(resultC.parse_tree.data, C.int(resultC.parse_tree.len)))
-
-	return
+	return toBytes(C.GoStringN(resultC.parse_tree.data, C.int(resultC.parse_tree.len))), nil
 }
 
 // DeparseFromProtobuf - Deparses the given Protobuf format parse tree into a SQL statement
@@ -290,4 +287,40 @@ func HashXXH3_64(input []byte, seed uint64) (result uint64) {
 	result = *(*uint64)(unsafe.Pointer(&res))
 
 	return
+}
+
+// IsUtilityStmt - Determines whether each statement in the query is a utility statement
+func IsUtilityStmt(input string) (result []bool, err error) {
+	inputC := C.CString(input)
+	defer C.free(unsafe.Pointer(inputC))
+
+	resultC := C.pg_query_is_utility_stmt(inputC)
+	defer C.pg_query_free_is_utility_result(resultC)
+
+	if resultC.error != nil {
+		err = newPgQueryError(resultC.error)
+		return
+	}
+
+	result = make([]bool, resultC.length)
+	for i, item := range unsafe.Slice(resultC.items, resultC.length) {
+		result[i] = bool(item)
+	}
+
+	return
+}
+
+// SummaryToProtobuf - Extracts summary information from SQL statement
+func SummaryToProtobuf(input string, truncateLimit int) ([]byte, error) {
+	inputC := C.CString(input)
+	defer C.free(unsafe.Pointer(inputC))
+
+	resultC := C.pg_query_summary(inputC, C.int(0), C.int(truncateLimit))
+	defer C.pg_query_free_summary_parse_result(resultC)
+
+	if resultC.error != nil {
+		return nil, newPgQueryError(resultC.error)
+	}
+
+	return toBytes(C.GoStringN(resultC.summary.data, C.int(resultC.summary.len))), nil
 }
