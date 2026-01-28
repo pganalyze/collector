@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.68.1      2026-01-28
+
+* Fix infrequent crash in query normalization when encountering certain utility statements
+* Do not fail snapshot collection when pg_stat_statements is missing with Postgres 14+
+  - In such situations we now report a snapshot with an error state, as was the case
+    before release 0.65.0
+* Add missing mappings for wait event names
+
+
 ## 0.68.0      2026-01-20
 
 * Add support for PlanetScale databases
