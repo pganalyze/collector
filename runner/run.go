@@ -151,7 +151,7 @@ func Run(ctx context.Context, wg *sync.WaitGroup, opts state.CollectionOpts, log
 		if opts.TestRun && opts.TestSection != "" && opts.TestSection != config.SectionName {
 			continue
 		}
-		servers = append(servers, state.MakeServer(config, opts.TestRun))
+		servers = append(servers, state.MakeServer(config, opts.TestRun, ctx, wg))
 		if !config.DisableLogs {
 			hasAnyLogsEnabled = true
 		}

@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/guregu/null"
+	"github.com/lib/pq"
 	"github.com/pganalyze/collector/selftest"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
@@ -41,7 +42,8 @@ SELECT dbid, userid, queryid, %s, calls, %s, rows, shared_blks_hit, shared_blks_
 
 const statementTextSQL string = `
 SELECT dbid, userid, queryid, %s, query
-	FROM %s`
+  FROM %s
+ WHERE queryid = ANY($1)`
 
 const statementExtensionVersionSQL string = `
 SELECT nspname,
@@ -135,6 +137,7 @@ func GetStatementStats(ctx context.Context, c *Collection, db *sql.DB) (state.Po
 
 		if queryID.Valid {
 			key.QueryID = queryID.Int64
+			c.Queries.Track(key.QueryID)
 		} else {
 			// We can't process this entry, most likely a permission problem with reading the query ID
 			continue
@@ -153,6 +156,11 @@ func GetStatementStats(ctx context.Context, c *Collection, db *sql.DB) (state.Po
 }
 
 func GetStatementTexts(ctx context.Context, c *Collection, db *sql.DB) (state.PostgresStatementMap, state.PostgresStatementTextMap, error) {
+	queryIDs := c.Queries.ProcessNewQueryIDs()
+	if queryIDs == nil {
+		return nil, nil, nil
+	}
+
 	sourceTable, foundExtMinorVersion, err := getStatementSource(ctx, c, db, true)
 	if err != nil {
 		return nil, nil, err
@@ -170,7 +178,7 @@ func GetStatementTexts(ctx context.Context, c *Collection, db *sql.DB) (state.Po
 	}
 	defer stmt.Close()
 
-	rows, err := stmt.QueryContext(ctx)
+	rows, err := stmt.QueryContext(ctx, pq.Array(queryIDs))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -365,7 +373,7 @@ func fingerprintAndNormalize(c *Collection, key state.PostgresStatementKey, quer
 			IgnoreIoTiming: ignoreIoTiming,
 		}
 	} else {
-		fp := uint64(c.Fingerprints.Add(queryID, text, c.Config.FilterQueryText, -1))
+		fp := uint64(c.Queries.Add(queryID, text, c.Config.FilterQueryText, -1))
 		statements[key] = state.PostgresStatement{Fingerprint: fp, IgnoreIoTiming: ignoreIoTiming}
 		_, ok := statementTextsByFp[fp]
 		if !ok {

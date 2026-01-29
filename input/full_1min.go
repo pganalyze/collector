@@ -31,6 +31,11 @@ func CollectAndDiff1minStats(ctx context.Context, c *postgres.Collection, connec
 		return newState, errors.Wrap(err, "error collecting Postgres server statistics")
 	}
 
+	_, _, err = postgres.GetStatementTexts(ctx, c, connection)
+	if err != nil {
+		return newState, errors.Wrap(err, "error collecting pg_stat_statements text")
+	}
+
 	// Don't calculate any diffs on the first run (but still update the state)
 	if len(prevState.StatementStats) == 0 || prevState.LastStatementStatsAt.IsZero() {
 		return newState, nil

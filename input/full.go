@@ -116,6 +116,7 @@ func CollectFull(ctx context.Context, server *state.Server, connection *sql.DB, 
 		logger.PrintError("Error setting query text timeout: %s", err)
 		return
 	}
+	// TODO: remove extra return values, instead call TakeQueries()
 	ts.Statements, ts.StatementTexts, err = postgres.GetStatementTexts(ctx, c, connection)
 	if err != nil {
 		// Despite query performance data being an essential part of pganalyze, there are

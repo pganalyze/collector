@@ -195,6 +195,9 @@ func main() {
 		opts.CollectorApplicationName = "pganalyze_collector"
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	wg := &sync.WaitGroup{}
+
 	if analyzeLogfile != "" {
 		contentBytes, err := os.ReadFile(analyzeLogfile)
 		if err != nil {
@@ -202,7 +205,7 @@ func main() {
 			return
 		}
 		logReader := logs.NewMaybeHerokuLogReader(strings.NewReader(string(contentBytes)))
-		server := state.MakeServer(config.ServerConfig{}, false)
+		server := state.MakeServer(config.ServerConfig{}, false, ctx, wg)
 		tz, err := time.LoadLocation(analyzeLogfileTz)
 		if err != nil {
 			fmt.Printf("ERROR: could not read time zone: %s\n", err)
@@ -243,7 +246,7 @@ func main() {
 			return
 		}
 		logReader := logs.NewMaybeHerokuLogReader(strings.NewReader(string(contentBytes)))
-		logLines, _ := logs.ParseAndAnalyzeBuffer(logReader, time.Time{}, state.MakeServer(config.ServerConfig{}, false))
+		logLines, _ := logs.ParseAndAnalyzeBuffer(logReader, time.Time{}, state.MakeServer(config.ServerConfig{}, false, ctx, wg))
 		logs.ReplaceSecrets(logLines, state.ParseFilterLogSecret(filterLogSecret))
 		output := ""
 		for _, logLine := range logLines {
@@ -284,10 +287,8 @@ func main() {
 	}
 
 ReadConfigAndRun:
-	ctx, cancel := context.WithCancel(context.Background())
-	wg := sync.WaitGroup{}
 	exitCode := 0
-	keepRunning, testRunSuccess, writeStateFile, shutdown := runner.Run(ctx, &wg, opts, logger, configFilename)
+	keepRunning, testRunSuccess, writeStateFile, shutdown := runner.Run(ctx, wg, opts, logger, configFilename)
 
 	if keepRunning {
 		// Block here until we get any of the registered signals

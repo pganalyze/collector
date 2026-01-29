@@ -1,6 +1,7 @@
 package state
 
 import (
+	"context"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -332,11 +333,11 @@ type Server struct {
 	// as we access this in high frequency log-related code paths.
 	LogIgnoreFlags uint32
 
-	// Cache of Postgres query_id -> pg_query fingerprint mappings
-	Fingerprints *Fingerprints
+	// Cache of pg_query fingerprints, and new query details to be submitted
+	Queries *Queries
 }
 
-func MakeServer(config config.ServerConfig, testRun bool) *Server {
+func MakeServer(config config.ServerConfig, testRun bool, ctx context.Context, wg *sync.WaitGroup) *Server {
 	server := &Server{
 		Config:                config,
 		StateMutex:            &sync.Mutex{},
@@ -350,7 +351,7 @@ func MakeServer(config config.ServerConfig, testRun bool) *Server {
 		QueryRuns:             make(map[int64]*QueryRun),
 		QueryRunsMutex:        &sync.Mutex{},
 		LogParseMutex:         &sync.RWMutex{},
-		Fingerprints:          NewFingerprints(),
+		Queries:               NewQueries(ctx, wg),
 	}
 	server.Grant.Store(&Grant{Config: pganalyze_collector.ServerMessage_Config{Features: &pganalyze_collector.ServerMessage_Features{}}})
 	server.Pause.Store(false)
