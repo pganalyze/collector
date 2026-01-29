@@ -44,6 +44,8 @@ func (c *Fingerprints) Add(queryID int64, text string, filterQueryText string, t
 }
 
 func (c *Fingerprints) Size() int {
+	c.lock.RLock()
+	defer c.lock.RUnlock()
 	return c.cache.Size()
 }
 
@@ -52,7 +54,7 @@ func (c *Fingerprints) Size() int {
 // but since it's backed by a flat array it's much more memory-efficient. That
 // allows us to have a larger cache that doesn't need to be emptied as often.
 func (c *Fingerprints) Cleanup() {
-	if c.cache.Size() < MAX_SIZE {
+	if c.Size() < MAX_SIZE {
 		return
 	}
 	cache := intintmap.New(MAX_SIZE, FILL_FACTOR)
@@ -63,5 +65,7 @@ func (c *Fingerprints) Cleanup() {
 		}
 		index += 1
 	})
+	c.lock.Lock()
 	c.cache = cache
+	c.lock.Unlock()
 }
