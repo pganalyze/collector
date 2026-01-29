@@ -146,7 +146,7 @@ func collectSchemaData(ctx context.Context, c *Collection, db *sql.DB, ps state.
 	}
 	ps.Functions = append(ps.Functions, newFunctions...)
 
-	c = c.ForCurrentDatabase(newFunctions)
+	c = c.ForCurrentDatabase(server, newFunctions)
 
 	if c.GlobalOpts.CollectPostgresRelations {
 		newRelations, err := GetRelations(ctx, c, db, databaseOid)

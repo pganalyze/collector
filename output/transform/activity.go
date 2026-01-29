@@ -35,6 +35,7 @@ func ActivityStateToCompactActivitySnapshot(server *state.Server, activityState 
 				b.RoleIdx,
 				b.DatabaseIdx,
 				backend.Query.String,
+				backend.QueryId,
 				activityState.TrackActivityQuerySize,
 			)
 			b.HasQueryIdx = true

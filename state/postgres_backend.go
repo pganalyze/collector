@@ -29,7 +29,8 @@ type PostgresBackend struct {
 
 	BackendType null.String // 10+ The process type of this backend
 
-	Query null.String // Text of this backend's most recent query
+	Query   null.String // Text of this backend's most recent query
+	QueryId int64
 
 	// Current overall state of this backend. Possible values are:
 	// - active: The backend is executing a query.

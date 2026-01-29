@@ -99,6 +99,8 @@ func processActivityForServer(ctx context.Context, server *state.Server, opts st
 	}
 	newState.ActivitySnapshotAt = activity.CollectedAt
 
+	logger.PrintInfo("Fingerprints: %d", server.Fingerprints.Size())
+
 	return newState, true, nil
 }
 
