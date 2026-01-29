@@ -83,6 +83,7 @@ func NewCollection(ctx context.Context, logger *util.Logger, server *state.Serve
 		ConnectedAsSuperUser:      connectedAsSuperUser,
 		ConnectedAsMonitoringRole: connectedAsMonitoringRole,
 		HelperFunctions:           helpersFromFunctions(helperFunctions),
+		Fingerprints:              server.Fingerprints,
 	}, nil
 }
 
