@@ -23,6 +23,8 @@ type Collection struct {
 
 	// Information that is specific to the current database we're connected to
 	HelperFunctions map[string][]state.PostgresFunction
+
+	Fingerprints *state.Fingerprints
 }
 
 func helpersFromFunctions(functions []state.PostgresFunction) map[string][]state.PostgresFunction {
@@ -81,10 +83,11 @@ func NewCollection(ctx context.Context, logger *util.Logger, server *state.Serve
 		ConnectedAsSuperUser:      connectedAsSuperUser,
 		ConnectedAsMonitoringRole: connectedAsMonitoringRole,
 		HelperFunctions:           helpersFromFunctions(helperFunctions),
+		Fingerprints:              server.Fingerprints,
 	}, nil
 }
 
-func (c *Collection) ForCurrentDatabase(functions []state.PostgresFunction) *Collection {
+func (c *Collection) ForCurrentDatabase(server *state.Server, functions []state.PostgresFunction) *Collection {
 	return &Collection{
 		Config:                    c.Config,
 		Logger:                    c.Logger,
@@ -95,6 +98,7 @@ func (c *Collection) ForCurrentDatabase(functions []state.PostgresFunction) *Col
 		ConnectedAsSuperUser:      c.ConnectedAsSuperUser,
 		ConnectedAsMonitoringRole: c.ConnectedAsMonitoringRole,
 		HelperFunctions:           helpersFromFunctions(functions),
+		Fingerprints:              server.Fingerprints,
 	}
 }
 

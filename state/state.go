@@ -331,6 +331,9 @@ type Server struct {
 	// differences (see https://groups.google.com/g/golang-nuts/c/eIqkhXh9PLg),
 	// as we access this in high frequency log-related code paths.
 	LogIgnoreFlags uint32
+
+	// Cache of Postgres query_id -> pg_query fingerprint mappings
+	Fingerprints *Fingerprints
 }
 
 func MakeServer(config config.ServerConfig, testRun bool) *Server {
@@ -347,6 +350,7 @@ func MakeServer(config config.ServerConfig, testRun bool) *Server {
 		QueryRuns:             make(map[int64]*QueryRun),
 		QueryRunsMutex:        &sync.Mutex{},
 		LogParseMutex:         &sync.RWMutex{},
+		Fingerprints:          NewFingerprints(),
 	}
 	server.Grant.Store(&Grant{Config: pganalyze_collector.ServerMessage_Config{Features: &pganalyze_collector.ServerMessage_Features{}}})
 	server.Pause.Store(false)

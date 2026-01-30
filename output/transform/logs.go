@@ -46,6 +46,7 @@ func transformPostgresQuerySamples(server *state.Server, s snapshot.CompactLogSn
 			roleIdx,
 			databaseIdx,
 			sampleIn.Query,
+			0,
 			-1,
 		)
 
@@ -184,6 +185,7 @@ func transformSystemLogLine(server *state.Server, r *snapshot.CompactSnapshot_Ba
 			logLine.RoleIdx,
 			logLine.DatabaseIdx,
 			logLineIn.Query,
+			0,
 			-1,
 		)
 		logLine.HasQueryIdx = true

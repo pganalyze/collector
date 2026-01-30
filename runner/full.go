@@ -59,6 +59,9 @@ func collectDiffAndSubmit(ctx context.Context, server *state.Server, opts state.
 		return newState, collectionStatus, err
 	}
 
+	logger.PrintInfo("Fingerprints: %d", server.Fingerprints.Size())
+	server.Fingerprints.Cleanup()
+
 	return newState, collectionStatus, nil
 }
 
