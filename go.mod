@@ -47,6 +47,7 @@ require (
 	github.com/fatih/color v1.16.0
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
+	github.com/klauspost/compress v1.18.3
 	github.com/pganalyze/pg_query_go/v6 v6.2.2
 	github.com/prometheus/procfs v0.7.3
 	go.opentelemetry.io/otel v1.38.0
