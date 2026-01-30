@@ -57,6 +57,7 @@ func (c *Fingerprints) Cleanup() {
 	if c.Size() < MAX_SIZE {
 		return
 	}
+	c.lock.Lock()
 	cache := intintmap.New(MAX_SIZE, FILL_FACTOR)
 	index := 0
 	c.cache.Each(func(key, value int64) {
@@ -65,7 +66,6 @@ func (c *Fingerprints) Cleanup() {
 		}
 		index += 1
 	})
-	c.lock.Lock()
 	c.cache = cache
 	c.lock.Unlock()
 }
