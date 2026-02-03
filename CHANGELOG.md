@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.68.2      2026-02-02
+
+* Allow explicitly setting Cluster ID
+  - The new api_cluster_id / API_CLUSTER_ID setting enables overriding the
+    automatically detected cluster ID, or set it on platforms that don't have
+    built-in detection.
+  - This value is stored by pganalyze for each server, and used for grouping
+    servers together. Alternate mechanisms to create server groups in pganalyze
+    will be offered in a future release.
+
+
 ## 0.68.1      2026-01-28
 
 * Fix infrequent crash in query normalization when encountering certain utility statements
