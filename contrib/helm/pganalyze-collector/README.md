@@ -1,6 +1,6 @@
 # pganalyze-collector
 
-![Version: 0.68.1](https://img.shields.io/badge/Version-0.68.1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: v0.68.1](https://img.shields.io/badge/AppVersion-v0.68.1-informational?style=flat-square)
+![Version: 0.68.2](https://img.shields.io/badge/Version-0.68.2-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: v0.68.2](https://img.shields.io/badge/AppVersion-v0.68.2-informational?style=flat-square)
 
 pganalyze statistics collector
 
