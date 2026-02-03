@@ -78,6 +78,9 @@ func GetSystemState(ctx context.Context, server *state.Server, logger *util.Logg
 
 	system.Info.SystemID = config.SystemID
 	system.Info.SystemScope = config.SystemScope
+	if config.ClusterID != "" {
+		system.Info.ClusterID = config.ClusterID
+	}
 
 	return
 }
