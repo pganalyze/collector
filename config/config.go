@@ -147,6 +147,8 @@ type ServerConfig struct {
 	SystemTypeFallback  string `ini:"api_system_type_fallback"`
 	SystemScopeFallback string `ini:"api_system_scope_fallback"`
 
+	ClusterID string `ini:"api_cluster_id"`
+
 	AlwaysCollectSystemData bool   `ini:"always_collect_system_data"`
 	DisableCitusSchemaStats string `ini:"disable_citus_schema_stats"` // none/all/index
 
