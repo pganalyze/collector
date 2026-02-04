@@ -6,8 +6,8 @@ import (
 	"sync"
 )
 
-// 1 million entries in intintmap's internal flat array takes ~16 MB
-const MAX_SIZE = 1000000
+// 500 thousand entries in intintmap's internal flat array takes ~8 MB
+const MAX_SIZE = 500000
 const FILL_FACTOR = 0.99
 
 type Fingerprints struct {
