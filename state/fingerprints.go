@@ -36,8 +36,13 @@ func (c *Fingerprints) Add(queryID int64, text string, filterQueryText string, t
 	if exists {
 		return fingerprint
 	}
+	fp, virtual := util.TryFingerprintQuery(text, filterQueryText, trackActivityQuerySize)
+	fingerprint = int64(fp)
+	if virtual {
+		// Don't write virtual fingerprints to the cache so we can cache real fingerprints later
+		return fingerprint
+	}
 	c.lock.Lock()
-	fingerprint = int64(util.FingerprintQuery(text, filterQueryText, trackActivityQuerySize))
 	c.cache.Put(queryID, fingerprint)
 	c.lock.Unlock()
 	return fingerprint
