@@ -133,30 +133,51 @@ func SetupLogTailForServer(ctx context.Context, wg *sync.WaitGroup, opts state.C
 }
 
 func SetupOtelHandlerForServers(ctx context.Context, wg *sync.WaitGroup, opts state.CollectionOpts, logger *util.Logger, servers []*state.Server, parsedLogStream chan state.ParsedLogStreamItem) {
-	// A list of all OpenTelemetry servers that we have started to prevent
-	var otelServers []string
-
+	// Group servers by their OTel server address
+	serversByOtel := make(map[string][]*state.Server)
 	for _, server := range servers {
 		otelLogServer := server.Config.LogOtelServer
 		if otelLogServer == "" {
 			continue
 		}
+		serversByOtel[otelLogServer] = append(serversByOtel[otelLogServer], server)
+	}
 
-		prefixedLogger := logger.WithPrefix(server.Config.SectionName)
-
-		if util.SliceContains(otelServers, otelLogServer) {
-			prefixedLogger.PrintInfo("OpenTelemetry log handler on %s already registered, skipping. Check your configuration for duplicate 'db_log_otel_server' entries.", otelLogServer)
-			continue
-		}
-
+	for otelLogServer, otelServers := range serversByOtel {
 		if opts.DebugLogs || opts.TestRun || logger.Verbose {
-			logger.PrintInfo("Setting up OTLP HTTP server receiving logs with %s", server.Config.LogOtelServer)
+			logger.PrintInfo("Setting up OTLP HTTP server receiving logs on %s", otelLogServer)
 		}
 
-		logStream := setupLogTransformer(ctx, wg, server, opts, logger, parsedLogStream)
-		setupOtelHandler(ctx, server, logStream, parsedLogStream, logger, opts)
+		// Set up log transformers for each server
+		var logStreams []chan<- SelfHostedLogStreamItem
+		for _, server := range otelServers {
+			logStream := setupLogTransformer(ctx, wg, server, opts, logger, parsedLogStream)
+			logStreams = append(logStreams, logStream)
+		}
 
-		otelServers = append(otelServers, otelLogServer)
+		// Create a multiplexing channel that forwards to all servers' log streams
+		multiplexedLogStream := make(chan SelfHostedLogStreamItem)
+		wg.Add(1)
+		go func(streams []chan<- SelfHostedLogStreamItem) {
+			defer wg.Done()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case item, ok := <-multiplexedLogStream:
+					if !ok {
+						return
+					}
+					for _, stream := range streams {
+						stream <- item
+					}
+				}
+			}
+		}(logStreams)
+
+		// Pass all servers to the OTel handler so it can route parsed logs to each
+		// (K8s filtering in otelV1LogHandler will determine which servers receive each log)
+		setupOtelHandler(ctx, otelServers, multiplexedLogStream, parsedLogStream, logger, opts)
 	}
 }
 
