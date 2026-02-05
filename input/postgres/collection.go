@@ -87,7 +87,7 @@ func NewCollection(ctx context.Context, logger *util.Logger, server *state.Serve
 	}, nil
 }
 
-func (c *Collection) ForCurrentDatabase(server *state.Server, functions []state.PostgresFunction) *Collection {
+func (c *Collection) ForCurrentDatabase(functions []state.PostgresFunction) *Collection {
 	return &Collection{
 		Config:                    c.Config,
 		Logger:                    c.Logger,
@@ -98,7 +98,7 @@ func (c *Collection) ForCurrentDatabase(server *state.Server, functions []state.
 		ConnectedAsSuperUser:      c.ConnectedAsSuperUser,
 		ConnectedAsMonitoringRole: c.ConnectedAsMonitoringRole,
 		HelperFunctions:           helpersFromFunctions(functions),
-		Fingerprints:              server.Fingerprints,
+		Fingerprints:              c.Fingerprints,
 	}
 }
 
