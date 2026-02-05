@@ -1,23 +1,21 @@
 package state
 
 import (
-	"github.com/brentp/intintmap"
 	"github.com/pganalyze/collector/util"
 	"sync"
 )
 
-// 500 thousand entries in intintmap's internal flat array takes ~8 MB
-const MAX_SIZE = 500000
-const FILL_FACTOR = 0.99
+// 500,000 entries use around 12 MB
+const MAX_SIZE = 500_000
 
 type Fingerprints struct {
-	cache *intintmap.Map
+	cache map[int64]int64
 	lock  sync.RWMutex
 }
 
 func NewFingerprints() *Fingerprints {
 	return &Fingerprints{
-		cache: intintmap.New(MAX_SIZE, FILL_FACTOR),
+		cache: make(map[int64]int64, MAX_SIZE),
 		lock:  sync.RWMutex{},
 	}
 }
@@ -25,7 +23,8 @@ func NewFingerprints() *Fingerprints {
 func (c *Fingerprints) Get(queryID int64) (int64, bool) {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
-	return c.cache.Get(queryID)
+	fingerprint, exists := c.cache[queryID]
+	return fingerprint, exists
 }
 
 func (c *Fingerprints) Add(queryID int64, text string, filterQueryText string, trackActivityQuerySize int) int64 {
@@ -39,38 +38,36 @@ func (c *Fingerprints) Add(queryID int64, text string, filterQueryText string, t
 	fp, virtual := util.TryFingerprintQuery(text, filterQueryText, trackActivityQuerySize)
 	fingerprint = int64(fp)
 	if virtual {
-		// Don't write virtual fingerprints to the cache so we can cache real fingerprints later
+		// Don't store virtual fingerprints so we can cache real fingerprints later
 		return fingerprint
 	}
+	c.cleanup()
 	c.lock.Lock()
-	c.cache.Put(queryID, fingerprint)
+	c.cache[queryID] = fingerprint
 	c.lock.Unlock()
 	return fingerprint
 }
 
-func (c *Fingerprints) Size() int {
+func (c *Fingerprints) size() int {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
-	return c.cache.Size()
+	return len(c.cache)
 }
 
-// Retains 33% of entries, in an effort to avoid re-fingerprinting common queries.
-// intintmap can't evict less used entries so isn't as CPU-efficient as an LRU cache,
-// but since it's backed by a flat array it's much more memory-efficient. That
-// allows us to have a larger cache that doesn't need to be emptied as often.
-func (c *Fingerprints) Cleanup() {
-	if c.Size() < MAX_SIZE {
+// Retains a random 33% sample of entries if the cache grows too large
+func (c *Fingerprints) cleanup() {
+	if c.size() < MAX_SIZE {
 		return
 	}
 	c.lock.Lock()
-	cache := intintmap.New(MAX_SIZE, FILL_FACTOR)
+	cache := make(map[int64]int64, MAX_SIZE)
 	index := 0
-	c.cache.Each(func(key, value int64) {
+	for key, value := range c.cache {
 		if index%3 == 0 {
-			cache.Put(key, value)
+			cache[key] = value
 		}
 		index += 1
-	})
+	}
 	c.cache = cache
 	c.lock.Unlock()
 }
