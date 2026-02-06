@@ -30,6 +30,11 @@ cp /root/deb.distributions /repo/debian/bookworm/conf/distributions
 reprepro --basedir /repo/debian/bookworm includedeb stable /deb/systemd/$DEB_PACKAGE_X86_64
 reprepro --basedir /repo/debian/bookworm includedeb stable /deb/systemd/$DEB_PACKAGE_ARM64
 
+mkdir -p /repo/debian/trixie/conf
+cp /root/deb.distributions /repo/debian/trixie/conf/distributions
+reprepro --basedir /repo/debian/trixie includedeb stable /deb/systemd/$DEB_PACKAGE_X86_64
+reprepro --basedir /repo/debian/trixie includedeb stable /deb/systemd/$DEB_PACKAGE_ARM64
+
 # Verify signatures
 gpg --dearmor --yes -o /repo/pganalyze_signing_key.gpg /repo/pganalyze_signing_key.asc
 gpgv --keyring /repo/pganalyze_signing_key.gpg /repo/ubuntu/focal/dists/stable/InRelease
@@ -37,3 +42,4 @@ gpgv --keyring /repo/pganalyze_signing_key.gpg /repo/ubuntu/jammy/dists/stable/I
 gpgv --keyring /repo/pganalyze_signing_key.gpg /repo/ubuntu/noble/dists/stable/InRelease
 gpgv --keyring /repo/pganalyze_signing_key.gpg /repo/debian/bullseye/dists/stable/InRelease
 gpgv --keyring /repo/pganalyze_signing_key.gpg /repo/debian/bookworm/dists/stable/InRelease
+gpgv --keyring /repo/pganalyze_signing_key.gpg /repo/debian/trixie/dists/stable/InRelease
