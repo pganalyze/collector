@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.68.23     2026-02-07
+
+* Add packages for Debian 13 (Trixie)
+
+
 ## 0.68.2      2026-02-02
 
 * Allow explicitly setting Cluster ID
