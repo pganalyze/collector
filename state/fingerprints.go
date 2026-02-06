@@ -9,34 +9,33 @@ import (
 const MAX_SIZE = 500_000
 
 type Fingerprints struct {
-	cache map[int64]int64
+	cache map[int64]uint64
 	lock  sync.RWMutex
 }
 
 func NewFingerprints() *Fingerprints {
 	return &Fingerprints{
-		cache: make(map[int64]int64, MAX_SIZE),
+		cache: make(map[int64]uint64, MAX_SIZE),
 		lock:  sync.RWMutex{},
 	}
 }
 
-func (c *Fingerprints) Get(queryID int64) (int64, bool) {
+func (c *Fingerprints) Get(queryID int64) (uint64, bool) {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 	fingerprint, exists := c.cache[queryID]
 	return fingerprint, exists
 }
 
-func (c *Fingerprints) Add(queryID int64, text string, filterQueryText string, trackActivityQuerySize int) int64 {
+func (c *Fingerprints) Add(queryID int64, text string, filterQueryText string, trackActivityQuerySize int) uint64 {
 	if queryID == 0 {
-		return int64(util.FingerprintQuery(text, filterQueryText, trackActivityQuerySize))
+		return util.FingerprintQuery(text, filterQueryText, trackActivityQuerySize)
 	}
 	fingerprint, exists := c.Get(queryID)
 	if exists {
 		return fingerprint
 	}
-	fp, virtual := util.TryFingerprintQuery(text, filterQueryText, trackActivityQuerySize)
-	fingerprint = int64(fp)
+	fingerprint, virtual := util.TryFingerprintQuery(text, filterQueryText, trackActivityQuerySize)
 	if virtual {
 		// Don't store virtual fingerprints so we can cache real fingerprints later
 		return fingerprint
@@ -60,7 +59,7 @@ func (c *Fingerprints) cleanup() {
 		return
 	}
 	c.lock.Lock()
-	cache := make(map[int64]int64, MAX_SIZE)
+	cache := make(map[int64]uint64, MAX_SIZE)
 	index := 0
 	for key, value := range c.cache {
 		if index%2 == 0 {

@@ -65,7 +65,7 @@ func upsertQueryReferenceAndInformationSimple(server *state.Server, refs []*snap
 	fingerprint := server.Fingerprints.Add(queryID, originalQuery, server.Config.FilterQueryText, trackActivityQuerySize)
 
 	fpBuf := make([]byte, 8)
-	binary.BigEndian.PutUint64(fpBuf, uint64(fingerprint))
+	binary.BigEndian.PutUint64(fpBuf, fingerprint)
 	newRef := snapshot.QueryReference{
 		DatabaseIdx: databaseIdx,
 		RoleIdx:     roleIdx,
