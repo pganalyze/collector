@@ -54,7 +54,7 @@ func (c *Fingerprints) size() int {
 	return len(c.cache)
 }
 
-// Retains a random 33% sample of entries if the cache grows too large
+// Retains a random 50% sample of entries if the cache grows too large
 func (c *Fingerprints) cleanup() {
 	if c.size() < MAX_SIZE {
 		return
@@ -63,7 +63,7 @@ func (c *Fingerprints) cleanup() {
 	cache := make(map[int64]int64, MAX_SIZE)
 	index := 0
 	for key, value := range c.cache {
-		if index%3 == 0 {
+		if index%2 == 0 {
 			cache[key] = value
 		}
 		index += 1
