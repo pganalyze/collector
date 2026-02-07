@@ -219,7 +219,9 @@ type ServerMessage_Features struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// How often the collector should run pg_stat_statements_reset()
+	// The minimum frequency that the collector should run pg_stat_statements_reset()
+	// Defaults to zero, which disables the feature
+	// The unit is number of full snapshots, so a value of 6 = 1 hour
 	StatementResetFrequency int32 `protobuf:"varint,1,opt,name=statement_reset_frequency,json=statementResetFrequency,proto3" json:"statement_reset_frequency,omitempty"`
 	// Statement timeout for all SQL statements sent to the database (defaults to 30s)
 	StatementTimeoutMs int32 `protobuf:"varint,2,opt,name=statement_timeout_ms,json=statementTimeoutMs,proto3" json:"statement_timeout_ms,omitempty"`

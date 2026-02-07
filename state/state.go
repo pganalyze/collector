@@ -34,11 +34,6 @@ type PersistedState struct {
 	System                SystemState
 	CollectorStats        CollectorStats
 	PgStatStatementsStats PgStatStatementsStats
-
-	// Incremented every full snapshot, indicates whether we should run pg_stat_statements_reset()
-	// on behalf of the user. Only activates once it reaches GrantFeatures.StatementReset,
-	// and is reset afterwards.
-	StatementResetCounter int
 }
 
 type PersistedHighFreqState struct {

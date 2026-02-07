@@ -104,3 +104,4 @@ func (schedule Schedule) ScheduleSecondary(ctx context.Context, primarySchedule 
 }
 
 const FullSnapshotsPerHour = 6
+const FullSnapshotMinutes = 10

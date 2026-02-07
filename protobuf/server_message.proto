@@ -27,7 +27,9 @@ message ServerMessage {
   }
 
   message Features {
-    // How often the collector should run pg_stat_statements_reset()
+    // The minimum frequency that the collector should run pg_stat_statements_reset()
+    // Defaults to zero, which disables the feature
+    // The unit is number of full snapshots, so a value of 6 = 1 hour
     int32 statement_reset_frequency = 1;
     // Statement timeout for all SQL statements sent to the database (defaults to 30s)
     int32 statement_timeout_ms = 2;

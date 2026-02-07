@@ -6,9 +6,12 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/guregu/null"
+	"github.com/pganalyze/collector/scheduler"
 	"github.com/pganalyze/collector/selftest"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
@@ -59,7 +62,29 @@ func insufficientPrivilege(query string) bool {
 	return query == "<insufficient privilege>"
 }
 
-func ResetStatements(ctx context.Context, c *Collection, db *sql.DB) error {
+func ResetStatements(ctx context.Context, c *Collection, db *sql.DB, server *state.Server, ps *state.PersistedState, ts *state.TransientState) (reset bool, err error) {
+	config := server.Grant.Load().Config
+	lastReset := ps.PgStatStatementsStats.Reset
+	resetFreq := config.Features.StatementResetFrequency
+	if resetFreq == 0 {
+		return
+	}
+	if lastReset.Valid && time.Since(lastReset.Time).Minutes() < float64(resetFreq*scheduler.FullSnapshotMinutes) {
+		return
+	}
+	max := 5_000
+	for _, setting := range ts.Settings {
+		if setting.Name == "pg_stat_statements.max" && setting.CurrentValue.Valid {
+			max, err = strconv.Atoi(setting.CurrentValue.String)
+			if err != nil {
+				c.Logger.PrintError("Error parsing pg_stat_statements.max: %s", err)
+			}
+		}
+	}
+	count, err := GetStatementCount(ctx, c, db)
+	if err != nil {
+		return
+	}
 	var method string
 	if c.HelperExists("reset_stat_statements", nil) {
 		c.Logger.PrintVerbose("Found pganalyze.reset_stat_statements() stats helper")
@@ -71,11 +96,31 @@ func ResetStatements(ctx context.Context, c *Collection, db *sql.DB) error {
 		}
 		method = "pg_stat_statements_reset()"
 	}
-	_, err := db.ExecContext(ctx, QueryMarkerSQL+"SELECT "+method)
-	if err != nil {
-		return err
+	if float64(count) >= 0.9*float64(max) {
+		c.Logger.PrintInfo("Resetting pg_stat_statements because it's nearly full")
+		_, err := db.ExecContext(ctx, QueryMarkerSQL+"SELECT "+method)
+		if err == nil {
+			reset = true
+		}
+	} else if float64(count) >= 0.95*float64(max) {
+		c.Logger.PrintWarning("pg_stat_statements is nearly full. We recommend defining the pganalyze.reset_stat_statements helper function to avoid seeing <query text unavailable> in pganalyze")
 	}
-	return nil
+	return
+}
+
+func GetStatementCount(ctx context.Context, c *Collection, db *sql.DB) (count int64, err error) {
+	sourceTable, _, err := getStatementSource(ctx, c, db, false)
+	if err != nil {
+		return
+	}
+	querySql := QueryMarkerSQL + fmt.Sprintf("SELECT count(*) FROM %s", sourceTable)
+	stmt, err := db.PrepareContext(ctx, querySql)
+	if err != nil {
+		return
+	}
+	defer stmt.Close()
+	err = stmt.QueryRowContext(ctx).Scan(&count)
+	return
 }
 
 func GetStatementStats(ctx context.Context, c *Collection, db *sql.DB) (state.PostgresStatementStatsMap, error) {
