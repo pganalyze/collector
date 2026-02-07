@@ -51,6 +51,7 @@ RUN cp $CODE_DIR/contrib/sslrootcert/* $SOURCE_DIR/usr/share/pganalyze-collector
 WORKDIR $ROOT_DIR
 RUN fpm \
   -n $NAME -v ${VERSION} -t deb \
+  -d adduser \
   --deb-systemd $CODE_DIR/contrib/systemd/pganalyze-collector.service \
   --after-upgrade $CODE_DIR/packages/src/deb-systemd/after-install.sh \
   --after-install $CODE_DIR/packages/src/deb-systemd/after-install.sh \
