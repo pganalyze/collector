@@ -222,7 +222,7 @@ ubuntu-focal_x86_64: $(DEB_PACKAGE_X86_64)
 	echo "RUN apt-get install systemd-sysv -y" >> Dockerfile.tmp
 	echo "RUN rm /usr/sbin/policy-rc.d" >> Dockerfile.tmp
 	$(call docker_build_and_run,amd64)
-	$(call docker_exec,dpkg -i /root/$(DEB_PACKAGE_X86_64))
+	$(call docker_exec,apt-get install -y /root/$(DEB_PACKAGE_X86_64))
 	$(call docker_test_and_clean)
 	rm Dockerfile.tmp
 
@@ -233,7 +233,7 @@ ubuntu-focal_arm64: $(DEB_PACKAGE_ARM64)
 	echo "RUN apt-get install systemd-sysv -y" >> Dockerfile.tmp
 	echo "RUN rm /usr/sbin/policy-rc.d" >> Dockerfile.tmp
 	$(call docker_build_and_run,arm64)
-	$(call docker_exec,dpkg -i /root/$(DEB_PACKAGE_ARM64))
+	$(call docker_exec,apt-get install -y /root/$(DEB_PACKAGE_ARM64))
 	$(call docker_test_and_clean)
 	rm Dockerfile.tmp
 
@@ -244,7 +244,7 @@ ubuntu-jammy_x86_64: $(DEB_PACKAGE_X86_64)
 	echo "RUN apt-get install systemd-sysv -y" >> Dockerfile.tmp
 	echo "RUN rm /usr/sbin/policy-rc.d" >> Dockerfile.tmp
 	$(call docker_build_and_run,amd64)
-	$(call docker_exec,dpkg -i /root/$(DEB_PACKAGE_X86_64))
+	$(call docker_exec,apt-get install -y /root/$(DEB_PACKAGE_X86_64))
 	$(call docker_test_and_clean)
 	rm Dockerfile.tmp
 
@@ -255,7 +255,7 @@ ubuntu-jammy_arm64: $(DEB_PACKAGE_ARM64)
 	echo "RUN apt-get install systemd-sysv -y" >> Dockerfile.tmp
 	echo "RUN rm /usr/sbin/policy-rc.d" >> Dockerfile.tmp
 	$(call docker_build_and_run,arm64)
-	$(call docker_exec,dpkg -i /root/$(DEB_PACKAGE_ARM64))
+	$(call docker_exec,apt-get install -y /root/$(DEB_PACKAGE_ARM64))
 	$(call docker_test_and_clean)
 	rm Dockerfile.tmp
 
@@ -266,7 +266,7 @@ ubuntu-noble_x86_64: $(DEB_PACKAGE_X86_64)
 	echo "RUN apt-get install systemd-sysv -y" >> Dockerfile.tmp
 	echo "RUN rm /usr/sbin/policy-rc.d" >> Dockerfile.tmp
 	$(call docker_build_and_run,amd64)
-	$(call docker_exec,dpkg -i /root/$(DEB_PACKAGE_X86_64))
+	$(call docker_exec,apt-get install -y /root/$(DEB_PACKAGE_X86_64))
 	$(call docker_test_and_clean)
 	rm Dockerfile.tmp
 
@@ -277,7 +277,7 @@ ubuntu-noble_arm64: $(DEB_PACKAGE_ARM64)
 	echo "RUN apt-get install systemd-sysv -y" >> Dockerfile.tmp
 	echo "RUN rm /usr/sbin/policy-rc.d" >> Dockerfile.tmp
 	$(call docker_build_and_run,arm64)
-	$(call docker_exec,dpkg -i /root/$(DEB_PACKAGE_ARM64))
+	$(call docker_exec,apt-get install -y /root/$(DEB_PACKAGE_ARM64))
 	$(call docker_test_and_clean)
 	rm Dockerfile.tmp
 
@@ -287,7 +287,7 @@ debian-bullseye_x86_64: $(DEB_PACKAGE_X86_64)
 	echo "COPY . /root" >> Dockerfile.tmp
 	echo "RUN rm /usr/sbin/policy-rc.d" >> Dockerfile.tmp
 	$(call docker_build_and_run,amd64)
-	$(call docker_exec,dpkg -i /root/$(DEB_PACKAGE_X86_64))
+	$(call docker_exec,apt-get install -y /root/$(DEB_PACKAGE_X86_64))
 	$(call docker_test_and_clean)
 	rm Dockerfile.tmp
 
@@ -297,7 +297,7 @@ debian-bullseye_arm64: $(DEB_PACKAGE_ARM64)
 	echo "COPY . /root" >> Dockerfile.tmp
 	echo "RUN rm /usr/sbin/policy-rc.d" >> Dockerfile.tmp
 	$(call docker_build_and_run,arm64)
-	$(call docker_exec,dpkg -i /root/$(DEB_PACKAGE_ARM64))
+	$(call docker_exec,apt-get install -y /root/$(DEB_PACKAGE_ARM64))
 	$(call docker_test_and_clean)
 	rm Dockerfile.tmp
 
@@ -307,7 +307,7 @@ debian-bookworm_x86_64: $(DEB_PACKAGE_X86_64)
 	echo "COPY . /root" >> Dockerfile.tmp
 	echo "RUN rm /usr/sbin/policy-rc.d" >> Dockerfile.tmp
 	$(call docker_build_and_run,amd64)
-	$(call docker_exec,dpkg -i /root/$(DEB_PACKAGE_X86_64))
+	$(call docker_exec,apt-get install -y /root/$(DEB_PACKAGE_X86_64))
 	$(call docker_test_and_clean)
 	rm Dockerfile.tmp
 
@@ -317,7 +317,7 @@ debian-bookworm_arm64: $(DEB_PACKAGE_ARM64)
 	echo "COPY . /root" >> Dockerfile.tmp
 	echo "RUN rm /usr/sbin/policy-rc.d" >> Dockerfile.tmp
 	$(call docker_build_and_run,arm64)
-	$(call docker_exec,dpkg -i /root/$(DEB_PACKAGE_ARM64))
+	$(call docker_exec,apt-get install -y /root/$(DEB_PACKAGE_ARM64))
 	$(call docker_test_and_clean)
 	rm Dockerfile.tmp
 
@@ -327,7 +327,7 @@ debian-trixie_x86_64: $(DEB_PACKAGE_X86_64)
 	echo "COPY . /root" >> Dockerfile.tmp
 	echo "RUN rm /usr/sbin/policy-rc.d" >> Dockerfile.tmp
 	$(call docker_build_and_run,amd64)
-	$(call docker_exec,dpkg -i /root/$(DEB_PACKAGE_X86_64))
+	$(call docker_exec,apt-get install -y /root/$(DEB_PACKAGE_X86_64))
 	$(call docker_test_and_clean)
 	rm Dockerfile.tmp
 
@@ -337,6 +337,6 @@ debian-trixie_arm64: $(DEB_PACKAGE_ARM64)
 	echo "COPY . /root" >> Dockerfile.tmp
 	echo "RUN rm /usr/sbin/policy-rc.d" >> Dockerfile.tmp
 	$(call docker_build_and_run,arm64)
-	$(call docker_exec,dpkg -i /root/$(DEB_PACKAGE_ARM64))
+	$(call docker_exec,apt-get install -y /root/$(DEB_PACKAGE_ARM64))
 	$(call docker_test_and_clean)
 	rm Dockerfile.tmp
