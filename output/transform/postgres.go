@@ -10,7 +10,7 @@ import (
 
 type OidToIdx map[state.Oid]int32
 
-func transformPostgres(s snapshot.FullSnapshot, newState state.PersistedState, diffState state.DiffState, transientState state.TransientState) snapshot.FullSnapshot {
+func transformPostgres(server *state.Server, s snapshot.FullSnapshot, newState state.PersistedState, diffState state.DiffState, transientState state.TransientState) snapshot.FullSnapshot {
 	s, roleOidToIdx := transformPostgresRoles(s, transientState)
 	s, databaseOidToIdx := transformPostgresDatabases(s, diffState, transientState, roleOidToIdx)
 	s, typeOidToIdx := transformPostgresTypes(s, transientState, databaseOidToIdx)
@@ -19,7 +19,7 @@ func transformPostgres(s snapshot.FullSnapshot, newState state.PersistedState, d
 	s = transformPostgresConfig(s, transientState)
 	s = transformPostgresServerStats(s, newState, diffState, transientState)
 	s = transformPostgresReplication(s, transientState, roleOidToIdx)
-	s, queryIDKeyToIdx := transformPostgresStatements(s, newState, diffState, transientState, roleOidToIdx, databaseOidToIdx)
+	s, queryIDKeyToIdx := transformPostgresStatements(server, s, newState, diffState, transientState, roleOidToIdx, databaseOidToIdx)
 	s = transformPostgresPlans(s, newState, diffState, transientState, queryIDKeyToIdx)
 	s = transformPostgresRelations(s, newState, diffState, databaseOidToIdx, typeOidToIdx, s.ServerStatistic.CurrentXactId)
 	s = transformPostgresFunctions(s, newState, diffState, roleOidToIdx, databaseOidToIdx)

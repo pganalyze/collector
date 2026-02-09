@@ -7,6 +7,12 @@ import (
 // TryFingerprintQuery - Generates a unique fingerprint for the given query,
 // and whether the query text had to be massaged to generate a fingerprint
 func TryFingerprintQuery(query string, filterQueryText string, trackActivityQuerySize int) (fp uint64, virtual bool) {
+	if query == "" {
+		fp = FingerprintText(QueryTextUnavailable)
+		virtual = true
+		return
+	}
+
 	fp, err := pg_query.FingerprintToUInt64(query)
 	if err != nil {
 		virtual = true

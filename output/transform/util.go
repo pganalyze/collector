@@ -22,6 +22,12 @@ type statementValue struct {
 }
 
 func upsertQueryReferenceAndInformation(s *snapshot.FullSnapshot, statementTexts state.PostgresStatementTextMap, roleOidToIdx OidToIdx, databaseOidToIdx OidToIdx, key statementKey, value statementValue) int32 {
+	normalizedQuery, exists := statementTexts[key.fingerprint]
+	if !exists {
+		return -1 // A query that already exists in the fingerprint cache, so won't be submitted
+		// TODO: this doesn't work, since the protobuf QueryStatistic uses query index instead of fingerprint
+	}
+
 	fpBuf := make([]byte, 8)
 	binary.BigEndian.PutUint64(fpBuf, key.fingerprint)
 	newRef := snapshot.QueryReference{
@@ -41,16 +47,14 @@ func upsertQueryReferenceAndInformation(s *snapshot.FullSnapshot, statementTexts
 	s.QueryReferences = append(s.QueryReferences, &newRef)
 
 	// Information
-	normalizedQuery := ""
-	if value.statement.QueryTextUnavailable {
-		normalizedQuery = "<query text unavailable>"
-	} else if value.statement.InsufficientPrivilege {
-		normalizedQuery = "<insufficient privilege>"
-	} else if value.statement.Collector {
-		normalizedQuery = "<pganalyze-collector>"
-	} else {
-		normalizedQuery = statementTexts[key.fingerprint]
-	}
+	// TODO: does this work now?
+	// if value.statement.QueryTextUnavailable {
+	// 	normalizedQuery = "<query text unavailable>"
+	// } else if value.statement.InsufficientPrivilege {
+	// 	normalizedQuery = "<insufficient privilege>"
+	// } else if value.statement.Collector {
+	// 	normalizedQuery = "<pganalyze-collector>"
+	// }
 	queryInformation := snapshot.QueryInformation{
 		QueryIdx:        idx,
 		NormalizedQuery: normalizedQuery,

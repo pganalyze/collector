@@ -9,14 +9,15 @@ import (
 const MAX_SIZE = 500_000
 
 type Fingerprints struct {
-	cache map[int64]uint64
-	lock  sync.RWMutex
+	lock        sync.RWMutex
+	cache       map[int64]uint64
+	newQueryIDs []int64
 }
 
 func NewFingerprints() *Fingerprints {
 	return &Fingerprints{
-		cache: make(map[int64]uint64, MAX_SIZE),
 		lock:  sync.RWMutex{},
+		cache: make(map[int64]uint64, MAX_SIZE),
 	}
 }
 
@@ -37,7 +38,9 @@ func (c *Fingerprints) Add(queryID int64, text string, filterQueryText string, t
 	}
 	fingerprint, virtual := util.TryFingerprintQuery(text, filterQueryText, trackActivityQuerySize)
 	if virtual {
-		// Don't store virtual fingerprints so we can cache real fingerprints later
+		c.lock.Lock()
+		c.newQueryIDs = append(c.newQueryIDs, queryID)
+		c.lock.Unlock()
 		return fingerprint
 	}
 	c.cleanup()
@@ -45,6 +48,15 @@ func (c *Fingerprints) Add(queryID int64, text string, filterQueryText string, t
 	c.cache[queryID] = fingerprint
 	c.lock.Unlock()
 	return fingerprint
+}
+
+// Called by GetStatementTexts to only look up query texts for new, unknown query IDs
+func (c *Fingerprints) TakeNewQueryIDs() []int64 {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	newQueryIDs := c.newQueryIDs
+	c.newQueryIDs = nil
+	return newQueryIDs
 }
 
 func (c *Fingerprints) size() int {
