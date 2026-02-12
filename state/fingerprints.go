@@ -3,14 +3,16 @@ package state
 import (
 	"github.com/pganalyze/collector/util"
 	"sync"
+	"sync/atomic"
 )
 
-// 500,000 entries use around 12 MB
-const MAX_SIZE = 500_000
+// This uses around 9 MB per server, as measured by MemStats
+const MAX_SIZE = 450_000
 
 type Fingerprints struct {
 	cache map[int64]uint64
 	lock  sync.RWMutex
+	size  atomic.Int32
 }
 
 func NewFingerprints() *Fingerprints {
@@ -20,18 +22,15 @@ func NewFingerprints() *Fingerprints {
 	}
 }
 
-func (c *Fingerprints) Get(queryID int64) (uint64, bool) {
+func (c *Fingerprints) Load(queryID int64) (uint64, bool) {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 	fingerprint, exists := c.cache[queryID]
 	return fingerprint, exists
 }
 
-func (c *Fingerprints) Add(queryID int64, text string, filterQueryText string, trackActivityQuerySize int) uint64 {
-	if queryID == 0 {
-		return util.FingerprintQuery(text, filterQueryText, trackActivityQuerySize)
-	}
-	fingerprint, exists := c.Get(queryID)
+func (c *Fingerprints) LoadOrStore(queryID int64, text string, filterQueryText string, trackActivityQuerySize int) uint64 {
+	fingerprint, exists := c.Load(queryID)
 	if exists {
 		return fingerprint
 	}
@@ -42,23 +41,19 @@ func (c *Fingerprints) Add(queryID int64, text string, filterQueryText string, t
 	}
 	c.cleanup()
 	c.lock.Lock()
+	defer c.lock.Unlock()
 	c.cache[queryID] = fingerprint
-	c.lock.Unlock()
+	c.size.Add(1)
 	return fingerprint
-}
-
-func (c *Fingerprints) size() int {
-	c.lock.RLock()
-	defer c.lock.RUnlock()
-	return len(c.cache)
 }
 
 // Retains a random 50% sample of entries if the cache grows too large
 func (c *Fingerprints) cleanup() {
-	if c.size() < MAX_SIZE {
+	if c.size.Load() < MAX_SIZE {
 		return
 	}
 	c.lock.Lock()
+	defer c.lock.Unlock()
 	cache := make(map[int64]uint64, MAX_SIZE)
 	index := 0
 	for key, value := range c.cache {
@@ -67,6 +62,6 @@ func (c *Fingerprints) cleanup() {
 		}
 		index += 1
 	}
+	c.size.Store(int32(len(cache)))
 	c.cache = cache
-	c.lock.Unlock()
 }

@@ -5,7 +5,11 @@ import (
 )
 
 // TryFingerprintQuery - Generates a unique fingerprint for the given query,
-// and whether the query text had to be massaged to generate a fingerprint
+// and whether the query text had to be modified to generate a fingerprint.
+//
+// This matters for some callers to decide what to do with the fingerprint, for
+// example if we see a truncated version of a query in pg_stat_activity, and then
+// we see the full query text later via pg_stat_statements.
 func TryFingerprintQuery(query string, filterQueryText string, trackActivityQuerySize int) (fp uint64, virtual bool) {
 	fp, err := pg_query.FingerprintToUInt64(query)
 	if err != nil {
