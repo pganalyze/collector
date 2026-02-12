@@ -232,7 +232,7 @@ func GetStatementTexts(ctx context.Context, c *Collection, db *sql.DB) (state.Po
 		case <-ctx.Done():
 			return nil, nil, ctx.Err()
 		default:
-			fingerprintAndNormalize(c, key, query, statements, statementTextsByFp, ignoreIoTiming)
+			fingerprintAndNormalize(c, key, key.QueryID, query, statements, statementTextsByFp, ignoreIoTiming)
 		}
 	}
 
@@ -351,7 +351,7 @@ func ignoreIOTiming(postgresVersion state.PostgresVersion, receivedQuery string)
 var collectorQueryFingerprint = util.FingerprintText(util.QueryTextCollector)
 var insufficientPrivsQueryFingerprint = util.FingerprintText(util.QueryTextInsufficientPrivs)
 
-func fingerprintAndNormalize(c *Collection, key state.PostgresStatementKey, text string, statements state.PostgresStatementMap, statementTextsByFp state.PostgresStatementTextMap, ignoreIoTiming bool) {
+func fingerprintAndNormalize(c *Collection, key state.PostgresStatementKey, queryID int64, text string, statements state.PostgresStatementMap, statementTextsByFp state.PostgresStatementTextMap, ignoreIoTiming bool) {
 	if insufficientPrivilege(text) {
 		statements[key] = state.PostgresStatement{
 			InsufficientPrivilege: true,
@@ -365,7 +365,7 @@ func fingerprintAndNormalize(c *Collection, key state.PostgresStatementKey, text
 			IgnoreIoTiming: ignoreIoTiming,
 		}
 	} else {
-		fp := util.FingerprintQuery(text, c.Config.FilterQueryText, -1)
+		fp := c.Fingerprints.LoadOrStore(queryID, text, c.Config.FilterQueryText, -1)
 		statements[key] = state.PostgresStatement{Fingerprint: fp, IgnoreIoTiming: ignoreIoTiming}
 		_, ok := statementTextsByFp[fp]
 		if !ok {
