@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pganalyze/collector/config"
 	"github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/output/transform"
 	"github.com/pganalyze/collector/state"
@@ -59,7 +60,7 @@ func TestStatements(t *testing.T) {
 	planStats[pKey2] = state.DiffedPostgresStatementStats{Calls: 24}
 	transientState.PlanStats[state.HistoricStatsTimeKey{CollectedAt: newState.CollectedAt, CollectedIntervalSecs: 60}] = planStats
 
-	actual := transform.StateToSnapshot(newState, diffState, transientState)
+	actual := transform.StateToSnapshot(newState, diffState, transientState, state.MakeServer(config.ServerConfig{}, true))
 	makeCanonical(actual)
 	actualJSON, _ := json.Marshal(actual)
 
