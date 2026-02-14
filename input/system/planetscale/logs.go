@@ -1,6 +1,7 @@
 package planetscale
 
 import (
+	"bufio"
 	"cmp"
 	"context"
 	"encoding/json"
@@ -25,6 +26,12 @@ const (
 	logsSignaturesPath = "/v1/organizations/%s/databases/%s/branches/%s/logs/signatures"
 	defaultQuery       = "planetscale.component:postgres planetscale.role:primary"
 	logsPath           = "/logs/branch/%s/query"
+
+	// Analyze and submit at most the trailing 10 megabytes of the retrieved log data
+	//
+	// This avoids an OOM when extremely large volumes of log data are returned,
+	// e.g. when starting the collector or during a burst of log activity.
+	maxLogParsingSize = 10 * 1024 * 1024
 )
 
 // LogEntry represents a single log entry from the PlanetScale logs API
@@ -131,7 +138,7 @@ func (e *HTTPError) Error() string {
 
 // DownloadLogFiles fetches logs from PlanetScale's logs API.
 // Called every 30 seconds by the log download scheduler.
-func DownloadLogFiles(ctx context.Context, server *state.Server, logger *util.Logger) (
+func DownloadLogFiles(ctx context.Context, server *state.Server, logger *util.Logger, opts state.CollectionOpts) (
 	state.PersistedLogState,
 	[]state.LogFile, []state.PostgresQuerySample,
 	error,
@@ -182,27 +189,88 @@ func DownloadLogFiles(ctx context.Context, server *state.Server, logger *util.Lo
 		logger.PrintVerbose("PlanetScale: obtained new signature, expires at %d", exp)
 	}
 
-	logReader, err := QueryLogs(
-		ctx, config.HTTPClient, logsURL, psl.PlanetScale.BranchID,
-		psl.PlanetScale.Signature, psl.PlanetScale.Expiry, psl.PlanetScale.LastTimestamp, 1000)
-	if err != nil {
-		// If we get a 403, clear the cached signature and return error to retry next cycle
-		var httpErr *HTTPError
-		if errors.As(err, &httpErr) && httpErr.StatusCode == http.StatusForbidden {
-			psl.PlanetScale.Signature = ""
-			psl.PlanetScale.Expiry = 0
-		}
-		return psl, nil, nil, fmt.Errorf("failed to query logs: %w", err)
-	}
-	// Add logger to the reader for verbose output
-	logReader.logger = logger
-	defer logReader.Close()
-
 	// Only process lines newer than 2 minutes ago (similar to RDS)
 	linesNewerThan := time.Now().UTC().Add(-2 * time.Minute)
 
-	// Parse the log content using the standard parser, streaming directly
-	logLines, samples := logs.ParseAndAnalyzeBuffer(logReader, linesNewerThan, server)
+	// Paginate through all available log entries, keeping at most the
+	// trailing maxLogParsingSize bytes (discarding older data), similar
+	// to the RDS log download approach
+	const pageSize = 1000
+	var content []byte
+	var newestTimestamp time.Time
+	var sizeLimitReached bool
+	since := psl.PlanetScale.LastTimestamp
+
+	// On initial start up, or when using an old collector state, avoid fetching very old lines
+	if since.Before(linesNewerThan) {
+		since = linesNewerThan
+	}
+
+	for {
+		logReader, err := QueryLogs(
+			ctx, config.HTTPClient, logsURL, psl.PlanetScale.BranchID,
+			psl.PlanetScale.Signature, psl.PlanetScale.Expiry, since, pageSize)
+		if err != nil {
+			// If we get a 403, clear the cached signature and return error to retry next cycle
+			var httpErr *HTTPError
+			if errors.As(err, &httpErr) && httpErr.StatusCode == http.StatusForbidden {
+				psl.PlanetScale.Signature = ""
+				psl.PlanetScale.Expiry = 0
+			}
+			return psl, nil, nil, fmt.Errorf("failed to query logs: %w", err)
+		}
+
+		// Add logger to the reader for verbose output
+		logReader.logger = logger
+
+		count := 0
+		for {
+			msg, err := logReader.ReadString('\n')
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				logReader.Close()
+				return psl, nil, nil, fmt.Errorf("failed to read log entry: %w", err)
+			}
+
+			newContent := []byte(msg)
+			if len(newContent) > maxLogParsingSize {
+				content = newContent[len(newContent)-maxLogParsingSize:]
+			} else {
+				overflow := len(content) + len(newContent) - maxLogParsingSize
+				if overflow > 0 {
+					if !sizeLimitReached {
+						sizeLimitReached = true
+						logger.PrintWarning("PlanetScale: Log data exceeds %d MB in interval, discarding older data", maxLogParsingSize/1024/1024)
+					}
+					content = content[overflow:]
+				}
+				content = append(content, newContent...)
+			}
+			count++
+		}
+
+		if nt := logReader.GetNewestTimestamp(); !nt.IsZero() {
+			newestTimestamp = nt
+		}
+		logReader.Close()
+
+		// If we got fewer entries than the page size, there are no more to fetch (for now)
+		if count < pageSize {
+			break
+		}
+
+		// Fetch the next page starting after the newest timestamp seen so far
+		since = newestTimestamp
+		if opts.VeryVerbose {
+			logger.PrintVerbose("PlanetScale: Fetching next page of logs (received %d entries, content size %d bytes)", count, len(content))
+		}
+	}
+
+	// Parse the log content using the standard parser
+	stream := bufio.NewReader(strings.NewReader(string(content)))
+	logLines, samples := logs.ParseAndAnalyzeBuffer(stream, linesNewerThan, server)
 
 	// Create log file
 	logFile, err := state.NewLogFile("planetscale-logs")
@@ -212,8 +280,8 @@ func DownloadLogFiles(ctx context.Context, server *state.Server, logger *util.Lo
 	logFile.LogLines = logLines
 
 	// Update persisted state with the newest timestamp
-	if newestTime := logReader.GetNewestTimestamp(); !newestTime.IsZero() {
-		psl.PlanetScale.LastTimestamp = newestTime
+	if !newestTimestamp.IsZero() {
+		psl.PlanetScale.LastTimestamp = newestTimestamp
 	}
 
 	var logFiles []state.LogFile

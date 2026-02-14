@@ -23,7 +23,7 @@ func DownloadLogFiles(ctx context.Context, server *state.Server, opts state.Coll
 			return
 		}
 	} else if server.Config.SupportsPlanetScaleLogs() {
-		psl, files, querySamples, err = planetscale.DownloadLogFiles(ctx, server, logger)
+		psl, files, querySamples, err = planetscale.DownloadLogFiles(ctx, server, logger, opts)
 		if err != nil {
 			return
 		}

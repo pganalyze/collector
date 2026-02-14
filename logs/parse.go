@@ -14,6 +14,7 @@ import (
 
 	"github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
+	"github.com/pganalyze/collector/util"
 )
 
 const LogPrefixAmazonRds string = "%t:%r:%u@%d:[%p]:"
