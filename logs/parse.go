@@ -427,7 +427,7 @@ type LineReader interface {
 	ReadString(delim byte) (string, error)
 }
 
-func ParseAndAnalyzeBuffer(logStream LineReader, linesNewerThan time.Time, server *state.Server) ([]state.LogLine, []state.PostgresQuerySample) {
+func ParseAndAnalyzeBuffer(logStream LineReader, linesNewerThan time.Time, server *state.Server, opts state.CollectionOpts, logger *util.Logger) ([]state.LogLine, []state.PostgresQuerySample) {
 	var logLines []state.LogLine
 	var currentByteStart int64 = 0
 	parser := server.GetLogParser()
@@ -444,7 +444,7 @@ func ParseAndAnalyzeBuffer(logStream LineReader, linesNewerThan time.Time, serve
 		// data in the file even if an error is returned
 		if err != nil {
 			if err != io.EOF {
-				fmt.Printf("Log Read ERROR: %s", err)
+				logger.PrintError("Log Read ERROR: %s", err)
 			}
 			break
 		}
@@ -462,6 +462,9 @@ func ParseAndAnalyzeBuffer(logStream LineReader, linesNewerThan time.Time, serve
 
 		// Ignore loglines which are outside our time window
 		if logLine.OccurredAt.Before(linesNewerThan) {
+			if opts.VeryVerbose {
+				logger.PrintVerbose("Skipping line because its outside the specified time window (%s < %s)", logLine.OccurredAt, linesNewerThan)
+			}
 			continue
 		}
 

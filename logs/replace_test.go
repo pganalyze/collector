@@ -10,6 +10,7 @@ import (
 	"github.com/pganalyze/collector/config"
 	"github.com/pganalyze/collector/logs"
 	"github.com/pganalyze/collector/state"
+	"github.com/pganalyze/collector/util"
 )
 
 type replaceTestpair struct {
@@ -76,7 +77,7 @@ func TestReplaceSecrets(t *testing.T) {
 		reader := bufio.NewReader(strings.NewReader(pair.input))
 		server := state.MakeServer(config.ServerConfig{}, false)
 		server.LogParser = logs.NewLogParser(logs.LogPrefixAmazonRds, nil)
-		logLines, _ := logs.ParseAndAnalyzeBuffer(reader, time.Time{}, server)
+		logLines, _ := logs.ParseAndAnalyzeBuffer(reader, time.Time{}, server, state.CollectionOpts{}, &util.Logger{})
 		logs.ReplaceSecrets(logLines, state.ParseFilterLogSecret(pair.filterLogSecret))
 
 		cfg := pretty.CompareConfig

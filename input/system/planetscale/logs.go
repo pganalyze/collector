@@ -138,7 +138,7 @@ func (e *HTTPError) Error() string {
 
 // DownloadLogFiles fetches logs from PlanetScale's logs API.
 // Called every 30 seconds by the log download scheduler.
-func DownloadLogFiles(ctx context.Context, server *state.Server, logger *util.Logger, opts state.CollectionOpts) (
+func DownloadLogFiles(ctx context.Context, server *state.Server, opts state.CollectionOpts, logger *util.Logger) (
 	state.PersistedLogState,
 	[]state.LogFile, []state.PostgresQuerySample,
 	error,
@@ -270,7 +270,7 @@ func DownloadLogFiles(ctx context.Context, server *state.Server, logger *util.Lo
 
 	// Parse the log content using the standard parser
 	stream := bufio.NewReader(strings.NewReader(string(content)))
-	logLines, samples := logs.ParseAndAnalyzeBuffer(stream, linesNewerThan, server)
+	logLines, samples := logs.ParseAndAnalyzeBuffer(stream, linesNewerThan, server, opts, logger)
 
 	// Create log file
 	logFile, err := state.NewLogFile("planetscale-logs")

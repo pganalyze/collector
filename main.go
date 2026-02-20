@@ -214,7 +214,7 @@ func main() {
 		}
 		server.LogParser = logs.NewLogParser(analyzeLogfilePrefix, tz)
 
-		logLines, samples := logs.ParseAndAnalyzeBuffer(logReader, time.Time{}, server)
+		logLines, samples := logs.ParseAndAnalyzeBuffer(logReader, time.Time{}, server, opts, logger)
 		logs.PrintDebugInfo(logLines, samples)
 		if analyzeDebugClassifications != "" {
 			classifications := strings.Split(analyzeDebugClassifications, ",")
@@ -243,7 +243,7 @@ func main() {
 			return
 		}
 		logReader := logs.NewMaybeHerokuLogReader(strings.NewReader(string(contentBytes)))
-		logLines, _ := logs.ParseAndAnalyzeBuffer(logReader, time.Time{}, state.MakeServer(config.ServerConfig{}, false))
+		logLines, _ := logs.ParseAndAnalyzeBuffer(logReader, time.Time{}, state.MakeServer(config.ServerConfig{}, false), opts, logger)
 		logs.ReplaceSecrets(logLines, state.ParseFilterLogSecret(filterLogSecret))
 		output := ""
 		for _, logLine := range logLines {

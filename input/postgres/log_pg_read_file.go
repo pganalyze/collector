@@ -107,7 +107,7 @@ func LogPgReadFile(ctx context.Context, server *state.Server, opts state.Collect
 		}
 
 		logReader := bufio.NewReader(strings.NewReader(logData))
-		newLogLines, newSamples := logs.ParseAndAnalyzeBuffer(logReader, linesNewerThan, server)
+		newLogLines, newSamples := logs.ParseAndAnalyzeBuffer(logReader, linesNewerThan, server, opts, logger)
 		logFile.LogLines = append(logFile.LogLines, newLogLines...)
 		samples = append(samples, newSamples...)
 
