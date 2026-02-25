@@ -15,7 +15,7 @@
  auto_explain.log_format            | json
  auto_explain.log_min_duration      | 1000
  auto_explain.log_nested_statements | on
- auto_explain.log_timing            | off
+ auto_explain.log_timing            | on
  auto_explain.log_triggers          | on
  auto_explain.log_verbose           | on
  log_duration                       | off
