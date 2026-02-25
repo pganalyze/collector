@@ -23,6 +23,7 @@ type PostgresVersion struct {
 
 	// For collector use only, to avoid calling functions that don't work
 	IsAwsAurora bool // Amazon Aurora
+	IsAlloyDB   bool // Google AlloyDB for PostgreSQL
 	IsCitus     bool // Citus extension (e.g. with Azure CosmosDB for PostgreSQL)
 	IsEPAS      bool // EnterpriseDB Advanced Server
 }

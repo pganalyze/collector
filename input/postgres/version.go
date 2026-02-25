@@ -32,6 +32,12 @@ func getPostgresVersion(ctx context.Context, db *sql.DB) (version state.Postgres
 	}
 	version.IsAwsAurora = isAwsAurora
 
+	isAlloyDB, err := GetIsAlloyDB(ctx, db)
+	if err != nil {
+		return
+	}
+	version.IsAlloyDB = isAlloyDB
+
 	err = db.QueryRowContext(ctx, QueryMarkerSQL+"SELECT pg_catalog.count(1) = 1 FROM pg_extension WHERE extname = 'citus'").Scan(&version.IsCitus)
 	if err != nil {
 		return
@@ -44,4 +50,10 @@ func GetIsAwsAurora(ctx context.Context, db *sql.DB) (bool, error) {
 	var isAurora bool
 	err := db.QueryRowContext(ctx, QueryMarkerSQL+"SELECT pg_catalog.count(1) = 1 FROM pg_settings WHERE name = 'rds.extensions' AND setting LIKE '%aurora_stat_utils%'").Scan(&isAurora)
 	return isAurora, err
+}
+
+func GetIsAlloyDB(ctx context.Context, db *sql.DB) (bool, error) {
+	var isAlloyDB bool
+	err := db.QueryRowContext(ctx, QueryMarkerSQL+"SELECT pg_catalog.count(1) >= 1 FROM pg_settings WHERE name LIKE 'alloydb.%'").Scan(&isAlloyDB)
+	return isAlloyDB, err
 }

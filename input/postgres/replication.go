@@ -53,7 +53,8 @@ SELECT client_addr,
 			 pg_catalog.pg_wal_lsn_diff(sent_lsn, replay_lsn) AS remote_byte_lag,
 			 pg_catalog.pg_wal_lsn_diff(pg_catalog.pg_current_wal_lsn(), sent_lsn) AS local_byte_lag
 	FROM %s
- WHERE client_addr IS NOT NULL`
+ WHERE client_addr IS NOT NULL
+ AND NOT (client_addr = '127.0.0.1' AND application_name = 'wal_uploader')`
 
 func GetReplication(ctx context.Context, c *Collection, db *sql.DB) (state.PostgresReplication, error) {
 	var err error
@@ -80,10 +81,10 @@ func GetReplication(ctx context.Context, c *Collection, db *sql.DB) (state.Postg
 		return repl, err
 	}
 
-	// Skip follower statistics on Aurora for now - there might be a benefit to support this for monitoring
-	// logical replication in the future, but it requires a bit more work since Aurora will error out
-	// if you call pg_catalog.pg_current_wal_lsn() when wal_level is not logical.
-	if c.PostgresVersion.IsAwsAurora {
+	// Skip follower statistics on Aurora and AlloyDB for now - there might be a benefit to support this for monitoring
+	// logical replication in the future, but it requires special casing pg_catalog.pg_current_wal_lsn() since both have
+	//  a wal_level set to "replica" currently which causes this function to error out.
+	if c.PostgresVersion.IsAwsAurora || c.PostgresVersion.IsAlloyDB {
 		return repl, nil
 	}
 
