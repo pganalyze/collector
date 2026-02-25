@@ -83,6 +83,10 @@ func setupSyslogHandler(ctx context.Context, config config.ServerConfig, out cha
 		if err != nil {
 			return err
 		}
+		err = server.ListenUDP(logSyslogServer)
+		if err != nil {
+			return err
+		}
 	}
 
 	server.Boot()
