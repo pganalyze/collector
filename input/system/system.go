@@ -18,12 +18,12 @@ import (
 // DownloadLogFiles - Downloads all new log files for the remote system and returns them
 func DownloadLogFiles(ctx context.Context, server *state.Server, opts state.CollectionOpts, logger *util.Logger) (psl state.PersistedLogState, files []state.LogFile, querySamples []state.PostgresQuerySample, err error) {
 	if server.Config.SystemType == "amazon_rds" {
-		psl, files, querySamples, err = rds.DownloadLogFiles(ctx, server, logger)
+		psl, files, querySamples, err = rds.DownloadLogFiles(ctx, server, opts, logger)
 		if err != nil {
 			return
 		}
 	} else if server.Config.SupportsPlanetScaleLogs() {
-		psl, files, querySamples, err = planetscale.DownloadLogFiles(ctx, server, logger)
+		psl, files, querySamples, err = planetscale.DownloadLogFiles(ctx, server, opts, logger)
 		if err != nil {
 			return
 		}
