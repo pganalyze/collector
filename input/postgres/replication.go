@@ -84,7 +84,7 @@ func GetReplication(ctx context.Context, c *Collection, db *sql.DB) (state.Postg
 	// Skip follower statistics on Aurora and AlloyDB for now - there might be a benefit to support this for monitoring
 	// logical replication in the future, but it requires special casing pg_catalog.pg_current_wal_lsn() since both have
 	//  a wal_level set to "replica" currently which causes this function to error out.
-	if c.PostgresVersion.IsAwsAurora || c.PostgresVersion.IsAlloyDB {
+	if c.PostgresVersion.IsAwsAurora || (c.PostgresVersion.IsAlloyDB && repl.InRecovery) {
 		return repl, nil
 	}
 
