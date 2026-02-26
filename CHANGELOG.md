@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.69.0      2026-02-26
+
+* Improve query text collection to reduce missing query texts
+  - Add a fingerprint cache that retains known query IDs across collection
+    cycles, reducing the occurrence of `<truncated query>` in pganalyze
+  - Allow re-use of previously collected query texts if fingerprint is known,
+    instead of marking such queries as "query text unavailable"
+* PlanetScale: Paginate log fetching to ensure freshness
+  - Previously, only a single page of up to 1,000 log entries was fetched,
+    which proved insufficient for high-traffic servers. The collector now
+    paginates through all available entries
+* AlloyDB: Skip collecting replication stats
+  - Additionally, for the case when collecting replication stats (except Aurora
+    and AlloyDB), filter out the local internal wal_uploader process from
+    replication stats monitoring
+* Helm chart: Allow setting pod labels and pulling images by digest
+* Syslog handler: Add UDP listener
+* Add packages for Debian 13 (Trixie)
+
+
 ## 0.68.2      2026-02-02
 
 * Allow explicitly setting Cluster ID
