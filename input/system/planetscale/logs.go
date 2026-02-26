@@ -257,7 +257,9 @@ func DownloadLogFiles(ctx context.Context, server *state.Server, opts state.Coll
 		logReader.Close()
 
 		// If we got fewer entries than the page size, there are no more to fetch (for now)
-		if count < pageSize {
+		//
+		// Similarly, if for some reason we didn't advance the timestamp (e.g. time parsing errors), bail out.
+		if count < pageSize || newestTimestamp.Equal(since) {
 			break
 		}
 
