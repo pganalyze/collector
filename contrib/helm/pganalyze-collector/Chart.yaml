@@ -1,7 +1,7 @@
 apiVersion: v2
 name: pganalyze-collector
-version: 0.68.2
-appVersion: "v0.68.2"
+version: 0.69.0
+appVersion: "v0.69.0"
 type: application
 description: pganalyze statistics collector
 home: https://pganalyze.com/
