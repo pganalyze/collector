@@ -129,6 +129,8 @@ func downloadLogsForServerWithLocksAndCallbacks(ctx context.Context, wg *sync.Wa
 
 	server.LogStateMutex.Lock()
 	newLogState, success, err := downloadLogsForServer(ctx, server, opts, prefixedLogger)
+	// Always update state (even in error case), to allow clearing of stale API credentials
+	server.LogPrevState = newLogState
 	if err != nil {
 		server.LogStateMutex.Unlock()
 		printLogDownloadError(server, err, prefixedLogger)
@@ -136,7 +138,6 @@ func downloadLogsForServerWithLocksAndCallbacks(ctx context.Context, wg *sync.Wa
 			go runCompletionCallback("error", server.Config.ErrorCallback, server.Config.SectionName, "logs", err, prefixedLogger)
 		}
 	} else {
-		server.LogPrevState = newLogState
 		server.LogStateMutex.Unlock()
 		if success && server.Config.SuccessCallback != "" {
 			go runCompletionCallback("success", server.Config.SuccessCallback, server.Config.SectionName, "logs", nil, prefixedLogger)
