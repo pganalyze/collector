@@ -12,9 +12,6 @@
     which proved insufficient for high-traffic servers. The collector now
     paginates through all available entries
 * AlloyDB: Skip collecting replication stats
-  - Additionally, for the case when collecting replication stats (except Aurora
-    and AlloyDB), filter out the local internal wal_uploader process from
-    replication stats monitoring
 * Helm chart: Allow setting pod labels and pulling images by digest
 * Syslog handler: Add UDP listener
 * Add packages for Debian 13 (Trixie)
