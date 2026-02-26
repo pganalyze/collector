@@ -4,9 +4,13 @@
 
 * Improve query text collection to reduce missing query texts
   - Add a fingerprint cache that retains known query IDs across collection
-    cycles, reducing the occurrence of `<truncated query>` in pganalyze
-  - Allow re-use of previously collected query texts if fingerprint is known,
-    instead of marking such queries as "query text unavailable"
+    cycles, increasing memory use by up to about 9 MB per server whilst reducing
+    CPU overhead
+  - For data from pg_stat_activity (Connections page in pganalyze), this reduces
+    the occurrence of `<truncated query>`
+  - For data from pg_stat_statements (Query Performance page in pganalyze), this
+    reduces the likelihood of "query text unavailable" by re-using previous
+    query texts already stored on the server side
 * PlanetScale: Paginate log fetching to ensure freshness
   - Previously, only a single page of up to 1,000 log entries was fetched,
     which proved insufficient for high-traffic servers. The collector now
