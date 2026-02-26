@@ -10,13 +10,18 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-func groupStatements(statements state.PostgresStatementMap, statsMap state.DiffedPostgresStatementStatsMap) map[statementKey]statementValue {
+func groupStatements(statements state.PostgresStatementMap, statsMap state.DiffedPostgresStatementStatsMap, server *state.Server) map[statementKey]statementValue {
 	groupedStatements := make(map[statementKey]statementValue)
 
 	for sKey, stats := range statsMap {
 		statement, exist := statements[sKey]
 		if !exist {
-			statement = state.PostgresStatement{QueryTextUnavailable: true, Fingerprint: util.FingerprintText(util.QueryTextUnavailable)}
+			fingerprint, exists := server.Fingerprints.Load(sKey.QueryID)
+			if exists {
+				statement = state.PostgresStatement{QueryTextUnavailable: true, Fingerprint: fingerprint}
+			} else {
+				statement = state.PostgresStatement{QueryTextUnavailable: true, Fingerprint: util.FingerprintText(util.QueryTextUnavailable)}
+			}
 		}
 
 		// Note we intentionally don't include sKey.TopLevel here, since we don't (yet)
@@ -76,7 +81,7 @@ type queryIDKey struct {
 }
 type QueryIDKeyToIdx map[queryIDKey]int32
 
-func transformPostgresStatements(s snapshot.FullSnapshot, newState state.PersistedState, diffState state.DiffState, transientState state.TransientState, roleOidToIdx OidToIdx, databaseOidToIdx OidToIdx) (snapshot.FullSnapshot, QueryIDKeyToIdx) {
+func transformPostgresStatements(s snapshot.FullSnapshot, newState state.PersistedState, diffState state.DiffState, transientState state.TransientState, roleOidToIdx OidToIdx, databaseOidToIdx OidToIdx, server *state.Server) (snapshot.FullSnapshot, QueryIDKeyToIdx) {
 	var queryStats []*snapshot.HistoricQueryStatistics
 	queryIDKeyToIDx := make(QueryIDKeyToIdx)
 
@@ -91,7 +96,7 @@ func transformPostgresStatements(s snapshot.FullSnapshot, newState state.Persist
 		h.CollectedAt = timestamppb.New(timeKey.CollectedAt)
 		h.CollectedIntervalSecs = timeKey.CollectedIntervalSecs
 
-		groupedStatements := groupStatements(transientState.Statements, diffedStats)
+		groupedStatements := groupStatements(transientState.Statements, diffedStats, server)
 		for key, value := range groupedStatements {
 			idx := upsertQueryReferenceAndInformation(&s, transientState.StatementTexts, roleOidToIdx, databaseOidToIdx, key, value)
 			// Store the map of QueryIdx (idx here) and databaseOid, userOid, queryID combinations
