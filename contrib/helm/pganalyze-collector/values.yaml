@@ -8,6 +8,8 @@ image:
   pullPolicy: IfNotPresent
   # -- Overrides the image tag whose default is the chart appVersion.
   tag: ""
+  # -- Overrides the image using a specific digest (e.g. sha256:...). When set, tag is ignored.
+  digest: ""
 
 imagePullSecrets: []
 nameOverride: ""
@@ -96,6 +98,9 @@ service:
       targetPort: 4319
 
 podAnnotations: {}
+
+# -- Labels to add to the pod
+podLabels: {}
 
 podSecurityContext:
   runAsNonRoot: true
