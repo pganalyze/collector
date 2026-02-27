@@ -326,7 +326,7 @@ func Run(ctx context.Context, wg *sync.WaitGroup, opts state.CollectionOpts, log
 		SetupLogCollection(ctx, wg, servers, opts, logger, hasAnyHeroku, hasAnyGoogleCloudSQL, hasAnyAzureDatabase, hasAnyTembo)
 	} else if util.IsHeroku() {
 		// Even if logs are deactivated, Heroku still requires us to have a functioning web server
-		util.SetupHttpHandlerDummy()
+		util.SetupHttpHandlerDummy(ctx, logger)
 	}
 
 	if hasAnyActivityEnabled {

@@ -2,7 +2,6 @@ package heroku
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"os"
 	"sync"
@@ -15,19 +14,19 @@ func SetupHttpHandlerLogs(ctx context.Context, wg *sync.WaitGroup, opts state.Co
 	herokuLogStream := make(chan HttpSyslogMessage, state.LogStreamBufferLen)
 	setupLogTransformer(ctx, wg, servers, herokuLogStream, parsedLogStream, opts, logger)
 
-	go func() {
-		http.HandleFunc("/", util.HttpRedirectToApp)
-		http.HandleFunc("/logs/", func(w http.ResponseWriter, r *http.Request) {
-			for _, item := range ReadHerokuPostgresSyslogMessages(r.Body) {
-				item.Path = r.URL.Path
-				select {
-				case herokuLogStream <- item:
-					// Handed over successfully
-				default:
-					fmt.Printf("WARNING: Channel buffer exceeded, skipping message\n")
-				}
+	serveMux := http.NewServeMux()
+	serveMux.HandleFunc("/", util.HttpRedirectToApp)
+	serveMux.HandleFunc("/logs/", func(w http.ResponseWriter, r *http.Request) {
+		for _, item := range ReadHerokuPostgresSyslogMessages(r.Body) {
+			item.Path = r.URL.Path
+			select {
+			case herokuLogStream <- item:
+				// Handed over successfully
+			default:
+				logger.PrintInfo("WARNING: Channel buffer exceeded, skipping message\n")
 			}
-		})
-		http.ListenAndServe(":"+os.Getenv("PORT"), nil)
-	}()
+		}
+	})
+
+	util.GoServeHTTP(ctx, logger, ":"+os.Getenv("PORT"), serveMux)
 }

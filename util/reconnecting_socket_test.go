@@ -31,11 +31,7 @@ func TestSocketReconnect(t *testing.T) {
 		c.Close()
 	})
 	s := &http.Server{Addr: "localhost:9123", Handler: serverMux}
-	addr := s.Addr
-	if addr == "" {
-		addr = ":http"
-	}
-	ln, err := net.Listen("tcp", addr)
+	ln, err := net.Listen("tcp", s.Addr)
 	if err != nil {
 		t.Errorf("TestSocketReconnect: failed to start socket: %v", err)
 		cancel()
