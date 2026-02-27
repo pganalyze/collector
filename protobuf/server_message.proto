@@ -28,6 +28,7 @@ message ServerMessage {
 
   message Features {
     // How often the collector should run pg_stat_statements_reset()
+    // Deprecated: the collector now resets pg_stat_statements when it's nearly full
     int32 statement_reset_frequency = 1;
     // Statement timeout for all SQL statements sent to the database (defaults to 30s)
     int32 statement_timeout_ms = 2;

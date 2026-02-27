@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/guregu/null"
@@ -59,23 +60,45 @@ func insufficientPrivilege(query string) bool {
 	return query == "<insufficient privilege>"
 }
 
-func ResetStatements(ctx context.Context, c *Collection, db *sql.DB) error {
-	var method string
+func ResetStatements(ctx context.Context, c *Collection, db *sql.DB, settings []state.PostgresSetting) (err error) {
+	max := 5_000
+	for _, setting := range settings {
+		if setting.Name == "pg_stat_statements.max" && setting.CurrentValue.Valid {
+			max, err = strconv.Atoi(setting.CurrentValue.String)
+			if err != nil {
+				c.Logger.PrintError("Error parsing pg_stat_statements.max: %s", err)
+			}
+		}
+	}
+	count, err := GetStatementCount(ctx, c, db)
+	if err != nil {
+		return
+	}
 	if c.HelperExists("reset_stat_statements", nil) {
 		c.Logger.PrintVerbose("Found pganalyze.reset_stat_statements() stats helper")
-		method = "pganalyze.reset_stat_statements()"
-	} else {
-		if !c.ConnectedAsSuperUser && !c.ConnectedAsMonitoringRole {
-			c.Logger.PrintInfo("Warning: You are not connecting as superuser. Please" +
-				" contact support to get advice on setting up stat statements reset")
+		if float64(count) >= 0.9*float64(max) {
+			c.Logger.PrintInfo("Calling reset_stat_statements because pg_stat_statements is nearly full")
+			_, err = db.ExecContext(ctx, QueryMarkerSQL+"SELECT pganalyze.reset_stat_statements()")
 		}
-		method = "pg_stat_statements_reset()"
+	} else if float64(count) >= 0.95*float64(max) {
+		c.Logger.PrintWarning("pg_stat_statements is nearly full. We recommend defining the pganalyze.reset_stat_statements helper function to avoid seeing <query text unavailable> in pganalyze")
 	}
-	_, err := db.ExecContext(ctx, QueryMarkerSQL+"SELECT "+method)
+	return
+}
+
+func GetStatementCount(ctx context.Context, c *Collection, db *sql.DB) (count int64, err error) {
+	sourceTable, _, err := getStatementSource(ctx, c, db, false)
 	if err != nil {
-		return err
+		return
 	}
-	return nil
+	querySql := QueryMarkerSQL + fmt.Sprintf("SELECT count(*) FROM %s", sourceTable)
+	stmt, err := db.PrepareContext(ctx, querySql)
+	if err != nil {
+		return
+	}
+	defer stmt.Close()
+	err = stmt.QueryRowContext(ctx).Scan(&count)
+	return
 }
 
 func GetStatementStats(ctx context.Context, c *Collection, db *sql.DB) (state.PostgresStatementStatsMap, error) {
