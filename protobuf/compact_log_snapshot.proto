@@ -14,9 +14,7 @@ message CompactLogSnapshot {
 
 message LogFileReference {
   string uuid = 1;
-  string s3_location = 2;
-  string s3_cek_algo = 3;
-  string s3_cmk_key_id = 4;
+  // 2-4 are deprecated and shouldn't be used
 
   int64 byte_size = 5;
   string original_name = 6;
