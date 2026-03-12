@@ -34,6 +34,13 @@ createrepo --update /repo/el/9
 rm -f /repo/el/9/repodata/repomd.xml.asc
 gpg --detach-sign --armor --batch /repo/el/9/repodata/repomd.xml
 
+mkdir -p /repo/el/10/RPMS
+cp /rpm/systemd/$RPM_PACKAGE_X86_64 /repo/el/10/RPMS/
+cp /rpm/systemd/$RPM_PACKAGE_ARM64 /repo/el/10/RPMS/
+createrepo --update /repo/el/10
+rm -f /repo/el/10/repodata/repomd.xml.asc
+gpg --detach-sign --armor --batch /repo/el/10/repodata/repomd.xml
+
 mkdir -p /repo/fedora/36/RPMS
 cp /rpm/systemd/$RPM_PACKAGE_X86_64 /repo/fedora/36/RPMS/
 cp /rpm/systemd/$RPM_PACKAGE_ARM64 /repo/fedora/36/RPMS/
