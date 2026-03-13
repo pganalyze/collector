@@ -119,6 +119,14 @@ func getAzureCredential(config config.ServerConfig) (azcore.TokenCredential, err
 }
 
 func getEventHubConsumerClient(config config.ServerConfig) (*azeventhubs.ConsumerClient, error) {
+	if config.AzureEventhubConnectionString != "" {
+		consumerClient, err := azeventhubs.NewConsumerClientFromConnectionString(config.AzureEventhubConnectionString, config.AzureEventhubName, azeventhubs.DefaultConsumerGroup, nil)
+		if err != nil {
+			return nil, fmt.Errorf("failed to configure Event Hub from connection string: %s", err)
+		}
+		return consumerClient, nil
+	}
+
 	credential, err := getAzureCredential(config)
 	if err != nil {
 		return nil, err
@@ -234,8 +242,9 @@ func SetupLogSubscriber(ctx context.Context, wg *sync.WaitGroup, opts state.Coll
 
 	for _, server := range servers {
 		prefixedLogger := logger.WithPrefix(server.Config.SectionName)
-		if server.Config.AzureEventhubNamespace != "" && server.Config.AzureEventhubName != "" {
-			if _, ok := eventHubReceivers[server.Config.AzureEventhubNamespace+"/"+server.Config.AzureEventhubName]; ok {
+		if server.Config.SupportsAzureEventHub() {
+			receiverKey := server.Config.AzureEventhubNamespace + "/" + server.Config.AzureEventhubName
+			if _, ok := eventHubReceivers[receiverKey]; ok {
 				continue
 			}
 			err := setupEventHubReceiver(ctx, wg, prefixedLogger, server.Config, azureLogStream, opts)
@@ -248,7 +257,7 @@ func SetupLogSubscriber(ctx context.Context, wg *sync.WaitGroup, opts state.Coll
 				continue
 			}
 
-			eventHubReceivers[server.Config.AzureEventhubNamespace+"/"+server.Config.AzureEventhubName] = true
+			eventHubReceivers[receiverKey] = true
 		}
 	}
 

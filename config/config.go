@@ -95,15 +95,16 @@ type ServerConfig struct {
 	AwsEndpointCloudwatchURL       string `ini:"aws_endpoint_cloudwatch_url"`
 	AwsEndpointCloudwatchLogsURL   string `ini:"aws_endpoint_cloudwatch_logs_url"`
 
-	AzureDbServerName          string `ini:"azure_db_server_name"`
-	AzureEventhubNamespace     string `ini:"azure_eventhub_namespace"`
-	AzureEventhubName          string `ini:"azure_eventhub_name"`
-	AzureADTenantID            string `ini:"azure_ad_tenant_id"`
-	AzureADClientID            string `ini:"azure_ad_client_id"`
-	AzureADClientSecret        string `ini:"azure_ad_client_secret"`
-	AzureADCertificatePath     string `ini:"azure_ad_certificate_path"`
-	AzureADCertificatePassword string `ini:"azure_ad_certificate_password"`
-	AzureSubscriptionID        string `ini:"azure_subscription_id"`
+	AzureDbServerName             string `ini:"azure_db_server_name"`
+	AzureEventhubNamespace        string `ini:"azure_eventhub_namespace"`
+	AzureEventhubName             string `ini:"azure_eventhub_name"`
+	AzureEventhubConnectionString string `ini:"azure_eventhub_connection_string"`
+	AzureADTenantID               string `ini:"azure_ad_tenant_id"`
+	AzureADClientID               string `ini:"azure_ad_client_id"`
+	AzureADClientSecret           string `ini:"azure_ad_client_secret"`
+	AzureADCertificatePath        string `ini:"azure_ad_certificate_path"`
+	AzureADCertificatePassword    string `ini:"azure_ad_certificate_password"`
+	AzureSubscriptionID           string `ini:"azure_subscription_id"`
 
 	GcpProjectID          string `ini:"gcp_project_id"` // Optional for CloudSQL (you can pass the full "Connection name" as the instance ID)
 	GcpCloudSQLInstanceID string `ini:"gcp_cloudsql_instance_id"`
@@ -260,6 +261,12 @@ type ServerConfig struct {
 	// OpenTelemetry tracing provider, if enabled
 	OTelTracingProvider             *sdktrace.TracerProvider
 	OTelTracingProviderShutdownFunc func(context.Context) error
+}
+
+// SupportsAzureEventHub - Determines whether Azure Event Hub log streaming is configured
+func (config ServerConfig) SupportsAzureEventHub() bool {
+	return config.AzureEventhubConnectionString != "" ||
+		(config.AzureEventhubNamespace != "" && config.AzureEventhubName != "")
 }
 
 // SupportsLogDownload - Determines whether the specified config can download logs

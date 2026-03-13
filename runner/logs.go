@@ -410,7 +410,7 @@ func TestLogsForAllServers(ctx context.Context, servers []*state.Server, opts st
 			}
 		} else if server.Config.SupportsLogDownload() {
 			success = testLogDownload(sctx, &wg, server, opts, prefixedLogger)
-		} else if server.Config.AzureEventhubNamespace != "" && server.Config.AzureEventhubName != "" {
+		} else if server.Config.SupportsAzureEventHub() {
 			if server.Config.AzureDbServerName == "" {
 				prefixedLogger.PrintError("ERROR - Detected Azure Event Hub setup but azure_db_server_name is not set")
 			} else {

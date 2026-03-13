@@ -216,6 +216,9 @@ func getDefaultConfig() *ServerConfig {
 	if azureEventhubName := os.Getenv("AZURE_EVENTHUB_NAME"); azureEventhubName != "" {
 		config.AzureEventhubName = azureEventhubName
 	}
+	if azureEventhubConnectionString := os.Getenv("AZURE_EVENTHUB_CONNECTION_STRING"); azureEventhubConnectionString != "" {
+		config.AzureEventhubConnectionString = azureEventhubConnectionString
+	}
 	if azureADTenantID := os.Getenv("AZURE_AD_TENANT_ID"); azureADTenantID != "" {
 		config.AzureADTenantID = azureADTenantID
 	}
