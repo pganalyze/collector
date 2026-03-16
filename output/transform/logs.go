@@ -101,9 +101,6 @@ func transformSystemLogs(server *state.Server, s snapshot.CompactLogSnapshot, r 
 		fileIdx := int32(len(s.LogFileReferences))
 		logFileReference := &snapshot.LogFileReference{
 			Uuid:         logFileIn.UUID.String(),
-			S3Location:   logFileIn.S3Location,
-			S3CekAlgo:    logFileIn.S3CekAlgo,
-			S3CmkKeyId:   logFileIn.S3CmkKeyID,
 			ByteSize:     logFileIn.ByteSize,
 			OriginalName: logFileIn.OriginalName,
 		}
