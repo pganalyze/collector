@@ -111,7 +111,7 @@ time="2024-04-26T02:01:07Z" level=info msg="Generating README Documentation for 
 6. Sign and release packages using `make -C packages repo` (this requires access to the Keybase GPG key)
 
 To run step 5 from an Ubuntu 24.04 VM, do the following:
-(use the c8i.2xlarge instance or higher, takes ~10+ minutes)
+(use a c8i.2xlarge instance or higher, takes ~10+ minutes)
 
 ```
 # Get password (entered interactively) from Quay.io
