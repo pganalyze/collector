@@ -61,21 +61,21 @@ then
   version=7
 elif grep -q '^ID="amzn"$' /etc/os-release && grep -q '^VERSION_ID="2023"$' /etc/os-release;
 then
-  # Amazon Linux 2023, utilizing same glibc version (2.34) as CentOS Streams 9
+  # Amazon Linux 2023, utilizing same glibc version (2.34) as CentOS Stream 9
   pkg=yum
   distribution=el
   version=9
 elif grep -q '^ID="\(rhel\|centos\|almalinux\|rocky\|ol\)"$' /etc/os-release;
 then
-  # RHEL, CentOS, AlmaLinux, Rocky Linux and Oracle Linux
+  # RHEL, CentOS Stream, AlmaLinux, Rocky Linux and Oracle Linux
   pkg=yum
   distribution=el
   version=$(grep VERSION_ID /etc/os-release | cut -d= -f2 | tr -d '"' | cut -d. -f1)
-  if [ "$version" != 7 ] && [ "$version" != 8 ] && [ "$version" != 9 ];
+  if [ "$version" != 7 ] && [ "$version" != 8 ] && [ "$version" != 9 ] && [ "$version" != 10 ];
   then
-    if confirm "Unsupported RHEL, CentOS, AlmaLinux, Rocky Linux or Oracle Linux version; try RHEL9 package?";
+    if confirm "Unsupported RHEL, CentOS Stream, AlmaLinux, Rocky Linux or Oracle Linux version; try RHEL10 package?";
     then
-      version=9
+      version=10
     else
       fail "unrecognized RHEL, CentOS, AlmaLinux, Rocky Linux or Oracle Linux version: ${version}"
     fi
