@@ -295,6 +295,7 @@ func postprocessAndSendLogs(ctx context.Context, server *state.Server, opts stat
 		for idx, sample := range transientLogState.QuerySamples {
 			// Ensure we always normalize the query text (when sample normalization is on), even if EXPLAIN errors out
 			sample.Query = util.NormalizeQuery(sample.Query, "unparseable", -1)
+			sample.Normalized = true
 			for pIdx := range sample.Parameters {
 				sample.Parameters[pIdx] = null.StringFrom("<removed>")
 			}

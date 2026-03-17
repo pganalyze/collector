@@ -89,6 +89,8 @@ func transformPostgresQuerySamples(server *state.Server, s snapshot.CompactLogSn
 			ExplainFormat: sampleIn.ExplainFormat,
 			ExplainOutput: explainOutput,
 			ExplainError:  sampleIn.ExplainError,
+
+			Normalized: sampleIn.Normalized,
 		}
 		s.QuerySamples = append(s.QuerySamples, &sample)
 	}

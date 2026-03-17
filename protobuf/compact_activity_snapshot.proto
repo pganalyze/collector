@@ -381,6 +381,8 @@ message Backend {
   string backend_type = 21;
 
   repeated int32 blocked_by_pids = 22;
+
+  bool query_text_normalized = 23;
 }
 
 message VacuumProgressInformation {

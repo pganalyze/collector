@@ -25,6 +25,7 @@ func SubmitCompactActivitySnapshot(ctx context.Context, server *state.Server, co
 					// reasons this conditional here is based on filter_query_sample. The intent is that if the query is
 					// unparseable, it turns into "<truncated query>" or "<unparseable query>", not the original text.
 					as.Backends[idx].QueryText = util.NormalizeQuery(backend.QueryText, "unparseable", activityState.TrackActivityQuerySize)
+					as.Backends[idx].QueryTextNormalized = true
 				}
 			}
 		}
