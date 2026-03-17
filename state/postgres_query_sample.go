@@ -53,4 +53,6 @@ type PostgresQuerySample struct {
 	ExplainError      string
 	ExplainFormat     pganalyze_collector.QuerySample_ExplainFormat
 	ExplainSource     pganalyze_collector.QuerySample_ExplainSource
+
+	Normalized bool
 }

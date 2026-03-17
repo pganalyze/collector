@@ -244,4 +244,6 @@ message QuerySample {
     GENERIC_EXPLAIN_SOURCE = 3; // EXPLAIN generated based on unknown constant parameters
   }
   ExplainSource explain_source = 24;
+
+  bool normalized = 30;
 }
