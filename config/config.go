@@ -115,6 +115,7 @@ type ServerConfig struct {
 	GcpCredentialsFile    string `ini:"gcp_credentials_file"`
 	GcpRegion             string `ini:"gcp_region"`
 	GcpUsePublicIP        bool   `ini:"gcp_use_public_ip"`
+	GcpUsePSC             bool   `ini:"gcp_use_psc"`
 
 	CrunchyBridgeClusterID string `ini:"crunchy_bridge_cluster_id"`
 	CrunchyBridgeAPIKey    string `ini:"crunchy_bridge_api_key"`

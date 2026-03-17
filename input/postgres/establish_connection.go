@@ -72,14 +72,18 @@ func connectToDb(ctx context.Context, config config.ServerConfig, logger *util.L
 			} else {
 				if config.GcpCloudSQLInstanceID != "" {
 					hostOverride = strings.Join([]string{config.GcpProjectID, config.GcpRegion, config.GcpCloudSQLInstanceID}, ":")
-					if config.GcpUsePublicIP {
+					if config.GcpUsePSC {
+						driverName = "cloudsql-postgres-psc"
+					} else if config.GcpUsePublicIP {
 						driverName = "cloudsql-postgres-public"
 					} else {
 						driverName = "cloudsql-postgres"
 					}
 				} else if config.GcpAlloyDBClusterID != "" && config.GcpAlloyDBInstanceID != "" {
 					hostOverride = fmt.Sprintf("projects/%s/locations/%s/clusters/%s/instances/%s", config.GcpProjectID, config.GcpRegion, config.GcpAlloyDBClusterID, config.GcpAlloyDBInstanceID)
-					if config.GcpUsePublicIP {
+					if config.GcpUsePSC {
+						driverName = "alloydb-postgres-psc"
+					} else if config.GcpUsePublicIP {
 						driverName = "alloydb-postgres-public"
 					} else {
 						driverName = "alloydb-postgres"
