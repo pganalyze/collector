@@ -18,6 +18,9 @@ import (
 
 func SendFull(ctx context.Context, server *state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, newState state.PersistedState, diffState state.DiffState, transientState state.TransientState, collectedIntervalSecs uint32) error {
 	s := transform.StateToSnapshot(newState, diffState, transientState, server)
+	if s.ServerStatistic.PgStatStatementsDealloc > 0 {
+		logger.PrintWarning("pg_stat_statements deallocation detected. We recommend enabling automatic resets on the pganalyze server settings page to avoid <query text unavailable>")
+	}
 	s.CollectedIntervalSecs = collectedIntervalSecs
 	err := verifyIntegrity(&s)
 	if err != nil {

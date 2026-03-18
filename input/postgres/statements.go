@@ -62,29 +62,35 @@ func insufficientPrivilege(query string) bool {
 	return query == "<insufficient privilege>"
 }
 
-func ResetStatements(ctx context.Context, c *Collection, db *sql.DB, server *state.Server, ps *state.PersistedState, ts *state.TransientState) (reset bool, err error) {
+func ShouldResetStatements(server *state.Server, ps *state.PersistedState, ts *state.TransientState, size int) (reset bool, err error) {
 	config := server.Grant.Load().Config
 	lastReset := ps.PgStatStatementsStats.Reset
-	resetFreq := config.Features.StatementResetFrequency
-	if resetFreq == 0 {
-		return
+	resetFreq := config.Features.StatementResetFrequency * scheduler.FullSnapshotMinutes
+	maxSize := int(config.Features.StatementMaxSize)
+	if !lastReset.Valid {
+		return // It's always set on PG14+ with the extension enabled. Older versions aren't supported
 	}
-	if lastReset.Valid && time.Since(lastReset.Time).Minutes() < float64(resetFreq*scheduler.FullSnapshotMinutes) {
-		return
+	if maxSize == 0 {
+		maxSize = 250
 	}
+	count := len(ts.Statements)
 	max := 5_000
 	for _, setting := range ts.Settings {
 		if setting.Name == "pg_stat_statements.max" && setting.CurrentValue.Valid {
 			max, err = strconv.Atoi(setting.CurrentValue.String)
 			if err != nil {
-				c.Logger.PrintError("Error parsing pg_stat_statements.max: %s", err)
+				return
 			}
 		}
 	}
-	count, err := GetStatementCount(ctx, c, db)
-	if err != nil {
-		return
-	}
+	timeElapsed := resetFreq > 0 && time.Since(lastReset.Time).Minutes() >= float64(resetFreq)
+	tooMany := float64(count) >= 0.9*float64(max)
+	tooLarge := size > maxSize*1024*1024
+	reset = timeElapsed && (tooMany || tooLarge)
+	return
+}
+
+func ResetStatements(ctx context.Context, c *Collection, db *sql.DB) (err error) {
 	var method string
 	if c.HelperExists("reset_stat_statements", nil) {
 		c.Logger.PrintVerbose("Found pganalyze.reset_stat_statements() stats helper")
@@ -96,30 +102,8 @@ func ResetStatements(ctx context.Context, c *Collection, db *sql.DB, server *sta
 		}
 		method = "pg_stat_statements_reset()"
 	}
-	if float64(count) >= 0.9*float64(max) {
-		c.Logger.PrintInfo("Resetting pg_stat_statements because it's nearly full")
-		_, err := db.ExecContext(ctx, QueryMarkerSQL+"SELECT "+method)
-		if err == nil {
-			reset = true
-		}
-	} else if float64(count) >= 0.95*float64(max) {
-		c.Logger.PrintWarning("pg_stat_statements is nearly full. We recommend defining the pganalyze.reset_stat_statements helper function to avoid seeing <query text unavailable> in pganalyze")
-	}
-	return
-}
-
-func GetStatementCount(ctx context.Context, c *Collection, db *sql.DB) (count int64, err error) {
-	sourceTable, _, err := getStatementSource(ctx, c, db, false)
-	if err != nil {
-		return
-	}
-	querySql := QueryMarkerSQL + fmt.Sprintf("SELECT count(*) FROM %s", sourceTable)
-	stmt, err := db.PrepareContext(ctx, querySql)
-	if err != nil {
-		return
-	}
-	defer stmt.Close()
-	err = stmt.QueryRowContext(ctx).Scan(&count)
+	c.Logger.PrintInfo("Resetting pg_stat_statements")
+	_, err = db.ExecContext(ctx, QueryMarkerSQL+"SELECT "+method)
 	return
 }
 
@@ -197,10 +181,10 @@ func GetStatementStats(ctx context.Context, c *Collection, db *sql.DB) (state.Po
 	return statementStats, nil
 }
 
-func GetStatementTexts(ctx context.Context, c *Collection, db *sql.DB) (state.PostgresStatementMap, state.PostgresStatementTextMap, error) {
+func GetStatementTexts(ctx context.Context, c *Collection, db *sql.DB) (statements state.PostgresStatementMap, statementTextsByFp state.PostgresStatementTextMap, querySize int, err error) {
 	sourceTable, foundExtMinorVersion, err := getStatementSource(ctx, c, db, true)
 	if err != nil {
-		return nil, nil, err
+		return
 	}
 
 	topLevelField := statementSQLTopLevelFieldDefault
@@ -211,13 +195,13 @@ func GetStatementTexts(ctx context.Context, c *Collection, db *sql.DB) (state.Po
 	querySql := QueryMarkerSQL + fmt.Sprintf(statementTextSQL, topLevelField, sourceTable)
 	stmt, err := db.PrepareContext(ctx, querySql)
 	if err != nil {
-		return nil, nil, err
+		return
 	}
 	defer stmt.Close()
 
 	rows, err := stmt.QueryContext(ctx)
 	if err != nil {
-		return nil, nil, err
+		return
 	}
 	defer rows.Close()
 
@@ -225,14 +209,13 @@ func GetStatementTexts(ctx context.Context, c *Collection, db *sql.DB) (state.Po
 
 	tmpFile, err = os.CreateTemp("", util.TempFilePrefix)
 	if err != nil {
-		return nil, nil, err
+		return
 	}
 	defer tmpFile.Close()
 	defer os.Remove(tmpFile.Name())
 
-	statements := make(state.PostgresStatementMap)
-	statementTextsByFp := make(state.PostgresStatementTextMap)
-
+	statements = make(state.PostgresStatementMap)
+	statementTextsByFp = make(state.PostgresStatementTextMap)
 	queryKeys := make([]state.PostgresStatementKey, 0)
 	queryLengths := make([]int, 0)
 
@@ -243,8 +226,9 @@ func GetStatementTexts(ctx context.Context, c *Collection, db *sql.DB) (state.Po
 
 		err = rows.Scan(&key.DatabaseOid, &key.UserOid, &queryID, &key.TopLevel, &receivedQuery)
 		if err != nil {
-			return nil, nil, err
+			return
 		}
+		querySize += len(receivedQuery.String)
 
 		if queryID.Valid {
 			key.QueryID = queryID.Int64
@@ -259,7 +243,7 @@ func GetStatementTexts(ctx context.Context, c *Collection, db *sql.DB) (state.Po
 	}
 
 	if err = rows.Err(); err != nil {
-		return nil, nil, err
+		return
 	}
 
 	tmpFile.Seek(0, io.SeekStart)
@@ -267,7 +251,7 @@ func GetStatementTexts(ctx context.Context, c *Collection, db *sql.DB) (state.Po
 		bytes := make([]byte, length)
 		_, err = io.ReadFull(tmpFile, bytes)
 		if err != nil {
-			return nil, nil, err
+			return
 		}
 		query := string(bytes)
 		ignoreIoTiming := ignoreIOTiming(c.PostgresVersion, query)
@@ -275,7 +259,8 @@ func GetStatementTexts(ctx context.Context, c *Collection, db *sql.DB) (state.Po
 		select {
 		// Since normalizing can take time, explicitly check for cancellations
 		case <-ctx.Done():
-			return nil, nil, ctx.Err()
+			err = ctx.Err()
+			return
 		default:
 			fingerprintAndNormalize(c, key, key.QueryID, query, statements, statementTextsByFp, ignoreIoTiming)
 		}
@@ -283,7 +268,7 @@ func GetStatementTexts(ctx context.Context, c *Collection, db *sql.DB) (state.Po
 
 	c.SelfTest.MarkCollectionAspectOk(state.CollectionAspectPgStatStatements)
 
-	return statements, statementTextsByFp, nil
+	return
 }
 
 func getStatementSource(ctx context.Context, c *Collection, db *sql.DB, showtext bool) (string, int16, error) {
