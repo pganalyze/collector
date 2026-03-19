@@ -23,9 +23,8 @@ import (
 	"github.com/pganalyze/collector/util"
 
 	"cloud.google.com/go/alloydbconn"
-	alloydb_pgxv5 "cloud.google.com/go/alloydbconn/driver/pgxv5"
 	"cloud.google.com/go/cloudsqlconn"
-	cloudsql_pgxv5 "cloud.google.com/go/cloudsqlconn/postgres/pgxv5"
+	"github.com/pganalyze/collector/util/pgxdriver"
 )
 
 func Run(ctx context.Context, wg *sync.WaitGroup, opts state.CollectionOpts, logger *util.Logger, configFilename string) (keepRunning bool, testRunSuccess chan bool, writeStateFile func(), shutdown func()) {
@@ -71,7 +70,7 @@ func Run(ctx context.Context, wg *sync.WaitGroup, opts state.CollectionOpts, log
 		}
 
 		if cfg.DbUseIamAuth && cfg.SystemType == "google_cloudsql" && cfg.GcpCloudSQLInstanceID != "" && driverCleanup == nil {
-			driverCleanup, err = cloudsql_pgxv5.RegisterDriver("cloudsql-postgres", cloudsqlconn.WithIAMAuthN(),
+			driverCleanup, err = pgxdriver.RegisterCloudSQLDriver("cloudsql-postgres", cloudsqlconn.WithIAMAuthN(),
 				cloudsqlconn.WithDefaultDialOptions(cloudsqlconn.WithPrivateIP()),
 			)
 
@@ -82,7 +81,7 @@ func Run(ctx context.Context, wg *sync.WaitGroup, opts state.CollectionOpts, log
 		}
 
 		if cfg.DbUseIamAuth && cfg.SystemType == "google_cloudsql" && cfg.GcpCloudSQLInstanceID != "" && driverCleanupPublic == nil {
-			driverCleanupPublic, err = cloudsql_pgxv5.RegisterDriver("cloudsql-postgres-public", cloudsqlconn.WithIAMAuthN())
+			driverCleanupPublic, err = pgxdriver.RegisterCloudSQLDriver("cloudsql-postgres-public", cloudsqlconn.WithIAMAuthN())
 
 			if err != nil {
 				logger.PrintError("Failed to register cloudsql-postgres-public driver: %s", err)
@@ -91,7 +90,7 @@ func Run(ctx context.Context, wg *sync.WaitGroup, opts state.CollectionOpts, log
 		}
 
 		if cfg.DbUseIamAuth && cfg.SystemType == "google_cloudsql" && cfg.GcpAlloyDBClusterID != "" && driverCleanupAlloyDb == nil {
-			driverCleanupAlloyDb, err = alloydb_pgxv5.RegisterDriver("alloydb-postgres", alloydbconn.WithIAMAuthN())
+			driverCleanupAlloyDb, err = pgxdriver.RegisterAlloyDBDriver("alloydb-postgres", alloydbconn.WithIAMAuthN())
 
 			if err != nil {
 				logger.PrintError("Failed to register alloydb-postgres driver: %s", err)
@@ -100,7 +99,7 @@ func Run(ctx context.Context, wg *sync.WaitGroup, opts state.CollectionOpts, log
 		}
 
 		if cfg.DbUseIamAuth && cfg.SystemType == "google_cloudsql" && cfg.GcpAlloyDBClusterID != "" && driverCleanupPublicAlloyDb == nil {
-			driverCleanupPublicAlloyDb, err = alloydb_pgxv5.RegisterDriver("alloydb-postgres-public", alloydbconn.WithIAMAuthN(),
+			driverCleanupPublicAlloyDb, err = pgxdriver.RegisterAlloyDBDriver("alloydb-postgres-public", alloydbconn.WithIAMAuthN(),
 				alloydbconn.WithDefaultDialOptions(alloydbconn.WithPublicIP()),
 			)
 
