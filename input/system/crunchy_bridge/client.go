@@ -134,7 +134,7 @@ func (c *Client) getMetrics(ctx context.Context, name string) (*MetricViews, err
 	}
 
 	if resp.StatusCode != http.StatusOK || len(body) == 0 {
-		return nil, err
+		return nil, fmt.Errorf("unexpected status code: %d, response body: %s", resp.StatusCode, string(body))
 	}
 
 	metricViews := MetricViews{}
