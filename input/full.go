@@ -161,7 +161,7 @@ func CollectFull(ctx context.Context, server *state.Server, connection *sql.DB, 
 
 	shouldReset, err := postgres.ShouldResetStatements(server, &ps, &ts, statementSize)
 	if err != nil {
-		logger.PrintError("Error checking if should reset statements: %s", err)
+		logger.PrintError("Failed to determine if reset of pg_stat_statements needed, skipping reset: %s", err)
 		err = nil
 	} else if shouldReset {
 		server.HighFreqStateMutex.Lock()
@@ -169,6 +169,8 @@ func CollectFull(ctx context.Context, server *state.Server, connection *sql.DB, 
 		if err != nil {
 			logger.PrintError("Error calling pg_stat_statements_reset(): %s", err)
 			err = nil
+		} else {
+			logger.PrintInfo("Successfully called pg_stat_statements_reset")
 		}
 		// Make sure the next high frequency run has an empty reference point
 		newHighFreqState.LastStatementStatsAt = time.Now()

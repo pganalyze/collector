@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -62,31 +63,37 @@ func insufficientPrivilege(query string) bool {
 	return query == "<insufficient privilege>"
 }
 
+const resetThreshold = 0.9
+
 func ShouldResetStatements(server *state.Server, ps *state.PersistedState, ts *state.TransientState, size int) (reset bool, err error) {
 	config := server.Grant.Load().Config
 	lastReset := ps.PgStatStatementsStats.Reset
 	resetFreq := config.Features.StatementResetFrequency * scheduler.FullSnapshotMinutes
-	maxSize := int(config.Features.StatementMaxSize)
+	maxSize := int(config.Features.StatementMaxSizeMb)
 	if !lastReset.Valid {
 		return // It's always set on PG14+ with the extension enabled. Older versions aren't supported
 	}
 	if maxSize == 0 {
 		maxSize = 250
 	}
-	count := len(ts.Statements)
-	max := 5_000
+	entryCount := len(ts.Statements)
+	entryMax := 0
 	for _, setting := range ts.Settings {
 		if setting.Name == "pg_stat_statements.max" && setting.CurrentValue.Valid {
-			max, err = strconv.Atoi(setting.CurrentValue.String)
+			entryMax, err = strconv.Atoi(setting.CurrentValue.String)
 			if err != nil {
 				return
 			}
 		}
 	}
-	timeElapsed := resetFreq > 0 && time.Since(lastReset.Time).Minutes() >= float64(resetFreq)
-	tooMany := float64(count) >= 0.9*float64(max)
+	if entryMax == 0 {
+		err = errors.New("Could not find pg_stat_statements.max setting")
+		return
+	}
+	resetAllowed := resetFreq > 0 && time.Since(lastReset.Time).Minutes() >= float64(resetFreq)
+	tooMany := float64(entryCount) >= float64(entryMax)*resetThreshold
 	tooLarge := size > maxSize*1024*1024
-	reset = timeElapsed && (tooMany || tooLarge)
+	reset = resetAllowed && (tooMany || tooLarge)
 	return
 }
 
@@ -102,7 +109,6 @@ func ResetStatements(ctx context.Context, c *Collection, db *sql.DB) (err error)
 		}
 		method = "pg_stat_statements_reset()"
 	}
-	c.Logger.PrintInfo("Resetting pg_stat_statements")
 	_, err = db.ExecContext(ctx, QueryMarkerSQL+"SELECT "+method)
 	return
 }

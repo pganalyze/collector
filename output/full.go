@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	snapshot "github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/output/transform"
+	"github.com/pganalyze/collector/scheduler"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -19,7 +20,7 @@ import (
 func SendFull(ctx context.Context, server *state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, newState state.PersistedState, diffState state.DiffState, transientState state.TransientState, collectedIntervalSecs uint32) error {
 	s := transform.StateToSnapshot(newState, diffState, transientState, server)
 	if s.ServerStatistic.PgStatStatementsDealloc > 0 {
-		logger.PrintWarning("pg_stat_statements deallocation detected. We recommend enabling automatic resets on the pganalyze server settings page to avoid <query text unavailable>")
+		logger.PrintWarning("Detected %d pg_stat_statements deallocations in the last %d minutes. Enable/adjust reset settings on the pganalyze server settings page to avoid <query text unavailable>", s.ServerStatistic.PgStatStatementsDealloc, scheduler.FullSnapshotMinutes)
 	}
 	s.CollectedIntervalSecs = collectedIntervalSecs
 	err := verifyIntegrity(&s)

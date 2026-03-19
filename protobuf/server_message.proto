@@ -37,7 +37,7 @@ message ServerMessage {
     int32 statement_timeout_ms_query_text = 3;
     // The maximum size (in MB) that pg_stat_statements query text can grow to before
     // triggering a reset. If statement_reset_frequency = 0, the reset won't occur.
-    int32 statement_max_size = 4;
+    int32 statement_max_size_mb = 4;
   }
 
   message Pause {
