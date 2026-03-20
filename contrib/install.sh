@@ -87,11 +87,11 @@ then
   distribution=fedora
   version=$(grep VERSION_ID /etc/os-release | cut -d= -f2)
 
-  if [ "$version" != 37 ] && [ "$version" != 36 ];
+  if [ "$version" != 43 ] && [ "$version" != 42 ];
   then
-    if confirm "Unsupported Fedora version; try Fedora 37 package?";
+    if confirm "Unsupported Fedora version; try Fedora 43 package?";
     then
-      version=37
+      version=43
     else
       fail "unrecognized Fedora version: ${version}"
     fi

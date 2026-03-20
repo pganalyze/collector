@@ -41,16 +41,16 @@ createrepo --update /repo/el/10
 rm -f /repo/el/10/repodata/repomd.xml.asc
 gpg --detach-sign --armor --batch /repo/el/10/repodata/repomd.xml
 
-mkdir -p /repo/fedora/36/RPMS
-cp /rpm/systemd/$RPM_PACKAGE_X86_64 /repo/fedora/36/RPMS/
-cp /rpm/systemd/$RPM_PACKAGE_ARM64 /repo/fedora/36/RPMS/
-createrepo --update /repo/fedora/36
-rm -f /repo/fedora/36/repodata/repomd.xml.asc
-gpg --detach-sign --armor --batch /repo/fedora/36/repodata/repomd.xml
+mkdir -p /repo/fedora/42/RPMS
+cp /rpm/systemd/$RPM_PACKAGE_X86_64 /repo/fedora/42/RPMS/
+cp /rpm/systemd/$RPM_PACKAGE_ARM64 /repo/fedora/42/RPMS/
+createrepo --update /repo/fedora/42
+rm -f /repo/fedora/42/repodata/repomd.xml.asc
+gpg --detach-sign --armor --batch /repo/fedora/42/repodata/repomd.xml
 
-mkdir -p /repo/fedora/37/RPMS
-cp /rpm/systemd/$RPM_PACKAGE_X86_64 /repo/fedora/37/RPMS/
-cp /rpm/systemd/$RPM_PACKAGE_ARM64 /repo/fedora/37/RPMS/
-createrepo --update /repo/fedora/37
-rm -f /repo/fedora/37/repodata/repomd.xml.asc
-gpg --detach-sign --armor --batch /repo/fedora/37/repodata/repomd.xml
+mkdir -p /repo/fedora/43/RPMS
+cp /rpm/systemd/$RPM_PACKAGE_X86_64 /repo/fedora/43/RPMS/
+cp /rpm/systemd/$RPM_PACKAGE_ARM64 /repo/fedora/43/RPMS/
+createrepo --update /repo/fedora/43
+rm -f /repo/fedora/43/repodata/repomd.xml.asc
+gpg --detach-sign --armor --batch /repo/fedora/43/repodata/repomd.xml
