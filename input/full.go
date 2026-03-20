@@ -12,7 +12,6 @@ import (
 	"github.com/pganalyze/collector/input/postgres"
 	"github.com/pganalyze/collector/input/system"
 	"github.com/pganalyze/collector/logs"
-	"github.com/pganalyze/collector/scheduler"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
 )
@@ -116,7 +115,8 @@ func CollectFull(ctx context.Context, server *state.Server, connection *sql.DB, 
 		logger.PrintError("Error setting query text timeout: %s", err)
 		return
 	}
-	ts.Statements, ts.StatementTexts, err = postgres.GetStatementTexts(ctx, c, connection)
+	var statementSize int
+	ts.Statements, ts.StatementTexts, statementSize, err = postgres.GetStatementTexts(ctx, c, connection)
 	if err != nil {
 		// Despite query performance data being an essential part of pganalyze, there are
 		// situations where it may not be available (or it timed out), so treat it as a
@@ -151,41 +151,38 @@ func CollectFull(ctx context.Context, server *state.Server, connection *sql.DB, 
 		return
 	}
 
-	// Reset query stats and texts if needed (this must run after the query text collection)
-	ps.StatementResetCounter = server.PrevState.StatementResetCounter + 1
-	config := server.Grant.Load().Config
-	if config.Features.StatementResetFrequency != 0 && ps.StatementResetCounter >= int(config.Features.StatementResetFrequency) {
-		// Block concurrent collection of query stats, as that may see the actual Postgres-side
-		// reset before we updated the struct that the collector diffs against.
-		server.HighFreqStateMutex.Lock()
-		ps.StatementResetCounter = 0
-		err = postgres.ResetStatements(ctx, c, connection)
-		if err != nil {
-			logger.PrintError("Error calling pg_stat_statements_reset() as requested: %s", err)
-			err = nil
-		} else {
-			logger.PrintInfo("Successfully called pg_stat_statements_reset() for all queries, next reset in %d hours", config.Features.StatementResetFrequency/scheduler.FullSnapshotsPerHour)
-
-			// Make sure the next high frequency run has an empty reference point
-			newHighFreqState.LastStatementStatsAt = time.Now()
-			resetStatementStats, err := postgres.GetStatementStats(ctx, c, connection)
-			if err != nil {
-				logger.PrintError("Error collecting pg_stat_statements after reset: %s", err)
-				err = nil
-				newHighFreqState.StatementStats = make(state.PostgresStatementStatsMap)
-			} else {
-				newHighFreqState.StatementStats = resetStatementStats
-			}
-		}
-		server.HighFreqStateMutex.Unlock()
-	}
-
 	if opts.CollectPostgresSettings {
 		ts.Settings, err = postgres.GetSettings(ctx, connection)
 		if err != nil {
 			logger.PrintError("Error collecting config settings: %s", err)
 			return
 		}
+	}
+
+	shouldReset, err := postgres.ShouldResetStatements(server, &ps, &ts, statementSize)
+	if err != nil {
+		logger.PrintError("Failed to determine if reset of pg_stat_statements needed, skipping reset: %s", err)
+		err = nil
+	} else if shouldReset {
+		server.HighFreqStateMutex.Lock()
+		err = postgres.ResetStatements(ctx, c, connection)
+		if err != nil {
+			logger.PrintError("Error calling pg_stat_statements_reset(): %s", err)
+			err = nil
+		} else {
+			logger.PrintInfo("Successfully called pg_stat_statements_reset")
+		}
+		// Make sure the next high frequency run has an empty reference point
+		newHighFreqState.LastStatementStatsAt = time.Now()
+		resetStatementStats, err := postgres.GetStatementStats(ctx, c, connection)
+		if err != nil {
+			logger.PrintError("Error collecting pg_stat_statements after reset: %s", err)
+			err = nil
+			newHighFreqState.StatementStats = make(state.PostgresStatementStatsMap)
+		} else {
+			newHighFreqState.StatementStats = resetStatementStats
+		}
+		server.HighFreqStateMutex.Unlock()
 	}
 
 	// CollectAllSchemas relies on GetBufferCache to access the filenode OIDs before that data is discarded
