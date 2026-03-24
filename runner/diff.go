@@ -155,7 +155,12 @@ func diffCollectorStats(new state.CollectorStats, prev state.CollectorStats) (di
 }
 
 func diffPgStatStatementsStats(new state.PgStatStatementsStats, prev state.PgStatStatementsStats) (diff state.DiffedPgStatStatementsStats) {
-	diff = new.DiffSince(prev)
+	followUpRun := prev != (state.PgStatStatementsStats{})
+	if followUpRun {
+		diff = new.DiffSince(prev)
+	} else {
+		diff = new.DiffSince(new)
+	}
 	return
 }
 
