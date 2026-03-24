@@ -3,7 +3,15 @@ name: Test Packages
 on:
   schedule:
     - cron: '0 15 * * *'
-
+  push:
+    branches: [ main ]
+    paths:
+      - 'contrib/**'
+      - 'packages/**'
+  pull_request:
+    paths:
+      - 'contrib/**'
+      - 'packages/**'
   workflow_dispatch:
 
 jobs:
