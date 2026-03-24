@@ -176,7 +176,7 @@ fedora43_x86_64: $(RPM_PACKAGE_X86_64)
 	echo "RUN dnf install -y procps systemd" >> Dockerfile.tmp
 	echo "COPY . /root" >> Dockerfile.tmp
 	$(call docker_build_and_run,amd64)
-	$(call docker_exec,dnf install -y --nogpgcheck --setopt=tsflags=nocrypto /root/$(RPM_PACKAGE_X86_64))
+	$(call docker_exec,rpm -iv --nosignature --nodigest /root/$(RPM_PACKAGE_X86_64))
 	$(call docker_test_and_clean)
 	rm Dockerfile.tmp
 
@@ -185,7 +185,7 @@ fedora43_arm64: $(RPM_PACKAGE_ARM64)
 	echo "RUN dnf install -y procps systemd" >> Dockerfile.tmp
 	echo "COPY . /root" >> Dockerfile.tmp
 	$(call docker_build_and_run,arm64)
-	$(call docker_exec,dnf install -y --nogpgcheck --setopt=tsflags=nocrypto /root/$(RPM_PACKAGE_ARM64))
+	$(call docker_exec,rpm -iv --nosignature --nodigest /root/$(RPM_PACKAGE_ARM64))
 	$(call docker_test_and_clean)
 	rm Dockerfile.tmp
 
