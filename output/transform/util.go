@@ -13,6 +13,7 @@ type statementKey struct {
 	databaseOid state.Oid
 	userOid     state.Oid
 	fingerprint uint64
+	toplevel    bool
 }
 
 type statementValue struct {
@@ -24,10 +25,12 @@ type statementValue struct {
 func upsertQueryReferenceAndInformation(s *snapshot.FullSnapshot, statementTexts state.PostgresStatementTextMap, roleOidToIdx OidToIdx, databaseOidToIdx OidToIdx, key statementKey, value statementValue) int32 {
 	fpBuf := make([]byte, 8)
 	binary.BigEndian.PutUint64(fpBuf, key.fingerprint)
+	toplevel := key.toplevel
 	newRef := snapshot.QueryReference{
 		DatabaseIdx: databaseOidToIdx[key.databaseOid],
 		RoleIdx:     roleOidToIdx[key.userOid],
 		Fingerprint: fpBuf,
+		Toplevel:    &toplevel,
 	}
 
 	for idx, ref := range s.QueryReferences {

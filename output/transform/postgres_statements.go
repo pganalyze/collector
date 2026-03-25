@@ -31,6 +31,7 @@ func groupStatements(statements state.PostgresStatementMap, statsMap state.Diffe
 			databaseOid: sKey.DatabaseOid,
 			userOid:     sKey.UserOid,
 			fingerprint: statement.Fingerprint,
+			toplevel:    sKey.Toplevel,
 		}
 
 		value, exist := groupedStatements[key]

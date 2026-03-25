@@ -2,8 +2,6 @@ package state
 
 import (
 	"time"
-
-	"github.com/guregu/null"
 )
 
 // PostgresStatement - Specific kind of statement that has run one or multiple times
@@ -44,10 +42,10 @@ type PostgresStatementStats struct {
 
 // PostgresStatementKey - Information that uniquely identifies a query (this needs to match pgssHashKey in pg_stat_statements.c)
 type PostgresStatementKey struct {
-	DatabaseOid Oid       // OID of database in which the statement was executed
-	UserOid     Oid       // OID of user who executed the statement
-	QueryID     int64     // Internal hash code, computed from the statement's parse tree (note pg_stat_statements stores this as a uint64, but returns it as a int64 in the user-facing API)
-	TopLevel    null.Bool // Whether this statement was executed directly (at the top level), or from within a function / stored procedure (on older Postgres versions this is not tracked, so we set it to NULL)
+	DatabaseOid Oid   // OID of database in which the statement was executed
+	UserOid     Oid   // OID of user who executed the statement
+	QueryID     int64 // Internal hash code, computed from the statement's parse tree (note pg_stat_statements stores this as a uint64, but returns it as a int64 in the user-facing API)
+	Toplevel    bool  // Whether this statement was executed directly (at the top level), or from within a function / stored procedure (on older Postgres versions this is not tracked, so we set it to true)
 }
 
 type HistoricStatsTimeKey struct {
