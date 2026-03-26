@@ -80,6 +80,7 @@ func upsertQueryReferenceAndInformationSimple(server *state.Server, refs []*snap
 		DatabaseIdx: databaseIdx,
 		RoleIdx:     roleIdx,
 		Fingerprint: fpBuf,
+		// Toplevel isn't set because pg_stat_activity and logs don't know at what level the query was executed
 	}
 
 	for idx, ref := range refs {
