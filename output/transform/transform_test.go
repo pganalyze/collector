@@ -87,11 +87,13 @@ func TestStatements(t *testing.T) {
 				DatabaseIdx: 0,
 				RoleIdx:     0,
 				Fingerprint: fpBuf1,
+				Toplevel:    false,
 			},
 			{
 				DatabaseIdx: 0,
 				RoleIdx:     0,
 				Fingerprint: fpBuf2,
+				Toplevel:    false,
 			},
 		},
 		QueryInformations: []*pganalyze_collector.QueryInformation{
