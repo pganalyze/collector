@@ -113,7 +113,7 @@ func GetPlans(ctx context.Context, c *Collection, db *sql.DB, showtext bool) (st
 		var stats state.PostgresStatementStats
 		var explainPlan null.String
 
-		err = rows.Scan(&key.UserOid, &key.DatabaseOid, &key.TopLevel, &queryID, &key.PlanID,
+		err = rows.Scan(&key.UserOid, &key.DatabaseOid, &key.Toplevel, &queryID, &key.PlanID,
 			&explainPlan, &plan.PlanType, &plan.PlanCapturedTime,
 			&stats.Calls, &stats.TotalTime,
 			&stats.Rows, &stats.SharedBlksHit, &stats.SharedBlksRead, &stats.SharedBlksDirtied, &stats.SharedBlksWritten,

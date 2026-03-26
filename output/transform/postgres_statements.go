@@ -24,13 +24,11 @@ func groupStatements(statements state.PostgresStatementMap, statsMap state.Diffe
 			}
 		}
 
-		// Note we intentionally don't include sKey.TopLevel here, since we don't (yet)
-		// separate statistics based on that attribute in the pganalyze app
-		// As such, pg_stat_statements entries that only differ by toplevel will be aggregated here
 		key := statementKey{
 			databaseOid: sKey.DatabaseOid,
 			userOid:     sKey.UserOid,
 			fingerprint: statement.Fingerprint,
+			toplevel:    sKey.Toplevel,
 		}
 
 		value, exist := groupedStatements[key]

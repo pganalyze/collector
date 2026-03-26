@@ -20,7 +20,7 @@ import (
 )
 
 // pg_stat_statements 1.3+ (Postgres 9.5+)
-const statementSQLTopLevelFieldDefault = "NULL"
+const statementSQLTopLevelFieldDefault = "true"
 const statementSQLTotalTimeFieldDefault = "total_time"
 const statementSQLIoTimeFieldsDefault = "blk_read_time, blk_write_time"
 const statementSQLOptionalFieldsDefault = "min_time, max_time, mean_time, stddev_time"
@@ -159,7 +159,7 @@ func GetStatementStats(ctx context.Context, c *Collection, db *sql.DB) (state.Po
 		var queryID null.Int
 		var stats state.PostgresStatementStats
 
-		err = rows.Scan(&key.DatabaseOid, &key.UserOid, &queryID, &key.TopLevel, &stats.Calls, &stats.TotalTime, &stats.Rows,
+		err = rows.Scan(&key.DatabaseOid, &key.UserOid, &queryID, &key.Toplevel, &stats.Calls, &stats.TotalTime, &stats.Rows,
 			&stats.SharedBlksHit, &stats.SharedBlksRead, &stats.SharedBlksDirtied, &stats.SharedBlksWritten,
 			&stats.LocalBlksHit, &stats.LocalBlksRead, &stats.LocalBlksDirtied, &stats.LocalBlksWritten,
 			&stats.TempBlksRead, &stats.TempBlksWritten, &stats.BlkReadTime, &stats.BlkWriteTime,
@@ -230,7 +230,7 @@ func GetStatementTexts(ctx context.Context, c *Collection, db *sql.DB) (statemen
 		var queryID null.Int
 		var receivedQuery null.String
 
-		err = rows.Scan(&key.DatabaseOid, &key.UserOid, &queryID, &key.TopLevel, &receivedQuery)
+		err = rows.Scan(&key.DatabaseOid, &key.UserOid, &queryID, &key.Toplevel, &receivedQuery)
 		if err != nil {
 			return
 		}
