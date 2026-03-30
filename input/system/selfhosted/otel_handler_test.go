@@ -115,7 +115,8 @@ func TestOtelHandlerProtobuf(t *testing.T) {
 				t.Fatalf("failed to marshal protobuf: %v", err)
 			}
 
-			resp, err := handleOtlpLogsRequestProtobuf(body, server, rawLogStream, parsedLogStream, logger, false)
+			warnedAboutMultipleServers := false
+			resp, err := handleOtlpLogsRequestProtobuf(body, []*state.Server{server}, rawLogStream, parsedLogStream, logger, false, &warnedAboutMultipleServers)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
@@ -146,7 +147,8 @@ func TestOtelHandlerProtobuf(t *testing.T) {
 				t.Fatalf("failed to marshal JSON: %v", err)
 			}
 
-			resp, err := handleOtlpLogsRequestJson(body, server, rawLogStream, parsedLogStream, logger, false)
+			warnedAboutMultipleServers := false
+			resp, err := handleOtlpLogsRequestJson(body, []*state.Server{server}, rawLogStream, parsedLogStream, logger, false, &warnedAboutMultipleServers)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
@@ -217,7 +219,8 @@ func TestOtelHandlerHTTPEndpoint(t *testing.T) {
 			rawLogStream := make(chan SelfHostedLogStreamItem, 10)
 			parsedLogStream := make(chan state.ParsedLogStreamItem, 10)
 
-			handler := makeOtelLogsHandler(server, rawLogStream, parsedLogStream, logger, false)
+			warnedAboutMultipleServers := false
+			handler := makeOtelLogsHandler([]*state.Server{server}, rawLogStream, parsedLogStream, logger, false, &warnedAboutMultipleServers)
 			req := httptest.NewRequest(http.MethodPost, "/v1/logs", bytes.NewReader(tt.body))
 			req.Header.Set("Content-Type", tt.contentType)
 			rec := httptest.NewRecorder()
@@ -362,6 +365,154 @@ func assertStreamItems(t *testing.T, rawLogStream chan SelfHostedLogStreamItem, 
 	if checkParsed != nil && len(parsedItems) == expectParsed {
 		checkParsed(t, parsedItems)
 	}
+}
+
+func makeOtelTestServerWithConfig(cfg config.ServerConfig) (*state.Server, *util.Logger) {
+	server := state.MakeServer(cfg, false)
+	server.LogParser = logs.NewLogParser("%m [%p] ", nil)
+	logger := &util.Logger{Destination: log.New(os.Stderr, "", log.LstdFlags)}
+	return server, logger
+}
+
+func TestOtelMultiplexing(t *testing.T) {
+	t.Run("plain log sent to all servers via rawLogStream", func(t *testing.T) {
+		server1, _ := makeOtelTestServerWithConfig(config.ServerConfig{SectionName: "s1"})
+		server2, _ := makeOtelTestServerWithConfig(config.ServerConfig{SectionName: "s2"})
+		logger := &util.Logger{Destination: log.New(os.Stderr, "", log.LstdFlags)}
+		servers := []*state.Server{server1, server2}
+
+		rawLogStream := make(chan SelfHostedLogStreamItem, 10)
+		parsedLogStream := make(chan state.ParsedLogStreamItem, 10)
+
+		warnedAboutMultipleServers := false
+		body, _ := proto.Marshal(makePlainLogsData())
+		_, err := handleOtlpLogsRequestProtobuf(body, servers, rawLogStream, parsedLogStream, logger, false, &warnedAboutMultipleServers)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		// Plain logs go to the multiplexed rawLogStream (one item, forwarded to all servers by the multiplexer)
+		assertStreamItems(t, rawLogStream, parsedLogStream, 1, 0, nil)
+		if !warnedAboutMultipleServers {
+			t.Error("expected warning about multiple servers")
+		}
+	})
+
+	t.Run("simple jsonlog sent to all servers", func(t *testing.T) {
+		server1, _ := makeOtelTestServerWithConfig(config.ServerConfig{SectionName: "s1"})
+		server2, _ := makeOtelTestServerWithConfig(config.ServerConfig{SectionName: "s2"})
+		logger := &util.Logger{Destination: log.New(os.Stderr, "", log.LstdFlags)}
+		servers := []*state.Server{server1, server2}
+
+		rawLogStream := make(chan SelfHostedLogStreamItem, 10)
+		parsedLogStream := make(chan state.ParsedLogStreamItem, 10)
+
+		warnedAboutMultipleServers := false
+		body, _ := proto.Marshal(makeJsonlogLogsData())
+		_, err := handleOtlpLogsRequestProtobuf(body, servers, rawLogStream, parsedLogStream, logger, false, &warnedAboutMultipleServers)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		// Simple jsonlog is sent to both servers as parsed items
+		assertStreamItems(t, rawLogStream, parsedLogStream, 0, 2, func(t *testing.T, items []state.ParsedLogStreamItem) {
+			if items[0].Identifier != server1.Config.Identifier {
+				t.Errorf("expected first item for server1, got %v", items[0].Identifier)
+			}
+			if items[1].Identifier != server2.Config.Identifier {
+				t.Errorf("expected second item for server2, got %v", items[1].Identifier)
+			}
+		})
+		if !warnedAboutMultipleServers {
+			t.Error("expected warning about multiple servers")
+		}
+	})
+
+	t.Run("k8s jsonlog filtered per server", func(t *testing.T) {
+		server1, _ := makeOtelTestServerWithConfig(config.ServerConfig{
+			SectionName:       "s1",
+			LogOtelK8SPodName: "pg-pod-0",
+			LogOtelK8SPod:     "pg-pod-0",
+		})
+		server2, _ := makeOtelTestServerWithConfig(config.ServerConfig{
+			SectionName:       "s2",
+			LogOtelK8SPodName: "pg-pod-1",
+			LogOtelK8SPod:     "pg-pod-1",
+		})
+		logger := &util.Logger{Destination: log.New(os.Stderr, "", log.LstdFlags)}
+		servers := []*state.Server{server1, server2}
+
+		rawLogStream := make(chan SelfHostedLogStreamItem, 10)
+		parsedLogStream := make(chan state.ParsedLogStreamItem, 10)
+
+		warnedAboutMultipleServers := false
+		// makeK8sJsonlogLogsData has pod_name "pg-pod-0" which matches server1 only
+		body, _ := proto.Marshal(makeK8sJsonlogLogsData())
+		_, err := handleOtlpLogsRequestProtobuf(body, servers, rawLogStream, parsedLogStream, logger, false, &warnedAboutMultipleServers)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		// K8s log should only go to server1 (pg-pod-0), not server2 (pg-pod-1)
+		// The K8s log has a detail line, so 2 parsed items for the one matching server
+		assertStreamItems(t, rawLogStream, parsedLogStream, 0, 2, func(t *testing.T, items []state.ParsedLogStreamItem) {
+			for _, item := range items {
+				if item.Identifier != server1.Config.Identifier {
+					t.Errorf("expected item for server1, got %v", item.Identifier)
+				}
+			}
+		})
+		// No warning expected since K8s filtering is in use
+		if warnedAboutMultipleServers {
+			t.Error("did not expect warning about multiple servers when K8s filtering is active")
+		}
+	})
+
+	t.Run("k8s jsonlog sent to both servers when both match", func(t *testing.T) {
+		server1, _ := makeOtelTestServerWithConfig(config.ServerConfig{
+			SectionName:       "s1",
+			Identifier:        config.ServerIdentifier{SystemID: "s1"},
+			LogOtelK8SPodName: "pg-pod-0",
+			LogOtelK8SPod:     "pg-pod-0",
+		})
+		server2, _ := makeOtelTestServerWithConfig(config.ServerConfig{
+			SectionName: "s2",
+			Identifier:  config.ServerIdentifier{SystemID: "s2"},
+			// No K8s filter, so all K8s logs match
+		})
+		logger := &util.Logger{Destination: log.New(os.Stderr, "", log.LstdFlags)}
+		servers := []*state.Server{server1, server2}
+
+		rawLogStream := make(chan SelfHostedLogStreamItem, 10)
+		parsedLogStream := make(chan state.ParsedLogStreamItem, 10)
+
+		warnedAboutMultipleServers := false
+		body, _ := proto.Marshal(makeK8sJsonlogLogsData())
+		_, err := handleOtlpLogsRequestProtobuf(body, servers, rawLogStream, parsedLogStream, logger, false, &warnedAboutMultipleServers)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		// Both servers match: server1 by pod name, server2 has no filter
+		// The K8s log has a detail line, so 2 parsed items per server = 4 total
+		assertStreamItems(t, rawLogStream, parsedLogStream, 0, 4, func(t *testing.T, items []state.ParsedLogStreamItem) {
+			s1Count := 0
+			s2Count := 0
+			for _, item := range items {
+				if item.Identifier == server1.Config.Identifier {
+					s1Count++
+				} else if item.Identifier == server2.Config.Identifier {
+					s2Count++
+				}
+			}
+			if s1Count != 2 {
+				t.Errorf("expected 2 items for server1, got %d", s1Count)
+			}
+			if s2Count != 2 {
+				t.Errorf("expected 2 items for server2, got %d", s2Count)
+			}
+		})
+	})
 }
 
 func mustMarshalProto(t *testing.T, m proto.Message) []byte {
