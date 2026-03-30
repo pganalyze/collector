@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/pganalyze/collector/config"
@@ -21,16 +22,19 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func setupOtelHandler(ctx context.Context, server *state.Server, rawLogStream chan<- SelfHostedLogStreamItem, parsedLogStream chan state.ParsedLogStreamItem, prefixedLogger *util.Logger, opts state.CollectionOpts) {
-	otelLogServer := server.Config.LogOtelServer
+func setupOtelHandler(ctx context.Context, servers []*state.Server, rawLogStream chan<- SelfHostedLogStreamItem, parsedLogStream chan state.ParsedLogStreamItem, prefixedLogger *util.Logger, opts state.CollectionOpts) {
+	otelLogServer := servers[0].Config.LogOtelServer
+
+	// Track whether we've warned about multiple servers sharing this OTel endpoint
+	warnedAboutMultipleServers := false
 
 	serveMux := http.NewServeMux()
-	serveMux.HandleFunc("/v1/logs", makeOtelLogsHandler(server, rawLogStream, parsedLogStream, prefixedLogger, opts.VeryVerbose))
+	serveMux.HandleFunc("/v1/logs", makeOtelLogsHandler(servers, rawLogStream, parsedLogStream, prefixedLogger, opts.VeryVerbose, &warnedAboutMultipleServers))
 
 	util.GoServeHTTP(ctx, prefixedLogger, otelLogServer, serveMux)
 }
 
-func makeOtelLogsHandler(server *state.Server, rawLogStream chan<- SelfHostedLogStreamItem, parsedLogStream chan state.ParsedLogStreamItem, prefixedLogger *util.Logger, veryVerbose bool) http.HandlerFunc {
+func makeOtelLogsHandler(servers []*state.Server, rawLogStream chan<- SelfHostedLogStreamItem, parsedLogStream chan state.ParsedLogStreamItem, prefixedLogger *util.Logger, veryVerbose bool, warnedAboutMultipleServers *bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		b, err := io.ReadAll(r.Body)
 		if err != nil {
@@ -44,9 +48,9 @@ func makeOtelLogsHandler(server *state.Server, rawLogStream chan<- SelfHostedLog
 		contentType := r.Header.Get("Content-Type")
 		switch contentType {
 		case "application/x-protobuf":
-			resp, err = handleOtlpLogsRequestProtobuf(b, server, rawLogStream, parsedLogStream, prefixedLogger, veryVerbose)
+			resp, err = handleOtlpLogsRequestProtobuf(b, servers, rawLogStream, parsedLogStream, prefixedLogger, veryVerbose, warnedAboutMultipleServers)
 		case "application/json":
-			resp, err = handleOtlpLogsRequestJson(b, server, rawLogStream, parsedLogStream, prefixedLogger, veryVerbose)
+			resp, err = handleOtlpLogsRequestJson(b, servers, rawLogStream, parsedLogStream, prefixedLogger, veryVerbose, warnedAboutMultipleServers)
 		default:
 			w.WriteHeader(http.StatusUnsupportedMediaType)
 			w.Write([]byte("Unsupported Content-Type, must be application/x-protobuf or application/json"))
@@ -67,7 +71,7 @@ func makeOtelLogsHandler(server *state.Server, rawLogStream chan<- SelfHostedLog
 	}
 }
 
-func handleOtlpLogsRequestProtobuf(b []byte, server *state.Server, rawLogStream chan<- SelfHostedLogStreamItem, parsedLogStream chan state.ParsedLogStreamItem, prefixedLogger *util.Logger, veryVerbose bool) (resp []byte, err error) {
+func handleOtlpLogsRequestProtobuf(b []byte, servers []*state.Server, rawLogStream chan<- SelfHostedLogStreamItem, parsedLogStream chan state.ParsedLogStreamItem, prefixedLogger *util.Logger, veryVerbose bool, warnedAboutMultipleServers *bool) (resp []byte, err error) {
 	logsData := &otlpLogs.LogsData{}
 	if err = proto.Unmarshal(b, logsData); err != nil {
 		prefixedLogger.PrintError("OTel log server could not unmarshal request body, expected binary OTLP Protobuf format: %s", err)
@@ -89,12 +93,12 @@ func handleOtlpLogsRequestProtobuf(b []byte, server *state.Server, rawLogStream 
 		}
 	}
 
-	response := handleOtlpLogsRequest(logsData, server, rawLogStream, parsedLogStream)
+	response := handleOtlpLogsRequest(logsData, servers, rawLogStream, parsedLogStream, warnedAboutMultipleServers, prefixedLogger)
 
 	return proto.Marshal(response)
 }
 
-func handleOtlpLogsRequestJson(b []byte, server *state.Server, rawLogStream chan<- SelfHostedLogStreamItem, parsedLogStream chan state.ParsedLogStreamItem, prefixedLogger *util.Logger, veryVerbose bool) (resp []byte, err error) {
+func handleOtlpLogsRequestJson(b []byte, servers []*state.Server, rawLogStream chan<- SelfHostedLogStreamItem, parsedLogStream chan state.ParsedLogStreamItem, prefixedLogger *util.Logger, veryVerbose bool, warnedAboutMultipleServers *bool) (resp []byte, err error) {
 	logsData := &otlpLogs.LogsData{}
 	if err = protojson.Unmarshal(b, logsData); err != nil {
 		prefixedLogger.PrintError("OTel log server could not unmarshal request body, JSON does not match expected format: %s\n  received body: %s", err, string(b))
@@ -116,7 +120,7 @@ func handleOtlpLogsRequestJson(b []byte, server *state.Server, rawLogStream chan
 		}
 	}
 
-	response := handleOtlpLogsRequest(logsData, server, rawLogStream, parsedLogStream)
+	response := handleOtlpLogsRequest(logsData, servers, rawLogStream, parsedLogStream, warnedAboutMultipleServers, prefixedLogger)
 
 	return protojson.Marshal(response)
 }
@@ -131,25 +135,46 @@ func handleOtlpLogsRequestJson(b []byte, server *state.Server, rawLogStream chan
 //
 // Other variants (e.g. csvlog, or plain messages in a K8s context) are currently
 // not supported and will be ignored.
-func handleOtlpLogsRequest(logsData *otlpLogs.LogsData, server *state.Server, rawLogStream chan<- SelfHostedLogStreamItem, parsedLogStream chan state.ParsedLogStreamItem) *otlpLogsService.ExportLogsServiceResponse {
+func handleOtlpLogsRequest(logsData *otlpLogs.LogsData, servers []*state.Server, rawLogStream chan<- SelfHostedLogStreamItem, parsedLogStream chan state.ParsedLogStreamItem, warnedAboutMultipleServers *bool, prefixedLogger *util.Logger) *otlpLogsService.ExportLogsServiceResponse {
 	var rejectedLogRecords int64
 	for _, r := range logsData.ResourceLogs {
 		for _, s := range r.ScopeLogs {
 			for _, l := range s.LogRecords {
 				if l.Body.GetKvlistValue() != nil {
 					// jsonlog log message
-					record := transformJsonLogRecord(l.Body.GetKvlistValue(), server.Config)
+					record, kubernetes := transformJsonLogRecord(l.Body.GetKvlistValue())
 					if record != nil {
-						logLine, detailLine := logLineFromJsonlog(record, server.GetLogParser())
-						parsedLogStream <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: logLine}
-						if detailLine != nil {
-							parsedLogStream <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: *detailLine}
+						if kubernetes != nil {
+							// K8s-wrapped jsonlog: send to all servers that pass the K8s filter
+							for _, server := range servers {
+								if skipDueToK8sFilter(kubernetes, server.Config) {
+									continue
+								}
+								logParser := server.GetLogParser()
+								logLine, detailLine := logLineFromJsonlog(record, logParser)
+								parsedLogStream <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: logLine}
+								if detailLine != nil {
+									parsedLogStream <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: *detailLine}
+								}
+							}
+						} else {
+							// Simple jsonlog: send to all servers
+							warnAboutMultipleServers(servers, warnedAboutMultipleServers, prefixedLogger)
+							for _, server := range servers {
+								logParser := server.GetLogParser()
+								logLine, detailLine := logLineFromJsonlog(record, logParser)
+								parsedLogStream <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: logLine}
+								if detailLine != nil {
+									parsedLogStream <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: *detailLine}
+								}
+							}
 						}
 					} else {
 						rejectedLogRecords++
 					}
 				} else if l.Body.GetStringValue() != "" {
-					// Plain log message
+					// Plain log message (goes through log transformer which handles per-server routing)
+					warnAboutMultipleServers(servers, warnedAboutMultipleServers, prefixedLogger)
 					item := SelfHostedLogStreamItem{}
 					item.Line = l.Body.GetStringValue()
 					item.OccurredAt = time.Unix(0, int64(l.TimeUnixNano))
@@ -167,10 +192,14 @@ func handleOtlpLogsRequest(logsData *otlpLogs.LogsData, server *state.Server, ra
 	return response
 }
 
-func transformJsonLogRecord(recordContainer *common.KeyValueList, config config.ServerConfig) *common.KeyValueList {
+// transformJsonLogRecord - Extract the log record and optional Kubernetes
+// metadata from an OTel key/value list.
+//
+// Returns (record, kubernetes) for Kubernetes-wrapped logs, e.g. from Vector.
+// Returns (record, nil) for simple jsonlog inputs without Kubernetes metadata.
+// Returns (nil, nil) if the record is not recognized.
+func transformJsonLogRecord(recordContainer *common.KeyValueList) (record *common.KeyValueList, kubernetes *common.KeyValueList) {
 	var logger string
-	var record *common.KeyValueList
-	var kubernetes *common.KeyValueList
 	hasErrorSeverity := false
 	for _, v := range recordContainer.Values {
 		if v.Key == "logger" {
@@ -189,16 +218,25 @@ func transformJsonLogRecord(recordContainer *common.KeyValueList, config config.
 	// TODO: Support other logger names (this is only tested with CNPG)
 	if logger == "postgres" {
 		// jsonlog wrapped in K8s context (via fluentbit / Vector)
-		if kubernetes != nil && skipDueToK8sFilter(kubernetes, config) {
-			return nil
-		}
-		return record
+		return record, kubernetes
 	} else if logger == "" && hasErrorSeverity {
 		// simple jsonlog (Postgres jsonlog has error_severity key)
-		return recordContainer
+		return recordContainer, nil
 	}
 
-	return nil
+	return nil, nil
+}
+
+func warnAboutMultipleServers(servers []*state.Server, warnedAboutMultipleServers *bool, prefixedLogger *util.Logger) {
+	if *warnedAboutMultipleServers || len(servers) <= 1 {
+		return
+	}
+	var otherSectionNames []string
+	for _, s := range servers[1:] {
+		otherSectionNames = append(otherSectionNames, s.Config.SectionName)
+	}
+	prefixedLogger.PrintWarning("Logs will also be forwarded to other servers (%s) that share the same db_log_otel_server (use K8s pod/label filtering to separate)", strings.Join(otherSectionNames, ", "))
+	*warnedAboutMultipleServers = true
 }
 
 func logLineFromJsonlog(record *common.KeyValueList, logParser state.LogParser) (state.LogLine, *state.LogLine) {
