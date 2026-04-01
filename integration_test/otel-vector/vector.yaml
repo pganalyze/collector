@@ -1,0 +1,50 @@
+data_dir: /var/lib/vector
+api:
+  enabled: false
+
+sources:
+  test_logs:
+    type: file
+    include:
+      - /collector/integration_test/otel-vector/test-logs.log
+    read_from: beginning
+
+transforms:
+  # Simulate the metadata that Vector's kubernetes_logs source would add.
+  # Named "kubernetes_logs" so the cnpg_remap transform (from contrib/vector/cnpg_remap.yaml)
+  # can consume it directly via its "inputs: [kubernetes_logs]" setting.
+  kubernetes_logs:
+    type: remap
+    inputs:
+      - test_logs
+    source: |
+      .kubernetes.pod_name = "test-cluster-1"
+      .kubernetes.pod_namespace = "default"
+      .kubernetes.pod_labels = {
+        "cnpg.io/cluster": "test-cluster",
+        "cnpg.io/instanceName": "test-cluster-1",
+        "cnpg.io/instanceRole": "primary",
+        "cnpg.io/podRole": "instance"
+      }
+      .source_type = "kubernetes_logs"
+
+sinks:
+  pganalyze:
+    inputs:
+      - cnpg_remap
+    type: http
+    uri: "http://127.0.0.1:4318/v1/logs"
+    encoding:
+      codec: json
+    framing:
+      method: character_delimited
+      character_delimited:
+        delimiter: ","
+    payload_prefix: '{"resourceLogs":'
+    payload_suffix: '}'
+    batch:
+      max_events: 50
+      timeout_secs: 2
+    request:
+      headers:
+        content-type: "application/json"

@@ -13,7 +13,7 @@ docker_run_cmd = docker run --name pganalyze-collector-test \
   -d pganalyze-collector-test $(1)
 docker_run_cmd_postgres = $(call docker_run_cmd,postgres -c pg_stat_statements.track_utility=off)
 
-TARGETS := pg10 pg11 pg12 pg13 pg14 pg15 pg16 reload guided-setup installer
+TARGETS := pg10 pg11 pg12 pg13 pg14 pg15 pg16 reload guided-setup installer otel-vector
 
 # Citus doesn't release ARM images, thus skip on ARM
 ifeq ($(findstring $(shell uname -m),arm64 aarch64),)
@@ -306,3 +306,22 @@ installer:
 		cat install.out; \
 		exit 1; \
 	fi
+
+otel-vector:
+	docker build -f Dockerfile.test-otel-vector $(DOCKER_BUILD_OPTS)
+	$(call docker_run_cmd,)
+	sleep 5
+	docker exec -d pganalyze-collector-test vector \
+		--config /collector/integration_test/otel-vector/vector.yaml \
+		--config /collector/contrib/vector/cnpg_remap.yaml
+	docker exec pganalyze-collector-test sh -c \
+		"DB_USERNAME=postgres PGA_API_KEY=dummy LOG_OTEL_SERVER=127.0.0.1:4318 pganalyze-collector --dry-run-logs -v" \
+		> otel-vector.out 2>&1 || true
+	docker rm -f pganalyze-collector-test
+	docker rmi pganalyze-collector-test
+	if ! grep -q 'Log test successful' otel-vector.out; then \
+		echo "expected log test to succeed; test failed:"; \
+		cat otel-vector.out; \
+		exit 1; \
+	fi
+	echo 'success'
