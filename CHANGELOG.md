@@ -7,12 +7,19 @@
     to consider query activity from inside functions, or other nested cases (e.g. EXPLAIN)
     separately from top level activity (direct query execution)
 * Allow resetting pg_stat_statements when nearly full
-  - This reworks the optional reset mechanism to reset pg_stat_statements when
+  - Due to pg_stat_statements deallocating 5% of the least used queries when its "full"
+    (i.e. number of entries hits the `pg_stat_statements.max`), certain workloads can
+    experience a high rate of "<query text unavailable>" in pganalyze, due to very old
+    queries with high call counts taking priority over more recent query activity.
+  - In such situations, a recurring `pg_stat_statements_reset()` call can avoid the
+    situation by clearing 100% of entries, so that there is more space for fresh entries
+  - This reworks the existing reset mechanism to reset pg_stat_statements when
     (1) it has utilized most of its entries, and a dealloc is likely occurring soon
     (2) the returned query text exceeds 250MB
-  - The reset interval configured through pganalyze is now taken as the highest
-    permitted reset frequency, i.e. with this change resets will likely occur
-    less often than before.
+  - Resets are optional and turned off by default. When the helper function exists,
+    and the reset interval is configured through pganalyze, it is now taken as the
+    highest permitted reset frequency, i.e. with this change resets will likely occur
+    less often than before (previously it was a fixed interval that would always reset)
 * Keep per-query information on whether a query / query sample was normalized
   - This lets the pganalyze application be informed whether PII filtering was
     applied to a particular snapshot being submitted.
