@@ -3,23 +3,19 @@ package postgres
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
-	"strings"
 
-	"github.com/aws/aws-sdk-go/service/rds/rdsutils"
 	"github.com/pganalyze/collector/config"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
-	"github.com/pganalyze/collector/util/awsutil"
 )
 
 func EstablishConnection(ctx context.Context, server *state.Server, logger *util.Logger, opts state.CollectionOpts, databaseName string) (connection *sql.DB, err error) {
-	connection, err = connectToDb(ctx, server.Config, logger, opts, databaseName)
+	connection, err = connectToDb(ctx, server.Config, opts, databaseName)
 	if err != nil {
 		if err.Error() == "pq: SSL is not enabled on the server" && (server.Config.DbSslMode == "prefer" || server.Config.DbSslMode == "") {
 			server.Config.DbSslModePreferFailed = true
-			connection, err = connectToDb(ctx, server.Config, logger, opts, databaseName)
+			connection, err = connectToDb(ctx, server.Config, opts, databaseName)
 		}
 	}
 
@@ -42,65 +38,20 @@ func EstablishConnection(ctx context.Context, server *state.Server, logger *util
 	return
 }
 
-func connectToDb(ctx context.Context, config config.ServerConfig, logger *util.Logger, opts state.CollectionOpts, databaseName string) (*sql.DB, error) {
-	var dbPasswordOverride string
-	var hostOverride string
-	var sslmodeOverride string
+func connectToDb(ctx context.Context, config config.ServerConfig, opts state.CollectionOpts, databaseName string) (*sql.DB, error) {
 	var db *sql.DB
-	driverName := "postgres"
+	var iamParams iamConnectionParams
+	var err error
 
+	driverName := "postgres"
 	if config.DbUseIamAuth {
-		if config.SystemType == "amazon_rds" {
-			sess, err := awsutil.GetAwsSession(config)
-			if err != nil {
-				return nil, err
-			}
-			if dbToken, err := rdsutils.BuildAuthToken(
-				fmt.Sprintf("%s:%d", config.GetDbHost(), config.GetDbPortOrDefault()),
-				config.AwsRegion,
-				config.GetDbUsername(),
-				sess.Config.Credentials,
-			); err != nil {
-				return nil, err
-			} else {
-				dbPasswordOverride = dbToken
-			}
-			// Used for both CloudSQL and AlloyDB
-		} else if config.SystemType == "google_cloudsql" {
-			if config.GcpProjectID == "" || config.GcpRegion == "" {
-				return nil, errors.New("To use IAM auth with Google Cloud SQL or AlloyDB, you must specify project ID and region in the configuration")
-			} else {
-				if config.GcpCloudSQLInstanceID != "" {
-					hostOverride = strings.Join([]string{config.GcpProjectID, config.GcpRegion, config.GcpCloudSQLInstanceID}, ":")
-					if config.GcpUsePSC {
-						driverName = "cloudsql-postgres-psc"
-					} else if config.GcpUsePublicIP {
-						driverName = "cloudsql-postgres-public"
-					} else {
-						driverName = "cloudsql-postgres"
-					}
-				} else if config.GcpAlloyDBClusterID != "" && config.GcpAlloyDBInstanceID != "" {
-					hostOverride = fmt.Sprintf("projects/%s/locations/%s/clusters/%s/instances/%s", config.GcpProjectID, config.GcpRegion, config.GcpAlloyDBClusterID, config.GcpAlloyDBInstanceID)
-					if config.GcpUsePSC {
-						driverName = "alloydb-postgres-psc"
-					} else if config.GcpUsePublicIP {
-						driverName = "alloydb-postgres-public"
-					} else {
-						driverName = "alloydb-postgres"
-					}
-				} else {
-					return nil, errors.New("To use IAM auth with either Google Cloud SQL or AlloyDB, you must specify instance ID (CloudSQL) or cluster ID and instance ID (AlloyDB) in the configuration")
-				}
-			}
-			// When using cloud-sql-go-connector, this needs to be set as disable
-			// https://github.com/GoogleCloudPlatform/cloud-sql-go-connector/issues/889
-			sslmodeOverride = "disable"
-		} else {
-			return nil, errors.New("IAM auth is only supported for Amazon RDS, Aurora, Google Cloud SQL, and Google AlloyDB - turn off IAM auth setting to use password-based authentication")
+		driverName, iamParams, err = getIamConnectionParams(config)
+		if err != nil {
+			return nil, err
 		}
 	}
 
-	connectString, err := config.GetPqOpenString(databaseName, dbPasswordOverride, hostOverride, sslmodeOverride)
+	connectString, err := config.GetPqOpenString(databaseName, iamParams.passwordOverride, iamParams.hostOverride, iamParams.sslmodeOverride)
 	if err != nil {
 		return nil, err
 	}
