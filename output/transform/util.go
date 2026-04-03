@@ -35,7 +35,8 @@ func upsertQueryReferenceAndInformation(s *snapshot.FullSnapshot, statementTexts
 
 	for idx, ref := range s.QueryReferences {
 		if ref.DatabaseIdx == newRef.DatabaseIdx && ref.RoleIdx == newRef.RoleIdx &&
-			bytes.Equal(ref.Fingerprint, newRef.Fingerprint) {
+			bytes.Equal(ref.Fingerprint, newRef.Fingerprint) &&
+			ref.Toplevel == newRef.Toplevel {
 			return int32(idx)
 		}
 	}
