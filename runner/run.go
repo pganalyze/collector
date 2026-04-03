@@ -3,7 +3,6 @@ package runner
 import (
 	"context"
 	"fmt"
-	"net"
 	"os"
 	"os/exec"
 	"os/user"
@@ -22,10 +21,6 @@ import (
 	"github.com/pganalyze/collector/selftest"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
-
-	"cloud.google.com/go/alloydbconn"
-	"cloud.google.com/go/cloudsqlconn"
-	"github.com/pganalyze/collector/util/pgxdriver"
 )
 
 func Run(ctx context.Context, wg *sync.WaitGroup, opts state.CollectionOpts, logger *util.Logger, configFilename string) (keepRunning bool, testRunSuccess chan bool, writeStateFile func(), shutdown func()) {
@@ -34,7 +29,7 @@ func Run(ctx context.Context, wg *sync.WaitGroup, opts state.CollectionOpts, log
 	keepRunning = false
 	writeStateFile = func() {}
 	shutdown = func() {}
-	driverCleanups := make(map[string]func() error)
+	var driverCleanups []func() error
 
 	scheduler, err := scheduler.GetScheduler()
 	if err != nil {
@@ -53,6 +48,8 @@ func Run(ctx context.Context, wg *sync.WaitGroup, opts state.CollectionOpts, log
 		return
 	}
 
+	needsIAMCloudSQL := false
+	needsIAMAlloyDB := false
 	for idx, cfg := range conf.Servers {
 		prefixedLogger := logger.WithPrefix(cfg.SectionName)
 		prefixedLogger.PrintVerbose("Identified as api_system_type: %s, api_system_scope: %s, api_system_id: %s", cfg.SystemType, cfg.SystemScope, cfg.SystemID)
@@ -66,55 +63,31 @@ func Run(ctx context.Context, wg *sync.WaitGroup, opts state.CollectionOpts, log
 				logger.PrintError("Failed to initialize OpenTelemetry tracing provider, disabling exports: %s", err)
 			}
 		}
-
 		if cfg.DbUseIamAuth && cfg.SystemType == "google_cloudsql" {
-			registerCloudSQL := func(name string, opts ...cloudsqlconn.Option) {
-				if _, ok := driverCleanups[name]; ok {
-					return
-				}
-				d, dialErr := cloudsqlconn.NewDialer(context.Background(), opts...)
-				if dialErr != nil {
-					logger.PrintError("Failed to register %s driver: %s", name, dialErr)
-					err = dialErr
-					return
-				}
-				pgxdriver.RegisterDriver(name, func(ctx context.Context, inst string) (net.Conn, error) { return d.Dial(ctx, inst) })
-				driverCleanups[name] = d.Close
-			}
-			registerAlloyDB := func(name string, opts ...alloydbconn.Option) {
-				if _, ok := driverCleanups[name]; ok {
-					return
-				}
-				d, dialErr := alloydbconn.NewDialer(context.Background(), opts...)
-				if dialErr != nil {
-					logger.PrintError("Failed to register %s driver: %s", name, dialErr)
-					err = dialErr
-					return
-				}
-				pgxdriver.RegisterDriver(name, func(ctx context.Context, inst string) (net.Conn, error) { return d.Dial(ctx, inst) })
-				driverCleanups[name] = d.Close
-			}
-
 			if cfg.GcpCloudSQLInstanceID != "" {
-				registerCloudSQL("cloudsql-postgres", cloudsqlconn.WithIAMAuthN(), cloudsqlconn.WithDefaultDialOptions(cloudsqlconn.WithPrivateIP()))
-				registerCloudSQL("cloudsql-postgres-public", cloudsqlconn.WithIAMAuthN())
-				if cfg.GcpUsePSC {
-					registerCloudSQL("cloudsql-postgres-psc", cloudsqlconn.WithIAMAuthN(), cloudsqlconn.WithDefaultDialOptions(cloudsqlconn.WithPSC()))
-				}
+				needsIAMCloudSQL = true
 			}
 			if cfg.GcpAlloyDBClusterID != "" {
-				registerAlloyDB("alloydb-postgres", alloydbconn.WithIAMAuthN())
-				registerAlloyDB("alloydb-postgres-public", alloydbconn.WithIAMAuthN(), alloydbconn.WithDefaultDialOptions(alloydbconn.WithPublicIP()))
-				if cfg.GcpUsePSC {
-					registerAlloyDB("alloydb-postgres-psc", alloydbconn.WithIAMAuthN(), alloydbconn.WithDefaultDialOptions(alloydbconn.WithPSC()))
-				}
-			}
-
-			if err != nil {
-				return
+				needsIAMAlloyDB = true
 			}
 		}
+	}
 
+	if needsIAMCloudSQL {
+		cleanups, err := postgres.RegisterCloudSQLDrivers()
+		driverCleanups = append(driverCleanups, cleanups...)
+		if err != nil {
+			logger.PrintError("Failed to register Cloud SQL IAM drivers: %s", err)
+			return
+		}
+	}
+	if needsIAMAlloyDB {
+		cleanups, err := postgres.RegisterAlloyDBDrivers()
+		driverCleanups = append(driverCleanups, cleanups...)
+		if err != nil {
+			logger.PrintError("Failed to register AlloyDB IAM drivers: %s", err)
+			return
+		}
 	}
 
 	shutdown = func() {
