@@ -24,6 +24,11 @@ func CheckLabelSelectorMismatch(labels map[string]string, selectors []string) bo
 				if (selEq && v != selValue) || (selNotEq && v == selValue) {
 					return true
 				}
+			} else {
+				// Key not present: equality selectors fail, inequality selectors pass
+				if selEq {
+					return true
+				}
 			}
 		}
 	}
