@@ -7,8 +7,6 @@ import (
 	"net"
 	"sync"
 
-	"cloud.google.com/go/alloydbconn"
-	"cloud.google.com/go/cloudsqlconn"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/stdlib"
 )
@@ -53,32 +51,12 @@ func (p *pgxDriver) dbURI(name string) (string, error) {
 	return dbURI, nil
 }
 
-// RegisterCloudSQLDriver registers a database/sql driver for Cloud SQL that
+// RegisterDriver registers a database/sql driver with the given name that
 // uses pgx with QueryExecModeExec to avoid creating server-side prepared
-// statements.
-func RegisterCloudSQLDriver(name string, opts ...cloudsqlconn.Option) (func() error, error) {
-	d, err := cloudsqlconn.NewDialer(context.Background(), opts...)
-	if err != nil {
-		return func() error { return nil }, err
-	}
+// statements. The provided dial function handles the actual connection.
+func RegisterDriver(name string, dial func(ctx context.Context, inst string) (net.Conn, error)) {
 	sql.Register(name, &pgxDriver{
-		dial:   func(ctx context.Context, inst string) (net.Conn, error) { return d.Dial(ctx, inst) },
+		dial:   dial,
 		dbURIs: make(map[string]string),
 	})
-	return func() error { return d.Close() }, nil
-}
-
-// RegisterAlloyDBDriver registers a database/sql driver for AlloyDB that
-// uses pgx with QueryExecModeExec to avoid creating server-side prepared
-// statements.
-func RegisterAlloyDBDriver(name string, opts ...alloydbconn.Option) (func() error, error) {
-	d, err := alloydbconn.NewDialer(context.Background(), opts...)
-	if err != nil {
-		return func() error { return nil }, err
-	}
-	sql.Register(name, &pgxDriver{
-		dial:   func(ctx context.Context, inst string) (net.Conn, error) { return d.Dial(ctx, inst) },
-		dbURIs: make(map[string]string),
-	})
-	return func() error { return d.Close() }, nil
 }

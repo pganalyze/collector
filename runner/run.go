@@ -3,6 +3,7 @@ package runner
 import (
 	"context"
 	"fmt"
+	"net"
 	"os"
 	"os/exec"
 	"os/user"
@@ -33,12 +34,7 @@ func Run(ctx context.Context, wg *sync.WaitGroup, opts state.CollectionOpts, log
 	keepRunning = false
 	writeStateFile = func() {}
 	shutdown = func() {}
-	var driverCleanup func() error
-	var driverCleanupPublic func() error
-	var driverCleanupPsc func() error
-	var driverCleanupAlloyDb func() error
-	var driverCleanupPublicAlloyDb func() error
-	var driverCleanupPscAlloyDb func() error
+	driverCleanups := make(map[string]func() error)
 
 	scheduler, err := scheduler.GetScheduler()
 	if err != nil {
@@ -71,64 +67,50 @@ func Run(ctx context.Context, wg *sync.WaitGroup, opts state.CollectionOpts, log
 			}
 		}
 
-		if cfg.DbUseIamAuth && cfg.SystemType == "google_cloudsql" && cfg.GcpCloudSQLInstanceID != "" && driverCleanup == nil {
-			driverCleanup, err = pgxdriver.RegisterCloudSQLDriver("cloudsql-postgres", cloudsqlconn.WithIAMAuthN(),
-				cloudsqlconn.WithDefaultDialOptions(cloudsqlconn.WithPrivateIP()),
-			)
-
-			if err != nil {
-				logger.PrintError("Failed to register cloudsql-postgres driver: %s", err)
-				return
+		if cfg.DbUseIamAuth && cfg.SystemType == "google_cloudsql" {
+			registerCloudSQL := func(name string, opts ...cloudsqlconn.Option) {
+				if _, ok := driverCleanups[name]; ok {
+					return
+				}
+				d, dialErr := cloudsqlconn.NewDialer(context.Background(), opts...)
+				if dialErr != nil {
+					logger.PrintError("Failed to register %s driver: %s", name, dialErr)
+					err = dialErr
+					return
+				}
+				pgxdriver.RegisterDriver(name, func(ctx context.Context, inst string) (net.Conn, error) { return d.Dial(ctx, inst) })
+				driverCleanups[name] = d.Close
 			}
-		}
-
-		if cfg.DbUseIamAuth && cfg.SystemType == "google_cloudsql" && cfg.GcpCloudSQLInstanceID != "" && driverCleanupPublic == nil {
-			driverCleanupPublic, err = pgxdriver.RegisterCloudSQLDriver("cloudsql-postgres-public", cloudsqlconn.WithIAMAuthN())
-
-			if err != nil {
-				logger.PrintError("Failed to register cloudsql-postgres-public driver: %s", err)
-				return
+			registerAlloyDB := func(name string, opts ...alloydbconn.Option) {
+				if _, ok := driverCleanups[name]; ok {
+					return
+				}
+				d, dialErr := alloydbconn.NewDialer(context.Background(), opts...)
+				if dialErr != nil {
+					logger.PrintError("Failed to register %s driver: %s", name, dialErr)
+					err = dialErr
+					return
+				}
+				pgxdriver.RegisterDriver(name, func(ctx context.Context, inst string) (net.Conn, error) { return d.Dial(ctx, inst) })
+				driverCleanups[name] = d.Close
 			}
-		}
 
-		if cfg.DbUseIamAuth && cfg.SystemType == "google_cloudsql" && cfg.GcpCloudSQLInstanceID != "" && cfg.GcpUsePSC && driverCleanupPsc == nil {
-			driverCleanupPsc, err = cloudsql_pgxv5.RegisterDriver("cloudsql-postgres-psc", cloudsqlconn.WithIAMAuthN(),
-				cloudsqlconn.WithDefaultDialOptions(cloudsqlconn.WithPSC()),
-			)
-
-			if err != nil {
-				logger.PrintError("Failed to register cloudsql-postgres-psc driver: %s", err)
-				return
+			if cfg.GcpCloudSQLInstanceID != "" {
+				registerCloudSQL("cloudsql-postgres", cloudsqlconn.WithIAMAuthN(), cloudsqlconn.WithDefaultDialOptions(cloudsqlconn.WithPrivateIP()))
+				registerCloudSQL("cloudsql-postgres-public", cloudsqlconn.WithIAMAuthN())
+				if cfg.GcpUsePSC {
+					registerCloudSQL("cloudsql-postgres-psc", cloudsqlconn.WithIAMAuthN(), cloudsqlconn.WithDefaultDialOptions(cloudsqlconn.WithPSC()))
+				}
 			}
-		}
-
-		if cfg.DbUseIamAuth && cfg.SystemType == "google_cloudsql" && cfg.GcpAlloyDBClusterID != "" && driverCleanupAlloyDb == nil {
-			driverCleanupAlloyDb, err = pgxdriver.RegisterAlloyDBDriver("alloydb-postgres", alloydbconn.WithIAMAuthN())
-
-			if err != nil {
-				logger.PrintError("Failed to register alloydb-postgres driver: %s", err)
-				return
+			if cfg.GcpAlloyDBClusterID != "" {
+				registerAlloyDB("alloydb-postgres", alloydbconn.WithIAMAuthN())
+				registerAlloyDB("alloydb-postgres-public", alloydbconn.WithIAMAuthN(), alloydbconn.WithDefaultDialOptions(alloydbconn.WithPublicIP()))
+				if cfg.GcpUsePSC {
+					registerAlloyDB("alloydb-postgres-psc", alloydbconn.WithIAMAuthN(), alloydbconn.WithDefaultDialOptions(alloydbconn.WithPSC()))
+				}
 			}
-		}
-
-		if cfg.DbUseIamAuth && cfg.SystemType == "google_cloudsql" && cfg.GcpAlloyDBClusterID != "" && driverCleanupPublicAlloyDb == nil {
-			driverCleanupPublicAlloyDb, err = pgxdriver.RegisterAlloyDBDriver("alloydb-postgres-public", alloydbconn.WithIAMAuthN(),
-				alloydbconn.WithDefaultDialOptions(alloydbconn.WithPublicIP()),
-			)
 
 			if err != nil {
-				logger.PrintError("Failed to register alloydb-postgres-public driver: %s", err)
-				return
-			}
-		}
-
-		if cfg.DbUseIamAuth && cfg.SystemType == "google_cloudsql" && cfg.GcpAlloyDBClusterID != "" && cfg.GcpUsePSC && driverCleanupPscAlloyDb == nil {
-			driverCleanupPscAlloyDb, err = alloydb_pgxv5.RegisterDriver("alloydb-postgres-psc", alloydbconn.WithIAMAuthN(),
-				alloydbconn.WithDefaultDialOptions(alloydbconn.WithPSC()),
-			)
-
-			if err != nil {
-				logger.PrintError("Failed to register alloydb-postgres-psc driver: %s", err)
 				return
 			}
 		}
@@ -144,20 +126,8 @@ func Run(ctx context.Context, wg *sync.WaitGroup, opts state.CollectionOpts, log
 				logger.PrintError("Failed to shutdown OpenTelemetry tracing provider: %s", err)
 			}
 		}
-		if driverCleanup != nil {
-			driverCleanup()
-		}
-
-		if driverCleanupPublic != nil {
-			driverCleanupPublic()
-		}
-
-		if driverCleanupAlloyDb != nil {
-			driverCleanupAlloyDb()
-		}
-
-		if driverCleanupPublicAlloyDb != nil {
-			driverCleanupPublicAlloyDb()
+		for _, cleanup := range driverCleanups {
+			cleanup()
 		}
 	}
 
