@@ -1,5 +1,45 @@
 # Changelog
 
+## 0.70.0      2026-04-03
+
+* Track nested query statistics separately based on toplevel field
+  - This matters when pg_stat_statements.track is set to "all", and allows pganalyze
+    to consider query activity from inside functions, or other nested cases (e.g. EXPLAIN)
+    separately from top level activity (direct query execution)
+* Allow resetting pg_stat_statements when nearly full
+  - This reworks the optional reset mechanism to reset pg_stat_statements when
+    (1) it has utilized most of its entries, and a dealloc is likely occurring soon
+    (2) the returned query text exceeds 250MB
+  - The reset interval configured through pganalyze is now taken as the highest
+    permitted reset frequency, i.e. with this change resets will likely occur
+    less often than before.
+* Keep per-query information on whether a query / query sample was normalized
+  - This lets the pganalyze application be informed whether PII filtering was
+    applied to a particular snapshot being submitted.
+* Allow multiplexed use of OpenTelemetry logs server
+  - Multiple servers can now share the same `db_log_otel_server` configuration
+  - This is safe to do in certain circumstances, specifically when a
+    Kubernetes pod or label filter is in place, and the log message has sufficient
+    details (i.e. is annotated with Kubernetes metadata)
+  - If configured without a pod/label filter the collector will emit a warning,
+    and send received logs to each server sharing the same `db_log_otel_server`
+* Kubernetes label matching: Ensure selected labels are present for equality
+  - Previously a label specified in the selector, but not actually present
+    in the data would lead to that part of the selector being skipped, not
+    counting it as a mismatch. Instead count it as a mismatch for equality,
+    but a match for inequality.
+* Diff pg_stat_statements_info dealloc counter correctly on initial collector start
+* Rework OpenTelemetry logs handler to be OTLP spec compliant
+* Crunchy Bridge: Don't crash when metrics retrieval fails
+* AlloyDB/Cloud SQL:
+  - Allow IAM authentication to use private service connect endpoint
+    - This is enabled by setting the new `gcp_use_psc` / `GCP_USE_PSC` to `true`
+  - Avoid accidental use of prepared statements when IAM authentication is in use
+* AlloyDB: Add back support for follower statistics
+  - This revises the change added in 0.69.0 to more specifically skip
+    the problematic function on a replica
+
+
 ## 0.69.0      2026-02-26
 
 * Improve query text collection to reduce missing query texts
