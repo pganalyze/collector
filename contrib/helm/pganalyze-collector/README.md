@@ -1,6 +1,6 @@
 # pganalyze-collector
 
-![Version: 0.69.0](https://img.shields.io/badge/Version-0.69.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: v0.69.0](https://img.shields.io/badge/AppVersion-v0.69.0-informational?style=flat-square)
+![Version: 0.70.0](https://img.shields.io/badge/Version-0.70.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: v0.70.0](https://img.shields.io/badge/AppVersion-v0.70.0-informational?style=flat-square)
 
 pganalyze statistics collector
 
@@ -21,6 +21,7 @@ pganalyze statistics collector
 | extraEnv | object | `{}` | Environment variables to be passed to the container Config settings can be defined here, or can be defined via configMap + secret |
 | extraEnvRaw | list | `[]` | Environment variables to be passed to the container Config settings can be defined in raw form, for use with externally maintained env value sources (configMapKeyRef, fieldRef, resourceFieldRef, secretKeyRef) |
 | fullnameOverride | string | `""` |  |
+| image.digest | string | `""` | Overrides the image using a specific digest (e.g. sha256:...). When set, tag is ignored. |
 | image.pullPolicy | string | `"IfNotPresent"` | Overrides the image pull policy. |
 | image.repository | string | `"quay.io/pganalyze/collector"` |  |
 | image.tag | string | `""` | Overrides the image tag whose default is the chart appVersion. |
@@ -28,6 +29,7 @@ pganalyze statistics collector
 | nameOverride | string | `""` |  |
 | nodeSelector | object | `{}` |  |
 | podAnnotations | object | `{}` |  |
+| podLabels | object | `{}` | Labels to add to the pod |
 | podSecurityContext.runAsGroup | int | `1000` |  |
 | podSecurityContext.runAsNonRoot | bool | `true` |  |
 | podSecurityContext.runAsUser | int | `1000` |  |
