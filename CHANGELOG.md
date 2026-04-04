@@ -7,7 +7,7 @@
     to consider query activity from inside functions, or other nested cases (e.g. EXPLAIN)
     separately from top level activity (direct query execution)
 * Allow resetting pg_stat_statements when nearly full
-  - Due to pg_stat_statements deallocating 5% of the least used queries when its "full"
+  - Due to pg_stat_statements deallocating 5% of the least used queries when full
     (i.e. number of entries hits the `pg_stat_statements.max`), certain workloads can
     experience a high rate of "<query text unavailable>" in pganalyze, due to very old
     queries with high call counts taking priority over more recent query activity.
