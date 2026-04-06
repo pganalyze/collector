@@ -9,7 +9,7 @@
 * Allow resetting pg_stat_statements when nearly full
   - Due to pg_stat_statements deallocating 5% of the least used queries when full
     (i.e. number of entries hits the `pg_stat_statements.max`), certain workloads can
-    experience a high rate of "<query text unavailable>" in pganalyze, due to very old
+    experience a high rate of `<query text unavailable>` in pganalyze, due to very old
     queries with high call counts taking priority over more recent query activity.
   - In such situations, a recurring `pg_stat_statements_reset()` call can avoid the
     situation by clearing 100% of entries, so that there is more space for fresh entries
