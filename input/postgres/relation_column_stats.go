@@ -56,13 +56,7 @@ func GetColumnStats(ctx context.Context, c *Collection, db *sql.DB, dbName strin
 		}
 	}
 
-	stmt, err := db.PrepareContext(ctx, QueryMarkerSQL+fmt.Sprintf(columnStatsSQL, sourceTable))
-	if err != nil {
-		return nil, err
-	}
-	defer stmt.Close()
-
-	rows, err := stmt.QueryContext(ctx)
+	rows, err := db.QueryContext(ctx, QueryMarkerSQL+fmt.Sprintf(columnStatsSQL, sourceTable))
 	if err != nil {
 		return nil, err
 	}

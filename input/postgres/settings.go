@@ -31,15 +31,7 @@ SELECT DISTINCT ON (name)
  ORDER BY name, CASE source WHEN 'default' THEN 1 ELSE 0 END`
 
 func GetSettings(ctx context.Context, db *sql.DB) ([]state.PostgresSetting, error) {
-	stmt, err := db.PrepareContext(ctx, QueryMarkerSQL+settingsSQL)
-	if err != nil {
-		err = fmt.Errorf("Settings/Prepare: %s", err)
-		return nil, err
-	}
-
-	defer stmt.Close()
-
-	rows, err := stmt.QueryContext(ctx)
+	rows, err := db.QueryContext(ctx, QueryMarkerSQL+settingsSQL)
 	if err != nil {
 		err = fmt.Errorf("Settings/Query: %s", err)
 		return nil, err

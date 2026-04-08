@@ -90,14 +90,7 @@ func GetPlans(ctx context.Context, c *Collection, db *sql.DB, showtext bool) (st
 		querySql = fmt.Sprintf(statPlanSQL, extSchema, showtext)
 	}
 
-	stmt, err := db.PrepareContext(ctx, QueryMarkerSQL+querySql)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	defer stmt.Close()
-
-	rows, err := stmt.QueryContext(ctx)
+	rows, err := db.QueryContext(ctx, QueryMarkerSQL+querySql)
 	if err != nil {
 		return nil, nil, err
 	}
