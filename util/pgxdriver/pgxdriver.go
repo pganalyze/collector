@@ -41,7 +41,7 @@ func (p *pgxDriver) dbURI(name string) (string, error) {
 	}
 	instConnName := config.Config.Host
 	config.Config.Host = "localhost"
-	config.DefaultQueryExecMode = pgx.QueryExecModeExec
+	config.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol
 	config.DialFunc = func(ctx context.Context, _, _ string) (net.Conn, error) {
 		return p.dial(ctx, instConnName)
 	}
