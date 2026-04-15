@@ -24,6 +24,7 @@ message ServerMessage {
     bool enable_logs = 6;
     // Maximum number of tables that can be monitored per server
     int32 schema_table_limit = 7;
+    Capabilities capabilities = 8;
   }
 
   message Features {
@@ -52,5 +53,14 @@ message ServerMessage {
     repeated NullString query_parameters = 5;
     repeated string query_parameter_types = 6;
     map<string, string> postgres_settings = 7;
+  }
+
+  // The pganalyze server reports capability to handle breaking changes by setting these fields.
+  // When not supported (e.g. new collector and old Enterprise server), the collector falls back
+  // to the original behavior.
+  message Capabilities {
+    // The collector sends toplevel and nested (e.g. inside a function) query stats separately.
+    // When not supported by the server, we fall back to merging them.
+    bool toplevel = 1;
   }
 }

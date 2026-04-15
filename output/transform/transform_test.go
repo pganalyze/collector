@@ -42,7 +42,7 @@ func TestStatements(t *testing.T) {
 	fp2 := util.FingerprintQuery(q2, "none", -1)
 	fpBuf2 := make([]byte, 8)
 	binary.BigEndian.PutUint64(fpBuf2, fp2)
-	toplevel := false
+	toplevel := true
 	capturedTime := time.Time{}
 	transientState.Statements[key1] = state.PostgresStatement{Fingerprint: fp1}
 	transientState.Statements[key2] = state.PostgresStatement{Fingerprint: fp2}

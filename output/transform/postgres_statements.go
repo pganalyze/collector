@@ -12,6 +12,7 @@ import (
 
 func groupStatements(statements state.PostgresStatementMap, statsMap state.DiffedPostgresStatementStatsMap, server *state.Server) map[statementKey]statementValue {
 	groupedStatements := make(map[statementKey]statementValue)
+	trackToplevel := server.Grant.Load().Config.GetCapabilities().GetToplevel()
 
 	for sKey, stats := range statsMap {
 		statement, exist := statements[sKey]
@@ -28,7 +29,10 @@ func groupStatements(statements state.PostgresStatementMap, statsMap state.Diffe
 			databaseOid: sKey.DatabaseOid,
 			userOid:     sKey.UserOid,
 			fingerprint: statement.Fingerprint,
-			toplevel:    sKey.Toplevel,
+			toplevel:    true,
+		}
+		if trackToplevel {
+			key.toplevel = sKey.Toplevel
 		}
 
 		value, exist := groupedStatements[key]
