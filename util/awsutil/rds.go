@@ -181,20 +181,23 @@ func (reader RdsCloudWatchReader) getMetric(metricName string, unit string, dime
 			},
 		},
 	}
+	reader.logger.PrintInfo("CloudWatch request: metric=%s dimension=%s:%s unit=%s", metricName, dimensionName, dimensionValue, unit)
 	resp, err := reader.svc.GetMetricStatistics(params)
 
 	if err != nil {
-		reader.logger.PrintVerbose(err.Error())
+		reader.logger.PrintInfo("CloudWatch error for %s: %s", metricName, err.Error())
 		return 0.0
 	}
 
 	if len(resp.Datapoints) == 0 {
+		reader.logger.PrintInfo("CloudWatch no datapoints for %s (%s:%s)", metricName, dimensionName, dimensionValue)
 		return 0.0
 	}
 
 	val := resp.Datapoints[0].Average
 	if val != nil {
-		return *resp.Datapoints[0].Average
+		reader.logger.PrintInfo("CloudWatch result for %s: %f", metricName, *val)
+		return *val
 	}
 
 	return 0.0
