@@ -13,9 +13,10 @@ import (
 	"github.com/pganalyze/collector/util/awsutil"
 )
 
-// Aurora storage is automatically extended up until 64TB, so we should always
-// report that limit as the total disk space (to avoid bogus disk space warnings)
-const AuroraMaxStorage = 64 * 1024 * 1024 * 1024 * 1024
+// Aurora storage is automatically extended up to 128TB, so report that as
+// total disk space when we can't determine the actual limit from CloudWatch
+// (AuroraVolumeBytesLeftTotal is only available for Aurora MySQL, not PostgreSQL)
+const AuroraMaxStorage = 128 * 1024 * 1024 * 1024 * 1024
 
 // GetSystemState - Gets system information about an Amazon RDS instance
 func GetSystemState(server *state.Server, logger *util.Logger) (system state.SystemState) {
@@ -219,15 +220,21 @@ func GetSystemState(server *state.Server, logger *util.Logger) (system state.Sys
 
 				system.DataDirectoryPartition = "/rdsdbdata"
 				system.DiskPartitions = make(state.DiskPartitionMap)
+
 				for _, diskPartition := range osSnapshot.FileSystems {
+					usedBytes := uint64(diskPartition.Used * 1024)
 					totalBytes := uint64(diskPartition.Total * 1024)
 					if isAurora {
+						auroraVolumeUsed := uint64(cloudWatchReader.GetRdsIntMetric("VolumeBytesUsed", "Bytes"))
+						if auroraVolumeUsed > 0 {
+							usedBytes = auroraVolumeUsed
+						}
 						totalBytes = AuroraMaxStorage
 					}
 					system.DiskPartitions[diskPartition.MountPoint] = state.DiskPartition{
 						DiskName:      "default",
 						PartitionName: diskPartition.Name,
-						UsedBytes:     uint64(diskPartition.Used * 1024),
+						UsedBytes:     usedBytes,
 						TotalBytes:    totalBytes,
 					}
 				}
@@ -254,21 +261,22 @@ func GetSystemState(server *state.Server, logger *util.Logger) (system state.Sys
 		system.Memory.FreeBytes = uint64(cloudWatchReader.GetRdsIntMetric("FreeableMemory", "Bytes"))
 		system.Memory.SwapUsedBytes = uint64(cloudWatchReader.GetRdsIntMetric("SwapUsage", "Bytes"))
 
-		var bytesTotal, bytesFree int64
-		if instance.AllocatedStorage != nil {
-			bytesTotal = *instance.AllocatedStorage * 1024 * 1024 * 1024
-			bytesFree = cloudWatchReader.GetRdsIntMetric("FreeStorageSpace", "Bytes")
-
-			totalBytes := uint64(bytesTotal)
-			if isAurora {
-				totalBytes = AuroraMaxStorage
+		if isAurora {
+			auroraVolumeUsed := uint64(cloudWatchReader.GetRdsIntMetric("VolumeBytesUsed", "Bytes"))
+			system.DiskPartitions = make(state.DiskPartitionMap)
+			system.DiskPartitions["/"] = state.DiskPartition{
+				DiskName:   "default",
+				UsedBytes:  auroraVolumeUsed,
+				TotalBytes: AuroraMaxStorage,
 			}
-
+		} else if instance.AllocatedStorage != nil {
+			bytesTotal := *instance.AllocatedStorage * 1024 * 1024 * 1024
+			bytesFree := cloudWatchReader.GetRdsIntMetric("FreeStorageSpace", "Bytes")
 			system.DiskPartitions = make(state.DiskPartitionMap)
 			system.DiskPartitions["/"] = state.DiskPartition{
 				DiskName:   "default",
 				UsedBytes:  uint64(bytesTotal - bytesFree),
-				TotalBytes: totalBytes,
+				TotalBytes: uint64(bytesTotal),
 			}
 		}
 	}
