@@ -24,6 +24,9 @@ message ServerMessage {
     bool enable_logs = 6;
     // Maximum number of tables that can be monitored per server
     int32 schema_table_limit = 7;
+    // Server-side support of breaking changes, so new collector versions fall back to
+    // the original behavior when connected to old Enterprise servers
+    CompatFlags compat_flags = 8;
   }
 
   message Features {
@@ -52,5 +55,9 @@ message ServerMessage {
     repeated NullString query_parameters = 5;
     repeated string query_parameter_types = 6;
     map<string, string> postgres_settings = 7;
+  }
+
+  message CompatFlags {
+    bool toplevel = 1;
   }
 }
