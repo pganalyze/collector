@@ -100,7 +100,8 @@ func GetSystemState(server *state.Server, logger *util.Logger) (system state.Sys
 	system.Info.AmazonRds.ParameterApplyStatus = *group.ParameterApplyStatus
 
 	dbInstanceID := *instance.DBInstanceIdentifier
-	cloudWatchReader := awsutil.NewRdsCloudWatchReader(sess, logger, dbInstanceID)
+	dbClusterID := util.StringPtrToString(instance.DBClusterIdentifier)
+	cloudWatchReader := awsutil.NewRdsCloudWatchReader(sess, logger, dbInstanceID, dbClusterID)
 
 	system.Disks = make(state.DiskMap)
 	system.Disks["default"] = state.Disk{
@@ -225,7 +226,7 @@ func GetSystemState(server *state.Server, logger *util.Logger) (system state.Sys
 					usedBytes := uint64(diskPartition.Used * 1024)
 					totalBytes := uint64(diskPartition.Total * 1024)
 					if isAurora {
-						auroraVolumeUsed := uint64(cloudWatchReader.GetRdsIntMetric("VolumeBytesUsed", "Bytes"))
+						auroraVolumeUsed := uint64(cloudWatchReader.GetRdsClusterIntMetric("VolumeBytesUsed", "Bytes"))
 						if auroraVolumeUsed > 0 {
 							usedBytes = auroraVolumeUsed
 						}
@@ -262,7 +263,7 @@ func GetSystemState(server *state.Server, logger *util.Logger) (system state.Sys
 		system.Memory.SwapUsedBytes = uint64(cloudWatchReader.GetRdsIntMetric("SwapUsage", "Bytes"))
 
 		if isAurora {
-			auroraVolumeUsed := uint64(cloudWatchReader.GetRdsIntMetric("VolumeBytesUsed", "Bytes"))
+			auroraVolumeUsed := uint64(cloudWatchReader.GetRdsClusterIntMetric("VolumeBytesUsed", "Bytes"))
 			system.DiskPartitions = make(state.DiskPartitionMap)
 			system.DiskPartitions["/"] = state.DiskPartition{
 				DiskName:   "default",

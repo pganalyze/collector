@@ -140,11 +140,12 @@ func GetRdsParameter(group *rds.DBParameterGroupStatus, name string, svc *rds.RD
 type RdsCloudWatchReader struct {
 	svc      *cloudwatch.CloudWatch
 	instance string
+	cluster  string
 	logger   *util.Logger
 }
 
-func NewRdsCloudWatchReader(sess *session.Session, logger *util.Logger, instance string) RdsCloudWatchReader {
-	return RdsCloudWatchReader{svc: cloudwatch.New(sess), instance: instance, logger: logger}
+func NewRdsCloudWatchReader(sess *session.Session, logger *util.Logger, instance string, cluster string) RdsCloudWatchReader {
+	return RdsCloudWatchReader{svc: cloudwatch.New(sess), instance: instance, cluster: cluster, logger: logger}
 }
 
 // GetRdsIntMetric - Gets an integer value from Cloudwatch
@@ -154,6 +155,15 @@ func (reader RdsCloudWatchReader) GetRdsIntMetric(metricName string, unit string
 
 // GetRdsFloatMetric - Gets a float value from Cloudwatch
 func (reader RdsCloudWatchReader) GetRdsFloatMetric(metricName string, unit string) float64 {
+	return reader.getMetric(metricName, unit, "DBInstanceIdentifier", reader.instance)
+}
+
+// GetRdsClusterIntMetric - Gets an integer value from Cloudwatch using the cluster dimension
+func (reader RdsCloudWatchReader) GetRdsClusterIntMetric(metricName string, unit string) int64 {
+	return int64(reader.getMetric(metricName, unit, "DBClusterIdentifier", reader.cluster))
+}
+
+func (reader RdsCloudWatchReader) getMetric(metricName string, unit string, dimensionName string, dimensionValue string) float64 {
 	params := &cloudwatch.GetMetricStatisticsInput{
 		EndTime:    aws.Time(time.Now()),
 		MetricName: aws.String(metricName),
@@ -166,8 +176,8 @@ func (reader RdsCloudWatchReader) GetRdsFloatMetric(metricName string, unit stri
 		},
 		Dimensions: []*cloudwatch.Dimension{
 			{
-				Name:  aws.String("DBInstanceIdentifier"),
-				Value: aws.String(reader.instance),
+				Name:  aws.String(dimensionName),
+				Value: aws.String(dimensionValue),
 			},
 		},
 	}
