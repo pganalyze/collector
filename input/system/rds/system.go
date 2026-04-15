@@ -222,21 +222,26 @@ func GetSystemState(server *state.Server, logger *util.Logger) (system state.Sys
 				system.DataDirectoryPartition = "/rdsdbdata"
 				system.DiskPartitions = make(state.DiskPartitionMap)
 
-				for _, diskPartition := range osSnapshot.FileSystems {
-					usedBytes := uint64(diskPartition.Used * 1024)
-					totalBytes := uint64(diskPartition.Total * 1024)
-					if isAurora {
-						auroraVolumeUsed := uint64(cloudWatchReader.GetRdsClusterIntMetric("VolumeBytesUsed", "Bytes"))
-						if auroraVolumeUsed > 0 {
-							usedBytes = auroraVolumeUsed
+				if isAurora {
+					auroraVolumeUsed := cloudWatchReader.GetRdsClusterIntMetric("VolumeBytesUsed")
+					if auroraVolumeUsed >= 0 {
+						for _, diskPartition := range osSnapshot.FileSystems {
+							system.DiskPartitions[diskPartition.MountPoint] = state.DiskPartition{
+								DiskName:      "default",
+								PartitionName: diskPartition.Name,
+								UsedBytes:     uint64(auroraVolumeUsed),
+								TotalBytes:    AuroraMaxStorage,
+							}
 						}
-						totalBytes = AuroraMaxStorage
 					}
-					system.DiskPartitions[diskPartition.MountPoint] = state.DiskPartition{
-						DiskName:      "default",
-						PartitionName: diskPartition.Name,
-						UsedBytes:     usedBytes,
-						TotalBytes:    totalBytes,
+				} else {
+					for _, diskPartition := range osSnapshot.FileSystems {
+						system.DiskPartitions[diskPartition.MountPoint] = state.DiskPartition{
+							DiskName:      "default",
+							PartitionName: diskPartition.Name,
+							UsedBytes:     uint64(diskPartition.Used * 1024),
+							TotalBytes:    uint64(diskPartition.Total * 1024),
+						}
 					}
 				}
 			}
@@ -263,12 +268,14 @@ func GetSystemState(server *state.Server, logger *util.Logger) (system state.Sys
 		system.Memory.SwapUsedBytes = uint64(cloudWatchReader.GetRdsIntMetric("SwapUsage", "Bytes"))
 
 		if isAurora {
-			auroraVolumeUsed := uint64(cloudWatchReader.GetRdsClusterIntMetric("VolumeBytesUsed", "Bytes"))
-			system.DiskPartitions = make(state.DiskPartitionMap)
-			system.DiskPartitions["/"] = state.DiskPartition{
-				DiskName:   "default",
-				UsedBytes:  auroraVolumeUsed,
-				TotalBytes: AuroraMaxStorage,
+			auroraVolumeUsed := cloudWatchReader.GetRdsClusterIntMetric("VolumeBytesUsed")
+			if auroraVolumeUsed >= 0 {
+				system.DiskPartitions = make(state.DiskPartitionMap)
+				system.DiskPartitions["/"] = state.DiskPartition{
+					DiskName:   "default",
+					UsedBytes:  uint64(auroraVolumeUsed),
+					TotalBytes: AuroraMaxStorage,
+				}
 			}
 		} else if instance.AllocatedStorage != nil {
 			bytesTotal := *instance.AllocatedStorage * 1024 * 1024 * 1024

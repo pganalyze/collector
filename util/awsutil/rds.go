@@ -158,9 +158,49 @@ func (reader RdsCloudWatchReader) GetRdsFloatMetric(metricName string, unit stri
 	return reader.getMetric(metricName, unit, "DBInstanceIdentifier", reader.instance)
 }
 
-// GetRdsClusterIntMetric - Gets an integer value from Cloudwatch using the cluster dimension
-func (reader RdsCloudWatchReader) GetRdsClusterIntMetric(metricName string, unit string) int64 {
-	return int64(reader.getMetric(metricName, unit, "DBClusterIdentifier", reader.cluster))
+// GetRdsClusterIntMetric - Gets an integer value from Cloudwatch using the cluster
+// dimension. Uses a 1-hour lookback window since Aurora volume metrics like
+// VolumeBytesUsed are reported infrequently (not continuously). Returns -1 if
+// no datapoints are available.
+func (reader RdsCloudWatchReader) GetRdsClusterIntMetric(metricName string) int64 {
+	params := &cloudwatch.GetMetricStatisticsInput{
+		EndTime:    aws.Time(time.Now()),
+		MetricName: aws.String(metricName),
+		Namespace:  aws.String("AWS/RDS"),
+		Period:     aws.Int64(300),
+		StartTime:  aws.Time(time.Now().Add(-1 * time.Hour)),
+		Statistics: []*string{
+			aws.String("Average"),
+		},
+		Dimensions: []*cloudwatch.Dimension{
+			{
+				Name:  aws.String("DBClusterIdentifier"),
+				Value: aws.String(reader.cluster),
+			},
+		},
+	}
+	resp, err := reader.svc.GetMetricStatistics(params)
+
+	if err != nil {
+		return -1
+	}
+
+	if len(resp.Datapoints) == 0 {
+		return -1
+	}
+
+	var latest *cloudwatch.Datapoint
+	for _, dp := range resp.Datapoints {
+		if latest == nil || dp.Timestamp.After(*latest.Timestamp) {
+			latest = dp
+		}
+	}
+
+	if latest.Average != nil {
+		return int64(*latest.Average)
+	}
+
+	return -1
 }
 
 func (reader RdsCloudWatchReader) getMetric(metricName string, unit string, dimensionName string, dimensionValue string) float64 {
@@ -181,23 +221,20 @@ func (reader RdsCloudWatchReader) getMetric(metricName string, unit string, dime
 			},
 		},
 	}
-	reader.logger.PrintInfo("CloudWatch request: metric=%s dimension=%s:%s unit=%s", metricName, dimensionName, dimensionValue, unit)
 	resp, err := reader.svc.GetMetricStatistics(params)
 
 	if err != nil {
-		reader.logger.PrintInfo("CloudWatch error for %s: %s", metricName, err.Error())
+		reader.logger.PrintVerbose(err.Error())
 		return 0.0
 	}
 
 	if len(resp.Datapoints) == 0 {
-		reader.logger.PrintInfo("CloudWatch no datapoints for %s (%s:%s)", metricName, dimensionName, dimensionValue)
 		return 0.0
 	}
 
 	val := resp.Datapoints[0].Average
 	if val != nil {
-		reader.logger.PrintInfo("CloudWatch result for %s: %f", metricName, *val)
-		return *val
+		return *resp.Datapoints[0].Average
 	}
 
 	return 0.0
