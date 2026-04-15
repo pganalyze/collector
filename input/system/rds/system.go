@@ -223,15 +223,18 @@ func GetSystemState(server *state.Server, logger *util.Logger) (system state.Sys
 				system.DiskPartitions = make(state.DiskPartitionMap)
 
 				if isAurora {
-					auroraVolumeUsed := cloudWatchReader.GetRdsClusterIntMetric("VolumeBytesUsed")
-					if auroraVolumeUsed >= 0 {
-						for _, diskPartition := range osSnapshot.FileSystems {
-							system.DiskPartitions[diskPartition.MountPoint] = state.DiskPartition{
-								DiskName:      "default",
-								PartitionName: diskPartition.Name,
-								UsedBytes:     uint64(auroraVolumeUsed),
-								TotalBytes:    AuroraMaxStorage,
-							}
+					auroraVolumeUsed := cloudWatchReader.GetRdsClusterIntMetric("VolumeBytesUsed", "Bytes")
+					for _, diskPartition := range osSnapshot.FileSystems {
+						var usedBytes, totalBytes uint64
+						if auroraVolumeUsed >= 0 {
+							usedBytes = uint64(auroraVolumeUsed)
+							totalBytes = AuroraMaxStorage
+						}
+						system.DiskPartitions[diskPartition.MountPoint] = state.DiskPartition{
+							DiskName:      "default",
+							PartitionName: diskPartition.Name,
+							UsedBytes:     usedBytes,
+							TotalBytes:    totalBytes,
 						}
 					}
 				} else {
@@ -268,14 +271,17 @@ func GetSystemState(server *state.Server, logger *util.Logger) (system state.Sys
 		system.Memory.SwapUsedBytes = uint64(cloudWatchReader.GetRdsIntMetric("SwapUsage", "Bytes"))
 
 		if isAurora {
-			auroraVolumeUsed := cloudWatchReader.GetRdsClusterIntMetric("VolumeBytesUsed")
+			auroraVolumeUsed := cloudWatchReader.GetRdsClusterIntMetric("VolumeBytesUsed", "Bytes")
+			system.DiskPartitions = make(state.DiskPartitionMap)
+			var usedBytes, totalBytes uint64
 			if auroraVolumeUsed >= 0 {
-				system.DiskPartitions = make(state.DiskPartitionMap)
-				system.DiskPartitions["/"] = state.DiskPartition{
-					DiskName:   "default",
-					UsedBytes:  uint64(auroraVolumeUsed),
-					TotalBytes: AuroraMaxStorage,
-				}
+				usedBytes = uint64(auroraVolumeUsed)
+				totalBytes = AuroraMaxStorage
+			}
+			system.DiskPartitions["/"] = state.DiskPartition{
+				DiskName:   "default",
+				UsedBytes:  usedBytes,
+				TotalBytes: totalBytes,
 			}
 		} else if instance.AllocatedStorage != nil {
 			bytesTotal := *instance.AllocatedStorage * 1024 * 1024 * 1024

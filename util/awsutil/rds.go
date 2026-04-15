@@ -162,13 +162,14 @@ func (reader RdsCloudWatchReader) GetRdsFloatMetric(metricName string, unit stri
 // dimension. Uses a 1-hour lookback window since Aurora volume metrics like
 // VolumeBytesUsed are reported infrequently (not continuously). Returns -1 if
 // no datapoints are available.
-func (reader RdsCloudWatchReader) GetRdsClusterIntMetric(metricName string) int64 {
+func (reader RdsCloudWatchReader) GetRdsClusterIntMetric(metricName string, unit string) int64 {
 	params := &cloudwatch.GetMetricStatisticsInput{
 		EndTime:    aws.Time(time.Now()),
 		MetricName: aws.String(metricName),
 		Namespace:  aws.String("AWS/RDS"),
 		Period:     aws.Int64(300),
 		StartTime:  aws.Time(time.Now().Add(-1 * time.Hour)),
+		Unit:       aws.String(unit),
 		Statistics: []*string{
 			aws.String("Average"),
 		},
