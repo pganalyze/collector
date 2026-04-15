@@ -24,9 +24,7 @@ message ServerMessage {
     bool enable_logs = 6;
     // Maximum number of tables that can be monitored per server
     int32 schema_table_limit = 7;
-    // Server-side support of breaking changes, so new collector versions fall back to
-    // the original behavior when connected to old Enterprise servers
-    CompatFlags compat_flags = 8;
+    Capabilities capabilities = 8;
   }
 
   message Features {
@@ -57,7 +55,12 @@ message ServerMessage {
     map<string, string> postgres_settings = 7;
   }
 
-  message CompatFlags {
+  // The pganalyze server reports capability to handle breaking changes by setting these fields.
+  // When not supported (e.g. new collector and old Enterprise server), the collector falls back
+  // to the original behavior.
+  message Capabilities {
+    // The collector sends toplevel and nested (e.g. inside a function) query stats separately.
+    // When not supported by the server, we fall back to merging them.
     bool toplevel = 1;
   }
 }

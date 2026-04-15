@@ -12,7 +12,7 @@ import (
 
 func groupStatements(statements state.PostgresStatementMap, statsMap state.DiffedPostgresStatementStatsMap, server *state.Server) map[statementKey]statementValue {
 	groupedStatements := make(map[statementKey]statementValue)
-	trackToplevel := server.Grant.Load().Config.GetCompatFlags().GetToplevel()
+	trackToplevel := server.Grant.Load().Config.GetCapabilities().GetToplevel()
 
 	for sKey, stats := range statsMap {
 		statement, exist := statements[sKey]
