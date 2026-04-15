@@ -28,6 +28,7 @@ func groupStatements(statements state.PostgresStatementMap, statsMap state.Diffe
 			databaseOid: sKey.DatabaseOid,
 			userOid:     sKey.UserOid,
 			fingerprint: statement.Fingerprint,
+			toplevel:    true,
 		}
 		if server.Grant.Load().Config.GetCompatFlags().GetToplevel() {
 			key.toplevel = sKey.Toplevel
