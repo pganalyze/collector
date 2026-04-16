@@ -160,7 +160,7 @@ func (reader RdsCloudWatchReader) GetRdsFloatMetric(metricName string, unit stri
 
 // GetRdsClusterIntMetric - Gets an integer value from Cloudwatch using the cluster
 // dimension. Uses a 3-hour lookback window since Aurora volume metrics like
-// VolumeBytesUsed are reported infrequently (not continuously). Returns -1 if
+// VolumeBytesUsed are reported infrequently (not continuously). Returns 0 if
 // no datapoints are available.
 func (reader RdsCloudWatchReader) GetRdsClusterIntMetric(metricName string, unit string) int64 {
 	params := &cloudwatch.GetMetricStatisticsInput{
@@ -183,11 +183,11 @@ func (reader RdsCloudWatchReader) GetRdsClusterIntMetric(metricName string, unit
 	resp, err := reader.svc.GetMetricStatistics(params)
 
 	if err != nil {
-		return -1
+		return 0
 	}
 
 	if len(resp.Datapoints) == 0 {
-		return -1
+		return 0
 	}
 
 	var latest *cloudwatch.Datapoint
@@ -201,7 +201,7 @@ func (reader RdsCloudWatchReader) GetRdsClusterIntMetric(metricName string, unit
 		return int64(*latest.Average)
 	}
 
-	return -1
+	return 0
 }
 
 func (reader RdsCloudWatchReader) getMetric(metricName string, unit string, dimensionName string, dimensionValue string) float64 {
