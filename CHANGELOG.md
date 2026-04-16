@@ -2,11 +2,11 @@
 
 ## 0.70.1      2026-04-15
 
-* Fix compatibility with existing Enterprise Server releases
+* Fix compatibility with existing pganalyze Enterprise Server releases
   - Version 0.70.0 added tracking of nested query statistics using the toplevel field,
-    which broke compatibility with Enterprise Server. This change detects whether the
-    pganalyze server supports nested query statistics so that new collector versions can
-    be used without upgrading the server.
+    which broke compatibility with Enterprise Server when using `pg_stat_statements.track = all`.
+    This change detects whether the pganalyze server supports nested query statistics
+    so that new collector versions can be used without upgrading the server.
 
 
 ## 0.70.0      2026-04-03
