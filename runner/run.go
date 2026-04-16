@@ -66,6 +66,8 @@ func Run(ctx context.Context, wg *sync.WaitGroup, opts state.CollectionOpts, log
 		if cfg.DbUseIamAuth && cfg.SystemType == "google_cloudsql" {
 			if cfg.GcpCloudSQLInstanceID != "" {
 				needsIAMCloudSQL = true
+				prefixedLogger.PrintInfo("Cloud SQL IAM auth enabled (instance: %s, use_public_ip: %v, use_psc: %v)",
+					cfg.GcpCloudSQLInstanceID, cfg.GcpUsePublicIP, cfg.GcpUsePSC)
 			}
 			if cfg.GcpAlloyDBClusterID != "" {
 				needsIAMAlloyDB = true
