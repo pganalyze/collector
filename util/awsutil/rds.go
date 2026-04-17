@@ -140,11 +140,12 @@ func GetRdsParameter(group *rds.DBParameterGroupStatus, name string, svc *rds.RD
 type RdsCloudWatchReader struct {
 	svc      *cloudwatch.CloudWatch
 	instance string
+	cluster  string
 	logger   *util.Logger
 }
 
-func NewRdsCloudWatchReader(sess *session.Session, logger *util.Logger, instance string) RdsCloudWatchReader {
-	return RdsCloudWatchReader{svc: cloudwatch.New(sess), instance: instance, logger: logger}
+func NewRdsCloudWatchReader(sess *session.Session, logger *util.Logger, instance string, cluster string) RdsCloudWatchReader {
+	return RdsCloudWatchReader{svc: cloudwatch.New(sess), instance: instance, cluster: cluster, logger: logger}
 }
 
 // GetRdsIntMetric - Gets an integer value from Cloudwatch
@@ -154,6 +155,56 @@ func (reader RdsCloudWatchReader) GetRdsIntMetric(metricName string, unit string
 
 // GetRdsFloatMetric - Gets a float value from Cloudwatch
 func (reader RdsCloudWatchReader) GetRdsFloatMetric(metricName string, unit string) float64 {
+	return reader.getMetric(metricName, unit, "DBInstanceIdentifier", reader.instance)
+}
+
+// GetRdsClusterIntMetric - Gets an integer value from Cloudwatch using the cluster
+// dimension. Uses a 3-hour lookback window since Aurora volume metrics like
+// VolumeBytesUsed are reported infrequently (not continuously). Returns 0 if
+// no datapoints are available.
+func (reader RdsCloudWatchReader) GetRdsClusterIntMetric(metricName string, unit string) int64 {
+	params := &cloudwatch.GetMetricStatisticsInput{
+		EndTime:    aws.Time(time.Now()),
+		MetricName: aws.String(metricName),
+		Namespace:  aws.String("AWS/RDS"),
+		Period:     aws.Int64(300),
+		StartTime:  aws.Time(time.Now().Add(-3 * time.Hour)),
+		Unit:       aws.String(unit),
+		Statistics: []*string{
+			aws.String("Average"),
+		},
+		Dimensions: []*cloudwatch.Dimension{
+			{
+				Name:  aws.String("DBClusterIdentifier"),
+				Value: aws.String(reader.cluster),
+			},
+		},
+	}
+	resp, err := reader.svc.GetMetricStatistics(params)
+
+	if err != nil {
+		return 0
+	}
+
+	if len(resp.Datapoints) == 0 {
+		return 0
+	}
+
+	var latest *cloudwatch.Datapoint
+	for _, dp := range resp.Datapoints {
+		if latest == nil || dp.Timestamp.After(*latest.Timestamp) {
+			latest = dp
+		}
+	}
+
+	if latest.Average != nil {
+		return int64(*latest.Average)
+	}
+
+	return 0
+}
+
+func (reader RdsCloudWatchReader) getMetric(metricName string, unit string, dimensionName string, dimensionValue string) float64 {
 	params := &cloudwatch.GetMetricStatisticsInput{
 		EndTime:    aws.Time(time.Now()),
 		MetricName: aws.String(metricName),
@@ -166,8 +217,8 @@ func (reader RdsCloudWatchReader) GetRdsFloatMetric(metricName string, unit stri
 		},
 		Dimensions: []*cloudwatch.Dimension{
 			{
-				Name:  aws.String("DBInstanceIdentifier"),
-				Value: aws.String(reader.instance),
+				Name:  aws.String(dimensionName),
+				Value: aws.String(dimensionValue),
 			},
 		},
 	}
