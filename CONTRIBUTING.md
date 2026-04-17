@@ -114,10 +114,6 @@ To run step 5 from an Ubuntu 24.04 VM, do the following:
 (use a c8i.2xlarge instance or higher, takes ~10+ minutes)
 
 ```
-# Get password (entered interactively) from Quay.io
-# (under the robot accounts of the pganalyze organization)
-sudo docker login -u="pganalyze+push" quay.io
-
 # Add Docker's official GPG key:
 sudo apt-get update && \
 sudo apt-get install -y ca-certificates curl gnupg && \
@@ -131,10 +127,13 @@ echo \
   $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
   sudo tee /etc/apt/sources.list.d/docker.list > /dev/null && \
 sudo apt-get update && \
-sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin
+sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin qemu-user-static binfmt-support make
 
-# Add support for ARM emulation and build
-sudo apt-get install -y qemu-user-static binfmt-support make && \
+# Get password (entered interactively) from Quay.io
+# (under the robot accounts of the pganalyze organization)
+sudo docker login -u="pganalyze+push" quay.io
+
+# Pull collector repository and build
 git clone https://github.com/pganalyze/collector.git && \
 cd collector && \
 sudo make docker_release
