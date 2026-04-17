@@ -13,7 +13,6 @@ cloud.google.com/go/alloydb/internal
 ## explicit; go 1.23.0
 cloud.google.com/go/alloydbconn
 cloud.google.com/go/alloydbconn/debug
-cloud.google.com/go/alloydbconn/driver/pgxv5
 cloud.google.com/go/alloydbconn/errtype
 cloud.google.com/go/alloydbconn/internal/alloydb
 cloud.google.com/go/alloydbconn/internal/tel
@@ -46,7 +45,6 @@ cloud.google.com/go/cloudsqlconn/errtype
 cloud.google.com/go/cloudsqlconn/instance
 cloud.google.com/go/cloudsqlconn/internal/cloudsql
 cloud.google.com/go/cloudsqlconn/internal/trace
-cloud.google.com/go/cloudsqlconn/postgres/pgxv5
 # cloud.google.com/go/compute/metadata v0.9.0
 ## explicit; go 1.24.0
 cloud.google.com/go/compute/metadata
@@ -333,8 +331,8 @@ github.com/jackc/pgpassfile
 # github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761
 ## explicit; go 1.14
 github.com/jackc/pgservicefile
-# github.com/jackc/pgx/v5 v5.7.4
-## explicit; go 1.21
+# github.com/jackc/pgx/v5 v5.9.0
+## explicit; go 1.25.0
 github.com/jackc/pgx/v5
 github.com/jackc/pgx/v5/internal/iobufpool
 github.com/jackc/pgx/v5/internal/pgio
@@ -576,7 +574,6 @@ golang.org/x/crypto/cryptobyte/asn1
 golang.org/x/crypto/hkdf
 golang.org/x/crypto/internal/alias
 golang.org/x/crypto/internal/poly1305
-golang.org/x/crypto/pbkdf2
 golang.org/x/crypto/pkcs12
 golang.org/x/crypto/pkcs12/internal/rc2
 golang.org/x/crypto/ssh/terminal
