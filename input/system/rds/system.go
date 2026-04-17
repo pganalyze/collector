@@ -14,8 +14,8 @@ import (
 )
 
 // Aurora storage is automatically extended up to 128TB, so report that as
-// total disk space when we can't determine the actual limit from CloudWatch
-// (AuroraVolumeBytesLeftTotal is only available for Aurora MySQL, not PostgreSQL)
+// total disk space since CloudWatch does not expose the actual limit for
+// Aurora PostgreSQL.
 const AuroraMaxStorage = 128 * 1024 * 1024 * 1024 * 1024
 
 // GetSystemState - Gets system information about an Amazon RDS instance
@@ -222,25 +222,22 @@ func GetSystemState(server *state.Server, logger *util.Logger) (system state.Sys
 				system.DataDirectoryPartition = "/rdsdbdata"
 				system.DiskPartitions = make(state.DiskPartitionMap)
 
+				var auroraVolumeUsed int64
 				if isAurora {
-					auroraVolumeUsed := cloudWatchReader.GetRdsClusterIntMetric("VolumeBytesUsed", "Bytes")
-					for _, diskPartition := range osSnapshot.FileSystems {
-						system.DiskPartitions[diskPartition.MountPoint] = state.DiskPartition{
-							DiskName:      "default",
-							PartitionName: diskPartition.Name,
-							UsedBytes:     uint64(auroraVolumeUsed),
-							TotalBytes:    AuroraMaxStorage,
-						}
+					auroraVolumeUsed = cloudWatchReader.GetRdsClusterIntMetric("VolumeBytesUsed", "Bytes")
+				}
+				for _, diskPartition := range osSnapshot.FileSystems {
+					dp := state.DiskPartition{
+						DiskName:      "default",
+						PartitionName: diskPartition.Name,
+						UsedBytes:     uint64(diskPartition.Used * 1024),
+						TotalBytes:    uint64(diskPartition.Total * 1024),
 					}
-				} else {
-					for _, diskPartition := range osSnapshot.FileSystems {
-						system.DiskPartitions[diskPartition.MountPoint] = state.DiskPartition{
-							DiskName:      "default",
-							PartitionName: diskPartition.Name,
-							UsedBytes:     uint64(diskPartition.Used * 1024),
-							TotalBytes:    uint64(diskPartition.Total * 1024),
-						}
+					if isAurora && diskPartition.MountPoint == system.DataDirectoryPartition {
+						dp.UsedBytes = uint64(auroraVolumeUsed)
+						dp.TotalBytes = AuroraMaxStorage
 					}
+					system.DiskPartitions[diskPartition.MountPoint] = dp
 				}
 			}
 		}
