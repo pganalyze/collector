@@ -10,20 +10,6 @@ import (
 	"github.com/pganalyze/collector/output/pganalyze_collector"
 )
 
-type GrantLogs struct {
-	Valid         bool
-	Config        pganalyze_collector.ServerMessage_Config `json:"config"`
-	Logdata       GrantS3                                  `json:"logdata"`
-	Snapshot      GrantS3                                  `json:"snapshot"`
-	EncryptionKey GrantLogsEncryptionKey                   `json:"encryption_key"`
-}
-
-type GrantLogsEncryptionKey struct {
-	CiphertextBlob string `json:"ciphertext_blob"`
-	KeyId          string `json:"key_id"`
-	Plaintext      string `json:"plaintext"`
-}
-
 const LogStreamBufferLen = 500
 
 type ParsedLogStreamItem struct {
@@ -61,10 +47,7 @@ type PersistedLogState struct {
 type LogFile struct {
 	LogLines []LogLine
 
-	UUID       uuid.UUID
-	S3Location string
-	S3CekAlgo  string
-	S3CmkKeyID string
+	UUID uuid.UUID
 
 	ByteSize     int64
 	OriginalName string
