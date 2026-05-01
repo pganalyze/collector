@@ -57,13 +57,7 @@ func GetBufferCache(ctx context.Context, server *state.Server, logger *util.Logg
 		return
 	}
 
-	stmt, err := db.PrepareContext(ctx, QueryMarkerSQL+fmt.Sprintf(bufferCacheSQL, schemaName))
-	if err != nil {
-		logger.PrintError("GetBufferCache: %s", err)
-		return
-	}
-	defer stmt.Close()
-	rows, err := stmt.QueryContext(ctx)
+	rows, err := db.QueryContext(ctx, QueryMarkerSQL+fmt.Sprintf(bufferCacheSQL, schemaName))
 	if err != nil {
 		logger.PrintError("GetBufferCache: %s", err)
 		return
