@@ -62,7 +62,7 @@ func GetPlans(ctx context.Context, c *Collection, db *sql.DB, showtext bool) (st
 		// aurora_compute_plan_id needs to be on to use aurora_stat_plans function
 		// 2026-04-30: For now, we've removed guidance in documentation to enable
 		//   this setting because of potential LWLock:pg_stat_statement locking/wait
-		//   issues on Aurora Serverless on high-concurrency workloads when it's enabled.
+		//   issues on Amazon Aurora on high-concurrency workloads when it's enabled.
 		//   We'll revisit this in the future when we have more information about the underlying
 		//   issue and potential fixes from AWS.
 
