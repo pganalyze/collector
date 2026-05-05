@@ -11,12 +11,9 @@ import (
 	"github.com/jackc/pgx/v5/stdlib"
 )
 
-// pgxDriver is a database/sql driver that wraps pgx with a custom dial
-// function for Cloud SQL or AlloyDB IAM authentication. It uses
-// QueryExecModeSimpleProtocol so queries are sent via the simple query
-// protocol, which is required when these managed services sit behind a
-// transaction-mode connection pooler that cannot reuse prepared statements
-// across pooled backend connections.
+// pgxDriver is a database/sql driver that uses pgx with QueryExecModeExec
+// to avoid creating server-side prepared statements. It wraps a dial function
+// (Cloud SQL or AlloyDB) that handles the actual connection.
 type pgxDriver struct {
 	dial   func(ctx context.Context, inst string) (net.Conn, error)
 	mu     sync.Mutex
@@ -54,9 +51,9 @@ func (p *pgxDriver) dbURI(name string) (string, error) {
 	return dbURI, nil
 }
 
-// RegisterDriver registers a database/sql driver with the given name for
-// Cloud SQL or AlloyDB IAM authentication. The provided dial function
-// handles the actual connection through the managed service's connector.
+// RegisterDriver registers a database/sql driver with the given name that
+// uses pgx with QueryExecModeExec to avoid creating server-side prepared
+// statements. The provided dial function handles the actual connection.
 func RegisterDriver(name string, dial func(ctx context.Context, inst string) (net.Conn, error)) {
 	sql.Register(name, &pgxDriver{
 		dial:   dial,
