@@ -140,13 +140,7 @@ func GetStatementStats(ctx context.Context, c *Collection, db *sql.DB) (state.Po
 	}
 
 	querySql := QueryMarkerSQL + fmt.Sprintf(statementStatsSQL, topLevelField, totalTimeField, ioTimeFields, optionalFields, sourceTable)
-	stmt, err := db.PrepareContext(ctx, querySql)
-	if err != nil {
-		return nil, err
-	}
-	defer stmt.Close()
-
-	rows, err := stmt.QueryContext(ctx)
+	rows, err := db.QueryContext(ctx, querySql)
 	if err != nil {
 		return nil, err
 	}
@@ -199,13 +193,7 @@ func GetStatementTexts(ctx context.Context, c *Collection, db *sql.DB) (statemen
 	}
 
 	querySql := QueryMarkerSQL + fmt.Sprintf(statementTextSQL, topLevelField, sourceTable)
-	stmt, err := db.PrepareContext(ctx, querySql)
-	if err != nil {
-		return
-	}
-	defer stmt.Close()
-
-	rows, err := stmt.QueryContext(ctx)
+	rows, err := db.QueryContext(ctx, querySql)
 	if err != nil {
 		return
 	}

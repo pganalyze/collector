@@ -30,13 +30,7 @@ func handleRelationStatsAux(ctx context.Context, c *Collection, db *sql.DB, relS
 		return relStats, nil
 	}
 
-	stmt, err := db.PrepareContext(ctx, QueryMarkerSQL+citusRelationSizeSQL)
-	if err != nil {
-		return relStats, fmt.Errorf("RelationStatsExt/Prepare: %s", err)
-	}
-	defer stmt.Close()
-
-	rows, err := stmt.QueryContext(ctx, c.Config.IgnoreSchemaRegexp)
+	rows, err := db.QueryContext(ctx, QueryMarkerSQL+citusRelationSizeSQL, c.Config.IgnoreSchemaRegexp)
 	if err != nil {
 		return relStats, fmt.Errorf("RelationStatsExt/Query: %s", err)
 	}
@@ -120,13 +114,7 @@ func handleIndexStatsAux(ctx context.Context, c *Collection, db *sql.DB, idxStat
 		return idxStats, nil
 	}
 
-	stmt, err := db.PrepareContext(ctx, QueryMarkerSQL+citusIndexSizeSQL)
-	if err != nil {
-		return idxStats, fmt.Errorf("IndexStatsExt/Prepare: %s", err)
-	}
-	defer stmt.Close()
-
-	rows, err := stmt.QueryContext(ctx, c.Config.IgnoreSchemaRegexp)
+	rows, err := db.QueryContext(ctx, QueryMarkerSQL+citusIndexSizeSQL, c.Config.IgnoreSchemaRegexp)
 	if err != nil {
 		return idxStats, fmt.Errorf("IndexStatsExt/Query: %s", err)
 	}

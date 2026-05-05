@@ -179,14 +179,7 @@ func GetRelationStats(ctx context.Context, c *Collection, db *sql.DB, currentDat
 		systemCatalogFilter = relationSQLdefaultSystemCatalogFilter
 	}
 
-	stmt, err := db.PrepareContext(ctx, QueryMarkerSQL+fmt.Sprintf(relationStatsSQL, insertsSinceVacuumField, systemCatalogFilter))
-	if err != nil {
-		err = fmt.Errorf("RelationStats/Prepare: %s", err)
-		return
-	}
-	defer stmt.Close()
-
-	rows, err := stmt.QueryContext(ctx, c.Config.IgnoreSchemaRegexp)
+	rows, err := db.QueryContext(ctx, QueryMarkerSQL+fmt.Sprintf(relationStatsSQL, insertsSinceVacuumField, systemCatalogFilter), c.Config.IgnoreSchemaRegexp)
 	if err != nil {
 		err = fmt.Errorf("RelationStats/Query: %s", err)
 		return
@@ -242,14 +235,7 @@ func GetRelationStats(ctx context.Context, c *Collection, db *sql.DB, currentDat
 }
 
 func GetIndexStats(ctx context.Context, c *Collection, db *sql.DB, currentDatabaseOid state.Oid, ts state.TransientState) (indexStats state.PostgresIndexStatsMap, err error) {
-	stmt, err := db.PrepareContext(ctx, QueryMarkerSQL+indexStatsSQL)
-	if err != nil {
-		err = fmt.Errorf("IndexStats/Prepare: %s", err)
-		return
-	}
-	defer stmt.Close()
-
-	rows, err := stmt.QueryContext(ctx, c.Config.IgnoreSchemaRegexp)
+	rows, err := db.QueryContext(ctx, QueryMarkerSQL+indexStatsSQL, c.Config.IgnoreSchemaRegexp)
 	if err != nil {
 		err = fmt.Errorf("IndexStats/Query: %s", err)
 		return
