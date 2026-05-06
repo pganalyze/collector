@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.70.2      2026-05-06
+
+* Aurora: Improve disk size reporting
+  - Use the `VolumeBytesUsed` CloudWatch metric at the cluster level
+  - Previously, the collector reported OS-level filesystem values that were
+    inaccurate regardless of the actual cluster storage size
+* AlloyDB/Cloud SQL: Fix IAM authentication by removing prepared statements
+  - Previously, explicit prepared statements broke when AlloyDB/Cloud SQL was
+    configured with IAM authentication
+  - This removes all `PrepareContext` usage from collector queries, not only
+    with AlloyDB/Cloud SQL
+* Docker image: Raise alpine/musl stack size from 2MB to 8MB
+  - This matches what glibc would typically use, and fixes a crash on a very
+    complex query making heavy use of UNION
+
+
 ## 0.70.1      2026-04-15
 
 * Fix compatibility with existing pganalyze Enterprise Server releases
