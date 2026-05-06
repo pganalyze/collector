@@ -104,27 +104,38 @@ message System {
   string system_scope = 3; // Name the system ID is scoped by (optional)
   string cluster_id = 4; // Unique identifier for the (physical replication) cluster
 
-  SchedulerStatistic scheduler_statistic = 10;
-  MemoryStatistic memory_statistic = 11;
+  SchedulerStatistic scheduler_statistic = 10; // Deprecated in v0.71.0: now stored every minute in system_statistics
+  MemoryStatistic memory_statistic = 11; // Deprecated in v0.71.0: now stored every minute in system_statistics
 
   CPUInformation cpu_information = 12;
   repeated CPUReference cpu_references = 13;
-  repeated CPUStatistic cpu_statistics = 14;
+  repeated CPUStatistic cpu_statistics = 14; // Deprecated in v0.71.0: now stored every minute in system_statistics
 
   repeated NetworkReference network_references = 15;
-  repeated NetworkStatistic network_statistics = 16;
+  repeated NetworkStatistic network_statistics = 16; // Deprecated in v0.71.0: now stored every minute in system_statistics
 
   repeated DiskReference disk_references = 17;
   repeated DiskInformation disk_informations = 18;
-  repeated DiskStatistic disk_statistics = 19;
+  repeated DiskStatistic disk_statistics = 19; // Deprecated in v0.71.0: now stored every minute in system_statistics
 
   repeated DiskPartitionReference disk_partition_references = 20;
   repeated DiskPartitionInformation disk_partition_informations = 21;
-  repeated DiskPartitionStatistic disk_partition_statistics = 22;
+  repeated DiskPartitionStatistic disk_partition_statistics = 22; // Deprecated in v0.71.0: now stored every minute in system_statistics
+
+  repeated SystemStatistic system_statistics = 23;
 
   int32 data_directory_disk_partition_idx = 30; // Disk partition that the PostgreSQL data directory lives on
   int32 xlog_disk_partition_idx = 31;           // Disk partition that the PostgreSQL WAL lives on
   uint64 xlog_used_bytes = 32;                  // Size of the WAL directory, in bytes (not necessarily the same as used bytes on the WAL partition!)
+}
+
+message SystemStatistic {
+  google.protobuf.Timestamp collected_at = 1;
+  CPUStatistic cpu = 2;
+  MemoryStatistic memory = 3;
+  NetworkStatistic network = 4;
+  repeated DiskStatistic disks = 5;
+  uint64 xlog_used_bytes = 6; // Size of the WAL directory, in bytes (not necessarily the same as used bytes on the WAL partition!)
 }
 
 message SystemInformation {
@@ -284,7 +295,6 @@ message CPUReference {
 
 message CPUStatistic {
   int32 cpu_idx = 1;
-
   double user_percent = 2;
   double system_percent = 3;
   double idle_percent = 4;

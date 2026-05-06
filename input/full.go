@@ -70,7 +70,7 @@ func CollectFull(ctx context.Context, server *state.Server, connection *sql.DB, 
 	// The scheduler skips the otherwise scheduled execution when the full snapshot time happens,
 	// so we can run it inline here and pass its data along as part of this full snapshot.
 	server.HighFreqStateMutex.Lock()
-	newHighFreqState, err := CollectAndDiff1minStats(ctx, c, connection, ps.CollectedAt, server.HighFreqPrevState)
+	newHighFreqState, err := CollectAndDiff1minStats(ctx, c, connection, ps.CollectedAt, server)
 	if err != nil {
 		logger.PrintError("Could not collect high frequency statistics for server: %s", err)
 		err = nil
@@ -81,9 +81,11 @@ func CollectFull(ctx context.Context, server *state.Server, connection *sql.DB, 
 		ts.StatementStats = newHighFreqState.UnidentifiedStatementStats
 		ts.PlanStats = newHighFreqState.UnidentifiedPlanStats
 		ts.ServerIoStats = newHighFreqState.QueuedServerIoStats
+		ts.SystemStats = newHighFreqState.QueuedSystemStats
 		newHighFreqState.UnidentifiedStatementStats = make(state.HistoricStatementStatsMap)
 		newHighFreqState.UnidentifiedPlanStats = make(state.HistoricPlanStatsMap)
 		newHighFreqState.QueuedServerIoStats = make(state.HistoricPostgresServerIoStatsMap)
+		newHighFreqState.QueuedSystemStats = make(state.QueuedSystemStats)
 		server.HighFreqPrevState = newHighFreqState
 	}
 	server.HighFreqStateMutex.Unlock()

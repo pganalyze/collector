@@ -24,6 +24,7 @@ func diffState(logger *util.Logger, prevState state.PersistedState, newState sta
 			IndexStats:    diffIndexStats(newDbStats.IndexStats, prevIdxStats),
 		}
 	}
+	// Todo: define a combined SystemStats struct, and move this diffing code into state/system.go
 	diffState.SystemCPUStats = diffSystemCPUStats(newState.System.CPUStats, prevState.System.CPUStats)
 	diffState.SystemNetworkStats = diffSystemNetworkStats(newState.System.NetworkStats, prevState.System.NetworkStats, collectedIntervalSecs)
 	diffState.SystemDiskStats = diffSystemDiskStats(newState.System.DiskStats, prevState.System.DiskStats, collectedIntervalSecs)

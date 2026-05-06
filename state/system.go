@@ -2,6 +2,13 @@ package state
 
 import "time"
 
+// This needs to track collected at.
+// type HistoricPlanStatsMap map[time.Time]DiskPartitionMap
+
+type HistoricSystemStateMap map[HistoricStatsTimeKey]SystemState
+
+
+
 // SystemState - All kinds of system-related information and metrics
 type SystemState struct {
 	Info         SystemInfo

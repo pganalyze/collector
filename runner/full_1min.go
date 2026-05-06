@@ -38,7 +38,7 @@ func gather1minStatsForServer(ctx context.Context, server *state.Server, opts st
 		return newState, err
 	}
 
-	return input.CollectAndDiff1minStats(ctx, c, connection, collectedAt, server.HighFreqPrevState)
+	return input.CollectAndDiff1minStats(ctx, c, connection, collectedAt, server)
 }
 
 func Gather1minStatsFromAllServers(ctx context.Context, servers []*state.Server, opts state.CollectionOpts, logger *util.Logger) {

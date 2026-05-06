@@ -40,6 +40,7 @@ type PersistedHighFreqState struct {
 	StatementStats PostgresStatementStatsMap
 	PlanStats      PostgresPlanStatsMap
 	ServerIoStats  PostgresServerIoStatsMap
+	SystemState    SystemState
 
 	// Keep track of when we last collected statement stats, to calculate time distance
 	LastStatementStatsAt time.Time
@@ -52,6 +53,8 @@ type PersistedHighFreqState struct {
 
 	// Data queued up for submission with the next full snapshot
 	QueuedServerIoStats HistoricPostgresServerIoStatsMap
+
+	QueuedSystemState HistoricSystemStateMap
 }
 
 // TransientState - State thats only used within a collector run (and not needed for diffs)

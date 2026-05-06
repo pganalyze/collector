@@ -6,15 +6,17 @@ import (
 	"time"
 
 	"github.com/pganalyze/collector/input/postgres"
+	"github.com/pganalyze/collector/input/system"
 	"github.com/pganalyze/collector/state"
 	"github.com/pkg/errors"
 )
 
 // CollectAndDiff1minStats - Collects once-a-minute data of certain stats
-func CollectAndDiff1minStats(ctx context.Context, c *postgres.Collection, connection *sql.DB, collectedAt time.Time, prevState state.PersistedHighFreqState) (state.PersistedHighFreqState, error) {
+func CollectAndDiff1minStats(ctx context.Context, c *postgres.Collection, connection *sql.DB, collectedAt time.Time, server *state.Server) (state.PersistedHighFreqState, error) {
 	var err error
 
-	newState := prevState
+	prevState := server.HighFreqPrevState
+	newState := server.HighFreqPrevState
 	newState.LastStatementStatsAt = time.Now()
 
 	newState.StatementStats, err = postgres.GetStatementStats(ctx, c, connection)
@@ -29,6 +31,10 @@ func CollectAndDiff1minStats(ctx context.Context, c *postgres.Collection, connec
 	newState.ServerIoStats, err = postgres.GetPgStatIo(ctx, c, connection)
 	if err != nil {
 		return newState, errors.Wrap(err, "error collecting Postgres server statistics")
+	}
+
+	if c.GlobalOpts.CollectSystemInformation && false /* self-hosted */ {
+		newState.SystemState = system.GetSystemState(ctx, server, c.Logger, c.GlobalOpts)
 	}
 
 	// Don't calculate any diffs on the first run (but still update the state)
@@ -60,6 +66,12 @@ func CollectAndDiff1minStats(ctx context.Context, c *postgres.Collection, connec
 		}
 		newState.QueuedServerIoStats[timeKey] = diffServerIoStats(newState.ServerIoStats, prevState.ServerIoStats)
 	}
+
+    newState.QueuedSystemState = prevState.QueuedSystemState
+    if newState.QueuedSystemState == nil {
+        newState.QueuedSystemState = make(state.HistoricSystemStateMap)
+    }
+    newState.QueuedSystemState[timeKey] = newState.SystemState.DiffSince(prevState.SystemState)
 
 	return newState, nil
 }
