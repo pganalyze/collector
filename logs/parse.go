@@ -282,7 +282,7 @@ func (lp *LogParser) ValidatePrefix() error {
 }
 
 func (lp *LogParser) Matches(prefix string, tz *time.Location, verbose bool) bool {
-	return lp.prefix == prefix && tz.String() == lp.tz.String() && verbose == verbose
+	return lp.prefix == prefix && tz.String() == lp.tz.String() && lp.verbose == verbose
 }
 
 func (lp *LogParser) GetOccurredAt(timePart string) time.Time {
