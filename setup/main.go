@@ -43,7 +43,6 @@ func main() {
 		steps.EnablePgssInSpl,
 
 		steps.ConfirmSetUpLogInsights,
-		steps.EnsureSupportedLogErrorVerbosity,
 		steps.EnsureSupportedLogDuration,
 		steps.EnsureSupportedLogStatement,
 		steps.ConfigureLogMinDurationStatement,

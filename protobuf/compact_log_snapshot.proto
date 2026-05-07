@@ -73,6 +73,11 @@ message LogLineInformation {
     CONTEXT = 11;
     STATEMENT = 12;
     QUERY = 13; // This is specific to PL/pgSQL
+
+    // The following are recognized by the collector to avoid stitching them onto
+    // the previous line, but are currently not shipped to the server.
+    LOCATION = 14;
+    BACKTRACE = 15;
   }
 
   LogLevel level = 15;

@@ -16,6 +16,7 @@ type parseTestpair struct {
 	lineInTz  *time.Location
 	lineOut   state.LogLine
 	lineOutOk bool
+	verboseIn bool
 }
 
 func mustTimeLocation(tzStr string) *time.Location {
@@ -43,6 +44,7 @@ var parseTests = []parseTestpair{
 			Content:    "duration: 3668.685 ms  execute <unnamed>: SELECT 1",
 		},
 		true,
+		false,
 	},
 	{
 		logs.LogPrefixAmazonRds,
@@ -57,6 +59,7 @@ var parseTests = []parseTestpair{
 			Content:    "duration: 1630.946 ms  execute 3: SELECT 1",
 		},
 		true,
+		false,
 	},
 	{
 		logs.LogPrefixAmazonRds,
@@ -71,6 +74,7 @@ var parseTests = []parseTestpair{
 			Content:    "duration: 1630.946 ms  execute 3: SELECT 1",
 		},
 		true,
+		false,
 	},
 	// Azure format
 	{
@@ -83,6 +87,7 @@ var parseTests = []parseTestpair{
 			Content:    "could not receive data from client: An existing connection was forcibly closed by the remote host.",
 		},
 		true,
+		false,
 	},
 	// Custom 1 format
 	{
@@ -98,6 +103,7 @@ var parseTests = []parseTestpair{
 			Content:       "connection received: host=[local]",
 		},
 		true,
+		false,
 	},
 	// Custom 2 format
 	{
@@ -115,6 +121,7 @@ var parseTests = []parseTestpair{
 			Content:       "connection received: host=[local]",
 		},
 		true,
+		false,
 	},
 	// Custom 3 format
 	{
@@ -128,6 +135,7 @@ var parseTests = []parseTestpair{
 			Content:    "connection received: host=[local]",
 		},
 		true,
+		false,
 	},
 	{
 		logs.LogPrefixCustom3,
@@ -143,6 +151,7 @@ var parseTests = []parseTestpair{
 			Content:     "canceling statement due to user request",
 		},
 		true,
+		false,
 	},
 	{
 		logs.LogPrefixCustom3,
@@ -158,6 +167,7 @@ var parseTests = []parseTestpair{
 			Content:     "duration: 3000.019 ms  statement: SELECT pg_sleep(3\n);",
 		},
 		true,
+		false,
 	},
 	{
 		logs.LogPrefixCustom3,
@@ -170,6 +180,7 @@ var parseTests = []parseTestpair{
 			Content:    "connection received: host=[local]",
 		},
 		true,
+		false,
 	},
 	{
 		logs.LogPrefixCustom3,
@@ -185,6 +196,7 @@ var parseTests = []parseTestpair{
 			Content:     "duration: 3000.019 ms  statement: SELECT pg_sleep(3);",
 		},
 		true,
+		false,
 	},
 	// Custom 4 format
 	{
@@ -198,6 +210,7 @@ var parseTests = []parseTestpair{
 			Content:    "connection received: host=[local]",
 		},
 		true,
+		false,
 	},
 	{
 		logs.LogPrefixCustom4,
@@ -213,6 +226,7 @@ var parseTests = []parseTestpair{
 			Content:     "canceling statement due to user request",
 		},
 		true,
+		false,
 	},
 	// Custom 5 format
 	{
@@ -227,6 +241,7 @@ var parseTests = []parseTestpair{
 			Content:       "connection received: host=127.0.0.1 port=49738",
 		},
 		true,
+		false,
 	},
 	{
 		logs.LogPrefixCustom5,
@@ -242,6 +257,7 @@ var parseTests = []parseTestpair{
 			Content:       "canceling statement due to user request",
 		},
 		true,
+		false,
 	},
 	// Custom 6 format
 	{
@@ -256,6 +272,7 @@ var parseTests = []parseTestpair{
 			Content:       "database system is ready to accept connections",
 		},
 		true,
+		false,
 	},
 	{
 		logs.LogPrefixCustom6,
@@ -269,6 +286,7 @@ var parseTests = []parseTestpair{
 			Content:       "connection received: host=::1 port=61349",
 		},
 		true,
+		false,
 	},
 	{
 		// Updating this test to reflect that %a (application name) is now captured.
@@ -288,6 +306,7 @@ var parseTests = []parseTestpair{
 			Content:       "canceling statement due to user request",
 		},
 		true,
+		false,
 	},
 	// Custom 7 format
 	{
@@ -302,6 +321,7 @@ var parseTests = []parseTestpair{
 			Content:       "database system is ready to accept connections",
 		},
 		true,
+		false,
 	},
 	{
 		logs.LogPrefixCustom7,
@@ -315,6 +335,7 @@ var parseTests = []parseTestpair{
 			Content:       "connection received: host=::1 port=38842",
 		},
 		true,
+		false,
 	},
 	{
 		logs.LogPrefixCustom7,
@@ -330,6 +351,7 @@ var parseTests = []parseTestpair{
 			Content:       "canceling statement due to user request",
 		},
 		true,
+		false,
 	},
 	// Custom 8 format
 	{
@@ -346,6 +368,7 @@ var parseTests = []parseTestpair{
 			Content:       "duration: 2001.842 ms  statement: SELECT pg_sleep(2);",
 		},
 		true,
+		false,
 	},
 	// Custom 9 format
 	{
@@ -359,6 +382,7 @@ var parseTests = []parseTestpair{
 			Content:    "database system is ready to accept connections",
 		},
 		true,
+		false,
 	},
 	{
 		logs.LogPrefixCustom9,
@@ -372,6 +396,7 @@ var parseTests = []parseTestpair{
 			Content:    "connection authorized: user=pgaweb database=pgaweb application_name=psql",
 		},
 		true,
+		false,
 	},
 	{
 		logs.LogPrefixCustom9,
@@ -386,6 +411,7 @@ var parseTests = []parseTestpair{
 			Content:     "disconnection: session time: 0:00:08.574 user=pgaweb database=pgaweb host=172.18.0.1 port=56402",
 		},
 		true,
+		false,
 	},
 	// Custom 10 format
 	{
@@ -402,6 +428,7 @@ var parseTests = []parseTestpair{
 			Content:       "pganalyze-collector-identify: myserver",
 		},
 		true,
+		false,
 	},
 	{
 		logs.LogPrefixCustom10,
@@ -418,6 +445,7 @@ var parseTests = []parseTestpair{
 			Content:       "automatic vacuum of table \"some_database.some_schema.some_table\": index scans: 0\npages: 0 removed, 14 remain, 0 skipped due to pins, 0 skipped frozen\ntuples: 0 removed, 107 remain, 94 are dead but not yet removable, oldest xmin: 17243830\nindex scan not needed: 0 pages from table (0.00% of total) had 0 dead item identifiers removed\nI/O timings: read: 0.000 ms, write: 0.000 ms\navg read rate: 0.000 MB/s, avg write rate: 0.000 MB/s\nbuffer usage: 52 hits, 0 misses, 0 dirtied\nWAL usage: 0 records, 0 full page images, 0 bytes\nsystem usage: CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.00 s",
 		},
 		true,
+		false,
 	},
 	// Custom 11 format
 	{
@@ -430,6 +458,7 @@ var parseTests = []parseTestpair{
 			Content:    "connection received: host=[local]",
 		},
 		true,
+		false,
 	},
 	{
 		// Updating this to reflect that we can now capture the unusual application
@@ -444,6 +473,7 @@ var parseTests = []parseTestpair{
 			Content:     "connection received: host=[local]",
 		},
 		true,
+		false,
 	},
 	// Custom 12 format
 	{
@@ -455,6 +485,7 @@ var parseTests = []parseTestpair{
 			Content:  "connection received: host=[local]",
 		},
 		true,
+		false,
 	},
 	// Custom 13 format
 	{
@@ -469,6 +500,7 @@ var parseTests = []parseTestpair{
 			Content:       "database system was shut down at 2021-11-17 19:01:42 UTC",
 		},
 		true,
+		false,
 	},
 	{
 		logs.LogPrefixCustom13,
@@ -484,6 +516,7 @@ var parseTests = []parseTestpair{
 			Content:       "connection authorized: user=pgaweb database=pgaweb application_name=puma: cluster worker 2: 18544 [pganalyze]",
 		},
 		true,
+		false,
 	},
 	// Custom 14 format
 	{
@@ -497,6 +530,7 @@ var parseTests = []parseTestpair{
 			Content:    "automatic analyze of table \"mydb.pg_catalog.pg_class\" system usage: CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.01 s",
 		},
 		true,
+		false,
 	},
 	// Custom 15 format
 	{
@@ -510,6 +544,7 @@ var parseTests = []parseTestpair{
 			Content:    "database system is ready to accept connections",
 		},
 		true,
+		false,
 	},
 	{
 		logs.LogPrefixCustom15,
@@ -524,6 +559,7 @@ var parseTests = []parseTestpair{
 			Content:    "connection authorized: user=myuser database=mydb application_name=psql",
 		},
 		true,
+		false,
 	},
 	// Custom 16 format
 	{
@@ -537,6 +573,7 @@ var parseTests = []parseTestpair{
 			Content:    "starting PostgreSQL 14.2 (Debian 14.2-1.pgdg110+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 10.2.1-6) 10.2.1 20210110, 64-bit",
 		},
 		true,
+		false,
 	},
 	{
 		logs.LogPrefixCustom16,
@@ -551,6 +588,7 @@ var parseTests = []parseTestpair{
 			Content:    "disconnection: session time: 0:00:01.667 user=my-user database=my-db host=1.2.3.4 port=5678",
 		},
 		true,
+		false,
 	},
 	// Simple format
 	{
@@ -564,6 +602,7 @@ var parseTests = []parseTestpair{
 			Content:    "pganalyze-collector-identify: server1",
 		},
 		true,
+		false,
 	},
 	{
 		logs.LogPrefixSimple,
@@ -576,6 +615,7 @@ var parseTests = []parseTestpair{
 			Content:    "pganalyze-collector-identify: server1",
 		},
 		true,
+		false,
 	},
 	{
 		logs.LogPrefixSimple,
@@ -588,6 +628,7 @@ var parseTests = []parseTestpair{
 			Content:    "pganalyze-collector-identify: server1",
 		},
 		true,
+		false,
 	},
 	// Heroku format
 	{
@@ -599,6 +640,7 @@ var parseTests = []parseTestpair{
 			Content:  "no pg_hba.conf entry for host \"127.0.0.1\", user \"postgres\", database \"postgres\", SSL off",
 		},
 		true,
+		false,
 	},
 	{
 		logs.LogPrefixHeroku2,
@@ -614,12 +656,57 @@ var parseTests = []parseTestpair{
 			Content:       "no pg_hba.conf entry for host \"127.0.0.1\", user \"postgres\", database \"postgres\", SSL off",
 		},
 		true,
+		false,
+	},
+	// log_error_verbosity = verbose tests
+	{
+		prefixIn:  logs.LogPrefixSimple,
+		lineIn:    "2026-05-06 16:11:27.227 UTC [26948] LOG:  00000: duration: 1001.555 ms  statement: SELECT pg_sleep(1);",
+		lineInTz:  nil,
+		verboseIn: true,
+		lineOut: state.LogLine{
+			OccurredAt: time.Date(2026, time.May, 6, 16, 11, 27, 227*1000*1000, time.UTC),
+			LogLevel:   pganalyze_collector.LogLineInformation_LOG,
+			BackendPid: 26948,
+			Content:    "duration: 1001.555 ms  statement: SELECT pg_sleep(1);",
+		},
+		lineOutOk: true,
+	},
+	{
+		prefixIn:  logs.LogPrefixCustom15,
+		lineIn:    "2026-05-06 15:49:08.082 UTC [159645] user@db ERROR:  22012: division by zero",
+		lineInTz:  nil,
+		verboseIn: true,
+		lineOut: state.LogLine{
+			OccurredAt: time.Date(2026, time.May, 6, 15, 49, 8, 82*1000*1000, time.UTC),
+			Username:   "user",
+			Database:   "db",
+			LogLevel:   pganalyze_collector.LogLineInformation_ERROR,
+			BackendPid: 159645,
+			Content:    "division by zero",
+		},
+		lineOutOk: true,
+	},
+	{
+		prefixIn:  logs.LogPrefixCustom15,
+		lineIn:    "2026-05-06 15:49:08.082 UTC [159645] user@db LOCATION:  int4div, int.c:870",
+		lineInTz:  nil,
+		verboseIn: true,
+		lineOut: state.LogLine{
+			OccurredAt: time.Date(2026, time.May, 6, 15, 49, 8, 82*1000*1000, time.UTC),
+			Username:   "user",
+			Database:   "db",
+			LogLevel:   pganalyze_collector.LogLineInformation_LOCATION,
+			BackendPid: 159645,
+			Content:    "int4div, int.c:870",
+		},
+		lineOutOk: true,
 	},
 }
 
 func TestLogParser(t *testing.T) {
 	for _, pair := range parseTests {
-		parser := logs.NewLogParser(pair.prefixIn, pair.lineInTz)
+		parser := logs.NewLogParser(pair.prefixIn, pair.lineInTz, pair.verboseIn)
 		l, lOk := parser.ParseLine(pair.lineIn)
 
 		cfg := pretty.CompareConfig

@@ -153,7 +153,9 @@ func isAdditionalLineLevel(str pganalyze_collector.LogLineInformation_LogLevel) 
 		pganalyze_collector.LogLineInformation_HINT,
 		pganalyze_collector.LogLineInformation_CONTEXT,
 		pganalyze_collector.LogLineInformation_STATEMENT,
-		pganalyze_collector.LogLineInformation_QUERY:
+		pganalyze_collector.LogLineInformation_QUERY,
+		pganalyze_collector.LogLineInformation_LOCATION,
+		pganalyze_collector.LogLineInformation_BACKTRACE:
 		return true
 	}
 	return false
@@ -292,6 +294,12 @@ func AnalyzeStreamInGroups(logLines []state.LogLine, now time.Time, server *stat
 
 	var analyzableLogLines []state.LogLine
 	for _, logLine := range stitchedLogLines {
+		// LOCATION and BACKTRACE are recognized so they don't pollute the previous
+		// line via continuation stitching, but we don't ship them to the server.
+		if logLine.LogLevel == pganalyze_collector.LogLineInformation_LOCATION ||
+			logLine.LogLevel == pganalyze_collector.LogLineInformation_BACKTRACE {
+			continue
+		}
 		if !server.IgnoreLogLine(logLine.Content) {
 			analyzableLogLines = append(analyzableLogLines, logLine)
 		}
