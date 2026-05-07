@@ -5,15 +5,21 @@
 * Aurora: Improve disk size reporting
   - Use the `VolumeBytesUsed` CloudWatch metric at the cluster level
   - Previously, the collector reported OS-level filesystem values that were
-    inaccurate regardless of the actual cluster storage size
+    inaccurate regardless of the actual cluster storage in use
 * AlloyDB/Cloud SQL: Fix IAM authentication by removing prepared statements
   - Previously, explicit prepared statements broke when AlloyDB/Cloud SQL was
-    configured with IAM authentication
-  - This removes all `PrepareContext` usage from collector queries, not only
-    with AlloyDB/Cloud SQL
+    configured with IAM authentication if the proxy was not configured for
+    prepared statements
+  - This removes all prepared statement usage from collector queries
+    independent of the provider in use, allowing proxy use without changes
 * Docker image: Raise alpine/musl stack size from 2MB to 8MB
   - This matches what glibc would typically use, and fixes a crash on a very
     complex query making heavy use of UNION
+* Log processing: Support log_error_verbosity = verbose
+  - Previously using Log Insights was not supported when log_error_verbosity
+    was set to "verbose", as log messages get the SQLSTATE inlined into them,
+    confusing the parser. This is now special-cased and supported, and the
+    checks for the setting are removed
 
 
 ## 0.70.1      2026-04-15
