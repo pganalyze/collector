@@ -22,7 +22,6 @@ import (
 
 func init() {
 	RecommendedGUCS = SetupGUCS{
-		LogErrorVerbosity:       null.StringFrom("default"),
 		LogDuration:             null.StringFrom("off"),
 		LogStatement:            null.StringFrom("none"),
 		LogMinDurationStatement: null.IntFrom(1000),
@@ -83,7 +82,6 @@ var RecommendedSettings = SetupSettings{
 }
 
 type SetupGUCS struct {
-	LogErrorVerbosity       null.String `json:"log_error_verbosity"`
 	LogDuration             null.String `json:"log_duration"`
 	LogStatement            null.String `json:"log_statement"`
 	LogMinDurationStatement null.Int    `json:"log_min_duration_statement"`

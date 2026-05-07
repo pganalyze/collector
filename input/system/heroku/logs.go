@@ -118,7 +118,7 @@ func processSystemMetrics(ctx context.Context, timestamp time.Time, content []by
 	}
 }
 
-var HerokuLogParser = logs.NewLogParser(logs.LogPrefixHeroku2, nil)
+var HerokuLogParser = logs.NewLogParser(logs.LogPrefixHeroku2, nil, false)
 
 func logStreamItemToLogLine(ctx context.Context, item HttpSyslogMessage, servers []*state.Server, sourceToServer map[string]*state.Server, now time.Time, opts state.CollectionOpts, logger *util.Logger) (map[string]*state.Server, *state.LogLine, string) {
 	timestamp, err := time.Parse(time.RFC3339, item.HeaderTimestamp)

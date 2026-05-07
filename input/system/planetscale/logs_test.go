@@ -336,7 +336,7 @@ func makeTestServer(logsURL string) (*state.Server, *util.Logger) {
 	server.LogPrevState.PlanetScale.BranchID = "branch-123"
 	server.LogPrevState.PlanetScale.Signature = "test-sig"
 	server.LogPrevState.PlanetScale.Expiry = time.Now().Add(1 * time.Hour).Unix()
-	server.LogParser = logs.NewLogParser("[POSTGRES] %m [%p] ", nil)
+	server.LogParser = logs.NewLogParser("[POSTGRES] %m [%p] ", nil, false)
 
 	logger := &util.Logger{Destination: log.New(os.Stderr, "", log.LstdFlags)}
 	return server, logger

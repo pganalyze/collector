@@ -332,7 +332,7 @@ func makeK8sJsonlogLogsData() *otlpLogs.LogsData {
 
 func makeOtelTestServer() (*state.Server, *util.Logger) {
 	server := state.MakeServer(config.ServerConfig{}, false)
-	server.LogParser = logs.NewLogParser("%m [%p] ", nil)
+	server.LogParser = logs.NewLogParser("%m [%p] ", nil, false)
 	logger := &util.Logger{Destination: log.New(os.Stderr, "", log.LstdFlags)}
 	return server, logger
 }
@@ -369,7 +369,7 @@ func assertStreamItems(t *testing.T, rawLogStream chan SelfHostedLogStreamItem, 
 
 func makeOtelTestServerWithConfig(cfg config.ServerConfig) (*state.Server, *util.Logger) {
 	server := state.MakeServer(cfg, false)
-	server.LogParser = logs.NewLogParser("%m [%p] ", nil)
+	server.LogParser = logs.NewLogParser("%m [%p] ", nil, false)
 	logger := &util.Logger{Destination: log.New(os.Stderr, "", log.LstdFlags)}
 	return server, logger
 }

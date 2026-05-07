@@ -184,8 +184,9 @@ var EscapeMatchers = map[rune]PrefixEscape{
 }
 
 type LogParser struct {
-	prefix string
-	tz     *time.Location
+	prefix  string
+	tz      *time.Location
+	verbose bool
 
 	lineRegexp     *regexp.Regexp
 	prefixElements []PrefixEscape
@@ -193,13 +194,27 @@ type LogParser struct {
 	lineRegexpWithoutLogLevel *regexp.Regexp
 }
 
-func NewLogParser(prefix string, tz *time.Location) *LogParser {
+// In verbose mode (log_error_verbosity = verbose), Postgres prepends the
+// 5-character SQLSTATE code to the message, e.g. "ERROR:  22012: division by zero".
+// Only primary lines carry the SQLSTATE; secondary lines (DETAIL/HINT/CONTEXT/...) do not.
+var verboseSQLStateRegexp = regexp.MustCompile(`^[0-9A-Z]{5}: `)
+
+func isPrimaryLogLevel(level string) bool {
+	switch level {
+	case "DEBUG", "INFO", "NOTICE", "WARNING", "ERROR", "LOG", "FATAL", "PANIC":
+		return true
+	}
+	return false
+}
+
+func NewLogParser(prefix string, tz *time.Location, verbose bool) *LogParser {
 	prefixRegexp, prefixElements := parsePrefix(prefix)
-	lineRegexp := regexp.MustCompile("(?ms)^" + prefixRegexp + `(DEBUG|INFO|NOTICE|WARNING|ERROR|LOG|FATAL|PANIC|DETAIL|HINT|CONTEXT|STATEMENT|QUERY):\s+(.*\n?)$`)
+	lineRegexp := regexp.MustCompile("(?ms)^" + prefixRegexp + `(DEBUG|INFO|NOTICE|WARNING|ERROR|LOG|FATAL|PANIC|DETAIL|HINT|CONTEXT|STATEMENT|QUERY|LOCATION|BACKTRACE):\s+(.*\n?)$`)
 	lineRegexpWithoutLogLevel := regexp.MustCompile("(?ms)^" + prefixRegexp + `(.*\n?)$`)
 	return &LogParser{
-		prefix: prefix,
-		tz:     tz,
+		prefix:  prefix,
+		tz:      tz,
+		verbose: verbose,
 
 		lineRegexp:     lineRegexp,
 		prefixElements: prefixElements,
@@ -208,7 +223,7 @@ func NewLogParser(prefix string, tz *time.Location) *LogParser {
 	}
 }
 
-func getLogConfigFromSettings(settings []state.PostgresSetting) (tz *time.Location, prefix string) {
+func getLogConfigFromSettings(settings []state.PostgresSetting) (tz *time.Location, prefix string, verbose bool) {
 	for _, setting := range settings {
 		if !setting.ResetValue.Valid {
 			continue
@@ -222,6 +237,8 @@ func getLogConfigFromSettings(settings []state.PostgresSetting) (tz *time.Locati
 			}
 		} else if setting.Name == "log_line_prefix" {
 			prefix = setting.ResetValue.String
+		} else if setting.Name == "log_error_verbosity" && setting.ResetValue.String == "verbose" {
+			verbose = true
 		}
 	}
 	return
@@ -230,8 +247,8 @@ func getLogConfigFromSettings(settings []state.PostgresSetting) (tz *time.Locati
 func SyncLogParser(server *state.Server, settings []state.PostgresSetting) {
 	server.LogParseMutex.RLock()
 
-	tz, prefix := getLogConfigFromSettings(settings)
-	parserInSync := server.LogParser != nil && server.LogParser.Matches(prefix, tz)
+	tz, prefix, verbose := getLogConfigFromSettings(settings)
+	parserInSync := server.LogParser != nil && server.LogParser.Matches(prefix, tz, verbose)
 	server.LogParseMutex.RUnlock()
 
 	if parserInSync {
@@ -241,7 +258,7 @@ func SyncLogParser(server *state.Server, settings []state.PostgresSetting) {
 	server.LogParseMutex.Lock()
 	defer server.LogParseMutex.Unlock()
 
-	server.LogParser = NewLogParser(prefix, tz)
+	server.LogParser = NewLogParser(prefix, tz, verbose)
 }
 
 func (lp *LogParser) ValidatePrefix() error {
@@ -264,8 +281,8 @@ func (lp *LogParser) ValidatePrefix() error {
 	}
 }
 
-func (lp *LogParser) Matches(prefix string, tz *time.Location) bool {
-	return lp.prefix == prefix && tz.String() == lp.tz.String()
+func (lp *LogParser) Matches(prefix string, tz *time.Location, verbose bool) bool {
+	return lp.prefix == prefix && tz.String() == lp.tz.String() && verbose == verbose
 }
 
 func (lp *LogParser) GetOccurredAt(timePart string) time.Time {
@@ -348,6 +365,9 @@ func (lp *LogParser) ParseLine(line string) (logLine state.LogLine, ok bool) {
 
 	levelPart := lineValues[len(lineValues)-2]
 	logLine.Content = lineValues[len(lineValues)-1]
+	if lp.verbose && isPrimaryLogLevel(levelPart) {
+		logLine.Content = verboseSQLStateRegexp.ReplaceAllString(logLine.Content, "")
+	}
 	logLine.LogLevel = pganalyze_collector.LogLineInformation_LogLevel(pganalyze_collector.LogLineInformation_LogLevel_value[levelPart])
 
 	return logLine, true
@@ -465,6 +485,13 @@ func ParseAndAnalyzeBuffer(logStream LineReader, linesNewerThan time.Time, serve
 			if opts.VeryVerbose {
 				logger.PrintVerbose("Skipping line because its outside the specified time window (%s < %s)", logLine.OccurredAt, linesNewerThan)
 			}
+			continue
+		}
+
+		// LOCATION and BACKTRACE are recognized so they don't pollute the previous
+		// line via continuation stitching, but we don't ship them to the server.
+		if logLine.LogLevel == pganalyze_collector.LogLineInformation_LOCATION ||
+			logLine.LogLevel == pganalyze_collector.LogLineInformation_BACKTRACE {
 			continue
 		}
 
