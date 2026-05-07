@@ -661,11 +661,11 @@ var parseTests = []parseTestpair{
 	// log_error_verbosity = verbose tests
 	{
 		prefixIn:  logs.LogPrefixSimple,
-		lineIn:    "2026-05-06 16:11:27.227 PDT [26948] LOG:  00000: duration: 1001.555 ms  statement: SELECT pg_sleep(1);",
+		lineIn:    "2026-05-06 16:11:27.227 UTC [26948] LOG:  00000: duration: 1001.555 ms  statement: SELECT pg_sleep(1);",
 		lineInTz:  nil,
 		verboseIn: true,
 		lineOut: state.LogLine{
-			OccurredAt: time.Date(2026, time.May, 6, 16, 11, 27, 227*1000*1000, time.FixedZone("PDT", -7*3600)),
+			OccurredAt: time.Date(2026, time.May, 6, 16, 11, 27, 227*1000*1000, time.UTC),
 			LogLevel:   pganalyze_collector.LogLineInformation_LOG,
 			BackendPid: 26948,
 			Content:    "duration: 1001.555 ms  statement: SELECT pg_sleep(1);",
@@ -674,11 +674,11 @@ var parseTests = []parseTestpair{
 	},
 	{
 		prefixIn:  logs.LogPrefixCustom15,
-		lineIn:    "2026-05-06 15:49:08.082 PDT [159645] user@db ERROR:  22012: division by zero",
+		lineIn:    "2026-05-06 15:49:08.082 UTC [159645] user@db ERROR:  22012: division by zero",
 		lineInTz:  nil,
 		verboseIn: true,
 		lineOut: state.LogLine{
-			OccurredAt: time.Date(2026, time.May, 6, 15, 49, 8, 82*1000*1000, time.FixedZone("PDT", -7*3600)),
+			OccurredAt: time.Date(2026, time.May, 6, 15, 49, 8, 82*1000*1000, time.UTC),
 			Username:   "user",
 			Database:   "db",
 			LogLevel:   pganalyze_collector.LogLineInformation_ERROR,
@@ -689,11 +689,11 @@ var parseTests = []parseTestpair{
 	},
 	{
 		prefixIn:  logs.LogPrefixCustom15,
-		lineIn:    "2026-05-06 15:49:08.082 PDT [159645] user@db LOCATION:  int4div, int.c:870",
+		lineIn:    "2026-05-06 15:49:08.082 UTC [159645] user@db LOCATION:  int4div, int.c:870",
 		lineInTz:  nil,
 		verboseIn: true,
 		lineOut: state.LogLine{
-			OccurredAt: time.Date(2026, time.May, 6, 15, 49, 8, 82*1000*1000, time.FixedZone("PDT", -7*3600)),
+			OccurredAt: time.Date(2026, time.May, 6, 15, 49, 8, 82*1000*1000, time.UTC),
 			Username:   "user",
 			Database:   "db",
 			LogLevel:   pganalyze_collector.LogLineInformation_LOCATION,
