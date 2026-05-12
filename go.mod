@@ -1,4 +1,4 @@
-// +heroku goVersion go1.25
+// +heroku goVersion go1.26
 
 module github.com/pganalyze/collector
 
@@ -114,4 +114,4 @@ require (
 	google.golang.org/grpc v1.80.0 // indirect
 )
 
-go 1.25.0
+go 1.26
