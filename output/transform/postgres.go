@@ -108,6 +108,8 @@ func transformPostgresDatabases(s snapshot.FullSnapshot, diffState state.DiffSta
 				MinmxidAge:   stats.MinMXIDAge,
 				XactCommit:   stats.XactCommit,
 				XactRollback: stats.XactRollback,
+				TempFiles:    stats.TempFiles,
+				TempBytes:    stats.TempBytes,
 			}
 			s.DatabaseStatictics = append(s.DatabaseStatictics, &stat)
 		}

@@ -30,6 +30,8 @@ type PostgresDatabaseStats struct {
 	MinMXIDAge   int32 // Age of MinimumMultixactXID
 	XactCommit   int64 // Number of transactions in this database that have been committed
 	XactRollback int64 // Number of transactions in this database that have been rolled back
+	TempFiles    int64 // Number of temporary files created by queries in this database
+	TempBytes    int64 // Total amount of data written to temporary files by queries in this database
 }
 
 // PostgresDatabaseStatsMap - Map of database statistics (key = database Oid)
@@ -41,6 +43,8 @@ type DiffedPostgresDatabaseStats struct {
 	MinMXIDAge   int32
 	XactCommit   int32
 	XactRollback int32
+	TempFiles    int32
+	TempBytes    int64
 }
 
 // DiffedDatabaseStats - Map of diffed database statistics (key = database Oid)
@@ -53,5 +57,7 @@ func (curr PostgresDatabaseStats) DiffSince(prev PostgresDatabaseStats) DiffedPo
 		MinMXIDAge:   curr.MinMXIDAge,
 		XactCommit:   int32(curr.XactCommit - prev.XactCommit),
 		XactRollback: int32(curr.XactRollback - prev.XactRollback),
+		TempFiles:    int32(curr.TempFiles - prev.TempFiles),
+		TempBytes:    curr.TempBytes - prev.TempBytes,
 	}
 }
