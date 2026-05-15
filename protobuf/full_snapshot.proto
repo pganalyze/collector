@@ -158,6 +158,8 @@ message DatabaseStatistic {
   int32 xact_commit = 4; // Number of transactions in this database that have been committed
   int32 xact_rollback = 5; // Number of transactions in this database that have been rolled back
   int64 untracked_cache_bytes = 6; // Size of Postgres buffer cache not associated with tables tracked by the collector
+  int32 temp_files = 7; // Number of temporary files created by queries in this database (diff)
+  int64 temp_bytes = 8; // Total data written to temporary files by queries in this database (diff)
 }
 
 // Postgres server statistic
