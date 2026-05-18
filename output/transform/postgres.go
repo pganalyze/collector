@@ -222,6 +222,8 @@ func transformPostgresServerStats(s snapshot.FullSnapshot, newState state.Persis
 				stat.BackendType = snapshot.BackendCountStatistic_WALWRITER
 			case "slotsync worker":
 				stat.BackendType = snapshot.BackendCountStatistic_SLOTSYNC_WORKER
+			case "io worker":
+				stat.BackendType = snapshot.BackendCountStatistic_IO_WORKER
 			}
 			switch k.IoObject {
 			case "unknown":
