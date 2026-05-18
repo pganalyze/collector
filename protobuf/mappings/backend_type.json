@@ -10,5 +10,6 @@
   "walreceiver": 8,
   "walsender": 9,
   "walwriter": 10,
-  "slotsync worker": 11
+  "slotsync worker": 11,
+  "io worker": 12
 }
