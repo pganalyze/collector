@@ -309,6 +309,7 @@ message BackendCountStatistic {
     WALSENDER = 9;           // walsender
     WALWRITER = 10;          // walwriter
     SLOTSYNC_WORKER = 11;    // slotsync worker
+    IO_WORKER = 12;          // io worker
   }
 
   bool has_role_idx = 1;
