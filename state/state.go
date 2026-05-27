@@ -1,6 +1,7 @@
 package state
 
 import (
+	"context"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -280,6 +281,7 @@ type QueryRun struct {
 	StartedAt           time.Time
 	FinishedAt          time.Time
 	BackendPid          int
+	Canceled            bool
 }
 
 type Server struct {
@@ -312,6 +314,8 @@ type Server struct {
 
 	// State to track queries the collector is running on behalf of a user
 	QueryRuns      map[int64]*QueryRun
+	QueryRunActive int64
+	QueryRunCancel context.CancelFunc
 	QueryRunsMutex *sync.Mutex
 
 	// The LogParser for this server, updated as necessary whenever relevant

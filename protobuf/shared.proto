@@ -368,5 +368,8 @@ message QueryRun {
 
 enum QueryRunType {
   EXPLAIN = 0;
-  // Future sources: REINDEX, CREATE INDEX, DROP INDEX
+  PGSTATTUPLE = 1;
+  VACUUM = 2;
+  REINDEX = 3;
+  REPACK = 4;
 }

@@ -83,6 +83,8 @@ func processServerMessages(ctx context.Context, server *state.Server, logger *ut
 						QueryParameterTypes: q.QueryParameterTypes,
 						PostgresSettings:    q.PostgresSettings,
 					}
+				} else {
+					server.QueryRuns[q.Id].Canceled = q.Canceled
 				}
 				server.QueryRunsMutex.Unlock()
 			}

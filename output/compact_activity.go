@@ -20,6 +20,11 @@ func SubmitCompactActivitySnapshot(ctx context.Context, server *state.Server, co
 			case <-ctx.Done():
 				return ctx.Err()
 			default:
+				// Special case "autovacuum: ". Truncate that prefix and then normalize?
+				//
+
+				// Wait... aren't we already doing this in upsertQueryReferenceAndInformationSimple?
+
 				if backend.QueryText != "" {
 					// We pass "unparseable" here as the implied value of the filter_query_text setting, since for historic
 					// reasons this conditional here is based on filter_query_sample. The intent is that if the query is
