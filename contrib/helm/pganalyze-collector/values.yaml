@@ -97,6 +97,12 @@ service:
       port: 4319
       targetPort: 4319
 
+# -- Annotations to add to the Deployment metadata (not the pod template).
+# Useful for workload controllers like Stakater Reloader that watch
+# workload-level annotations to trigger rolling restarts on ConfigMap/Secret
+# changes.
+deploymentAnnotations: {}
+
 podAnnotations: {}
 
 # -- Labels to add to the pod

@@ -18,6 +18,7 @@ pganalyze statistics collector
 | configMap.create | bool | `false` | Specifies whether a config map should be created. The config map can be used to set runtime environment variables |
 | configMap.name | string | `""` | The name of the config map to load environment variables from. If not set and create is true, a name is generated using the fullname template |
 | configMap.values | object | `{}` | Values to initialize the ConfigMap with. Only applicable if create is true |
+| deploymentAnnotations | object | `{}` | Annotations to add to the Deployment metadata (not the pod template). Useful for workload controllers like Stakater Reloader that watch workload-level annotations to trigger rolling restarts on ConfigMap/Secret changes. |
 | extraEnv | object | `{}` | Environment variables to be passed to the container Config settings can be defined here, or can be defined via configMap + secret |
 | extraEnvRaw | list | `[]` | Environment variables to be passed to the container Config settings can be defined in raw form, for use with externally maintained env value sources (configMapKeyRef, fieldRef, resourceFieldRef, secretKeyRef) |
 | fullnameOverride | string | `""` |  |
