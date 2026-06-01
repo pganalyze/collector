@@ -4,6 +4,10 @@ metadata:
   name: {{ include "pganalyze-collector.fullname" . }}
   labels:
     {{- include "pganalyze-collector.labels" . | nindent 4 }}
+  {{- with .Values.deploymentAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
