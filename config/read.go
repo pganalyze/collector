@@ -498,7 +498,7 @@ func CreateWebSocketDialer(conf ServerConfig) websocket.Dialer {
 	}
 }
 
-func APIHeaders(conf ServerConfig, testRun bool) map[string][]string {
+func APIHeaders(conf ServerConfig, testRun bool, startedAt time.Time) map[string][]string {
 	headers := make(map[string][]string)
 	headers["Pganalyze-Api-Key"] = []string{conf.APIKey}
 	headers["Pganalyze-System-Id"] = []string{conf.SystemID}
@@ -507,6 +507,7 @@ func APIHeaders(conf ServerConfig, testRun bool) map[string][]string {
 	headers["Pganalyze-System-Id-Fallback"] = []string{conf.SystemIDFallback}
 	headers["Pganalyze-System-Type-Fallback"] = []string{conf.SystemTypeFallback}
 	headers["Pganalyze-System-Scope-Fallback"] = []string{conf.SystemScopeFallback}
+	headers["Pganalyze-Collector-Started-At"] = []string{startedAt.Format(time.RFC3339)}
 	if testRun {
 		headers["Pganalyze-Test-Run"] = []string{"true"}
 	}

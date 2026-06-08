@@ -19,11 +19,11 @@ func SetupSnapshotUploadForAllServers(ctx context.Context, servers []*state.Serv
 		return
 	}
 	for _, server := range servers {
-		go snapshotUploadForServer(ctx, server, logger.WithPrefixAndRememberErrors(server.Config.SectionName), opts.TestRun)
+		go snapshotUploadForServer(ctx, server, logger.WithPrefixAndRememberErrors(server.Config.SectionName), opts)
 	}
 }
 
-func snapshotUploadForServer(ctx context.Context, server *state.Server, logger *util.Logger, testRun bool) {
+func snapshotUploadForServer(ctx context.Context, server *state.Server, logger *util.Logger, opts state.CollectionOpts) {
 	var compactLogTime time.Time
 	compactLogStats := make(map[string]uint8)
 	for {
@@ -37,10 +37,10 @@ func snapshotUploadForServer(ctx context.Context, server *state.Server, logger *
 				continue
 			}
 
-			err = uploadViaWebsocketOrHttp(ctx, server, logger, testRun, data, s.SnapshotUuid, s.CollectedAt.AsTime(), false)
+			err = uploadViaWebsocketOrHttp(ctx, server, logger, opts, data, s.SnapshotUuid, s.CollectedAt.AsTime(), false)
 			if err != nil {
 				logger.PrintError("Error uploading snapshot: %s", err)
-			} else if !testRun {
+			} else if !opts.TestRun {
 				logger.PrintInfo("Submitted full snapshot successfully")
 			}
 		case s := <-server.CompactSnapshotUpload:
@@ -50,12 +50,12 @@ func snapshotUploadForServer(ctx context.Context, server *state.Server, logger *
 				continue
 			}
 
-			err = uploadViaWebsocketOrHttp(ctx, server, logger, testRun, data, s.SnapshotUuid, s.CollectedAt.AsTime(), false)
+			err = uploadViaWebsocketOrHttp(ctx, server, logger, opts, data, s.SnapshotUuid, s.CollectedAt.AsTime(), false)
 			if err != nil {
 				logger.PrintError("Error uploading snapshot: %s", err)
 				continue
 			}
-			if testRun {
+			if opts.TestRun {
 				continue
 			}
 
@@ -92,7 +92,7 @@ func summarizeCounts(counts map[string]uint8) string {
 	return details
 }
 
-func uploadViaWebsocketOrHttp(ctx context.Context, server *state.Server, logger *util.Logger, testRun bool, data []byte, snapshotUUID string, collectedAt time.Time, compactSnapshot bool) error {
+func uploadViaWebsocketOrHttp(ctx context.Context, server *state.Server, logger *util.Logger, opts state.CollectionOpts, data []byte, snapshotUUID string, collectedAt time.Time, compactSnapshot bool) error {
 	var compressedData bytes.Buffer
 	w := zlib.NewWriter(&compressedData)
 	w.Write(data)
@@ -108,7 +108,7 @@ func uploadViaWebsocketOrHttp(ctx context.Context, server *state.Server, logger 
 		if err != nil {
 			return err
 		}
-		submitSnapshot(ctx, server, testRun, logger, s3Location, collectedAt, compactSnapshot)
+		submitSnapshot(ctx, server, opts, logger, s3Location, collectedAt, compactSnapshot)
 	}
 	return nil
 }
