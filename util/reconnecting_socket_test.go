@@ -62,3 +62,38 @@ func TestSocketReconnect(t *testing.T) {
 		t.Errorf("TestSocketReconnect: expected: 2+ connects; actual: %d", connectsReceived)
 	}
 }
+
+// Verifies that Connect() does not block forever once the socket's context has
+// been canceled (e.g. during a SIGHUP config reload). Regression test for a hang
+// where the internal manager goroutine exited on its <-ctx.Done() branch while a
+// Connect() call was left blocked forever on the startWait channel. That blocked
+// Connect() (reached via EnsureGrant during activity collection) holds a WaitGroup
+// entry, so the reload's wg.Wait() never returns and the collector wedges.
+func TestSocketConnectReturnsAfterContextCancel(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+
+	socket := util.NewReconnectingSocket(
+		ctx, &util.Logger{Destination: log.New(os.Stderr, "", 0)},
+		websocket.Dialer{}, "ws://localhost:9124", make(map[string][]string),
+		1*time.Second,
+		1*time.Second,
+	)
+
+	// Cancel the context and give the internal manager goroutine time to take its
+	// <-ctx.Done() branch and exit. After this, no goroutine is left to answer a
+	// Connect() request.
+	cancel()
+	time.Sleep(100 * time.Millisecond)
+
+	done := make(chan error, 1)
+	go func() {
+		done <- socket.Connect()
+	}()
+
+	select {
+	case <-done:
+		// Connect() returned (with or without an error) instead of hanging.
+	case <-time.After(5 * time.Second):
+		t.Fatal("TestSocketConnectReturnsAfterContextCancel: Connect() blocked indefinitely after context cancellation")
+	}
+}
