@@ -145,8 +145,9 @@ func collectSchemaData(ctx context.Context, c *Collection, db *sql.DB, ps state.
 	// "objects returned" counts already exclude anything it matched; ignore_table_pattern
 	// filters client-side after collection (see input.CollectFull).
 	if SchemaDebugEnabled() {
-		c.Logger.PrintInfo("%s database %s: ignore_schema_regexp=%q ignore_table_pattern=%q",
-			schemaDebugLogPrefix, dbName, server.Config.IgnoreSchemaRegexp, server.Config.IgnoreTablePattern)
+		c.Logger.PrintInfo("%s ======== database: %s ========", schemaDebugLogPrefix, dbName)
+		c.Logger.PrintInfo("%s filters: ignore_schema_regexp=%q ignore_table_pattern=%q",
+			schemaDebugLogPrefix, server.Config.IgnoreSchemaRegexp, server.Config.IgnoreTablePattern)
 	}
 
 	stepStart := time.Now()

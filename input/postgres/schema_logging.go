@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"os"
 	"runtime"
 	"strings"
@@ -40,6 +41,21 @@ const (
 	// debug logging is already enabled.
 	logSchemaSQLEnvVar = "LOG_SCHEMA_SQL"
 )
+
+// humanizeBytes formats a byte count as a human-readable string (e.g. "43.2 MB")
+// so memory snapshots are easier to eyeball than raw byte counts.
+func humanizeBytes(b uint64) string {
+	const unit = 1024
+	if b < unit {
+		return fmt.Sprintf("%d B", b)
+	}
+	div, exp := uint64(unit), 0
+	for n := b / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+	return fmt.Sprintf("%.1f %cB", float64(b)/float64(div), "KMGTPE"[exp])
+}
 
 func envFlagEnabled(name string) bool {
 	switch strings.ToLower(os.Getenv(name)) {
@@ -80,7 +96,7 @@ func loggedSchemaQueryWithLogger(ctx context.Context, logger *util.Logger, db *s
 	rows, err := db.QueryContext(ctx, query, args...)
 	elapsed := time.Since(start)
 
-	logger.PrintInfo("%s [query] %s ran in %s", schemaDebugLogPrefix, label, elapsed)
+	logger.PrintInfo("%s [query] %s ran in %s", schemaDebugLogPrefix, label, elapsed.Round(time.Microsecond))
 	if logSchemaSQLEnabled() {
 		logger.PrintInfo("%s [query] %s SQL: %s | args: %v", schemaDebugLogPrefix, label, strings.TrimSpace(query), args)
 	}
@@ -102,6 +118,7 @@ func (c *Collection) traceSchemaStep(label string, count int, start time.Time) {
 	runtime.ReadMemStats(&m)
 
 	c.Logger.PrintInfo(
-		"%s [step] %s: returned %d objects in %s | heapAlloc=%d bytes sys=%d bytes heapObjects=%d",
-		schemaDebugLogPrefix, label, count, elapsed, m.HeapAlloc, m.Sys, m.HeapObjects)
+		"%s [step]  %s: %d objects, %s | heap %s, sys %s, %d heap objects",
+		schemaDebugLogPrefix, label, count, elapsed.Round(time.Microsecond),
+		humanizeBytes(m.HeapAlloc), humanizeBytes(m.Sys), m.HeapObjects)
 }
