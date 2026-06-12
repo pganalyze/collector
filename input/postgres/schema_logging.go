@@ -13,29 +13,36 @@ import (
 
 // Schema collection debug logging
 //
-// When very verbose logging is enabled (--very-verbose), the helpers in this file
-// emit additional diagnostics for each schema query: the exact SQL that was run,
-// how long it took, how many objects each step returned, and a snapshot of Go
-// memory usage after each step. This is intended for diagnosing slow or
-// memory-intensive schema collection on servers with large or unusual catalogs.
+// When enabled, the helpers in this file emit additional diagnostics for each
+// schema query: how long each query took, how many objects each step returned,
+// a snapshot of Go memory usage after each step, and (optionally) the exact SQL
+// that was run. This is intended for diagnosing slow or memory-intensive schema
+// collection on servers with large or unusual catalogs.
 //
-// All output is gated on CollectionOpts.VeryVerbose so it never appears under
-// plain --verbose, and the helpers are no-ops (with no measurement overhead
-// beyond the query itself) when very verbose logging is disabled.
+// This logging is gated on its own environment variable (LOG_SCHEMA_DEBUG)
+// rather than on the --verbose/--very-verbose flags. This keeps it independent
+// of unrelated verbose logging (e.g. log insights), which would otherwise be
+// enabled at the same time and drown out the schema diagnostics. Output is
+// emitted at INFO level so it appears whenever the environment variable is set,
+// without requiring any verbose flag. The helpers are no-ops (with no
+// measurement overhead beyond the query itself) when the variable is unset.
 
 const schemaDebugLogPrefix = "[schema-debug]"
 
-// logSchemaSQLEnvVar gates the (verbose) logging of the SQL text for each schema
-// query. Logging the full SQL on every query in every database is a lot of
-// output, so it is opt-in beyond --very-verbose: the query runtime, object
-// counts, and memory usage still log under --very-verbose alone, but the SQL
-// itself is only logged when this environment variable is set to a truthy value.
-const logSchemaSQLEnvVar = "LOG_SCHEMA_SQL"
+const (
+	// logSchemaDebugEnvVar is the master switch for schema collection debug
+	// logging (query runtimes, per-step object counts, and Go memory usage).
+	logSchemaDebugEnvVar = "LOG_SCHEMA_DEBUG"
 
-// logSchemaSQLEnabled reports whether SQL text logging has been explicitly
-// enabled via the LOG_SCHEMA_SQL environment variable.
-func logSchemaSQLEnabled() bool {
-	switch strings.ToLower(os.Getenv(logSchemaSQLEnvVar)) {
+	// logSchemaSQLEnvVar additionally logs the SQL text of each schema query.
+	// Logging the full SQL on every query in every database is a lot of output,
+	// so it is opt-in beyond LOG_SCHEMA_DEBUG and only takes effect when schema
+	// debug logging is already enabled.
+	logSchemaSQLEnvVar = "LOG_SCHEMA_SQL"
+)
+
+func envFlagEnabled(name string) bool {
+	switch strings.ToLower(os.Getenv(name)) {
 	case "1", "true", "yes", "on":
 		return true
 	default:
@@ -43,17 +50,29 @@ func logSchemaSQLEnabled() bool {
 	}
 }
 
-// loggedSchemaQuery runs db.QueryContext and, when very verbose logging is
+// SchemaDebugEnabled reports whether schema collection debug logging has been
+// enabled via the LOG_SCHEMA_DEBUG environment variable.
+func SchemaDebugEnabled() bool {
+	return envFlagEnabled(logSchemaDebugEnvVar)
+}
+
+// logSchemaSQLEnabled reports whether the SQL text of each schema query should
+// also be logged. Only meaningful when SchemaDebugEnabled() is true.
+func logSchemaSQLEnabled() bool {
+	return envFlagEnabled(logSchemaSQLEnvVar)
+}
+
+// loggedSchemaQuery runs db.QueryContext and, when schema debug logging is
 // enabled, logs the time the query took to return (and the SQL itself when
 // LOG_SCHEMA_SQL is set).
 func (c *Collection) loggedSchemaQuery(ctx context.Context, db *sql.DB, label, query string, args ...interface{}) (*sql.Rows, error) {
-	return loggedSchemaQueryWithLogger(ctx, c.Logger, c.GlobalOpts.VeryVerbose, db, label, query, args...)
+	return loggedSchemaQueryWithLogger(ctx, c.Logger, db, label, query, args...)
 }
 
 // loggedSchemaQueryWithLogger is the logger-based variant of loggedSchemaQuery,
 // for schema query callers that do not have a *Collection available.
-func loggedSchemaQueryWithLogger(ctx context.Context, logger *util.Logger, veryVerbose bool, db *sql.DB, label, query string, args ...interface{}) (*sql.Rows, error) {
-	if !veryVerbose {
+func loggedSchemaQueryWithLogger(ctx context.Context, logger *util.Logger, db *sql.DB, label, query string, args ...interface{}) (*sql.Rows, error) {
+	if !SchemaDebugEnabled() {
 		return db.QueryContext(ctx, query, args...)
 	}
 
@@ -61,9 +80,9 @@ func loggedSchemaQueryWithLogger(ctx context.Context, logger *util.Logger, veryV
 	rows, err := db.QueryContext(ctx, query, args...)
 	elapsed := time.Since(start)
 
-	logger.PrintVerbose("%s %s: query ran in %s", schemaDebugLogPrefix, label, elapsed)
+	logger.PrintInfo("%s [query] %s ran in %s", schemaDebugLogPrefix, label, elapsed)
 	if logSchemaSQLEnabled() {
-		logger.PrintVerbose("%s %s: SQL: %s | args: %v", schemaDebugLogPrefix, label, strings.TrimSpace(query), args)
+		logger.PrintInfo("%s [query] %s SQL: %s | args: %v", schemaDebugLogPrefix, label, strings.TrimSpace(query), args)
 	}
 
 	return rows, err
@@ -71,10 +90,10 @@ func loggedSchemaQueryWithLogger(ctx context.Context, logger *util.Logger, veryV
 
 // traceSchemaStep logs the number of objects returned by a schema collection
 // step, the time it took, and a snapshot of Go memory usage afterwards. Only
-// counts are logged, never the objects themselves. It is a no-op unless very
-// verbose logging is enabled.
+// counts are logged, never the objects themselves. It is a no-op unless schema
+// debug logging is enabled.
 func (c *Collection) traceSchemaStep(label string, count int, start time.Time) {
-	if !c.GlobalOpts.VeryVerbose {
+	if !SchemaDebugEnabled() {
 		return
 	}
 
@@ -82,7 +101,7 @@ func (c *Collection) traceSchemaStep(label string, count int, start time.Time) {
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
 
-	c.Logger.PrintVerbose(
-		"%s %s: returned %d objects in %s | heapAlloc=%d bytes sys=%d bytes heapObjects=%d",
+	c.Logger.PrintInfo(
+		"%s [step] %s: returned %d objects in %s | heapAlloc=%d bytes sys=%d bytes heapObjects=%d",
 		schemaDebugLogPrefix, label, count, elapsed, m.HeapAlloc, m.Sys, m.HeapObjects)
 }

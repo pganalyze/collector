@@ -144,13 +144,13 @@ func collectSchemaData(ctx context.Context, c *Collection, db *sql.DB, ps state.
 	// interpreted correctly. ignore_schema_regexp filters server-side, so the
 	// "objects returned" counts already exclude anything it matched; ignore_table_pattern
 	// filters client-side after collection (see input.CollectFull).
-	if c.GlobalOpts.VeryVerbose {
-		c.Logger.PrintVerbose("%s database %s: ignore_schema_regexp=%q ignore_table_pattern=%q",
+	if SchemaDebugEnabled() {
+		c.Logger.PrintInfo("%s database %s: ignore_schema_regexp=%q ignore_table_pattern=%q",
 			schemaDebugLogPrefix, dbName, server.Config.IgnoreSchemaRegexp, server.Config.IgnoreTablePattern)
 	}
 
 	stepStart := time.Now()
-	newFunctions, err := GetFunctions(ctx, c.Logger, db, ts.Version, databaseOid, server.Config.IgnoreSchemaRegexp, false, c.GlobalOpts.VeryVerbose)
+	newFunctions, err := GetFunctions(ctx, c.Logger, db, ts.Version, databaseOid, server.Config.IgnoreSchemaRegexp, false)
 	if err != nil {
 		return ps, ts, fmt.Errorf("error collecting stored procedure metadata: %s", err)
 	}

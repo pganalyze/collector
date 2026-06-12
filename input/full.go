@@ -215,8 +215,8 @@ func CollectFull(ctx context.Context, server *state.Server, connection *sql.DB, 
 		}
 		ps.Relations = filteredRelations
 
-		if opts.VeryVerbose {
-			logger.PrintVerbose("[schema-debug] ignore_table_pattern filter: %d relations before, %d after (%d dropped)",
+		if postgres.SchemaDebugEnabled() {
+			logger.PrintInfo("[schema-debug] ignore_table_pattern filter: %d relations before, %d after (%d dropped)",
 				relationCountBeforeFilter, len(ps.Relations), relationCountBeforeFilter-len(ps.Relations))
 		}
 	}
