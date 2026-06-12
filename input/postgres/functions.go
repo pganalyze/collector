@@ -53,7 +53,7 @@ type FunctionSignature struct {
 	Arguments    string
 }
 
-func GetFunctions(ctx context.Context, logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion, currentDatabaseOid state.Oid, ignoreRegexp string, helpersOnly bool) ([]state.PostgresFunction, error) {
+func GetFunctions(ctx context.Context, logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion, currentDatabaseOid state.Oid, ignoreRegexp string, helpersOnly bool, veryVerbose bool) ([]state.PostgresFunction, error) {
 	var kindFields string
 	var systemCatalogFilter string
 
@@ -71,7 +71,11 @@ func GetFunctions(ctx context.Context, logger *util.Logger, db *sql.DB, postgres
 		systemCatalogFilter = relationSQLdefaultSystemCatalogFilter
 	}
 
-	rows, err := db.QueryContext(ctx, QueryMarkerSQL+fmt.Sprintf(functionsSQL, kindFields, systemCatalogFilter), ignoreRegexp)
+	label := "functions"
+	if helpersOnly {
+		label = "functions_helpers"
+	}
+	rows, err := loggedSchemaQueryWithLogger(ctx, logger, veryVerbose, db, label, QueryMarkerSQL+fmt.Sprintf(functionsSQL, kindFields, systemCatalogFilter), ignoreRegexp)
 	if err != nil {
 		return nil, err
 	}

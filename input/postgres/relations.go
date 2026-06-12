@@ -208,7 +208,7 @@ func GetRelations(ctx context.Context, c *Collection, db *sql.DB, currentDatabas
 		oidField = relationsSQLOidField
 	}
 
-	rows, err := db.QueryContext(ctx, QueryMarkerSQL+fmt.Sprintf(relationsSQL, oidField, systemCatalogFilter), c.Config.IgnoreSchemaRegexp)
+	rows, err := c.loggedSchemaQuery(ctx, db, "relations", QueryMarkerSQL+fmt.Sprintf(relationsSQL, oidField, systemCatalogFilter), c.Config.IgnoreSchemaRegexp)
 	if err != nil {
 		err = fmt.Errorf("Relations/Query: %s", err)
 		return nil, err
@@ -259,7 +259,7 @@ func GetRelations(ctx context.Context, c *Collection, db *sql.DB, currentDatabas
 	}
 
 	// Columns
-	rows, err = db.QueryContext(ctx, QueryMarkerSQL+fmt.Sprintf(columnsSQL, systemCatalogFilter), c.Config.IgnoreSchemaRegexp)
+	rows, err = c.loggedSchemaQuery(ctx, db, "columns", QueryMarkerSQL+fmt.Sprintf(columnsSQL, systemCatalogFilter), c.Config.IgnoreSchemaRegexp)
 	if err != nil {
 		err = fmt.Errorf("Columns/Query: %s", err)
 		return nil, err
@@ -298,7 +298,7 @@ func GetRelations(ctx context.Context, c *Collection, db *sql.DB, currentDatabas
 	}
 
 	// Indices
-	rows, err = db.QueryContext(ctx, QueryMarkerSQL+fmt.Sprintf(indicesSQL, systemCatalogFilter), c.Config.IgnoreSchemaRegexp)
+	rows, err = c.loggedSchemaQuery(ctx, db, "indices", QueryMarkerSQL+fmt.Sprintf(indicesSQL, systemCatalogFilter), c.Config.IgnoreSchemaRegexp)
 	if err != nil {
 		err = fmt.Errorf("Indices/Query: %s", err)
 		return nil, err
@@ -356,7 +356,7 @@ func GetRelations(ctx context.Context, c *Collection, db *sql.DB, currentDatabas
 	}
 
 	// Constraints
-	rows, err = db.QueryContext(ctx, QueryMarkerSQL+fmt.Sprintf(constraintsSQL, systemCatalogFilter), c.Config.IgnoreSchemaRegexp)
+	rows, err = c.loggedSchemaQuery(ctx, db, "constraints", QueryMarkerSQL+fmt.Sprintf(constraintsSQL, systemCatalogFilter), c.Config.IgnoreSchemaRegexp)
 	if err != nil {
 		err = fmt.Errorf("Constraints/Query: %s", err)
 		return nil, err
@@ -420,7 +420,7 @@ func GetRelations(ctx context.Context, c *Collection, db *sql.DB, currentDatabas
 	}
 
 	// View definitions
-	rows, err = db.QueryContext(ctx, QueryMarkerSQL+fmt.Sprintf(viewDefinitionSQL, systemCatalogFilter), c.Config.IgnoreSchemaRegexp)
+	rows, err = c.loggedSchemaQuery(ctx, db, "views", QueryMarkerSQL+fmt.Sprintf(viewDefinitionSQL, systemCatalogFilter), c.Config.IgnoreSchemaRegexp)
 	if err != nil {
 		err = fmt.Errorf("Views/Prepare: %s", err)
 		return nil, err

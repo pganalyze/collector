@@ -60,7 +60,7 @@ func NewCollection(ctx context.Context, logger *util.Logger, server *state.Serve
 	if err != nil {
 		return &Collection{}, fmt.Errorf("failed collecting pg_roles: %s", err)
 	}
-	helperFunctions, err := GetFunctions(ctx, logger, db, version, 0, "", true)
+	helperFunctions, err := GetFunctions(ctx, logger, db, version, 0, "", true, globalOpts.VeryVerbose)
 	if err != nil {
 		return &Collection{}, fmt.Errorf("failed collecting pg_proc: %s", err)
 	}

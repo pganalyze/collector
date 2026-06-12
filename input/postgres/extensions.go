@@ -15,8 +15,8 @@ SELECT extname,
   JOIN pg_namespace ON (pg_extension.extnamespace = pg_namespace.oid)
 	 `
 
-func GetExtensions(ctx context.Context, db *sql.DB, currentDatabaseOid state.Oid) ([]state.PostgresExtension, error) {
-	rows, err := db.QueryContext(ctx, QueryMarkerSQL+extensionsSQL)
+func GetExtensions(ctx context.Context, c *Collection, db *sql.DB, currentDatabaseOid state.Oid) ([]state.PostgresExtension, error) {
+	rows, err := c.loggedSchemaQuery(ctx, db, "extensions", QueryMarkerSQL+extensionsSQL)
 	if err != nil {
 		return nil, err
 	}

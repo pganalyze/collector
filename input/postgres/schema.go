@@ -140,66 +140,91 @@ func collectOneSchema(ctx context.Context, c *Collection, server *state.Server, 
 }
 
 func collectSchemaData(ctx context.Context, c *Collection, db *sql.DB, ps state.PersistedState, ts state.TransientState, databaseOid state.Oid, server *state.Server, dbName string) (state.PersistedState, state.TransientState, error) {
-	newFunctions, err := GetFunctions(ctx, c.Logger, db, ts.Version, databaseOid, server.Config.IgnoreSchemaRegexp, false)
+	// Record the active schema filters so the per-step object counts below can be
+	// interpreted correctly. ignore_schema_regexp filters server-side, so the
+	// "objects returned" counts already exclude anything it matched; ignore_table_pattern
+	// filters client-side after collection (see input.CollectFull).
+	if c.GlobalOpts.VeryVerbose {
+		c.Logger.PrintVerbose("%s database %s: ignore_schema_regexp=%q ignore_table_pattern=%q",
+			schemaDebugLogPrefix, dbName, server.Config.IgnoreSchemaRegexp, server.Config.IgnoreTablePattern)
+	}
+
+	stepStart := time.Now()
+	newFunctions, err := GetFunctions(ctx, c.Logger, db, ts.Version, databaseOid, server.Config.IgnoreSchemaRegexp, false, c.GlobalOpts.VeryVerbose)
 	if err != nil {
 		return ps, ts, fmt.Errorf("error collecting stored procedure metadata: %s", err)
 	}
+	c.traceSchemaStep("functions", len(newFunctions), stepStart)
 	ps.Functions = append(ps.Functions, newFunctions...)
 
 	c = c.ForCurrentDatabase(newFunctions)
 
 	if c.GlobalOpts.CollectPostgresRelations {
+		stepStart = time.Now()
 		newRelations, err := GetRelations(ctx, c, db, databaseOid)
 		if err != nil {
 			return ps, ts, fmt.Errorf("error collecting table/index metadata: %s", err)
 		}
+		c.traceSchemaStep("relations", len(newRelations), stepStart)
 		ps.Relations = append(ps.Relations, newRelations...)
 
+		stepStart = time.Now()
 		newRelationStats, err := GetRelationStats(ctx, c, db, databaseOid, ts)
 		if err != nil {
 			return ps, ts, fmt.Errorf("error collecting table statistics: %s", err)
 		}
+		c.traceSchemaStep("relation_stats", len(newRelationStats), stepStart)
 		for k, v := range newRelationStats {
 			ps.SchemaStats[databaseOid].RelationStats[k] = v
 		}
 
+		stepStart = time.Now()
 		newIndexStats, err := GetIndexStats(ctx, c, db, databaseOid, ts)
 		if err != nil {
 			return ps, ts, fmt.Errorf("error collecting index statistics: %s", err)
 		}
+		c.traceSchemaStep("index_stats", len(newIndexStats), stepStart)
 		for k, v := range newIndexStats {
 			ps.SchemaStats[databaseOid].IndexStats[k] = v
 		}
 
+		stepStart = time.Now()
 		newColumnStats, err := GetColumnStats(ctx, c, db, dbName)
 		if err != nil {
 			return ps, ts, fmt.Errorf("error collecting column statistics: %s", err)
 		}
+		c.traceSchemaStep("column_stats", len(newColumnStats), stepStart)
 		for k, v := range newColumnStats {
 			ps.SchemaStats[databaseOid].ColumnStats[k] = v
 		}
 
 		if c.PostgresVersion.Numeric >= state.PostgresVersion12 {
+			stepStart = time.Now()
 			newRelationStatsExtended, err := GetRelationStatsExtended(ctx, c, db, dbName)
 			if err != nil {
 				return ps, ts, fmt.Errorf("error collecting extended relation statistics: %s", err)
 			}
+			c.traceSchemaStep("extended_statistics", len(newRelationStatsExtended), stepStart)
 			for k, v := range newRelationStatsExtended {
 				ps.SchemaStats[databaseOid].RelationStatsExtended[k] = v
 			}
 		}
 	}
 
-	newExtensions, err := GetExtensions(ctx, db, databaseOid)
+	stepStart = time.Now()
+	newExtensions, err := GetExtensions(ctx, c, db, databaseOid)
 	if err != nil {
 		return ps, ts, fmt.Errorf("error collecting extension information: %s", err)
 	}
+	c.traceSchemaStep("extensions", len(newExtensions), stepStart)
 	ts.Extensions = append(ts.Extensions, newExtensions...)
 
+	stepStart = time.Now()
 	newTypes, err := GetTypes(ctx, c, db, databaseOid)
 	if err != nil {
 		return ps, ts, fmt.Errorf("error collecting custom types: %s", err)
 	}
+	c.traceSchemaStep("types", len(newTypes), stepStart)
 	ts.Types = append(ts.Types, newTypes...)
 
 	return ps, ts, nil

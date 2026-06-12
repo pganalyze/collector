@@ -179,7 +179,7 @@ func GetRelationStats(ctx context.Context, c *Collection, db *sql.DB, currentDat
 		systemCatalogFilter = relationSQLdefaultSystemCatalogFilter
 	}
 
-	rows, err := db.QueryContext(ctx, QueryMarkerSQL+fmt.Sprintf(relationStatsSQL, insertsSinceVacuumField, systemCatalogFilter), c.Config.IgnoreSchemaRegexp)
+	rows, err := c.loggedSchemaQuery(ctx, db, "relation_stats", QueryMarkerSQL+fmt.Sprintf(relationStatsSQL, insertsSinceVacuumField, systemCatalogFilter), c.Config.IgnoreSchemaRegexp)
 	if err != nil {
 		err = fmt.Errorf("RelationStats/Query: %s", err)
 		return
@@ -235,7 +235,7 @@ func GetRelationStats(ctx context.Context, c *Collection, db *sql.DB, currentDat
 }
 
 func GetIndexStats(ctx context.Context, c *Collection, db *sql.DB, currentDatabaseOid state.Oid, ts state.TransientState) (indexStats state.PostgresIndexStatsMap, err error) {
-	rows, err := db.QueryContext(ctx, QueryMarkerSQL+indexStatsSQL, c.Config.IgnoreSchemaRegexp)
+	rows, err := c.loggedSchemaQuery(ctx, db, "index_stats", QueryMarkerSQL+indexStatsSQL, c.Config.IgnoreSchemaRegexp)
 	if err != nil {
 		err = fmt.Errorf("IndexStats/Query: %s", err)
 		return

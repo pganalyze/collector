@@ -198,6 +198,7 @@ func CollectFull(ctx context.Context, server *state.Server, connection *sql.DB, 
 	}
 
 	if server.Config.IgnoreTablePattern != "" {
+		relationCountBeforeFilter := len(ps.Relations)
 		var filteredRelations []state.PostgresRelation
 		patterns := strings.Split(server.Config.IgnoreTablePattern, ",")
 		for _, relation := range ps.Relations {
@@ -213,6 +214,11 @@ func CollectFull(ctx context.Context, server *state.Server, connection *sql.DB, 
 			}
 		}
 		ps.Relations = filteredRelations
+
+		if opts.VeryVerbose {
+			logger.PrintVerbose("[schema-debug] ignore_table_pattern filter: %d relations before, %d after (%d dropped)",
+				relationCountBeforeFilter, len(ps.Relations), relationCountBeforeFilter-len(ps.Relations))
+		}
 	}
 
 	select {
