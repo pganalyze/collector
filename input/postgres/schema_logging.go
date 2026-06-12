@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"os"
 	"runtime"
 	"strings"
 	"time"
@@ -24,8 +25,27 @@ import (
 
 const schemaDebugLogPrefix = "[schema-debug]"
 
+// logSchemaSQLEnvVar gates the (verbose) logging of the SQL text for each schema
+// query. Logging the full SQL on every query in every database is a lot of
+// output, so it is opt-in beyond --very-verbose: the query runtime, object
+// counts, and memory usage still log under --very-verbose alone, but the SQL
+// itself is only logged when this environment variable is set to a truthy value.
+const logSchemaSQLEnvVar = "LOG_SCHEMA_SQL"
+
+// logSchemaSQLEnabled reports whether SQL text logging has been explicitly
+// enabled via the LOG_SCHEMA_SQL environment variable.
+func logSchemaSQLEnabled() bool {
+	switch strings.ToLower(os.Getenv(logSchemaSQLEnvVar)) {
+	case "1", "true", "yes", "on":
+		return true
+	default:
+		return false
+	}
+}
+
 // loggedSchemaQuery runs db.QueryContext and, when very verbose logging is
-// enabled, logs the SQL and the time the query took to return.
+// enabled, logs the time the query took to return (and the SQL itself when
+// LOG_SCHEMA_SQL is set).
 func (c *Collection) loggedSchemaQuery(ctx context.Context, db *sql.DB, label, query string, args ...interface{}) (*sql.Rows, error) {
 	return loggedSchemaQueryWithLogger(ctx, c.Logger, c.GlobalOpts.VeryVerbose, db, label, query, args...)
 }
@@ -42,7 +62,9 @@ func loggedSchemaQueryWithLogger(ctx context.Context, logger *util.Logger, veryV
 	elapsed := time.Since(start)
 
 	logger.PrintVerbose("%s %s: query ran in %s", schemaDebugLogPrefix, label, elapsed)
-	logger.PrintVerbose("%s %s: SQL: %s | args: %v", schemaDebugLogPrefix, label, strings.TrimSpace(query), args)
+	if logSchemaSQLEnabled() {
+		logger.PrintVerbose("%s %s: SQL: %s | args: %v", schemaDebugLogPrefix, label, strings.TrimSpace(query), args)
+	}
 
 	return rows, err
 }
