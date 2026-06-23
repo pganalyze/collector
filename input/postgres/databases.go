@@ -24,7 +24,9 @@ SELECT
 	CASE WHEN d.datfrozenxid <> '0' THEN pg_catalog.age(d.datfrozenxid) ELSE 0 END,
 	CASE WHEN d.datminmxid <> '0' THEN pg_catalog.mxid_age(d.datminmxid) ELSE 0 END,
 	sd.xact_commit,
-	sd.xact_rollback
+	sd.xact_rollback,
+	sd.temp_files,
+	sd.temp_bytes
 FROM pg_catalog.pg_database d
 	LEFT JOIN pg_catalog.pg_stat_database sd
 	ON d.oid = sd.datid`
@@ -46,7 +48,7 @@ func GetDatabases(ctx context.Context, db *sql.DB) ([]state.PostgresDatabase, st
 
 		err := rows.Scan(&d.Oid, &d.Name, &d.OwnerRoleOid, &d.Encoding, &d.Collate, &d.CType,
 			&d.IsTemplate, &d.AllowConnections, &d.ConnectionLimit, &d.FrozenXID, &d.MinimumMultixactXID,
-			&ds.FrozenXIDAge, &ds.MinMXIDAge, &ds.XactCommit, &ds.XactRollback)
+			&ds.FrozenXIDAge, &ds.MinMXIDAge, &ds.XactCommit, &ds.XactRollback, &ds.TempFiles, &ds.TempBytes)
 		if err != nil {
 			return nil, nil, err
 		}
