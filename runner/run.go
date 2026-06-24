@@ -282,10 +282,8 @@ func Run(ctx context.Context, wg *sync.WaitGroup, opts state.CollectionOpts, log
 		return
 	}
 
-	scheduler.TenMinute.Schedule(ctx, func(ctx context.Context) {
-		wg.Add(1)
+	scheduler.TenMinute.Schedule(ctx, wg, func(ctx context.Context) {
 		CollectAllServers(ctx, servers, opts, logger)
-		wg.Done()
 	}, logger, "full snapshot of all servers")
 
 	if hasAnyLogsEnabled {
@@ -296,18 +294,14 @@ func Run(ctx context.Context, wg *sync.WaitGroup, opts state.CollectionOpts, log
 	}
 
 	if hasAnyActivityEnabled {
-		scheduler.TenSecond.Schedule(ctx, func(ctx context.Context) {
-			wg.Add(1)
+		scheduler.TenSecond.Schedule(ctx, wg, func(ctx context.Context) {
 			CollectActivityFromAllServers(ctx, servers, opts, logger)
-			wg.Done()
 		}, logger, "activity snapshot of all servers")
 	}
 
 	// This captures stats every minute, except for minute 10 when full snapshot collection takes over
-	scheduler.OneMinute.ScheduleSecondary(ctx, scheduler.TenMinute, func(ctx context.Context) {
-		wg.Add(1)
+	scheduler.OneMinute.ScheduleSecondary(ctx, scheduler.TenMinute, wg, func(ctx context.Context) {
 		Gather1minStatsFromAllServers(ctx, servers, opts, logger)
-		wg.Done()
 	}, logger, "high frequency statistics of all servers")
 
 	SetupWebsocketForAllServers(ctx, servers, opts, logger)

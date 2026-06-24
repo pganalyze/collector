@@ -2,6 +2,7 @@ package scheduler
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/gorhill/cronexpr"
@@ -42,8 +43,10 @@ type Schedule struct {
 	interval *cronexpr.Expression
 }
 
-func (schedule Schedule) Schedule(ctx context.Context, runner func(context.Context), logger *util.Logger, logName string) {
+func (schedule Schedule) Schedule(ctx context.Context, wg *sync.WaitGroup, runner func(context.Context), logger *util.Logger, logName string) {
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		for {
 			nextExecutions := schedule.interval.NextN(time.Now(), 2)
 			delay := time.Until(nextExecutions[0])
@@ -73,8 +76,10 @@ func (schedule Schedule) Schedule(ctx context.Context, runner func(context.Conte
 
 // ScheduleSecondary - Behaves almost like Schedule, but ignores the point in time
 // where the primary schedule also has a run (to avoid overlapping statistics)
-func (schedule Schedule) ScheduleSecondary(ctx context.Context, primarySchedule Schedule, runner func(context.Context), logger *util.Logger, logName string) {
+func (schedule Schedule) ScheduleSecondary(ctx context.Context, primarySchedule Schedule, wg *sync.WaitGroup, runner func(context.Context), logger *util.Logger, logName string) {
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		for {
 			timeNow := time.Now()
 			delay := schedule.interval.Next(timeNow).Sub(timeNow)
