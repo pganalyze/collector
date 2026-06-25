@@ -40,7 +40,7 @@ func findRdsInstanceByIdentifier(ctx context.Context, instanceIdentifier string,
 	return &resp.DBInstances[0], nil
 }
 
-func findRdsInstanceByHostAndPort(ctx context.Context, host string, port int32, client *rds.Client) (*rdstypes.DBInstance, error) {
+func findRdsInstanceByHostAndPort(ctx context.Context, host string, port int, client *rds.Client) (*rdstypes.DBInstance, error) {
 	resp, err := client.DescribeDBInstances(ctx, &rds.DescribeDBInstancesInput{
 		MaxRecords: aws.Int32(100),
 	})
@@ -52,7 +52,7 @@ func findRdsInstanceByHostAndPort(ctx context.Context, host string, port int32, 
 			instance.Endpoint.Address != nil &&
 			instance.Endpoint.Port != nil &&
 			*instance.Endpoint.Address == host &&
-			*instance.Endpoint.Port == port {
+			int(*instance.Endpoint.Port) == port {
 			return &resp.DBInstances[i], nil
 		}
 	}
@@ -104,7 +104,7 @@ func findRdsInstanceWithContext(ctx context.Context, serverCfg config.ServerConf
 	// If neither instance ID nor cluster ID were specified, but we still have
 	// an RDS system type, attempt to find the instance based on the hostname
 	// (this is a long shot, but there are some cases where this helps)
-	return findRdsInstanceByHostAndPort(ctx, serverCfg.GetDbHost(), int32(serverCfg.GetDbPortOrDefault()), client)
+	return findRdsInstanceByHostAndPort(ctx, serverCfg.GetDbHost(), serverCfg.GetDbPortOrDefault(), client)
 }
 
 // GetRdsParameter looks up a single named parameter from an RDS parameter group.
