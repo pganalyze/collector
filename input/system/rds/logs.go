@@ -8,14 +8,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/rds"
 	"github.com/pganalyze/collector/config"
 	"github.com/pganalyze/collector/logs"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
 	"github.com/pganalyze/collector/util/awsutil"
-
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/rds"
 )
 
 // Analyze and submit at most the trailing 10 megabytes of the retrieved RDS log file portions
@@ -35,13 +34,13 @@ func DownloadLogFiles(ctx context.Context, server *state.Server, opts state.Coll
 	var logFiles []state.LogFile
 	var samples []state.PostgresQuerySample
 
-	sess, err := awsutil.GetAwsSession(server.Config)
+	awsCfg, err := awsutil.GetAwsConfig(server.Config)
 	if err != nil {
 		err = fmt.Errorf("Error getting session: %s", err)
 		return server.LogPrevState, nil, nil, err
 	}
 
-	identifier, err := getAwsDbInstanceID(server.Config, sess)
+	identifier, err := getAwsDbInstanceID(ctx, server.Config, awsCfg)
 	if err != nil {
 		return server.LogPrevState, nil, nil, err
 	}
@@ -56,9 +55,9 @@ func DownloadLogFiles(ctx context.Context, server *state.Server, opts state.Coll
 		FileLastWritten:      &lastWritten,
 	}
 
-	rdsSvc := rds.New(sess)
+	rdsSvc := awsutil.NewRdsClient(awsCfg, server.Config)
 
-	resp, err := rdsSvc.DescribeDBLogFiles(params)
+	resp, err := rdsSvc.DescribeDBLogFiles(ctx, params)
 	if err != nil {
 		err = fmt.Errorf("Error listing RDS log files: %s", err)
 		return server.LogPrevState, nil, nil, err
@@ -78,7 +77,7 @@ func DownloadLogFiles(ctx context.Context, server *state.Server, opts state.Coll
 			var newContent string
 			var newMarker *string
 			var additionalDataPending bool
-			newContent, newMarker, additionalDataPending, err = downloadRdsLogFilePortion(rdsSvc, logger, &identifier, rdsLogFile.LogFileName, lastMarker)
+			newContent, newMarker, additionalDataPending, err = downloadRdsLogFilePortion(ctx, rdsSvc, logger, &identifier, rdsLogFile.LogFileName, lastMarker)
 			if err != nil {
 				return server.LogPrevState, nil, nil, err
 			}
@@ -131,7 +130,7 @@ func DownloadLogFiles(ctx context.Context, server *state.Server, opts state.Coll
 var DescribeDBClustersErrorCache *util.TTLMap = util.NewTTLMap(10 * 60)
 
 // getAwsDbInstanceID - Finds actual instance ID from Aurora cluster endpoint names in order to download logs
-func getAwsDbInstanceID(config config.ServerConfig, sess *session.Session) (string, error) {
+func getAwsDbInstanceID(ctx context.Context, config config.ServerConfig, awsCfg aws.Config) (string, error) {
 	if config.AwsDbInstanceID != "" {
 		return config.AwsDbInstanceID, nil
 	}
@@ -148,7 +147,7 @@ func getAwsDbInstanceID(config config.ServerConfig, sess *session.Session) (stri
 		return "", errors.New(cachedError)
 	}
 
-	instance, err := awsutil.FindRdsInstance(config, sess)
+	instance, err := awsutil.FindRdsInstance(config, awsCfg)
 	if err != nil {
 		err = fmt.Errorf("Error finding instance for cluster ID \"%s\": %s", config.AwsDbClusterID, err)
 		DescribeDBClustersErrorCache.Put(config.AwsDbClusterID, err.Error())
@@ -158,9 +157,9 @@ func getAwsDbInstanceID(config config.ServerConfig, sess *session.Session) (stri
 	return *instance.DBInstanceIdentifier, nil
 }
 
-func downloadRdsLogFilePortion(rdsSvc *rds.RDS, logger *util.Logger, identifier *string, logFileName *string, lastMarker *string) (content string, newMarker *string, additionalDataPending bool, err error) {
+func downloadRdsLogFilePortion(ctx context.Context, rdsSvc *rds.Client, logger *util.Logger, identifier *string, logFileName *string, lastMarker *string) (content string, newMarker *string, additionalDataPending bool, err error) {
 	var resp *rds.DownloadDBLogFilePortionOutput
-	resp, err = rdsSvc.DownloadDBLogFilePortion(&rds.DownloadDBLogFilePortionInput{
+	resp, err = rdsSvc.DownloadDBLogFilePortion(ctx, &rds.DownloadDBLogFilePortionInput{
 		DBInstanceIdentifier: identifier,
 		LogFileName:          logFileName,
 		Marker:               lastMarker, // This is not set for the initial call, so we only get the most recent lines
@@ -178,7 +177,7 @@ func downloadRdsLogFilePortion(rdsSvc *rds.RDS, logger *util.Logger, identifier 
 
 	content = *resp.LogFileData
 	newMarker = resp.Marker
-	additionalDataPending = *resp.AdditionalDataPending
+	additionalDataPending = aws.ToBool(resp.AdditionalDataPending)
 
 	return
 }

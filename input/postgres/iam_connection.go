@@ -9,8 +9,7 @@ import (
 
 	"cloud.google.com/go/alloydbconn"
 	"cloud.google.com/go/cloudsqlconn"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/rds/rdsutils"
+	rdsauth "github.com/aws/aws-sdk-go-v2/feature/rds/auth"
 	"github.com/pganalyze/collector/config"
 	"github.com/pganalyze/collector/util/awsutil"
 	"github.com/pganalyze/collector/util/pgxdriver"
@@ -26,17 +25,18 @@ type iamConnectionParams struct {
 func getIamConnectionParams(config config.ServerConfig) (driverName string, iamParams iamConnectionParams, err error) {
 	switch config.SystemType {
 	case "amazon_rds":
-		var sess *session.Session
-		sess, err = awsutil.GetAwsSession(config)
-		if err != nil {
+		var awsCfg, cfgErr = awsutil.GetAwsConfig(config)
+		if cfgErr != nil {
+			err = cfgErr
 			return
 		}
 		var dbToken string
-		dbToken, err = rdsutils.BuildAuthToken(
+		dbToken, err = rdsauth.BuildAuthToken(
+			context.Background(),
 			fmt.Sprintf("%s:%d", config.GetDbHost(), config.GetDbPortOrDefault()),
 			config.AwsRegion,
 			config.GetDbUsername(),
-			sess.Config.Credentials,
+			awsCfg.Credentials,
 		)
 		if err != nil {
 			return

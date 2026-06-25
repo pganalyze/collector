@@ -1,13 +1,13 @@
 package rds
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/cloudwatchlogs"
-	"github.com/aws/aws-sdk-go/service/rds"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
 	"github.com/pganalyze/collector/util/awsutil"
@@ -23,16 +23,16 @@ func GetSystemState(server *state.Server, logger *util.Logger) (system state.Sys
 	config := server.Config
 	system.Info.Type = state.AmazonRdsSystem
 
-	sess, err := awsutil.GetAwsSession(config)
+	awsCfg, err := awsutil.GetAwsConfig(config)
 	if err != nil {
 		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectSystemStats, "error getting session: %v", err)
 		logger.PrintError("Rds/System: Encountered error getting session: %v\n", err)
 		return
 	}
 
-	rdsSvc := rds.New(sess)
+	rdsSvc := awsutil.NewRdsClient(awsCfg, config)
 
-	instance, err := awsutil.FindRdsInstance(config, sess)
+	instance, err := awsutil.FindRdsInstance(config, awsCfg)
 	if err != nil {
 		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectSystemStats, "error finding instance: %v", err)
 		logger.PrintError("Rds/System: Encountered error when looking for instance: %v\n", err)
@@ -59,7 +59,7 @@ func GetSystemState(server *state.Server, logger *util.Logger) (system state.Sys
 		PreferredMaintenanceWindow: util.StringPtrToString(instance.PreferredMaintenanceWindow),
 		PreferredBackupWindow:      util.StringPtrToString(instance.PreferredBackupWindow),
 		LatestRestorableTime:       util.TimePtrToTime(instance.LatestRestorableTime),
-		BackupRetentionPeriodDays:  int32(util.IntPtrToInt(instance.BackupRetentionPeriod)),
+		BackupRetentionPeriodDays:  util.Int32PtrToInt(instance.BackupRetentionPeriod),
 		MasterUsername:             util.StringPtrToString(instance.MasterUsername),
 		InitialDbName:              util.StringPtrToString(instance.DBName),
 		CreatedAt:                  util.TimePtrToTime(instance.InstanceCreateTime),
@@ -77,13 +77,15 @@ func GetSystemState(server *state.Server, logger *util.Logger) (system state.Sys
 
 	system.Info.ResourceTags = tags
 
+	// EnabledCloudwatchLogsExports is []string in the v2 SDK (not []*string)
 	for _, exportName := range instance.EnabledCloudwatchLogsExports {
-		if util.StringPtrToString(exportName) == "postgresql" {
+		if exportName == "postgresql" {
 			system.Info.AmazonRds.PostgresLogExport = true
 		}
 	}
 
-	group := instance.DBParameterGroups[0]
+	// DBParameterGroups is []DBParameterGroupStatus (values) in the v2 SDK
+	group := &instance.DBParameterGroups[0]
 
 	pgssParam, err := awsutil.GetRdsParameter(group, "shared_preload_libraries", rdsSvc)
 	if err != nil {
@@ -97,16 +99,18 @@ func GetSystemState(server *state.Server, logger *util.Logger) (system state.Sys
 		system.Info.AmazonRds.ParameterPgssEnabled = false
 		system.Info.AmazonRds.ParameterAutoExplainEnabled = false
 	}
-	system.Info.AmazonRds.ParameterApplyStatus = *group.ParameterApplyStatus
+	if group.ParameterApplyStatus != nil {
+		system.Info.AmazonRds.ParameterApplyStatus = *group.ParameterApplyStatus
+	}
 
 	dbInstanceID := *instance.DBInstanceIdentifier
 	dbClusterID := util.StringPtrToString(instance.DBClusterIdentifier)
-	cloudWatchReader := awsutil.NewRdsCloudWatchReader(sess, logger, dbInstanceID, dbClusterID)
+	cloudWatchReader := awsutil.NewRdsCloudWatchReader(awsCfg, config, logger, dbInstanceID, dbClusterID)
 
 	system.Disks = make(state.DiskMap)
 	system.Disks["default"] = state.Disk{
 		DiskType:        util.StringPtrToString(instance.StorageType),
-		ProvisionedIOPS: uint32(util.IntPtrToInt(instance.Iops)),
+		ProvisionedIOPS: uint32(util.Int32PtrToInt(instance.Iops)),
 		Encrypted:       util.BoolPtrToBool(instance.StorageEncrypted),
 	}
 
@@ -129,15 +133,13 @@ func GetSystemState(server *state.Server, logger *util.Logger) (system state.Sys
 	if instance.EnhancedMonitoringResourceArn != nil && instance.MonitoringInterval != nil && *instance.MonitoringInterval != 0 {
 		system.Info.AmazonRds.EnhancedMonitoring = true
 
-		svc := cloudwatchlogs.New(sess)
+		cwlogsSvc := awsutil.NewCloudWatchLogsClient(awsCfg, config)
 
-		params := &cloudwatchlogs.GetLogEventsInput{
+		resp, err := cwlogsSvc.GetLogEvents(context.Background(), &cloudwatchlogs.GetLogEventsInput{
 			LogGroupName:  aws.String("RDSOSMetrics"),
 			LogStreamName: instance.DbiResourceId,
-			Limit:         aws.Int64(1),
-		}
-
-		resp, err := svc.GetLogEvents(params)
+			Limit:         aws.Int32(1),
+		})
 		if err != nil {
 			server.SelfTest.MarkCollectionAspectError(state.CollectionAspectSystemStats, "error getting system state: %v", err)
 			fmt.Printf("Error: %v\n", err)
@@ -271,7 +273,8 @@ func GetSystemState(server *state.Server, logger *util.Logger) (system state.Sys
 				TotalBytes: AuroraMaxStorage,
 			}
 		} else if instance.AllocatedStorage != nil {
-			bytesTotal := *instance.AllocatedStorage * 1024 * 1024 * 1024
+			// AllocatedStorage is *int32 in the v2 SDK (was *int64)
+			bytesTotal := int64(util.Int32PtrToInt(instance.AllocatedStorage)) * 1024 * 1024 * 1024
 			bytesFree := cloudWatchReader.GetRdsIntMetric("FreeStorageSpace", "Bytes")
 			system.DiskPartitions = make(state.DiskPartitionMap)
 			system.DiskPartitions["/"] = state.DiskPartition{
