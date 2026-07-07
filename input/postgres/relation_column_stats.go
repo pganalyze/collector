@@ -14,6 +14,7 @@ const columnStatsSQL = `
 SELECT schemaname, tablename, attname, inherited, null_frac, avg_width, n_distinct, correlation
   FROM %s
  WHERE schemaname NOT IN ('pg_catalog', 'information_schema')
+   AND ($1 = '' OR (schemaname || '.' || tablename) !~* $1)
 `
 
 func GetColumnStats(ctx context.Context, c *Collection, db *sql.DB, dbName string) (state.PostgresColumnStatsMap, error) {
@@ -56,7 +57,7 @@ func GetColumnStats(ctx context.Context, c *Collection, db *sql.DB, dbName strin
 		}
 	}
 
-	rows, err := c.loggedSchemaQuery(ctx, db, "column_stats", QueryMarkerSQL+fmt.Sprintf(columnStatsSQL, sourceTable))
+	rows, err := c.loggedSchemaQuery(ctx, db, "column_stats", QueryMarkerSQL+fmt.Sprintf(columnStatsSQL, sourceTable), c.Config.IgnoreSchemaRegexp)
 	if err != nil {
 		return nil, err
 	}
