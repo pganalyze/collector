@@ -235,8 +235,16 @@ func tailFile(ctx context.Context, path string, out chan<- SelfHostedLogStreamIt
 	TailLoop:
 		for {
 			select {
-			case line := <-t.Lines():
-				out <- SelfHostedLogStreamItem{Line: line.String()}
+			case line, ok := <-t.Lines():
+				if !ok {
+					break TailLoop
+				}
+				select {
+				case out <- SelfHostedLogStreamItem{Line: line.String()}:
+				case <-ctx.Done():
+					prefixedLogger.PrintVerbose("Stopping log tail for %s (stop requested)", path)
+					break TailLoop
+				}
 			case <-ctx.Done():
 				prefixedLogger.PrintVerbose("Stopping log tail for %s (stop requested)", path)
 				break TailLoop
@@ -329,6 +337,12 @@ func setupLogLocationTail(ctx context.Context, logLocation string, out chan<- Se
 		return fmt.Errorf("fsnotify new: %s", err)
 	}
 
+	err = watcher.Add(logLocation)
+	if err != nil {
+		watcher.Close()
+		return fmt.Errorf("fsnotify add \"%s\": %s", logLocation, err)
+	}
+
 	go func() {
 		defer watcher.Close()
 		for {
@@ -358,7 +372,7 @@ func setupLogLocationTail(ctx context.Context, logLocation string, out chan<- Se
 						}
 					}
 				}
-				if event.Op&fsnotify.Remove == fsnotify.Remove || event.Op&fsnotify.Rename == fsnotify.Rename || event.Op&fsnotify.Chmod == fsnotify.Chmod {
+				if event.Op&fsnotify.Remove == fsnotify.Remove || event.Op&fsnotify.Rename == fsnotify.Rename {
 					tailCancel, ok := openFiles[event.Name]
 					if ok {
 						tailCancel()
@@ -371,8 +385,6 @@ func setupLogLocationTail(ctx context.Context, logLocation string, out chan<- Se
 			case <-ctx.Done():
 				prefixedLogger.PrintVerbose("Log file fsnotify watcher received stop signal")
 				for fileName, tailCancel := range openFiles {
-					// TODO: This cancel might actually not be necessary since we are
-					// already canceling the parent context?
 					tailCancel()
 					delete(openFiles, fileName)
 				}
@@ -381,11 +393,6 @@ func setupLogLocationTail(ctx context.Context, logLocation string, out chan<- Se
 			}
 		}
 	}()
-
-	err = watcher.Add(logLocation)
-	if err != nil {
-		return fmt.Errorf("fsnotify add \"%s\": %s", logLocation, err)
-	}
 
 	return nil
 }
