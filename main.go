@@ -311,6 +311,7 @@ ReadConfigAndRun:
 			cancel()
 			wg.Wait()
 			writeStateFile()
+			opts.StartedAt = time.Now() // Signal to pganalyze API that collector essentially restarted
 			goto ReadConfigAndRun
 		}
 
