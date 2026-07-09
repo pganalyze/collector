@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.71.0      2026-07-xx
+
+* TODO: add collector hang (fix-socket-reconnection-stall-on-reload)
+* TODO: add aws-sdk-go-v2
+* Track temporary file usage per database
+  - Collects temp_files and temp_bytes from pg_stat_database
+* Helm chart: Allow passing deployment annotations
+* Track IO worker backends from Postgres 18+
+* Update Go version to 1.26
+
+
 ## 0.70.2      2026-05-06
 
 * Aurora: Improve disk size reporting
