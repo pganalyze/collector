@@ -49,7 +49,7 @@ func EnsureGrant(ctx context.Context, server *state.Server, opts state.Collectio
 		}
 	}
 
-	newGrant, err := getGrant(ctx, server.Config, opts.TestRun)
+	newGrant, err := getGrant(ctx, server.Config, opts)
 	if err != nil {
 		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectApiConnection, "error contacting API: %s", err)
 		if server.Grant.Load().ValidForS3Until.After(time.Now()) {
@@ -78,14 +78,14 @@ func waitWithTimeout(ctx context.Context, c chan struct{}, timeout time.Duration
 	}
 }
 
-func getGrant(ctx context.Context, conf config.ServerConfig, testRun bool) (*state.Grant, error) {
+func getGrant(ctx context.Context, conf config.ServerConfig, opts state.CollectionOpts) (*state.Grant, error) {
 	grant := &state.Grant{Config: pganalyze_collector.ServerMessage_Config{Features: &pganalyze_collector.ServerMessage_Features{}}}
 	req, err := http.NewRequestWithContext(ctx, "GET", conf.APIBaseURL+"/v2/snapshots/grant", nil)
 	if err != nil {
 		return grant, err
 	}
 
-	req.Header = config.APIHeaders(conf, testRun)
+	req.Header = config.APIHeaders(conf, opts.TestRun, opts.StartedAt)
 	req.Header.Add("Accept", "application/json")
 
 	resp, err := conf.HTTPClientWithRetry.Do(req)

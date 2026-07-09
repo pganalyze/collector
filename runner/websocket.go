@@ -23,7 +23,9 @@ func SetupWebsocketForAllServers(ctx context.Context, servers []*state.Server, o
 		prefixedLogger := logger.WithPrefixAndRememberErrors(server.Config.SectionName)
 		server.WebSocket = util.NewReconnectingSocket(
 			ctx, prefixedLogger,
-			config.CreateWebSocketDialer(server.Config), server.Config.WebSocketUrl, config.APIHeaders(server.Config, opts.TestRun),
+			config.CreateWebSocketDialer(server.Config),
+			server.Config.WebSocketUrl,
+			config.APIHeaders(server.Config, opts.TestRun, opts.StartedAt),
 			1*time.Minute, 8*time.Minute,
 		)
 
