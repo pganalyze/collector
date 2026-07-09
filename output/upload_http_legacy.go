@@ -106,10 +106,10 @@ func uploadToS3(ctx context.Context, httpClient *http.Client, S3URL string, S3Fi
 	return s3Resp.Key, nil
 }
 
-func submitSnapshot(ctx context.Context, server *state.Server, testRun bool, logger *util.Logger, s3Location string, collectedAt time.Time, compact bool) error {
+func submitSnapshot(ctx context.Context, server *state.Server, opts state.CollectionOpts, logger *util.Logger, s3Location string, collectedAt time.Time, compact bool) error {
 	requestURL := server.Config.APIBaseURL + "/v2/snapshots"
 
-	if testRun {
+	if opts.TestRun {
 		requestURL = server.Config.APIBaseURL + "/v2/snapshots/test"
 	} else if compact {
 		requestURL = server.Config.APIBaseURL + "/v2/snapshots/compact"
@@ -125,7 +125,7 @@ func submitSnapshot(ctx context.Context, server *state.Server, testRun bool, log
 		return err
 	}
 
-	req.Header = config.APIHeaders(server.Config, testRun)
+	req.Header = config.APIHeaders(server.Config, opts.TestRun, opts.StartedAt)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Add("Accept", "application/json,text/plain")
 
@@ -144,7 +144,7 @@ func submitSnapshot(ctx context.Context, server *state.Server, testRun bool, log
 		return fmt.Errorf("Error when submitting: %s\n", body)
 	}
 
-	if testRun {
+	if opts.TestRun {
 		contentType, _, err := mime.ParseMediaType(resp.Header.Get("Content-Type"))
 		if err != nil {
 			return fmt.Errorf("Error decoding response: %s\n", err)
