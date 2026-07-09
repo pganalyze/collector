@@ -35,6 +35,7 @@ SELECT t.oid,
     AND NOT EXISTS (SELECT 1 FROM pg_catalog.pg_type el WHERE el.oid = t.typelem AND el.typarray = t.oid)
 	AND t.oid NOT IN (SELECT pd.objid FROM pg_catalog.pg_depend pd WHERE pd.deptype = 'e' AND pd.classid = 'pg_catalog.pg_type'::regclass)
     AND %s
+    AND ($1 = '' OR (n.nspname || '.' || t.typname) !~* $1)
 `
 
 func GetTypes(ctx context.Context, c *Collection, db *sql.DB, currentDatabaseOid state.Oid) ([]state.PostgresType, error) {
@@ -45,7 +46,7 @@ func GetTypes(ctx context.Context, c *Collection, db *sql.DB, currentDatabaseOid
 		systemCatalogFilter = relationSQLdefaultSystemCatalogFilter
 	}
 
-	rows, err := db.QueryContext(ctx, QueryMarkerSQL+fmt.Sprintf(typesSQL, systemCatalogFilter))
+	rows, err := db.QueryContext(ctx, QueryMarkerSQL+fmt.Sprintf(typesSQL, systemCatalogFilter), c.Config.IgnoreSchemaRegexp)
 	if err != nil {
 		return nil, err
 	}
