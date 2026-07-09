@@ -21,6 +21,15 @@ go get github.com/shirou/gopsutil@latest # updates the version requirement
 make vendor                              # updates the vendored code
 ```
 
+### Pointing to a fork
+
+This example points go-tail to our fork on a specific branch:
+
+```sh
+go mod edit -replace github.com/papertrail/go-tail=github.com/pganalyze/go-tail@deadlock-on-rotated-file
+make vendor
+```
+
 ### Compiling and running tests
 
 To compile the collector and helper binaries:

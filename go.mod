@@ -115,3 +115,5 @@ require (
 )
 
 go 1.26
+
+replace github.com/papertrail/go-tail => github.com/pganalyze/go-tail v0.0.0-20260708205228-8fab800841f3
