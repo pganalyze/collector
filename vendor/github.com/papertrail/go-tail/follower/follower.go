@@ -3,7 +3,6 @@ package follower
 import (
 	"bufio"
 	"bytes"
-	"fmt"
 	"io"
 	"os"
 	"sync"
@@ -15,10 +14,6 @@ import (
 const (
 	bufSize  = 4 * 1024
 	peekSize = 1024
-)
-
-var (
-	_ = fmt.Print
 )
 
 type Line struct {
@@ -62,7 +57,7 @@ func New(filename string, config Config) (*Follower, error) {
 		filename: filename,
 		lines:    make(chan Line),
 		config:   config,
-		closeCh:  make(chan struct{}),
+		closeCh:  make(chan struct{}, 1),
 	}
 
 	err := t.reopen()
@@ -84,6 +79,9 @@ func (t *Follower) Err() error {
 }
 
 func (t *Follower) Close() {
+	if t.file != nil {
+		t.file.Close()
+	}
 	t.closeCh <- struct{}{}
 }
 
@@ -244,8 +242,6 @@ func (t *Follower) follow() error {
 			continue
 		}
 	}
-
-	return nil
 }
 
 func (t *Follower) rewatch() error {
