@@ -447,12 +447,33 @@ type LineReader interface {
 	ReadString(delim byte) (string, error)
 }
 
+// maxAdditionalLinesBytes bounds how much continuation content we append to a single
+// log line. Multi-line entries (e.g. auto_explain JSON plans) are stitched onto their
+// primary line; without a bound, a single very large entry can grow one Content string
+// without limit and OOM the collector. It is a var so tests can lower it.
+var maxAdditionalLinesBytes = 10 * 1024 * 1024
+
 func ParseAndAnalyzeBuffer(logStream LineReader, linesNewerThan time.Time, server *state.Server, opts state.CollectionOpts, logger *util.Logger) ([]state.LogLine, []state.PostgresQuerySample) {
 	var logLines []state.LogLine
 	var currentByteStart int64 = 0
 	parser := server.GetLogParser()
 	if parser == nil {
 		return []state.LogLine{}, []state.PostgresQuerySample{}
+	}
+
+	// Continuation lines (lines that don't parse as a new log line) are stitched onto
+	// the previous kept line. We accumulate them in a strings.Builder and materialize
+	// once, so a single entry spanning many lines is O(n) rather than O(n^2) copies.
+	var additionalLines strings.Builder
+	parentLine := -1
+	additionalLinesExceeded := false
+	flushAdditionalLines := func() {
+		if parentLine >= 0 && additionalLines.Len() > 0 {
+			logLines[parentLine].Content += additionalLines.String()
+		}
+		additionalLines.Reset()
+		parentLine = -1
+		additionalLinesExceeded = false
 	}
 
 	for {
@@ -474,8 +495,21 @@ func ParseAndAnalyzeBuffer(logStream LineReader, linesNewerThan time.Time, serve
 			// Assume that a parsing error in a follow-on line means that we actually
 			// got additional data for the previous line
 			if len(logLines) > 0 && logLine.Content != "" {
-				logLines[len(logLines)-1].Content += logLine.Content
-				logLines[len(logLines)-1].ByteEnd += int64(len(logLine.Content))
+				lastLine := len(logLines) - 1
+				if parentLine != lastLine {
+					// The last kept line changed since we last stitched; finalize it.
+					flushAdditionalLines()
+					parentLine = lastLine
+				}
+				logLines[lastLine].ByteEnd += int64(len(logLine.Content))
+				if additionalLines.Len()+len(logLine.Content) <= maxAdditionalLinesBytes {
+					additionalLines.WriteString(logLine.Content)
+				} else if !additionalLinesExceeded {
+					additionalLinesExceeded = true
+					logger.PrintWarning("Log line continuation exceeded %d bytes and was truncated; "+
+						"a single log entry (e.g. an auto_explain JSON plan) is larger than the "+
+						"collector will stitch together", maxAdditionalLinesBytes)
+				}
 			}
 			continue
 		}
@@ -513,8 +547,12 @@ func ParseAndAnalyzeBuffer(logStream LineReader, linesNewerThan time.Time, serve
 			continue
 		}
 
+		// Finalize the previous kept line's additional lines before this new
+		// line becomes the stitch target.
+		flushAdditionalLines()
 		logLines = append(logLines, logLine)
 	}
+	flushAdditionalLines()
 
 	newLogLines, newSamples := AnalyzeLogLines(logLines)
 	return newLogLines, newSamples
