@@ -18,18 +18,37 @@ WITH locked_relids AS (
 locked_relids_with_parents AS (
 	SELECT DISTINCT inhparent relid FROM pg_catalog.pg_inherits WHERE inhrelid IN (SELECT relid FROM locked_relids)
 	UNION SELECT relid FROM locked_relids
+),
+-- The set of relations we collect stats for (everything not filtered out). Pulled into
+-- its own CTE so the partition-size rollup below can restrict to exactly this set.
+primary_objects AS %s (
+	SELECT c.*
+	  FROM pg_catalog.pg_class c
+	  LEFT JOIN pg_catalog.pg_namespace n ON (n.oid = c.relnamespace)
+	 WHERE c.oid NOT IN (SELECT relid FROM locked_relids_with_parents)
+	       AND c.relkind IN ('r','v','m','p')
+	       AND c.relpersistence <> 't'
+	       AND c.oid NOT IN (SELECT pd.objid FROM pg_catalog.pg_depend pd WHERE pd.deptype = 'e' AND pd.classid = 'pg_catalog.pg_class'::regclass)
+	       AND %s
+	       AND ($1 = '' OR (n.nspname || '.' || c.relname) !~* $1)
+),
+-- Sizes of partitions excluded by ignore_schema_regexp whose parent IS collected, so the
+-- parent's size is not undercounted. Limited to table partitions (relkind r/p) so index 
+-- partitions don't inflate size_bytes.
+filtered_partitions AS (
+	SELECT i.inhparent AS parent_oid,
+	       pg_catalog.sum(pg_catalog.pg_table_size(i.inhrelid)) AS missed_bytes
+	  FROM primary_objects p
+	  JOIN pg_catalog.pg_inherits i ON (i.inhparent = p.oid)
+	  JOIN pg_catalog.pg_class t ON (t.oid = i.inhrelid)
+	  JOIN pg_catalog.pg_namespace cn ON (cn.oid = t.relnamespace)
+	 WHERE $1 != ''
+	       AND (cn.nspname || '.' || t.relname) ~* $1
+	       AND t.relkind IN ('r','p')
+	 GROUP BY i.inhparent
 )
 SELECT c.oid,
-			 COALESCE(pg_catalog.pg_table_size(c.oid), 0) +
-			 COALESCE((
-				SELECT pg_catalog.sum(pg_catalog.pg_table_size(inhrelid))
-				FROM pg_catalog.pg_inherits
-				JOIN pg_class t ON inhrelid = t.oid
-				WHERE inhparent = c.oid
-					-- Only include sizes from child partitions skipped by ignore_schema_regexp.
-					-- Child partitions tracked by the collector have their sizes added later.
-					AND ($1 != '' AND (n.nspname || '.' || t.relname) ~* $1)
-			 ), 0) AS size_bytes,
+			 COALESCE(pg_catalog.pg_table_size(c.oid), 0) + COALESCE(fp.missed_bytes, 0) AS size_bytes,
 			 CASE c.reltoastrelid WHEN NULL THEN 0 ELSE COALESCE(pg_catalog.pg_total_relation_size(c.reltoastrelid), 0) END AS toast_bytes,
 			 COALESCE(pg_stat_get_numscans(c.oid), 0) AS seq_scan,
 			 COALESCE(pg_stat_get_tuples_returned(c.oid), 0) AS seq_tup_read,
@@ -69,9 +88,9 @@ SELECT c.oid,
 			 COALESCE(toast.relpages, 0) AS toast_relpages,
 			 COALESCE(pg_relation_filenode(c.oid), 0) AS data_filenode,
 			 COALESCE(pg_relation_filenode(c.reltoastrelid), 0) AS toast_filenode
-	FROM pg_catalog.pg_class c
-	LEFT JOIN pg_catalog.pg_namespace n ON (n.oid = c.relnamespace)
+	FROM primary_objects c
 	LEFT JOIN pg_catalog.pg_class toast ON (c.reltoastrelid = toast.oid AND toast.relkind = 't')
+	LEFT JOIN filtered_partitions fp ON (fp.parent_oid = c.oid)
 	LEFT JOIN LATERAL (
 		SELECT sum(pg_stat_get_numscans(indexrelid))::bigint AS idx_scan,
 			   sum(pg_stat_get_tuples_fetched(indexrelid))::bigint AS idx_tup_fetch,
@@ -84,12 +103,6 @@ SELECT c.oid,
 			   sum(pg_stat_get_blocks_hit(pg_index.indexrelid))::bigint AS idx_blks_hit
 		  FROM pg_catalog.pg_index
 		 WHERE pg_index.indrelid = toast.oid) x ON true
- WHERE c.oid NOT IN (SELECT relid FROM locked_relids_with_parents)
-       AND c.relkind IN ('r','v','m','p')
-			 AND c.relpersistence <> 't'
-			 AND c.oid NOT IN (SELECT pd.objid FROM pg_catalog.pg_depend pd WHERE pd.deptype = 'e' AND pd.classid = 'pg_catalog.pg_class'::regclass)
-			 AND %s
-			 AND ($1 = '' OR (n.nspname || '.' || c.relname) !~* $1)
  UNION ALL
 SELECT relid,
 	   0,
@@ -179,7 +192,15 @@ func GetRelationStats(ctx context.Context, c *Collection, db *sql.DB, currentDat
 		systemCatalogFilter = relationSQLdefaultSystemCatalogFilter
 	}
 
-	rows, err := db.QueryContext(ctx, QueryMarkerSQL+fmt.Sprintf(relationStatsSQL, insertsSinceVacuumField, systemCatalogFilter), c.Config.IgnoreSchemaRegexp)
+	// primary_objects is referenced by both the main query and filtered_partitions (which
+	// drives from it), so we want it computed once. CTEs are always materialized before
+	// PostgreSQL 12; from 12 on we ask for it explicitly so it isn't inlined and recomputed.
+	cteMaterialized := ""
+	if c.PostgresVersion.Numeric >= state.PostgresVersion12 {
+		cteMaterialized = "MATERIALIZED"
+	}
+
+	rows, err := db.QueryContext(ctx, QueryMarkerSQL+fmt.Sprintf(relationStatsSQL, cteMaterialized, systemCatalogFilter, insertsSinceVacuumField), c.Config.IgnoreSchemaRegexp)
 	if err != nil {
 		err = fmt.Errorf("RelationStats/Query: %s", err)
 		return
