@@ -42,7 +42,7 @@ RUN cp $CODE_DIR/contrib/systemd/pganalyze-collector.service $SOURCE_DIR/etc/sys
 RUN mkdir -p $SOURCE_DIR/usr/share/pganalyze-collector/sslrootcert
 RUN cp $CODE_DIR/contrib/sslrootcert/* $SOURCE_DIR/usr/share/pganalyze-collector/sslrootcert
 
-FROM rockylinux/rockylinux:8 AS package
+FROM amazonlinux:2023 AS package
 
 ARG VERSION
 ENV GOPATH /go
@@ -52,12 +52,11 @@ ENV SOURCE_DIR /source
 ENV NAME pganalyze-collector
 
 # RPM 4.11 in Amazon Linux 2 does not emit SHA256 payload digest headers. Use
-# AL2 only for compiling the binaries, and assemble the RPM with RPM 4.14.
-RUN dnf module enable -y ruby:3.0
-RUN dnf install -y ruby-devel gcc make rpm-build tar gzip xz
+# AL2 only for compiling the binaries, and assemble the RPM with RPM 4.16.
+RUN dnf install -y ruby3.2 ruby3.2-devel gcc make rpm-build tar gzip xz
 
 # FPM
-RUN gem install fpm -v 1.14.1
+RUN ruby3.2-gem install fpm -v 1.17.0
 
 COPY --from=build $SOURCE_DIR $SOURCE_DIR
 COPY --from=build $CODE_DIR/packages $CODE_DIR/packages
