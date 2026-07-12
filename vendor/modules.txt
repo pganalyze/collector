@@ -384,7 +384,7 @@ github.com/mgutz/ansi
 # github.com/ogier/pflag v0.0.0-20160129220114-45c278ab3607
 ## explicit
 github.com/ogier/pflag
-# github.com/papertrail/go-tail v0.0.0-20180509224916-973c153b0431 => github.com/pganalyze/go-tail v0.0.0-20260708205228-8fab800841f3
+# github.com/papertrail/go-tail v0.0.0-20180509224916-973c153b0431 => github.com/pganalyze/go-tail v0.0.0-20260713192021-82ac8bcb98c1
 ## explicit; go 1.19
 github.com/papertrail/go-tail/follower
 # github.com/pganalyze/pg_query_go/v6 v6.2.2
@@ -820,4 +820,4 @@ gopkg.in/mcuadros/go-syslog.v2/format
 gopkg.in/mcuadros/go-syslog.v2/internal/syslogparser
 gopkg.in/mcuadros/go-syslog.v2/internal/syslogparser/rfc3164
 gopkg.in/mcuadros/go-syslog.v2/internal/syslogparser/rfc5424
-# github.com/papertrail/go-tail => github.com/pganalyze/go-tail v0.0.0-20260708205228-8fab800841f3
+# github.com/papertrail/go-tail => github.com/pganalyze/go-tail v0.0.0-20260713192021-82ac8bcb98c1
