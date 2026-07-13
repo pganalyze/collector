@@ -1,8 +1,6 @@
 package output
 
 import (
-	"bytes"
-	"compress/zlib"
 	"context"
 	"errors"
 	"fmt"
@@ -11,7 +9,6 @@ import (
 
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
-	"google.golang.org/protobuf/proto"
 )
 
 func SetupSnapshotUploadForAllServers(ctx context.Context, servers []*state.Server, opts state.CollectionOpts, logger *util.Logger) {
@@ -19,47 +16,51 @@ func SetupSnapshotUploadForAllServers(ctx context.Context, servers []*state.Serv
 		return
 	}
 	for _, server := range servers {
-		go snapshotUploadForServer(ctx, server, logger.WithPrefixAndRememberErrors(server.Config.SectionName), opts)
+		prefixedLogger := logger.WithPrefixAndRememberErrors(server.Config.SectionName)
+		server.SnapshotQueue.Logger = prefixedLogger
+		go snapshotUploadForServer(ctx, server, prefixedLogger, opts)
 	}
 }
 
 func snapshotUploadForServer(ctx context.Context, server *state.Server, logger *util.Logger, opts state.CollectionOpts) {
 	var compactLogTime time.Time
-	compactLogStats := make(map[string]uint8)
+	var compactLogStats = make(map[string]uint8)
+	var failed bool
+	var delay time.Duration
+
 	for {
+		if failed {
+			delay = min(5*delay, 10*time.Second) // Increasing backoff delay in case of failure
+		} else {
+			delay = 10 * time.Millisecond // Small delay to avoid high CPU usage in loop
+		}
 		select {
 		case <-ctx.Done():
 			return
-		case s := <-server.FullSnapshotUpload:
-			data, err := proto.Marshal(s)
-			if err != nil {
-				logger.PrintError("Error marshaling protocol buffers")
-				continue
-			}
+		case <-time.After(delay):
+		}
 
-			err = uploadViaWebsocketOrHttp(ctx, server, logger, opts, data, s.SnapshotUuid, s.CollectedAt.AsTime(), false)
-			if err != nil {
-				logger.PrintError("Error uploading snapshot: %s", err)
-			} else if !opts.TestRun {
-				logger.PrintInfo("Submitted full snapshot successfully")
-			}
-		case s := <-server.CompactSnapshotUpload:
-			data, err := proto.Marshal(s)
-			if err != nil {
-				logger.PrintError("Error marshaling protocol buffers")
-				continue
-			}
+		tx, err := server.SnapshotQueue.Pop(ctx)
+		if err != nil {
+			continue
+		}
 
-			err = uploadViaWebsocketOrHttp(ctx, server, logger, opts, data, s.SnapshotUuid, s.CollectedAt.AsTime(), false)
-			if err != nil {
-				logger.PrintError("Error uploading snapshot: %s", err)
+		err = uploadViaWebsocketOrHttp(ctx, server, logger, opts, tx.Snapshot)
+		if err != nil {
+			logger.PrintError("Error uploading %s snapshot: %s", tx.Kind, err)
+			tx.Rollback()
+			failed = true
+		} else {
+			tx.Commit()
+			failed = false
+			if !opts.TestRun {
+				logger.PrintInfo("Submitted %s snapshot successfully", tx.Kind)
+			}
+			if tx.Kind == "full" {
 				continue
 			}
-			if opts.TestRun {
-				continue
-			}
-
-			kind := kindFromCompactSnapshot(s)
+			// Compact snapshot: log stats periodically
+			kind := tx.Kind
 			logger.PrintVerbose("Submitted compact %s snapshot successfully", kind)
 			compactLogStats[kind] = compactLogStats[kind] + 1
 			if compactLogTime.IsZero() {
@@ -92,23 +93,31 @@ func summarizeCounts(counts map[string]uint8) string {
 	return details
 }
 
-func uploadViaWebsocketOrHttp(ctx context.Context, server *state.Server, logger *util.Logger, opts state.CollectionOpts, data []byte, snapshotUUID string, collectedAt time.Time, compactSnapshot bool) error {
-	var compressedData bytes.Buffer
-	w := zlib.NewWriter(&compressedData)
-	w.Write(data)
-	w.Close()
-
+func uploadViaWebsocketOrHttp(ctx context.Context, server *state.Server, logger *util.Logger, opts state.CollectionOpts, data []byte) error {
 	if server.WebSocket.Connected() {
 		logger.PrintVerbose("Uploading snapshot to websocket")
-		server.WebSocket.Write <- compressedData.Bytes()
-	} else if server.Config.APIRequireWebsocket {
-		return errors.New("Error uploading snapshot: WebSocket not connected")
-	} else {
-		s3Location, err := uploadSnapshot(ctx, server.Config.HTTPClientWithRetry, server.Grant.Load(), logger, compressedData.Bytes(), snapshotUUID)
-		if err != nil {
-			return err
+		result := make(chan error, 1)
+		select {
+		case server.WebSocket.Write <- util.WriteRequest{Data: data, Result: result}:
+			select {
+			case err := <-result:
+				if err != nil {
+					return fmt.Errorf("WebSocket write failed: %w", err)
+				}
+				return nil
+			case <-time.After(5 * time.Second):
+				logger.PrintWarning("WebSocket write timed out, falling back to HTTP")
+			case <-ctx.Done():
+				return ctx.Err()
+			}
+		case <-time.After(5 * time.Second):
+			logger.PrintWarning("WebSocket write timed out, falling back to HTTP")
+		case <-ctx.Done():
+			return ctx.Err()
 		}
-		submitSnapshot(ctx, server, opts, logger, s3Location, collectedAt, compactSnapshot)
 	}
-	return nil
+	if server.Config.APIRequireWebsocket {
+		return errors.New("Error uploading snapshot: WebSocket not connected")
+	}
+	return uploadSnapshot(ctx, server.Config.HTTPClient, server.Grant.Load(), logger, data)
 }
