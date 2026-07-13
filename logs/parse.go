@@ -447,12 +447,6 @@ type LineReader interface {
 	ReadString(delim byte) (string, error)
 }
 
-// maxAdditionalLinesBytes bounds how much continuation content we append to a single
-// log line. Multi-line entries (e.g. auto_explain JSON plans) are stitched onto their
-// primary line; without a bound, a single very large entry can grow one Content string
-// without limit and OOM the collector. It is a var so tests can lower it.
-var maxAdditionalLinesBytes = 10 * 1024 * 1024
-
 func ParseAndAnalyzeBuffer(logStream LineReader, linesNewerThan time.Time, server *state.Server, opts state.CollectionOpts, logger *util.Logger) ([]state.LogLine, []state.PostgresQuerySample) {
 	var logLines []state.LogLine
 	var currentByteStart int64 = 0
@@ -463,16 +457,14 @@ func ParseAndAnalyzeBuffer(logStream LineReader, linesNewerThan time.Time, serve
 
 	// Continuation lines (lines that don't parse as a new log line) are stitched onto
 	// the previous kept line.
-	var additionalLines strings.Builder
+	additionalLines := NewStitchBuffer(logger)
 	parentLine := -1
-	additionalLinesExceeded := false
 	flushAdditionalLines := func() {
 		if parentLine >= 0 && additionalLines.Len() > 0 {
 			logLines[parentLine].Content += additionalLines.String()
 		}
 		additionalLines.Reset()
 		parentLine = -1
-		additionalLinesExceeded = false
 	}
 
 	for {
@@ -501,14 +493,7 @@ func ParseAndAnalyzeBuffer(logStream LineReader, linesNewerThan time.Time, serve
 					parentLine = lastLine
 				}
 				logLines[lastLine].ByteEnd += int64(len(logLine.Content))
-				if additionalLines.Len()+len(logLine.Content) <= maxAdditionalLinesBytes {
-					additionalLines.WriteString(logLine.Content)
-				} else if !additionalLinesExceeded {
-					additionalLinesExceeded = true
-					logger.PrintWarning("Log line continuation exceeded %d bytes and was truncated; "+
-						"a single log entry (e.g. an auto_explain JSON plan) is larger than the "+
-						"collector will stitch together", maxAdditionalLinesBytes)
-				}
+				additionalLines.Append(logLine.Content)
 			}
 			continue
 		}

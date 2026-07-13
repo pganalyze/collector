@@ -44,11 +44,11 @@ func TestParseAndAnalyzeBufferStitchesMultiLine(t *testing.T) {
 }
 
 // A multi-line entry that's larger than the cap when stitched together, typically a large JSON EXPLAIN plan,
-// must be bound by maxAdditionalLinesBytes.
+// must be bound by MaxStitchedContentBytes.
 func TestParseAndAnalyzeBufferCapsRunawayStitch(t *testing.T) {
-	orig := maxAdditionalLinesBytes
-	maxAdditionalLinesBytes = 4096
-	defer func() { maxAdditionalLinesBytes = orig }()
+	orig := MaxStitchedContentBytes
+	MaxStitchedContentBytes = 4096
+	defer func() { MaxStitchedContentBytes = orig }()
 
 	primary := "duration: 1.000 ms  plan:\n"
 	additionalLine := strings.Repeat("x", 1000) + "\n"
@@ -65,7 +65,7 @@ func TestParseAndAnalyzeBufferCapsRunawayStitch(t *testing.T) {
 		t.Fatalf("expected 1 log line, got %d", len(logLines))
 	}
 	// Content is the primary line plus the additional lines
-	maxContentBytes := len(primary) + maxAdditionalLinesBytes
+	maxContentBytes := len(primary) + MaxStitchedContentBytes
 	if totalLogLineBytes := len(logLines[0].Content); totalLogLineBytes > maxContentBytes {
 		t.Errorf("expected stitched content capped at %d bytes, got %d", maxContentBytes, totalLogLineBytes)
 	}

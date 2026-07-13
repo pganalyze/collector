@@ -3,7 +3,6 @@ package stream
 import (
 	"fmt"
 	"sort"
-	"strings"
 	"time"
 
 	"github.com/pganalyze/collector/logs"
@@ -200,10 +199,23 @@ func handleLogAnalysis(analyzableLogLines []state.LogLine) ([]state.LogLine, []s
 	return logLinesOut, querySamples
 }
 
-func stitchLogLines(readyLogLines []state.LogLine) (analyzableLogLines []state.LogLine) {
+func stitchLogLines(readyLogLines []state.LogLine, logger *util.Logger) (analyzableLogLines []state.LogLine) {
 	var linesToAppend []int
 	var linesToAppendLenSum int
-	var b strings.Builder
+	additionalLines := logs.NewStitchBuffer(logger)
+	flush := func() {
+		if linesToAppendLenSum == 0 {
+			return
+		}
+		additionalLines.Grow(linesToAppendLenSum)
+		for _, logIdx := range linesToAppend {
+			additionalLines.Append(readyLogLines[logIdx].Content)
+		}
+		analyzableLogLines[len(analyzableLogLines)-1].Content += additionalLines.String()
+		additionalLines.Reset()
+		linesToAppend = nil
+		linesToAppendLenSum = 0
+	}
 	for idx, logLine := range readyLogLines {
 		if logLine.LogLevel == pganalyze_collector.LogLineInformation_UNKNOWN {
 			if len(analyzableLogLines) > 0 {
@@ -211,27 +223,11 @@ func stitchLogLines(readyLogLines []state.LogLine) (analyzableLogLines []state.L
 				linesToAppendLenSum = linesToAppendLenSum + len(logLine.Content)
 			}
 		} else {
-			if linesToAppendLenSum > 0 {
-				b.Grow(linesToAppendLenSum)
-				for _, logIdx := range linesToAppend {
-					b.WriteString(readyLogLines[logIdx].Content)
-				}
-				analyzableLogLines[len(analyzableLogLines)-1].Content += b.String()
-				b.Reset()
-				linesToAppend = nil
-				linesToAppendLenSum = 0
-			}
+			flush()
 			analyzableLogLines = append(analyzableLogLines, logLine)
 		}
 	}
-	if linesToAppendLenSum > 0 {
-		b.Grow(linesToAppendLenSum)
-		for _, logIdx := range linesToAppend {
-			b.WriteString(readyLogLines[logIdx].Content)
-		}
-		analyzableLogLines[len(analyzableLogLines)-1].Content += b.String()
-		b.Reset()
-	}
+	flush()
 	return
 }
 
@@ -290,7 +286,7 @@ func AnalyzeStreamInGroups(logLines []state.LogLine, now time.Time, server *stat
 	//
 	// Since we already sorted by PID earlier, it is safe for us to concatenate lines before grouping. In fact,
 	// this is required for cases where unknown log lines don't have PIDs associated
-	stitchedLogLines := stitchLogLines(readyLogLines)
+	stitchedLogLines := stitchLogLines(readyLogLines, logger)
 
 	var analyzableLogLines []state.LogLine
 	for _, logLine := range stitchedLogLines {
