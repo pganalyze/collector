@@ -13,7 +13,7 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
-const stitchTestPrefix = "2018-03-11 20:00:02 UTC:1.1.1.1(2):a@b:[3]:LOG:  "
+const stitchTestPrefix = "2026-07-12 20:00:02 UTC:1.1.1.1(2):a@b:[3]:LOG:  "
 
 func parseStitchBuffer(input string) []state.LogLine {
 	reader := bufio.NewReader(strings.NewReader(input))
@@ -27,35 +27,36 @@ func parseStitchBuffer(input string) []state.LogLine {
 // A multi-line entry (e.g. an auto_explain plan) whose follow-on lines don't parse as
 // new log lines must be stitched back onto its primary line's Content, in order.
 func TestParseAndAnalyzeBufferStitchesMultiLine(t *testing.T) {
-	input := stitchTestPrefix + "duration: 1.000 ms  plan:\n" +
-		"  \"Node\": \"a\",\n" +
-		"  \"Node\": \"b\",\n" +
-		"  \"Node\": \"c\"\n"
+	multilineLog := `duration: 1.000 ms  plan:
+			"Node": "a",
+			"Node": "b",
+			"Node": "c"
+`
 
-	logLines := parseStitchBuffer(input)
+	logLines := parseStitchBuffer(stitchTestPrefix + multilineLog)
 
 	if len(logLines) != 1 {
 		t.Fatalf("expected 1 stitched log line, got %d", len(logLines))
 	}
-	want := "duration: 1.000 ms  plan:\n  \"Node\": \"a\",\n  \"Node\": \"b\",\n  \"Node\": \"c\"\n"
-	if logLines[0].Content != want {
-		t.Errorf("stitched content mismatch:\n got: %q\nwant: %q", logLines[0].Content, want)
+	if logLines[0].Content != multilineLog {
+		t.Errorf("stitched content mismatch:\n got: %q\nmultilineLog: %q", logLines[0].Content, multilineLog)
 	}
 }
 
-// A pathologically large multi-line entry (a runaway plan, or a log_line_prefix
-// mismatch that makes every line look like a continuation) must not grow the stitched
-// Content without bound; it is capped at maxAdditionalLinesBytes.
+// A multi-line entry that's larger than the cap when stitched together, typically a large JSON EXPLAIN plan,
+// must be bound by maxAdditionalLinesBytes.
 func TestParseAndAnalyzeBufferCapsRunawayStitch(t *testing.T) {
 	orig := maxAdditionalLinesBytes
 	maxAdditionalLinesBytes = 4096
 	defer func() { maxAdditionalLinesBytes = orig }()
 
+	primary := "duration: 1.000 ms  plan:\n"
+	additionalLine := strings.Repeat("x", 1000) + "\n"
+
 	var b strings.Builder
-	b.WriteString(stitchTestPrefix + "duration: 1.000 ms  plan:\n")
-	contLine := strings.Repeat("x", 1000) + "\n"
-	for i := 0; i < 200; i++ { // ~200 KB of continuation, far above the 4 KB cap
-		b.WriteString(contLine)
+	b.WriteString(stitchTestPrefix + primary)
+	for i := 0; i < 5; i++ { // ~5 KB of continuation, just over the 4 KB cap
+		b.WriteString(additionalLine)
 	}
 
 	logLines := parseStitchBuffer(b.String())
@@ -63,9 +64,9 @@ func TestParseAndAnalyzeBufferCapsRunawayStitch(t *testing.T) {
 	if len(logLines) != 1 {
 		t.Fatalf("expected 1 log line, got %d", len(logLines))
 	}
-	// Content should be bounded near the cap (primary line + up to the cap of
-	// continuation), not the full ~200 KB of input.
-	if got := len(logLines[0].Content); got > maxAdditionalLinesBytes+len(contLine) {
-		t.Errorf("expected stitched content capped near %d bytes, got %d", maxAdditionalLinesBytes, got)
+	// Content is the primary line plus the additional lines
+	maxContentBytes := len(primary) + maxAdditionalLinesBytes
+	if totalLogLineBytes := len(logLines[0].Content); totalLogLineBytes > maxContentBytes {
+		t.Errorf("expected stitched content capped at %d bytes, got %d", maxContentBytes, totalLogLineBytes)
 	}
 }

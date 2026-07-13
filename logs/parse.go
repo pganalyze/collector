@@ -462,8 +462,7 @@ func ParseAndAnalyzeBuffer(logStream LineReader, linesNewerThan time.Time, serve
 	}
 
 	// Continuation lines (lines that don't parse as a new log line) are stitched onto
-	// the previous kept line. We accumulate them in a strings.Builder and materialize
-	// once, so a single entry spanning many lines is O(n) rather than O(n^2) copies.
+	// the previous kept line.
 	var additionalLines strings.Builder
 	parentLine := -1
 	additionalLinesExceeded := false
