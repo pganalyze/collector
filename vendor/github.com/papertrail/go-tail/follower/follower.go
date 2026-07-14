@@ -40,16 +40,17 @@ type Config struct {
 }
 
 type Follower struct {
-	once     sync.Once
-	file     *os.File
-	filename string
-	lines    chan Line
-	err      error
-	config   Config
-	reader   *bufio.Reader
-	watcher  *fsnotify.Watcher
-	offset   int64
-	closeCh  chan struct{}
+	once      sync.Once
+	file      *os.File
+	filename  string
+	lines     chan Line
+	err       error
+	config    Config
+	reader    *bufio.Reader
+	watcher   *fsnotify.Watcher
+	offset    int64
+	closeCh   chan struct{}
+	closeOnce sync.Once
 }
 
 func New(filename string, config Config) (*Follower, error) {
@@ -57,7 +58,7 @@ func New(filename string, config Config) (*Follower, error) {
 		filename: filename,
 		lines:    make(chan Line),
 		config:   config,
-		closeCh:  make(chan struct{}, 1),
+		closeCh:  make(chan struct{}),
 	}
 
 	err := t.reopen()
@@ -79,10 +80,7 @@ func (t *Follower) Err() error {
 }
 
 func (t *Follower) Close() {
-	if t.file != nil {
-		t.file.Close()
-	}
-	t.closeCh <- struct{}{}
+	t.closeOnce.Do(func() { close(t.closeCh) })
 }
 
 func (t *Follower) run() {
@@ -152,7 +150,10 @@ func (t *Follower) follow() error {
 				break
 			}
 
-			t.sendLine(s, discarded)
+			if !t.sendLine(s, discarded) {
+				t.watcher.Remove(t.filename)
+				return nil
+			}
 		}
 
 		// we're now at EOF, so wait for changes
@@ -246,7 +247,16 @@ func (t *Follower) follow() error {
 
 func (t *Follower) rewatch() error {
 	t.watcher.Remove(t.filename)
-	if err := t.reopen(); err != nil {
+
+	// After a rename the new file may not exist yet, retry for up to 1 minute
+	var err error
+	for i := 0; i < 20; i++ {
+		if err = t.reopen(); err == nil || !os.IsNotExist(err) {
+			break
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	if err != nil {
 		return err
 	}
 
@@ -281,8 +291,13 @@ func (t *Follower) close(err error) {
 	close(t.lines)
 }
 
-func (t *Follower) sendLine(l []byte, d int) {
-	t.lines <- Line{l[:len(l)-1], d}
+func (t *Follower) sendLine(l []byte, d int) bool {
+	select {
+	case t.lines <- Line{l[:len(l)-1], d}:
+		return true
+	case <-t.closeCh:
+		return false
+	}
 }
 
 func (t *Follower) watchFileEvents(eventChan chan fsnotify.Event, errChan chan error) {

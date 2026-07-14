@@ -26,8 +26,8 @@ require (
 	github.com/shirou/gopsutil v3.21.11+incompatible
 	github.com/smartystreets/assertions v0.0.0-20160707190355-2063fd1cc7c9 // indirect
 	github.com/smartystreets/goconvey v0.0.0-20160704134950-4622128e06c7 // indirect
-	golang.org/x/crypto v0.49.0 // indirect
-	golang.org/x/net v0.52.0
+	golang.org/x/crypto v0.52.0 // indirect
+	golang.org/x/net v0.55.0
 	google.golang.org/api v0.249.0
 	google.golang.org/protobuf v1.36.11
 	gopkg.in/ini.v1 v1.62.0 // indirect
@@ -105,9 +105,9 @@ require (
 	go.opentelemetry.io/otel/sdk/metric v1.43.0 // indirect
 	golang.org/x/oauth2 v0.35.0 // indirect
 	golang.org/x/sync v0.20.0 // indirect
-	golang.org/x/sys v0.42.0 // indirect
-	golang.org/x/term v0.41.0 // indirect
-	golang.org/x/text v0.35.0 // indirect
+	golang.org/x/sys v0.45.0 // indirect
+	golang.org/x/term v0.43.0 // indirect
+	golang.org/x/text v0.37.0 // indirect
 	golang.org/x/time v0.13.0 // indirect
 	google.golang.org/genproto v0.0.0-20250908214217-97024824d090 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260401024825-9d38bb4040a9 // indirect
@@ -116,4 +116,4 @@ require (
 
 go 1.26
 
-replace github.com/papertrail/go-tail => github.com/pganalyze/go-tail v0.0.0-20260708205228-8fab800841f3
+replace github.com/papertrail/go-tail => github.com/pganalyze/go-tail v0.0.0-20260713192021-82ac8bcb98c1
