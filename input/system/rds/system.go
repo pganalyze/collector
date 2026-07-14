@@ -39,7 +39,15 @@ func GetSystemState(server *state.Server, logger *util.Logger) (system state.Sys
 		return
 	}
 
-	system.Info.ClusterID = util.StringPtrToString(instance.DBClusterIdentifier)
+	clusterID := util.StringPtrToString(instance.DBClusterIdentifier)
+	if clusterID != "" {
+		// Combine AWS account ID and cluster ID to support distinct server groups across accounts in an organization
+		arnParts := strings.Split(util.StringPtrToString(instance.DBInstanceArn), ":")
+		if len(arnParts) >= 5 && arnParts[4] != "" {
+			clusterID = arnParts[4] + "/" + clusterID
+		}
+	}
+	system.Info.ClusterID = clusterID
 
 	isAurora := util.StringPtrToString(instance.Engine) == "aurora-postgresql"
 
