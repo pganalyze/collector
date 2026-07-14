@@ -41,6 +41,7 @@ func GetSystemState(server *state.Server, logger *util.Logger) (system state.Sys
 
 	clusterID := util.StringPtrToString(instance.DBClusterIdentifier)
 	if clusterID != "" {
+		// Combine AWS Account ID with cluster ID to ensure distinct clusters across account boundaries in an organization
 		arnParts := strings.Split(util.StringPtrToString(instance.DBInstanceArn), ":")
 		if len(arnParts) >= 5 && arnParts[4] != "" {
 			clusterID = arnParts[4] + "/" + clusterID
