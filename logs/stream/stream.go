@@ -200,34 +200,33 @@ func handleLogAnalysis(analyzableLogLines []state.LogLine) ([]state.LogLine, []s
 }
 
 func stitchLogLines(readyLogLines []state.LogLine, logger *util.Logger) (analyzableLogLines []state.LogLine) {
-	var linesToAppend []int
-	var linesToAppendLenSum int
+	// Each regular line is held back as the stitch target for continuation
+	// lines (lines that don't parse as a new log line, marked as log level
+	// UNKNOWN), and only appended to logLines once the next regular line
+	// arrives (or at EOF).
+	var pending *state.LogLine
 	additionalLines := logs.NewStitchBuffer(logger)
-	flush := func() {
-		if linesToAppendLenSum == 0 {
-			return
-		}
-		additionalLines.Grow(linesToAppendLenSum)
-		for _, logIdx := range linesToAppend {
-			additionalLines.Append(readyLogLines[logIdx].Content)
-		}
-		analyzableLogLines[len(analyzableLogLines)-1].Content += additionalLines.String()
-		additionalLines.Reset()
-		linesToAppend = nil
-		linesToAppendLenSum = 0
-	}
-	for idx, logLine := range readyLogLines {
+
+	for _, logLine := range readyLogLines {
 		if logLine.LogLevel == pganalyze_collector.LogLineInformation_UNKNOWN {
-			if len(analyzableLogLines) > 0 {
-				linesToAppend = append(linesToAppend, idx)
-				linesToAppendLenSum = linesToAppendLenSum + len(logLine.Content)
+			if pending != nil {
+				additionalLines.Append(logLine.Content)
 			}
 		} else {
-			flush()
-			analyzableLogLines = append(analyzableLogLines, logLine)
+			if pending != nil {
+				pending.Content += additionalLines.String()
+				additionalLines.Reset()
+				analyzableLogLines = append(analyzableLogLines, *pending)
+			}
+			pending = &logLine
 		}
 	}
-	flush()
+
+	if pending != nil {
+		pending.Content += additionalLines.String()
+		analyzableLogLines = append(analyzableLogLines, *pending)
+	}
+
 	return
 }
 

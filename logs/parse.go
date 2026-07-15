@@ -455,17 +455,11 @@ func ParseAndAnalyzeBuffer(logStream LineReader, linesNewerThan time.Time, serve
 		return []state.LogLine{}, []state.PostgresQuerySample{}
 	}
 
-	// Continuation lines (lines that don't parse as a new log line) are stitched onto
-	// the previous kept line.
+	// Each regular line is held back as the stitch target for continuation
+	// lines (lines that don't parse as a new log line), and only appended to
+	// logLines once the next regular line arrives (or at EOF).
+	var pending *state.LogLine
 	additionalLines := NewStitchBuffer(logger)
-	parentLine := -1
-	flushAdditionalLines := func() {
-		if parentLine >= 0 && additionalLines.Len() > 0 {
-			logLines[parentLine].Content += additionalLines.String()
-		}
-		additionalLines.Reset()
-		parentLine = -1
-	}
 
 	for {
 		line, err := logStream.ReadString('\n')
@@ -485,14 +479,8 @@ func ParseAndAnalyzeBuffer(logStream LineReader, linesNewerThan time.Time, serve
 		if !ok {
 			// Assume that a parsing error in a follow-on line means that we actually
 			// got additional data for the previous line
-			if len(logLines) > 0 && logLine.Content != "" {
-				lastLine := len(logLines) - 1
-				if parentLine != lastLine {
-					// The last kept line changed since we last stitched; finalize it.
-					flushAdditionalLines()
-					parentLine = lastLine
-				}
-				logLines[lastLine].ByteEnd += int64(len(logLine.Content))
+			if pending != nil && logLine.Content != "" {
+				pending.ByteEnd += int64(len(logLine.Content))
 				additionalLines.Append(logLine.Content)
 			}
 			continue
@@ -531,12 +519,18 @@ func ParseAndAnalyzeBuffer(logStream LineReader, linesNewerThan time.Time, serve
 			continue
 		}
 
-		// Finalize the previous kept line's additional lines before this new
-		// line becomes the stitch target.
-		flushAdditionalLines()
-		logLines = append(logLines, logLine)
+		if pending != nil {
+			pending.Content += additionalLines.String()
+			additionalLines.Reset()
+			logLines = append(logLines, *pending)
+		}
+		pending = &logLine
 	}
-	flushAdditionalLines()
+
+	if pending != nil {
+		pending.Content += additionalLines.String()
+		logLines = append(logLines, *pending)
+	}
 
 	newLogLines, newSamples := AnalyzeLogLines(logLines)
 	return newLogLines, newSamples

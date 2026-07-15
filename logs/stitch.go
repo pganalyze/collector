@@ -26,12 +26,6 @@ func NewStitchBuffer(logger *util.Logger) *StitchBuffer {
 	return &StitchBuffer{logger: logger}
 }
 
-// Grow hints the expected total content size, bounded by the cap so a pathologically
-// long run of continuation lines can't trigger a large up-front allocation.
-func (s *StitchBuffer) Grow(n int) {
-	s.builder.Grow(min(n, MaxStitchedContentBytes))
-}
-
 // Append adds continuation content, dropping it (and warning once) if it would grow the
 // buffer past MaxStitchedContentBytes.
 func (s *StitchBuffer) Append(content string) {
