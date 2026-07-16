@@ -480,7 +480,6 @@ func ParseAndAnalyzeBuffer(logStream LineReader, linesNewerThan time.Time, serve
 			// Assume that a parsing error in a follow-on line means that we actually
 			// got additional data for the previous line
 			if pending != nil && logLine.Content != "" {
-				pending.ByteEnd += int64(len(logLine.Content))
 				additionalLines.Append(logLine.Content)
 			}
 			continue
@@ -520,6 +519,7 @@ func ParseAndAnalyzeBuffer(logStream LineReader, linesNewerThan time.Time, serve
 		}
 
 		if pending != nil {
+			pending.ByteEnd += int64(additionalLines.Len())
 			pending.Content += additionalLines.String()
 			additionalLines.Reset()
 			logLines = append(logLines, *pending)
@@ -528,6 +528,7 @@ func ParseAndAnalyzeBuffer(logStream LineReader, linesNewerThan time.Time, serve
 	}
 
 	if pending != nil {
+		pending.ByteEnd += int64(additionalLines.Len())
 		pending.Content += additionalLines.String()
 		logLines = append(logLines, *pending)
 	}
