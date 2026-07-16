@@ -10,16 +10,16 @@
     10MB, with any excess dropped and a warning logged
 * Track temporary file usage per database
   - Collects temp_files and temp_bytes from pg_stat_database
-* Track IO worker backends from Postgres 18+
+* Track IO worker backends for Postgres 18+
 * Report collector start time to the pganalyze server
 * Fix collector hang on config reload
   - Both the connect and reconnect logic could get stuck waiting on Go channels
     that were not ready, causing reload (SIGHUP) to hang
 * Fix schema collection ignore_schema_regexp filtering for large partitioned catalogs
-  - Previously the relation_stats and column_stats queries did not correctly
-    exclude catalog objects matched by the regexp
-  - Also significantly speeds up relation_stats collection on databases with a
-    very large pg_class
+  - Previously the column_stats query did not exclude catalog objects matched
+    by the regexp
+  - Also significantly speeds up relation_stats collection on databases with
+    many partitions
 * Prevent file and goroutine leaks during self-hosted log tailing
 * Helm chart: Allow passing deployment annotations
 * Update aws-sdk-go from v1 to v2
