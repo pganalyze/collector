@@ -3,7 +3,6 @@ package stream
 import (
 	"fmt"
 	"sort"
-	"strings"
 	"time"
 
 	"github.com/pganalyze/collector/logs"
@@ -200,38 +199,34 @@ func handleLogAnalysis(analyzableLogLines []state.LogLine) ([]state.LogLine, []s
 	return logLinesOut, querySamples
 }
 
-func stitchLogLines(readyLogLines []state.LogLine) (analyzableLogLines []state.LogLine) {
-	var linesToAppend []int
-	var linesToAppendLenSum int
-	var b strings.Builder
-	for idx, logLine := range readyLogLines {
+func stitchLogLines(readyLogLines []state.LogLine, logger *util.Logger) (analyzableLogLines []state.LogLine) {
+	// Each regular line is held back as the stitch target for continuation
+	// lines (lines that don't parse as a new log line, marked as log level
+	// UNKNOWN), and only appended to logLines once the next regular line
+	// arrives (or at EOF).
+	var pending *state.LogLine
+	additionalLines := logs.NewStitchBuffer(logger)
+
+	for _, logLine := range readyLogLines {
 		if logLine.LogLevel == pganalyze_collector.LogLineInformation_UNKNOWN {
-			if len(analyzableLogLines) > 0 {
-				linesToAppend = append(linesToAppend, idx)
-				linesToAppendLenSum = linesToAppendLenSum + len(logLine.Content)
+			if pending != nil {
+				additionalLines.Append(logLine.Content)
 			}
 		} else {
-			if linesToAppendLenSum > 0 {
-				b.Grow(linesToAppendLenSum)
-				for _, logIdx := range linesToAppend {
-					b.WriteString(readyLogLines[logIdx].Content)
-				}
-				analyzableLogLines[len(analyzableLogLines)-1].Content += b.String()
-				b.Reset()
-				linesToAppend = nil
-				linesToAppendLenSum = 0
+			if pending != nil {
+				pending.Content += additionalLines.String()
+				additionalLines.Reset()
+				analyzableLogLines = append(analyzableLogLines, *pending)
 			}
-			analyzableLogLines = append(analyzableLogLines, logLine)
+			pending = &logLine
 		}
 	}
-	if linesToAppendLenSum > 0 {
-		b.Grow(linesToAppendLenSum)
-		for _, logIdx := range linesToAppend {
-			b.WriteString(readyLogLines[logIdx].Content)
-		}
-		analyzableLogLines[len(analyzableLogLines)-1].Content += b.String()
-		b.Reset()
+
+	if pending != nil {
+		pending.Content += additionalLines.String()
+		analyzableLogLines = append(analyzableLogLines, *pending)
 	}
+
 	return
 }
 
@@ -290,7 +285,7 @@ func AnalyzeStreamInGroups(logLines []state.LogLine, now time.Time, server *stat
 	//
 	// Since we already sorted by PID earlier, it is safe for us to concatenate lines before grouping. In fact,
 	// this is required for cases where unknown log lines don't have PIDs associated
-	stitchedLogLines := stitchLogLines(readyLogLines)
+	stitchedLogLines := stitchLogLines(readyLogLines, logger)
 
 	var analyzableLogLines []state.LogLine
 	for _, logLine := range stitchedLogLines {

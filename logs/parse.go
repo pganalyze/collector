@@ -455,6 +455,12 @@ func ParseAndAnalyzeBuffer(logStream LineReader, linesNewerThan time.Time, serve
 		return []state.LogLine{}, []state.PostgresQuerySample{}
 	}
 
+	// Each regular line is held back as the stitch target for continuation
+	// lines (lines that don't parse as a new log line), and only appended to
+	// logLines once the next regular line arrives (or at EOF).
+	var pending *state.LogLine
+	additionalLines := NewStitchBuffer(logger)
+
 	for {
 		line, err := logStream.ReadString('\n')
 		byteStart := currentByteStart
@@ -473,9 +479,8 @@ func ParseAndAnalyzeBuffer(logStream LineReader, linesNewerThan time.Time, serve
 		if !ok {
 			// Assume that a parsing error in a follow-on line means that we actually
 			// got additional data for the previous line
-			if len(logLines) > 0 && logLine.Content != "" {
-				logLines[len(logLines)-1].Content += logLine.Content
-				logLines[len(logLines)-1].ByteEnd += int64(len(logLine.Content))
+			if pending != nil && logLine.Content != "" {
+				additionalLines.Append(logLine.Content)
 			}
 			continue
 		}
@@ -513,7 +518,19 @@ func ParseAndAnalyzeBuffer(logStream LineReader, linesNewerThan time.Time, serve
 			continue
 		}
 
-		logLines = append(logLines, logLine)
+		if pending != nil {
+			pending.ByteEnd += int64(additionalLines.Len())
+			pending.Content += additionalLines.String()
+			additionalLines.Reset()
+			logLines = append(logLines, *pending)
+		}
+		pending = &logLine
+	}
+
+	if pending != nil {
+		pending.ByteEnd += int64(additionalLines.Len())
+		pending.Content += additionalLines.String()
+		logLines = append(logLines, *pending)
 	}
 
 	newLogLines, newSamples := AnalyzeLogLines(logLines)
