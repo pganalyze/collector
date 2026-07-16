@@ -44,7 +44,7 @@ func GetSystemState(ctx context.Context, server *state.Server, logger *util.Logg
 	config := server.Config
 	dbHost := config.GetDbHost()
 	if config.SystemType == "amazon_rds" {
-		system = rds.GetSystemState(server, logger)
+		system = rds.GetSystemState(ctx, server, logger)
 	} else if config.SystemType == "google_cloudsql" {
 		system.Info.Type = state.GoogleCloudSQLSystem
 		server.SelfTest.MarkCollectionAspectNotAvailable(state.CollectionAspectSystemStats, "not available on this platform")

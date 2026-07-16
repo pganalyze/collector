@@ -34,7 +34,7 @@ func DownloadLogFiles(ctx context.Context, server *state.Server, opts state.Coll
 	var logFiles []state.LogFile
 	var samples []state.PostgresQuerySample
 
-	awsCfg, err := awsutil.GetAwsConfig(server.Config)
+	awsCfg, err := awsutil.GetAwsConfig(ctx, server.Config)
 	if err != nil {
 		err = fmt.Errorf("Error getting session: %s", err)
 		return server.LogPrevState, nil, nil, err
@@ -147,7 +147,7 @@ func getAwsDbInstanceID(ctx context.Context, config config.ServerConfig, awsCfg 
 		return "", errors.New(cachedError)
 	}
 
-	instance, err := awsutil.FindRdsInstance(config, awsCfg)
+	instance, err := awsutil.FindRdsInstance(ctx, config, awsCfg)
 	if err != nil {
 		err = fmt.Errorf("Error finding instance for cluster ID \"%s\": %s", config.AwsDbClusterID, err)
 		DescribeDBClustersErrorCache.Put(config.AwsDbClusterID, err.Error())

@@ -11,15 +11,11 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
 	"github.com/aws/aws-sdk-go-v2/service/rds"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
-	collectorConfig "github.com/pganalyze/collector/config"
+	"github.com/pganalyze/collector/config"
 )
 
 // GetAwsConfig returns an AWS config for the specified server configuration.
-func GetAwsConfig(cfg collectorConfig.ServerConfig) (aws.Config, error) {
-	return getAwsConfigWithContext(context.Background(), cfg)
-}
-
-func getAwsConfigWithContext(ctx context.Context, cfg collectorConfig.ServerConfig) (aws.Config, error) {
+func GetAwsConfig(ctx context.Context, cfg config.ServerConfig) (aws.Config, error) {
 	var loadOpts []func(*awsconfig.LoadOptions) error
 
 	loadOpts = append(loadOpts, awsconfig.WithRegion(cfg.AwsRegion))
@@ -65,7 +61,7 @@ func getAwsConfigWithContext(ctx context.Context, cfg collectorConfig.ServerConf
 }
 
 // NewRdsClient creates an RDS client with any custom endpoint from serverCfg applied.
-func NewRdsClient(awsCfg aws.Config, serverCfg collectorConfig.ServerConfig) *rds.Client {
+func NewRdsClient(awsCfg aws.Config, serverCfg config.ServerConfig) *rds.Client {
 	var opts []func(*rds.Options)
 	if serverCfg.AwsEndpointRdsURL != "" {
 		url := serverCfg.AwsEndpointRdsURL
@@ -79,7 +75,7 @@ func NewRdsClient(awsCfg aws.Config, serverCfg collectorConfig.ServerConfig) *rd
 }
 
 // NewCloudWatchClient creates a CloudWatch client with any custom endpoint from serverCfg applied.
-func NewCloudWatchClient(awsCfg aws.Config, serverCfg collectorConfig.ServerConfig) *cloudwatch.Client {
+func NewCloudWatchClient(awsCfg aws.Config, serverCfg config.ServerConfig) *cloudwatch.Client {
 	var opts []func(*cloudwatch.Options)
 	if serverCfg.AwsEndpointCloudwatchURL != "" {
 		url := serverCfg.AwsEndpointCloudwatchURL
@@ -93,7 +89,7 @@ func NewCloudWatchClient(awsCfg aws.Config, serverCfg collectorConfig.ServerConf
 }
 
 // NewCloudWatchLogsClient creates a CloudWatch Logs client with any custom endpoint from serverCfg applied.
-func NewCloudWatchLogsClient(awsCfg aws.Config, serverCfg collectorConfig.ServerConfig) *cloudwatchlogs.Client {
+func NewCloudWatchLogsClient(awsCfg aws.Config, serverCfg config.ServerConfig) *cloudwatchlogs.Client {
 	var opts []func(*cloudwatchlogs.Options)
 	if serverCfg.AwsEndpointCloudwatchLogsURL != "" {
 		url := serverCfg.AwsEndpointCloudwatchLogsURL

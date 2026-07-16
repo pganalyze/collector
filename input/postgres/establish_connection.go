@@ -45,7 +45,7 @@ func connectToDb(ctx context.Context, config config.ServerConfig, opts state.Col
 
 	driverName := "postgres"
 	if config.DbUseIamAuth {
-		driverName, iamParams, err = getIamConnectionParams(config)
+		driverName, iamParams, err = getIamConnectionParams(ctx, config)
 		if err != nil {
 			return nil, err
 		}

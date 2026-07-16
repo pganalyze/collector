@@ -60,11 +60,7 @@ func findRdsInstanceByHostAndPort(ctx context.Context, host string, port int, cl
 }
 
 // FindRdsInstance finds and returns an RDS DBInstance for the given server config.
-func FindRdsInstance(serverCfg config.ServerConfig, awsCfg aws.Config) (*rdstypes.DBInstance, error) {
-	return findRdsInstanceWithContext(context.Background(), serverCfg, awsCfg)
-}
-
-func findRdsInstanceWithContext(ctx context.Context, serverCfg config.ServerConfig, awsCfg aws.Config) (*rdstypes.DBInstance, error) {
+func FindRdsInstance(ctx context.Context, serverCfg config.ServerConfig, awsCfg aws.Config) (*rdstypes.DBInstance, error) {
 	client := NewRdsClient(awsCfg, serverCfg)
 
 	if serverCfg.AwsDbInstanceID != "" {
@@ -108,11 +104,7 @@ func findRdsInstanceWithContext(ctx context.Context, serverCfg config.ServerConf
 }
 
 // GetRdsParameter looks up a single named parameter from an RDS parameter group.
-func GetRdsParameter(group *rdstypes.DBParameterGroupStatus, name string, client *rds.Client) (*rdstypes.Parameter, error) {
-	return getRdsParameterWithContext(context.Background(), group, name, client)
-}
-
-func getRdsParameterWithContext(ctx context.Context, group *rdstypes.DBParameterGroupStatus, name string, client *rds.Client) (*rdstypes.Parameter, error) {
+func GetRdsParameter(ctx context.Context, group *rdstypes.DBParameterGroupStatus, name string, client *rds.Client) (*rdstypes.Parameter, error) {
 	params := &rds.DescribeDBParametersInput{
 		DBParameterGroupName: group.DBParameterGroupName,
 	}
@@ -153,20 +145,19 @@ func NewRdsCloudWatchReader(awsCfg aws.Config, serverCfg config.ServerConfig, lo
 }
 
 // GetRdsIntMetric gets an integer value from CloudWatch for the instance dimension.
-func (reader RdsCloudWatchReader) GetRdsIntMetric(metricName string, unit string) int64 {
-	return int64(reader.GetRdsFloatMetric(metricName, unit))
+func (reader RdsCloudWatchReader) GetRdsIntMetric(ctx context.Context, metricName string, unit string) int64 {
+	return int64(reader.GetRdsFloatMetric(ctx, metricName, unit))
 }
 
 // GetRdsFloatMetric gets a float value from CloudWatch for the instance dimension.
-func (reader RdsCloudWatchReader) GetRdsFloatMetric(metricName string, unit string) float64 {
-	return reader.getMetric(metricName, unit, "DBInstanceIdentifier", reader.instance)
+func (reader RdsCloudWatchReader) GetRdsFloatMetric(ctx context.Context, metricName string, unit string) float64 {
+	return reader.getMetric(ctx, metricName, unit, "DBInstanceIdentifier", reader.instance)
 }
 
 // GetRdsClusterIntMetric gets an integer value from CloudWatch using the cluster dimension.
 // Uses a 3-hour lookback window since Aurora volume metrics like VolumeBytesUsed are
 // reported infrequently (not continuously). Returns 0 if no datapoints are available.
-func (reader RdsCloudWatchReader) GetRdsClusterIntMetric(metricName string, unit string) int64 {
-	ctx := context.Background()
+func (reader RdsCloudWatchReader) GetRdsClusterIntMetric(ctx context.Context, metricName string, unit string) int64 {
 	resp, err := reader.svc.GetMetricStatistics(ctx, &cloudwatch.GetMetricStatisticsInput{
 		EndTime:    aws.Time(time.Now()),
 		MetricName: aws.String(metricName),
@@ -197,8 +188,7 @@ func (reader RdsCloudWatchReader) GetRdsClusterIntMetric(metricName string, unit
 	return 0
 }
 
-func (reader RdsCloudWatchReader) getMetric(metricName string, unit string, dimensionName string, dimensionValue string) float64 {
-	ctx := context.Background()
+func (reader RdsCloudWatchReader) getMetric(ctx context.Context, metricName string, unit string, dimensionName string, dimensionValue string) float64 {
 	resp, err := reader.svc.GetMetricStatistics(ctx, &cloudwatch.GetMetricStatisticsInput{
 		EndTime:    aws.Time(time.Now()),
 		MetricName: aws.String(metricName),
