@@ -9,8 +9,8 @@ import (
 
 	"cloud.google.com/go/alloydbconn"
 	"cloud.google.com/go/cloudsqlconn"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/rds/rdsutils"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	rdsauth "github.com/aws/aws-sdk-go-v2/feature/rds/auth"
 	"github.com/pganalyze/collector/config"
 	"github.com/pganalyze/collector/util/awsutil"
 	"github.com/pganalyze/collector/util/pgxdriver"
@@ -23,20 +23,21 @@ type iamConnectionParams struct {
 	sslmodeOverride  string
 }
 
-func getIamConnectionParams(config config.ServerConfig) (driverName string, iamParams iamConnectionParams, err error) {
+func getIamConnectionParams(ctx context.Context, config config.ServerConfig) (driverName string, iamParams iamConnectionParams, err error) {
 	switch config.SystemType {
 	case "amazon_rds":
-		var sess *session.Session
-		sess, err = awsutil.GetAwsSession(config)
+		var awsCfg aws.Config
+		awsCfg, err = awsutil.GetAwsConfig(ctx, config)
 		if err != nil {
 			return
 		}
 		var dbToken string
-		dbToken, err = rdsutils.BuildAuthToken(
+		dbToken, err = rdsauth.BuildAuthToken(
+			ctx,
 			fmt.Sprintf("%s:%d", config.GetDbHost(), config.GetDbPortOrDefault()),
 			config.AwsRegion,
 			config.GetDbUsername(),
-			sess.Config.Credentials,
+			awsCfg.Credentials,
 		)
 		if err != nil {
 			return

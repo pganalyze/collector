@@ -1,111 +1,119 @@
 package awsutil
 
 import (
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
-	"github.com/aws/aws-sdk-go/aws/defaults"
-	"github.com/aws/aws-sdk-go/aws/endpoints"
-	"github.com/aws/aws-sdk-go/aws/session"
+	"context"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
+	awsconfig "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/credentials/ec2rolecreds"
+	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
+	"github.com/aws/aws-sdk-go-v2/feature/ec2/imds"
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatch"
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
+	"github.com/aws/aws-sdk-go-v2/service/ec2"
+	"github.com/aws/aws-sdk-go-v2/service/rds"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/pganalyze/collector/config"
 )
 
-// GetAwsSession - Returns an AWS session for the specified server cfguration
-func GetAwsSession(cfg config.ServerConfig) (*session.Session, error) {
-	var providers []credentials.Provider
+// GetAwsConfig returns an AWS config for the specified server configuration.
+func GetAwsConfig(ctx context.Context, cfg config.ServerConfig) (aws.Config, error) {
+	var loadOpts []func(*awsconfig.LoadOptions) error
 
-	customResolver := func(service, region string, optFns ...func(*endpoints.Options)) (endpoints.ResolvedEndpoint, error) {
-		if service == endpoints.RdsServiceID && cfg.AwsEndpointRdsURL != "" {
-			return endpoints.ResolvedEndpoint{
+	loadOpts = append(loadOpts, awsconfig.WithRegion(cfg.AwsRegion))
+
+	// TODO: Global endpoint resolvers are deprecated and this should be migrated to service-specific
+	// endpoint resolution, see https://docs.aws.amazon.com/sdk-for-go/v2/developer-guide/configure-endpoints.html#migration
+	customResolver := aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...interface{}) (aws.Endpoint, error) {
+		if service == rds.ServiceID && cfg.AwsEndpointRdsURL != "" {
+			return aws.Endpoint{
 				URL:           cfg.AwsEndpointRdsURL,
 				SigningRegion: cfg.AwsEndpointSigningRegion,
 			}, nil
 		}
-		if service == endpoints.Ec2ServiceID && cfg.AwsEndpointEc2URL != "" {
-			return endpoints.ResolvedEndpoint{
+		if service == ec2.ServiceID && cfg.AwsEndpointEc2URL != "" {
+			return aws.Endpoint{
 				URL:           cfg.AwsEndpointEc2URL,
 				SigningRegion: cfg.AwsEndpointSigningRegion,
 			}, nil
 		}
-		if service == endpoints.MonitoringServiceID && cfg.AwsEndpointCloudwatchURL != "" {
-			return endpoints.ResolvedEndpoint{
+		if service == cloudwatch.ServiceID && cfg.AwsEndpointCloudwatchURL != "" {
+			return aws.Endpoint{
 				URL:           cfg.AwsEndpointCloudwatchURL,
 				SigningRegion: cfg.AwsEndpointSigningRegion,
 			}, nil
 		}
-		if service == endpoints.LogsServiceID && cfg.AwsEndpointCloudwatchLogsURL != "" {
-			return endpoints.ResolvedEndpoint{
+		if service == cloudwatchlogs.ServiceID && cfg.AwsEndpointCloudwatchLogsURL != "" {
+			return aws.Endpoint{
 				URL:           cfg.AwsEndpointCloudwatchLogsURL,
 				SigningRegion: cfg.AwsEndpointSigningRegion,
 			}, nil
 		}
-
-		return endpoints.DefaultResolver().EndpointFor(service, region, optFns...)
-	}
-
-	if cfg.AwsAccessKeyID != "" {
-		providers = append(providers, &credentials.StaticProvider{
-			Value: credentials.Value{
-				AccessKeyID:     cfg.AwsAccessKeyID,
-				SecretAccessKey: cfg.AwsSecretAccessKey,
-				SessionToken:    "",
-			},
-		})
-	}
-
-	// add default providers
-	providers = append(providers, &credentials.EnvProvider{})
-	providers = append(providers, &credentials.SharedCredentialsProvider{Filename: "", Profile: ""})
-
-	// add the metadata service
-	def := defaults.Get()
-	def.Config.HTTPClient = config.CreateEC2IMDSHTTPClient(cfg)
-	def.Config.MaxRetries = aws.Int(2)
-	providers = append(providers, defaults.RemoteCredProvider(*def.Config, def.Handlers))
-
-	creds := credentials.NewChainCredentials(providers)
-
-	if cfg.AwsAssumeRole != "" || (cfg.AwsWebIdentityTokenFile != "" && cfg.AwsRoleArn != "") {
-		sess, err := session.NewSession(&aws.Config{
-			Credentials:                   creds,
-			CredentialsChainVerboseErrors: aws.Bool(true),
-			Region:                        aws.String(cfg.AwsRegion),
-			HTTPClient:                    cfg.HTTPClient,
-			EndpointResolver:              endpoints.ResolverFunc(customResolver),
-		})
-		if err != nil {
-			return nil, err
-		}
-		if cfg.AwsWebIdentityTokenFile != "" && cfg.AwsRoleArn != "" {
-			creds = stscreds.NewWebIdentityCredentials(sess, cfg.AwsRoleArn, "", cfg.AwsWebIdentityTokenFile)
-			if cfg.AwsAssumeRole != "" {
-				sess, err := session.NewSession(&aws.Config{
-					Credentials:                   creds,
-					CredentialsChainVerboseErrors: aws.Bool(true),
-					Region:                        aws.String(cfg.AwsRegion),
-					HTTPClient:                    cfg.HTTPClient,
-					EndpointResolver:              endpoints.ResolverFunc(customResolver),
-				})
-				if err != nil {
-					return nil, err
-				}
-				creds = stscreds.NewCredentials(sess, cfg.AwsAssumeRole)
-			}
-		} else if cfg.AwsAssumeRole != "" {
-			creds = stscreds.NewCredentials(sess, cfg.AwsAssumeRole)
-		}
-	}
-
-	return session.NewSession(&aws.Config{
-		Credentials:                   creds,
-		CredentialsChainVerboseErrors: aws.Bool(true),
-		Region:                        aws.String(cfg.AwsRegion),
-		HTTPClient:                    cfg.HTTPClient,
-		EndpointResolver:              endpoints.ResolverFunc(customResolver),
+		return aws.Endpoint{}, &aws.EndpointNotFoundError{}
 	})
+
+	loadOpts = append(loadOpts, awsconfig.WithEndpointResolverWithOptions(customResolver))
+	if cfg.HTTPClient != nil {
+		loadOpts = append(loadOpts, awsconfig.WithHTTPClient(cfg.HTTPClient))
+	}
+
+	// Use a dedicated HTTP client with a short timeout for EC2 instance role
+	// credential lookups, so the collector fails fast when not running on EC2
+	// (instead of going through the general-purpose HTTP client above)
+	loadOpts = append(loadOpts, awsconfig.WithEC2RoleCredentialOptions(func(o *ec2rolecreds.Options) {
+		o.Client = imds.New(imds.Options{
+			HTTPClient: config.CreateEC2IMDSHTTPClient(cfg),
+		})
+	}))
+
+	// Static credentials take precedence when fully configured; otherwise the
+	// default chain (env vars, shared credentials file, EC2 IMDS) is used
+	if cfg.AwsAccessKeyID != "" && cfg.AwsSecretAccessKey != "" {
+		loadOpts = append(loadOpts, awsconfig.WithCredentialsProvider(
+			credentials.NewStaticCredentialsProvider(cfg.AwsAccessKeyID, cfg.AwsSecretAccessKey, ""),
+		))
+	}
+
+	baseCfg, err := awsconfig.LoadDefaultConfig(ctx, loadOpts...)
+	if err != nil {
+		return aws.Config{}, err
+	}
+
+	if cfg.AwsWebIdentityTokenFile != "" && cfg.AwsRoleArn != "" {
+		stsClient := sts.NewFromConfig(baseCfg)
+		webIdProvider := stscreds.NewWebIdentityRoleProvider(
+			stsClient,
+			cfg.AwsRoleArn,
+			stscreds.IdentityTokenFile(cfg.AwsWebIdentityTokenFile),
+		)
+		baseCfg.Credentials = aws.NewCredentialsCache(webIdProvider)
+
+		if cfg.AwsAssumeRole != "" {
+			stsClient2 := sts.NewFromConfig(baseCfg)
+			assumeRoleProvider := stscreds.NewAssumeRoleProvider(stsClient2, cfg.AwsAssumeRole)
+			baseCfg.Credentials = aws.NewCredentialsCache(assumeRoleProvider)
+		}
+	} else if cfg.AwsAssumeRole != "" {
+		stsClient := sts.NewFromConfig(baseCfg)
+		assumeRoleProvider := stscreds.NewAssumeRoleProvider(stsClient, cfg.AwsAssumeRole)
+		baseCfg.Credentials = aws.NewCredentialsCache(assumeRoleProvider)
+	}
+
+	return baseCfg, nil
 }
 
-//sess.Handlers.Send.PushFront(func(r *request.Request) {
-// Log every request made and its payload
-//  fmt.Printf("Request: %s/%s, Payload: %s\n", r.ClientInfo.ServiceName, r.Operation, r.Params)
-//})
+// NewRdsClient creates an RDS client
+func NewRdsClient(awsCfg aws.Config, serverCfg config.ServerConfig) *rds.Client {
+	return rds.NewFromConfig(awsCfg)
+}
+
+// NewCloudWatchClient creates a CloudWatch client
+func NewCloudWatchClient(awsCfg aws.Config, serverCfg config.ServerConfig) *cloudwatch.Client {
+	return cloudwatch.NewFromConfig(awsCfg)
+}
+
+// NewCloudWatchLogsClient creates a CloudWatch Logs client
+func NewCloudWatchLogsClient(awsCfg aws.Config, serverCfg config.ServerConfig) *cloudwatchlogs.Client {
+	return cloudwatchlogs.NewFromConfig(awsCfg)
+}
