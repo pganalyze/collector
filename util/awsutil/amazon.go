@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
+	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/rds"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/pganalyze/collector/config"
@@ -20,6 +21,37 @@ func GetAwsConfig(ctx context.Context, cfg config.ServerConfig) (aws.Config, err
 
 	loadOpts = append(loadOpts, awsconfig.WithRegion(cfg.AwsRegion))
 
+	// TODO: Global endpoint resolvers are deprecated and this should be migrated to service-specific
+	// endpoint resolution, see https://docs.aws.amazon.com/sdk-for-go/v2/developer-guide/configure-endpoints.html#migration
+	customResolver := aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...interface{}) (aws.Endpoint, error) {
+		if service == rds.ServiceID && cfg.AwsEndpointRdsURL != "" {
+			return aws.Endpoint{
+				URL:           cfg.AwsEndpointRdsURL,
+				SigningRegion: cfg.AwsEndpointSigningRegion,
+			}, nil
+		}
+		if service == ec2.ServiceID && cfg.AwsEndpointEc2URL != "" {
+			return aws.Endpoint{
+				URL:           cfg.AwsEndpointEc2URL,
+				SigningRegion: cfg.AwsEndpointSigningRegion,
+			}, nil
+		}
+		if service == cloudwatch.ServiceID && cfg.AwsEndpointCloudwatchURL != "" {
+			return aws.Endpoint{
+				URL:           cfg.AwsEndpointCloudwatchURL,
+				SigningRegion: cfg.AwsEndpointSigningRegion,
+			}, nil
+		}
+		if service == cloudwatchlogs.ServiceID && cfg.AwsEndpointCloudwatchLogsURL != "" {
+			return aws.Endpoint{
+				URL:           cfg.AwsEndpointCloudwatchLogsURL,
+				SigningRegion: cfg.AwsEndpointSigningRegion,
+			}, nil
+		}
+		return aws.Endpoint{}, &aws.EndpointNotFoundError{}
+	})
+
+	loadOpts = append(loadOpts, awsconfig.WithEndpointResolverWithOptions(customResolver))
 	if cfg.HTTPClient != nil {
 		loadOpts = append(loadOpts, awsconfig.WithHTTPClient(cfg.HTTPClient))
 	}
@@ -60,44 +92,17 @@ func GetAwsConfig(ctx context.Context, cfg config.ServerConfig) (aws.Config, err
 	return baseCfg, nil
 }
 
-// NewRdsClient creates an RDS client with any custom endpoint from serverCfg applied.
+// NewRdsClient creates an RDS client
 func NewRdsClient(awsCfg aws.Config, serverCfg config.ServerConfig) *rds.Client {
-	var opts []func(*rds.Options)
-	if serverCfg.AwsEndpointRdsURL != "" {
-		url := serverCfg.AwsEndpointRdsURL
-		opts = append(opts, func(o *rds.Options) { o.BaseEndpoint = &url })
-	}
-	if serverCfg.AwsEndpointSigningRegion != "" {
-		region := serverCfg.AwsEndpointSigningRegion
-		opts = append(opts, func(o *rds.Options) { o.Region = region })
-	}
-	return rds.NewFromConfig(awsCfg, opts...)
+	return rds.NewFromConfig(awsCfg)
 }
 
-// NewCloudWatchClient creates a CloudWatch client with any custom endpoint from serverCfg applied.
+// NewCloudWatchClient creates a CloudWatch client
 func NewCloudWatchClient(awsCfg aws.Config, serverCfg config.ServerConfig) *cloudwatch.Client {
-	var opts []func(*cloudwatch.Options)
-	if serverCfg.AwsEndpointCloudwatchURL != "" {
-		url := serverCfg.AwsEndpointCloudwatchURL
-		opts = append(opts, func(o *cloudwatch.Options) { o.BaseEndpoint = &url })
-	}
-	if serverCfg.AwsEndpointSigningRegion != "" {
-		region := serverCfg.AwsEndpointSigningRegion
-		opts = append(opts, func(o *cloudwatch.Options) { o.Region = region })
-	}
-	return cloudwatch.NewFromConfig(awsCfg, opts...)
+	return cloudwatch.NewFromConfig(awsCfg)
 }
 
-// NewCloudWatchLogsClient creates a CloudWatch Logs client with any custom endpoint from serverCfg applied.
+// NewCloudWatchLogsClient creates a CloudWatch Logs client
 func NewCloudWatchLogsClient(awsCfg aws.Config, serverCfg config.ServerConfig) *cloudwatchlogs.Client {
-	var opts []func(*cloudwatchlogs.Options)
-	if serverCfg.AwsEndpointCloudwatchLogsURL != "" {
-		url := serverCfg.AwsEndpointCloudwatchLogsURL
-		opts = append(opts, func(o *cloudwatchlogs.Options) { o.BaseEndpoint = &url })
-	}
-	if serverCfg.AwsEndpointSigningRegion != "" {
-		region := serverCfg.AwsEndpointSigningRegion
-		opts = append(opts, func(o *cloudwatchlogs.Options) { o.Region = region })
-	}
-	return cloudwatchlogs.NewFromConfig(awsCfg, opts...)
+	return cloudwatchlogs.NewFromConfig(awsCfg)
 }
