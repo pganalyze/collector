@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.71.0      2026-07-16
+
+* Fix unbounded memory growth when stitching multi-line log events
+  - Log entries spanning many lines, such as large auto_explain JSON plans, or a
+    log_line_prefix mismatch that makes every line look like a continuation,
+    previously caused excessive memory allocation and could OOM the collector
+  - The continuation content stitched onto a single log entry is now capped at
+    10MB, with any excess dropped and a warning logged
+* Track temporary file usage per database
+  - Collects temp_files and temp_bytes from pg_stat_database
+* Track IO worker backends for Postgres 18+
+* Report collector start time to the pganalyze server
+* Fix collector hang on config reload
+  - Both the connect and reconnect logic could get stuck waiting on Go channels
+    that were not ready, causing reload (SIGHUP) to hang
+* Fix schema collection ignore_schema_regexp filtering for large partitioned catalogs
+  - Previously the column_stats query did not exclude catalog objects matched
+    by the regexp
+  - Also significantly speeds up relation_stats collection on databases with
+    many partitions
+* Prevent file and goroutine leaks during self-hosted log tailing
+* Helm chart: Allow passing deployment annotations
+* Update aws-sdk-go from v1 to v2
+* Fix RPM installation on FIPS-enabled systems by using sha256 payload digests
+* Update Go version to 1.26
+
+
 ## 0.70.2      2026-05-06
 
 * Aurora: Improve disk size reporting
