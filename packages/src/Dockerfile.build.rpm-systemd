@@ -1,22 +1,14 @@
-FROM amazonlinux:2
+FROM amazonlinux:2 AS build
 
 ARG TARGETARCH
 ENV GOPATH /go
 ENV GOVERSION 1.26.3
 ENV CODE_DIR $GOPATH/src/github.com/pganalyze/collector
 ENV PATH $PATH:/usr/local/go/bin
-ENV ROOT_DIR /root
 ENV SOURCE_DIR /source
 
-# Packages required for both building and packaging
-RUN yum install -y centos-release-scl scl-utils tar make git rpmdevtools gcc
-
-# This uses Ruby 3.0 since 2.7 (which still used for Debian builds) does not work with fpm: https://github.com/jordansissel/fpm/issues/2048#issuecomment-1972196104
-RUN amazon-linux-extras install ruby3.0
-RUN yum install -y ruby-devel
-
-# FPM
-RUN gem install fpm -v 1.14.1
+# Packages required for building
+RUN yum install -y tar make git gcc
 
 # Golang
 RUN curl -o go.tar.gz -sSL "https://go.dev/dl/go${GOVERSION}.linux-${TARGETARCH}.tar.gz"
@@ -50,10 +42,31 @@ RUN cp $CODE_DIR/contrib/systemd/pganalyze-collector.service $SOURCE_DIR/etc/sys
 RUN mkdir -p $SOURCE_DIR/usr/share/pganalyze-collector/sslrootcert
 RUN cp $CODE_DIR/contrib/sslrootcert/* $SOURCE_DIR/usr/share/pganalyze-collector/sslrootcert
 
+# RPM 4.11 in Amazon Linux 2 does not emit SHA256 payload digest headers. Use
+# AL2 only for compiling the binaries, and assemble the RPM with AL2023 which uses
+# the newer RPM 4.16 that emits SHA256, but remains installable on older systems.
+FROM amazonlinux:2023 AS package
+
+ARG VERSION
+ENV GOPATH /go
+ENV CODE_DIR $GOPATH/src/github.com/pganalyze/collector
+ENV ROOT_DIR /root
+ENV SOURCE_DIR /source
+ENV NAME pganalyze-collector
+
+RUN dnf install -y ruby3.2 ruby3.2-devel gcc make rpm-build tar gzip xz
+
+# FPM
+RUN ruby3.2-gem install fpm -v 1.17.0
+
+COPY --from=build $SOURCE_DIR $SOURCE_DIR
+COPY --from=build $CODE_DIR/packages $CODE_DIR/packages
+
 # Build the package
 WORKDIR $ROOT_DIR
+# Use xz payload compression so the RPM remains installable on Amazon Linux 2 / RPM 4.11.
 RUN fpm \
-  -n $NAME -v ${VERSION} -t rpm --rpm-os linux \
+  -n $NAME -v ${VERSION} -t rpm --rpm-os linux --rpm-compression xz \
   --config-files /etc/pganalyze-collector.conf \
   --after-install $CODE_DIR/packages/src/rpm-systemd/post.sh \
   --before-remove $CODE_DIR/packages/src/rpm-systemd/preun.sh \
