@@ -1,8 +1,13 @@
 # Changelog
 
-## 0.71.0      2026-07-xx
+## 0.71.0      2026-07-16
 
-* TODO: add PR 835 (fix unbound memory in multi-line log stitching)
+* Fix unbounded memory growth when stitching multi-line log events
+  - Log entries spanning many lines, such as large auto_explain JSON plans, or a
+    log_line_prefix mismatch that makes every line look like a continuation,
+    previously caused excessive memory allocation and could OOM the collector
+  - The continuation content stitched onto a single log entry is now capped at
+    10MB, with any excess dropped and a warning logged
 * Track temporary file usage per database
   - Collects temp_files and temp_bytes from pg_stat_database
 * Track IO worker backends from Postgres 18+
@@ -17,8 +22,8 @@
     very large pg_class
 * Prevent file and goroutine leaks during self-hosted log tailing
 * Helm chart: Allow passing deployment annotations
-* TODO: add PR 825 (aws-sdk-go-v2)
-* TODO: add PR 827 (package RPMs on rocky8 for sha256 payload digest)
+* Update aws-sdk-go from v1 to v2
+* Fix RPM installation on FIPS-enabled systems by using sha256 payload digests
 * Update Go version to 1.26
 
 
