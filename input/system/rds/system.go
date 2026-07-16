@@ -77,14 +77,12 @@ func GetSystemState(ctx context.Context, server *state.Server, logger *util.Logg
 
 	system.Info.ResourceTags = tags
 
-	// EnabledCloudwatchLogsExports is []string in the v2 SDK (not []*string)
 	for _, exportName := range instance.EnabledCloudwatchLogsExports {
 		if exportName == "postgresql" {
 			system.Info.AmazonRds.PostgresLogExport = true
 		}
 	}
 
-	// DBParameterGroups is []DBParameterGroupStatus (values) in the v2 SDK
 	group := &instance.DBParameterGroups[0]
 
 	pgssParam, err := awsutil.GetRdsParameter(ctx, group, "shared_preload_libraries", rdsSvc)
@@ -273,7 +271,6 @@ func GetSystemState(ctx context.Context, server *state.Server, logger *util.Logg
 				TotalBytes: AuroraMaxStorage,
 			}
 		} else if instance.AllocatedStorage != nil {
-			// AllocatedStorage is *int32 in the v2 SDK (was *int64)
 			bytesTotal := int64(util.Int32PtrToInt(instance.AllocatedStorage)) * 1024 * 1024 * 1024
 			bytesFree := cloudWatchReader.GetRdsIntMetric(ctx, "FreeStorageSpace", "Bytes")
 			system.DiskPartitions = make(state.DiskPartitionMap)
