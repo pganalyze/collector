@@ -6,7 +6,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/credentials/ec2rolecreds"
 	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
+	"github.com/aws/aws-sdk-go-v2/feature/ec2/imds"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
@@ -56,9 +58,18 @@ func GetAwsConfig(ctx context.Context, cfg config.ServerConfig) (aws.Config, err
 		loadOpts = append(loadOpts, awsconfig.WithHTTPClient(cfg.HTTPClient))
 	}
 
-	// Static credentials take precedence when configured; otherwise the default
-	// chain (env vars, shared credentials file, EC2 IMDS) is used automatically.
-	if cfg.AwsAccessKeyID != "" {
+	// Use a dedicated HTTP client with a short timeout for EC2 instance role
+	// credential lookups, so the collector fails fast when not running on EC2
+	// (instead of going through the general-purpose HTTP client above)
+	loadOpts = append(loadOpts, awsconfig.WithEC2RoleCredentialOptions(func(o *ec2rolecreds.Options) {
+		o.Client = imds.New(imds.Options{
+			HTTPClient: config.CreateEC2IMDSHTTPClient(cfg),
+		})
+	}))
+
+	// Static credentials take precedence when fully configured; otherwise the
+	// default chain (env vars, shared credentials file, EC2 IMDS) is used
+	if cfg.AwsAccessKeyID != "" && cfg.AwsSecretAccessKey != "" {
 		loadOpts = append(loadOpts, awsconfig.WithCredentialsProvider(
 			credentials.NewStaticCredentialsProvider(cfg.AwsAccessKeyID, cfg.AwsSecretAccessKey, ""),
 		))
