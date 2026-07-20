@@ -206,12 +206,16 @@ func handleOtlpLogsRequest(logsData *otlpLogs.LogsData, servers []*state.Server,
 					} else {
 						rejectedLogRecords++
 					}
-				} else if l.Body.GetStringValue() != "" {
+				} else if body := l.Body.GetStringValue(); body != "" {
 					// Plain log message (goes through log transformer which handles per-server routing)
 					warnAboutMultipleServers(servers, warnedAboutMultipleServers, prefixedLogger)
-					item := SelfHostedLogStreamItem{}
-					item.Line = l.Body.GetStringValue()
-					item.OccurredAt = time.Unix(0, int64(l.TimeUnixNano))
+					item, ok := parseSyslogLine(body)
+					if !ok {
+						item.Line = body
+					}
+					if item.OccurredAt.IsZero() {
+						item.OccurredAt = time.Unix(0, int64(l.TimeUnixNano))
+					}
 					rawLogStream <- item
 				} else {
 					rejectedLogRecords++
