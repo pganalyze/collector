@@ -1,6 +1,8 @@
 package selfhosted
 
 import (
+	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -44,6 +46,14 @@ func makeOtelLogsHandler(servers []*state.Server, rawLogStream chan<- SelfHosted
 			return
 		}
 
+		b, err = decodeRequestBody(b, r.Header.Get("Content-Encoding"))
+		if err != nil {
+			prefixedLogger.PrintError("OTel log server could not decode request body: %s", err)
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("Could not decode request body"))
+			return
+		}
+
 		var resp []byte
 		contentType := r.Header.Get("Content-Type")
 		switch contentType {
@@ -69,6 +79,30 @@ func makeOtelLogsHandler(servers []*state.Server, rawLogStream chan<- SelfHosted
 		w.Header().Set("Content-Type", contentType)
 		w.Write(resp)
 	}
+}
+
+func decodeRequestBody(b []byte, contentEncoding string) ([]byte, error) {
+	switch contentEncoding {
+	case "gzip":
+		return gunzip(b)
+	case "", "identity":
+		// Some exporters gzip without setting Content-Encoding; valid OTLP never starts with the gzip magic bytes.
+		if len(b) >= 2 && b[0] == 0x1f && b[1] == 0x8b {
+			return gunzip(b)
+		}
+		return b, nil
+	default:
+		return nil, fmt.Errorf("unsupported Content-Encoding %q", contentEncoding)
+	}
+}
+
+func gunzip(b []byte) ([]byte, error) {
+	gz, err := gzip.NewReader(bytes.NewReader(b))
+	if err != nil {
+		return nil, err
+	}
+	defer gz.Close()
+	return io.ReadAll(gz)
 }
 
 func handleOtlpLogsRequestProtobuf(b []byte, servers []*state.Server, rawLogStream chan<- SelfHostedLogStreamItem, parsedLogStream chan state.ParsedLogStreamItem, prefixedLogger *util.Logger, veryVerbose bool, warnedAboutMultipleServers *bool) (resp []byte, err error) {
