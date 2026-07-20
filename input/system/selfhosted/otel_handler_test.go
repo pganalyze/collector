@@ -2,6 +2,7 @@ package selfhosted
 
 import (
 	"bytes"
+	"compress/gzip"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -175,6 +176,7 @@ func TestOtelHandlerHTTPEndpoint(t *testing.T) {
 	tests := []struct {
 		name               string
 		contentType        string
+		contentEncoding    string
 		body               []byte
 		expectStatus       int
 		expectErrorMessage string
@@ -190,6 +192,33 @@ func TestOtelHandlerHTTPEndpoint(t *testing.T) {
 			contentType:  "application/json",
 			body:         mustMarshalProtoJSON(t, makeJsonlogLogsData()),
 			expectStatus: http.StatusOK,
+		},
+		{
+			name:            "gzip-compressed protobuf request",
+			contentType:     "application/x-protobuf",
+			contentEncoding: "gzip",
+			body:            mustGzip(t, mustMarshalProto(t, makeJsonlogLogsData())),
+			expectStatus:    http.StatusOK,
+		},
+		{
+			name:            "gzip-compressed json request",
+			contentType:     "application/json",
+			contentEncoding: "gzip",
+			body:            mustGzip(t, mustMarshalProtoJSON(t, makeJsonlogLogsData())),
+			expectStatus:    http.StatusOK,
+		},
+		{
+			name:         "gzip body without Content-Encoding header",
+			contentType:  "application/x-protobuf",
+			body:         mustGzip(t, mustMarshalProto(t, makeJsonlogLogsData())),
+			expectStatus: http.StatusOK,
+		},
+		{
+			name:            "unsupported Content-Encoding",
+			contentType:     "application/x-protobuf",
+			contentEncoding: "br",
+			body:            mustMarshalProto(t, makeJsonlogLogsData()),
+			expectStatus:    http.StatusBadRequest,
 		},
 		{
 			name:         "unsupported content type",
@@ -223,6 +252,9 @@ func TestOtelHandlerHTTPEndpoint(t *testing.T) {
 			handler := makeOtelLogsHandler([]*state.Server{server}, rawLogStream, parsedLogStream, logger, false, &warnedAboutMultipleServers)
 			req := httptest.NewRequest(http.MethodPost, "/v1/logs", bytes.NewReader(tt.body))
 			req.Header.Set("Content-Type", tt.contentType)
+			if tt.contentEncoding != "" {
+				req.Header.Set("Content-Encoding", tt.contentEncoding)
+			}
 			rec := httptest.NewRecorder()
 
 			handler(rec, req)
@@ -531,4 +563,17 @@ func mustMarshalProtoJSON(t *testing.T, m proto.Message) []byte {
 		t.Fatalf("failed to marshal protojson: %v", err)
 	}
 	return b
+}
+
+func mustGzip(t *testing.T, b []byte) []byte {
+	t.Helper()
+	var buf bytes.Buffer
+	gz := gzip.NewWriter(&buf)
+	if _, err := gz.Write(b); err != nil {
+		t.Fatalf("failed to gzip: %v", err)
+	}
+	if err := gz.Close(); err != nil {
+		t.Fatalf("failed to close gzip writer: %v", err)
+	}
+	return buf.Bytes()
 }
