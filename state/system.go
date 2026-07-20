@@ -34,6 +34,7 @@ const (
 	AivenSystem
 	TemboSystem
 	PlanetScaleSystem
+	NeonSystem
 )
 
 type SystemInfo struct {

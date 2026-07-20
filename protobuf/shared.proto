@@ -138,6 +138,7 @@ message SystemInformation {
     AIVEN_SYSTEM = 6;
     TEMBO_SYSTEM = 7;
     PLANETSCALE_SYSTEM = 8;
+    NEON_SYSTEM = 9;
   }
 
   SystemType type = 1;
