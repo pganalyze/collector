@@ -92,6 +92,10 @@ func identifySystem(config ServerConfig) (systemID string, systemType string, sy
 		if systemID == "" {
 			systemID = config.PlanetScaleOrg + "/" + config.PlanetScaleDatabase + "/" + config.PlanetScaleBranch
 		}
+	} else if systemType == "neon" {
+		if systemID == "" {
+			systemID = config.GetDbHost()
+		}
 	} else {
 		systemType = "self_hosted"
 		if systemID == "" {

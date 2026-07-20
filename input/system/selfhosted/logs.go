@@ -20,6 +20,7 @@ import (
 	"github.com/fsnotify/fsnotify"
 	"github.com/papertrail/go-tail/follower"
 	"github.com/pganalyze/collector/input/postgres"
+	"github.com/pganalyze/collector/input/system/neon"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
 )
@@ -475,6 +476,12 @@ func setupLogTransformer(ctx context.Context, wg *sync.WaitGroup, server *state.
 				}
 				if item.LogLineNumberChunk != 0 {
 					logLine.LogLineNumberChunk = item.LogLineNumberChunk
+				}
+
+				if logLine.Database == "" {
+					if db := neon.LogDatabaseFallback(server.Config); db != "" {
+						logLine.Database = db
+					}
 				}
 
 				// Ignore loglines which are outside our time window

@@ -3,10 +3,12 @@ package selfhosted
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
@@ -563,6 +565,92 @@ func mustMarshalProtoJSON(t *testing.T, m proto.Message) []byte {
 		t.Fatalf("failed to marshal protojson: %v", err)
 	}
 	return b
+}
+
+func TestParseSyslogLine(t *testing.T) {
+	line := `<134>1 2026-07-20T18:43:00.018369+00:00 vm-compute-x postgres 2468 - [neon project_id="p" endpoint_id="e"]  [7-1] 2026-07-20 18:43:00.018 GMT ttid=abc/def sqlstate=[00000] user=[pganalyze] backend=[client backend] app=[pganalyze_collector] [2468] LOG:  connection authorized: user=pganalyze database=neondb`
+
+	item, ok := parseSyslogLine(line)
+	if !ok {
+		t.Fatal("expected syslog-framed line to parse")
+	}
+	wantLine := `2026-07-20 18:43:00.018 GMT ttid=abc/def sqlstate=[00000] user=[pganalyze] backend=[client backend] app=[pganalyze_collector] [2468] LOG:  connection authorized: user=pganalyze database=neondb`
+	if item.Line != wantLine {
+		t.Errorf("unexpected line: %q", item.Line)
+	}
+	if item.BackendPid != 2468 {
+		t.Errorf("unexpected backend pid: %d", item.BackendPid)
+	}
+	if item.LogLineNumber != 7 || item.LogLineNumberChunk != 1 {
+		t.Errorf("unexpected line number %d-%d", item.LogLineNumber, item.LogLineNumberChunk)
+	}
+	if item.OccurredAt.IsZero() {
+		t.Error("expected OccurredAt to be set from the syslog timestamp")
+	}
+
+	if _, ok := parseSyslogLine("2026-01-01 12:00:00 UTC [123] LOG:  not syslog framed"); ok {
+		t.Error("expected non-syslog line to return false")
+	}
+}
+
+func TestOtelHandlerSyslogBody(t *testing.T) {
+	server, logger := makeOtelTestServer()
+	rawLogStream := make(chan SelfHostedLogStreamItem, 10)
+	parsedLogStream := make(chan state.ParsedLogStreamItem, 10)
+
+	line := `<134>1 2026-07-20T18:43:00.018369+00:00 vm-compute-x postgres 2468 - [neon project_id="p" endpoint_id="e"]  [7-1] 2026-07-20 18:43:00.018 GMT ttid=abc/def sqlstate=[00000] user=[pganalyze] backend=[client backend] app=[pganalyze_collector] [2468] LOG:  connection authorized: user=pganalyze database=neondb`
+	body, err := proto.Marshal(otelLogsData(testTimestamp, otelStringVal(line)))
+	if err != nil {
+		t.Fatalf("failed to marshal protobuf: %v", err)
+	}
+
+	warnedAboutMultipleServers := false
+	if _, err := handleOtlpLogsRequestProtobuf(body, []*state.Server{server}, rawLogStream, parsedLogStream, logger, false, &warnedAboutMultipleServers); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	items := drainChannel(rawLogStream)
+	if len(items) != 1 {
+		t.Fatalf("expected 1 raw item, got %d", len(items))
+	}
+	wantLine := `2026-07-20 18:43:00.018 GMT ttid=abc/def sqlstate=[00000] user=[pganalyze] backend=[client backend] app=[pganalyze_collector] [2468] LOG:  connection authorized: user=pganalyze database=neondb`
+	if items[0].Line != wantLine {
+		t.Errorf("unexpected de-framed line: %q", items[0].Line)
+	}
+	if items[0].BackendPid != 2468 {
+		t.Errorf("unexpected backend pid: %d", items[0].BackendPid)
+	}
+}
+
+func TestNeonDatabaseInjection(t *testing.T) {
+	tests := []struct {
+		systemType string
+		wantDb     string
+	}{
+		{systemType: "neon", wantDb: "neondb"},
+		{systemType: "self_hosted", wantDb: ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.systemType, func(t *testing.T) {
+			server, logger := makeOtelTestServerWithConfig(config.ServerConfig{SystemType: tt.systemType, DbName: "neondb"})
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			var wg sync.WaitGroup
+			parsedLogStream := make(chan state.ParsedLogStreamItem, 10)
+			logStream := setupLogTransformer(ctx, &wg, server, state.CollectionOpts{}, logger, parsedLogStream)
+
+			logStream <- SelfHostedLogStreamItem{Line: "LOG:  connection authorized: user=pganalyze database=neondb"}
+
+			select {
+			case item := <-parsedLogStream:
+				if item.LogLine.Database != tt.wantDb {
+					t.Errorf("expected database %q, got %q", tt.wantDb, item.LogLine.Database)
+				}
+			case <-time.After(time.Second):
+				t.Fatal("timed out waiting for parsed log line")
+			}
+		})
+	}
 }
 
 func mustGzip(t *testing.T, b []byte) []byte {
