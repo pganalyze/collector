@@ -98,6 +98,15 @@ func identifySystem(config ServerConfig) (systemID string, systemType string, sy
 		if systemID == "" {
 			systemID = config.GetDbHost()
 		}
+		if systemTypeFallback == "" {
+			systemTypeFallback = "self_hosted"
+		}
+		if systemIDFallback == "" {
+			systemIDFallback = selfManagedSystemID(config)
+		}
+		if systemScopeFallback == "" {
+			systemScopeFallback = selfManagedSystemScope(config)
+		}
 	} else {
 		systemType = "self_hosted"
 		if systemID == "" {
