@@ -810,8 +810,11 @@ var columnDoesNotExist = analyzeGroup{
 	classification: pganalyze_collector.LogLineInformation_COLUMN_DOES_NOT_EXIST,
 	primary: match{
 		prefixes: []string{"column"},
-		regexp:   regexp.MustCompile(`^column (?:"[^"]+"|[\w.]+) does not exist(?: at character \d+)?`),
-		secrets:  []state.LogSecretKind{},
+		// Also covers the "column ... does not exist" variants that carry extra context (referenced in
+		// a foreign key, named in a (partition) key, or "column number N of relation ...") - all
+		// errcode 42703. The "of relation ..." form is handled by columnDoesNotExistOnTable.
+		regexp:  regexp.MustCompile(`^column (?:number \d+ of relation "[^"]+"|(?:"[^"]+"|[\w.]+)(?: referenced in foreign key constraint| named in (?:partition )?key)?) does not exist(?: at character \d+)?`),
+		secrets: []state.LogSecretKind{},
 	},
 }
 var columnDoesNotExistOnTable = analyzeGroup{
@@ -833,16 +836,21 @@ var columnReferenceAmbiguous = analyzeGroup{
 var relationDoesNotExist = analyzeGroup{
 	classification: pganalyze_collector.LogLineInformation_RELATION_DOES_NOT_EXIST,
 	primary: match{
-		prefixes: []string{"relation"},
-		regexp:   regexp.MustCompile(`^relation "([^"]+)" does not exist(?: at character \d+)?`),
+		// table/sequence/view/materialized view share errcode 42P01 (undefined_table) with the
+		// generic "relation" form (emitted by wrongRelkindError), so they are the same class.
+		prefixes: []string{"relation", "table", "sequence", "view", "materialized view"},
+		regexp:   regexp.MustCompile(`^(?:relation|table|sequence|view|materialized view) "([^"]+)" does not exist(?: at character \d+)?`),
 		secrets:  []state.LogSecretKind{0},
 	},
 }
 var functionDoesNotExist = analyzeGroup{
 	classification: pganalyze_collector.LogLineInformation_FUNCTION_DOES_NOT_EXIST,
 	primary: match{
-		prefixes: []string{"function"},
-		regexp:   regexp.MustCompile(`^function ([^"]+) does not exist(?: at character \d+)?`),
+		// procedure/aggregate/routine share errcode 42883 (undefined_function) with function. The
+		// name is matched with .+? (not [^"]+) so quoted names ("function \"foo\" does not exist",
+		// emitted when there is no argument list) match too, not just "name(args)" signatures.
+		prefixes: []string{"function", "procedure", "aggregate", "routine"},
+		regexp:   regexp.MustCompile(`^(?:function|procedure|aggregate|routine) (.+?) does not exist(?: at character \d+)?`),
 		secrets:  []state.LogSecretKind{0},
 	},
 	hint: match{
@@ -932,6 +940,38 @@ var operatorDoesNotExist = analyzeGroup{
 	},
 	hint: match{
 		prefixes: []string{"No operator matches the given name and argument type(s). You might need to add explicit type casts."},
+	},
+}
+
+// objectDoesNotExist is the catch-all for "<object type> ... does not exist" errors whose object
+// type has no dedicated classification (mostly errcode 42704 undefined_object, plus siblings like
+// undefined_schema/database/cursor). Relations (table/sequence/view/... -> relationDoesNotExist),
+// columns, functions (function/procedure/aggregate -> functionDoesNotExist) and the "operator does
+// not exist: <a> <op> <b>" form are handled by their own groups, matched earlier. Object names here
+// are identifiers (not user data), so nothing is redacted; the whole line is consumed.
+var objectDoesNotExist = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_OBJECT_DOES_NOT_EXIST,
+	primary: match{
+		prefixes: []string{
+			"role", "type", "index", "collation", "conversion", "cast", "extension", "language",
+			"server", "foreign", "user mapping", "mapping for token type", "event trigger", "trigger",
+			"subscription", "publication", "statistics object", "large object", "tablespace",
+			"access method", "operator", "rule", "policy", "constraint", "domain", "transform",
+			"text search", "token type", "property", "label", "schema", "database", "cursor",
+			"prepared statement", "savepoint", "snapshot", "directory", "tablesample method",
+		},
+		regexp: regexp.MustCompile(`^(?:` +
+			`role|type|index|collation|conversion|cast|extension|language|` +
+			`foreign-data wrapper|foreign server|foreign table|server|` +
+			`user mapping|mapping for token type|event trigger|trigger|` +
+			`subscription|publication|statistics object|large object|tablespace|` +
+			`access method|operator class|operator family|operator \d+|` +
+			`rule|policy|constraint|domain|transform|` +
+			`text search (?:parser|dictionary|template|configuration)|` +
+			`token type|property graph|property|label|schema|database|cursor|` +
+			`prepared statement|savepoint|snapshot|directory|tablesample method` +
+			`)\b.*does not exist.*`),
+		secrets: []state.LogSecretKind{},
 	},
 }
 
@@ -1365,6 +1405,7 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 		insertTargetColumnMismatch,
 		anyAllRequiresArray,
 		operatorDoesNotExist,
+		objectDoesNotExist,
 		permissionDenied,
 		mustBePrivilege,
 		transactionIsAborted,

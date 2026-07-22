@@ -4060,6 +4060,69 @@ index scan needed: 1 pages from table (100.00% of total) had 60 dead item identi
 		}},
 		nil,
 	},
+	// "does not exist" family: relkinds fold into RELATION_, procedure/aggregate + quoted names into
+	// FUNCTION_, column variants into COLUMN_, and the long tail of object types into OBJECT_.
+	{
+		[]state.LogLine{{
+			Content:  "table \"missing_tbl\" does not exist",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}, {
+			Content:  "procedure ptest9(integer) does not exist at character 8",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}, {
+			Content:  "function \"my_func\" does not exist",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}, {
+			Content:  "column \"c\" named in key does not exist",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}, {
+			Content:  "column number 4 of relation \"t\" does not exist",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}, {
+			Content:  "role \"regress_role\" does not exist",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}, {
+			Content:  "collation \"c\" for encoding \"UTF8\" does not exist at character 30",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}, {
+			Content:  "large object 999 does not exist",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}},
+		[]state.LogLine{{
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_RELATION_DOES_NOT_EXIST,
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_FUNCTION_DOES_NOT_EXIST,
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_FUNCTION_DOES_NOT_EXIST,
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_COLUMN_DOES_NOT_EXIST,
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_COLUMN_DOES_NOT_EXIST,
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_OBJECT_DOES_NOT_EXIST,
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_OBJECT_DOES_NOT_EXIST,
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_OBJECT_DOES_NOT_EXIST,
+			ReviewedForSecrets: true,
+		}},
+		nil,
+	},
 	// "permission denied to <action>" is a permission error (here: a role management command)
 	{
 		[]state.LogLine{{
