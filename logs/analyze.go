@@ -1032,6 +1032,52 @@ var integerOutOfRange = analyzeGroup{
 		secrets:  []state.LogSecretKind{state.TableDataLogSecret},
 	},
 }
+
+// valueOutOfRange covers out-of-range/overflow errors for non-integer types (numeric, money,
+// float, date/time, interval, timestamp, oid, block number, etc.); integer types are handled by
+// integerOutOfRange (matched earlier). Where the message carries a user-supplied value it is
+// captured and redacted. Container-index errors ("array subscript out of range", jsonb "path
+// element ... is out of range") and function-argument-validity errors (jsonpath .decimal()/.time()
+// precision/scale) are left unclassified on purpose - they are not value-does-not-fit-the-type
+// errors.
+var valueOutOfRange = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_VALUE_OUT_OF_RANGE,
+	primary: match{
+		prefixes: []string{
+			"interval field value out of range", "date/time field value out of range",
+			"date field value out of range", "time field value out of range",
+			"interval out of range", "timestamp out of range", "date out of range",
+			"numeric field overflow", "value overflows numeric format", "value out of range",
+			"money out of range", "result is out of range", "input is out of range",
+			"pg_lsn out of range", "OID out of range", "time zone displacement out of range",
+			"numeric time zone", "block number out of range", "value \"", "value for \"",
+			"MINVALUE", "MAXVALUE", "\"",
+		},
+		regexp: regexp.MustCompile(`^(?:` +
+			`(?:interval|date/time|date|time) field value out of range: (?:"([^"]*)"|(\S+))` +
+			`|(?:timestamp|date|interval) out of range(?:: "([^"]*)")?` +
+			`|(?:value )?"([^"]*)" is out of range for type [\w ]+` +
+			`|value for "([^"]*)" in source string is out of range` +
+			`|time zone displacement out of range: "([^"]*)"` +
+			`|numeric time zone "([^"]*)" out of range` +
+			`|(?:MINVALUE|MAXVALUE) \([^)]*\) is out of range for sequence data type \w+` +
+			`|block number out of range: -?\d+` +
+			`|numeric field overflow` +
+			`|value overflows numeric format` +
+			`|value out of range: (?:overflow|underflow)` +
+			`|money out of range` +
+			`|result is out of range` +
+			`|input is out of range` +
+			`|pg_lsn out of range` +
+			`|OID out of range` +
+			`)(?: for [\w ]+)?(?: at character \d+)?`),
+		secrets: []state.LogSecretKind{
+			state.TableDataLogSecret, state.TableDataLogSecret, state.TableDataLogSecret,
+			state.TableDataLogSecret, state.TableDataLogSecret, state.TableDataLogSecret,
+			state.TableDataLogSecret,
+		},
+	},
+}
 var invalidRegexp = analyzeGroup{
 	classification: pganalyze_collector.LogLineInformation_INVALID_REGEXP,
 	primary: match{
@@ -1328,6 +1374,7 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 		divisionByZero,
 		cannotDrop,
 		integerOutOfRange,
+		valueOutOfRange,
 		invalidRegexp,
 		paramMissing,
 		noSuchSavepoint,

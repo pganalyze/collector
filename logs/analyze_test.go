@@ -3997,6 +3997,69 @@ index scan needed: 1 pages from table (100.00% of total) had 60 dead item identi
 		}},
 		nil,
 	},
+	// Non-integer out-of-range/overflow errors are VALUE_OUT_OF_RANGE; the offending value is redacted
+	{
+		[]state.LogLine{{
+			Content:  "interval field value out of range: \"P1Y2M3D\" at character 20",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}},
+		[]state.LogLine{{
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_VALUE_OUT_OF_RANGE,
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 36,
+				ByteEnd:   43,
+				Kind:      state.TableDataLogSecret,
+			}},
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
+			Content:  "\"1e400\" is out of range for type double precision at character 12",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}},
+		[]state.LogLine{{
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_VALUE_OUT_OF_RANGE,
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 1,
+				ByteEnd:   6,
+				Kind:      state.TableDataLogSecret,
+			}},
+		}},
+		nil,
+	},
+	// Fixed-form out-of-range messages carry no user value, so nothing is redacted. "block number
+	// out of range" is included: the number exceeds the range of the (uint32) block number type.
+	{
+		[]state.LogLine{{
+			Content:  "numeric field overflow",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}, {
+			Content:  "timestamp out of range",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}, {
+			Content:  "block number out of range: 4294967296",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}},
+		[]state.LogLine{{
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_VALUE_OUT_OF_RANGE,
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_VALUE_OUT_OF_RANGE,
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_VALUE_OUT_OF_RANGE,
+			ReviewedForSecrets: true,
+		}},
+		nil,
+	},
 	// "permission denied to <action>" is a permission error (here: a role management command)
 	{
 		[]state.LogLine{{
