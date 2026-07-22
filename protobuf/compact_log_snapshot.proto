@@ -139,6 +139,7 @@ message LogLineInformation {
     AUTOANALYZE_COMPLETED = 66; // "automatic analyze of table"
     SKIPPING_VACUUM_LOCK_NOT_AVAILABLE = 67; // "skipping vacuum of ... --- lock not available"
     SKIPPING_ANALYZE_LOCK_NOT_AVAILABLE = 68; // "skipping analyze of ... --- lock not available"
+    SKIPPING_MAINTENANCE_PERMISSION_DENIED = 69; // "permission denied to {vacuum,analyze,execute CLUSTER on,execute REPACK on} ..., skipping it"
 
     // Locks
     LOCK_ACQUIRED = 70; // "acquired *Lock"

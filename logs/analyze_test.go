@@ -4011,7 +4011,7 @@ index scan needed: 1 pages from table (100.00% of total) had 60 dead item identi
 		nil,
 	},
 	// The WARNING-level "..., skipping it" messages from manual VACUUM/ANALYZE/CLUSTER/REPACK are
-	// deliberately left UNKNOWN (not PERMISSION_DENIED); they should get their own classification.
+	// classified separately from PERMISSION_DENIED (the command succeeds; some relations are skipped).
 	{
 		[]state.LogLine{{
 			Content:  "permission denied to analyze \"my_table\", skipping it",
@@ -4022,11 +4022,13 @@ index scan needed: 1 pages from table (100.00% of total) had 60 dead item identi
 		}},
 		[]state.LogLine{{
 			LogLevel:           pganalyze_collector.LogLineInformation_WARNING,
-			Classification:     pganalyze_collector.LogLineInformation_UNKNOWN_LOG_CLASSIFICATION,
+			Classification:     pganalyze_collector.LogLineInformation_SKIPPING_MAINTENANCE_PERMISSION_DENIED,
+			Details:            map[string]interface{}{"relation_name": "my_table"},
 			ReviewedForSecrets: true,
 		}, {
 			LogLevel:           pganalyze_collector.LogLineInformation_WARNING,
-			Classification:     pganalyze_collector.LogLineInformation_UNKNOWN_LOG_CLASSIFICATION,
+			Classification:     pganalyze_collector.LogLineInformation_SKIPPING_MAINTENANCE_PERMISSION_DENIED,
+			Details:            map[string]interface{}{"relation_name": "my_table"},
 			ReviewedForSecrets: true,
 		}},
 		nil,

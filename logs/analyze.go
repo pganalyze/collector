@@ -935,17 +935,17 @@ var operatorDoesNotExist = analyzeGroup{
 	},
 }
 
-// permissionDeniedMaintenanceSkip matches the WARNING-level messages emitted when a manual
+// skippingMaintenancePermissionDenied matches the WARNING-level messages emitted when a manual
 // VACUUM/ANALYZE/CLUSTER/REPACK skips a relation the current role lacks privileges on. These are
-// not query-level permission failures (the command still succeeds), so they deliberately stay
-// UNKNOWN for now rather than being grouped with PERMISSION_DENIED. It is matched ahead of
-// permissionDenied purely to keep those lines out of that group.
-// TODO: give these their own log classification.
-var permissionDeniedMaintenanceSkip = analyzeGroup{
+// not query-level permission failures (the command still succeeds), so they get their own
+// classification rather than being grouped with PERMISSION_DENIED. It is matched ahead of
+// permissionDenied to keep those lines out of that group.
+var skippingMaintenancePermissionDenied = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_SKIPPING_MAINTENANCE_PERMISSION_DENIED,
 	primary: match{
 		prefixes: []string{"permission denied to analyze ", "permission denied to vacuum ", "permission denied to execute "},
-		regexp:   regexp.MustCompile(`^permission denied to (?:analyze|vacuum|execute (?:CLUSTER|REPACK) on) .+, skipping it`),
-		secrets:  []state.LogSecretKind{},
+		regexp:   regexp.MustCompile(`^permission denied to (?:analyze|vacuum|execute (?:CLUSTER|REPACK) on) "([^"]+)", skipping it`),
+		secrets:  []state.LogSecretKind{0},
 	},
 }
 var permissionDenied = analyzeGroup{
@@ -957,7 +957,7 @@ var permissionDenied = analyzeGroup{
 		//     "foreign-data wrapper", "materialized view"; name may be quoted)
 		//   "permission denied to <action>" (e.g. "to grant role ...", "to create database")
 		//   "permission denied: \"...\" is a system catalog"
-		// The "..., skipping it" warnings are handled earlier by permissionDeniedMaintenanceSkip.
+		// The "..., skipping it" warnings are handled earlier by skippingMaintenancePermissionDenied.
 		// The remainder consists of object/role identifiers and fixed text, so nothing is redacted.
 		regexp:  regexp.MustCompile(`^permission denied(?: for [\w -]+ (?:"[^"]*"|\S+)(?: at character \d+)?| to .+|: .+)?`),
 		secrets: []state.LogSecretKind{},
@@ -1240,6 +1240,19 @@ func AnalyzeLogLines(logLinesIn []state.LogLine) (logLinesOut []state.LogLine, s
 func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, detailLine state.LogLine, contextLine state.LogLine, hintLine state.LogLine, samples []state.PostgresQuerySample) (state.LogLine, state.LogLine, state.LogLine, state.LogLine, state.LogLine, []state.PostgresQuerySample) {
 	var parts []string
 
+	// Handled ahead of the generic handlers (which include permissionDenied) so these
+	// "..., skipping it" warnings are not swept into PERMISSION_DENIED. Also extracts the skipped
+	// relation name, which - like skippingVacuum/skippingAnalyze - Postgres logs without a schema.
+	if matchesPrefix(logLine, skippingMaintenancePermissionDenied.primary.prefixes) {
+		logLine, parts = matchLogLine(logLine, skippingMaintenancePermissionDenied.primary)
+		if len(parts) == 2 {
+			logLine.Classification = skippingMaintenancePermissionDenied.classification
+			logLine.Details = map[string]interface{}{"relation_name": parts[1]}
+			contextLine = matchOtherContextLogLine(contextLine)
+			return logLine, statementLine, detailLine, contextLine, hintLine, samples
+		}
+	}
+
 	// Generic handlers
 	groupX := []analyzeGroup{
 		connectionRejected,
@@ -1306,7 +1319,6 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 		insertTargetColumnMismatch,
 		anyAllRequiresArray,
 		operatorDoesNotExist,
-		permissionDeniedMaintenanceSkip,
 		permissionDenied,
 		mustBePrivilege,
 		transactionIsAborted,
