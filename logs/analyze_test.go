@@ -3967,6 +3967,170 @@ index scan needed: 1 pages from table (100.00% of total) had 60 dead item identi
 		}},
 		nil,
 	},
+	// bigint/smallint out of range are the same class as integer out of range
+	{
+		[]state.LogLine{{
+			Content:  "bigint out of range",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}},
+		[]state.LogLine{{
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_INTEGER_OUT_OF_RANGE,
+			ReviewedForSecrets: true,
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
+			Content:  "value \"32768\" is out of range for type smallint at character 25",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}},
+		[]state.LogLine{{
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_INTEGER_OUT_OF_RANGE,
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 7,
+				ByteEnd:   12,
+				Kind:      state.TableDataLogSecret,
+			}},
+		}},
+		nil,
+	},
+	// "permission denied to <action>" is a permission error (here: a role management command)
+	{
+		[]state.LogLine{{
+			Content:  "permission denied to grant role \"regress_role\"",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}},
+		[]state.LogLine{{
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_PERMISSION_DENIED,
+			ReviewedForSecrets: true,
+		}},
+		nil,
+	},
+	// The WARNING-level "..., skipping it" messages from manual VACUUM/ANALYZE/CLUSTER/REPACK are
+	// deliberately left UNKNOWN (not PERMISSION_DENIED); they should get their own classification.
+	{
+		[]state.LogLine{{
+			Content:  "permission denied to analyze \"my_table\", skipping it",
+			LogLevel: pganalyze_collector.LogLineInformation_WARNING,
+		}, {
+			Content:  "permission denied to execute REPACK on \"my_table\", skipping it",
+			LogLevel: pganalyze_collector.LogLineInformation_WARNING,
+		}},
+		[]state.LogLine{{
+			LogLevel:           pganalyze_collector.LogLineInformation_WARNING,
+			Classification:     pganalyze_collector.LogLineInformation_UNKNOWN_LOG_CLASSIFICATION,
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_WARNING,
+			Classification:     pganalyze_collector.LogLineInformation_UNKNOWN_LOG_CLASSIFICATION,
+			ReviewedForSecrets: true,
+		}},
+		nil,
+	},
+	// permission denied for <object type> <name>, where the object type ("view") was previously unmatched
+	{
+		[]state.LogLine{{
+			Content:  "permission denied for view rw_view1",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}},
+		[]state.LogLine{{
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_PERMISSION_DENIED,
+			ReviewedForSecrets: true,
+		}},
+		nil,
+	},
+	// permission denied: "..." is a system catalog, and the bare "permission denied"
+	{
+		[]state.LogLine{{
+			Content:  "permission denied: \"pg_authid\" is a system catalog",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}, {
+			Content:  "permission denied",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}},
+		[]state.LogLine{{
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_PERMISSION_DENIED,
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_PERMISSION_DENIED,
+			ReviewedForSecrets: true,
+		}},
+		nil,
+	},
+	// "must be owner of ...", "must be able to SET ROLE ...", "must be superuser ..." are privilege errors
+	{
+		[]state.LogLine{{
+			Content:  "must be owner of foreign server s6",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}, {
+			Content:  "must be able to SET ROLE \"regress_role\"",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}, {
+			Content:  "must be superuser to set ALL TABLES",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}},
+		[]state.LogLine{{
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_PERMISSION_DENIED,
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_PERMISSION_DENIED,
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_PERMISSION_DENIED,
+			ReviewedForSecrets: true,
+		}},
+		nil,
+	},
+	// operator does not exist: unary operators and multi-word type names were previously unmatched
+	{
+		[]state.LogLine{{
+			Content:  "operator does not exist: time with time zone + time with time zone at character 11",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}},
+		[]state.LogLine{{
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_OPERATOR_DOES_NOT_EXIST,
+			ReviewedForSecrets: true,
+		}},
+		nil,
+	},
+	// partition constraint violation shares errcode/handling with check constraint violation
+	{
+		[]state.LogLine{{
+			Content:  "new row for relation \"measurement\" violates partition constraint",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+			UUID:     uuid.UUID{1},
+		}, {
+			Content:  "Failing row contains (-123).",
+			LogLevel: pganalyze_collector.LogLineInformation_DETAIL,
+		}},
+		[]state.LogLine{{
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_CHECK_CONSTRAINT_VIOLATION,
+			UUID:               uuid.UUID{1},
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_DETAIL,
+			ParentUUID:         uuid.UUID{1},
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 22,
+				ByteEnd:   26,
+				Kind:      state.TableDataLogSecret,
+			}},
+		}},
+		nil,
+	},
 	{
 		[]state.LogLine{{
 			Content:  "invalid regular expression: quantifier operand invalid",

@@ -739,8 +739,10 @@ var checkConstraintViolation1 = analyzeGroup{
 	classification: pganalyze_collector.LogLineInformation_CHECK_CONSTRAINT_VIOLATION,
 	primary: match{
 		prefixes: []string{"new row for relation"},
-		regexp:   regexp.MustCompile(`^new row for relation "(.+?)" violates check constraint "(.+?)"`),
-		secrets:  []state.LogSecretKind{0, 0},
+		// A partition constraint violation shares errcode 23514 (check_violation) with a check
+		// constraint violation and comes with the same "Failing row contains (...)" detail line.
+		regexp:  regexp.MustCompile(`^new row for relation "(.+?)" violates (?:check constraint "(.+?)"|partition constraint)`),
+		secrets: []state.LogSecretKind{0, 0},
 		// FIXME: Store constraint name and relation name
 	},
 	detail: match{
@@ -922,20 +924,54 @@ var operatorDoesNotExist = analyzeGroup{
 	classification: pganalyze_collector.LogLineInformation_OPERATOR_DOES_NOT_EXIST,
 	primary: match{
 		prefixes: []string{"operator does not exist: "},
-		regexp:   regexp.MustCompile(`^operator does not exist: (\w+) ([` + regexp.QuoteMeta("+*/<>=~!@#%^&|`?-") + `]+) (\w+)(?: at character \d+)?`),
-		secrets:  []state.LogSecretKind{0, 0, 0},
+		// The remainder is a Postgres-generated operator/type description (e.g. "boolean || boolean",
+		// "@#@ integer", "time with time zone + time with time zone"); it contains no user data, and
+		// the previous, more specific pattern missed unary operators and multi-word type names.
+		regexp:  regexp.MustCompile(`^operator does not exist: .+`),
+		secrets: []state.LogSecretKind{},
 	},
 	hint: match{
 		prefixes: []string{"No operator matches the given name and argument type(s). You might need to add explicit type casts."},
+	},
+}
+
+// permissionDeniedMaintenanceSkip matches the WARNING-level messages emitted when a manual
+// VACUUM/ANALYZE/CLUSTER/REPACK skips a relation the current role lacks privileges on. These are
+// not query-level permission failures (the command still succeeds), so they deliberately stay
+// UNKNOWN for now rather than being grouped with PERMISSION_DENIED. It is matched ahead of
+// permissionDenied purely to keep those lines out of that group.
+// TODO: give these their own log classification.
+var permissionDeniedMaintenanceSkip = analyzeGroup{
+	primary: match{
+		prefixes: []string{"permission denied to analyze ", "permission denied to vacuum ", "permission denied to execute "},
+		regexp:   regexp.MustCompile(`^permission denied to (?:analyze|vacuum|execute (?:CLUSTER|REPACK) on) .+, skipping it`),
+		secrets:  []state.LogSecretKind{},
 	},
 }
 var permissionDenied = analyzeGroup{
 	classification: pganalyze_collector.LogLineInformation_PERMISSION_DENIED,
 	primary: match{
 		prefixes: []string{"permission denied"},
-		regexp:   regexp.MustCompile(`^permission denied for (?:column|relation|table|sequence|database|function|operator|type|language|large object|schema|operator class|operator family|collation|conversion|tablespace|text search dictionary|text search configuration|foreign-data wrapper|foreign server|event trigger|extension) ([\w_-]+)(?: at character \d+)?`),
-		secrets:  []state.LogSecretKind{0},
+		// Covers the three Postgres forms:
+		//   "permission denied for <object type> <name>" (object type can be multi-word, e.g.
+		//     "foreign-data wrapper", "materialized view"; name may be quoted)
+		//   "permission denied to <action>" (e.g. "to grant role ...", "to create database")
+		//   "permission denied: \"...\" is a system catalog"
+		// The "..., skipping it" warnings are handled earlier by permissionDeniedMaintenanceSkip.
+		// The remainder consists of object/role identifiers and fixed text, so nothing is redacted.
+		regexp:  regexp.MustCompile(`^permission denied(?: for [\w -]+ (?:"[^"]*"|\S+)(?: at character \d+)?| to .+|: .+)?`),
+		secrets: []state.LogSecretKind{},
 		// FIXME: Store relation name when this is "permission denied for relation [relation name]"
+	},
+}
+var mustBePrivilege = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_PERMISSION_DENIED,
+	primary: match{
+		// Insufficient-privilege errors phrased as a requirement: "must be owner of <object>",
+		// "must be able to SET ROLE ...", "must be superuser to ...".
+		prefixes: []string{"must be owner of ", "must be able to SET ROLE ", "must be superuser "},
+		regexp:   regexp.MustCompile(`^must be (?:owner of |able to SET ROLE |superuser ).+`),
+		secrets:  []state.LogSecretKind{},
 	},
 }
 var transactionIsAborted = analyzeGroup{
@@ -991,7 +1027,9 @@ var cannotDrop = analyzeGroup{
 var integerOutOfRange = analyzeGroup{
 	classification: pganalyze_collector.LogLineInformation_INTEGER_OUT_OF_RANGE,
 	primary: match{
-		prefixes: []string{"integer out of range"},
+		prefixes: []string{"integer out of range", "bigint out of range", "smallint out of range", "value \""},
+		regexp:   regexp.MustCompile(`^(?:(?:integer|bigint|smallint) out of range|value "([^"]*)" is out of range for type (?:smallint|integer|bigint)(?: at character \d+)?)`),
+		secrets:  []state.LogSecretKind{state.TableDataLogSecret},
 	},
 }
 var invalidRegexp = analyzeGroup{
@@ -1268,7 +1306,9 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 		insertTargetColumnMismatch,
 		anyAllRequiresArray,
 		operatorDoesNotExist,
+		permissionDeniedMaintenanceSkip,
 		permissionDenied,
+		mustBePrivilege,
 		transactionIsAborted,
 		onConflictNoConstraintMatch,
 		onConflictRowAffectedTwice,
