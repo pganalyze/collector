@@ -62,6 +62,9 @@ func GetSystemState(ctx context.Context, server *state.Server, logger *util.Logg
 		system = tembo.GetSystemState(ctx, server, logger)
 	} else if config.SystemType == "planetscale" {
 		system = planetscale.GetSystemState(ctx, server, logger)
+	} else if config.SystemType == "neon" {
+		system.Info.Type = state.NeonSystem
+		server.SelfTest.MarkCollectionAspectNotAvailable(state.CollectionAspectSystemStats, "not available on this platform")
 	} else if dbHost == "" || dbHost == "localhost" || dbHost == "127.0.0.1" || config.AlwaysCollectSystemData {
 		system = selfhosted.GetSystemState(server, logger, false)
 	} else {

@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"strings"
 )
 
 // Figure out if we're self-hosted or on RDS, as well as what ID we can use - Heroku is treated separately
@@ -91,6 +92,20 @@ func identifySystem(config ServerConfig) (systemID string, systemType string, sy
 		systemType = "planetscale"
 		if systemID == "" {
 			systemID = config.PlanetScaleOrg + "/" + config.PlanetScaleDatabase + "/" + config.PlanetScaleBranch
+		}
+	} else if strings.HasSuffix(config.GetDbHost(), ".neon.tech") || systemType == "neon" {
+		systemType = "neon"
+		if systemID == "" {
+			systemID = config.GetDbHost()
+		}
+		if systemTypeFallback == "" {
+			systemTypeFallback = "self_hosted"
+		}
+		if systemIDFallback == "" {
+			systemIDFallback = selfManagedSystemID(config)
+		}
+		if systemScopeFallback == "" {
+			systemScopeFallback = selfManagedSystemScope(config)
 		}
 	} else {
 		systemType = "self_hosted"
