@@ -1043,6 +1043,49 @@ var objectDoesNotExist = analyzeGroup{
 	},
 }
 
+// objectAlreadyExists is the mirror of objectDoesNotExist for duplicate-object DDL conflicts
+// ("<object type> ... already exists"), spanning the duplicate_* errcodes (42710, 42P07, 42701,
+// 42723). One broad bucket over all object types; content is identifiers, so nothing is redacted.
+var objectAlreadyExists = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_OBJECT_ALREADY_EXISTS,
+	primary: match{
+		prefixes: []string{
+			"role", "type", "constraint", "column", "trigger", "relation", "schema", "database",
+			"sequence", "index", "view", "materialized view", "foreign table", "server", "foreign",
+			"user mapping", "event trigger", "subscription", "publication", "statistics object",
+			"tablespace", "operator", "rule", "policy", "conversion", "default conversion", "collation",
+			"cast", "language", "extension", "text search", "enum label", "function", "aggregate",
+			"procedure", "prepared statement", "domain", "property graph", "alias",
+		},
+		regexp: regexp.MustCompile(`^(?:` +
+			`role|type|constraint|column|trigger|relation|schema|database|sequence|index|` +
+			`materialized view|foreign table|view|foreign-data wrapper|foreign server|server|` +
+			`user mapping|event trigger|subscription|publication|statistics object|tablespace|` +
+			`operator|rule|policy|(?:default )?conversion|collation|cast|language|extension|` +
+			`text search (?:parser|dictionary|template|configuration)|enum label|function|aggregate|` +
+			`procedure|prepared statement|domain|property graph|alias` +
+			`)\b.*already exists.*`),
+		secrets: []state.LogSecretKind{},
+	},
+}
+
+// wrongObjectType covers operations attempted on the wrong kind of object (errcode 42809):
+// "\"...\" is [not] a[n] <object type>" and "ALTER action ... cannot be performed on relation ...".
+// The non-object "\"...\" is not a ..." forms (valid hex/binary digit, scalar variable, valid base
+// type, ...) use other errcodes and are excluded by enumerating only object-kind words.
+var wrongObjectType = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_WRONG_OBJECT_TYPE,
+	primary: match{
+		prefixes: []string{"\"", "ALTER action"},
+		regexp: regexp.MustCompile(`^(?:` +
+			`"[^"]*" is (?:not )?an? (?:table or materialized view|materialized view|foreign table|` +
+			`BRIN index|unique index|index for table "[^"]*"|table|view|sequence|index|` +
+			`domain|property graph)` +
+			`|ALTER action .+ cannot be performed on relation "[^"]*")`),
+		secrets: []state.LogSecretKind{},
+	},
+}
+
 // skippingMaintenancePermissionDenied matches the WARNING-level messages emitted when a manual
 // VACUUM/ANALYZE/CLUSTER/REPACK skips a relation the current role lacks privileges on. These are
 // not query-level permission failures (the command still succeeds), so they get their own
@@ -1632,6 +1675,8 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 		couldNotSerializeSerializable,
 		inconsistentRangeBounds,
 		partitionError,
+		objectAlreadyExists,
+		wrongObjectType,
 		sqlJsonErrorData,
 		sqlJsonParseError,
 		sqlJsonError,

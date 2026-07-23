@@ -4212,6 +4212,55 @@ index scan needed: 1 pages from table (100.00% of total) had 60 dead item identi
 		}},
 		nil,
 	},
+	// Duplicate-object DDL conflicts (OBJECT_ALREADY_EXISTS) and wrong-object-type errors
+	// (WRONG_OBJECT_TYPE); the non-object "is not a valid ..." forms stay unclassified.
+	{
+		[]state.LogLine{{
+			Content:  "relation \"foo\" already exists",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}, {
+			Content:  "column \"c\" of relation \"t\" already exists",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}, {
+			Content:  "function alt_func2(integer) already exists in schema \"s\"",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}, {
+			Content:  "\"foo\" is not an index",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}, {
+			Content:  "\"bar\" is a view",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}, {
+			Content:  "ALTER action DETACH PARTITION cannot be performed on relation \"p\"",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}},
+		[]state.LogLine{{
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_OBJECT_ALREADY_EXISTS,
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_OBJECT_ALREADY_EXISTS,
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_OBJECT_ALREADY_EXISTS,
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_WRONG_OBJECT_TYPE,
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_WRONG_OBJECT_TYPE,
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_WRONG_OBJECT_TYPE,
+			ReviewedForSecrets: true,
+		}},
+		nil,
+	},
 	// Partitioning DDL/operation errors are one broad classification; nothing is redacted
 	{
 		[]state.LogLine{{
