@@ -30,7 +30,7 @@ func snapshotUploadForServer(ctx context.Context, server *state.Server, logger *
 
 	for {
 		if failed {
-			delay = min(5*delay, 10*time.Second) // Increasing backoff delay in case of failure
+			delay = min(delay*5+10*time.Millisecond, 10*time.Second)
 		} else {
 			delay = 10 * time.Millisecond // Small delay to avoid high CPU usage in loop
 		}

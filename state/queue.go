@@ -64,7 +64,14 @@ func (q *Queue) PushBytes(kind string, bytes []byte) (err error) {
 	if q.closed {
 		return
 	}
+	beforeSize := q.size
 	q.makeSpace(sizeBytes)
+	// If makeSpace couldn't evict (e.g., head is in-flight), drop the new item.
+	if beforeSize == q.size && beforeSize >= q.capacity {
+		QueueMemory.Remove(sizeBytes)
+		q.logDrop(kind, sizeBytes)
+		return
+	}
 	q.data[q.tail] = QueueItem{
 		Kind:      kind,
 		Snapshot:  bytes,
