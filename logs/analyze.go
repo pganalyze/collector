@@ -777,6 +777,27 @@ var checkConstraintViolation4 = analyzeGroup{
 		// FIXME: Store constraint name
 	},
 }
+
+// partitionConstraintViolation covers the runtime/data partition errors, which share errcode 23514
+// (check_violation) with the check-constraint violations above (and with the "new row for relation
+// ... violates partition constraint" form handled by checkConstraintViolation1): a row that routes
+// to no partition, or a bulk ATTACH/default-partition validation failing for some existing row. The
+// DDL-level partition errors (invalid bounds, overlap, unsupported features) use other errcodes and
+// are intentionally left unclassified.
+var partitionConstraintViolation = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_CHECK_CONSTRAINT_VIOLATION,
+	primary: match{
+		prefixes: []string{"no partition of relation", "partition constraint of relation", "updated partition constraint for default partition"},
+		regexp: regexp.MustCompile(`^(?:no partition of relation "[^"]+" found for row` +
+			`|partition constraint of relation "[^"]+" is violated by some row` +
+			`|updated partition constraint for default partition "[^"]+" would be violated by some row)`),
+		secrets: []state.LogSecretKind{},
+	},
+	detail: match{
+		regexp:  regexp.MustCompile(`^Partition key of the failing row contains (.+)\.`),
+		secrets: []state.LogSecretKind{state.TableDataLogSecret},
+	},
+}
 var exclusionConstraintViolation = analyzeGroup{
 	classification: pganalyze_collector.LogLineInformation_EXCLUSION_CONSTRAINT_VIOLATION,
 	primary: match{
@@ -1390,6 +1411,7 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 		checkConstraintViolation2,
 		checkConstraintViolation3,
 		checkConstraintViolation4,
+		partitionConstraintViolation,
 		exclusionConstraintViolation,
 		columnMissingFromGroupBy,
 		columnDoesNotExist,

@@ -4123,6 +4123,41 @@ index scan needed: 1 pages from table (100.00% of total) had 60 dead item identi
 		}},
 		nil,
 	},
+	// Runtime/data partition errors share errcode 23514 with check constraint violations. The
+	// "no partition ... found for row" form carries a data-bearing "Partition key ..." detail.
+	{
+		[]state.LogLine{{
+			Content:  "no partition of relation \"measurement\" found for row",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+			UUID:     uuid.UUID{1},
+		}, {
+			Content:  "Partition key of the failing row contains (a) = (5).",
+			LogLevel: pganalyze_collector.LogLineInformation_DETAIL,
+		}, {
+			Content:  "partition constraint of relation \"part_2\" is violated by some row",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}},
+		[]state.LogLine{{
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_CHECK_CONSTRAINT_VIOLATION,
+			UUID:               uuid.UUID{1},
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_DETAIL,
+			ParentUUID:         uuid.UUID{1},
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 42,
+				ByteEnd:   51,
+				Kind:      state.TableDataLogSecret,
+			}},
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_CHECK_CONSTRAINT_VIOLATION,
+			ReviewedForSecrets: true,
+		}},
+		nil,
+	},
 	// "permission denied to <action>" is a permission error (here: a role management command)
 	{
 		[]state.LogLine{{
