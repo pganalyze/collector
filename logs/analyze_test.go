@@ -4212,6 +4212,47 @@ index scan needed: 1 pages from table (100.00% of total) had 60 dead item identi
 		}},
 		nil,
 	},
+	// Partitioning DDL/operation errors are one broad classification; nothing is redacted
+	{
+		[]state.LogLine{{
+			Content:  "partition \"p1\" would overlap partition \"p2\" at character 20",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}, {
+			Content:  "cannot attach index \"idx\" as a partition of index \"pidx\"",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}, {
+			Content:  "\"foo\" is not a partition of partitioned table \"bar\"",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}, {
+			Content:  "remainder for hash partition must be less than modulus",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}, {
+			Content:  "invalid bound specification for a range partition at character 10",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}},
+		[]state.LogLine{{
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_PARTITION_ERROR,
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_PARTITION_ERROR,
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_PARTITION_ERROR,
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_PARTITION_ERROR,
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_PARTITION_ERROR,
+			ReviewedForSecrets: true,
+		}},
+		nil,
+	},
 	// SQL/JSON errors: fixed-text forms redact nothing; forms carrying data/parse text redact it.
 	{
 		[]state.LogLine{{

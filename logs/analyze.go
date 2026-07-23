@@ -1299,6 +1299,62 @@ var inconsistentRangeBounds = analyzeGroup{
 	},
 }
 
+// partitionError is the catch-all for partitioning DDL/operation errors (invalid bound/key
+// definitions, overlaps, cannot attach/detach/merge/split, wrong-object-type). Runtime row-routing
+// and partition-constraint failures are handled earlier by partitionConstraintViolation /
+// checkConstraintViolation1 (CHECK_CONSTRAINT_VIOLATION). The generic "ALTER action ... cannot be
+// performed on relation ..." family is not partition-specific and is intentionally left out. Content
+// is fixed text + identifiers, so nothing is redacted. Patterns are anchored to specific partition
+// phrasings (not the bare substring "partition") so partition-named identifiers are not misclassified.
+var partitionError = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_PARTITION_ERROR,
+	primary: match{
+		prefixes: []string{
+			"partition", "partitioned", "partitions", "cannot", "column", "relation", "trigger", "\"",
+			"invalid bound specification", "empty range bound specified", "remainder for hash partition",
+			"modulus for hash partition", "every hash partition", "a hash-partitioned table",
+			"number of partitioning columns", "unrecognized partitioning strategy",
+			"aggregate functions are not allowed in partition", "window functions are not allowed in partition",
+			"set-returning functions are not allowed in partition", "functions in partition key expression",
+			"UNIQUE constraint on partitioned", "PRIMARY KEY constraint on partitioned",
+			"EXCLUDE constraint on partitioned", "unsupported UNIQUE constraint", "unsupported PRIMARY KEY constraint",
+			"not-null constraint", "identity columns are not supported on partitions", "removing partition",
+			"upper bound of partition", "lower bound of partition", "new partition", "list of new partitions",
+			"list of partitions to be merged", "moving row to another partition",
+			"ROW triggers with transition tables", "TO must specify", "FROM must specify",
+		},
+		regexp: regexp.MustCompile(`^(?:` +
+			`partitions?\b.+` +
+			`|partitioned\b.+` +
+			`|cannot .+(?i:partition).*` +
+			`|invalid bound specification for a \w+ partition.*` +
+			`|empty range bound specified for partition .+` +
+			`|(?:remainder|modulus) for hash partition .+` +
+			`|every hash partition modulus .+` +
+			`|a hash-partitioned table may not have a default partition` +
+			`|number of partitioning columns .+` +
+			`|unrecognized partitioning strategy .+` +
+			`|column \d+ of the partition key .+` +
+			`|(?:aggregate|window|set-returning) functions are not allowed in partition .+` +
+			`|functions in partition key expression must be marked IMMUTABLE` +
+			`|(?:UNIQUE|PRIMARY KEY|EXCLUDE) constraint on partitioned table .+` +
+			`|unsupported (?:UNIQUE|PRIMARY KEY) constraint with partition key .+` +
+			`|not-null constraints? .*partitioned table.*` +
+			`|identity columns are not supported on partitions` +
+			`|removing partition "[^"]*" .+` +
+			`|relation "[^"]*" is not a partition .+` +
+			`|"[^"]*" is (?:not |a |already ).*partition.*` +
+			`|(?:upper|lower) bound of partition "[^"]*" .+` +
+			`|(?:new partition|new partitions'|list of (?:new partitions|partitions to be merged)) .+` +
+			`|moving row to another partition .+` +
+			`|trigger "[^"]*" prevents table "[^"]*" from becoming a partition` +
+			`|ROW triggers with transition tables are not supported on partitions` +
+			`|(?:TO|FROM) must specify exactly one value per partitioning column` +
+			`)`),
+		secrets: []state.LogSecretKind{},
+	},
+}
+
 // SQL/JSON errors (JSON / jsonpath / SQL-JSON functions) span many errcodes, but form one useful
 // category. They are split into three groups by what needs redacting, matched in this order so the
 // data-bearing forms redact their value before the broad no-data group claims the line:
@@ -1575,6 +1631,7 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 		couldNotSerializeRepeatableRead,
 		couldNotSerializeSerializable,
 		inconsistentRangeBounds,
+		partitionError,
 		sqlJsonErrorData,
 		sqlJsonParseError,
 		sqlJsonError,
