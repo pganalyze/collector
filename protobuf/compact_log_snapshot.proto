@@ -206,6 +206,8 @@ message LogLineInformation {
     VALUE_OUT_OF_RANGE = 141; // "... out of range", "... field value out of range", "numeric field overflow" (for non-integer types; integers use INTEGER_OUT_OF_RANGE)
     OBJECT_DOES_NOT_EXIST = 142; // "<object type> ... does not exist" for object types without a dedicated classification (role, type, schema, index, collation, extension, ...); relations/columns/functions/operators use their own
     ROW_LEVEL_SECURITY_VIOLATION = 143; // "new row violates row-level security policy for table ...", "query would be affected by row-level security policy for table ..." (errcode 42501)
+    WITH_CHECK_OPTION_VIOLATION = 144; // "new row violates check option for view ..." (errcode 44000)
+    CANNOT_MODIFY_VIEW = 145; // "cannot insert into/update/delete from/merge into [column ... of] view ..." for non-updatable views (errcodes 55000, 0A000)
 
     // Collector internal events
     PGA_COLLECTOR_IDENTIFY = 1000; // "pganalyze-collector-identify: server1"

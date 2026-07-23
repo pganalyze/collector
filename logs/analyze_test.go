@@ -4158,6 +4158,60 @@ index scan needed: 1 pages from table (100.00% of total) had 60 dead item identi
 		}},
 		nil,
 	},
+	// WITH CHECK OPTION violation (44000) carries a data-bearing "Failing row contains" detail
+	{
+		[]state.LogLine{{
+			Content:  "new row violates check option for view \"my_view\"",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+			UUID:     uuid.UUID{1},
+		}, {
+			Content:  "Failing row contains (1, 2).",
+			LogLevel: pganalyze_collector.LogLineInformation_DETAIL,
+		}},
+		[]state.LogLine{{
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_WITH_CHECK_OPTION_VIOLATION,
+			UUID:               uuid.UUID{1},
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_DETAIL,
+			ParentUUID:         uuid.UUID{1},
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 22,
+				ByteEnd:   26,
+				Kind:      state.TableDataLogSecret,
+			}},
+		}},
+		nil,
+	},
+	// Non-updatable view DML errors (55000 view-level, 0A000 column-level) share one classification
+	{
+		[]state.LogLine{{
+			Content:  "cannot insert into view \"my_view\"",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}, {
+			Content:  "cannot update column \"c\" of view \"my_view\"",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}, {
+			Content:  "cannot delete from view \"my_view\"",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}},
+		[]state.LogLine{{
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_CANNOT_MODIFY_VIEW,
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_CANNOT_MODIFY_VIEW,
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_CANNOT_MODIFY_VIEW,
+			ReviewedForSecrets: true,
+		}},
+		nil,
+	},
 	// Runtime row-level security denials (errcode 42501) get their own classification
 	{
 		[]state.LogLine{{

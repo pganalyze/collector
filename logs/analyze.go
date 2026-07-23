@@ -799,6 +799,38 @@ var partitionConstraintViolation = analyzeGroup{
 	},
 }
 
+// withCheckOptionViolation: a row written through a WITH CHECK OPTION view falls outside the view's
+// condition (errcode 44000). Carries the same data-bearing "Failing row contains ..." detail as the
+// constraint violations.
+var withCheckOptionViolation = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_WITH_CHECK_OPTION_VIOLATION,
+	primary: match{
+		prefixes: []string{"new row violates check option for view"},
+		regexp:   regexp.MustCompile(`^new row violates check option for view "[^"]+"`),
+		secrets:  []state.LogSecretKind{},
+	},
+	detail: match{
+		regexp:  regexp.MustCompile(`^Failing row contains \((.+)\).`),
+		secrets: []state.LogSecretKind{state.TableDataLogSecret},
+	},
+}
+
+// cannotModifyView: DML targeting a view (or a view column) that is not auto-updatable. Postgres
+// splits this across errcode 55000 (whole view) and 0A000 (specific column), but it is one
+// user-facing problem. View/column names are identifiers, so nothing is redacted.
+var cannotModifyView = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_CANNOT_MODIFY_VIEW,
+	primary: match{
+		prefixes: []string{
+			"cannot insert into view", "cannot insert into column", "cannot update view",
+			"cannot update column", "cannot delete from view", "cannot merge into view",
+			"cannot merge into column",
+		},
+		regexp:  regexp.MustCompile(`^cannot (?:insert into|update|delete from|merge into) (?:column "[^"]+" of )?view "[^"]+"`),
+		secrets: []state.LogSecretKind{},
+	},
+}
+
 // rowLevelSecurityViolation covers the runtime RLS denials (errcode 42501 insufficient_privilege):
 // a write blocked by a policy's WITH CHECK / USING expression, or a read/write refused because it
 // would be affected by a policy. RLS policy *definition* errors (e.g. "infinite recursion detected
@@ -1428,6 +1460,8 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 		checkConstraintViolation4,
 		partitionConstraintViolation,
 		rowLevelSecurityViolation,
+		withCheckOptionViolation,
+		cannotModifyView,
 		exclusionConstraintViolation,
 		columnMissingFromGroupBy,
 		columnDoesNotExist,
