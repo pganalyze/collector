@@ -209,9 +209,9 @@ message LogLineInformation {
     WITH_CHECK_OPTION_VIOLATION = 144; // "new row violates check option for view ..." (errcode 44000)
     CANNOT_MODIFY_VIEW = 145; // "cannot insert into/update/delete from/merge into [column ... of] view ..." for non-updatable views (errcodes 55000, 0A000)
     SQL_JSON_ERROR = 146; // JSON / jsonpath / SQL-JSON processing errors (errcodes vary: 2203x SQL/JSON subclass, plus 22P02, 22023, 42601, 0A000, ...)
-    PARTITION_ERROR = 147; // partitioning DDL/operation errors: invalid bounds/keys, overlaps, cannot attach/detach/merge/split, "X is not a partition", ... (errcodes vary: 42P16, 42P17, 0A000, 42809; runtime routing/constraint failures use CHECK_CONSTRAINT_VIOLATION)
+    PARTITION_ERROR = 147; // partitioning DDL/operation errors: invalid bounds/keys, overlaps, cannot attach/detach/merge/split, ... (errcodes vary: 42P16, 42P17, 0A000; runtime routing/constraint failures use CHECK_CONSTRAINT_VIOLATION, "X is [not] a partition[ed] ..." uses WRONG_OBJECT_TYPE)
     OBJECT_ALREADY_EXISTS = 148; // "<object type> ... already exists" for any object type (relation, type, column, constraint, function, ...) (duplicate_* errcodes: 42710, 42P07, 42701, 42723)
-    WRONG_OBJECT_TYPE = 149; // operation attempted on the wrong kind of object: "\"...\" is [not] a[n] <object type>", "ALTER action ... cannot be performed on relation ..." (errcode 42809)
+    WRONG_OBJECT_TYPE = 149; // operation attempted on the wrong kind of object: "\"...\" is [not] a[n] <object type>" (incl. partition[ed] forms), "ALTER action ... cannot be performed on relation ..." (mostly errcode 42809; partition variants also 42P17/0A000)
 
     // Collector internal events
     PGA_COLLECTOR_IDENTIFY = 1000; // "pganalyze-collector-identify: server1"

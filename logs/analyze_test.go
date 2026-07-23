@@ -4231,6 +4231,12 @@ index scan needed: 1 pages from table (100.00% of total) had 60 dead item identi
 			Content:  "\"bar\" is a view",
 			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
 		}, {
+			Content:  "\"baz\" is not a partitioned table",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}, {
+			Content:  "\"qux\" is not a partition of partitioned table \"parent\"",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}, {
 			Content:  "ALTER action DETACH PARTITION cannot be performed on relation \"p\"",
 			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
 		}},
@@ -4258,6 +4264,14 @@ index scan needed: 1 pages from table (100.00% of total) had 60 dead item identi
 			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
 			Classification:     pganalyze_collector.LogLineInformation_WRONG_OBJECT_TYPE,
 			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_WRONG_OBJECT_TYPE,
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_WRONG_OBJECT_TYPE,
+			ReviewedForSecrets: true,
 		}},
 		nil,
 	},
@@ -4270,7 +4284,7 @@ index scan needed: 1 pages from table (100.00% of total) had 60 dead item identi
 			Content:  "cannot attach index \"idx\" as a partition of index \"pidx\"",
 			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
 		}, {
-			Content:  "\"foo\" is not a partition of partitioned table \"bar\"",
+			Content:  "cannot use column reference in partition bound expression at character 5",
 			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
 		}, {
 			Content:  "remainder for hash partition must be less than modulus",

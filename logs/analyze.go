@@ -1071,16 +1071,21 @@ var objectAlreadyExists = analyzeGroup{
 
 // wrongObjectType covers operations attempted on the wrong kind of object (errcode 42809):
 // "\"...\" is [not] a[n] <object type>" and "ALTER action ... cannot be performed on relation ...".
-// The non-object "\"...\" is not a ..." forms (valid hex/binary digit, scalar variable, valid base
-// type, ...) use other errcodes and are excluded by enumerating only object-kind words.
+// Includes the partition wrong-object-type phrasings ("\"...\" is [not] a partition[ed] ...", "is not
+// a partition of ...") - these read as wrong-object-type errors and are preferred over the broad
+// partitionError bucket, so this group is matched ahead of it. The non-object "\"...\" is not a ..."
+// forms (valid hex/binary digit, scalar variable, valid base type, ...) use other errcodes and are
+// excluded by enumerating only object-kind words.
 var wrongObjectType = analyzeGroup{
 	classification: pganalyze_collector.LogLineInformation_WRONG_OBJECT_TYPE,
 	primary: match{
-		prefixes: []string{"\"", "ALTER action"},
+		prefixes: []string{"\"", "relation", "ALTER action"},
 		regexp: regexp.MustCompile(`^(?:` +
 			`"[^"]*" is (?:not )?an? (?:table or materialized view|materialized view|foreign table|` +
 			`BRIN index|unique index|index for table "[^"]*"|table|view|sequence|index|` +
 			`domain|property graph)` +
+			`|"[^"]*" is (?:not |already )?(?:an? )?.*partition.*` +
+			`|relation "[^"]*" is not a partition of relation "[^"]*"` +
 			`|ALTER action .+ cannot be performed on relation "[^"]*")`),
 		secrets: []state.LogSecretKind{},
 	},
@@ -1343,17 +1348,19 @@ var inconsistentRangeBounds = analyzeGroup{
 }
 
 // partitionError is the catch-all for partitioning DDL/operation errors (invalid bound/key
-// definitions, overlaps, cannot attach/detach/merge/split, wrong-object-type). Runtime row-routing
-// and partition-constraint failures are handled earlier by partitionConstraintViolation /
-// checkConstraintViolation1 (CHECK_CONSTRAINT_VIOLATION). The generic "ALTER action ... cannot be
-// performed on relation ..." family is not partition-specific and is intentionally left out. Content
-// is fixed text + identifiers, so nothing is redacted. Patterns are anchored to specific partition
-// phrasings (not the bare substring "partition") so partition-named identifiers are not misclassified.
+// definitions, overlaps, cannot attach/detach/merge/split). Runtime row-routing and
+// partition-constraint failures are handled earlier by partitionConstraintViolation /
+// checkConstraintViolation1 (CHECK_CONSTRAINT_VIOLATION), and the wrong-object-type phrasings
+// ("\"X\" is [not] a partition[ed] ...") by wrongObjectType - both matched ahead of this group. The
+// generic "ALTER action ... cannot be performed on relation ..." family is not partition-specific and
+// is intentionally left out. Content is fixed text + identifiers, so nothing is redacted. Patterns are
+// anchored to specific partition phrasings (not the bare substring "partition") so partition-named
+// identifiers are not misclassified.
 var partitionError = analyzeGroup{
 	classification: pganalyze_collector.LogLineInformation_PARTITION_ERROR,
 	primary: match{
 		prefixes: []string{
-			"partition", "partitioned", "partitions", "cannot", "column", "relation", "trigger", "\"",
+			"partition", "partitioned", "partitions", "cannot", "column", "trigger",
 			"invalid bound specification", "empty range bound specified", "remainder for hash partition",
 			"modulus for hash partition", "every hash partition", "a hash-partitioned table",
 			"number of partitioning columns", "unrecognized partitioning strategy",
@@ -1385,8 +1392,6 @@ var partitionError = analyzeGroup{
 			`|not-null constraints? .*partitioned table.*` +
 			`|identity columns are not supported on partitions` +
 			`|removing partition "[^"]*" .+` +
-			`|relation "[^"]*" is not a partition .+` +
-			`|"[^"]*" is (?:not |a |already ).*partition.*` +
 			`|(?:upper|lower) bound of partition "[^"]*" .+` +
 			`|(?:new partition|new partitions'|list of (?:new partitions|partitions to be merged)) .+` +
 			`|moving row to another partition .+` +
@@ -1674,9 +1679,9 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 		couldNotSerializeRepeatableRead,
 		couldNotSerializeSerializable,
 		inconsistentRangeBounds,
-		partitionError,
 		objectAlreadyExists,
 		wrongObjectType,
+		partitionError,
 		sqlJsonErrorData,
 		sqlJsonParseError,
 		sqlJsonError,
