@@ -208,6 +208,7 @@ message LogLineInformation {
     ROW_LEVEL_SECURITY_VIOLATION = 143; // "new row violates row-level security policy for table ...", "query would be affected by row-level security policy for table ..." (errcode 42501)
     WITH_CHECK_OPTION_VIOLATION = 144; // "new row violates check option for view ..." (errcode 44000)
     CANNOT_MODIFY_VIEW = 145; // "cannot insert into/update/delete from/merge into [column ... of] view ..." for non-updatable views (errcodes 55000, 0A000)
+    SQL_JSON_ERROR = 146; // JSON / jsonpath / SQL-JSON processing errors (errcodes vary: 2203x SQL/JSON subclass, plus 22P02, 22023, 42601, 0A000, ...)
 
     // Collector internal events
     PGA_COLLECTOR_IDENTIFY = 1000; // "pganalyze-collector-identify: server1"
