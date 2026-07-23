@@ -209,6 +209,7 @@ message LogLineInformation {
     WITH_CHECK_OPTION_VIOLATION = 144; // "new row violates check option for view ..." (errcode 44000)
     CANNOT_MODIFY_VIEW = 145; // "cannot insert into/update/delete from/merge into [column ... of] view ..." for non-updatable views (errcodes 55000, 0A000)
     SQL_JSON_ERROR = 146; // JSON / jsonpath / SQL-JSON processing errors (errcodes vary: 2203x SQL/JSON subclass, plus 22P02, 22023, 42601, 0A000, ...)
+    PARTITION_ERROR = 147; // partitioning DDL/operation errors: invalid bounds/keys, overlaps, cannot attach/detach/merge/split, "X is not a partition", ... (errcodes vary: 42P16, 42P17, 0A000, 42809; runtime routing/constraint failures use CHECK_CONSTRAINT_VIOLATION)
 
     // Collector internal events
     PGA_COLLECTOR_IDENTIFY = 1000; // "pganalyze-collector-identify: server1"
