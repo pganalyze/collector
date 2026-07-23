@@ -13,14 +13,9 @@ import (
 
 const DefaultCapacity = 500
 
-// Queue of snapshots ready for submission to pganalyze
-//   - Thread safe: Safe for concurrent use by multiple readers and writers.
-//   - Limited capacity: If full, Push drops the oldest item to make room.
-//   - Transactional: Pop locks the head item via a generation ID which is removed on Commit, and re-released on Rollback.
-//   - Generation tracking: Increments a counter on every Push to uniquely identify each item.
-//     If a Push evicts an in-flight item, its generation changes, safely ignoring late Commits or Rollbacks.
-//   - Memory-bounded: When the global QueueMemory limit is exceeded, Push drops the oldest items
-//     to stay within the budget. All queues share this single global limit.
+// Queue of snapshots ready for submission to pganalyze. If snapshot
+// submission fails, the original snapshot order is retained up until
+// snapshots must be dropped to stay within the capacity and memory limits.
 type Queue struct {
 	mu           sync.Mutex
 	cond         *sync.Cond
@@ -30,9 +25,8 @@ type Queue struct {
 	tail         int
 	size         int
 	sizeBytes    int64
-	activeGen    uint64
+	inFlight     bool // true while an item is being uploaded (between Pop and Commit/Rollback)
 	closed       bool
-	nextGenID    uint64
 	Logger       *util.Logger
 	DropCallback func(kind string, sizeBytes int64)
 }
@@ -47,10 +41,9 @@ func NewQueue(logger *util.Logger) *Queue {
 	return q
 }
 
-// Push adds an item to the tail. If full, it drops the oldest item to make room.
-// When the global queue memory limit is exceeded, Push drops the oldest items
-// (starting with the current queue's oldest) to stay within the budget.
-// All queues share the single global memory limit defined by QueueMemory.
+// Push adds an item to the tail. If full or over the global memory limit,
+// it drops the oldest items to make room, unless that item is currently
+// being uploaded (in-flight). In that case, the new push is dropped instead.
 func (q *Queue) Push(kind string, snapshot proto.Message) (err error) {
 	data, err := proto.Marshal(snapshot)
 	if err != nil {
@@ -63,7 +56,7 @@ func (q *Queue) Push(kind string, snapshot proto.Message) (err error) {
 	return q.PushBytes(kind, buf.Bytes())
 }
 
-// Factored out from Push so it can be called by tests without constructing real snapshots
+// Factored out from Push so it can be called by tests without building real snapshots
 func (q *Queue) PushBytes(kind string, bytes []byte) (err error) {
 	sizeBytes := int64(len(bytes))
 	q.mu.Lock()
@@ -73,10 +66,9 @@ func (q *Queue) PushBytes(kind string, bytes []byte) (err error) {
 	}
 	q.makeSpace(sizeBytes)
 	q.data[q.tail] = QueueItem{
-		Kind:       kind,
-		Snapshot:   bytes,
-		SizeBytes:  sizeBytes,
-		Generation: q.nextGenID,
+		Kind:      kind,
+		Snapshot:  bytes,
+		SizeBytes: sizeBytes,
 	}
 	q.tail = (q.tail + 1) % q.capacity
 	q.size++
@@ -86,13 +78,11 @@ func (q *Queue) PushBytes(kind string, bytes []byte) (err error) {
 }
 
 // Pop blocks until an item is ready or the queue closes.
-// On success, it locks the head item and returns a Transaction handle.
-//
-// The caller is woken by Push (Signal), Commit/Rollback (Broadcast), or Close (Broadcast).
+// On success, it marks the head as in-flight and returns a Transaction handle.
 func (q *Queue) Pop(ctx context.Context) (*Transaction, error) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
-	for (q.size == 0 || q.activeGen != 0) && !q.closed && ctx.Err() == nil {
+	for (q.size == 0 || q.inFlight) && !q.closed && ctx.Err() == nil {
 		q.cond.Wait()
 	}
 	if ctx.Err() != nil {
@@ -102,13 +92,12 @@ func (q *Queue) Pop(ctx context.Context) (*Transaction, error) {
 		return nil, errors.New("queue closed")
 	}
 	item := q.data[q.head]
-	q.activeGen = item.Generation
+	q.inFlight = true
 	return &Transaction{
-		Kind:       item.Kind,
-		Snapshot:   item.Snapshot,
-		SizeBytes:  item.SizeBytes,
-		generation: item.Generation,
-		q:          q,
+		Kind:      item.Kind,
+		Snapshot:  item.Snapshot,
+		SizeBytes: item.SizeBytes,
+		q:         q,
 	}, nil
 }
 
@@ -123,25 +112,23 @@ func (q *Queue) Close() {
 }
 
 type QueueItem struct {
-	Kind       string
-	Snapshot   []byte
-	SizeBytes  int64
-	Generation uint64
+	Kind      string
+	Snapshot  []byte
+	SizeBytes int64
 }
 
 type Transaction struct {
-	Kind       string
-	Snapshot   []byte
-	SizeBytes  int64
-	generation uint64
-	q          *Queue
+	Kind      string
+	Snapshot  []byte
+	SizeBytes int64
+	q         *Queue
 }
 
+// Commit advances past the head item, marking it as successfully uploaded.
 func (t *Transaction) Commit() {
 	t.q.mu.Lock()
 	defer t.q.mu.Unlock()
-	// Validate that the transaction hasn't been evicted or superseded
-	if t.q.activeGen != t.generation || t.q.data[t.q.head].Generation != t.generation {
+	if !t.q.inFlight {
 		return
 	}
 	t.q.data[t.q.head] = QueueItem{}
@@ -149,37 +136,34 @@ func (t *Transaction) Commit() {
 	t.q.size--
 	t.q.sizeBytes -= t.SizeBytes
 	QueueMemory.Remove(t.SizeBytes)
-	t.q.activeGen = 0
+	t.q.inFlight = false
 	t.q.cond.Broadcast()
 }
 
+// Rollback leaves the head item in place so it will be retried on the next Pop.
 func (t *Transaction) Rollback() {
 	t.q.mu.Lock()
 	defer t.q.mu.Unlock()
-	// Validate that the transaction hasn't been evicted or superseded
-	if t.q.activeGen != t.generation || t.q.data[t.q.head].Generation != t.generation {
+	if !t.q.inFlight {
 		return
 	}
-	t.q.activeGen = 0
+	t.q.inFlight = false
 	t.q.cond.Broadcast()
 }
 
+// Does nothing if the head snapshot is in-flight to preserve ordering on retry.
 func (q *Queue) makeSpace(sizeBytes int64) {
 	QueueMemory.Add(sizeBytes)
-	// Evict items to satisfy the global memory limit
+	// Evict items to satisfy the global memory limit.
 	evictedCount := 0
 	for evictedCount <= 100 {
 		if !QueueMemory.OverLimit() {
 			break
 		}
-		if q.size == 0 {
-			// This queue is empty; another server's queue is the problem
+		if q.size == 0 || q.inFlight {
 			break
 		}
 		evicted := q.data[q.head]
-		if q.activeGen == evicted.Generation {
-			q.activeGen = 0
-		}
 		q.data[q.head] = QueueItem{}
 		q.head = (q.head + 1) % q.capacity
 		q.size--
@@ -188,13 +172,9 @@ func (q *Queue) makeSpace(sizeBytes int64) {
 		q.logDrop(evicted.Kind, evicted.SizeBytes)
 		evictedCount++
 	}
-	// Handle capacity-based eviction
-	q.nextGenID++
-	if q.size == q.capacity {
+	// Handle capacity-based eviction.
+	if q.size == q.capacity && !q.inFlight {
 		evicted := q.data[q.head]
-		if q.activeGen == evicted.Generation {
-			q.activeGen = 0
-		}
 		q.data[q.head] = QueueItem{}
 		q.head = (q.head + 1) % q.capacity
 		q.size--

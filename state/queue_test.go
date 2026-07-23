@@ -26,19 +26,19 @@ func TestQueue_FIFOEviction(t *testing.T) {
 		t.Errorf("expected item 1, got kind=%s snapshot=%v", tx.Kind, tx.Snapshot)
 	}
 	tx.Commit()
-	// Eviction during in-flight transaction is a no-op; second item remains
+	// In-flight items are never evicted; they stay at head until committed.
 	q2 := &Queue{data: make([]QueueItem, 2), capacity: 2}
 	q2.cond = sync.NewCond(&q2.mu)
 	q2.PushBytes("1", []byte("data"))
 	tx2, _ := q2.Pop(ctx)
-	q2.PushBytes("2", []byte("data")) // evicts tx1
-	tx2.Commit()                      // safe no-op
+	q2.PushBytes("2", []byte("data")) // fits without eviction (size 1 < capacity 2)
+	tx2.Commit()                      // removes "1"
 	tx3, err := q2.Pop(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if tx3.Kind != "2" {
-		t.Errorf("expected item 2 after eviction, got %s", tx3.Kind)
+		t.Errorf("expected item 2 after commit, got %s", tx3.Kind)
 	}
 	tx3.Commit()
 }
