@@ -205,6 +205,7 @@ message LogLineInformation {
     INCONSISTENT_RANGE_BOUNDS = 140; // "range lower bound must be less than or equal to range upper bound"
     VALUE_OUT_OF_RANGE = 141; // "... out of range", "... field value out of range", "numeric field overflow" (for non-integer types; integers use INTEGER_OUT_OF_RANGE)
     OBJECT_DOES_NOT_EXIST = 142; // "<object type> ... does not exist" for object types without a dedicated classification (role, type, schema, index, collation, extension, ...); relations/columns/functions/operators use their own
+    ROW_LEVEL_SECURITY_VIOLATION = 143; // "new row violates row-level security policy for table ...", "query would be affected by row-level security policy for table ..." (errcode 42501)
 
     // Collector internal events
     PGA_COLLECTOR_IDENTIFY = 1000; // "pganalyze-collector-identify: server1"

@@ -4158,6 +4158,40 @@ index scan needed: 1 pages from table (100.00% of total) had 60 dead item identi
 		}},
 		nil,
 	},
+	// Runtime row-level security denials (errcode 42501) get their own classification
+	{
+		[]state.LogLine{{
+			Content:  "new row violates row-level security policy for table \"accounts\"",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}, {
+			Content:  "new row violates row-level security policy \"acct_policy\" for table \"accounts\"",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}, {
+			Content:  "target row violates row-level security policy (USING expression) for table \"accounts\"",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}, {
+			Content:  "query would be affected by row-level security policy for table \"accounts\"",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}},
+		[]state.LogLine{{
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_ROW_LEVEL_SECURITY_VIOLATION,
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_ROW_LEVEL_SECURITY_VIOLATION,
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_ROW_LEVEL_SECURITY_VIOLATION,
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_ROW_LEVEL_SECURITY_VIOLATION,
+			ReviewedForSecrets: true,
+		}},
+		nil,
+	},
 	// "permission denied to <action>" is a permission error (here: a role management command)
 	{
 		[]state.LogLine{{

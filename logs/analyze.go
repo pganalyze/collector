@@ -798,6 +798,21 @@ var partitionConstraintViolation = analyzeGroup{
 		secrets: []state.LogSecretKind{state.TableDataLogSecret},
 	},
 }
+
+// rowLevelSecurityViolation covers the runtime RLS denials (errcode 42501 insufficient_privilege):
+// a write blocked by a policy's WITH CHECK / USING expression, or a read/write refused because it
+// would be affected by a policy. RLS policy *definition* errors (e.g. "infinite recursion detected
+// in policy") use other errcodes and are left unclassified. Table/policy names are identifiers, so
+// nothing is redacted.
+var rowLevelSecurityViolation = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_ROW_LEVEL_SECURITY_VIOLATION,
+	primary: match{
+		prefixes: []string{"new row violates row-level security policy", "target row violates row-level security policy", "query would be affected by row-level security policy"},
+		regexp: regexp.MustCompile(`^(?:(?:new|target) row violates row-level security policy(?: "[^"]*")?(?: \(USING expression\))? for table "[^"]+"` +
+			`|query would be affected by row-level security policy for table "[^"]+")`),
+		secrets: []state.LogSecretKind{},
+	},
+}
 var exclusionConstraintViolation = analyzeGroup{
 	classification: pganalyze_collector.LogLineInformation_EXCLUSION_CONSTRAINT_VIOLATION,
 	primary: match{
@@ -1412,6 +1427,7 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 		checkConstraintViolation3,
 		checkConstraintViolation4,
 		partitionConstraintViolation,
+		rowLevelSecurityViolation,
 		exclusionConstraintViolation,
 		columnMissingFromGroupBy,
 		columnDoesNotExist,
