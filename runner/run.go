@@ -91,6 +91,9 @@ func Run(ctx context.Context, wg *sync.WaitGroup, opts state.CollectionOpts, log
 	}
 
 	shutdown = func() {
+		for _, server := range servers {
+			server.SnapshotQueue.Close()
+		}
 		for _, cfg := range conf.Servers {
 			if cfg.OTelTracingProviderShutdownFunc == nil {
 				continue

@@ -65,9 +65,7 @@ func submitFull(ctx context.Context, s *snapshot.FullSnapshot, server *state.Ser
 		return nil
 	}
 
-	server.FullSnapshotUpload <- s
-
-	return nil
+	return server.SnapshotQueue.Push("full", s)
 }
 
 func verifyIntegrity(s *snapshot.FullSnapshot) error {
