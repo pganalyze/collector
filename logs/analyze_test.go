@@ -4212,6 +4212,62 @@ index scan needed: 1 pages from table (100.00% of total) had 60 dead item identi
 		}},
 		nil,
 	},
+	// SQL/JSON errors: fixed-text forms redact nothing; forms carrying data/parse text redact it.
+	{
+		[]state.LogLine{{
+			Content:  "jsonpath item method .string() can only be applied to a boolean, string, numeric, or datetime value",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}, {
+			Content:  "invalid JSON_TABLE specification at character 15",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}, {
+			Content:  "argument \"5x\" of jsonpath item method .integer() is invalid for type integer",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}, {
+			Content:  "duplicate JSON object key value: \"k\"",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}, {
+			Content:  "trailing junk after numeric literal at or near \"1x\" of jsonpath input at character 10",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}},
+		[]state.LogLine{{
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_SQL_JSON_ERROR,
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_SQL_JSON_ERROR,
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_SQL_JSON_ERROR,
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 10,
+				ByteEnd:   12,
+				Kind:      state.TableDataLogSecret,
+			}},
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_SQL_JSON_ERROR,
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 34,
+				ByteEnd:   35,
+				Kind:      state.TableDataLogSecret,
+			}},
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_SQL_JSON_ERROR,
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 48,
+				ByteEnd:   50,
+				Kind:      state.ParsingErrorLogSecret,
+			}},
+		}},
+		nil,
+	},
 	// Runtime row-level security denials (errcode 42501) get their own classification
 	{
 		[]state.LogLine{{

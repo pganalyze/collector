@@ -1298,6 +1298,84 @@ var inconsistentRangeBounds = analyzeGroup{
 		prefixes: []string{"range lower bound must be less than or equal to range upper bound"},
 	},
 }
+
+// SQL/JSON errors (JSON / jsonpath / SQL-JSON functions) span many errcodes, but form one useful
+// category. They are split into three groups by what needs redacting, matched in this order so the
+// data-bearing forms redact their value before the broad no-data group claims the line:
+//
+//	sqlJsonErrorData  - a user value/key from the data (TableData)
+//	sqlJsonParseError - jsonpath source text near a parse error (ParsingError)
+//	sqlJsonError       - everything else: fixed text + identifiers (method/type/column/variable names)
+var sqlJsonErrorData = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_SQL_JSON_ERROR,
+	primary: match{
+		prefixes: []string{"argument \"", "duplicate JSON object key value", "JSON object does not contain key"},
+		regexp: regexp.MustCompile(`^(?:argument "([^"]*)" of jsonpath item method \.\w+\(\) is invalid for type [\w ]+` +
+			`|duplicate JSON object key value(?:: "([^"]*)")?` +
+			`|JSON object does not contain key "([^"]*)")`),
+		secrets: []state.LogSecretKind{state.TableDataLogSecret, state.TableDataLogSecret, state.TableDataLogSecret},
+	},
+}
+var sqlJsonParseError = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_SQL_JSON_ERROR,
+	primary: match{
+		prefixes: []string{"trailing junk after numeric literal", "invalid Unicode escape sequence"},
+		// Only the jsonpath-input variants belong here; the plain-SQL "... at character N" forms are
+		// left for a syntax-error classification, so the regex requires "of jsonpath input".
+		regexp:  regexp.MustCompile(`^(?:trailing junk after numeric literal|invalid Unicode escape sequence) at or near "([^"]*)" of jsonpath input(?: at character \d+)?`),
+		secrets: []state.LogSecretKind{state.ParsingErrorLogSecret},
+	},
+}
+var sqlJsonError = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_SQL_JSON_ERROR,
+	primary: match{
+		prefixes: []string{
+			"jsonpath", "left operand of jsonpath", "right operand of jsonpath", "operand of unary jsonpath",
+			"precision of jsonpath", "scale of jsonpath", "time precision of jsonpath", "field position of jsonpath",
+			"NaN or Infinity is not allowed for jsonpath", "could not find jsonpath", "syntax error at end of jsonpath",
+			"no SQL/JSON item found", "JSON path expression", "expected JSON array", "malformed JSON array",
+			"JSON value must not be null", "key value must be scalar", "cannot cast jsonb", "cannot cast type",
+			"cannot call json", "could not determine row type for result of json", "JSON_TABLE", "invalid JSON_TABLE",
+			"duplicate JSON_TABLE", "only string constants are supported in JSON_TABLE", "cannot specify", "cannot use type", "cannot use non-string",
+			"cannot set JSON encoding", "returning pseudo-types is not supported in SQL/JSON", "SQL/JSON QUOTES",
+			"null_value_treatment must be", "unsupported JSON encoding", "unrecognized JSON encoding", "JSON ENCODING clause",
+			"COPY FORMAT JSON", "COPY FORCE_ARRAY", "jsonb subscript",
+		},
+		regexp: regexp.MustCompile(`^(?:` +
+			`jsonpath (?:item method \.\w+\(\)|(?:wildcard )?member accessor|(?:wildcard )?array accessor|array subscript) .+` +
+			`|(?:(?:left|right) operand of|operand of unary) jsonpath operator .+` +
+			`|(?:precision|scale|time precision|field position) of jsonpath item method \.\w+\(\) .+` +
+			`|NaN or Infinity is not allowed for jsonpath item method \.\w+\(\)` +
+			`|could not find jsonpath variable "[^"]*"` +
+			`|syntax error at end of jsonpath input(?: at character \d+)?` +
+			`|no SQL/JSON item found for specified path(?: of column "[^"]*")?` +
+			`|JSON path expression .+` +
+			`|expected JSON array` +
+			`|malformed JSON array` +
+			`|JSON value must not be null` +
+			`|key value must be scalar.*` +
+			`|cannot cast jsonb .+ to type [\w ]+` +
+			`|cannot cast type [\w ]+ to json(?: at character \d+)?` +
+			`|cannot call jsonb?_object_keys on (?:a scalar|an array)` +
+			`|could not determine row type for result of jsonb?_populate_record(?:set)?` +
+			`|(?:invalid )?JSON_TABLE .+` +
+			`|duplicate JSON_TABLE column or path name: .+` +
+			`|only string constants are supported in JSON_TABLE .+` +
+			`|cannot specify (?:\w+ in JSON mode|FORMAT JSON in RETURNING clause of JSON_\w+\(\))(?: at character \d+)?` +
+			`|cannot use (?:type [\w ]+ in (?:IS JSON predicate|RETURNING clause of JSON_\w+\(\))|non-string types with explicit FORMAT JSON clause)(?: at character \d+)?` +
+			`|cannot set JSON encoding for non-bytea output types(?: at character \d+)?` +
+			`|returning pseudo-types is not supported in SQL/JSON functions` +
+			`|SQL/JSON QUOTES behavior must not be specified .+` +
+			`|null_value_treatment must be .+` +
+			`|(?:unsupported|unrecognized) JSON encoding[^\n]*` +
+			`|JSON ENCODING clause is only allowed for bytea .+` +
+			`|COPY FORMAT JSON is not supported for COPY FROM` +
+			`|COPY FORCE_ARRAY can only be used with JSON mode` +
+			`|jsonb subscript (?:does not support slices|in assignment must not be null)(?: at character \d+)?` +
+			`)`),
+		secrets: []state.LogSecretKind{},
+	},
+}
 var statementLog = analyzeGroup{
 	classification: pganalyze_collector.LogLineInformation_STATEMENT_LOG,
 	primary: match{
@@ -1497,6 +1575,9 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 		couldNotSerializeRepeatableRead,
 		couldNotSerializeSerializable,
 		inconsistentRangeBounds,
+		sqlJsonErrorData,
+		sqlJsonParseError,
+		sqlJsonError,
 	}
 	for _, m := range groupX {
 		if matchesPrefix(logLine, m.primary.prefixes) {
