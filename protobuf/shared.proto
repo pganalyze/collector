@@ -139,6 +139,7 @@ message SystemInformation {
     TEMBO_SYSTEM = 7;
     PLANETSCALE_SYSTEM = 8;
     NEON_SYSTEM = 9;
+    SUPABASE_SYSTEM = 10;
   }
 
   SystemType type = 1;
