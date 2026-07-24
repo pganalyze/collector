@@ -152,6 +152,8 @@ func transformSystem(systemState state.SystemState, diffState state.DiffState) *
 		system.SystemInformation.Type = snapshot.SystemInformation_PLANETSCALE_SYSTEM
 	} else if systemState.Info.Type == state.NeonSystem {
 		system.SystemInformation.Type = snapshot.SystemInformation_NEON_SYSTEM
+	} else if systemState.Info.Type == state.SupabaseSystem {
+		system.SystemInformation.Type = snapshot.SystemInformation_SUPABASE_SYSTEM
 	}
 
 	system.SystemInformation.ResourceTags = systemState.Info.ResourceTags

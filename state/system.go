@@ -35,6 +35,7 @@ const (
 	TemboSystem
 	PlanetScaleSystem
 	NeonSystem
+	SupabaseSystem
 )
 
 type SystemInfo struct {
