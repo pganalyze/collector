@@ -783,7 +783,7 @@ var checkConstraintViolation4 = analyzeGroup{
 // ... violates partition constraint" form handled by checkConstraintViolation1): a row that routes
 // to no partition, or a bulk ATTACH/default-partition validation failing for some existing row. The
 // DDL-level partition errors (invalid bounds, overlap, unsupported features) use other errcodes and
-// are intentionally left unclassified.
+// are handled by partitionError (PARTITION_ERROR).
 var partitionConstraintViolation = analyzeGroup{
 	classification: pganalyze_collector.LogLineInformation_CHECK_CONSTRAINT_VIOLATION,
 	primary: match{
@@ -1069,7 +1069,8 @@ var objectAlreadyExists = analyzeGroup{
 	},
 }
 
-// wrongObjectType covers operations attempted on the wrong kind of object (errcode 42809):
+// wrongObjectType covers operations attempted on the wrong kind of object (mostly errcode 42809; the
+// partition variants below are also 42P17/0A000):
 // "\"...\" is [not] a[n] <object type>" and "ALTER action ... cannot be performed on relation ...".
 // Includes the partition wrong-object-type phrasings ("\"...\" is [not] a partition[ed] ...", "is not
 // a partition of ...") - these read as wrong-object-type errors and are preferred over the broad
@@ -1193,9 +1194,8 @@ var integerOutOfRange = analyzeGroup{
 // float, date/time, interval, timestamp, oid, block number, etc.); integer types are handled by
 // integerOutOfRange (matched earlier). Where the message carries a user-supplied value it is
 // captured and redacted. Container-index errors ("array subscript out of range", jsonb "path
-// element ... is out of range") and function-argument-validity errors (jsonpath .decimal()/.time()
-// precision/scale) are left unclassified on purpose - they are not value-does-not-fit-the-type
-// errors.
+// element ... is out of range") are not value-does-not-fit-the-type errors and are left unclassified
+// on purpose; the jsonpath .decimal()/.time() precision/scale errors are SQL_JSON_ERROR.
 var valueOutOfRange = analyzeGroup{
 	classification: pganalyze_collector.LogLineInformation_VALUE_OUT_OF_RANGE,
 	primary: match{
@@ -1353,7 +1353,8 @@ var inconsistentRangeBounds = analyzeGroup{
 // checkConstraintViolation1 (CHECK_CONSTRAINT_VIOLATION), and the wrong-object-type phrasings
 // ("\"X\" is [not] a partition[ed] ...") by wrongObjectType - both matched ahead of this group. The
 // generic "ALTER action ... cannot be performed on relation ..." family is not partition-specific and
-// is intentionally left out. Content is fixed text + identifiers, so nothing is redacted. Patterns are
+// is handled by wrongObjectType (WRONG_OBJECT_TYPE). Content is fixed text + identifiers, so nothing
+// is redacted. Patterns are
 // anchored to specific partition phrasings (not the bare substring "partition") so partition-named
 // identifiers are not misclassified.
 var partitionError = analyzeGroup{
