@@ -739,8 +739,10 @@ var checkConstraintViolation1 = analyzeGroup{
 	classification: pganalyze_collector.LogLineInformation_CHECK_CONSTRAINT_VIOLATION,
 	primary: match{
 		prefixes: []string{"new row for relation"},
-		regexp:   regexp.MustCompile(`^new row for relation "(.+?)" violates check constraint "(.+?)"`),
-		secrets:  []state.LogSecretKind{0, 0},
+		// A partition constraint violation shares errcode 23514 (check_violation) with a check
+		// constraint violation and comes with the same "Failing row contains (...)" detail line.
+		regexp:  regexp.MustCompile(`^new row for relation "(.+?)" violates (?:check constraint "(.+?)"|partition constraint)`),
+		secrets: []state.LogSecretKind{0, 0},
 		// FIXME: Store constraint name and relation name
 	},
 	detail: match{
@@ -773,6 +775,74 @@ var checkConstraintViolation4 = analyzeGroup{
 		regexp:   regexp.MustCompile(`^value for domain (.+?) violates check constraint "(.+?)"`),
 		secrets:  []state.LogSecretKind{0, 0},
 		// FIXME: Store constraint name
+	},
+}
+
+// partitionConstraintViolation covers the runtime/data partition errors, which share errcode 23514
+// (check_violation) with the check-constraint violations above (and with the "new row for relation
+// ... violates partition constraint" form handled by checkConstraintViolation1): a row that routes
+// to no partition, or a bulk ATTACH/default-partition validation failing for some existing row. The
+// DDL-level partition errors (invalid bounds, overlap, unsupported features) use other errcodes and
+// are handled by partitionError (PARTITION_ERROR).
+var partitionConstraintViolation = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_CHECK_CONSTRAINT_VIOLATION,
+	primary: match{
+		prefixes: []string{"no partition of relation", "partition constraint of relation", "updated partition constraint for default partition"},
+		regexp: regexp.MustCompile(`^(?:no partition of relation "[^"]+" found for row` +
+			`|partition constraint of relation "[^"]+" is violated by some row` +
+			`|updated partition constraint for default partition "[^"]+" would be violated by some row)`),
+		secrets: []state.LogSecretKind{},
+	},
+	detail: match{
+		regexp:  regexp.MustCompile(`^Partition key of the failing row contains (.+)\.`),
+		secrets: []state.LogSecretKind{state.TableDataLogSecret},
+	},
+}
+
+// withCheckOptionViolation: a row written through a WITH CHECK OPTION view falls outside the view's
+// condition (errcode 44000). Carries the same data-bearing "Failing row contains ..." detail as the
+// constraint violations.
+var withCheckOptionViolation = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_WITH_CHECK_OPTION_VIOLATION,
+	primary: match{
+		prefixes: []string{"new row violates check option for view"},
+		regexp:   regexp.MustCompile(`^new row violates check option for view "[^"]+"`),
+		secrets:  []state.LogSecretKind{},
+	},
+	detail: match{
+		regexp:  regexp.MustCompile(`^Failing row contains \((.+)\).`),
+		secrets: []state.LogSecretKind{state.TableDataLogSecret},
+	},
+}
+
+// cannotModifyView: DML targeting a view (or a view column) that is not auto-updatable. Postgres
+// splits this across errcode 55000 (whole view) and 0A000 (specific column), but it is one
+// user-facing problem. View/column names are identifiers, so nothing is redacted.
+var cannotModifyView = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_CANNOT_MODIFY_VIEW,
+	primary: match{
+		prefixes: []string{
+			"cannot insert into view", "cannot insert into column", "cannot update view",
+			"cannot update column", "cannot delete from view", "cannot merge into view",
+			"cannot merge into column",
+		},
+		regexp:  regexp.MustCompile(`^cannot (?:insert into|update|delete from|merge into) (?:column "[^"]+" of )?view "[^"]+"`),
+		secrets: []state.LogSecretKind{},
+	},
+}
+
+// rowLevelSecurityViolation covers the runtime RLS denials (errcode 42501 insufficient_privilege):
+// a write blocked by a policy's WITH CHECK / USING expression, or a read/write refused because it
+// would be affected by a policy. RLS policy *definition* errors (e.g. "infinite recursion detected
+// in policy") use other errcodes and are left unclassified. Table/policy names are identifiers, so
+// nothing is redacted.
+var rowLevelSecurityViolation = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_ROW_LEVEL_SECURITY_VIOLATION,
+	primary: match{
+		prefixes: []string{"new row violates row-level security policy", "target row violates row-level security policy", "query would be affected by row-level security policy"},
+		regexp: regexp.MustCompile(`^(?:(?:new|target) row violates row-level security policy(?: "[^"]*")?(?: \(USING expression\))? for table "[^"]+"` +
+			`|query would be affected by row-level security policy for table "[^"]+")`),
+		secrets: []state.LogSecretKind{},
 	},
 }
 var exclusionConstraintViolation = analyzeGroup{
@@ -808,8 +878,11 @@ var columnDoesNotExist = analyzeGroup{
 	classification: pganalyze_collector.LogLineInformation_COLUMN_DOES_NOT_EXIST,
 	primary: match{
 		prefixes: []string{"column"},
-		regexp:   regexp.MustCompile(`^column (?:"[^"]+"|[\w.]+) does not exist(?: at character \d+)?`),
-		secrets:  []state.LogSecretKind{},
+		// Also covers the "column ... does not exist" variants that carry extra context (referenced in
+		// a foreign key, named in a (partition) key, or "column number N of relation ...") - all
+		// errcode 42703. The "of relation ..." form is handled by columnDoesNotExistOnTable.
+		regexp:  regexp.MustCompile(`^column (?:number \d+ of relation "[^"]+"|(?:"[^"]+"|[\w.]+)(?: referenced in foreign key constraint| named in (?:partition )?key)?) does not exist(?: at character \d+)?`),
+		secrets: []state.LogSecretKind{},
 	},
 }
 var columnDoesNotExistOnTable = analyzeGroup{
@@ -831,16 +904,21 @@ var columnReferenceAmbiguous = analyzeGroup{
 var relationDoesNotExist = analyzeGroup{
 	classification: pganalyze_collector.LogLineInformation_RELATION_DOES_NOT_EXIST,
 	primary: match{
-		prefixes: []string{"relation"},
-		regexp:   regexp.MustCompile(`^relation "([^"]+)" does not exist(?: at character \d+)?`),
+		// table/sequence/view/materialized view share errcode 42P01 (undefined_table) with the
+		// generic "relation" form (emitted by wrongRelkindError), so they are the same class.
+		prefixes: []string{"relation", "table", "sequence", "view", "materialized view"},
+		regexp:   regexp.MustCompile(`^(?:relation|table|sequence|view|materialized view) "([^"]+)" does not exist(?: at character \d+)?`),
 		secrets:  []state.LogSecretKind{0},
 	},
 }
 var functionDoesNotExist = analyzeGroup{
 	classification: pganalyze_collector.LogLineInformation_FUNCTION_DOES_NOT_EXIST,
 	primary: match{
-		prefixes: []string{"function"},
-		regexp:   regexp.MustCompile(`^function ([^"]+) does not exist(?: at character \d+)?`),
+		// procedure/aggregate/routine share errcode 42883 (undefined_function) with function. The
+		// name is matched with .+? (not [^"]+) so quoted names ("function \"foo\" does not exist",
+		// emitted when there is no argument list) match too, not just "name(args)" signatures.
+		prefixes: []string{"function", "procedure", "aggregate", "routine"},
+		regexp:   regexp.MustCompile(`^(?:function|procedure|aggregate|routine) (.+?) does not exist(?: at character \d+)?`),
 		secrets:  []state.LogSecretKind{0},
 	},
 	hint: match{
@@ -922,20 +1000,135 @@ var operatorDoesNotExist = analyzeGroup{
 	classification: pganalyze_collector.LogLineInformation_OPERATOR_DOES_NOT_EXIST,
 	primary: match{
 		prefixes: []string{"operator does not exist: "},
-		regexp:   regexp.MustCompile(`^operator does not exist: (\w+) ([` + regexp.QuoteMeta("+*/<>=~!@#%^&|`?-") + `]+) (\w+)(?: at character \d+)?`),
-		secrets:  []state.LogSecretKind{0, 0, 0},
+		// The remainder is a Postgres-generated operator/type description (e.g. "boolean || boolean",
+		// "@#@ integer", "time with time zone + time with time zone"); it contains no user data, and
+		// the previous, more specific pattern missed unary operators and multi-word type names.
+		regexp:  regexp.MustCompile(`^operator does not exist: .+`),
+		secrets: []state.LogSecretKind{},
 	},
 	hint: match{
 		prefixes: []string{"No operator matches the given name and argument type(s). You might need to add explicit type casts."},
+	},
+}
+
+// objectDoesNotExist is the catch-all for "<object type> ... does not exist" errors whose object
+// type has no dedicated classification (mostly errcode 42704 undefined_object, plus siblings like
+// undefined_schema/database/cursor). Relations (table/sequence/view/... -> relationDoesNotExist),
+// columns, functions (function/procedure/aggregate -> functionDoesNotExist) and the "operator does
+// not exist: <a> <op> <b>" form are handled by their own groups, matched earlier. Object names here
+// are identifiers (not user data), so nothing is redacted; the whole line is consumed.
+var objectDoesNotExist = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_OBJECT_DOES_NOT_EXIST,
+	primary: match{
+		prefixes: []string{
+			"role", "type", "index", "collation", "conversion", "cast", "extension", "language",
+			"server", "foreign", "user mapping", "mapping for token type", "event trigger", "trigger",
+			"subscription", "publication", "statistics object", "large object", "tablespace",
+			"access method", "operator", "rule", "policy", "constraint", "domain", "transform",
+			"text search", "token type", "property", "label", "schema", "database", "cursor",
+			"prepared statement", "savepoint", "snapshot", "directory", "tablesample method",
+		},
+		regexp: regexp.MustCompile(`^(?:` +
+			`role|type|index|collation|conversion|cast|extension|language|` +
+			`foreign-data wrapper|foreign server|foreign table|server|` +
+			`user mapping|mapping for token type|event trigger|trigger|` +
+			`subscription|publication|statistics object|large object|tablespace|` +
+			`access method|operator class|operator family|operator \d+|` +
+			`rule|policy|constraint|domain|transform|` +
+			`text search (?:parser|dictionary|template|configuration)|` +
+			`token type|property graph|property|label|schema|database|cursor|` +
+			`prepared statement|savepoint|snapshot|directory|tablesample method` +
+			`)\b.*does not exist.*`),
+		secrets: []state.LogSecretKind{},
+	},
+}
+
+// objectAlreadyExists is the mirror of objectDoesNotExist for duplicate-object DDL conflicts
+// ("<object type> ... already exists"), spanning the duplicate_* errcodes (42710, 42P07, 42701,
+// 42723). One broad bucket over all object types; content is identifiers, so nothing is redacted.
+var objectAlreadyExists = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_OBJECT_ALREADY_EXISTS,
+	primary: match{
+		prefixes: []string{
+			"role", "type", "constraint", "column", "trigger", "relation", "schema", "database",
+			"sequence", "index", "view", "materialized view", "foreign table", "server", "foreign",
+			"user mapping", "event trigger", "subscription", "publication", "statistics object",
+			"tablespace", "operator", "rule", "policy", "conversion", "default conversion", "collation",
+			"cast", "language", "extension", "text search", "enum label", "function", "aggregate",
+			"procedure", "prepared statement", "domain", "property graph", "alias",
+		},
+		regexp: regexp.MustCompile(`^(?:` +
+			`role|type|constraint|column|trigger|relation|schema|database|sequence|index|` +
+			`materialized view|foreign table|view|foreign-data wrapper|foreign server|server|` +
+			`user mapping|event trigger|subscription|publication|statistics object|tablespace|` +
+			`operator|rule|policy|(?:default )?conversion|collation|cast|language|extension|` +
+			`text search (?:parser|dictionary|template|configuration)|enum label|function|aggregate|` +
+			`procedure|prepared statement|domain|property graph|alias` +
+			`)\b.*already exists.*`),
+		secrets: []state.LogSecretKind{},
+	},
+}
+
+// wrongObjectType covers operations attempted on the wrong kind of object (mostly errcode 42809; the
+// partition variants below are also 42P17/0A000):
+// "\"...\" is [not] a[n] <object type>" and "ALTER action ... cannot be performed on relation ...".
+// Includes the partition wrong-object-type phrasings ("\"...\" is [not] a partition[ed] ...", "is not
+// a partition of ...") - these read as wrong-object-type errors and are preferred over the broad
+// partitionError bucket, so this group is matched ahead of it. The non-object "\"...\" is not a ..."
+// forms (valid hex/binary digit, scalar variable, valid base type, ...) use other errcodes and are
+// excluded by enumerating only object-kind words.
+var wrongObjectType = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_WRONG_OBJECT_TYPE,
+	primary: match{
+		prefixes: []string{"\"", "relation", "ALTER action"},
+		regexp: regexp.MustCompile(`^(?:` +
+			`"[^"]*" is (?:not )?an? (?:table or materialized view|materialized view|foreign table|` +
+			`BRIN index|unique index|index for table "[^"]*"|table|view|sequence|index|` +
+			`domain|property graph)` +
+			`|"[^"]*" is (?:not |already )?(?:an? )?.*partition.*` +
+			`|relation "[^"]*" is not a partition of relation "[^"]*"` +
+			`|ALTER action .+ cannot be performed on relation "[^"]*")`),
+		secrets: []state.LogSecretKind{},
+	},
+}
+
+// skippingMaintenancePermissionDenied matches the WARNING-level messages emitted when a manual
+// VACUUM/ANALYZE/CLUSTER/REPACK skips a relation the current role lacks privileges on. These are
+// not query-level permission failures (the command still succeeds), so they get their own
+// classification rather than being grouped with PERMISSION_DENIED. It is matched ahead of
+// permissionDenied to keep those lines out of that group.
+var skippingMaintenancePermissionDenied = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_SKIPPING_MAINTENANCE_PERMISSION_DENIED,
+	primary: match{
+		prefixes: []string{"permission denied to analyze ", "permission denied to vacuum ", "permission denied to execute "},
+		regexp:   regexp.MustCompile(`^permission denied to (?:analyze|vacuum|execute (?:CLUSTER|REPACK) on) "([^"]+)", skipping it`),
+		secrets:  []state.LogSecretKind{0},
 	},
 }
 var permissionDenied = analyzeGroup{
 	classification: pganalyze_collector.LogLineInformation_PERMISSION_DENIED,
 	primary: match{
 		prefixes: []string{"permission denied"},
-		regexp:   regexp.MustCompile(`^permission denied for (?:column|relation|table|sequence|database|function|operator|type|language|large object|schema|operator class|operator family|collation|conversion|tablespace|text search dictionary|text search configuration|foreign-data wrapper|foreign server|event trigger|extension) ([\w_-]+)(?: at character \d+)?`),
-		secrets:  []state.LogSecretKind{0},
+		// Covers the three Postgres forms:
+		//   "permission denied for <object type> <name>" (object type can be multi-word, e.g.
+		//     "foreign-data wrapper", "materialized view"; name may be quoted)
+		//   "permission denied to <action>" (e.g. "to grant role ...", "to create database")
+		//   "permission denied: \"...\" is a system catalog"
+		// The "..., skipping it" warnings are handled earlier by skippingMaintenancePermissionDenied.
+		// The remainder consists of object/role identifiers and fixed text, so nothing is redacted.
+		regexp:  regexp.MustCompile(`^permission denied(?: for [\w -]+ (?:"[^"]*"|\S+)(?: at character \d+)?| to .+|: .+)?`),
+		secrets: []state.LogSecretKind{},
 		// FIXME: Store relation name when this is "permission denied for relation [relation name]"
+	},
+}
+var mustBePrivilege = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_PERMISSION_DENIED,
+	primary: match{
+		// Insufficient-privilege errors phrased as a requirement: "must be owner of <object>",
+		// "must be able to SET ROLE ...", "must be superuser to ...".
+		prefixes: []string{"must be owner of ", "must be able to SET ROLE ", "must be superuser "},
+		regexp:   regexp.MustCompile(`^must be (?:owner of |able to SET ROLE |superuser ).+`),
+		secrets:  []state.LogSecretKind{},
 	},
 }
 var transactionIsAborted = analyzeGroup{
@@ -991,7 +1184,54 @@ var cannotDrop = analyzeGroup{
 var integerOutOfRange = analyzeGroup{
 	classification: pganalyze_collector.LogLineInformation_INTEGER_OUT_OF_RANGE,
 	primary: match{
-		prefixes: []string{"integer out of range"},
+		prefixes: []string{"integer out of range", "bigint out of range", "smallint out of range", "value \""},
+		regexp:   regexp.MustCompile(`^(?:(?:integer|bigint|smallint) out of range|value "([^"]*)" is out of range for type (?:smallint|integer|bigint)(?: at character \d+)?)`),
+		secrets:  []state.LogSecretKind{state.TableDataLogSecret},
+	},
+}
+
+// valueOutOfRange covers out-of-range/overflow errors for non-integer types (numeric, money,
+// float, date/time, interval, timestamp, oid, block number, etc.); integer types are handled by
+// integerOutOfRange (matched earlier). Where the message carries a user-supplied value it is
+// captured and redacted. Container-index errors ("array subscript out of range", jsonb "path
+// element ... is out of range") are not value-does-not-fit-the-type errors and are left unclassified
+// on purpose; the jsonpath .decimal()/.time() precision/scale errors are SQL_JSON_ERROR.
+var valueOutOfRange = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_VALUE_OUT_OF_RANGE,
+	primary: match{
+		prefixes: []string{
+			"interval field value out of range", "date/time field value out of range",
+			"date field value out of range", "time field value out of range",
+			"interval out of range", "timestamp out of range", "date out of range",
+			"numeric field overflow", "value overflows numeric format", "value out of range",
+			"money out of range", "result is out of range", "input is out of range",
+			"pg_lsn out of range", "OID out of range", "time zone displacement out of range",
+			"numeric time zone", "block number out of range", "value \"", "value for \"",
+			"MINVALUE", "MAXVALUE", "\"",
+		},
+		regexp: regexp.MustCompile(`^(?:` +
+			`(?:interval|date/time|date|time) field value out of range: (?:"([^"]*)"|(\S+))` +
+			`|(?:timestamp|date|interval) out of range(?:: "([^"]*)")?` +
+			`|(?:value )?"([^"]*)" is out of range for type [\w ]+` +
+			`|value for "([^"]*)" in source string is out of range` +
+			`|time zone displacement out of range: "([^"]*)"` +
+			`|numeric time zone "([^"]*)" out of range` +
+			`|(?:MINVALUE|MAXVALUE) \([^)]*\) is out of range for sequence data type \w+` +
+			`|block number out of range: -?\d+` +
+			`|numeric field overflow` +
+			`|value overflows numeric format` +
+			`|value out of range: (?:overflow|underflow)` +
+			`|money out of range` +
+			`|result is out of range` +
+			`|input is out of range` +
+			`|pg_lsn out of range` +
+			`|OID out of range` +
+			`)(?: for [\w ]+)?(?: at character \d+)?`),
+		secrets: []state.LogSecretKind{
+			state.TableDataLogSecret, state.TableDataLogSecret, state.TableDataLogSecret,
+			state.TableDataLogSecret, state.TableDataLogSecret, state.TableDataLogSecret,
+			state.TableDataLogSecret,
+		},
 	},
 }
 var invalidRegexp = analyzeGroup{
@@ -1106,6 +1346,141 @@ var inconsistentRangeBounds = analyzeGroup{
 		prefixes: []string{"range lower bound must be less than or equal to range upper bound"},
 	},
 }
+
+// partitionError is the catch-all for partitioning DDL/operation errors (invalid bound/key
+// definitions, overlaps, cannot attach/detach/merge/split). Runtime row-routing and
+// partition-constraint failures are handled earlier by partitionConstraintViolation /
+// checkConstraintViolation1 (CHECK_CONSTRAINT_VIOLATION), and the wrong-object-type phrasings
+// ("\"X\" is [not] a partition[ed] ...") by wrongObjectType - both matched ahead of this group. The
+// generic "ALTER action ... cannot be performed on relation ..." family is not partition-specific and
+// is handled by wrongObjectType (WRONG_OBJECT_TYPE). Content is fixed text + identifiers, so nothing
+// is redacted. Patterns are
+// anchored to specific partition phrasings (not the bare substring "partition") so partition-named
+// identifiers are not misclassified.
+var partitionError = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_PARTITION_ERROR,
+	primary: match{
+		prefixes: []string{
+			"partition", "partitioned", "partitions", "cannot", "column", "trigger",
+			"invalid bound specification", "empty range bound specified", "remainder for hash partition",
+			"modulus for hash partition", "every hash partition", "a hash-partitioned table",
+			"number of partitioning columns", "unrecognized partitioning strategy",
+			"aggregate functions are not allowed in partition", "window functions are not allowed in partition",
+			"set-returning functions are not allowed in partition", "functions in partition key expression",
+			"UNIQUE constraint on partitioned", "PRIMARY KEY constraint on partitioned",
+			"EXCLUDE constraint on partitioned", "unsupported UNIQUE constraint", "unsupported PRIMARY KEY constraint",
+			"not-null constraint", "identity columns are not supported on partitions", "removing partition",
+			"upper bound of partition", "lower bound of partition", "new partition", "list of new partitions",
+			"list of partitions to be merged", "moving row to another partition",
+			"ROW triggers with transition tables", "TO must specify", "FROM must specify",
+		},
+		regexp: regexp.MustCompile(`^(?:` +
+			`partitions?\b.+` +
+			`|partitioned\b.+` +
+			`|cannot .+(?i:partition).*` +
+			`|invalid bound specification for a \w+ partition.*` +
+			`|empty range bound specified for partition .+` +
+			`|(?:remainder|modulus) for hash partition .+` +
+			`|every hash partition modulus .+` +
+			`|a hash-partitioned table may not have a default partition` +
+			`|number of partitioning columns .+` +
+			`|unrecognized partitioning strategy .+` +
+			`|column \d+ of the partition key .+` +
+			`|(?:aggregate|window|set-returning) functions are not allowed in partition .+` +
+			`|functions in partition key expression must be marked IMMUTABLE` +
+			`|(?:UNIQUE|PRIMARY KEY|EXCLUDE) constraint on partitioned table .+` +
+			`|unsupported (?:UNIQUE|PRIMARY KEY) constraint with partition key .+` +
+			`|not-null constraints? .*partitioned table.*` +
+			`|identity columns are not supported on partitions` +
+			`|removing partition "[^"]*" .+` +
+			`|(?:upper|lower) bound of partition "[^"]*" .+` +
+			`|(?:new partition|new partitions'|list of (?:new partitions|partitions to be merged)) .+` +
+			`|moving row to another partition .+` +
+			`|trigger "[^"]*" prevents table "[^"]*" from becoming a partition` +
+			`|ROW triggers with transition tables are not supported on partitions` +
+			`|(?:TO|FROM) must specify exactly one value per partitioning column` +
+			`)`),
+		secrets: []state.LogSecretKind{},
+	},
+}
+
+// SQL/JSON errors (JSON / jsonpath / SQL-JSON functions) span many errcodes, but form one useful
+// category. They are split into three groups by what needs redacting, matched in this order so the
+// data-bearing forms redact their value before the broad no-data group claims the line:
+//
+//	sqlJsonErrorData  - a user value/key from the data (TableData)
+//	sqlJsonParseError - jsonpath source text near a parse error (ParsingError)
+//	sqlJsonError       - everything else: fixed text + identifiers (method/type/column/variable names)
+var sqlJsonErrorData = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_SQL_JSON_ERROR,
+	primary: match{
+		prefixes: []string{"argument \"", "duplicate JSON object key value", "JSON object does not contain key"},
+		regexp: regexp.MustCompile(`^(?:argument "([^"]*)" of jsonpath item method \.\w+\(\) is invalid for type [\w ]+` +
+			`|duplicate JSON object key value(?:: "([^"]*)")?` +
+			`|JSON object does not contain key "([^"]*)")`),
+		secrets: []state.LogSecretKind{state.TableDataLogSecret, state.TableDataLogSecret, state.TableDataLogSecret},
+	},
+}
+var sqlJsonParseError = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_SQL_JSON_ERROR,
+	primary: match{
+		prefixes: []string{"trailing junk after numeric literal", "invalid Unicode escape sequence"},
+		// Only the jsonpath-input variants belong here; the plain-SQL "... at character N" forms are
+		// left for a syntax-error classification, so the regex requires "of jsonpath input".
+		regexp:  regexp.MustCompile(`^(?:trailing junk after numeric literal|invalid Unicode escape sequence) at or near "([^"]*)" of jsonpath input(?: at character \d+)?`),
+		secrets: []state.LogSecretKind{state.ParsingErrorLogSecret},
+	},
+}
+var sqlJsonError = analyzeGroup{
+	classification: pganalyze_collector.LogLineInformation_SQL_JSON_ERROR,
+	primary: match{
+		prefixes: []string{
+			"jsonpath", "left operand of jsonpath", "right operand of jsonpath", "operand of unary jsonpath",
+			"precision of jsonpath", "scale of jsonpath", "time precision of jsonpath", "field position of jsonpath",
+			"NaN or Infinity is not allowed for jsonpath", "could not find jsonpath", "syntax error at end of jsonpath",
+			"no SQL/JSON item found", "JSON path expression", "expected JSON array", "malformed JSON array",
+			"JSON value must not be null", "key value must be scalar", "cannot cast jsonb", "cannot cast type",
+			"cannot call json", "could not determine row type for result of json", "JSON_TABLE", "invalid JSON_TABLE",
+			"duplicate JSON_TABLE", "only string constants are supported in JSON_TABLE", "cannot specify", "cannot use type", "cannot use non-string",
+			"cannot set JSON encoding", "returning pseudo-types is not supported in SQL/JSON", "SQL/JSON QUOTES",
+			"null_value_treatment must be", "unsupported JSON encoding", "unrecognized JSON encoding", "JSON ENCODING clause",
+			"COPY FORMAT JSON", "COPY FORCE_ARRAY", "jsonb subscript",
+		},
+		regexp: regexp.MustCompile(`^(?:` +
+			`jsonpath (?:item method \.\w+\(\)|(?:wildcard )?member accessor|(?:wildcard )?array accessor|array subscript) .+` +
+			`|(?:(?:left|right) operand of|operand of unary) jsonpath operator .+` +
+			`|(?:precision|scale|time precision|field position) of jsonpath item method \.\w+\(\) .+` +
+			`|NaN or Infinity is not allowed for jsonpath item method \.\w+\(\)` +
+			`|could not find jsonpath variable "[^"]*"` +
+			`|syntax error at end of jsonpath input(?: at character \d+)?` +
+			`|no SQL/JSON item found for specified path(?: of column "[^"]*")?` +
+			`|JSON path expression .+` +
+			`|expected JSON array` +
+			`|malformed JSON array` +
+			`|JSON value must not be null` +
+			`|key value must be scalar.*` +
+			`|cannot cast jsonb .+ to type [\w ]+` +
+			`|cannot cast type [\w ]+ to json(?: at character \d+)?` +
+			`|cannot call jsonb?_object_keys on (?:a scalar|an array)` +
+			`|could not determine row type for result of jsonb?_populate_record(?:set)?` +
+			`|(?:invalid )?JSON_TABLE .+` +
+			`|duplicate JSON_TABLE column or path name: .+` +
+			`|only string constants are supported in JSON_TABLE .+` +
+			`|cannot specify (?:\w+ in JSON mode|FORMAT JSON in RETURNING clause of JSON_\w+\(\))(?: at character \d+)?` +
+			`|cannot use (?:type [\w ]+ in (?:IS JSON predicate|RETURNING clause of JSON_\w+\(\))|non-string types with explicit FORMAT JSON clause)(?: at character \d+)?` +
+			`|cannot set JSON encoding for non-bytea output types(?: at character \d+)?` +
+			`|returning pseudo-types is not supported in SQL/JSON functions` +
+			`|SQL/JSON QUOTES behavior must not be specified .+` +
+			`|null_value_treatment must be .+` +
+			`|(?:unsupported|unrecognized) JSON encoding[^\n]*` +
+			`|JSON ENCODING clause is only allowed for bytea .+` +
+			`|COPY FORMAT JSON is not supported for COPY FROM` +
+			`|COPY FORCE_ARRAY can only be used with JSON mode` +
+			`|jsonb subscript (?:does not support slices|in assignment must not be null)(?: at character \d+)?` +
+			`)`),
+		secrets: []state.LogSecretKind{},
+	},
+}
 var statementLog = analyzeGroup{
 	classification: pganalyze_collector.LogLineInformation_STATEMENT_LOG,
 	primary: match{
@@ -1202,6 +1577,19 @@ func AnalyzeLogLines(logLinesIn []state.LogLine) (logLinesOut []state.LogLine, s
 func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, detailLine state.LogLine, contextLine state.LogLine, hintLine state.LogLine, samples []state.PostgresQuerySample) (state.LogLine, state.LogLine, state.LogLine, state.LogLine, state.LogLine, []state.PostgresQuerySample) {
 	var parts []string
 
+	// Handled ahead of the generic handlers (which include permissionDenied) so these
+	// "..., skipping it" warnings are not swept into PERMISSION_DENIED. Also extracts the skipped
+	// relation name, which - like skippingVacuum/skippingAnalyze - Postgres logs without a schema.
+	if matchesPrefix(logLine, skippingMaintenancePermissionDenied.primary.prefixes) {
+		logLine, parts = matchLogLine(logLine, skippingMaintenancePermissionDenied.primary)
+		if len(parts) == 2 {
+			logLine.Classification = skippingMaintenancePermissionDenied.classification
+			logLine.Details = map[string]interface{}{"relation_name": parts[1]}
+			contextLine = matchOtherContextLogLine(contextLine)
+			return logLine, statementLine, detailLine, contextLine, hintLine, samples
+		}
+	}
+
 	// Generic handlers
 	groupX := []analyzeGroup{
 		connectionRejected,
@@ -1253,6 +1641,10 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 		checkConstraintViolation2,
 		checkConstraintViolation3,
 		checkConstraintViolation4,
+		partitionConstraintViolation,
+		rowLevelSecurityViolation,
+		withCheckOptionViolation,
+		cannotModifyView,
 		exclusionConstraintViolation,
 		columnMissingFromGroupBy,
 		columnDoesNotExist,
@@ -1268,7 +1660,9 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 		insertTargetColumnMismatch,
 		anyAllRequiresArray,
 		operatorDoesNotExist,
+		objectDoesNotExist,
 		permissionDenied,
+		mustBePrivilege,
 		transactionIsAborted,
 		onConflictNoConstraintMatch,
 		onConflictRowAffectedTwice,
@@ -1276,6 +1670,7 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 		divisionByZero,
 		cannotDrop,
 		integerOutOfRange,
+		valueOutOfRange,
 		invalidRegexp,
 		paramMissing,
 		noSuchSavepoint,
@@ -1285,6 +1680,12 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 		couldNotSerializeRepeatableRead,
 		couldNotSerializeSerializable,
 		inconsistentRangeBounds,
+		objectAlreadyExists,
+		wrongObjectType,
+		partitionError,
+		sqlJsonErrorData,
+		sqlJsonParseError,
+		sqlJsonError,
 	}
 	for _, m := range groupX {
 		if matchesPrefix(logLine, m.primary.prefixes) {
