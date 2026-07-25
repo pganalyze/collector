@@ -25,16 +25,6 @@ func unpackPostgresOidArray(input null.String) (result []state.Oid) {
 	return
 }
 
-func unpackPostgresStringArray(input null.String) (result []string) {
-	if !input.Valid {
-		return
-	}
-
-	result = strings.Split(strings.Trim(input.String, "{}"), ",")
-
-	return
-}
-
 const resolveToastSQL string = `
 SELECT n.nspname, c.relname
   FROM pg_catalog.pg_class c

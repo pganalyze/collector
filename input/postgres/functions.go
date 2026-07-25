@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/guregu/null"
+	"github.com/lib/pq"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
 )
@@ -87,7 +87,7 @@ func GetFunctions(ctx context.Context, logger *util.Logger, db *sql.DB, postgres
 
 	for rows.Next() {
 		var row state.PostgresFunction
-		var config null.String
+		var config pq.StringArray
 
 		err := rows.Scan(&row.Oid, &row.SchemaName, &row.FunctionName, &row.Language, &row.Source,
 			&row.SourceBin, &config, &row.Arguments, &row.Result, &row.Kind,
@@ -111,7 +111,7 @@ func GetFunctions(ctx context.Context, logger *util.Logger, db *sql.DB, postgres
 		}
 
 		row.DatabaseOid = currentDatabaseOid
-		row.Config = unpackPostgresStringArray(config)
+		row.Config = config
 
 		functions = append(functions, row)
 	}
