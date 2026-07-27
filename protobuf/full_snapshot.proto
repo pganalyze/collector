@@ -9,9 +9,8 @@ option go_package = "github.com/pganalyze/collector/output/pganalyze_collector";
 // Format Version: 1.0.0
 
 message FullSnapshot {
-  // Basic information about this snapshot
-  int32 snapshot_version_major = 1;
-  int32 snapshot_version_minor = 2;
+  int32 snapshot_version = 1; // Tracks changes in snapshot structure
+  int32 schema_version = 2; // Tracks changes in schema structure
   string collector_version = 3;
   bool failed_run = 4; // failed runs are submitted so we can provide more context in the UI
 

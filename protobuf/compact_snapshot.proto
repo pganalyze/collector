@@ -14,9 +14,8 @@ option go_package = "github.com/pganalyze/collector/output/pganalyze_collector";
 // Format Version: 1.0.0
 
 message CompactSnapshot {
-  // Basic information about this snapshot
-  int32 snapshot_version_major = 1;
-  int32 snapshot_version_minor = 2;
+  int32 snapshot_version = 1; // Tracks changes in snapshot structure
+  int32 schema_version = 2; // Tracks changes in schema structure
   string collector_version = 3;
   string snapshot_uuid = 4;
   google.protobuf.Timestamp collected_at = 5;
