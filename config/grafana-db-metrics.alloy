@@ -1,0 +1,31 @@
+logging {
+  level  = "info"
+  format = "logfmt"
+}
+
+prometheus.exporter.postgres "sorcery_db" {
+  data_source_names = [sys.env("GRAFANA_POSTGRES_URL")]
+}
+
+prometheus.scrape "sorcery_db" {
+  targets    = prometheus.exporter.postgres.sorcery_db.targets
+  forward_to = [prometheus.remote_write.grafana_cloud.receiver]
+  job_name   = "integrations/postgres_exporter"
+}
+
+prometheus.remote_write "grafana_cloud" {
+  endpoint {
+    url = sys.env("PROMETHEUS_REMOTE_WRITE_URL")
+
+    basic_auth {
+      username = sys.env("PROMETHEUS_USERNAME")
+      password = sys.env("GRAFANA_CLOUD_TOKEN")
+    }
+  }
+
+  external_labels = {
+    app         = "sorcery",
+    environment = sys.env("GRAFANA_ENVIRONMENT"),
+    space       = "accel-sorcery-apps",
+  }
+}
