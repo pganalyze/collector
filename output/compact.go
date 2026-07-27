@@ -39,9 +39,8 @@ func uploadAndSubmitCompactSnapshot(ctx context.Context, s *pganalyze_collector.
 		return nil
 	}
 
-	server.CompactSnapshotUpload <- s
-
-	return nil
+	kind := kindFromCompactSnapshot(s)
+	return server.SnapshotQueue.Push(kind, s)
 }
 
 func kindFromCompactSnapshot(s *pganalyze_collector.CompactSnapshot) string {
