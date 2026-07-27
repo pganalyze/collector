@@ -24,8 +24,8 @@ func uploadAndSubmitCompactSnapshot(ctx context.Context, s *pganalyze_collector.
 		return err
 	}
 
-	s.SnapshotVersionMajor = 1
-	s.SnapshotVersionMinor = 0
+	s.SnapshotVersion = 1
+	s.SchemaVersion = 1
 	s.CollectorVersion = util.CollectorNameAndVersion
 	s.SnapshotUuid = snapshotUUID.String()
 	s.CollectedAt = timestamppb.New(collectedAt)
