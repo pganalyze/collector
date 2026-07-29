@@ -25,6 +25,10 @@ type SchemaStats struct {
 type PersistedState struct {
 	CollectedAt time.Time
 
+	// The instance this state was collected from, so a later run can tell whether
+	// its own reference point came from the same instance
+	InstanceIdentity PostgresInstanceIdentity
+
 	DatabaseStats PostgresDatabaseStatsMap
 	SchemaStats   map[Oid]*SchemaStats
 
@@ -40,6 +44,10 @@ type PersistedHighFreqState struct {
 	StatementStats PostgresStatementStatsMap
 	PlanStats      PostgresPlanStatsMap
 	ServerIoStats  PostgresServerIoStatsMap
+
+	// The instance the above stats were collected from, so a later run can tell
+	// whether its own reference point came from the same instance
+	InstanceIdentity PostgresInstanceIdentity
 
 	// Keep track of when we last collected statement stats, to calculate time distance
 	LastStatementStatsAt time.Time
