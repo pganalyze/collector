@@ -47,9 +47,11 @@ func collectDiffAndSubmit(ctx context.Context, server *state.Server, opts state.
 	}
 	server.SetLogIgnoreFlags(logsIgnoreStatement, logsIgnoreDuration)
 
+	prevState := server.PrevState
+
 	collectedIntervalSecs := uint32(1)
-	if !server.PrevState.CollectedAt.IsZero() {
-		interval := newState.CollectedAt.Sub(server.PrevState.CollectedAt)
+	if !prevState.CollectedAt.IsZero() {
+		interval := newState.CollectedAt.Sub(prevState.CollectedAt)
 		if interval > time.Second {
 			collectedIntervalSecs = uint32(interval / time.Second)
 		}
@@ -58,7 +60,23 @@ func collectDiffAndSubmit(ctx context.Context, server *state.Server, opts state.
 		// clock moved backwards
 	}
 
-	diffState := diffState(logger, server.PrevState, newState, collectedIntervalSecs)
+	// Relation, index and database statistics are cumulative counters held by one
+	// postmaster, so they are only comparable to a reference point from that same
+	// postmaster. If we reached a different instance this time - an Aurora failover
+	// moving the reader endpoint elsewhere, or a restart - diff against an empty
+	// reference point instead, which is how the first snapshot after collector
+	// startup behaves: absolute values are still reported, but no activity is
+	// attributed to this interval.
+	if !prevState.InstanceIdentity.Matches(newState.InstanceIdentity) {
+		logger.PrintInfo(
+			"Detected a different Postgres instance than the last full snapshot (%s, was %s); resetting statistics reference point to avoid diffing statistics across instances",
+			newState.InstanceIdentity, prevState.InstanceIdentity)
+		// Collector process statistics are kept, since they don't come from the
+		// monitored instance
+		prevState = state.PersistedState{CollectorStats: prevState.CollectorStats}
+	}
+
+	diffState := diffState(logger, prevState, newState, collectedIntervalSecs)
 
 	err = output.SendFull(ctx, server, opts, logger, newState, diffState, transientState, collectedIntervalSecs)
 	if err != nil {
