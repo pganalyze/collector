@@ -10,6 +10,7 @@ const (
 	PostgresVersion15 = 150000
 	PostgresVersion16 = 160000
 	PostgresVersion17 = 170000
+	PostgresVersion18 = 180000
 
 	// MinRequiredPostgresVersion - We require PostgreSQL 10 or newer
 	MinRequiredPostgresVersion = PostgresVersion10
