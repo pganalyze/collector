@@ -36,9 +36,16 @@ func CollectAndDiff1minStats(ctx context.Context, c *postgres.Collection, connec
 		return newState, nil
 	}
 
+	interval := newState.LastStatementStatsAt.Sub(prevState.LastStatementStatsAt)
+	if interval < time.Second {
+		// Avoid divide by zero errors for fast consecutive runs, and guard against
+		// the uint32 conversion below wrapping if the clock moved backwards
+		interval = time.Second
+	}
+
 	timeKey := state.HistoricStatsTimeKey{
 		CollectedAt:           collectedAt,
-		CollectedIntervalSecs: uint32(newState.LastStatementStatsAt.Sub(prevState.LastStatementStatsAt) / time.Second),
+		CollectedIntervalSecs: uint32(interval / time.Second),
 	}
 
 	newState.UnidentifiedStatementStats = prevState.UnidentifiedStatementStats
