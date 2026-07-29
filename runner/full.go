@@ -60,13 +60,12 @@ func collectDiffAndSubmit(ctx context.Context, server *state.Server, opts state.
 		// clock moved backwards
 	}
 
-	// Relation, index and database statistics are cumulative counters held by one
-	// postmaster, so they are only comparable to a reference point from that same
-	// postmaster. If we reached a different instance this time - an Aurora failover
-	// moving the reader endpoint elsewhere, or a restart - diff against an empty
-	// reference point instead, which is how the first snapshot after collector
-	// startup behaves: absolute values are still reported, but no activity is
-	// attributed to this interval.
+	// Relation, index and database statistics are cumulative counters from one
+	// instance's memory, and we may have reached a different instance than the
+	// snapshot we would diff against - see PostgresInstanceIdentity. Diff against
+	// an empty reference point instead, which is how the first snapshot after
+	// collector startup behaves: absolute values are still reported, but no
+	// activity is attributed to this interval.
 	if !prevState.InstanceIdentity.Matches(newState.InstanceIdentity) {
 		logger.PrintInfo(
 			"Detected a different Postgres instance than the last full snapshot (%s, was %s); resetting statistics reference point to avoid diffing statistics across instances",
