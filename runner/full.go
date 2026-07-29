@@ -47,9 +47,15 @@ func collectDiffAndSubmit(ctx context.Context, server *state.Server, opts state.
 	}
 	server.SetLogIgnoreFlags(logsIgnoreStatement, logsIgnoreDuration)
 
-	collectedIntervalSecs := uint32(newState.CollectedAt.Sub(server.PrevState.CollectedAt) / time.Second)
-	if collectedIntervalSecs == 0 {
-		collectedIntervalSecs = 1 // Avoid divide by zero errors for fast consecutive runs
+	collectedIntervalSecs := uint32(1)
+	if !server.PrevState.CollectedAt.IsZero() {
+		interval := newState.CollectedAt.Sub(server.PrevState.CollectedAt)
+		if interval > time.Second {
+			collectedIntervalSecs = uint32(interval / time.Second)
+		}
+		// Otherwise leave this at 1, to avoid divide by zero errors for fast
+		// consecutive runs, and to keep the uint32 conversion from wrapping if the
+		// clock moved backwards
 	}
 
 	diffState := diffState(logger, server.PrevState, newState, collectedIntervalSecs)
