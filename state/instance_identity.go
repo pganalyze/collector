@@ -10,8 +10,7 @@ import (
 //
 // Cumulative statistics (pg_stat_statements, pg_stat_user_tables, etc.) live in
 // the memory of one postmaster and are not synchronized between instances, so
-// diffing them is only meaningful when both sides of the diff came from the
-// same instance and the same postmaster.
+// diffing them across two instances is meaningless.
 //
 // This matters for clusters where a single hostname resolves to different
 // instances over time. On an Aurora reader endpoint, a failover promotes the
@@ -19,6 +18,17 @@ import (
 // starts pointing at what used to be the writer. Diffing that instance's
 // counters against the previous reader's makes the collector attribute entire
 // counter lifetimes to a single interval.
+//
+// A restart of the same instance is treated as a change too, which is a
+// deliberate choice rather than a necessity. A clean shutdown persists
+// cumulative statistics to pg_stat/ and reloads them at startup - for
+// pg_stat_statements that is governed by pg_stat_statements.save, on by default
+// - so the counters often do survive and the diff would have been valid. But we
+// cannot tell from the start time alone whether the shutdown was clean, whether
+// saving was enabled, or, where instances share a storage volume as Aurora
+// replicas do, whether the file the new postmaster loaded was written by this
+// instance at all. Losing one interval costs less than diffing against a
+// reference point that turns out not to belong to us.
 type PostgresInstanceIdentity struct {
 	// Start time of the postmaster we're connected to; changes when it restarts
 	PostmasterStartTime time.Time

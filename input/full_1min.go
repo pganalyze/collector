@@ -37,13 +37,11 @@ func CollectAndDiff1minStats(ctx context.Context, c *postgres.Collection, connec
 		return newState, nil
 	}
 
-	// These are all cumulative counters kept in the memory of one postmaster, so
-	// they are only comparable to a reference point taken from that same
-	// postmaster. If the instance changed under us - an Aurora failover moving
-	// the reader endpoint to a different instance, or simply a restart - we skip
-	// this interval and let the state we just collected become the new reference
-	// point. Diffing anyway would attribute each counter's entire lifetime to
-	// this one interval.
+	// These are all cumulative counters from one instance's memory, and we may
+	// have reached a different instance than the run we would diff against - see
+	// PostgresInstanceIdentity. Skip this interval and let the state we just
+	// collected become the new reference point; diffing anyway would attribute
+	// each counter's entire lifetime to this one interval.
 	if !prevState.InstanceIdentity.Matches(newState.InstanceIdentity) {
 		c.Logger.PrintInfo(
 			"Detected a different Postgres instance than the last query statistics run (%s, was %s); skipping this interval to avoid diffing statistics across instances",
