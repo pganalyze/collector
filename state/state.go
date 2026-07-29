@@ -304,6 +304,10 @@ type Server struct {
 	HighFreqPrevState  PersistedHighFreqState
 	HighFreqStateMutex *sync.Mutex
 
+	// Shared DNS resolution for this server, so that the separate connections
+	// used by the different snapshot types reach the same instance
+	ResolvedHost *ResolvedHost
+
 	CollectionStatus      CollectionStatus
 	CollectionStatusMutex *sync.Mutex
 
@@ -350,6 +354,7 @@ func MakeServer(config config.ServerConfig, testRun bool) *Server {
 		QueryRuns:             make(map[int64]*QueryRun),
 		QueryRunsMutex:        &sync.Mutex{},
 		LogParseMutex:         &sync.RWMutex{},
+		ResolvedHost:          &ResolvedHost{},
 		Fingerprints:          NewFingerprints(),
 	}
 	server.Grant.Store(&Grant{Config: pganalyze_collector.ServerMessage_Config{Features: &pganalyze_collector.ServerMessage_Features{}}})
