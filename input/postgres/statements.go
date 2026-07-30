@@ -344,7 +344,7 @@ func getStatementSource(ctx context.Context, c *Collection, db *sql.DB, showtext
 	// (some providers add suffixes to the extension version).
 	availableExtMinorVersion := bundledExtMinorVersion
 	if defaultExtMinorVersion.Valid {
-		parsed, parseErr := strconv.Atoi(defaultExtMinorVersion.String)
+		parsed, parseErr := strconv.ParseInt(defaultExtMinorVersion.String, 10, 16)
 		if parseErr == nil {
 			availableExtMinorVersion = int16(parsed)
 		} else if c.GlobalOpts.TestRun {
