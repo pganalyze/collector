@@ -162,13 +162,11 @@ func GetServerStats(ctx context.Context, c *Collection, db *sql.DB, ps state.Per
 }
 
 func getPgStatStatementsInfo(ctx context.Context, db *sql.DB, stats *state.PgStatStatementsStats) error {
-	var extSchema string
-	var foundExtMinorVersion int16
 	// pg_stat_statements_info view was introduced in pg_stat_statements 1.9+ (Postgres 14+)
 	const supportedExtMinorVersion = 9
 	var pgStatStatementsInfoView string
 
-	err := db.QueryRowContext(ctx, QueryMarkerSQL+statementExtensionVersionSQL).Scan(&extSchema, &foundExtMinorVersion)
+	extSchema, foundExtMinorVersion, _, err := getStatementExtensionVersions(ctx, db)
 	if err != nil && err != sql.ErrNoRows {
 		return err
 	}

@@ -57,6 +57,15 @@ SELECT nspname,
  WHERE pge.extname = 'pg_stat_statements'
 `
 
+// getStatementExtensionVersions returns the schema pg_stat_statements is installed in,
+// the minor version of the extension installed in the current database, and the minor
+// version the extension can be updated to (which is not set if the server doesn't
+// report an available version we understand)
+func getStatementExtensionVersions(ctx context.Context, db *sql.DB) (extSchema string, installedMinorVersion int16, availableMinorVersion null.String, err error) {
+	err = db.QueryRowContext(ctx, QueryMarkerSQL+statementExtensionVersionSQL).Scan(&extSchema, &installedMinorVersion, &availableMinorVersion)
+	return
+}
+
 func collectorStatement(query string) bool {
 	return strings.HasPrefix(query, QueryMarkerSQL)
 }
@@ -320,7 +329,7 @@ func getStatementSource(ctx context.Context, c *Collection, db *sql.DB, showtext
 		bundledExtMinorVersion = 3
 	}
 
-	err = db.QueryRowContext(ctx, QueryMarkerSQL+statementExtensionVersionSQL).Scan(&extSchema, &foundExtMinorVersion, &defaultExtMinorVersion)
+	extSchema, foundExtMinorVersion, defaultExtMinorVersion, err = getStatementExtensionVersions(ctx, db)
 	if err != nil && err != sql.ErrNoRows {
 		return statementSource{}, err
 	}
