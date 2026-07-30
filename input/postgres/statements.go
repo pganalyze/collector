@@ -49,11 +49,23 @@ SELECT dbid, userid, queryid, %s, query
 
 const statementExtensionVersionSQL string = `
 SELECT nspname,
-       split_part(extversion, '.', 2)
+       split_part(extversion, '.', 2),
+       split_part(pae.default_version, '.', 2)
   FROM pg_extension pge
  INNER JOIN pg_namespace pgn ON pge.extnamespace = pgn.oid
+  LEFT JOIN pg_available_extensions pae ON pae.name = pge.extname
  WHERE pge.extname = 'pg_stat_statements'
 `
+
+// getStatementExtensionVersions returns the schema pg_stat_statements is installed in,
+// the minor version of the extension installed in the current database, and the minor
+// version part of the version the extension can be updated to, as reported by the
+// server (not set if the server doesn't report an available version, and technically
+// not necessarily a number, so callers need to handle both)
+func getStatementExtensionVersions(ctx context.Context, db *sql.DB) (extSchema string, installedMinorVersion int16, availableMinorVersion null.String, err error) {
+	err = db.QueryRowContext(ctx, QueryMarkerSQL+statementExtensionVersionSQL).Scan(&extSchema, &installedMinorVersion, &availableMinorVersion)
+	return
+}
 
 func collectorStatement(query string) bool {
 	return strings.HasPrefix(query, QueryMarkerSQL)
@@ -114,35 +126,35 @@ func ResetStatements(ctx context.Context, c *Collection, db *sql.DB) (err error)
 }
 
 func GetStatementStats(ctx context.Context, c *Collection, db *sql.DB) (state.PostgresStatementStatsMap, error) {
-	sourceTable, foundExtMinorVersion, err := getStatementSource(ctx, c, db, false)
+	source, err := getStatementSource(ctx, c, db, false)
 	if err != nil {
 		return nil, err
 	}
 
 	topLevelField := statementSQLTopLevelFieldDefault
-	if foundExtMinorVersion >= 9 {
+	if source.MinorVersion >= 9 {
 		topLevelField = statementSQLTopLevelFieldMinorVersion9
 	}
 
 	totalTimeField := statementSQLTotalTimeFieldDefault
-	if foundExtMinorVersion >= 8 {
+	if source.MinorVersion >= 8 {
 		totalTimeField = statementSQLTotalTimeFieldMinorVersion8
 	}
 
 	ioTimeFields := statementSQLIoTimeFieldsDefault
-	if foundExtMinorVersion >= 11 {
+	if source.MinorVersion >= 11 {
 		ioTimeFields = statementSQLIoTimeFieldsMinorVersion11
 	}
 
 	optionalFields := statementSQLOptionalFieldsDefault
-	if foundExtMinorVersion >= 8 {
+	if source.MinorVersion >= 8 {
 		optionalFields = statementSQLOptionalFieldsMinorVersion8
 	}
 
-	querySql := QueryMarkerSQL + fmt.Sprintf(statementStatsSQL, topLevelField, totalTimeField, ioTimeFields, optionalFields, sourceTable)
+	querySql := QueryMarkerSQL + fmt.Sprintf(statementStatsSQL, topLevelField, totalTimeField, ioTimeFields, optionalFields, source.Table)
 	rows, err := db.QueryContext(ctx, querySql)
 	if err != nil {
-		return nil, err
+		return nil, source.hintOutdatedExtension(c, err)
 	}
 	defer rows.Close()
 
@@ -173,7 +185,7 @@ func GetStatementStats(ctx context.Context, c *Collection, db *sql.DB) (state.Po
 	}
 
 	if err = rows.Err(); err != nil {
-		return nil, err
+		return nil, source.hintOutdatedExtension(c, err)
 	}
 
 	c.SelfTest.MarkCollectionAspectOk(state.CollectionAspectPgStatStatements)
@@ -182,19 +194,20 @@ func GetStatementStats(ctx context.Context, c *Collection, db *sql.DB) (state.Po
 }
 
 func GetStatementTexts(ctx context.Context, c *Collection, db *sql.DB) (statements state.PostgresStatementMap, statementTextsByFp state.PostgresStatementTextMap, querySize int, err error) {
-	sourceTable, foundExtMinorVersion, err := getStatementSource(ctx, c, db, true)
+	source, err := getStatementSource(ctx, c, db, true)
 	if err != nil {
 		return
 	}
 
 	topLevelField := statementSQLTopLevelFieldDefault
-	if foundExtMinorVersion >= 9 {
+	if source.MinorVersion >= 9 {
 		topLevelField = statementSQLTopLevelFieldMinorVersion9
 	}
 
-	querySql := QueryMarkerSQL + fmt.Sprintf(statementTextSQL, topLevelField, sourceTable)
+	querySql := QueryMarkerSQL + fmt.Sprintf(statementTextSQL, topLevelField, source.Table)
 	rows, err := db.QueryContext(ctx, querySql)
 	if err != nil {
+		err = source.hintOutdatedExtension(c, err)
 		return
 	}
 	defer rows.Close()
@@ -237,6 +250,7 @@ func GetStatementTexts(ctx context.Context, c *Collection, db *sql.DB) (statemen
 	}
 
 	if err = rows.Err(); err != nil {
+		err = source.hintOutdatedExtension(c, err)
 		return
 	}
 
@@ -265,26 +279,62 @@ func GetStatementTexts(ctx context.Context, c *Collection, db *sql.DB) (statemen
 	return
 }
 
-func getStatementSource(ctx context.Context, c *Collection, db *sql.DB, showtext bool) (string, int16, error) {
+// statementSource describes where to read pg_stat_statements data from, and which
+// version of the extension we are dealing with
+type statementSource struct {
+	// Table or function to select the statistics from
+	Table string
+	// Minor version of the extension installed in the current database
+	MinorVersion int16
+	// Minor version the extension can be updated to in the current database
+	AvailableMinorVersion int16
+}
+
+// hintOutdatedExtension adds an actionable hint to errors from querying
+// pg_stat_statements when the extension in the current database is older than the
+// version available on the server. Most commonly this happens after a Postgres major
+// version upgrade without a subsequent `ALTER EXTENSION pg_stat_statements UPDATE`,
+// where the extension's function signature may no longer match what the loaded library
+// expects ("incorrect number of output arguments").
+//
+// Like the other extension version warnings this is limited to test runs, to avoid
+// repeating the same hint in the logs for every snapshot.
+func (source statementSource) hintOutdatedExtension(c *Collection, err error) error {
+	if !c.GlobalOpts.TestRun || source.MinorVersion >= source.AvailableMinorVersion {
+		return err
+	}
+	c.SelfTest.MarkCollectionAspectError(state.CollectionAspectPgStatStatements, "%s (extension outdated in database %s: 1.%d installed, 1.%d available)", err, c.Config.DbName, source.MinorVersion, source.AvailableMinorVersion)
+	c.SelfTest.HintCollectionAspect(state.CollectionAspectPgStatStatements, "To update run `ALTER EXTENSION pg_stat_statements UPDATE`")
+	return fmt.Errorf("%w - note pg_stat_statements is outdated in database %s (1.%d installed, 1.%d available), to update run `ALTER EXTENSION pg_stat_statements UPDATE`", err, c.Config.DbName, source.MinorVersion, source.AvailableMinorVersion)
+}
+
+func getStatementSource(ctx context.Context, c *Collection, db *sql.DB, showtext bool) (statementSource, error) {
 	var err error
 	var sourceTable string
 	var extSchema string
-	var extMinorVersion int16
+	var bundledExtMinorVersion int16
 	var foundExtMinorVersion int16
+	var defaultExtMinorVersion null.String
 
-	if c.PostgresVersion.Numeric >= state.PostgresVersion17 {
-		extMinorVersion = 11
+	// Version of the extension that ships with this Postgres version, used as a
+	// fallback when the server does not tell us which version is available
+	if c.PostgresVersion.Numeric >= state.PostgresVersion18 {
+		bundledExtMinorVersion = 12
+	} else if c.PostgresVersion.Numeric >= state.PostgresVersion17 {
+		bundledExtMinorVersion = 11
+	} else if c.PostgresVersion.Numeric >= state.PostgresVersion15 {
+		bundledExtMinorVersion = 10
 	} else if c.PostgresVersion.Numeric >= state.PostgresVersion14 {
-		extMinorVersion = 9
+		bundledExtMinorVersion = 9
 	} else if c.PostgresVersion.Numeric >= state.PostgresVersion13 {
-		extMinorVersion = 8
+		bundledExtMinorVersion = 8
 	} else {
-		extMinorVersion = 3
+		bundledExtMinorVersion = 3
 	}
 
-	err = db.QueryRowContext(ctx, QueryMarkerSQL+statementExtensionVersionSQL).Scan(&extSchema, &foundExtMinorVersion)
+	extSchema, foundExtMinorVersion, defaultExtMinorVersion, err = getStatementExtensionVersions(ctx, db)
 	if err != nil && err != sql.ErrNoRows {
-		return "", 0, err
+		return statementSource{}, err
 	}
 
 	if err == sql.ErrNoRows {
@@ -293,27 +343,43 @@ func getStatementSource(ctx context.Context, c *Collection, db *sql.DB, showtext
 		if err != nil {
 			c.SelfTest.MarkCollectionAspectError(state.CollectionAspectPgStatStatements, "extension does not exist in database %s and could not be created: %s", c.Config.DbName, err)
 			c.Logger.PrintInfo("HINT - if you expect the extension to already be installed, please review the pganalyze documentation: https://pganalyze.com/docs/install/troubleshooting/pg_stat_statements")
-			return "", 0, err
+			return statementSource{}, err
 		}
 		extSchema = "public"
-		foundExtMinorVersion = extMinorVersion
+		foundExtMinorVersion = bundledExtMinorVersion
+	}
+
+	// Prefer the version the server reports as available, since that's what
+	// `ALTER EXTENSION pg_stat_statements UPDATE` updates to, and it keeps working for
+	// Postgres versions that are newer than this collector release. Fall back to the
+	// bundled version if the server doesn't report one, or reports one we can't parse.
+	// Extension version names can be any string that doesn't contain "--", so this is
+	// not guaranteed to be a number.
+	availableExtMinorVersion := bundledExtMinorVersion
+	if defaultExtMinorVersion.Valid {
+		parsed, parseErr := strconv.ParseInt(defaultExtMinorVersion.String, 10, 16)
+		if parseErr == nil {
+			availableExtMinorVersion = int16(parsed)
+		} else if c.GlobalOpts.TestRun {
+			c.Logger.PrintVerbose("Could not determine available pg_stat_statements version in database %s (unexpected minor version \"%s\"), assuming 1.%d", c.Config.DbName, defaultExtMinorVersion.String, bundledExtMinorVersion)
+		}
 	}
 
 	if foundExtMinorVersion < 3 {
 		c.SelfTest.MarkCollectionAspectError(state.CollectionAspectPgStatStatements, "extension version too old in database %s (1.%d installed, 1.3+ required)", c.Config.DbName, foundExtMinorVersion)
-		return "", 0, fmt.Errorf("pg_stat_statements version too old in database %s (1.%d installed, 1.3+ required). To update run `ALTER EXTENSION pg_stat_statements UPDATE` in database %s", c.Config.DbName, foundExtMinorVersion, c.Config.DbName)
+		return statementSource{}, fmt.Errorf("pg_stat_statements version too old in database %s (1.%d installed, 1.3+ required). To update run `ALTER EXTENSION pg_stat_statements UPDATE` in database %s", c.Config.DbName, foundExtMinorVersion, c.Config.DbName)
 	}
 
 	if c.GlobalOpts.TestRun {
-		if extMinorVersion >= 9 && foundExtMinorVersion < 9 {
+		if c.PostgresVersion.Numeric >= state.PostgresVersion14 && foundExtMinorVersion < 9 {
 			// Using the older version pgss with Postgres 14+ can cause the incorrect query stats
 			// when track = all is used + there are toplevel queries and nested queries
 			// https://github.com/pganalyze/collector/pull/472#discussion_r1399976152
 			c.Logger.PrintError("Outdated pg_stat_statements may cause incorrect query statistics")
 			c.SelfTest.MarkCollectionAspectError(state.CollectionAspectPgStatStatements, "extension version too old in database %s (1.%d installed, 1.9+ required). Outdated pg_stat_statements will cause incorrect query statistics.", c.Config.DbName, foundExtMinorVersion)
 			c.SelfTest.HintCollectionAspect(state.CollectionAspectPgStatStatements, "Update the extension by running `ALTER EXTENSION pg_stat_statements UPDATE`.")
-		} else if foundExtMinorVersion < extMinorVersion {
-			pgssMsg := fmt.Sprintf("extension outdated in database %s (1.%d installed, 1.%d available)", c.Config.DbName, foundExtMinorVersion, extMinorVersion)
+		} else if foundExtMinorVersion < availableExtMinorVersion {
+			pgssMsg := fmt.Sprintf("extension outdated in database %s (1.%d installed, 1.%d available)", c.Config.DbName, foundExtMinorVersion, availableExtMinorVersion)
 			c.Logger.PrintInfo("pg_stat_statements %s. To update run `ALTER EXTENSION pg_stat_statements UPDATE`", pgssMsg)
 			c.SelfTest.MarkCollectionAspectWarning(state.CollectionAspectPgStatStatements, "%s", pgssMsg)
 			c.SelfTest.HintCollectionAspect(state.CollectionAspectPgStatStatements, "To update run `ALTER EXTENSION pg_stat_statements UPDATE`")
@@ -348,7 +414,11 @@ func getStatementSource(ctx context.Context, c *Collection, db *sql.DB, showtext
 		}
 	}
 
-	return sourceTable, foundExtMinorVersion, nil
+	return statementSource{
+		Table:                 sourceTable,
+		MinorVersion:          foundExtMinorVersion,
+		AvailableMinorVersion: availableExtMinorVersion,
+	}, nil
 }
 
 func ignoreIOTiming(postgresVersion state.PostgresVersion, receivedQuery string) bool {
