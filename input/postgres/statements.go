@@ -59,8 +59,9 @@ SELECT nspname,
 
 // getStatementExtensionVersions returns the schema pg_stat_statements is installed in,
 // the minor version of the extension installed in the current database, and the minor
-// version the extension can be updated to (which is not set if the server doesn't
-// report an available version we understand)
+// version part of the version the extension can be updated to, as reported by the
+// server (not set if the server doesn't report an available version, and technically
+// not necessarily a number, so callers need to handle both)
 func getStatementExtensionVersions(ctx context.Context, db *sql.DB) (extSchema string, installedMinorVersion int16, availableMinorVersion null.String, err error) {
 	err = db.QueryRowContext(ctx, QueryMarkerSQL+statementExtensionVersionSQL).Scan(&extSchema, &installedMinorVersion, &availableMinorVersion)
 	return
@@ -321,6 +322,8 @@ func getStatementSource(ctx context.Context, c *Collection, db *sql.DB, showtext
 		bundledExtMinorVersion = 12
 	} else if c.PostgresVersion.Numeric >= state.PostgresVersion17 {
 		bundledExtMinorVersion = 11
+	} else if c.PostgresVersion.Numeric >= state.PostgresVersion15 {
+		bundledExtMinorVersion = 10
 	} else if c.PostgresVersion.Numeric >= state.PostgresVersion14 {
 		bundledExtMinorVersion = 9
 	} else if c.PostgresVersion.Numeric >= state.PostgresVersion13 {
@@ -349,8 +352,9 @@ func getStatementSource(ctx context.Context, c *Collection, db *sql.DB, showtext
 	// Prefer the version the server reports as available, since that's what
 	// `ALTER EXTENSION pg_stat_statements UPDATE` updates to, and it keeps working for
 	// Postgres versions that are newer than this collector release. Fall back to the
-	// bundled version if the server doesn't report one, or reports one we can't parse
-	// (some providers add suffixes to the extension version).
+	// bundled version if the server doesn't report one, or reports one we can't parse.
+	// Extension version names can be any string that doesn't contain "--", so this is
+	// not guaranteed to be a number.
 	availableExtMinorVersion := bundledExtMinorVersion
 	if defaultExtMinorVersion.Valid {
 		parsed, parseErr := strconv.ParseInt(defaultExtMinorVersion.String, 10, 16)
