@@ -124,6 +124,7 @@ func getCollectorConfig(c config.ServerConfig) state.CollectorConfig {
 		DbLogDockerTail:            c.LogDockerTail,
 		DbLogSyslogServer:          c.LogSyslogServer,
 		DbLogPgReadFile:            c.LogPgReadFile,
+		LogDownloadInterval:        int32(c.LogDownloadInterval),
 		IgnoreTablePattern:         c.IgnoreTablePattern,
 		IgnoreSchemaRegexp:         c.IgnoreSchemaRegexp,
 		QueryStatsInterval:         int32(c.QueryStatsInterval),

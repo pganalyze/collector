@@ -62,6 +62,7 @@ func getDefaultConfig() *ServerConfig {
 		APIBaseURL:                 DefaultAPIBaseURL,
 		SectionName:                "default",
 		QueryStatsInterval:         60,
+		LogDownloadInterval:        MinLogDownloadInterval,
 		MaxCollectorConnections:    10,
 		MaxBufferCacheMonitoringGB: 200,
 		OtelServiceName:            DefaultOtelServiceName,
@@ -350,6 +351,15 @@ func getDefaultConfig() *ServerConfig {
 	}
 	if logPgReadFile := os.Getenv("LOG_PG_READ_FILE"); logPgReadFile != "" {
 		config.LogPgReadFile = parseConfigBool(logPgReadFile)
+	}
+	if logDownloadInterval := os.Getenv("LOG_DOWNLOAD_INTERVAL"); logDownloadInterval != "" {
+		parsed, err := strconv.Atoi(logDownloadInterval)
+		if err != nil {
+			// Ensure we don't silently fall back to the default, by setting a value
+			// that the range check in preprocessConfig rejects
+			parsed = -1
+		}
+		config.LogDownloadInterval = parsed
 	}
 	// Note: We don't support LogDockerTail here since it would require the "docker"
 	// binary inside the pganalyze container (as well as full Docker access), instead
@@ -814,6 +824,14 @@ func preprocessConfig(config *ServerConfig) (*ServerConfig, error) {
 		}
 	}
 
+	if config.LogDownloadInterval == 0 {
+		// Not set at all (e.g. for a config that was constructed programmatically,
+		// instead of coming from getDefaultConfig)
+		config.LogDownloadInterval = MinLogDownloadInterval
+	} else if config.LogDownloadInterval < MinLogDownloadInterval || config.LogDownloadInterval > MaxLogDownloadInterval {
+		return config, fmt.Errorf("log_download_interval must be between %d and %d seconds, but is set to %d", MinLogDownloadInterval, MaxLogDownloadInterval, config.LogDownloadInterval)
+	}
+
 	if config.DisableCitusSchemaStats != "" {
 		config.DisableCitusSchemaStats = parseConfigDisableCitusSchemaStats(config.DisableCitusSchemaStats)
 	}
@@ -978,6 +996,14 @@ func Read(testRun bool, logger *util.Logger, filename string) (Config, error) {
 			logger.PrintVerbose("Deprecated: Setting IGNORE_TABLE_PATTERN is deprecated; please use IGNORE_SCHEMA_REGEXP instead")
 		} else {
 			logger.PrintVerbose("Deprecated: Setting ignore_table_pattern is deprecated; please use ignore_schema_regexp instead")
+		}
+	}
+
+	// The log download interval only applies to servers where we poll for logs, so
+	// warn instead of silently ignoring it for log streaming setups
+	for _, server := range conf.Servers {
+		if server.LogDownloadInterval != MinLogDownloadInterval && !server.SupportsLogDownload() {
+			logger.PrintWarning("Ignoring log_download_interval for section %s, since this server does not download logs (it either streams logs, or has no log collection configured)", server.SectionName)
 		}
 	}
 

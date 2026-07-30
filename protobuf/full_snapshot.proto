@@ -422,6 +422,8 @@ message CollectorConfig {
   string filter_query_text = 131;
 
   string otel_exporter_otlp_endpoint = 140;
+
+  int32 log_download_interval = 141;
 }
 
 // PER DATABASE
