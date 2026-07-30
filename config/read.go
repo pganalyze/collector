@@ -353,13 +353,12 @@ func getDefaultConfig() *ServerConfig {
 		config.LogPgReadFile = parseConfigBool(logPgReadFile)
 	}
 	if logDownloadInterval := os.Getenv("LOG_DOWNLOAD_INTERVAL"); logDownloadInterval != "" {
-		parsed, err := strconv.Atoi(logDownloadInterval)
-		if err != nil {
-			// Ensure we don't silently fall back to the default, by setting a value
-			// that the range check in preprocessConfig rejects
-			parsed = -1
+		parsed, err := strconv.ParseInt(logDownloadInterval, 10, 32)
+		if err == nil {
+			config.LogDownloadInterval = int(parsed)
+		} else {
+			config.LogDownloadInterval = -1
 		}
-		config.LogDownloadInterval = parsed
 	}
 	// Note: We don't support LogDockerTail here since it would require the "docker"
 	// binary inside the pganalyze container (as well as full Docker access), instead
