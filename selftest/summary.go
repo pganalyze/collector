@@ -338,6 +338,9 @@ func getQueryPerformanceStatus(status *state.SelfTestResult) (icon string, msg s
 		return RedX, "database connection required", ""
 	}
 	if s := status.GetCollectionAspectStatus(state.CollectionAspectPgStatStatements); s == nil || s.State != state.CollectionStateOkay {
+		if s != nil && s.State == state.CollectionStateError {
+			return RedX, "not available due to pg_stat_statements error; see above", ""
+		}
 		return RedX, "pg_stat_statements required", ""
 	}
 	return GreenCheck, "ok", ""

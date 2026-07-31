@@ -384,6 +384,13 @@ func getStatementSource(ctx context.Context, c *Collection, db *sql.DB, showtext
 			c.SelfTest.MarkCollectionAspectWarning(state.CollectionAspectPgStatStatements, "%s", pgssMsg)
 			c.SelfTest.HintCollectionAspect(state.CollectionAspectPgStatStatements, "To update run `ALTER EXTENSION pg_stat_statements UPDATE`")
 		}
+
+		track, trackErr := GetPostgresSetting(ctx, db, "pg_stat_statements.track")
+		if trackErr == nil && track == "none" {
+			c.Logger.PrintError("pg_stat_statements.track is set to \"none\", no query statistics are being collected")
+			c.SelfTest.MarkCollectionAspectError(state.CollectionAspectPgStatStatements, "pg_stat_statements.track is set to \"none\", no query statistics are being collected")
+			c.SelfTest.HintCollectionAspect(state.CollectionAspectPgStatStatements, "Set pg_stat_statements.track to \"top\" (the default) or \"all\" to track query statistics.")
+		}
 	}
 
 	if c.HelperExists("get_stat_statements", []string{"boolean"}) || (showtext && c.HelperExists("get_stat_statements", nil)) {
