@@ -5,6 +5,7 @@ import (
 	"database/sql"
 
 	"github.com/guregu/null"
+	"github.com/lib/pq"
 	"github.com/pganalyze/collector/state"
 )
 
@@ -49,7 +50,8 @@ func getRoles(ctx context.Context, db *sql.DB, systemType string) ([]state.Postg
 
 	for rows.Next() {
 		var r state.PostgresRole
-		var config, memberOf null.String
+		var config pq.StringArray
+		var memberOf null.String
 
 		err := rows.Scan(&r.Oid, &r.Name, &r.Inherit, &r.Login, &r.CreateRole, &r.CreateDb, &r.SuperUser,
 			&r.CloudSuperUser, &r.MonitoringUser, &r.Replication, &r.ConnectionLimit, &r.PasswordValidUntil,
@@ -58,7 +60,7 @@ func getRoles(ctx context.Context, db *sql.DB, systemType string) ([]state.Postg
 			return nil, err
 		}
 
-		r.Config = unpackPostgresStringArray(config)
+		r.Config = config
 		r.MemberOf = unpackPostgresOidArray(memberOf)
 
 		roles = append(roles, r)
