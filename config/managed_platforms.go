@@ -31,3 +31,14 @@ func supabaseSystemID(config ServerConfig) string {
 	}
 	return host
 }
+
+// extractSupabaseUsername returns the Postgres role from a Supabase username. On
+// the Supavisor pooler the username carries the project ref as <role>.<project-ref>
+// for tenant routing, but we need just the role name part. Direct connections have no
+// suffix and are returned unchanged.
+func extractSupabaseUsername(username string) string {
+	if idx := strings.LastIndexByte(username, '.'); idx > 0 {
+		return username[:idx]
+	}
+	return username
+}

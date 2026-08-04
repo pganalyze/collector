@@ -495,6 +495,9 @@ func (config ServerConfig) GetEffectiveDbUsername() string {
 	if config.SystemType == "planetscale" {
 		return extractPlanetScaleUsername(username)
 	}
+	if config.SystemType == "supabase" {
+		return extractSupabaseUsername(username)
+	}
 	return username
 }
 
