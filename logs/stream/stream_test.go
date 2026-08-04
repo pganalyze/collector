@@ -3,7 +3,6 @@ package stream_test
 import (
 	"log"
 	"os"
-	"sort"
 	"testing"
 	"time"
 
@@ -370,12 +369,6 @@ func TestAnalyzeStreamInGroups(t *testing.T) {
 		if diff := cfg.Compare(pair.TransientLogState, TransientLogState); diff != "" {
 			t.Errorf("For %v: log state diff: (-want +got)\n%s", pair.TransientLogState, diff)
 		}
-		sort.SliceStable(pair.logFile.LogLines, func(i, j int) bool {
-			return pair.logFile.LogLines[i].ByteStart < pair.logFile.LogLines[j].ByteStart
-		})
-		sort.SliceStable(logFile.LogLines, func(i, j int) bool {
-			return logFile.LogLines[i].ByteStart < logFile.LogLines[j].ByteStart
-		})
 		logFileContent := ""
 		for idx, logLine := range logFile.LogLines {
 			logFileContent += logLine.Content
