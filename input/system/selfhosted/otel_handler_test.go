@@ -89,29 +89,10 @@ func TestOtelHandlerProtobuf(t *testing.T) {
 			expectRawItems:    0,
 			expectParsedItems: 1,
 			checkParsed: func(t *testing.T, items []state.ParsedLogStreamItem) {
+				// Routing proof: the record reaches the parsed stream with its message
+				// (from EventName). Field-level mapping is covered by supabase.TestLogLineFrom.
 				if items[0].LogLine.Content != supabaseAutoExplainMessage {
 					t.Errorf("unexpected content: %s", items[0].LogLine.Content)
-				}
-				if items[0].LogLine.Application != "Supavisor" {
-					t.Errorf("unexpected application: %s", items[0].LogLine.Application)
-				}
-				if items[0].LogLine.Username != "pganalyze" {
-					t.Errorf("unexpected username: %s", items[0].LogLine.Username)
-				}
-				if items[0].LogLine.Database != "postgres" {
-					t.Errorf("unexpected database: %s", items[0].LogLine.Database)
-				}
-				if items[0].LogLine.BackendPid != 60649 {
-					t.Errorf("unexpected backend pid: %d", items[0].LogLine.BackendPid)
-				}
-				if items[0].LogLine.LogLineNumber != 12 {
-					t.Errorf("unexpected log line number: %d", items[0].LogLine.LogLineNumber)
-				}
-				if items[0].LogLine.LogLevel != pganalyze_collector.LogLineInformation_LOG {
-					t.Errorf("unexpected log level: %v", items[0].LogLine.LogLevel)
-				}
-				if items[0].LogLine.OccurredAt.IsZero() {
-					t.Error("expected OccurredAt to be set from TimeUnixNano")
 				}
 			},
 		},

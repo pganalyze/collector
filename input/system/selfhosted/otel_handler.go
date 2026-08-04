@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/pganalyze/collector/config"
+	"github.com/pganalyze/collector/input/system/supabase"
 	"github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
@@ -175,12 +176,12 @@ func handleOtlpLogsRequest(logsData *otlpLogs.LogsData, servers []*state.Server,
 		for _, s := range r.ScopeLogs {
 			for _, l := range s.LogRecords {
 				if kv := l.Body.GetKvlistValue(); kv != nil {
-					if parsed := logflareParsed(kv); parsed != nil {
-						// Supabase log drain (Logflare OTLP): the Postgres csvlog fields are in
+					if parsed := supabase.ParsedFields(kv); parsed != nil {
+						// Supabase log drain (Logflare-backed): the Postgres csvlog fields are in
 						// metadata.parsed, and the message (with the identify marker) is in the
 						// record's EventName rather than the body.
 						warnAboutMultipleServers(servers, warnedAboutMultipleServers, prefixedLogger)
-						logLine := logLineFromLogflare(l, parsed)
+						logLine := supabase.LogLineFrom(l, parsed)
 						for _, server := range servers {
 							parsedLogStream <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: logLine}
 						}
@@ -332,62 +333,6 @@ func logLineFromJsonlog(record *common.KeyValueList, logParser state.LogParser) 
 		return logLine, &detailLine
 	}
 	return logLine, nil
-}
-
-// logflareParsed returns the Postgres "parsed" csvlog fields from a Supabase log
-// drain record (Logflare OTLP), or nil if this is not a Postgres log record.
-// Supabase nests the fields under body.metadata.parsed; its Supavisor pooler
-// application logs share the envelope but carry no "parsed" object.
-func logflareParsed(body *common.KeyValueList) *common.KeyValueList {
-	for _, v := range body.Values {
-		if v.Key != "metadata" {
-			continue
-		}
-		for _, m := range v.Value.GetKvlistValue().GetValues() {
-			if m.Key == "parsed" {
-				return m.Value.GetKvlistValue()
-			}
-		}
-	}
-	return nil
-}
-
-// logLineFromLogflare maps a Supabase log drain (Logflare OTLP) Postgres record to a
-// LogLine. The message - including the collector identify marker - is carried in the
-// record's EventName (Logflare's event_message), not in "parsed", whose message/query
-// fields are usually empty. The timestamp comes from the record's TimeUnixNano.
-func logLineFromLogflare(l *otlpLogs.LogRecord, parsed *common.KeyValueList) state.LogLine {
-	logLine := state.LogLine{
-		Content:    l.EventName,
-		OccurredAt: time.Unix(0, int64(l.TimeUnixNano)),
-	}
-	for _, rv := range parsed.Values {
-		switch rv.Key {
-		case "user_name":
-			logLine.Username = rv.Value.GetStringValue()
-		case "database_name":
-			logLine.Database = rv.Value.GetStringValue()
-		case "application_name":
-			logLine.Application = rv.Value.GetStringValue()
-		case "process_id":
-			logLine.BackendPid = int32(anyValueInt(rv.Value))
-		case "session_line_num":
-			logLine.LogLineNumber = int32(anyValueInt(rv.Value))
-		case "error_severity":
-			logLine.LogLevel = pganalyze_collector.LogLineInformation_LogLevel(pganalyze_collector.LogLineInformation_LogLevel_value[rv.Value.GetStringValue()])
-		}
-	}
-	return logLine
-}
-
-// anyValueInt reads an integer from an OTel value that may be encoded either as an
-// int (Logflare's process_id, session_line_num) or as a numeric string.
-func anyValueInt(v *common.AnyValue) int64 {
-	if s := v.GetStringValue(); s != "" {
-		n, _ := strconv.ParseInt(s, 10, 64)
-		return n
-	}
-	return v.GetIntValue()
 }
 
 func skipDueToK8sFilter(kubernetes *common.KeyValueList, config config.ServerConfig) bool {
