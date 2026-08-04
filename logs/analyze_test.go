@@ -1,6 +1,7 @@
 package logs_test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/google/uuid"
@@ -4710,6 +4711,37 @@ func TestAnalyzeLogLinesHeroku(t *testing.T) {
 			if !line.ReviewedForSecrets && line.LogLevel != pganalyze_collector.LogLineInformation_STATEMENT && line.LogLevel != pganalyze_collector.LogLineInformation_QUERY {
 				t.Errorf("Missing secret review for:\n%s %s\n", pair.logLinesIn[idx].LogLevel, pair.logLinesIn[idx].Content)
 			}
+		}
+	}
+}
+
+// Log analysis groups the lines by backend PID to get the right context, but callers
+// depend on getting them back in the order they passed them in: the byte offsets, and with
+// them the log file's byte_size, only describe the file as long as the order holds.
+func TestAnalyzeLogLinesPreservesOrder(t *testing.T) {
+	lineCount := 16
+	var logLinesIn []state.LogLine
+	var byteStart int64
+	for idx := range lineCount {
+		content := fmt.Sprintf("duplicate key value violates unique constraint \"index_%d\"\n", idx)
+		logLinesIn = append(logLinesIn, state.LogLine{
+			Content:    content,
+			LogLevel:   pganalyze_collector.LogLineInformation_ERROR,
+			BackendPid: int32(1000 + idx), // one backend per line, to maximize regrouping
+			ByteStart:  byteStart,
+			ByteEnd:    byteStart + int64(len(content)),
+		})
+		byteStart += int64(len(content))
+	}
+
+	logLinesOut, _ := logs.AnalyzeLogLines(logLinesIn)
+
+	if len(logLinesOut) != lineCount {
+		t.Fatalf("expected %d log lines, got %d", lineCount, len(logLinesOut))
+	}
+	for idx, logLine := range logLinesOut {
+		if logLine.ByteStart != logLinesIn[idx].ByteStart {
+			t.Errorf("log line %d out of order: expected byte_start %d, got %d", idx, logLinesIn[idx].ByteStart, logLine.ByteStart)
 		}
 	}
 }
