@@ -169,6 +169,18 @@ type LogLine struct {
 	SecretMarkers      []LogSecretMarker
 }
 
+// UpdateByteSize sets ByteSize to where the log file's content ends, i.e. the end of its
+// last log line
+//
+// This relies on the log lines being in byte order, which log analysis guarantees. An
+// understated ByteSize loses data: pganalyze discards log lines that end past it.
+func (logFile *LogFile) UpdateByteSize() {
+	if len(logFile.LogLines) == 0 {
+		return
+	}
+	logFile.ByteSize = logFile.LogLines[len(logFile.LogLines)-1].ByteEnd
+}
+
 func NewLogFile(originalName string) (LogFile, error) {
 	uuid, err := uuid.NewV7()
 	if err != nil {
