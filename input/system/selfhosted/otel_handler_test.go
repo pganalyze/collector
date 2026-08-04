@@ -84,6 +84,45 @@ func TestOtelHandlerProtobuf(t *testing.T) {
 			},
 		},
 		{
+			name:              "supabase logflare postgres log (auto_explain)",
+			logsData:          makeSupabaseLogflareLogsData(),
+			expectRawItems:    0,
+			expectParsedItems: 1,
+			checkParsed: func(t *testing.T, items []state.ParsedLogStreamItem) {
+				if items[0].LogLine.Content != supabaseAutoExplainMessage {
+					t.Errorf("unexpected content: %s", items[0].LogLine.Content)
+				}
+				if items[0].LogLine.Application != "Supavisor" {
+					t.Errorf("unexpected application: %s", items[0].LogLine.Application)
+				}
+				if items[0].LogLine.Username != "pganalyze" {
+					t.Errorf("unexpected username: %s", items[0].LogLine.Username)
+				}
+				if items[0].LogLine.Database != "postgres" {
+					t.Errorf("unexpected database: %s", items[0].LogLine.Database)
+				}
+				if items[0].LogLine.BackendPid != 60649 {
+					t.Errorf("unexpected backend pid: %d", items[0].LogLine.BackendPid)
+				}
+				if items[0].LogLine.LogLineNumber != 12 {
+					t.Errorf("unexpected log line number: %d", items[0].LogLine.LogLineNumber)
+				}
+				if items[0].LogLine.LogLevel != pganalyze_collector.LogLineInformation_LOG {
+					t.Errorf("unexpected log level: %v", items[0].LogLine.LogLevel)
+				}
+				if items[0].LogLine.OccurredAt.IsZero() {
+					t.Error("expected OccurredAt to be set from TimeUnixNano")
+				}
+			},
+		},
+		{
+			name:                  "supabase supavisor application log is skipped",
+			logsData:              makeSupavisorAppLogsData(),
+			expectRawItems:        0,
+			expectParsedItems:     0,
+			expectRejectedRecords: 1,
+		},
+		{
 			name: "kvlist with unknown logger is rejected",
 			logsData: otelLogsData(testTimestamp, otelKVList(
 				otelKV("logger", "nginx"),
@@ -328,6 +367,20 @@ func otelLogsData(ts time.Time, body *common.AnyValue) *otlpLogs.LogsData {
 	}
 }
 
+func otelIntVal(n int64) *common.AnyValue {
+	return &common.AnyValue{Value: &common.AnyValue_IntValue{IntValue: n}}
+}
+
+func otelIntKV(key string, n int64) *common.KeyValue {
+	return &common.KeyValue{Key: key, Value: otelIntVal(n)}
+}
+
+func otelLogsDataWithEventName(ts time.Time, eventName string, body *common.AnyValue) *otlpLogs.LogsData {
+	data := otelLogsData(ts, body)
+	data.ResourceLogs[0].ScopeLogs[0].LogRecords[0].EventName = eventName
+	return data
+}
+
 var testTimestamp = time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
 
 func makePlainLogsData() *otlpLogs.LogsData {
@@ -361,6 +414,51 @@ func makeK8sJsonlogLogsData() *otlpLogs.LogsData {
 			otelKV("pod_name", "pg-pod-0"),
 			otelKV("namespace_name", "default"),
 		),
+	))
+}
+
+const supabaseAutoExplainMessage = `duration: 3003.075 ms  plan:
+{
+  "Query Text": "select pg_sleep(3);",
+  "Plan": {
+    "Node Type": "Result",
+    "Query Identifier": 5457019535816659310
+  }
+}`
+
+// makeSupabaseLogflareLogsData mirrors a Supabase log drain (Logflare OTLP) Postgres
+// record: the csvlog fields live in body.metadata.parsed (with process_id and
+// session_line_num as ints), and the message is carried in the record's EventName.
+func makeSupabaseLogflareLogsData() *otlpLogs.LogsData {
+	return otelLogsDataWithEventName(testTimestamp, supabaseAutoExplainMessage, otelKVList(
+		otelKV("id", "5b0a43a2-d30f-46cc-bd8b-7b62f32ff47a"),
+		otelKVListEntry("metadata",
+			otelKV("host", "db-qxssiqlxoldjyxylawve"),
+			otelKVListEntry("parsed",
+				otelKV("application_name", "Supavisor"),
+				otelKV("error_severity", "LOG"),
+				otelKV("user_name", "pganalyze"),
+				otelKV("database_name", "postgres"),
+				otelIntKV("process_id", 60649),
+				otelIntKV("session_line_num", 12),
+			),
+		),
+		otelKV("project", "qxssiqlxoldjyxylawve"),
+	))
+}
+
+// makeSupavisorAppLogsData mirrors a Supabase log drain Supavisor pooler application
+// log: the same envelope, but metadata has no "parsed" object, so it is not a Postgres
+// log and must be skipped.
+func makeSupavisorAppLogsData() *otlpLogs.LogsData {
+	return otelLogsDataWithEventName(testTimestamp, "ClientHandler: Connection authenticated", otelKVList(
+		otelKV("id", "9781a253-0243-4f4a-9495-d79acec8039f"),
+		otelKVListEntry("metadata",
+			otelKV("app_name", "pganalyze_test_run"),
+			otelKV("db_name", "postgres"),
+			otelKV("user", "pganalyze"),
+		),
+		otelKV("project", "qxssiqlxoldjyxylawve"),
 	))
 }
 
