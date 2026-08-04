@@ -342,6 +342,9 @@ func getDefaultConfig() *ServerConfig {
 	if logOtelK8SLabels := os.Getenv("LOG_OTEL_K8S_LABELS"); logOtelK8SLabels != "" {
 		config.LogOtelK8SLabels = logOtelK8SLabels
 	}
+	if logTestTimeout := os.Getenv("LOG_TEST_TIMEOUT"); logTestTimeout != "" {
+		config.LogTestTimeoutSecs, _ = strconv.Atoi(logTestTimeout)
+	}
 	if alwaysCollectSystemData := os.Getenv("PGA_ALWAYS_COLLECT_SYSTEM_DATA"); alwaysCollectSystemData != "" {
 		config.AlwaysCollectSystemData = parseConfigBool(alwaysCollectSystemData)
 	}

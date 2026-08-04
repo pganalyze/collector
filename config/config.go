@@ -184,6 +184,12 @@ type ServerConfig struct {
 	LogOtelK8SPodName        string
 	LogOtelK8SLabelSelectors []string
 
+	// Overrides how many seconds the "--test-logs" log test waits for the emitted
+	// test event to arrive before giving up. Defaults to 10s, or 30s for platforms
+	// whose logs arrive via a batched push drain (e.g. Supabase). Raise it if the
+	// test times out despite logs being delivered.
+	LogTestTimeoutSecs int `ini:"db_log_test_timeout"`
+
 	// Configures the collector to use the "pg_read_file" (superuser) or
 	// "pganalyze.read_log_file" (helper) function to retrieve log data
 	// directly over the Postgres connection. This only works when superuser
