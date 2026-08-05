@@ -479,9 +479,7 @@ func setupLogTransformer(ctx context.Context, wg *sync.WaitGroup, server *state.
 				}
 
 				if logLine.Database == "" {
-					if db := neon.LogDatabaseFallback(server.Config); db != "" {
-						logLine.Database = db
-					}
+					logLine.Database = neon.LogDatabaseFallback(server.Config)
 				}
 
 				// Ignore loglines which are outside our time window

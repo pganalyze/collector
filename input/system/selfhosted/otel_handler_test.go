@@ -28,6 +28,7 @@ import (
 func TestOtelHandlerProtobuf(t *testing.T) {
 	tests := []struct {
 		name                  string
+		systemType            string
 		logsData              *otlpLogs.LogsData
 		expectRawItems        int
 		expectParsedItems     int
@@ -85,6 +86,7 @@ func TestOtelHandlerProtobuf(t *testing.T) {
 		},
 		{
 			name:              "supabase logflare postgres log (auto_explain)",
+			systemType:        "supabase",
 			logsData:          makeSupabaseLogflareLogsData(),
 			expectRawItems:    0,
 			expectParsedItems: 1,
@@ -98,6 +100,7 @@ func TestOtelHandlerProtobuf(t *testing.T) {
 		},
 		{
 			name:                  "supabase supavisor application log is skipped",
+			systemType:            "supabase",
 			logsData:              makeSupavisorAppLogsData(),
 			expectRawItems:        0,
 			expectParsedItems:     0,
@@ -129,7 +132,7 @@ func TestOtelHandlerProtobuf(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name+" protobuf", func(t *testing.T) {
-			server, logger := makeOtelTestServer()
+			server, logger := makeOtelTestServerWithConfig(config.ServerConfig{SystemType: tt.systemType})
 			rawLogStream := make(chan SelfHostedLogStreamItem, 10)
 			parsedLogStream := make(chan state.ParsedLogStreamItem, 10)
 
@@ -161,7 +164,7 @@ func TestOtelHandlerProtobuf(t *testing.T) {
 		})
 
 		t.Run(tt.name+" json", func(t *testing.T) {
-			server, logger := makeOtelTestServer()
+			server, logger := makeOtelTestServerWithConfig(config.ServerConfig{SystemType: tt.systemType})
 			rawLogStream := make(chan SelfHostedLogStreamItem, 10)
 			parsedLogStream := make(chan state.ParsedLogStreamItem, 10)
 
@@ -307,6 +310,86 @@ func TestOtelHandlerHTTPEndpoint(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestLogLineFromJsonlog(t *testing.T) {
+	t.Run("supabase record: message/timestamp from the record, int-encoded fields", func(t *testing.T) {
+		parsed := &common.KeyValueList{Values: []*common.KeyValue{
+			otelKV("user_name", "pganalyze"),
+			otelKV("database_name", "postgres"),
+			otelKV("application_name", "Supavisor"),
+			otelKV("error_severity", "LOG"),
+			otelIntKV("process_id", 60649),
+			otelIntKV("session_line_num", 12),
+		}}
+		l := &otlpLogs.LogRecord{EventName: "duration: 3003.075 ms  plan: {...}", TimeUnixNano: uint64(testTimestamp.UnixNano())}
+
+		logLine, detail := logLineFromJsonlog(parsed, nil, l)
+		if detail != nil {
+			t.Errorf("unexpected detail line: %+v", detail)
+		}
+		if logLine.Content != l.EventName {
+			t.Errorf("Content = %q, want the record's EventName", logLine.Content)
+		}
+		if logLine.OccurredAt.IsZero() {
+			t.Error("OccurredAt should come from TimeUnixNano")
+		}
+		if logLine.BackendPid != 60649 {
+			t.Errorf("BackendPid = %d", logLine.BackendPid)
+		}
+		if logLine.LogLineNumber != 12 {
+			t.Errorf("LogLineNumber = %d", logLine.LogLineNumber)
+		}
+		if logLine.Application != "Supavisor" {
+			t.Errorf("Application = %q", logLine.Application)
+		}
+		if logLine.LogLevel != pganalyze_collector.LogLineInformation_LOG {
+			t.Errorf("LogLevel = %v", logLine.LogLevel)
+		}
+	})
+
+	t.Run("out-of-range int dropped to 0", func(t *testing.T) {
+		parsed := &common.KeyValueList{Values: []*common.KeyValue{otelIntKV("process_id", 1<<40)}}
+		logLine, _ := logLineFromJsonlog(parsed, nil, &otlpLogs.LogRecord{})
+		if logLine.BackendPid != 0 {
+			t.Errorf("BackendPid = %d, want 0 for out-of-range value", logLine.BackendPid)
+		}
+	})
+
+	t.Run("detail becomes a second line", func(t *testing.T) {
+		parsed := &common.KeyValueList{Values: []*common.KeyValue{
+			otelKV("error_severity", "ERROR"),
+			otelKV("detail", "Key (id)=(1) already exists."),
+		}}
+		logLine, detail := logLineFromJsonlog(parsed, nil, &otlpLogs.LogRecord{EventName: "duplicate key value"})
+		if logLine.Content != "duplicate key value" {
+			t.Errorf("primary Content = %q", logLine.Content)
+		}
+		if detail == nil {
+			t.Fatal("expected a detail line")
+		}
+		if detail.Content != "Key (id)=(1) already exists." {
+			t.Errorf("detail Content = %q", detail.Content)
+		}
+		if detail.LogLevel != pganalyze_collector.LogLineInformation_DETAIL {
+			t.Errorf("detail LogLevel = %v, want DETAIL", detail.LogLevel)
+		}
+	})
+
+	t.Run("jsonlog record (l nil): message and string-encoded process_id", func(t *testing.T) {
+		record := &common.KeyValueList{Values: []*common.KeyValue{
+			otelKV("message", "database system is ready to accept connections"),
+			otelKV("process_id", "123"),
+			otelKV("error_severity", "LOG"),
+		}}
+		logLine, _ := logLineFromJsonlog(record, nil, nil)
+		if logLine.Content != "database system is ready to accept connections" {
+			t.Errorf("Content = %q", logLine.Content)
+		}
+		if logLine.BackendPid != 123 {
+			t.Errorf("BackendPid = %d, want 123", logLine.BackendPid)
+		}
+	})
 }
 
 func otelStringVal(s string) *common.AnyValue {
