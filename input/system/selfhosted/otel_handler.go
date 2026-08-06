@@ -188,7 +188,7 @@ func handleOtlpLogsRequest(logsData *otlpLogs.LogsData, servers []*state.Server,
 					if hasSupabaseServer {
 						if parsed := supabase.ParsedFields(kv); parsed != nil {
 							warnAboutMultipleServers(servers, warnedAboutMultipleServers, prefixedLogger)
-							logLine, detailLine := logLineFromJsonlog(parsed, nil, l)
+							logLine, detailLine := logLineFromStructuredFields(parsed, nil, l)
 							for _, server := range servers {
 								parsedLogStream <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: logLine}
 								if detailLine != nil {
@@ -208,7 +208,7 @@ func handleOtlpLogsRequest(logsData *otlpLogs.LogsData, servers []*state.Server,
 									continue
 								}
 								logParser := server.GetLogParser()
-								logLine, detailLine := logLineFromJsonlog(record, logParser, nil)
+								logLine, detailLine := logLineFromStructuredFields(record, logParser, nil)
 								parsedLogStream <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: logLine}
 								if detailLine != nil {
 									parsedLogStream <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: *detailLine}
@@ -219,7 +219,7 @@ func handleOtlpLogsRequest(logsData *otlpLogs.LogsData, servers []*state.Server,
 							warnAboutMultipleServers(servers, warnedAboutMultipleServers, prefixedLogger)
 							for _, server := range servers {
 								logParser := server.GetLogParser()
-								logLine, detailLine := logLineFromJsonlog(record, logParser, nil)
+								logLine, detailLine := logLineFromStructuredFields(record, logParser, nil)
 								parsedLogStream <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: logLine}
 								if detailLine != nil {
 									parsedLogStream <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: *detailLine}
@@ -300,12 +300,12 @@ func warnAboutMultipleServers(servers []*state.Server, warnedAboutMultipleServer
 	*warnedAboutMultipleServers = true
 }
 
-// logLineFromJsonlog maps a jsonlog-style csvlog record (an OTel key/value list) to a
-// LogLine. Supabase's log drain uses the same field shape but carries the message and
-// timestamp on the OTel record itself (l) rather than in "parsed"; when l is provided
-// those take precedence over the message/log_time keys. A DETAIL, when present, is
-// returned as an additional log line.
-func logLineFromJsonlog(record *common.KeyValueList, logParser state.LogParser, l *otlpLogs.LogRecord) (state.LogLine, *state.LogLine) {
+// logLineFromStructuredFields maps Postgres structured log fields (an OTel key/value
+// list) to a LogLine. Postgres's jsonlog and csvlog formats share these field names:
+// OTel pipelines deliver jsonlog records directly, while Supabase's log drain delivers
+// csvlog-derived fields (metadata.parsed) with the message and timestamp carried on the
+// OTel record itself — pass l there so EventName and TimeUnixNano fill those in.
+func logLineFromStructuredFields(record *common.KeyValueList, logParser state.LogParser, l *otlpLogs.LogRecord) (state.LogLine, *state.LogLine) {
 	var logLine state.LogLine
 	if l != nil {
 		logLine.Content = l.EventName

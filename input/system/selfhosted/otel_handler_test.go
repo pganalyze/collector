@@ -324,7 +324,7 @@ func TestLogLineFromJsonlog(t *testing.T) {
 		}}
 		l := &otlpLogs.LogRecord{EventName: "duration: 3003.075 ms  plan: {...}", TimeUnixNano: uint64(testTimestamp.UnixNano())}
 
-		logLine, detail := logLineFromJsonlog(parsed, nil, l)
+		logLine, detail := logLineFromStructuredFields(parsed, nil, l)
 		if detail != nil {
 			t.Errorf("unexpected detail line: %+v", detail)
 		}
@@ -350,7 +350,7 @@ func TestLogLineFromJsonlog(t *testing.T) {
 
 	t.Run("out-of-range int dropped to 0", func(t *testing.T) {
 		parsed := &common.KeyValueList{Values: []*common.KeyValue{otelIntKV("process_id", 1<<40)}}
-		logLine, _ := logLineFromJsonlog(parsed, nil, &otlpLogs.LogRecord{})
+		logLine, _ := logLineFromStructuredFields(parsed, nil, &otlpLogs.LogRecord{})
 		if logLine.BackendPid != 0 {
 			t.Errorf("BackendPid = %d, want 0 for out-of-range value", logLine.BackendPid)
 		}
@@ -361,7 +361,7 @@ func TestLogLineFromJsonlog(t *testing.T) {
 			otelKV("error_severity", "ERROR"),
 			otelKV("detail", "Key (id)=(1) already exists."),
 		}}
-		logLine, detail := logLineFromJsonlog(parsed, nil, &otlpLogs.LogRecord{EventName: "duplicate key value"})
+		logLine, detail := logLineFromStructuredFields(parsed, nil, &otlpLogs.LogRecord{EventName: "duplicate key value"})
 		if logLine.Content != "duplicate key value" {
 			t.Errorf("primary Content = %q", logLine.Content)
 		}
@@ -382,7 +382,7 @@ func TestLogLineFromJsonlog(t *testing.T) {
 			otelKV("process_id", "123"),
 			otelKV("error_severity", "LOG"),
 		}}
-		logLine, _ := logLineFromJsonlog(record, nil, nil)
+		logLine, _ := logLineFromStructuredFields(record, nil, nil)
 		if logLine.Content != "database system is ready to accept connections" {
 			t.Errorf("Content = %q", logLine.Content)
 		}
