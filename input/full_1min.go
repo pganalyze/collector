@@ -16,6 +16,7 @@ func CollectAndDiff1minStats(ctx context.Context, c *postgres.Collection, connec
 
 	newState := prevState
 	newState.LastStatementStatsAt = time.Now()
+	newState.InstanceIdentity = c.InstanceIdentity
 
 	newState.StatementStats, err = postgres.GetStatementStats(ctx, c, connection)
 	if err != nil {
@@ -36,9 +37,28 @@ func CollectAndDiff1minStats(ctx context.Context, c *postgres.Collection, connec
 		return newState, nil
 	}
 
+	// These are all cumulative counters from one instance's memory, and we may
+	// have reached a different instance than the run we would diff against - see
+	// PostgresInstanceIdentity. Skip this interval and let the state we just
+	// collected become the new reference point; diffing anyway would attribute
+	// each counter's entire lifetime to this one interval.
+	if !prevState.InstanceIdentity.Matches(newState.InstanceIdentity) {
+		c.Logger.PrintInfo(
+			"Detected a different Postgres instance than the last query statistics run (%s, was %s); skipping this interval to avoid diffing statistics across instances",
+			newState.InstanceIdentity, prevState.InstanceIdentity)
+		return newState, nil
+	}
+
+	interval := newState.LastStatementStatsAt.Sub(prevState.LastStatementStatsAt)
+	if interval < time.Second {
+		// Avoid divide by zero errors for fast consecutive runs, and guard against
+		// the uint32 conversion below wrapping if the clock moved backwards
+		interval = time.Second
+	}
+
 	timeKey := state.HistoricStatsTimeKey{
 		CollectedAt:           collectedAt,
-		CollectedIntervalSecs: uint32(newState.LastStatementStatsAt.Sub(prevState.LastStatementStatsAt) / time.Second),
+		CollectedIntervalSecs: uint32(interval / time.Second),
 	}
 
 	newState.UnidentifiedStatementStats = prevState.UnidentifiedStatementStats

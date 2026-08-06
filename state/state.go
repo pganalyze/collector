@@ -25,6 +25,10 @@ type SchemaStats struct {
 type PersistedState struct {
 	CollectedAt time.Time
 
+	// The instance this state was collected from, so a later run can tell whether
+	// its own reference point came from the same instance
+	InstanceIdentity PostgresInstanceIdentity
+
 	DatabaseStats PostgresDatabaseStatsMap
 	SchemaStats   map[Oid]*SchemaStats
 
@@ -40,6 +44,10 @@ type PersistedHighFreqState struct {
 	StatementStats PostgresStatementStatsMap
 	PlanStats      PostgresPlanStatsMap
 	ServerIoStats  PostgresServerIoStatsMap
+
+	// The instance the above stats were collected from, so a later run can tell
+	// whether its own reference point came from the same instance
+	InstanceIdentity PostgresInstanceIdentity
 
 	// Keep track of when we last collected statement stats, to calculate time distance
 	LastStatementStatsAt time.Time
@@ -299,6 +307,10 @@ type Server struct {
 	HighFreqPrevState  PersistedHighFreqState
 	HighFreqStateMutex *sync.Mutex
 
+	// Shared DNS resolution for this server, so that the separate connections
+	// used by the different snapshot types reach the same instance
+	ResolvedHost *ResolvedHost
+
 	CollectionStatus      CollectionStatus
 	CollectionStatusMutex *sync.Mutex
 
@@ -345,6 +357,7 @@ func MakeServer(config config.ServerConfig, testRun bool) *Server {
 		QueryRuns:             make(map[int64]*QueryRun),
 		QueryRunsMutex:        &sync.Mutex{},
 		LogParseMutex:         &sync.RWMutex{},
+		ResolvedHost:          &ResolvedHost{},
 		Fingerprints:          NewFingerprints(),
 	}
 	server.Grant.Store(&Grant{Config: pganalyze_collector.ServerMessage_Config{Features: &pganalyze_collector.ServerMessage_Features{}}})
