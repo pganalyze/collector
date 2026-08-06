@@ -63,6 +63,7 @@ func transformCollectorConfig(s snapshot.FullSnapshot, state state.TransientStat
 		DbLogDockerTail:            c.DbLogDockerTail,
 		DbLogSyslogServer:          c.DbLogSyslogServer,
 		DbLogPgReadFile:            c.DbLogPgReadFile,
+		LogDownloadInterval:        c.LogDownloadInterval,
 		IgnoreTablePattern:         c.IgnoreTablePattern,
 		IgnoreSchemaRegexp:         c.IgnoreSchemaRegexp,
 		QueryStatsInterval:         c.QueryStatsInterval,

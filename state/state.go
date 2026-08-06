@@ -147,6 +147,7 @@ type CollectorConfig struct {
 	DbLogDockerTail            string
 	DbLogSyslogServer          string
 	DbLogPgReadFile            bool
+	LogDownloadInterval        int32
 	IgnoreTablePattern         string
 	IgnoreSchemaRegexp         string
 	QueryStatsInterval         int32
