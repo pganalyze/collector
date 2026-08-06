@@ -2,10 +2,13 @@ package selfhosted
 
 import (
 	"bytes"
+	"compress/gzip"
+	"context"
 	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
@@ -25,6 +28,7 @@ import (
 func TestOtelHandlerProtobuf(t *testing.T) {
 	tests := []struct {
 		name                  string
+		systemType            string
 		logsData              *otlpLogs.LogsData
 		expectRawItems        int
 		expectParsedItems     int
@@ -81,6 +85,28 @@ func TestOtelHandlerProtobuf(t *testing.T) {
 			},
 		},
 		{
+			name:              "supabase logflare postgres log (auto_explain)",
+			systemType:        "supabase",
+			logsData:          makeSupabaseLogflareLogsData(),
+			expectRawItems:    0,
+			expectParsedItems: 1,
+			checkParsed: func(t *testing.T, items []state.ParsedLogStreamItem) {
+				// Routing proof: the record reaches the parsed stream with its message
+				// (from EventName). Field-level mapping is covered by supabase.TestLogLineFrom.
+				if items[0].LogLine.Content != supabaseAutoExplainMessage {
+					t.Errorf("unexpected content: %s", items[0].LogLine.Content)
+				}
+			},
+		},
+		{
+			name:                  "supabase supavisor application log is skipped",
+			systemType:            "supabase",
+			logsData:              makeSupavisorAppLogsData(),
+			expectRawItems:        0,
+			expectParsedItems:     0,
+			expectRejectedRecords: 1,
+		},
+		{
 			name: "kvlist with unknown logger is rejected",
 			logsData: otelLogsData(testTimestamp, otelKVList(
 				otelKV("logger", "nginx"),
@@ -106,7 +132,7 @@ func TestOtelHandlerProtobuf(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name+" protobuf", func(t *testing.T) {
-			server, logger := makeOtelTestServer()
+			server, logger := makeOtelTestServerWithConfig(config.ServerConfig{SystemType: tt.systemType})
 			rawLogStream := make(chan SelfHostedLogStreamItem, 10)
 			parsedLogStream := make(chan state.ParsedLogStreamItem, 10)
 
@@ -138,7 +164,7 @@ func TestOtelHandlerProtobuf(t *testing.T) {
 		})
 
 		t.Run(tt.name+" json", func(t *testing.T) {
-			server, logger := makeOtelTestServer()
+			server, logger := makeOtelTestServerWithConfig(config.ServerConfig{SystemType: tt.systemType})
 			rawLogStream := make(chan SelfHostedLogStreamItem, 10)
 			parsedLogStream := make(chan state.ParsedLogStreamItem, 10)
 
@@ -175,6 +201,7 @@ func TestOtelHandlerHTTPEndpoint(t *testing.T) {
 	tests := []struct {
 		name               string
 		contentType        string
+		contentEncoding    string
 		body               []byte
 		expectStatus       int
 		expectErrorMessage string
@@ -190,6 +217,33 @@ func TestOtelHandlerHTTPEndpoint(t *testing.T) {
 			contentType:  "application/json",
 			body:         mustMarshalProtoJSON(t, makeJsonlogLogsData()),
 			expectStatus: http.StatusOK,
+		},
+		{
+			name:            "gzip-compressed protobuf request",
+			contentType:     "application/x-protobuf",
+			contentEncoding: "gzip",
+			body:            mustGzip(t, mustMarshalProto(t, makeJsonlogLogsData())),
+			expectStatus:    http.StatusOK,
+		},
+		{
+			name:            "gzip-compressed json request",
+			contentType:     "application/json",
+			contentEncoding: "gzip",
+			body:            mustGzip(t, mustMarshalProtoJSON(t, makeJsonlogLogsData())),
+			expectStatus:    http.StatusOK,
+		},
+		{
+			name:         "gzip body without Content-Encoding header",
+			contentType:  "application/x-protobuf",
+			body:         mustGzip(t, mustMarshalProto(t, makeJsonlogLogsData())),
+			expectStatus: http.StatusOK,
+		},
+		{
+			name:            "unsupported Content-Encoding",
+			contentType:     "application/x-protobuf",
+			contentEncoding: "br",
+			body:            mustMarshalProto(t, makeJsonlogLogsData()),
+			expectStatus:    http.StatusBadRequest,
 		},
 		{
 			name:         "unsupported content type",
@@ -223,6 +277,9 @@ func TestOtelHandlerHTTPEndpoint(t *testing.T) {
 			handler := makeOtelLogsHandler([]*state.Server{server}, rawLogStream, parsedLogStream, logger, false, &warnedAboutMultipleServers)
 			req := httptest.NewRequest(http.MethodPost, "/v1/logs", bytes.NewReader(tt.body))
 			req.Header.Set("Content-Type", tt.contentType)
+			if tt.contentEncoding != "" {
+				req.Header.Set("Content-Encoding", tt.contentEncoding)
+			}
 			rec := httptest.NewRecorder()
 
 			handler(rec, req)
@@ -253,6 +310,86 @@ func TestOtelHandlerHTTPEndpoint(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestLogLineFromJsonlog(t *testing.T) {
+	t.Run("supabase record: message/timestamp from the record, int-encoded fields", func(t *testing.T) {
+		parsed := &common.KeyValueList{Values: []*common.KeyValue{
+			otelKV("user_name", "pganalyze"),
+			otelKV("database_name", "postgres"),
+			otelKV("application_name", "Supavisor"),
+			otelKV("error_severity", "LOG"),
+			otelIntKV("process_id", 60649),
+			otelIntKV("session_line_num", 12),
+		}}
+		l := &otlpLogs.LogRecord{EventName: "duration: 3003.075 ms  plan: {...}", TimeUnixNano: uint64(testTimestamp.UnixNano())}
+
+		logLine, detail := logLineFromStructuredFields(parsed, nil, l)
+		if detail != nil {
+			t.Errorf("unexpected detail line: %+v", detail)
+		}
+		if logLine.Content != l.EventName {
+			t.Errorf("Content = %q, want the record's EventName", logLine.Content)
+		}
+		if logLine.OccurredAt.IsZero() {
+			t.Error("OccurredAt should come from TimeUnixNano")
+		}
+		if logLine.BackendPid != 60649 {
+			t.Errorf("BackendPid = %d", logLine.BackendPid)
+		}
+		if logLine.LogLineNumber != 12 {
+			t.Errorf("LogLineNumber = %d", logLine.LogLineNumber)
+		}
+		if logLine.Application != "Supavisor" {
+			t.Errorf("Application = %q", logLine.Application)
+		}
+		if logLine.LogLevel != pganalyze_collector.LogLineInformation_LOG {
+			t.Errorf("LogLevel = %v", logLine.LogLevel)
+		}
+	})
+
+	t.Run("out-of-range int dropped to 0", func(t *testing.T) {
+		parsed := &common.KeyValueList{Values: []*common.KeyValue{otelIntKV("process_id", 1<<40)}}
+		logLine, _ := logLineFromStructuredFields(parsed, nil, &otlpLogs.LogRecord{})
+		if logLine.BackendPid != 0 {
+			t.Errorf("BackendPid = %d, want 0 for out-of-range value", logLine.BackendPid)
+		}
+	})
+
+	t.Run("detail becomes a second line", func(t *testing.T) {
+		parsed := &common.KeyValueList{Values: []*common.KeyValue{
+			otelKV("error_severity", "ERROR"),
+			otelKV("detail", "Key (id)=(1) already exists."),
+		}}
+		logLine, detail := logLineFromStructuredFields(parsed, nil, &otlpLogs.LogRecord{EventName: "duplicate key value"})
+		if logLine.Content != "duplicate key value" {
+			t.Errorf("primary Content = %q", logLine.Content)
+		}
+		if detail == nil {
+			t.Fatal("expected a detail line")
+		}
+		if detail.Content != "Key (id)=(1) already exists." {
+			t.Errorf("detail Content = %q", detail.Content)
+		}
+		if detail.LogLevel != pganalyze_collector.LogLineInformation_DETAIL {
+			t.Errorf("detail LogLevel = %v, want DETAIL", detail.LogLevel)
+		}
+	})
+
+	t.Run("jsonlog record (l nil): message and string-encoded process_id", func(t *testing.T) {
+		record := &common.KeyValueList{Values: []*common.KeyValue{
+			otelKV("message", "database system is ready to accept connections"),
+			otelKV("process_id", "123"),
+			otelKV("error_severity", "LOG"),
+		}}
+		logLine, _ := logLineFromStructuredFields(record, nil, nil)
+		if logLine.Content != "database system is ready to accept connections" {
+			t.Errorf("Content = %q", logLine.Content)
+		}
+		if logLine.BackendPid != 123 {
+			t.Errorf("BackendPid = %d, want 123", logLine.BackendPid)
+		}
+	})
 }
 
 func otelStringVal(s string) *common.AnyValue {
@@ -294,6 +431,20 @@ func otelLogsData(ts time.Time, body *common.AnyValue) *otlpLogs.LogsData {
 	}
 }
 
+func otelIntVal(n int64) *common.AnyValue {
+	return &common.AnyValue{Value: &common.AnyValue_IntValue{IntValue: n}}
+}
+
+func otelIntKV(key string, n int64) *common.KeyValue {
+	return &common.KeyValue{Key: key, Value: otelIntVal(n)}
+}
+
+func otelLogsDataWithEventName(ts time.Time, eventName string, body *common.AnyValue) *otlpLogs.LogsData {
+	data := otelLogsData(ts, body)
+	data.ResourceLogs[0].ScopeLogs[0].LogRecords[0].EventName = eventName
+	return data
+}
+
 var testTimestamp = time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
 
 func makePlainLogsData() *otlpLogs.LogsData {
@@ -327,6 +478,51 @@ func makeK8sJsonlogLogsData() *otlpLogs.LogsData {
 			otelKV("pod_name", "pg-pod-0"),
 			otelKV("namespace_name", "default"),
 		),
+	))
+}
+
+const supabaseAutoExplainMessage = `duration: 3003.075 ms  plan:
+{
+  "Query Text": "select pg_sleep(3);",
+  "Plan": {
+    "Node Type": "Result",
+    "Query Identifier": 5457019535816659310
+  }
+}`
+
+// makeSupabaseLogflareLogsData mirrors a Supabase log drain (Logflare OTLP) Postgres
+// record: the csvlog fields live in body.metadata.parsed (with process_id and
+// session_line_num as ints), and the message is carried in the record's EventName.
+func makeSupabaseLogflareLogsData() *otlpLogs.LogsData {
+	return otelLogsDataWithEventName(testTimestamp, supabaseAutoExplainMessage, otelKVList(
+		otelKV("id", "5b0a43a2-d30f-46cc-bd8b-7b62f32ff47a"),
+		otelKVListEntry("metadata",
+			otelKV("host", "db-qxssiqlxoldjyxylawve"),
+			otelKVListEntry("parsed",
+				otelKV("application_name", "Supavisor"),
+				otelKV("error_severity", "LOG"),
+				otelKV("user_name", "pganalyze"),
+				otelKV("database_name", "postgres"),
+				otelIntKV("process_id", 60649),
+				otelIntKV("session_line_num", 12),
+			),
+		),
+		otelKV("project", "qxssiqlxoldjyxylawve"),
+	))
+}
+
+// makeSupavisorAppLogsData mirrors a Supabase log drain Supavisor pooler application
+// log: the same envelope, but metadata has no "parsed" object, so it is not a Postgres
+// log and must be skipped.
+func makeSupavisorAppLogsData() *otlpLogs.LogsData {
+	return otelLogsDataWithEventName(testTimestamp, "ClientHandler: Connection authenticated", otelKVList(
+		otelKV("id", "9781a253-0243-4f4a-9495-d79acec8039f"),
+		otelKVListEntry("metadata",
+			otelKV("app_name", "pganalyze_test_run"),
+			otelKV("db_name", "postgres"),
+			otelKV("user", "pganalyze"),
+		),
+		otelKV("project", "qxssiqlxoldjyxylawve"),
 	))
 }
 
@@ -531,4 +727,103 @@ func mustMarshalProtoJSON(t *testing.T, m proto.Message) []byte {
 		t.Fatalf("failed to marshal protojson: %v", err)
 	}
 	return b
+}
+
+func TestParseSyslogLine(t *testing.T) {
+	line := `<134>1 2026-07-20T18:43:00.018369+00:00 vm-compute-x postgres 2468 - [neon project_id="p" endpoint_id="e"]  [7-1] 2026-07-20 18:43:00.018 GMT ttid=abc/def sqlstate=[00000] user=[pganalyze] backend=[client backend] app=[pganalyze_collector] [2468] LOG:  connection authorized: user=pganalyze database=neondb`
+
+	item, ok := parseSyslogLine(line)
+	if !ok {
+		t.Fatal("expected syslog-framed line to parse")
+	}
+	wantLine := `2026-07-20 18:43:00.018 GMT ttid=abc/def sqlstate=[00000] user=[pganalyze] backend=[client backend] app=[pganalyze_collector] [2468] LOG:  connection authorized: user=pganalyze database=neondb`
+	if item.Line != wantLine {
+		t.Errorf("unexpected line: %q", item.Line)
+	}
+	if item.BackendPid != 2468 {
+		t.Errorf("unexpected backend pid: %d", item.BackendPid)
+	}
+	if item.LogLineNumber != 7 || item.LogLineNumberChunk != 1 {
+		t.Errorf("unexpected line number %d-%d", item.LogLineNumber, item.LogLineNumberChunk)
+	}
+	if item.OccurredAt.IsZero() {
+		t.Error("expected OccurredAt to be set from the syslog timestamp")
+	}
+
+	if _, ok := parseSyslogLine("2026-01-01 12:00:00 UTC [123] LOG:  not syslog framed"); ok {
+		t.Error("expected non-syslog line to return false")
+	}
+}
+
+func TestOtelHandlerSyslogBody(t *testing.T) {
+	server, logger := makeOtelTestServer()
+	rawLogStream := make(chan SelfHostedLogStreamItem, 10)
+	parsedLogStream := make(chan state.ParsedLogStreamItem, 10)
+
+	line := `<134>1 2026-07-20T18:43:00.018369+00:00 vm-compute-x postgres 2468 - [neon project_id="p" endpoint_id="e"]  [7-1] 2026-07-20 18:43:00.018 GMT ttid=abc/def sqlstate=[00000] user=[pganalyze] backend=[client backend] app=[pganalyze_collector] [2468] LOG:  connection authorized: user=pganalyze database=neondb`
+	body, err := proto.Marshal(otelLogsData(testTimestamp, otelStringVal(line)))
+	if err != nil {
+		t.Fatalf("failed to marshal protobuf: %v", err)
+	}
+
+	warnedAboutMultipleServers := false
+	if _, err := handleOtlpLogsRequestProtobuf(body, []*state.Server{server}, rawLogStream, parsedLogStream, logger, false, &warnedAboutMultipleServers); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	items := drainChannel(rawLogStream)
+	if len(items) != 1 {
+		t.Fatalf("expected 1 raw item, got %d", len(items))
+	}
+	wantLine := `2026-07-20 18:43:00.018 GMT ttid=abc/def sqlstate=[00000] user=[pganalyze] backend=[client backend] app=[pganalyze_collector] [2468] LOG:  connection authorized: user=pganalyze database=neondb`
+	if items[0].Line != wantLine {
+		t.Errorf("unexpected de-framed line: %q", items[0].Line)
+	}
+	if items[0].BackendPid != 2468 {
+		t.Errorf("unexpected backend pid: %d", items[0].BackendPid)
+	}
+}
+
+func TestNeonDatabaseInjection(t *testing.T) {
+	tests := []struct {
+		systemType string
+		wantDb     string
+	}{
+		{systemType: "neon", wantDb: "neondb"},
+		{systemType: "self_hosted", wantDb: ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.systemType, func(t *testing.T) {
+			server, logger := makeOtelTestServerWithConfig(config.ServerConfig{SystemType: tt.systemType, DbName: "neondb"})
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			var wg sync.WaitGroup
+			parsedLogStream := make(chan state.ParsedLogStreamItem, 10)
+			logStream := setupLogTransformer(ctx, &wg, server, state.CollectionOpts{}, logger, parsedLogStream)
+
+			logStream <- SelfHostedLogStreamItem{Line: "LOG:  connection authorized: user=pganalyze database=neondb"}
+
+			select {
+			case item := <-parsedLogStream:
+				if item.LogLine.Database != tt.wantDb {
+					t.Errorf("expected database %q, got %q", tt.wantDb, item.LogLine.Database)
+				}
+			case <-time.After(time.Second):
+				t.Fatal("timed out waiting for parsed log line")
+			}
+		})
+	}
+}
+
+func mustGzip(t *testing.T, b []byte) []byte {
+	t.Helper()
+	var buf bytes.Buffer
+	gz := gzip.NewWriter(&buf)
+	if _, err := gz.Write(b); err != nil {
+		t.Fatalf("failed to gzip: %v", err)
+	}
+	if err := gz.Close(); err != nil {
+		t.Fatalf("failed to close gzip writer: %v", err)
+	}
+	return buf.Bytes()
 }

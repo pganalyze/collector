@@ -27,7 +27,7 @@ func GenerateStatsHelperSql(ctx context.Context, server *state.Server, opts stat
 	for _, dbName := range postgres.GetDatabasesToCollect(server.Config, databases) {
 		output.WriteString(fmt.Sprintf("\\c %s\n", pq.QuoteIdentifier(dbName)))
 		output.WriteString("CREATE SCHEMA IF NOT EXISTS pganalyze;\n")
-		output.WriteString(fmt.Sprintf("GRANT USAGE ON SCHEMA pganalyze TO %s;\n", server.Config.GetDbUsername()))
+		output.WriteString(fmt.Sprintf("GRANT USAGE ON SCHEMA pganalyze TO %s;\n", pq.QuoteIdentifier(server.Config.GetEffectiveDbUsername())))
 		output.WriteString(util.GetColumnStatsHelper + "\n")
 		output.WriteString(util.GetRelationStatsExtHelper + "\n")
 		output.WriteString("\n")
@@ -52,7 +52,7 @@ func GenerateExplainAnalyzeHelperSql(ctx context.Context, server *state.Server, 
 	for _, dbName := range postgres.GetDatabasesToCollect(server.Config, databases) {
 		output.WriteString(fmt.Sprintf("\\c %s\n", pq.QuoteIdentifier(dbName)))
 		output.WriteString("CREATE SCHEMA IF NOT EXISTS pganalyze;\n")
-		output.WriteString(fmt.Sprintf("GRANT USAGE ON SCHEMA pganalyze TO %s;\n", pq.QuoteIdentifier(server.Config.GetDbUsername())))
+		output.WriteString(fmt.Sprintf("GRANT USAGE ON SCHEMA pganalyze TO %s;\n", pq.QuoteIdentifier(server.Config.GetEffectiveDbUsername())))
 		output.WriteString(fmt.Sprintf("GRANT CREATE ON SCHEMA pganalyze TO %s;\n", pq.QuoteIdentifier(opts.GenerateExplainAnalyzeHelperRole)))
 		output.WriteString(fmt.Sprintf("SET ROLE %s;\n", pq.QuoteIdentifier(opts.GenerateExplainAnalyzeHelperRole)))
 		output.WriteString(util.ExplainAnalyzeHelper + "\n")

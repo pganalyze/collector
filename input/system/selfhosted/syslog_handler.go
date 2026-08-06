@@ -9,9 +9,11 @@ import (
 	"os"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"gopkg.in/mcuadros/go-syslog.v2"
+	"gopkg.in/mcuadros/go-syslog.v2/format"
 
 	"github.com/pganalyze/collector/config"
 	"github.com/pganalyze/collector/state"
@@ -103,41 +105,7 @@ func setupSyslogHandler(ctx context.Context, config config.ServerConfig, out cha
 					prefixedLogger.PrintVerbose("Received syslog log data in the following format:\n")
 					prefixedLogger.PrintVerbose(string(jsonData))
 				}
-				item := SelfHostedLogStreamItem{}
-
-				item.OccurredAt, _ = logParts["timestamp"].(time.Time)
-
-				pidStr, _ := logParts["proc_id"].(string)
-				if s, err := strconv.ParseInt(pidStr, 10, 32); err == nil {
-					item.BackendPid = int32(s)
-				}
-
-				logLine, _ := logParts["message"].(string)
-				logLineParts := logLinePartsRegexp.FindStringSubmatch(logLine)
-				if len(logLineParts) != 0 {
-					if s, err := strconv.ParseInt(logLineParts[1], 10, 32); err == nil {
-						item.LogLineNumber = int32(s)
-					}
-					if s, err := strconv.ParseInt(logLineParts[2], 10, 32); err == nil {
-						item.LogLineNumberChunk = int32(s)
-					}
-					item.Line = logLineParts[3]
-				} else {
-					item.Line = logLine
-
-					logLineNumberStr, _ := logParts["structured_data"].(string)
-					logLineNumberParts := logLineNumberPartsRegexp.FindStringSubmatch(logLineNumberStr)
-					if len(logLineNumberParts) != 0 {
-						if s, err := strconv.ParseInt(logLineNumberParts[1], 10, 32); err == nil {
-							item.LogLineNumber = int32(s)
-						}
-						if s, err := strconv.ParseInt(logLineNumberParts[2], 10, 32); err == nil {
-							item.LogLineNumberChunk = int32(s)
-						}
-					}
-				}
-
-				out <- item
+				out <- logStreamItemFromSyslogParts(logParts)
 
 				// TODO: Support using the same syslog server for different source Postgres servers,
 				// and disambiguate based on logParts["client"]
@@ -149,4 +117,56 @@ func setupSyslogHandler(ctx context.Context, config config.ServerConfig, out cha
 	}(ctx, server, channel)
 
 	return nil
+}
+
+// parseSyslogLine de-frames an RFC5424 syslog line (e.g. Postgres logs shipped
+// over syslog), returning false if the line is not syslog-framed.
+func parseSyslogLine(line string) (SelfHostedLogStreamItem, bool) {
+	if !strings.HasPrefix(line, "<") {
+		return SelfHostedLogStreamItem{}, false
+	}
+	parser := (&format.RFC5424{}).GetParser([]byte(line))
+	if err := parser.Parse(); err != nil {
+		return SelfHostedLogStreamItem{}, false
+	}
+	return logStreamItemFromSyslogParts(parser.Dump()), true
+}
+
+// logStreamItemFromSyslogParts strips the Postgres [seqno-chunk] marker that
+// syslog logging prepends and carries the sequence/chunk through for stitching.
+func logStreamItemFromSyslogParts(logParts format.LogParts) SelfHostedLogStreamItem {
+	item := SelfHostedLogStreamItem{}
+	item.OccurredAt, _ = logParts["timestamp"].(time.Time)
+
+	pidStr, _ := logParts["proc_id"].(string)
+	if s, err := strconv.ParseInt(pidStr, 10, 32); err == nil {
+		item.BackendPid = int32(s)
+	}
+
+	logLine, _ := logParts["message"].(string)
+	logLineParts := logLinePartsRegexp.FindStringSubmatch(logLine)
+	if len(logLineParts) != 0 {
+		if s, err := strconv.ParseInt(logLineParts[1], 10, 32); err == nil {
+			item.LogLineNumber = int32(s)
+		}
+		if s, err := strconv.ParseInt(logLineParts[2], 10, 32); err == nil {
+			item.LogLineNumberChunk = int32(s)
+		}
+		item.Line = logLineParts[3]
+	} else {
+		item.Line = logLine
+
+		logLineNumberStr, _ := logParts["structured_data"].(string)
+		logLineNumberParts := logLineNumberPartsRegexp.FindStringSubmatch(logLineNumberStr)
+		if len(logLineNumberParts) != 0 {
+			if s, err := strconv.ParseInt(logLineNumberParts[1], 10, 32); err == nil {
+				item.LogLineNumber = int32(s)
+			}
+			if s, err := strconv.ParseInt(logLineNumberParts[2], 10, 32); err == nil {
+				item.LogLineNumberChunk = int32(s)
+			}
+		}
+	}
+
+	return item
 }

@@ -1,16 +1,20 @@
 package selfhosted
 
 import (
+	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/pganalyze/collector/config"
+	"github.com/pganalyze/collector/input/system/supabase"
 	"github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
@@ -44,6 +48,14 @@ func makeOtelLogsHandler(servers []*state.Server, rawLogStream chan<- SelfHosted
 			return
 		}
 
+		b, err = decodeRequestBody(b, r.Header.Get("Content-Encoding"))
+		if err != nil {
+			prefixedLogger.PrintError("OTel log server could not decode request body: %s", err)
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("Could not decode request body"))
+			return
+		}
+
 		var resp []byte
 		contentType := r.Header.Get("Content-Type")
 		switch contentType {
@@ -69,6 +81,30 @@ func makeOtelLogsHandler(servers []*state.Server, rawLogStream chan<- SelfHosted
 		w.Header().Set("Content-Type", contentType)
 		w.Write(resp)
 	}
+}
+
+func decodeRequestBody(b []byte, contentEncoding string) ([]byte, error) {
+	switch contentEncoding {
+	case "gzip":
+		return gunzip(b)
+	case "", "identity":
+		// Some exporters gzip without setting Content-Encoding; valid OTLP never starts with the gzip magic bytes.
+		if len(b) >= 2 && b[0] == 0x1f && b[1] == 0x8b {
+			return gunzip(b)
+		}
+		return b, nil
+	default:
+		return nil, fmt.Errorf("unsupported Content-Encoding %q", contentEncoding)
+	}
+}
+
+func gunzip(b []byte) ([]byte, error) {
+	gz, err := gzip.NewReader(bytes.NewReader(b))
+	if err != nil {
+		return nil, err
+	}
+	defer gz.Close()
+	return io.ReadAll(gz)
 }
 
 func handleOtlpLogsRequestProtobuf(b []byte, servers []*state.Server, rawLogStream chan<- SelfHostedLogStreamItem, parsedLogStream chan state.ParsedLogStreamItem, prefixedLogger *util.Logger, veryVerbose bool, warnedAboutMultipleServers *bool) (resp []byte, err error) {
@@ -132,17 +168,38 @@ func handleOtlpLogsRequestJson(b []byte, servers []*state.Server, rawLogStream c
 // 1. Plain log messages (unstructured message, body of log record is a string)
 // 2. jsonlog encoded as OTel key/value map
 // 3. jsonlog wrapped in K8s context (via fluentbit/Vector) as OTel key/value map
+// 4. Supabase's log drain (Logflare-backed) which delivers Postgres csvlog fields in the record's EventName rather than the body
 //
 // Other variants (e.g. csvlog, or plain messages in a K8s context) are currently
 // not supported and will be ignored.
 func handleOtlpLogsRequest(logsData *otlpLogs.LogsData, servers []*state.Server, rawLogStream chan<- SelfHostedLogStreamItem, parsedLogStream chan state.ParsedLogStreamItem, warnedAboutMultipleServers *bool, prefixedLogger *util.Logger) *otlpLogsService.ExportLogsServiceResponse {
 	var rejectedLogRecords int64
+	hasSupabaseServer := false
+	for _, server := range servers {
+		if server.Config.SystemType == "supabase" {
+			hasSupabaseServer = true
+			break
+		}
+	}
 	for _, r := range logsData.ResourceLogs {
 		for _, s := range r.ScopeLogs {
 			for _, l := range s.LogRecords {
-				if l.Body.GetKvlistValue() != nil {
+				if kv := l.Body.GetKvlistValue(); kv != nil {
+					if hasSupabaseServer {
+						if parsed := supabase.ParsedFields(kv); parsed != nil {
+							warnAboutMultipleServers(servers, warnedAboutMultipleServers, prefixedLogger)
+							logLine, detailLine := logLineFromStructuredFields(parsed, nil, l)
+							for _, server := range servers {
+								parsedLogStream <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: logLine}
+								if detailLine != nil {
+									parsedLogStream <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: *detailLine}
+								}
+							}
+							continue
+						}
+					}
 					// jsonlog log message
-					record, kubernetes := transformJsonLogRecord(l.Body.GetKvlistValue())
+					record, kubernetes := transformJsonLogRecord(kv)
 					if record != nil {
 						if kubernetes != nil {
 							// K8s-wrapped jsonlog: send to all servers that pass the K8s filter
@@ -151,7 +208,7 @@ func handleOtlpLogsRequest(logsData *otlpLogs.LogsData, servers []*state.Server,
 									continue
 								}
 								logParser := server.GetLogParser()
-								logLine, detailLine := logLineFromJsonlog(record, logParser)
+								logLine, detailLine := logLineFromStructuredFields(record, logParser, nil)
 								parsedLogStream <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: logLine}
 								if detailLine != nil {
 									parsedLogStream <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: *detailLine}
@@ -162,7 +219,7 @@ func handleOtlpLogsRequest(logsData *otlpLogs.LogsData, servers []*state.Server,
 							warnAboutMultipleServers(servers, warnedAboutMultipleServers, prefixedLogger)
 							for _, server := range servers {
 								logParser := server.GetLogParser()
-								logLine, detailLine := logLineFromJsonlog(record, logParser)
+								logLine, detailLine := logLineFromStructuredFields(record, logParser, nil)
 								parsedLogStream <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: logLine}
 								if detailLine != nil {
 									parsedLogStream <- state.ParsedLogStreamItem{Identifier: server.Config.Identifier, LogLine: *detailLine}
@@ -172,12 +229,16 @@ func handleOtlpLogsRequest(logsData *otlpLogs.LogsData, servers []*state.Server,
 					} else {
 						rejectedLogRecords++
 					}
-				} else if l.Body.GetStringValue() != "" {
+				} else if body := l.Body.GetStringValue(); body != "" {
 					// Plain log message (goes through log transformer which handles per-server routing)
 					warnAboutMultipleServers(servers, warnedAboutMultipleServers, prefixedLogger)
-					item := SelfHostedLogStreamItem{}
-					item.Line = l.Body.GetStringValue()
-					item.OccurredAt = time.Unix(0, int64(l.TimeUnixNano))
+					item, ok := parseSyslogLine(body)
+					if !ok {
+						item.Line = body
+					}
+					if item.OccurredAt.IsZero() {
+						item.OccurredAt = time.Unix(0, int64(l.TimeUnixNano))
+					}
 					rawLogStream <- item
 				} else {
 					rejectedLogRecords++
@@ -239,14 +300,23 @@ func warnAboutMultipleServers(servers []*state.Server, warnedAboutMultipleServer
 	*warnedAboutMultipleServers = true
 }
 
-func logLineFromJsonlog(record *common.KeyValueList, logParser state.LogParser) (state.LogLine, *state.LogLine) {
+// logLineFromStructuredFields maps Postgres structured log fields (an OTel key/value
+// list) to a LogLine. Postgres's jsonlog and csvlog formats share these field names:
+// OTel pipelines deliver jsonlog records directly, while Supabase's log drain delivers
+// csvlog-derived fields (metadata.parsed) with the message and timestamp carried on the
+// OTel record itself — pass l there so EventName and TimeUnixNano fill those in.
+func logLineFromStructuredFields(record *common.KeyValueList, logParser state.LogParser, l *otlpLogs.LogRecord) (state.LogLine, *state.LogLine) {
 	var logLine state.LogLine
+	if l != nil {
+		logLine.Content = l.EventName
+		logLine.OccurredAt = time.Unix(0, int64(l.TimeUnixNano))
+	}
 
 	// If a DETAIL line is set, we need to create an additional log line
 	detailLineContent := ""
 
 	for _, rv := range record.Values {
-		if rv.Key == "log_time" {
+		if rv.Key == "log_time" && logLine.OccurredAt.IsZero() && logParser != nil {
 			logLine.OccurredAt = logParser.GetOccurredAt(rv.Value.GetStringValue())
 		}
 		if rv.Key == "user_name" {
@@ -256,17 +326,15 @@ func logLineFromJsonlog(record *common.KeyValueList, logParser state.LogParser) 
 			logLine.Database = rv.Value.GetStringValue()
 		}
 		if rv.Key == "process_id" {
-			backendPid, _ := strconv.ParseInt(rv.Value.GetStringValue(), 10, 32)
-			logLine.BackendPid = int32(backendPid)
+			logLine.BackendPid = anyValueInt(rv.Value)
 		}
 		if rv.Key == "application_name" {
 			logLine.Application = rv.Value.GetStringValue()
 		}
 		if rv.Key == "session_line_num" {
-			logLineNumber, _ := strconv.ParseInt(rv.Value.GetStringValue(), 10, 32)
-			logLine.LogLineNumber = int32(logLineNumber)
+			logLine.LogLineNumber = anyValueInt(rv.Value)
 		}
-		if rv.Key == "message" {
+		if rv.Key == "message" && logLine.Content == "" {
 			logLine.Content = rv.Value.GetStringValue()
 		}
 		if rv.Key == "detail" {
@@ -283,6 +351,21 @@ func logLineFromJsonlog(record *common.KeyValueList, logParser state.LogParser) 
 		return logLine, &detailLine
 	}
 	return logLine, nil
+}
+
+// anyValueInt reads a bounds-checked int32 from an OTel value that may be encoded as an
+// int (Supabase's drain sends process_id and session_line_num as ints) or a numeric
+// string (jsonlog).
+func anyValueInt(v *common.AnyValue) int32 {
+	if s := v.GetStringValue(); s != "" {
+		n, _ := strconv.ParseInt(s, 10, 32)
+		return int32(n)
+	}
+	n := v.GetIntValue()
+	if n < math.MinInt32 || n > math.MaxInt32 {
+		return 0
+	}
+	return int32(n)
 }
 
 func skipDueToK8sFilter(kubernetes *common.KeyValueList, config config.ServerConfig) bool {

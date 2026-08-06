@@ -443,6 +443,19 @@ func getLogLinePrefix(ctx context.Context, server *state.Server, opts state.Coll
 	return postgres.GetPostgresSetting(ctx, db, "log_line_prefix")
 }
 
+// logTestTimeout returns how long to wait for the emitted test event during a log
+// test. An explicit db_log_test_timeout wins; otherwise platforms whose logs arrive
+// via a batched push drain (Supabase) get a longer default than the local 10s.
+func logTestTimeout(config config.ServerConfig) time.Duration {
+	if config.LogTestTimeoutSecs > 0 {
+		return time.Duration(config.LogTestTimeoutSecs) * time.Second
+	}
+	if config.SystemType == "supabase" {
+		return 30 * time.Second
+	}
+	return 10 * time.Second
+}
+
 func testLocalLogTail(ctx context.Context, wg *sync.WaitGroup, server *state.Server, opts state.CollectionOpts, logger *util.Logger) bool {
 	logger.PrintInfo("Testing log collection (local)...")
 
@@ -458,13 +471,14 @@ func testLocalLogTail(ctx context.Context, wg *sync.WaitGroup, server *state.Ser
 
 	EmitTestLogMsg(ctx, server, opts, logger)
 
+	timeout := logTestTimeout(server.Config)
 	select {
 	case <-ctx.Done():
 		return false
 	case <-logTestSucceeded:
 		break
-	case <-time.After(10 * time.Second):
-		logger.PrintError("ERROR - Local log tail timed out after 10 seconds - did not find expected log event in stream")
+	case <-time.After(timeout):
+		logger.PrintError("ERROR - Local log tail timed out after %d seconds - did not find expected log event in stream", int(timeout.Seconds()))
 		return false
 	}
 
@@ -501,13 +515,14 @@ func testAzureLogStream(ctx context.Context, wg *sync.WaitGroup, server *state.S
 
 	EmitTestLogMsg(ctx, server, opts, logger)
 
+	timeout := logTestTimeout(server.Config)
 	select {
 	case <-ctx.Done():
 		return false
 	case <-logTestSucceeded:
 		break
-	case <-time.After(10 * time.Second):
-		logger.PrintError("ERROR - Azure Event Hub log tail timed out after 10 seconds - did not receive any log events")
+	case <-time.After(timeout):
+		logger.PrintError("ERROR - Azure Event Hub log tail timed out after %d seconds - did not receive any log events", int(timeout.Seconds()))
 		logger.PrintInfo("HINT - This error may be a false positive if the collector is also running in the background and consumes the same Azure Event Hub stream")
 		return false
 	}
@@ -530,13 +545,14 @@ func testGoogleCloudsqlLogStream(ctx context.Context, wg *sync.WaitGroup, server
 
 	EmitTestLogMsg(ctx, server, opts, logger)
 
+	timeout := logTestTimeout(server.Config)
 	select {
 	case <-ctx.Done():
 		return false
 	case <-logTestSucceeded:
 		break
-	case <-time.After(10 * time.Second):
-		logger.PrintError("ERROR - Google Cloud Pub/Sub log tail timed out after 10 seconds - did not find expected log event in stream")
+	case <-time.After(timeout):
+		logger.PrintError("ERROR - Google Cloud Pub/Sub log tail timed out after %d seconds - did not find expected log event in stream", int(timeout.Seconds()))
 		logger.PrintInfo("HINT - This error may be a false positive if the collector is also running in the background and consumes the same Google Cloud Pub/Sub stream")
 		return false
 	}
@@ -555,13 +571,14 @@ func testOtelLog(ctx context.Context, wg *sync.WaitGroup, server *state.Server, 
 
 	EmitTestLogMsg(ctx, server, opts, logger)
 
+	timeout := logTestTimeout(server.Config)
 	select {
 	case <-ctx.Done():
 		return false
 	case <-logTestSucceeded:
 		break
-	case <-time.After(10 * time.Second):
-		logger.PrintError("ERROR - OpenTelemetry log tail timed out after 10 seconds - did not find expected log event in stream")
+	case <-time.After(timeout):
+		logger.PrintError("ERROR - OpenTelemetry log tail timed out after %d seconds - did not find expected log event in stream", int(timeout.Seconds()))
 		logger.PrintInfo("HINT - This error may be a false positive if the collector is also running in the background and receiving logs")
 		return false
 	}
