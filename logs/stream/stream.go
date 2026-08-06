@@ -178,27 +178,6 @@ func createLogFile(readyLogLines []state.LogLine, logger *util.Logger) (state.Lo
 	return logFile, nil
 }
 
-// handleLogAnalysis - Performs log analysis on submitted log lines on a per-backend basis
-func handleLogAnalysis(analyzableLogLines []state.LogLine) ([]state.LogLine, []state.PostgresQuerySample) {
-	// Split log lines by backend to ensure we have the right context
-	backendLogLines := make(map[int32][]state.LogLine)
-
-	for _, logLine := range analyzableLogLines {
-		backendLogLines[logLine.BackendPid] = append(backendLogLines[logLine.BackendPid], logLine)
-	}
-
-	var logLinesOut []state.LogLine
-	var querySamples []state.PostgresQuerySample
-
-	for _, analyzableLogLines := range backendLogLines {
-		backendLogLinesOut, backendSamples := logs.AnalyzeBackendLogLines(analyzableLogLines)
-		logLinesOut = append(logLinesOut, backendLogLinesOut...)
-		querySamples = append(querySamples, backendSamples...)
-	}
-
-	return logLinesOut, querySamples
-}
-
 func stitchLogLines(readyLogLines []state.LogLine, logger *util.Logger) (analyzableLogLines []state.LogLine) {
 	// Each regular line is held back as the stitch target for continuation
 	// lines (lines that don't parse as a new log line, marked as log level
@@ -306,7 +285,7 @@ func AnalyzeStreamInGroups(logLines []state.LogLine, now time.Time, server *stat
 	}
 
 	logState := state.TransientLogState{CollectedAt: now}
-	logFile.LogLines, logState.QuerySamples = handleLogAnalysis(analyzableLogLines)
+	logFile.LogLines, logState.QuerySamples = logs.AnalyzeLogLines(analyzableLogLines)
 
 	return logState, logFile, tooFreshLogLines, nil
 }

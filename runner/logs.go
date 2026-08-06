@@ -334,7 +334,7 @@ func postprocessAndSendLogs(ctx context.Context, server *state.Server, opts stat
 		logFile := &transientLogState.LogFiles[idx]
 		if len(logFile.LogLines) > 0 {
 			logsExist = true
-			logFile.ByteSize = int64(logFile.LogLines[len(logFile.LogLines)-1].ByteEnd)
+			logFile.UpdateByteSize()
 		}
 		if len(logFile.FilterLogSecret) > 0 {
 			logs.ReplaceSecrets(logFile.LogLines, logFile.FilterLogSecret)
