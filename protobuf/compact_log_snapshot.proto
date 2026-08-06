@@ -139,6 +139,7 @@ message LogLineInformation {
     AUTOANALYZE_COMPLETED = 66; // "automatic analyze of table"
     SKIPPING_VACUUM_LOCK_NOT_AVAILABLE = 67; // "skipping vacuum of ... --- lock not available"
     SKIPPING_ANALYZE_LOCK_NOT_AVAILABLE = 68; // "skipping analyze of ... --- lock not available"
+    SKIPPING_MAINTENANCE_PERMISSION_DENIED = 69; // "permission denied to {vacuum,analyze,execute CLUSTER on,execute REPACK on} ..., skipping it"
 
     // Locks
     LOCK_ACQUIRED = 70; // "acquired *Lock"
@@ -202,6 +203,15 @@ message LogLineInformation {
     COULD_NOT_SERIALIZE_REPEATABLE_READ = 138; // "could not serialize access due to concurrent update"
     COULD_NOT_SERIALIZE_SERIALIZABLE = 139; // "could not serialize access due to read/write dependencies among transactions"
     INCONSISTENT_RANGE_BOUNDS = 140; // "range lower bound must be less than or equal to range upper bound"
+    VALUE_OUT_OF_RANGE = 141; // "... out of range", "... field value out of range", "numeric field overflow" (for non-integer types; integers use INTEGER_OUT_OF_RANGE)
+    OBJECT_DOES_NOT_EXIST = 142; // "<object type> ... does not exist" for object types without a dedicated classification (role, type, schema, index, collation, extension, ...); relations/columns/functions/operators use their own
+    ROW_LEVEL_SECURITY_VIOLATION = 143; // "new row violates row-level security policy for table ...", "query would be affected by row-level security policy for table ..." (errcode 42501)
+    WITH_CHECK_OPTION_VIOLATION = 144; // "new row violates check option for view ..." (errcode 44000)
+    CANNOT_MODIFY_VIEW = 145; // "cannot insert into/update/delete from/merge into [column ... of] view ..." for non-updatable views (errcodes 55000, 0A000)
+    SQL_JSON_ERROR = 146; // JSON / jsonpath / SQL-JSON processing errors (errcodes vary: 2203x SQL/JSON subclass, plus 22P02, 22023, 42601, 0A000, ...)
+    PARTITION_ERROR = 147; // partitioning DDL/operation errors: invalid bounds/keys, overlaps, cannot attach/detach/merge/split, ... (errcodes vary: 42P16, 42P17, 0A000; runtime routing/constraint failures use CHECK_CONSTRAINT_VIOLATION, "X is [not] a partition[ed] ..." uses WRONG_OBJECT_TYPE)
+    OBJECT_ALREADY_EXISTS = 148; // "<object type> ... already exists" for any object type (relation, type, column, constraint, function, ...) (duplicate_* errcodes: 42710, 42P07, 42701, 42723)
+    WRONG_OBJECT_TYPE = 149; // operation attempted on the wrong kind of object: "\"...\" is [not] a[n] <object type>" (incl. partition[ed] forms), "ALTER action ... cannot be performed on relation ..." (mostly errcode 42809; partition variants also 42P17/0A000)
 
     // Collector internal events
     PGA_COLLECTOR_IDENTIFY = 1000; // "pganalyze-collector-identify: server1"

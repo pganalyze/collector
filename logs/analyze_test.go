@@ -3967,6 +3967,581 @@ index scan needed: 1 pages from table (100.00% of total) had 60 dead item identi
 		}},
 		nil,
 	},
+	// bigint/smallint out of range are the same class as integer out of range
+	{
+		[]state.LogLine{{
+			Content:  "bigint out of range",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}},
+		[]state.LogLine{{
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_INTEGER_OUT_OF_RANGE,
+			ReviewedForSecrets: true,
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
+			Content:  "value \"32768\" is out of range for type smallint at character 25",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}},
+		[]state.LogLine{{
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_INTEGER_OUT_OF_RANGE,
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 7,
+				ByteEnd:   12,
+				Kind:      state.TableDataLogSecret,
+			}},
+		}},
+		nil,
+	},
+	// Non-integer out-of-range/overflow errors are VALUE_OUT_OF_RANGE; the offending value is redacted
+	{
+		[]state.LogLine{{
+			Content:  "interval field value out of range: \"P1Y2M3D\" at character 20",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}},
+		[]state.LogLine{{
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_VALUE_OUT_OF_RANGE,
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 36,
+				ByteEnd:   43,
+				Kind:      state.TableDataLogSecret,
+			}},
+		}},
+		nil,
+	},
+	{
+		[]state.LogLine{{
+			Content:  "\"1e400\" is out of range for type double precision at character 12",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}},
+		[]state.LogLine{{
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_VALUE_OUT_OF_RANGE,
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 1,
+				ByteEnd:   6,
+				Kind:      state.TableDataLogSecret,
+			}},
+		}},
+		nil,
+	},
+	// Fixed-form out-of-range messages carry no user value, so nothing is redacted. "block number
+	// out of range" is included: the number exceeds the range of the (uint32) block number type.
+	{
+		[]state.LogLine{{
+			Content:  "numeric field overflow",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}, {
+			Content:  "timestamp out of range",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}, {
+			Content:  "block number out of range: 4294967296",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}},
+		[]state.LogLine{{
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_VALUE_OUT_OF_RANGE,
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_VALUE_OUT_OF_RANGE,
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_VALUE_OUT_OF_RANGE,
+			ReviewedForSecrets: true,
+		}},
+		nil,
+	},
+	// "does not exist" family: relkinds fold into RELATION_, procedure/aggregate + quoted names into
+	// FUNCTION_, column variants into COLUMN_, and the long tail of object types into OBJECT_.
+	{
+		[]state.LogLine{{
+			Content:  "table \"missing_tbl\" does not exist",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}, {
+			Content:  "procedure ptest9(integer) does not exist at character 8",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}, {
+			Content:  "function \"my_func\" does not exist",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}, {
+			Content:  "column \"c\" named in key does not exist",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}, {
+			Content:  "column number 4 of relation \"t\" does not exist",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}, {
+			Content:  "role \"regress_role\" does not exist",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}, {
+			Content:  "collation \"c\" for encoding \"UTF8\" does not exist at character 30",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}, {
+			Content:  "large object 999 does not exist",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}},
+		[]state.LogLine{{
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_RELATION_DOES_NOT_EXIST,
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_FUNCTION_DOES_NOT_EXIST,
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_FUNCTION_DOES_NOT_EXIST,
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_COLUMN_DOES_NOT_EXIST,
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_COLUMN_DOES_NOT_EXIST,
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_OBJECT_DOES_NOT_EXIST,
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_OBJECT_DOES_NOT_EXIST,
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_OBJECT_DOES_NOT_EXIST,
+			ReviewedForSecrets: true,
+		}},
+		nil,
+	},
+	// Runtime/data partition errors share errcode 23514 with check constraint violations. The
+	// "no partition ... found for row" form carries a data-bearing "Partition key ..." detail.
+	{
+		[]state.LogLine{{
+			Content:  "no partition of relation \"measurement\" found for row",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+			UUID:     uuid.UUID{1},
+		}, {
+			Content:  "Partition key of the failing row contains (a) = (5).",
+			LogLevel: pganalyze_collector.LogLineInformation_DETAIL,
+		}, {
+			Content:  "partition constraint of relation \"part_2\" is violated by some row",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}},
+		[]state.LogLine{{
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_CHECK_CONSTRAINT_VIOLATION,
+			UUID:               uuid.UUID{1},
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_DETAIL,
+			ParentUUID:         uuid.UUID{1},
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 42,
+				ByteEnd:   51,
+				Kind:      state.TableDataLogSecret,
+			}},
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_CHECK_CONSTRAINT_VIOLATION,
+			ReviewedForSecrets: true,
+		}},
+		nil,
+	},
+	// WITH CHECK OPTION violation (44000) carries a data-bearing "Failing row contains" detail
+	{
+		[]state.LogLine{{
+			Content:  "new row violates check option for view \"my_view\"",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+			UUID:     uuid.UUID{1},
+		}, {
+			Content:  "Failing row contains (1, 2).",
+			LogLevel: pganalyze_collector.LogLineInformation_DETAIL,
+		}},
+		[]state.LogLine{{
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_WITH_CHECK_OPTION_VIOLATION,
+			UUID:               uuid.UUID{1},
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_DETAIL,
+			ParentUUID:         uuid.UUID{1},
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 22,
+				ByteEnd:   26,
+				Kind:      state.TableDataLogSecret,
+			}},
+		}},
+		nil,
+	},
+	// Non-updatable view DML errors (55000 view-level, 0A000 column-level) share one classification
+	{
+		[]state.LogLine{{
+			Content:  "cannot insert into view \"my_view\"",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}, {
+			Content:  "cannot update column \"c\" of view \"my_view\"",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}, {
+			Content:  "cannot delete from view \"my_view\"",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}},
+		[]state.LogLine{{
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_CANNOT_MODIFY_VIEW,
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_CANNOT_MODIFY_VIEW,
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_CANNOT_MODIFY_VIEW,
+			ReviewedForSecrets: true,
+		}},
+		nil,
+	},
+	// Duplicate-object DDL conflicts (OBJECT_ALREADY_EXISTS) and wrong-object-type errors
+	// (WRONG_OBJECT_TYPE); the non-object "is not a valid ..." forms stay unclassified.
+	{
+		[]state.LogLine{{
+			Content:  "relation \"foo\" already exists",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}, {
+			Content:  "column \"c\" of relation \"t\" already exists",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}, {
+			Content:  "function alt_func2(integer) already exists in schema \"s\"",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}, {
+			Content:  "\"foo\" is not an index",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}, {
+			Content:  "\"bar\" is a view",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}, {
+			Content:  "\"baz\" is not a partitioned table",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}, {
+			Content:  "\"qux\" is not a partition of partitioned table \"parent\"",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}, {
+			Content:  "ALTER action DETACH PARTITION cannot be performed on relation \"p\"",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}},
+		[]state.LogLine{{
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_OBJECT_ALREADY_EXISTS,
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_OBJECT_ALREADY_EXISTS,
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_OBJECT_ALREADY_EXISTS,
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_WRONG_OBJECT_TYPE,
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_WRONG_OBJECT_TYPE,
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_WRONG_OBJECT_TYPE,
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_WRONG_OBJECT_TYPE,
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_WRONG_OBJECT_TYPE,
+			ReviewedForSecrets: true,
+		}},
+		nil,
+	},
+	// Partitioning DDL/operation errors are one broad classification; nothing is redacted
+	{
+		[]state.LogLine{{
+			Content:  "partition \"p1\" would overlap partition \"p2\" at character 20",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}, {
+			Content:  "cannot attach index \"idx\" as a partition of index \"pidx\"",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}, {
+			Content:  "cannot use column reference in partition bound expression at character 5",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}, {
+			Content:  "remainder for hash partition must be less than modulus",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}, {
+			Content:  "invalid bound specification for a range partition at character 10",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}},
+		[]state.LogLine{{
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_PARTITION_ERROR,
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_PARTITION_ERROR,
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_PARTITION_ERROR,
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_PARTITION_ERROR,
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_PARTITION_ERROR,
+			ReviewedForSecrets: true,
+		}},
+		nil,
+	},
+	// SQL/JSON errors: fixed-text forms redact nothing; forms carrying data/parse text redact it.
+	{
+		[]state.LogLine{{
+			Content:  "jsonpath item method .string() can only be applied to a boolean, string, numeric, or datetime value",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}, {
+			Content:  "invalid JSON_TABLE specification at character 15",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}, {
+			Content:  "argument \"5x\" of jsonpath item method .integer() is invalid for type integer",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}, {
+			Content:  "duplicate JSON object key value: \"k\"",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}, {
+			Content:  "trailing junk after numeric literal at or near \"1x\" of jsonpath input at character 10",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}},
+		[]state.LogLine{{
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_SQL_JSON_ERROR,
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_SQL_JSON_ERROR,
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_SQL_JSON_ERROR,
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 10,
+				ByteEnd:   12,
+				Kind:      state.TableDataLogSecret,
+			}},
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_SQL_JSON_ERROR,
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 34,
+				ByteEnd:   35,
+				Kind:      state.TableDataLogSecret,
+			}},
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_SQL_JSON_ERROR,
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 48,
+				ByteEnd:   50,
+				Kind:      state.ParsingErrorLogSecret,
+			}},
+		}},
+		nil,
+	},
+	// Runtime row-level security denials (errcode 42501) get their own classification
+	{
+		[]state.LogLine{{
+			Content:  "new row violates row-level security policy for table \"accounts\"",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}, {
+			Content:  "new row violates row-level security policy \"acct_policy\" for table \"accounts\"",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}, {
+			Content:  "target row violates row-level security policy (USING expression) for table \"accounts\"",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}, {
+			Content:  "query would be affected by row-level security policy for table \"accounts\"",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}},
+		[]state.LogLine{{
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_ROW_LEVEL_SECURITY_VIOLATION,
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_ROW_LEVEL_SECURITY_VIOLATION,
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_ROW_LEVEL_SECURITY_VIOLATION,
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_ROW_LEVEL_SECURITY_VIOLATION,
+			ReviewedForSecrets: true,
+		}},
+		nil,
+	},
+	// "permission denied to <action>" is a permission error (here: a role management command)
+	{
+		[]state.LogLine{{
+			Content:  "permission denied to grant role \"regress_role\"",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}},
+		[]state.LogLine{{
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_PERMISSION_DENIED,
+			ReviewedForSecrets: true,
+		}},
+		nil,
+	},
+	// The WARNING-level "..., skipping it" messages from manual VACUUM/ANALYZE/CLUSTER/REPACK are
+	// classified separately from PERMISSION_DENIED (the command succeeds; some relations are skipped).
+	{
+		[]state.LogLine{{
+			Content:  "permission denied to analyze \"my_table\", skipping it",
+			LogLevel: pganalyze_collector.LogLineInformation_WARNING,
+		}, {
+			Content:  "permission denied to execute REPACK on \"my_table\", skipping it",
+			LogLevel: pganalyze_collector.LogLineInformation_WARNING,
+		}},
+		[]state.LogLine{{
+			LogLevel:           pganalyze_collector.LogLineInformation_WARNING,
+			Classification:     pganalyze_collector.LogLineInformation_SKIPPING_MAINTENANCE_PERMISSION_DENIED,
+			Details:            map[string]interface{}{"relation_name": "my_table"},
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_WARNING,
+			Classification:     pganalyze_collector.LogLineInformation_SKIPPING_MAINTENANCE_PERMISSION_DENIED,
+			Details:            map[string]interface{}{"relation_name": "my_table"},
+			ReviewedForSecrets: true,
+		}},
+		nil,
+	},
+	// permission denied for <object type> <name>, where the object type ("view") was previously unmatched
+	{
+		[]state.LogLine{{
+			Content:  "permission denied for view rw_view1",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}},
+		[]state.LogLine{{
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_PERMISSION_DENIED,
+			ReviewedForSecrets: true,
+		}},
+		nil,
+	},
+	// permission denied: "..." is a system catalog, and the bare "permission denied"
+	{
+		[]state.LogLine{{
+			Content:  "permission denied: \"pg_authid\" is a system catalog",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}, {
+			Content:  "permission denied",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}},
+		[]state.LogLine{{
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_PERMISSION_DENIED,
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_PERMISSION_DENIED,
+			ReviewedForSecrets: true,
+		}},
+		nil,
+	},
+	// "must be owner of ...", "must be able to SET ROLE ...", "must be superuser ..." are privilege errors
+	{
+		[]state.LogLine{{
+			Content:  "must be owner of foreign server s6",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}, {
+			Content:  "must be able to SET ROLE \"regress_role\"",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}, {
+			Content:  "must be superuser to set ALL TABLES",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}},
+		[]state.LogLine{{
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_PERMISSION_DENIED,
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_PERMISSION_DENIED,
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_PERMISSION_DENIED,
+			ReviewedForSecrets: true,
+		}},
+		nil,
+	},
+	// operator does not exist: unary operators and multi-word type names were previously unmatched
+	{
+		[]state.LogLine{{
+			Content:  "operator does not exist: time with time zone + time with time zone at character 11",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+		}},
+		[]state.LogLine{{
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_OPERATOR_DOES_NOT_EXIST,
+			ReviewedForSecrets: true,
+		}},
+		nil,
+	},
+	// partition constraint violation shares errcode/handling with check constraint violation
+	{
+		[]state.LogLine{{
+			Content:  "new row for relation \"measurement\" violates partition constraint",
+			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
+			UUID:     uuid.UUID{1},
+		}, {
+			Content:  "Failing row contains (-123).",
+			LogLevel: pganalyze_collector.LogLineInformation_DETAIL,
+		}},
+		[]state.LogLine{{
+			LogLevel:           pganalyze_collector.LogLineInformation_ERROR,
+			Classification:     pganalyze_collector.LogLineInformation_CHECK_CONSTRAINT_VIOLATION,
+			UUID:               uuid.UUID{1},
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_DETAIL,
+			ParentUUID:         uuid.UUID{1},
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 22,
+				ByteEnd:   26,
+				Kind:      state.TableDataLogSecret,
+			}},
+		}},
+		nil,
+	},
 	{
 		[]state.LogLine{{
 			Content:  "invalid regular expression: quantifier operand invalid",
