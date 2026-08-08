@@ -66,7 +66,7 @@ COPY --from=build $CODE_DIR/packages $CODE_DIR/packages
 WORKDIR $ROOT_DIR
 # Use xz payload compression so the RPM remains installable on Amazon Linux 2 / RPM 4.11.
 RUN fpm \
-  -n $NAME -v ${VERSION} -t rpm --rpm-os linux --rpm-compression xz \
+  -n $NAME -v ${VERSION} -t rpm --rpm-os linux --rpm-compression xz --rpm-digest sha256 \
   --config-files /etc/pganalyze-collector.conf \
   --after-install $CODE_DIR/packages/src/rpm-systemd/post.sh \
   --before-remove $CODE_DIR/packages/src/rpm-systemd/preun.sh \
