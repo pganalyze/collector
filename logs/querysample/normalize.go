@@ -23,7 +23,7 @@ type planNodeGroupingSet struct {
 
 type planNode struct {
 	ActualLoops                 *int64                   `json:"Actual Loops,omitempty"`
-	ActualRows                  *int64                   `json:"Actual Rows,omitempty"`
+	ActualRows                  *float64                 `json:"Actual Rows,omitempty"` // PostgreSQL 18+ reports fractional rows
 	ActualStartupTime           *float64                 `json:"Actual Startup Time,omitempty"`
 	ActualTotalTime             *float64                 `json:"Actual Total Time,omitempty"`
 	Alias                       *string                  `json:"Alias,omitempty"` // does not need normalize (table alias as specified in the query)
