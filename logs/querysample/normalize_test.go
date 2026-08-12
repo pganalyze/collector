@@ -214,3 +214,39 @@ func TestAutoExplainQuerySample(t *testing.T) {
 		}
 	}
 }
+
+func TestNormalizeExplainJSONPostgres18ActualRows(t *testing.T) {
+	tests := []struct {
+		name       string
+		actualRows string
+		want       float64
+	}{
+		{"fractional", "4.60", 4.6},
+		{"decimal integer", "1.00", 1},
+		{"decimal zero", "0.00", 0},
+		{"integer", "1", 1},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			explain := &state.ExplainPlanContainer{
+				Plan: json.RawMessage(`{"Actual Rows": ` + tt.actualRows + `}`),
+			}
+
+			normalized, err := querysample.NormalizeExplainJSON(explain)
+			if err != nil {
+				t.Fatalf("Error normalizing PostgreSQL 18 Actual Rows value %s: %s", tt.actualRows, err)
+			}
+
+			var plan struct {
+				ActualRows float64 `json:"Actual Rows"`
+			}
+			if err := json.Unmarshal(normalized.Plan, &plan); err != nil {
+				t.Fatalf("Error unmarshaling normalized plan: %s", err)
+			}
+			if plan.ActualRows != tt.want {
+				t.Errorf("Actual Rows = %v, want %v", plan.ActualRows, tt.want)
+			}
+		})
+	}
+}
