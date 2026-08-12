@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.72.0      2026-08-12
+
+- Add Supabase and Neon as a supported system type
+- Add support for both Neon and Supabase OTel log collection
+- Allow adjusting log download interval (AWS, PlanetScale, self-hosted)
+  - Introduces a new config setting "log_download_interval" / LOG_DOWNLOAD_INTERVAL,
+    which controls how often logs are downloaded for platforms where streaming
+    is not used. The log interval can be increased to up to 10 minutes on
+    a per-server basis, causing delayed reporting of log events in pganalyze,
+    but reducing rate limit problems for servers that have less activity.
+  - For highly active servers this setting should be kept at the default (30s)
+    to avoid losing data. The log download limit is increased from 10MB
+    up to 50MB for longer intervals.
+- EXPLAIN normalization: Accept fractional Actual Rows for Postgres 18+
+- Use SHA-256 digests for RPM packages, to enable installation on FIPS systems
+- Postgres settings: Fix parsing of array values in config (e.g. search_path)
+- Logs: Ensure log file size reported to server reflects the last log line
+- Test run:
+  - Check for pg_stat_statements.track = none and show warning
+  - Improve pg_stat_statements version mismatch handling
+
+
 ## 0.71.0      2026-07-16
 
 * Fix unbounded memory growth when stitching multi-line log events
