@@ -197,6 +197,18 @@ type ServerConfig struct {
 	// function. Used by default for Crunchy Bridge.
 	LogPgReadFile bool `ini:"db_log_pg_read_file"`
 
+	// Specifies how often logs are downloaded, in seconds, for servers where the
+	// collector polls for logs (Amazon RDS/Aurora, db_log_pg_read_file, and
+	// PlanetScale). This has no effect for log streaming setups (e.g. local log
+	// tailing, Azure Event Hub, or Google Cloud Pub/Sub).
+	//
+	// Raising this reduces the number of API/database calls made to fetch logs, at
+	// the cost of log data arriving in pganalyze less promptly, and in larger
+	// batches.
+	//
+	// Must be between 30 and 600 seconds (10 minutes), defaults to every 30 seconds.
+	LogDownloadInterval int `ini:"log_download_interval"`
+
 	// Specifies a table pattern to ignore - no statistics will be collected for
 	// tables that match the name. This uses Golang's filepath.Match function for
 	// comparison, so you can e.g. use "*" for wildcard matching.
@@ -267,6 +279,34 @@ type ServerConfig struct {
 	// OpenTelemetry tracing provider, if enabled
 	OTelTracingProvider             *sdktrace.TracerProvider
 	OTelTracingProviderShutdownFunc func(context.Context) error
+}
+
+const MinLogDownloadInterval = 30
+const MaxLogDownloadInterval = 600
+
+// LogDownloadIntervalDuration - How often logs are downloaded for this server
+func (config ServerConfig) LogDownloadIntervalDuration() time.Duration {
+	interval := min(max(config.LogDownloadInterval, MinLogDownloadInterval), MaxLogDownloadInterval)
+	return time.Duration(interval) * time.Second
+}
+
+// LogDownloadWindow - How far back to look for log data during a log download
+//
+// This uses twice the interval, so a single skipped or failed download still
+// gets picked up, plus a minute of slack for scheduling delays.
+func (config ServerConfig) LogDownloadWindow() time.Duration {
+	return 2*config.LogDownloadIntervalDuration() + time.Minute
+}
+
+// Amount of log data analyzed and submitted per log download at the default
+// interval, and the ceiling we allow this to grow to for longer intervals
+const baseMaxLogParsingSize = 10 * 1024 * 1024
+const absoluteMaxLogParsingSize = 50 * 1024 * 1024
+
+// MaxLogParsingSize - Maximum amount of log data to analyze and submit per log download
+func (config ServerConfig) MaxLogParsingSize() int {
+	intervals := int(config.LogDownloadIntervalDuration() / (MinLogDownloadInterval * time.Second))
+	return min(baseMaxLogParsingSize*intervals, absoluteMaxLogParsingSize)
 }
 
 // SupportsLogDownload - Determines whether the specified config can download logs

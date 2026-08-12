@@ -12,23 +12,26 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
-const LogFileSql = "SELECT name FROM pg_catalog.pg_ls_logdir() WHERE modification > pg_catalog.now() - '2 minute'::interval"
+// Only consider log files that may have been written to since the previous log
+// download, based on the configured log download interval
+const LogFileSql = "SELECT name FROM pg_catalog.pg_ls_logdir() WHERE modification > pg_catalog.now() - pg_catalog.make_interval(secs => $1)"
 
-// Read at most the trailing 10 megabytes of each file
+// Read at most the trailing $3 bytes of each file, as determined by
+// ServerConfig.MaxLogParsingSize()
 const SuperUserReadLogFileSql = `
 SELECT (SELECT size FROM pg_catalog.pg_ls_logdir() WHERE name = $1),
   pg_catalog.pg_read_file(
 	pg_catalog.current_setting('data_directory') || '/' || pg_catalog.current_setting('log_directory') || '/' || $1,
-	(SELECT GREATEST(size - 1024 * 1024 * 10, $2) FROM pg_catalog.pg_ls_logdir() WHERE name = $1),
-	1024 * 1024 * 10
+	(SELECT GREATEST(size - $3, $2) FROM pg_catalog.pg_ls_logdir() WHERE name = $1),
+	$3
   )
 ;`
 const HelperReadLogFile = `
 SELECT (SELECT size FROM pg_catalog.pg_ls_logdir() WHERE name = $1),
   pganalyze.read_log_file(
 	$1,
-	(SELECT GREATEST(size - 1024 * 1024 * 10, $2) FROM pg_catalog.pg_ls_logdir() WHERE name = $1),
-	1024 * 1024 * 10
+	(SELECT GREATEST(size - $3, $2) FROM pg_catalog.pg_ls_logdir() WHERE name = $1),
+	$3
   )
 `
 
@@ -39,7 +42,9 @@ func LogPgReadFile(ctx context.Context, server *state.Server, opts state.Collect
 	var logFiles []state.LogFile
 	var samples []state.PostgresQuerySample
 
-	linesNewerThan := time.Now().Add(-2 * time.Minute)
+	logDownloadWindow := server.Config.LogDownloadWindow()
+	linesNewerThan := time.Now().Add(-logDownloadWindow)
+	maxLogParsingSize := server.Config.MaxLogParsingSize()
 
 	db, err := EstablishConnection(ctx, server, logger, opts, "")
 	if err != nil {
@@ -54,7 +59,7 @@ func LogPgReadFile(ctx context.Context, server *state.Server, opts state.Collect
 		return server.LogPrevState, nil, nil, err
 	}
 
-	rows, err := db.QueryContext(ctx, QueryMarkerSQL+LogFileSql)
+	rows, err := db.QueryContext(ctx, QueryMarkerSQL+LogFileSql, logDownloadWindow.Seconds())
 	if err != nil {
 		err = fmt.Errorf("LogFileSql/Query: %s", err)
 		return server.LogPrevState, nil, nil, err
@@ -93,7 +98,7 @@ func LogPgReadFile(ctx context.Context, server *state.Server, opts state.Collect
 		var logData string
 		var newOffset int64
 		prevOffset := psl.ReadFileMarkers[fileName]
-		err = db.QueryRowContext(ctx, QueryMarkerSQL+logReadSql, fileName, prevOffset).Scan(&newOffset, &logData)
+		err = db.QueryRowContext(ctx, QueryMarkerSQL+logReadSql, fileName, prevOffset, maxLogParsingSize).Scan(&newOffset, &logData)
 		if err != nil {
 			err = fmt.Errorf("LogReadSql/QueryRow: %s", err)
 			return server.LogPrevState, nil, nil, err

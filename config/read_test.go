@@ -19,6 +19,47 @@ var aivenTests = []aivenTestItem{
 	{"my-service-my-project.aivencloud.com", "my-service-my", "project"},
 }
 
+func TestPreprocessConfigLogDownloadInterval(t *testing.T) {
+	type testItem struct {
+		input       int
+		expected    int
+		expectError bool
+	}
+
+	tests := []testItem{
+		// Not set at all, e.g. for a programmatically constructed config
+		{0, MinLogDownloadInterval, false},
+		{30, 30, false},
+		{60, 60, false},
+		{90, 90, false},
+		{600, 600, false},
+		{29, 0, true},
+		{601, 0, true},
+		// What an unparseable LOG_DOWNLOAD_INTERVAL value turns into
+		{-1, 0, true},
+	}
+
+	for _, item := range tests {
+		var config ServerConfig
+		config.LogDownloadInterval = item.input
+
+		processed, err := preprocessConfig(&config)
+		if item.expectError {
+			if err == nil {
+				t.Errorf("%d: want error; got nil", item.input)
+			}
+			continue
+		}
+		if err != nil {
+			t.Errorf("%d: want nil; got %v", item.input, err)
+			continue
+		}
+		if processed.LogDownloadInterval != item.expected {
+			t.Errorf("%d: want %d; got %d", item.input, item.expected, processed.LogDownloadInterval)
+		}
+	}
+}
+
 func TestPreprocessConfigAiven(t *testing.T) {
 	for idx, item := range aivenTests {
 		var config ServerConfig

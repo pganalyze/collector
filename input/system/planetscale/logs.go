@@ -26,12 +26,6 @@ const (
 	logsSignaturesPath = "/v1/organizations/%s/databases/%s/branches/%s/logs/signatures"
 	defaultQuery       = "planetscale.component:postgres planetscale.role:primary"
 	logsPath           = "/logs/branch/%s/query"
-
-	// Analyze and submit at most the trailing 10 megabytes of the retrieved log data
-	//
-	// This avoids an OOM when extremely large volumes of log data are returned,
-	// e.g. when starting the collector or during a burst of log activity.
-	maxLogParsingSize = 10 * 1024 * 1024
 )
 
 // LogEntry represents a single log entry from the PlanetScale logs API
@@ -137,7 +131,7 @@ func (e *HTTPError) Error() string {
 }
 
 // DownloadLogFiles fetches logs from PlanetScale's logs API.
-// Called every 30 seconds by the log download scheduler.
+// Called by the log download scheduler, on the interval configured for the server.
 func DownloadLogFiles(ctx context.Context, server *state.Server, opts state.CollectionOpts, logger *util.Logger) (
 	state.PersistedLogState,
 	[]state.LogFile, []state.PostgresQuerySample,
@@ -189,12 +183,15 @@ func DownloadLogFiles(ctx context.Context, server *state.Server, opts state.Coll
 		logger.PrintVerbose("PlanetScale: obtained new signature, expires at %d", exp)
 	}
 
-	// Only process lines newer than 2 minutes ago (similar to RDS)
-	linesNewerThan := time.Now().UTC().Add(-2 * time.Minute)
+	// Only process lines newer than the log download window (similar to RDS)
+	linesNewerThan := time.Now().UTC().Add(-server.Config.LogDownloadWindow())
 
 	// Paginate through all available log entries, keeping at most the
 	// trailing maxLogParsingSize bytes (discarding older data), similar
-	// to the RDS log download approach
+	// to the RDS log download approach. This avoids an OOM when extremely
+	// large volumes of log data are returned, e.g. when starting the
+	// collector or during a burst of log activity.
+	maxLogParsingSize := server.Config.MaxLogParsingSize()
 	const pageSize = 1000
 	var content []byte
 	var newestTimestamp time.Time

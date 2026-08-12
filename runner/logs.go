@@ -27,7 +27,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-const LogDownloadInterval time.Duration = 30 * time.Second
 const LogStreamingInterval time.Duration = 10 * time.Second
 
 // SetupLogCollection - Starts streaming or scheduled downloads for logs of the specified servers
@@ -75,11 +74,35 @@ func SetupLogCollection(ctx context.Context, wg *sync.WaitGroup, servers []*stat
 }
 
 func setupLogDownloadForAllServers(ctx context.Context, wg *sync.WaitGroup, opts state.CollectionOpts, logger *util.Logger, servers []*state.Server) {
+	if !opts.CollectLogs {
+		return
+	}
+
+	// The log download interval is configurable per server, so group servers by
+	// their interval to keep one goroutine per distinct interval (instead of one
+	// per server)
+	serversByInterval := make(map[time.Duration][]*state.Server)
+	for _, server := range servers {
+		if !server.Config.SupportsLogDownload() {
+			continue
+		}
+		interval := server.Config.LogDownloadIntervalDuration()
+		serversByInterval[interval] = append(serversByInterval[interval], server)
+	}
+
+	for interval, intervalServers := range serversByInterval {
+		setupLogDownloadForServerGroup(ctx, wg, opts, logger, intervalServers, interval)
+	}
+}
+
+func setupLogDownloadForServerGroup(ctx context.Context, wg *sync.WaitGroup, opts state.CollectionOpts, logger *util.Logger, servers []*state.Server, interval time.Duration) {
+	logger.PrintVerbose("Downloading logs for %d server(s) every %s", len(servers), interval)
+
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 
-		ticker := time.NewTicker(LogDownloadInterval)
+		ticker := time.NewTicker(interval)
 
 		for {
 			select {
@@ -89,17 +112,9 @@ func setupLogDownloadForAllServers(ctx context.Context, wg *sync.WaitGroup, opts
 			case <-ticker.C:
 				var innerWg sync.WaitGroup
 
-				if !opts.CollectLogs {
-					return
-				}
-
 				for _, server := range servers {
 					grant := server.Grant.Load()
 					if server.Config.DisableLogs || (grant.ValidConfig && !grant.Config.EnableLogs) {
-						continue
-					}
-
-					if !server.Config.SupportsLogDownload() {
 						continue
 					}
 

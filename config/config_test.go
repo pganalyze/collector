@@ -2,6 +2,7 @@ package config_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/pganalyze/collector/config"
 )
@@ -26,6 +27,48 @@ func TestGetDbURLRedacted(t *testing.T) {
 		config.DbURL = item.input
 		if redacted := config.GetDbURLRedacted(); redacted != item.expected {
 			t.Errorf("want %s; got %s", item.expected, redacted)
+		}
+	}
+}
+
+func TestLogDownloadInterval(t *testing.T) {
+	type testItem struct {
+		interval             int
+		expectedDuration     time.Duration
+		expectedWindow       time.Duration
+		expectedMaxParseSize int
+	}
+
+	const mb = 1024 * 1024
+	tests := []testItem{
+		// Unset (e.g. a programmatically constructed config) behaves like the default
+		{0, 30 * time.Second, 2 * time.Minute, 10 * mb},
+		{30, 30 * time.Second, 2 * time.Minute, 10 * mb},
+		{60, 1 * time.Minute, 3 * time.Minute, 20 * mb},
+		{120, 2 * time.Minute, 5 * time.Minute, 40 * mb},
+		// The parsing size counts whole 30 second units, so a partial unit rounds down
+		// and 100s gets the same budget as 90s would
+		{100, 100 * time.Second, 4*time.Minute + 20*time.Second, 30 * mb},
+		// Parsing size scaling reaches the cap at 150s (5 units)
+		{150, 150 * time.Second, 6 * time.Minute, 50 * mb},
+		{600, 10 * time.Minute, 21 * time.Minute, 50 * mb},
+		// Out of range values are rejected when reading the config, but clamped here
+		{900, 10 * time.Minute, 21 * time.Minute, 50 * mb},
+		{-1, 30 * time.Second, 2 * time.Minute, 10 * mb},
+	}
+
+	for _, item := range tests {
+		var config config.ServerConfig
+		config.LogDownloadInterval = item.interval
+
+		if duration := config.LogDownloadIntervalDuration(); duration != item.expectedDuration {
+			t.Errorf("%d: interval: want %s; got %s", item.interval, item.expectedDuration, duration)
+		}
+		if window := config.LogDownloadWindow(); window != item.expectedWindow {
+			t.Errorf("%d: window: want %s; got %s", item.interval, item.expectedWindow, window)
+		}
+		if size := config.MaxLogParsingSize(); size != item.expectedMaxParseSize {
+			t.Errorf("%d: max parsing size: want %d; got %d", item.interval, item.expectedMaxParseSize, size)
 		}
 	}
 }

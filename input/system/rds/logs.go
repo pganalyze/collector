@@ -17,16 +17,6 @@ import (
 	"github.com/pganalyze/collector/util/awsutil"
 )
 
-// Analyze and submit at most the trailing 10 megabytes of the retrieved RDS log file portions
-//
-// This avoids an OOM in two edge cases:
-// 1) When starting the collector, as we always load the last 10,000 lines (which may be very long)
-// 2) When extremely large values are output in a single log event (e.g. query parameters in a DETAIL line)
-//
-// We intentionally throw away data here (and warn the user about it), since the alternative
-// is often a collector crash (due to OOM), which would be less desirable.
-const maxLogParsingSize = 10 * 1024 * 1024
-
 // DownloadLogFiles - Gets log files for an Amazon RDS instance
 func DownloadLogFiles(ctx context.Context, server *state.Server, opts state.CollectionOpts, logger *util.Logger) (state.PersistedLogState, []state.LogFile, []state.PostgresQuerySample, error) {
 	var err error
@@ -45,10 +35,19 @@ func DownloadLogFiles(ctx context.Context, server *state.Server, opts state.Coll
 		return server.LogPrevState, nil, nil, err
 	}
 
-	// Retrieve all possibly matching logfiles in the last two minutes, assuming
-	// the collector's scheduler that runs more frequently than that
-	linesNewerThan := time.Now().Add(-2 * time.Minute)
+	// Retrieve all logfiles that may have been written to since the previous log
+	// download, based on the configured log download interval
+	linesNewerThan := time.Now().Add(-server.Config.LogDownloadWindow())
 	lastWritten := linesNewerThan.Unix() * 1000
+
+	// Analyze and submit at most the trailing maxLogParsingSize bytes of the retrieved
+	// log file portions. This avoids an OOM in two edge cases:
+	// 1) When starting the collector, as we always load the last 10,000 lines (which may be very long)
+	// 2) When extremely large values are output in a single log event (e.g. query parameters in a DETAIL line)
+	//
+	// We intentionally throw away data here (and warn the user about it), since the alternative
+	// is often a collector crash (due to OOM), which would be less desirable.
+	maxLogParsingSize := server.Config.MaxLogParsingSize()
 
 	params := &rds.DescribeDBLogFilesInput{
 		DBInstanceIdentifier: &identifier,
@@ -68,6 +67,7 @@ func DownloadLogFiles(ctx context.Context, server *state.Server, opts state.Coll
 	for _, rdsLogFile := range resp.DescribeDBLogFiles {
 		var content []byte
 		var lastMarker *string
+		var discardedBytes int
 		prevMarker, ok := psl.AwsMarkers[*rdsLogFile.LogFileName]
 		if ok {
 			lastMarker = &prevMarker
@@ -82,11 +82,13 @@ func DownloadLogFiles(ctx context.Context, server *state.Server, opts state.Coll
 				return server.LogPrevState, nil, nil, err
 			}
 			if len(newContent) > maxLogParsingSize {
+				discardedBytes += len(content) + len(newContent) - maxLogParsingSize
 				content = []byte(newContent[len(newContent)-maxLogParsingSize:])
 			} else {
 				// Shift existing data left if needed
 				overflow := len(content) + len(newContent) - maxLogParsingSize
 				if overflow > 0 {
+					discardedBytes += overflow
 					copy(content, content[overflow:])
 				}
 				pos := min(len(content), maxLogParsingSize-len(newContent))
@@ -102,6 +104,12 @@ func DownloadLogFiles(ctx context.Context, server *state.Server, opts state.Coll
 			if !additionalDataPending {
 				break
 			}
+		}
+
+		if discardedBytes > 0 {
+			logger.PrintWarning(
+				"Log data for %s exceeded the %d MB analyzed per log download, discarded %.1f MB of older data - consider lowering log_download_interval, or reducing the amount of logging",
+				*rdsLogFile.LogFileName, maxLogParsingSize/1024/1024, float64(discardedBytes)/1024/1024)
 		}
 
 		stream := bufio.NewReader(strings.NewReader(string(content)))
