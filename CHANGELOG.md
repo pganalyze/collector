@@ -16,7 +16,7 @@
 - EXPLAIN normalization: Accept fractional Actual Rows for Postgres 18+
 - Use SHA-256 digests for RPM packages, to enable installation on FIPS systems
 - Postgres settings: Fix parsing of array values in config (e.g. search_path)
-- Logs: Ensure log file size reported to server reflects the last log line
+- Fix log file size reporting when building log snapshots
 - Test run:
   - Check for pg_stat_statements.track = none and show warning
   - Improve pg_stat_statements version mismatch handling
