@@ -64,7 +64,11 @@ COPY --from=build $CODE_DIR/packages $CODE_DIR/packages
 
 # Build the package
 WORKDIR $ROOT_DIR
+
 # Use xz payload compression so the RPM remains installable on Amazon Linux 2 / RPM 4.11.
+#
+# Use SHA-256 file digests (instead of fpm's MD5 default) so the RPM installs on FIPS-enabled
+# systems, which reject MD5. SHA-256 digests are supported since RPM 4.6 (2009).
 RUN fpm \
   -n $NAME -v ${VERSION} -t rpm --rpm-os linux --rpm-compression xz --rpm-digest sha256 \
   --config-files /etc/pganalyze-collector.conf \
