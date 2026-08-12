@@ -827,6 +827,8 @@ func preprocessConfig(config *ServerConfig) (*ServerConfig, error) {
 		// Not set at all (e.g. for a config that was constructed programmatically,
 		// instead of coming from getDefaultConfig)
 		config.LogDownloadInterval = MinLogDownloadInterval
+	} else if config.LogDownloadInterval == -1 {
+		return config, fmt.Errorf("log_download_interval is invalid / not an integer")
 	} else if config.LogDownloadInterval < MinLogDownloadInterval || config.LogDownloadInterval > MaxLogDownloadInterval {
 		return config, fmt.Errorf("log_download_interval must be between %d and %d seconds, but is set to %d", MinLogDownloadInterval, MaxLogDownloadInterval, config.LogDownloadInterval)
 	}

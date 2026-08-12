@@ -285,8 +285,11 @@ func (config ServerConfig) LogDownloadIntervalDuration() time.Duration {
 }
 
 // LogDownloadWindow - How far back to look for log data during a log download
+//
+// This uses twice the interval, so a single skipped or failed download still
+// gets picked up, plus a minute of slack for scheduling delays.
 func (config ServerConfig) LogDownloadWindow() time.Duration {
-	return config.LogDownloadIntervalDuration() + 2*time.Minute
+	return 2*config.LogDownloadIntervalDuration() + time.Minute
 }
 
 // Amount of log data analyzed and submitted per log download at the default

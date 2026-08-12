@@ -28,12 +28,6 @@ const (
 	logsPath           = "/logs/branch/%s/query"
 )
 
-// Analyze and submit at most the trailing portion of the retrieved log data, as
-// determined by ServerConfig.MaxLogParsingSize()
-//
-// This avoids an OOM when extremely large volumes of log data are returned,
-// e.g. when starting the collector or during a burst of log activity.
-
 // LogEntry represents a single log entry from the PlanetScale logs API
 type LogEntry struct {
 	Time      string `json:"_time"`
@@ -137,7 +131,7 @@ func (e *HTTPError) Error() string {
 }
 
 // DownloadLogFiles fetches logs from PlanetScale's logs API.
-// Called every 30 seconds by the log download scheduler.
+// Called by the log download scheduler, on the interval configured for the server.
 func DownloadLogFiles(ctx context.Context, server *state.Server, opts state.CollectionOpts, logger *util.Logger) (
 	state.PersistedLogState,
 	[]state.LogFile, []state.PostgresQuerySample,
@@ -194,7 +188,9 @@ func DownloadLogFiles(ctx context.Context, server *state.Server, opts state.Coll
 
 	// Paginate through all available log entries, keeping at most the
 	// trailing maxLogParsingSize bytes (discarding older data), similar
-	// to the RDS log download approach
+	// to the RDS log download approach. This avoids an OOM when extremely
+	// large volumes of log data are returned, e.g. when starting the
+	// collector or during a burst of log activity.
 	maxLogParsingSize := server.Config.MaxLogParsingSize()
 	const pageSize = 1000
 	var content []byte
