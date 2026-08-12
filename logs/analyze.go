@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -1195,6 +1196,11 @@ func AnalyzeLogLines(logLinesIn []state.LogLine) (logLinesOut []state.LogLine, s
 		logLinesOut = append(logLinesOut, backendLogLinesOut...)
 		samples = append(samples, backendSamples...)
 	}
+
+	// Restore the original order of the lines, which the grouping above lost (Go randomizes
+	// map iteration order). Callers rely on the byte offsets still describing the log file,
+	// in particular for its ByteSize - pganalyze discards log lines that end past that.
+	sort.SliceStable(logLinesOut, func(i, j int) bool { return logLinesOut[i].ByteStart < logLinesOut[j].ByteStart })
 
 	return
 }
