@@ -16,7 +16,20 @@ import (
 )
 
 type match struct {
-	prefixes      []string
+	prefixes []string
+	// regexp should match valid log lines for the given log line type, but should
+	// also be resilient to bugs in log line stitching (see logs.NewStitchBuffer
+	// and its callers). If we end our match with a loose regex term and another
+	// totally independent line ends up tagged onto the end of our line (which
+	// could happen with or without a joining newline), we could end up capturing
+	// PII without the proper secret markers for redaction.
+	//
+	// To avoid this, don't use overly broad matchers like `.*` or `.+`. regexp is
+	// matched WITHOUT the (?m)/(?s) flags, so `.` never matches a newline, but we
+	// should be resilient against missing newlines.
+	//
+	// Prefer a restrictive positive character class where possible. A negated
+	// class like [^"]+ DOES match "\n", so it can cross lines.
 	regexp        *regexp.Regexp
 	secrets       []state.LogSecretKind
 	remainderKind state.LogSecretKind
@@ -827,7 +840,7 @@ var cannotModifyView = analyzeGroup{
 			"cannot update column", "cannot delete from view", "cannot merge into view",
 			"cannot merge into column",
 		},
-		regexp:  regexp.MustCompile(`^cannot (?:insert into|update|delete from|merge into) (?:column "[^"]+" of )?view "[^"]+"`),
+		regexp:  regexp.MustCompile(`^cannot (?:insert into|update|delete from|merge into) (?:column "[^"]+" of )?view "[^"]+"(?: using FOR PORTION OF "[^"]*")?`),
 		secrets: []state.LogSecretKind{},
 	},
 }
@@ -919,7 +932,7 @@ var functionDoesNotExist = analyzeGroup{
 		// name is matched with .+? (not [^"]+) so quoted names ("function \"foo\" does not exist",
 		// emitted when there is no argument list) match too, not just "name(args)" signatures.
 		prefixes: []string{"function", "procedure", "aggregate", "routine"},
-		regexp:   regexp.MustCompile(`^(?:function|procedure|aggregate|routine) (.+?) does not exist(?: at character \d+)?`),
+		regexp:   regexp.MustCompile(`^(?:function|procedure|aggregate|routine) (.+?) does not exist(?: at character \d+| in operator family "[^"]*")?`),
 		secrets:  []state.LogSecretKind{0},
 	},
 	hint: match{
@@ -1002,9 +1015,13 @@ var operatorDoesNotExist = analyzeGroup{
 	primary: match{
 		prefixes: []string{"operator does not exist: "},
 		// The remainder is a Postgres-generated operator/type description (e.g. "boolean || boolean",
-		// "@#@ integer", "time with time zone + time with time zone"); it contains no user data, and
-		// the previous, more specific pattern missed unary operators and multi-word type names.
-		regexp:  regexp.MustCompile(`^operator does not exist: .+`),
+		// "@#@ integer", "time with time zone + time with time zone", schema-qualified
+		// "pg_catalog.+(int4,int4)"); it contains no user data. Restricted to the characters that
+		// appear in such descriptions - word chars, spaces, operator symbols, parens/brackets/comma,
+		// and "." for schema qualification - rather than ".+": the match ends at the first character
+		// outside this set (quotes, etc.), so a newline-less mis-stitch of query/data text ends the
+		// match there and the rest is redacted as a remainder instead of being swept in.
+		regexp:  regexp.MustCompile(`^operator does not exist: [\w .,()\[\]` + regexp.QuoteMeta("+*/<>=~!@#%^&|`?-") + `]+`),
 		secrets: []state.LogSecretKind{},
 	},
 	hint: match{
@@ -1039,7 +1056,7 @@ var objectDoesNotExist = analyzeGroup{
 			`text search (?:parser|dictionary|template|configuration)|` +
 			`token type|property graph|property|label|schema|database|cursor|` +
 			`prepared statement|savepoint|snapshot|directory|tablesample method` +
-			`)\b.*does not exist.*`),
+			`)\b.*does not exist(?: at character \d+| (?:for|in) [\w ]+ "[^"]*")?`),
 		secrets: []state.LogSecretKind{},
 	},
 }
@@ -1065,7 +1082,7 @@ var objectAlreadyExists = analyzeGroup{
 			`operator|rule|policy|(?:default )?conversion|collation|cast|language|extension|` +
 			`text search (?:parser|dictionary|template|configuration)|enum label|function|aggregate|` +
 			`procedure|prepared statement|domain|property graph|alias` +
-			`)\b.*already exists.*`),
+			`)\b.*already exists(?: (?:for|in) [\w ]+ "[^"]*")?(?: at character \d+)?`),
 		secrets: []state.LogSecretKind{},
 	},
 }
@@ -1086,9 +1103,9 @@ var wrongObjectType = analyzeGroup{
 			`"[^"]*" is (?:not )?an? (?:table or materialized view|materialized view|foreign table|` +
 			`BRIN index|unique index|index for table "[^"]*"|table|view|sequence|index|` +
 			`domain|property graph)` +
-			`|"[^"]*" is (?:not |already )?(?:an? )?.*partition.*` +
+			`|"[^"]*" is (?:not |already )?(?:an? )?(?:hash )?partition(?:ed(?: table)?| of (?:partitioned table|relation) "[^"]*")?` +
 			`|relation "[^"]*" is not a partition of relation "[^"]*"` +
-			`|ALTER action .+ cannot be performed on relation "[^"]*")`),
+			`|ALTER action .+ cannot be performed on relation "[^"]*")(?: at character \d+)?`),
 		secrets: []state.LogSecretKind{},
 	},
 }
@@ -1379,7 +1396,7 @@ var partitionError = analyzeGroup{
 			`partitions?\b.+` +
 			`|partitioned\b.+` +
 			`|cannot .+(?i:partition).*` +
-			`|invalid bound specification for a \w+ partition.*` +
+			`|invalid bound specification for a \w+ partition(?: at character \d+)?` +
 			`|empty range bound specified for partition .+` +
 			`|(?:remainder|modulus) for hash partition .+` +
 			`|every hash partition modulus .+` +
@@ -1459,7 +1476,7 @@ var sqlJsonError = analyzeGroup{
 			`|expected JSON array` +
 			`|malformed JSON array` +
 			`|JSON value must not be null` +
-			`|key value must be scalar.*` +
+			`|key value must be scalar, not array, composite, or json` +
 			`|cannot cast jsonb .+ to type [\w ]+` +
 			`|cannot cast type [\w ]+ to json(?: at character \d+)?` +
 			`|cannot call jsonb?_object_keys on (?:a scalar|an array)` +
@@ -1473,7 +1490,7 @@ var sqlJsonError = analyzeGroup{
 			`|returning pseudo-types is not supported in SQL/JSON functions` +
 			`|SQL/JSON QUOTES behavior must not be specified .+` +
 			`|null_value_treatment must be .+` +
-			`|(?:unsupported|unrecognized) JSON encoding[^\n]*` +
+			`|(?:unsupported JSON encoding|unrecognized JSON encoding: \w+)(?: at character \d+)?` +
 			`|JSON ENCODING clause is only allowed for bytea .+` +
 			`|COPY FORMAT JSON is not supported for COPY FROM` +
 			`|COPY FORCE_ARRAY can only be used with JSON mode` +
