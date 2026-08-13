@@ -1014,13 +1014,9 @@ var operatorDoesNotExist = analyzeGroup{
 	classification: pganalyze_collector.LogLineInformation_OPERATOR_DOES_NOT_EXIST,
 	primary: match{
 		prefixes: []string{"operator does not exist: "},
-		// The remainder is a Postgres-generated operator/type description (e.g. "boolean || boolean",
-		// "@#@ integer", "time with time zone + time with time zone", schema-qualified
-		// "pg_catalog.+(int4,int4)"); it contains no user data. Restricted to the characters that
-		// appear in such descriptions - word chars, spaces, operator symbols, parens/brackets/comma,
-		// and "." for schema qualification - rather than ".+": the match ends at the first character
-		// outside this set (quotes, etc.), so a newline-less mis-stitch of query/data text ends the
-		// match there and the rest is redacted as a remainder instead of being swept in.
+		// The remainder is a Postgres-generated operator/type description (e.g.
+		// "boolean || boolean", "@#@ integer", "time with time zone + time with
+		// time zone", schema-qualified "pg_catalog.+(int4,int4)").
 		regexp:  regexp.MustCompile(`^operator does not exist: [\w .,()\[\]` + regexp.QuoteMeta("+*/<>=~!@#%^&|`?-") + `]+`),
 		secrets: []state.LogSecretKind{},
 	},
@@ -1033,8 +1029,7 @@ var operatorDoesNotExist = analyzeGroup{
 // type has no dedicated classification (mostly errcode 42704 undefined_object, plus siblings like
 // undefined_schema/database/cursor). Relations (table/sequence/view/... -> relationDoesNotExist),
 // columns, functions (function/procedure/aggregate -> functionDoesNotExist) and the "operator does
-// not exist: <a> <op> <b>" form are handled by their own groups, matched earlier. Object names here
-// are identifiers (not user data), so nothing is redacted; the whole line is consumed.
+// not exist: <a> <op> <b>" form are handled by their own groups, matched earlier.
 var objectDoesNotExist = analyzeGroup{
 	classification: pganalyze_collector.LogLineInformation_OBJECT_DOES_NOT_EXIST,
 	primary: match{
@@ -1133,7 +1128,6 @@ var permissionDenied = analyzeGroup{
 		//   "permission denied to <action>" (e.g. "to grant role ...", "to create database")
 		//   "permission denied: \"...\" is a system catalog"
 		// The "..., skipping it" warnings are handled earlier by skippingMaintenancePermissionDenied.
-		// The remainder consists of object/role identifiers and fixed text, so nothing is redacted.
 		regexp:  regexp.MustCompile(`^permission denied(?: for [\w -]+ (?:"[^"]*"|\S+)(?: at character \d+)?| to .+|: .+)?`),
 		secrets: []state.LogSecretKind{},
 		// FIXME: Store relation name when this is "permission denied for relation [relation name]"
@@ -1142,9 +1136,6 @@ var permissionDenied = analyzeGroup{
 var mustBePrivilege = analyzeGroup{
 	classification: pganalyze_collector.LogLineInformation_PERMISSION_DENIED,
 	primary: match{
-		// Insufficient-privilege errors phrased as a requirement: "must be owner of <type> <name>",
-		// "must be able to SET ROLE "<role>"", "must be superuser to <action>". The tails are bounded
-		// (object type words, a quoted or single-token name, or fixed action text) rather than ".+".
 		prefixes: []string{"must be owner of ", "must be able to SET ROLE ", "must be superuser "},
 		regexp:   regexp.MustCompile(`^must be (?:owner of [\w -]+ (?:"[^"]*"|\S+)|able to SET ROLE "[^"]*"|superuser [\w ]+)`),
 		secrets:  []state.LogSecretKind{},
@@ -1366,16 +1357,15 @@ var inconsistentRangeBounds = analyzeGroup{
 	},
 }
 
-// partitionError is the catch-all for partitioning DDL/operation errors (invalid bound/key
-// definitions, overlaps, cannot attach/detach/merge/split). Runtime row-routing and
-// partition-constraint failures are handled earlier by partitionConstraintViolation /
-// checkConstraintViolation1 (CHECK_CONSTRAINT_VIOLATION), and the wrong-object-type phrasings
-// ("\"X\" is [not] a partition[ed] ...") by wrongObjectType - both matched ahead of this group. The
-// generic "ALTER action ... cannot be performed on relation ..." family is not partition-specific and
-// is handled by wrongObjectType (WRONG_OBJECT_TYPE). Content is fixed text + identifiers, so nothing
-// is redacted. Patterns are
-// anchored to specific partition phrasings (not the bare substring "partition") so partition-named
-// identifiers are not misclassified.
+// partitionError is the catch-all for partitioning DDL/operation errors
+// (invalid bound/key definitions, overlaps, cannot attach/detach/merge/split).
+// Runtime row-routing and partition-constraint failures are handled earlier by
+// partitionConstraintViolation / checkConstraintViolation1
+// (CHECK_CONSTRAINT_VIOLATION), and the wrong-object-type phrasings ("\"X\" is
+// [not] a partition[ed] ...") by wrongObjectType - both matched ahead of this
+// group. The generic "ALTER action ... cannot be performed on relation ..."
+// family is not partition-specific and is handled by wrongObjectType
+// (WRONG_OBJECT_TYPE).
 var partitionError = analyzeGroup{
 	classification: pganalyze_collector.LogLineInformation_PARTITION_ERROR,
 	primary: match{
@@ -1601,9 +1591,10 @@ func AnalyzeLogLines(logLinesIn []state.LogLine) (logLinesOut []state.LogLine, s
 func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, detailLine state.LogLine, contextLine state.LogLine, hintLine state.LogLine, samples []state.PostgresQuerySample) (state.LogLine, state.LogLine, state.LogLine, state.LogLine, state.LogLine, []state.PostgresQuerySample) {
 	var parts []string
 
-	// Handled ahead of the generic handlers (which include permissionDenied) so these
-	// "..., skipping it" warnings are not swept into PERMISSION_DENIED. Also extracts the skipped
-	// relation name, which - like skippingVacuum/skippingAnalyze - Postgres logs without a schema.
+	// Handled ahead of the generic handlers (which include permissionDenied) so
+	// these "..., skipping it" warnings are not swept into PERMISSION_DENIED.
+	// Also extracts the skipped relation name, which Postgres logs without a
+	// schema.
 	if matchesPrefix(logLine, skippingMaintenancePermissionDenied.primary.prefixes) {
 		logLine, parts = matchLogLine(logLine, skippingMaintenancePermissionDenied.primary)
 		if len(parts) == 2 {
