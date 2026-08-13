@@ -129,7 +129,7 @@ message LogLineInformation {
     WAL_ARCHIVE_COMMAND_FAILED = 52; // "archive command failed"
     WAL_BASE_BACKUP_COMPLETE = 53; // "pg_stop_backup complete, all required WAL segments have been archived"
 
-    // Autovacuum
+    // Maintenance
     AUTOVACUUM_CANCEL = 60; // "canceling autovacuum task"
     TXID_WRAPAROUND_WARNING = 61; // "database * must be vacuumed within"
     TXID_WRAPAROUND_ERROR = 62; // "database is not accepting commands to avoid wraparound data loss"

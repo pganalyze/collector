@@ -1174,7 +1174,7 @@ var tests = []testpair{
 		}},
 		nil,
 	},
-	// Autovacuum
+	// Maintenance
 	{
 		[]state.LogLine{{
 			Content:  "canceling autovacuum task",

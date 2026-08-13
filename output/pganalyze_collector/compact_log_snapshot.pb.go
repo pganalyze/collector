@@ -218,7 +218,7 @@ const (
 	LogLineInformation_WAL_REDO                   LogLineInformation_LogClassification = 51 // "redo "
 	LogLineInformation_WAL_ARCHIVE_COMMAND_FAILED LogLineInformation_LogClassification = 52 // "archive command failed"
 	LogLineInformation_WAL_BASE_BACKUP_COMPLETE   LogLineInformation_LogClassification = 53 // "pg_stop_backup complete, all required WAL segments have been archived"
-	// Autovacuum
+	// Maintenance
 	LogLineInformation_AUTOVACUUM_CANCEL                      LogLineInformation_LogClassification = 60 // "canceling autovacuum task"
 	LogLineInformation_TXID_WRAPAROUND_WARNING                LogLineInformation_LogClassification = 61 // "database * must be vacuumed within"
 	LogLineInformation_TXID_WRAPAROUND_ERROR                  LogLineInformation_LogClassification = 62 // "database is not accepting commands to avoid wraparound data loss"

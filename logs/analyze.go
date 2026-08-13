@@ -2005,7 +2005,7 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 		}
 	}
 
-	// Autovacuum
+	// Maintenance
 	if matchesPrefix(logLine, autovacuumCancel.primary.prefixes) {
 		logLine, parts = matchLogLine(logLine, autovacuumCancel.primary)
 		if parts != nil {
