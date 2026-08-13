@@ -1142,10 +1142,11 @@ var permissionDenied = analyzeGroup{
 var mustBePrivilege = analyzeGroup{
 	classification: pganalyze_collector.LogLineInformation_PERMISSION_DENIED,
 	primary: match{
-		// Insufficient-privilege errors phrased as a requirement: "must be owner of <object>",
-		// "must be able to SET ROLE ...", "must be superuser to ...".
+		// Insufficient-privilege errors phrased as a requirement: "must be owner of <type> <name>",
+		// "must be able to SET ROLE "<role>"", "must be superuser to <action>". The tails are bounded
+		// (object type words, a quoted or single-token name, or fixed action text) rather than ".+".
 		prefixes: []string{"must be owner of ", "must be able to SET ROLE ", "must be superuser "},
-		regexp:   regexp.MustCompile(`^must be (?:owner of |able to SET ROLE |superuser ).+`),
+		regexp:   regexp.MustCompile(`^must be (?:owner of [\w -]+ (?:"[^"]*"|\S+)|able to SET ROLE "[^"]*"|superuser [\w ]+)`),
 		secrets:  []state.LogSecretKind{},
 	},
 }
@@ -1397,23 +1398,23 @@ var partitionError = analyzeGroup{
 			`|partitioned\b.+` +
 			`|cannot .+(?i:partition).*` +
 			`|invalid bound specification for a \w+ partition(?: at character \d+)?` +
-			`|empty range bound specified for partition .+` +
+			`|empty range bound specified for partition "[^"]*"(?: at character \d+)?` +
 			`|(?:remainder|modulus) for hash partition .+` +
-			`|every hash partition modulus .+` +
+			`|every hash partition modulus must be a factor of the next larger modulus` +
 			`|a hash-partitioned table may not have a default partition` +
-			`|number of partitioning columns .+` +
-			`|unrecognized partitioning strategy .+` +
+			`|number of partitioning columns \(\d+\) does not match number of partition keys provided \(\d+\)` +
+			`|unrecognized partitioning strategy "[^"]*"(?: at character \d+)?` +
 			`|column \d+ of the partition key .+` +
-			`|(?:aggregate|window|set-returning) functions are not allowed in partition .+` +
+			`|(?:aggregate|window|set-returning) functions are not allowed in partition (?:bound(?: at character \d+)?|key expressions)` +
 			`|functions in partition key expression must be marked IMMUTABLE` +
-			`|(?:UNIQUE|PRIMARY KEY|EXCLUDE) constraint on partitioned table .+` +
-			`|unsupported (?:UNIQUE|PRIMARY KEY) constraint with partition key .+` +
+			`|(?:UNIQUE|PRIMARY KEY|EXCLUDE) constraint on partitioned table must include all partitioning columns` +
+			`|unsupported (?:UNIQUE|PRIMARY KEY) constraint with partition key definition` +
 			`|not-null constraints? .*partitioned tables?(?: "[^"]*")? cannot be NO INHERIT` +
 			`|identity columns are not supported on partitions` +
-			`|removing partition "[^"]*" .+` +
+			`|removing partition "[^"]*" violates foreign key constraint "[^"]*"` +
 			`|(?:upper|lower) bound of partition "[^"]*" .+` +
 			`|(?:new partition|new partitions'|list of (?:new partitions|partitions to be merged)) .+` +
-			`|moving row to another partition .+` +
+			`|moving row to another partition during a BEFORE FOR EACH ROW trigger is not supported` +
 			`|trigger "[^"]*" prevents table "[^"]*" from becoming a partition` +
 			`|ROW triggers with transition tables are not supported on partitions` +
 			`|(?:TO|FROM) must specify exactly one value per partitioning column` +
@@ -1466,8 +1467,8 @@ var sqlJsonError = analyzeGroup{
 		},
 		regexp: regexp.MustCompile(`^(?:` +
 			`jsonpath (?:item method \.\w+\(\)|(?:wildcard )?member accessor|(?:wildcard )?array accessor|array subscript) .+` +
-			`|(?:(?:left|right) operand of|operand of unary) jsonpath operator .+` +
-			`|(?:precision|scale|time precision|field position) of jsonpath item method \.\w+\(\) .+` +
+			`|(?:(?:left|right) operand of|operand of unary) jsonpath operator \S+ is not a (?:single )?numeric value` +
+			`|(?:precision|scale|time precision|field position) of jsonpath item method \.\w+\(\) (?:is out of range for type integer|must not be zero)` +
 			`|NaN or Infinity is not allowed for jsonpath item method \.\w+\(\)` +
 			`|could not find jsonpath variable "[^"]*"` +
 			`|syntax error at end of jsonpath input(?: at character \d+)?` +
@@ -1482,16 +1483,16 @@ var sqlJsonError = analyzeGroup{
 			`|cannot call jsonb?_object_keys on (?:a scalar|an array)` +
 			`|could not determine row type for result of jsonb?_populate_record(?:set)?` +
 			`|(?:invalid )?JSON_TABLE .+` +
-			`|duplicate JSON_TABLE column or path name: .+` +
-			`|only string constants are supported in JSON_TABLE .+` +
+			`|duplicate JSON_TABLE column or path name: \S+(?: at character \d+)?` +
+			`|only string constants are supported in JSON_TABLE path specification(?: at character \d+)?` +
 			`|cannot specify (?:\w+ in JSON mode|FORMAT JSON in RETURNING clause of JSON_\w+\(\))(?: at character \d+)?` +
 			`|cannot use (?:type [\w ]+ in (?:IS JSON predicate|RETURNING clause of JSON_\w+\(\))|non-string types with explicit FORMAT JSON clause)(?: at character \d+)?` +
 			`|cannot set JSON encoding for non-bytea output types(?: at character \d+)?` +
 			`|returning pseudo-types is not supported in SQL/JSON functions` +
-			`|SQL/JSON QUOTES behavior must not be specified .+` +
+			`|SQL/JSON QUOTES behavior must not be specified when WITH WRAPPER is used(?: at character \d+)?` +
 			`|null_value_treatment must be .+` +
 			`|(?:unsupported JSON encoding|unrecognized JSON encoding: \w+)(?: at character \d+)?` +
-			`|JSON ENCODING clause is only allowed for bytea .+` +
+			`|JSON ENCODING clause is only allowed for bytea input type(?: at character \d+)?` +
 			`|COPY FORMAT JSON is not supported for COPY FROM` +
 			`|COPY FORCE_ARRAY can only be used with JSON mode` +
 			`|jsonb subscript (?:does not support slices|in assignment must not be null)(?: at character \d+)?` +
