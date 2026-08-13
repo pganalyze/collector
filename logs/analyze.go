@@ -1408,7 +1408,7 @@ var partitionError = analyzeGroup{
 			`|functions in partition key expression must be marked IMMUTABLE` +
 			`|(?:UNIQUE|PRIMARY KEY|EXCLUDE) constraint on partitioned table .+` +
 			`|unsupported (?:UNIQUE|PRIMARY KEY) constraint with partition key .+` +
-			`|not-null constraints? .*partitioned table.*` +
+			`|not-null constraints? .*partitioned tables?(?: "[^"]*")? cannot be NO INHERIT` +
 			`|identity columns are not supported on partitions` +
 			`|removing partition "[^"]*" .+` +
 			`|(?:upper|lower) bound of partition "[^"]*" .+` +
