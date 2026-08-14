@@ -2,11 +2,25 @@ package transform
 
 import (
 	"time"
+	"unicode/utf8"
 
 	snapshot "github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
+
+// when a setting value isn't valid UTF-8 (originally hit on pgsodium "boot_val") and therefore
+// can't be marshalled in a protobuf string field, replace with this consistent placeholder value
+// so that the snapshot can still be sent and we don't trigger value change logic every time
+// the non-UTF8 value changes.
+const settingValueNonUTF8 = "<non-utf8 value>"
+
+func settingValue(v string) string {
+	if !utf8.ValidString(v) {
+		return settingValueNonUTF8
+	}
+	return v
+}
 
 type OidToIdx map[state.Oid]int32
 
@@ -123,16 +137,16 @@ func transformPostgresConfig(s snapshot.FullSnapshot, transientState state.Trans
 		info := snapshot.Setting{Name: setting.Name}
 
 		if setting.CurrentValue.Valid {
-			info.CurrentValue = setting.CurrentValue.String
+			info.CurrentValue = settingValue(setting.CurrentValue.String)
 		}
 		if setting.Unit.Valid {
 			info.Unit = &snapshot.NullString{Valid: true, Value: setting.Unit.String}
 		}
 		if setting.BootValue.Valid {
-			info.BootValue = &snapshot.NullString{Valid: true, Value: setting.BootValue.String}
+			info.BootValue = &snapshot.NullString{Valid: true, Value: settingValue(setting.BootValue.String)}
 		}
 		if setting.ResetValue.Valid {
-			info.ResetValue = &snapshot.NullString{Valid: true, Value: setting.ResetValue.String}
+			info.ResetValue = &snapshot.NullString{Valid: true, Value: settingValue(setting.ResetValue.String)}
 		}
 		if setting.Source.Valid {
 			info.Source = &snapshot.NullString{Valid: true, Value: setting.Source.String}
