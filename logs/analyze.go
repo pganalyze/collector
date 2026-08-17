@@ -1384,8 +1384,15 @@ var partitionError = analyzeGroup{
 			"ROW triggers with transition tables", "TO must specify", "FROM must specify",
 		},
 		regexp: regexp.MustCompile(`^(?:` +
-			`partitions?\b.+` +
-			`|partitioned\b.+` +
+			`partition "[^"]*" (?:would overlap partition "[^"]*"|conflicts with existing default partition "[^"]*")(?: at character \d+)?` +
+			`|partition "[^"]*" (?:already pending detach in partitioned table "[^"]*"|was removed concurrently)` +
+			`|partition with name "[^"]*" is already used(?: at character \d+)?` +
+			`|partition key column \S+ has pseudo-type \w+` +
+			`|partition key expressions cannot contain system column references` +
+			`|partition of hash-partitioned table cannot be (?:split|merged)` +
+			`|partitions being merged have different owners` +
+			`|partitioned table "[^"]*" was removed concurrently` +
+			`|partitioned tables cannot be unlogged` +
 			`|cannot .+(?i:partition).*` +
 			`|invalid bound specification for a \w+ partition(?: at character \d+)?` +
 			`|empty range bound specified for partition "[^"]*"(?: at character \d+)?` +
