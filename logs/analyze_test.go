@@ -4001,7 +4001,7 @@ index scan needed: 1 pages from table (100.00% of total) had 60 dead item identi
 	// Non-integer out-of-range/overflow errors are VALUE_OUT_OF_RANGE; the offending value is redacted
 	{
 		[]state.LogLine{{
-			Content:  "interval field value out of range: \"P1Y2M3D\" at character 20",
+			Content:  "interval field value out of range: \"2147483648 days\"",
 			LogLevel: pganalyze_collector.LogLineInformation_ERROR,
 		}},
 		[]state.LogLine{{
@@ -4010,7 +4010,7 @@ index scan needed: 1 pages from table (100.00% of total) had 60 dead item identi
 			ReviewedForSecrets: true,
 			SecretMarkers: []state.LogSecretMarker{{
 				ByteStart: 36,
-				ByteEnd:   43,
+				ByteEnd:   51,
 				Kind:      state.TableDataLogSecret,
 			}},
 		}},
