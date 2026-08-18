@@ -10,10 +10,18 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+// WriteRequest wraps data for a websocket write, including a response channel
+// so the caller can learn whether the write succeeded. The Result channel
+// receives the write error (nil on success).
+type WriteRequest struct {
+	Data   []byte
+	Result chan error
+}
+
 type ReconnectingSocket struct {
 	// Channels shared with the caller
 	Read  chan []byte
-	Write chan []byte
+	Write chan WriteRequest
 
 	// Initial arguments
 	dialer  websocket.Dialer
@@ -38,7 +46,7 @@ var ErrorConnectRateLimited = errors.New("Skipping connection attempt because of
 func NewReconnectingSocket(ctx context.Context, logger *Logger, dialer websocket.Dialer, url string, headers map[string][]string, reconnectInterval time.Duration, clientErrorTimeout time.Duration) *ReconnectingSocket {
 	w := &ReconnectingSocket{
 		Read:      make(chan []byte),
-		Write:     make(chan []byte),
+		Write:     make(chan WriteRequest),
 		ctx:       ctx,
 		dialer:    dialer,
 		url:       url,
@@ -156,8 +164,11 @@ func (w *ReconnectingSocket) connect(ctx context.Context) (int, error) {
 			case <-connCtx.Done():
 				w.closeConnection()
 				return
-			case data := <-w.Write:
-				err = conn.WriteMessage(websocket.BinaryMessage, data)
+			case req := <-w.Write:
+				err = conn.WriteMessage(websocket.BinaryMessage, req.Data)
+				if req.Result != nil {
+					req.Result <- err
+				}
 				if err != nil {
 					w.logger.PrintError("Error writing to websocket: %s", err)
 					w.closeConnection()
