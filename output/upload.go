@@ -108,7 +108,7 @@ func uploadViaWebsocketOrHttp(ctx context.Context, server *state.Server, logger 
 		if err != nil {
 			return err
 		}
-		submitSnapshot(ctx, server, opts, logger, s3Location, collectedAt, compactSnapshot)
+		return submitSnapshot(ctx, server, opts, logger, s3Location, collectedAt, compactSnapshot)
 	}
 	return nil
 }
