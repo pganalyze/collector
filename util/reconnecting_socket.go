@@ -32,6 +32,19 @@ type ReconnectingSocket struct {
 
 var ErrorConnectRateLimited = errors.New("Skipping connection attempt because of previous 4XX error")
 
+// Timeouts to detect dead connections (e.g. a NAT/firewall silently dropping
+// the TCP session), which would otherwise only fail after the kernel's TCP
+// retransmission timeout (which can exceed 15 minutes)
+const (
+	// Time allowed to write a message to the peer before considering the connection dead
+	socketWriteTimeout = 30 * time.Second
+	// Interval at which pings are sent when the connection is otherwise idle
+	socketPingInterval = 30 * time.Second
+	// Time allowed to receive any message (including pong replies) from the
+	// peer; must exceed socketPingInterval
+	socketPongTimeout = 70 * time.Second
+)
+
 // NewReconnectingSocket - Initializes a new reconnecting WebSocket
 //
 // The passed context must eventually be canceled in order for internal Goroutines to be stopped.
@@ -151,15 +164,26 @@ func (w *ReconnectingSocket) connect(ctx context.Context) (int, error) {
 	w.conn.Store(conn)
 	// Writer goroutine
 	go func() {
+		ticker := time.NewTicker(socketPingInterval)
+		defer ticker.Stop()
 		for {
 			select {
 			case <-connCtx.Done():
 				w.closeConnection()
 				return
 			case data := <-w.Write:
-				err = conn.WriteMessage(websocket.BinaryMessage, data)
+				conn.SetWriteDeadline(time.Now().Add(socketWriteTimeout))
+				err := conn.WriteMessage(websocket.BinaryMessage, data)
 				if err != nil {
 					w.logger.PrintError("Error writing to websocket: %s", err)
+					w.closeConnection()
+					return
+				}
+			case <-ticker.C:
+				conn.SetWriteDeadline(time.Now().Add(socketWriteTimeout))
+				err := conn.WriteMessage(websocket.PingMessage, nil)
+				if err != nil {
+					w.logger.PrintWarning("Error sending websocket ping: %s", err)
 					w.closeConnection()
 					return
 				}
@@ -167,6 +191,10 @@ func (w *ReconnectingSocket) connect(ctx context.Context) (int, error) {
 		}
 	}()
 	// Reader goroutine
+	conn.SetReadDeadline(time.Now().Add(socketPongTimeout))
+	conn.SetPongHandler(func(string) error {
+		return conn.SetReadDeadline(time.Now().Add(socketPongTimeout))
+	})
 	go func() {
 		for {
 			_, data, err := conn.ReadMessage()
@@ -179,6 +207,7 @@ func (w *ReconnectingSocket) connect(ctx context.Context) (int, error) {
 				cancelConn()
 				return
 			}
+			conn.SetReadDeadline(time.Now().Add(socketPongTimeout))
 
 			w.Read <- data
 		}
