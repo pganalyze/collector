@@ -39,7 +39,11 @@ func uploadAndSubmitCompactSnapshot(ctx context.Context, s *pganalyze_collector.
 		return nil
 	}
 
-	server.CompactSnapshotUpload <- s
+	select {
+	case server.CompactSnapshotUpload <- s:
+	default:
+		return fmt.Errorf("skipping compact %s snapshot, upload queue is full (previous snapshot uploads may be slow or stuck)", kindFromCompactSnapshot(s))
+	}
 
 	return nil
 }
