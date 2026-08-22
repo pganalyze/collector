@@ -70,8 +70,6 @@ func TestPostgresInstanceIdentityMatches(t *testing.T) {
 			t.Errorf("%s: Matches(%+v, %+v)\nexpected %t\nactual %t\n", test.name, test.prev, test.curr, test.expected, actual)
 		}
 
-		// The check is used in both directions across the codebase, so it must be
-		// symmetric
 		reverse := test.curr.Matches(test.prev)
 		if reverse != test.expected {
 			t.Errorf("%s: Matches is not symmetric, reverse gave %t, expected %t\n", test.name, reverse, test.expected)

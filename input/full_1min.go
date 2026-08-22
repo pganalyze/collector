@@ -38,10 +38,8 @@ func CollectAndDiff1minStats(ctx context.Context, c *postgres.Collection, connec
 	}
 
 	// These are all cumulative counters from one instance's memory, and we may
-	// have reached a different instance than the run we would diff against - see
-	// PostgresInstanceIdentity. Skip this interval and let the state we just
-	// collected become the new reference point; diffing anyway would attribute
-	// each counter's entire lifetime to this one interval.
+	// have reached a different instance than the run we would diff against. Skip
+	// this interval and let the state we just collected become the new reference point.
 	if !prevState.InstanceIdentity.Matches(newState.InstanceIdentity) {
 		c.Logger.PrintInfo(
 			"Detected a different Postgres instance than the last query statistics run (%s, was %s); skipping this interval to avoid diffing statistics across instances",

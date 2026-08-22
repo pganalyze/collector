@@ -19,21 +19,21 @@ import (
 // counters against the previous reader's makes the collector attribute entire
 // counter lifetimes to a single interval.
 //
-// A restart of the same instance is treated as a change too, which is a
-// deliberate choice rather than a necessity. A clean shutdown persists
-// cumulative statistics to pg_stat/ and reloads them at startup - for
-// pg_stat_statements that is governed by pg_stat_statements.save, on by default
-// - so the counters often do survive and the diff would have been valid. But we
+// A restart of the same instance is treated as a change too. A clean shutdown
+// persists cumulative statistics and reloads them at startup (for
+// pg_stat_statements that is governed by pg_stat_statements.save, on by default)
+// so the counters often do survive and the diff would have been valid. But we
 // cannot tell from the start time alone whether the shutdown was clean, whether
 // saving was enabled, or, where instances share a storage volume as Aurora
 // replicas do, whether the file the new postmaster loaded was written by this
-// instance at all. Losing one interval costs less than diffing against a
-// reference point that turns out not to belong to us.
+// instance at all. Losing one interval is preferable to diffing against the wrong
+// reference point.
 type PostgresInstanceIdentity struct {
-	// Start time of the postmaster we're connected to; changes when it restarts
+	// Start time of the postmaster we're connected to
 	PostmasterStartTime time.Time
 	// Address of the instance this connection landed on, from inet_server_addr().
-	// Empty for Unix socket connections, where it is not available.
+	// Empty for Unix socket connections, where it is not available (but also not
+	// necessary, since a local connection string is unambiguous).
 	ServerAddr string
 }
 
@@ -48,15 +48,11 @@ func (i PostgresInstanceIdentity) IsZero() bool {
 //
 // A zero identity matches anything. We can fail to determine the identity (an
 // old Postgres version, a permission problem, a transient error), and in that
-// case we prefer to keep diffing as before rather than discard data on the
-// basis of information we do not have.
+// case we avoid using it.
 func (i PostgresInstanceIdentity) Matches(other PostgresInstanceIdentity) bool {
 	if i.IsZero() || other.IsZero() {
 		return true
 	}
-	// Compare the timestamps with Equal rather than ==, since the driver hands us
-	// a separately allocated *time.Location for each row it scans, which makes ==
-	// report two readings of the same start time as different
 	return i.PostmasterStartTime.Equal(other.PostmasterStartTime) &&
 		i.ServerAddr == other.ServerAddr
 }

@@ -62,10 +62,9 @@ func collectDiffAndSubmit(ctx context.Context, server *state.Server, opts state.
 
 	// Relation, index and database statistics are cumulative counters from one
 	// instance's memory, and we may have reached a different instance than the
-	// snapshot we would diff against - see PostgresInstanceIdentity. Diff against
-	// an empty reference point instead, which is how the first snapshot after
-	// collector startup behaves: absolute values are still reported, but no
-	// activity is attributed to this interval.
+	// snapshot we would diff against. Diff against an empty reference point
+	// instead: absolute values are still reported, but no activity is attributed
+	// to this interval.
 	if !prevState.InstanceIdentity.Matches(newState.InstanceIdentity) {
 		logger.PrintInfo(
 			"Detected a different Postgres instance than the last full snapshot (%s, was %s); resetting statistics reference point to avoid diffing statistics across instances",
