@@ -14,13 +14,17 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func SetupSnapshotUploadForAllServers(ctx context.Context, servers []*state.Server, opts state.CollectionOpts, logger *util.Logger) {
+func SetupSnapshotUploadForAllServers(servers []*state.Server, opts state.CollectionOpts, logger *util.Logger) {
+	for _, server := range servers {
+		SetupSnapshotUploadForServer(server, opts, logger)
+	}
+}
+
+func SetupSnapshotUploadForServer(server *state.Server, opts state.CollectionOpts, logger *util.Logger) {
 	if opts.ForceEmptyGrant {
 		return
 	}
-	for _, server := range servers {
-		go snapshotUploadForServer(ctx, server, logger.WithPrefixAndRememberErrors(server.Config.SectionName), opts)
-	}
+	go snapshotUploadForServer(server.Ctx, server, logger.WithPrefixAndRememberErrors(server.Config.SectionName), opts)
 }
 
 // Maximum time a legacy HTTP snapshot upload may take before it is abandoned,

@@ -161,11 +161,12 @@ func runCompletionCallback(callbackType string, callbackCmd string, sectionName 
 }
 
 // CollectAllServers - Collects statistics from all servers and sends them as full snapshots to the pganalyze service
-func CollectAllServers(ctx context.Context, servers []*state.Server, opts state.CollectionOpts, logger *util.Logger) (allSuccessful bool) {
+func CollectAllServers(ctx context.Context, serverList *state.ServerList, opts state.CollectionOpts, logger *util.Logger) (allSuccessful bool) {
 	var wg sync.WaitGroup
 
 	allSuccessful = true
 
+	servers := serverList.Load()
 	for idx := range servers {
 		wg.Add(1)
 		go func(server *state.Server) {
@@ -222,7 +223,7 @@ func CollectAllServers(ctx context.Context, servers []*state.Server, opts state.
 	wg.Wait()
 
 	if opts.WriteStateUpdate {
-		state.WriteStateFile(servers, opts, logger)
+		state.WriteStateFile(serverList, opts, logger)
 	}
 
 	return

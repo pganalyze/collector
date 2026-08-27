@@ -1,6 +1,7 @@
 package state
 
 import (
+	"context"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -291,6 +292,16 @@ type Server struct {
 	Config           config.ServerConfig
 	RequestedSslMode string
 	Grant            atomic.Pointer[Grant]
+
+	// Per-server context that all long-running goroutines for this server
+	// (WebSocket, snapshot upload, query runs) are tied to. It is derived from
+	// the run context and additionally canceled when the server is removed
+	// from monitoring at runtime (e.g. a de-provisioned Aurora reader).
+	//
+	// Only set for servers created by the runner - servers created directly
+	// via MakeServer (e.g. in tests) leave this nil.
+	Ctx       context.Context
+	CancelCtx context.CancelFunc
 
 	PrevState  PersistedState
 	StateMutex *sync.Mutex

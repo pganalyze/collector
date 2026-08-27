@@ -8,14 +8,21 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
-func WriteStateFile(servers []*Server, opts CollectionOpts, logger *util.Logger) {
+func WriteStateFile(serverList *ServerList, opts CollectionOpts, logger *util.Logger) {
 	stateOnDisk := StateOnDisk{
 		PrevStateByServer:         make(map[config.ServerIdentifier]PersistedState),
 		HighFreqPrevStateByServer: make(map[config.ServerIdentifier]PersistedHighFreqState),
 		FormatVersion:             StateOnDiskFormatVersion,
 	}
 
-	for _, server := range servers {
+	// Include state of servers removed from monitoring at runtime, so their
+	// state is recovered if they are added back after a collector restart
+	for identifier, retained := range serverList.retainedStates() {
+		stateOnDisk.PrevStateByServer[identifier] = retained.PrevState
+		stateOnDisk.HighFreqPrevStateByServer[identifier] = retained.HighFreqPrevState
+	}
+
+	for _, server := range serverList.Load() {
 		// We must hold the relevant mutexes here because reads on structs stored by value are
 		// not atomic (see https://go.dev/ref/mem#restrictions), and concurrent runs could cause
 		// a corrupted state file.

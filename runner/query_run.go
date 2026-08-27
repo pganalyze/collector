@@ -14,27 +14,31 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
-func SetupQueryRunnerForAllServers(ctx context.Context, servers []*state.Server, collectionOpts state.CollectionOpts, logger *util.Logger) {
+func SetupQueryRunnerForAllServers(servers []*state.Server, collectionOpts state.CollectionOpts, logger *util.Logger) {
+	for idx := range servers {
+		SetupQueryRunnerForServer(servers[idx], collectionOpts, logger)
+	}
+}
+
+func SetupQueryRunnerForServer(server *state.Server, collectionOpts state.CollectionOpts, logger *util.Logger) {
 	if collectionOpts.ForceEmptyGrant {
 		return
 	}
-	for idx := range servers {
-		go func(server *state.Server) {
-			logger = logger.WithPrefixAndRememberErrors(server.Config.SectionName)
-			cleanupInterval := time.NewTicker(5 * time.Minute)
-			for {
-				select {
-				case <-ctx.Done():
-					return
-				case <-cleanupInterval.C:
-					cleanup(server)
-				default:
-					run(ctx, server, collectionOpts, logger)
-					time.Sleep(1 * time.Second)
-				}
+	go func() {
+		prefixedLogger := logger.WithPrefixAndRememberErrors(server.Config.SectionName)
+		cleanupInterval := time.NewTicker(5 * time.Minute)
+		for {
+			select {
+			case <-server.Ctx.Done():
+				return
+			case <-cleanupInterval.C:
+				cleanup(server)
+			default:
+				run(server.Ctx, server, collectionOpts, prefixedLogger)
+				time.Sleep(1 * time.Second)
 			}
-		}(servers[idx])
-	}
+		}
+	}()
 }
 
 func run(ctx context.Context, server *state.Server, collectionOpts state.CollectionOpts, logger *util.Logger) {

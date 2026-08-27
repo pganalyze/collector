@@ -30,17 +30,25 @@ import (
 const LogStreamingInterval time.Duration = 10 * time.Second
 
 // SetupLogCollection - Starts streaming or scheduled downloads for logs of the specified servers
-func SetupLogCollection(ctx context.Context, wg *sync.WaitGroup, servers []*state.Server, opts state.CollectionOpts, logger *util.Logger, hasAnyHeroku bool, hasAnyGoogleCloudSQL bool, hasAnyAzureDatabase bool, hasAnyTembo bool) {
+//
+// Log streaming operates on the servers present at startup (their platforms are
+// not subject to runtime server discovery), whilst scheduled log downloads read
+// the current server list on each interval, to include servers added at runtime.
+// The section configs are used to determine the download intervals, since a
+// discovery-based section may not have any servers at startup.
+func SetupLogCollection(ctx context.Context, wg *sync.WaitGroup, serverList *state.ServerList, sectionConfigs []config.ServerConfig, opts state.CollectionOpts, logger *util.Logger, hasAnyHeroku bool, hasAnyGoogleCloudSQL bool, hasAnyAzureDatabase bool, hasAnyTembo bool) {
 	var hasAnyLogDownloads bool
 	var hasAnyLogTails bool
 
-	for _, server := range servers {
-		if server.Config.DisableLogs || server.Pause.Load() {
+	servers := serverList.Load()
+
+	for _, cfg := range sectionConfigs {
+		if cfg.DisableLogs {
 			continue
 		}
-		if server.Config.LogLocation != "" || server.Config.LogDockerTail != "" || server.Config.LogSyslogServer != "" || server.Config.LogOtelServer != "" {
+		if cfg.LogLocation != "" || cfg.LogDockerTail != "" || cfg.LogSyslogServer != "" || cfg.LogOtelServer != "" {
 			hasAnyLogTails = true
-		} else if server.Config.SupportsLogDownload() {
+		} else if cfg.SupportsLogDownload() {
 			hasAnyLogDownloads = true
 		}
 	}
@@ -69,34 +77,34 @@ func SetupLogCollection(ctx context.Context, wg *sync.WaitGroup, servers []*stat
 	}
 
 	if hasAnyLogDownloads {
-		setupLogDownloadForAllServers(ctx, wg, opts, logger, servers)
+		setupLogDownloadForAllServers(ctx, wg, opts, logger, serverList, sectionConfigs)
 	}
 }
 
-func setupLogDownloadForAllServers(ctx context.Context, wg *sync.WaitGroup, opts state.CollectionOpts, logger *util.Logger, servers []*state.Server) {
+func setupLogDownloadForAllServers(ctx context.Context, wg *sync.WaitGroup, opts state.CollectionOpts, logger *util.Logger, serverList *state.ServerList, sectionConfigs []config.ServerConfig) {
 	if !opts.CollectLogs {
 		return
 	}
 
-	// The log download interval is configurable per server, so group servers by
-	// their interval to keep one goroutine per distinct interval (instead of one
-	// per server)
-	serversByInterval := make(map[time.Duration][]*state.Server)
-	for _, server := range servers {
-		if !server.Config.SupportsLogDownload() {
+	// The log download interval is configurable per server, so run one download
+	// goroutine per distinct interval (instead of one per server). The intervals
+	// are determined from the config sections, since servers discovered at
+	// runtime inherit their section's interval.
+	intervals := make(map[time.Duration]bool)
+	for _, cfg := range sectionConfigs {
+		if !cfg.SupportsLogDownload() {
 			continue
 		}
-		interval := server.Config.LogDownloadIntervalDuration()
-		serversByInterval[interval] = append(serversByInterval[interval], server)
+		intervals[cfg.LogDownloadIntervalDuration()] = true
 	}
 
-	for interval, intervalServers := range serversByInterval {
-		setupLogDownloadForServerGroup(ctx, wg, opts, logger, intervalServers, interval)
+	for interval := range intervals {
+		setupLogDownloadForServerGroup(ctx, wg, opts, logger, serverList, interval)
 	}
 }
 
-func setupLogDownloadForServerGroup(ctx context.Context, wg *sync.WaitGroup, opts state.CollectionOpts, logger *util.Logger, servers []*state.Server, interval time.Duration) {
-	logger.PrintVerbose("Downloading logs for %d server(s) every %s", len(servers), interval)
+func setupLogDownloadForServerGroup(ctx context.Context, wg *sync.WaitGroup, opts state.CollectionOpts, logger *util.Logger, serverList *state.ServerList, interval time.Duration) {
+	logger.PrintVerbose("Downloading logs every %s", interval)
 
 	wg.Add(1)
 	go func() {
@@ -112,7 +120,10 @@ func setupLogDownloadForServerGroup(ctx context.Context, wg *sync.WaitGroup, opt
 			case <-ticker.C:
 				var innerWg sync.WaitGroup
 
-				for _, server := range servers {
+				for _, server := range serverList.Load() {
+					if !server.Config.SupportsLogDownload() || server.Config.LogDownloadIntervalDuration() != interval {
+						continue
+					}
 					grant := server.Grant.Load()
 					if server.Config.DisableLogs || (grant.ValidConfig && !grant.Config.EnableLogs) {
 						continue

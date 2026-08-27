@@ -24,7 +24,7 @@ import (
 )
 
 func Run(ctx context.Context, wg *sync.WaitGroup, opts state.CollectionOpts, logger *util.Logger, configFilename string) (keepRunning bool, testRunSuccess chan bool, writeStateFile func(), shutdown func()) {
-	var servers []*state.Server
+	serverList := state.NewServerList()
 
 	keepRunning = false
 	writeStateFile = func() {}
@@ -50,19 +50,7 @@ func Run(ctx context.Context, wg *sync.WaitGroup, opts state.CollectionOpts, log
 
 	needsIAMCloudSQL := false
 	needsIAMAlloyDB := false
-	for idx, cfg := range conf.Servers {
-		prefixedLogger := logger.WithPrefix(cfg.SectionName)
-		prefixedLogger.PrintVerbose("Identified as api_system_type: %s, api_system_scope: %s, api_system_id: %s", cfg.SystemType, cfg.SystemScope, cfg.SystemID)
-
-		conf.Servers[idx].HTTPClient = config.CreateHTTPClient(cfg, prefixedLogger, false)
-		conf.Servers[idx].HTTPClientWithRetry = config.CreateHTTPClient(cfg, prefixedLogger, true)
-		if cfg.OtelExporterOtlpEndpoint != "" {
-			conf.Servers[idx].OTelTracingProvider, conf.Servers[idx].OTelTracingProviderShutdownFunc, err = config.CreateOTelTracingProvider(ctx, cfg)
-			logger.PrintVerbose("Initializing OpenTelemetry tracing provider with endpoint: %s", cfg.OtelExporterOtlpEndpoint)
-			if err != nil {
-				logger.PrintError("Failed to initialize OpenTelemetry tracing provider, disabling exports: %s", err)
-			}
-		}
+	for _, cfg := range conf.Servers {
 		if cfg.DbUseIamAuth && cfg.SystemType == "google_cloudsql" {
 			if cfg.GcpCloudSQLInstanceID != "" {
 				needsIAMCloudSQL = true
@@ -91,11 +79,11 @@ func Run(ctx context.Context, wg *sync.WaitGroup, opts state.CollectionOpts, log
 	}
 
 	shutdown = func() {
-		for _, cfg := range conf.Servers {
-			if cfg.OTelTracingProviderShutdownFunc == nil {
+		for _, server := range serverList.Load() {
+			if server.Config.OTelTracingProviderShutdownFunc == nil {
 				continue
 			}
-			if err := cfg.OTelTracingProviderShutdownFunc(ctx); err != nil {
+			if err := server.Config.OTelTracingProviderShutdownFunc(ctx); err != nil {
 				logger.PrintError("Failed to shutdown OpenTelemetry tracing provider: %s", err)
 			}
 		}
@@ -112,12 +100,13 @@ func Run(ctx context.Context, wg *sync.WaitGroup, opts state.CollectionOpts, log
 	hasAnyHeroku := false
 	hasAnyTembo := false
 
+	var servers []*state.Server
 	serverConfigs := conf.Servers
 	for _, config := range serverConfigs {
 		if opts.TestRun && opts.TestSection != "" && opts.TestSection != config.SectionName {
 			continue
 		}
-		servers = append(servers, state.MakeServer(config, opts.TestRun))
+		servers = append(servers, createServer(ctx, config, opts, logger))
 		if !config.DisableLogs {
 			hasAnyLogsEnabled = true
 		}
@@ -137,6 +126,7 @@ func Run(ctx context.Context, wg *sync.WaitGroup, opts state.CollectionOpts, log
 			hasAnyTembo = true
 		}
 	}
+	serverList.Store(servers)
 
 	if opts.GenerateStatsHelperSql != "" {
 		wg.Add(1)
@@ -197,7 +187,7 @@ func Run(ctx context.Context, wg *sync.WaitGroup, opts state.CollectionOpts, log
 	state.ReadStateFile(servers, opts, logger)
 
 	writeStateFile = func() {
-		state.WriteStateFile(servers, opts, logger)
+		state.WriteStateFile(serverList, opts, logger)
 	}
 
 	if opts.TestRun {
@@ -213,8 +203,8 @@ func Run(ctx context.Context, wg *sync.WaitGroup, opts state.CollectionOpts, log
 		// This channel is buffered so the function can exit (and mark the wait group as done)
 		// without the caller consuming the channel, e.g. when the context gets canceled
 		testRunSuccess = make(chan bool, 1)
-		SetupWebsocketForAllServers(ctx, servers, opts, logger)
-		output.SetupSnapshotUploadForAllServers(ctx, servers, opts, logger)
+		SetupWebsocketForAllServers(servers, opts, logger)
+		output.SetupSnapshotUploadForAllServers(servers, opts, logger)
 		go func() {
 			if opts.TestExplain {
 				success := true
@@ -236,7 +226,7 @@ func Run(ctx context.Context, wg *sync.WaitGroup, opts state.CollectionOpts, log
 			} else {
 				var allFullSuccessful bool
 				var allActivitySuccessful bool
-				allFullSuccessful = CollectAllServers(ctx, servers, opts, logger)
+				allFullSuccessful = CollectAllServers(ctx, serverList, opts, logger)
 				if ctx.Err() == nil {
 					if hasAnyActivityEnabled {
 						allActivitySuccessful = CollectActivityFromAllServers(ctx, servers, opts, logger)
@@ -268,7 +258,7 @@ func Run(ctx context.Context, wg *sync.WaitGroup, opts state.CollectionOpts, log
 	}
 
 	if opts.DebugLogs {
-		SetupLogCollection(ctx, wg, servers, opts, logger, hasAnyHeroku, hasAnyGoogleCloudSQL, hasAnyAzureDatabase, hasAnyTembo)
+		SetupLogCollection(ctx, wg, serverList, serverConfigs, opts, logger, hasAnyHeroku, hasAnyGoogleCloudSQL, hasAnyAzureDatabase, hasAnyTembo)
 
 		// Keep running but only running log processing
 		keepRunning = true
@@ -283,11 +273,11 @@ func Run(ctx context.Context, wg *sync.WaitGroup, opts state.CollectionOpts, log
 	}
 
 	scheduler.TenMinute.Schedule(ctx, wg, func(ctx context.Context) {
-		CollectAllServers(ctx, servers, opts, logger)
+		CollectAllServers(ctx, serverList, opts, logger)
 	}, logger, "full snapshot of all servers")
 
 	if hasAnyLogsEnabled {
-		SetupLogCollection(ctx, wg, servers, opts, logger, hasAnyHeroku, hasAnyGoogleCloudSQL, hasAnyAzureDatabase, hasAnyTembo)
+		SetupLogCollection(ctx, wg, serverList, serverConfigs, opts, logger, hasAnyHeroku, hasAnyGoogleCloudSQL, hasAnyAzureDatabase, hasAnyTembo)
 	} else if util.IsHeroku() {
 		// Even if logs are deactivated, Heroku still requires us to have a functioning web server
 		util.SetupHttpHandlerDummy(ctx, logger)
@@ -295,18 +285,18 @@ func Run(ctx context.Context, wg *sync.WaitGroup, opts state.CollectionOpts, log
 
 	if hasAnyActivityEnabled {
 		scheduler.TenSecond.Schedule(ctx, wg, func(ctx context.Context) {
-			CollectActivityFromAllServers(ctx, servers, opts, logger)
+			CollectActivityFromAllServers(ctx, serverList.Load(), opts, logger)
 		}, logger, "activity snapshot of all servers")
 	}
 
 	// This captures stats every minute, except for minute 10 when full snapshot collection takes over
 	scheduler.OneMinute.ScheduleSecondary(ctx, scheduler.TenMinute, wg, func(ctx context.Context) {
-		Gather1minStatsFromAllServers(ctx, servers, opts, logger)
+		Gather1minStatsFromAllServers(ctx, serverList.Load(), opts, logger)
 	}, logger, "high frequency statistics of all servers")
 
-	SetupWebsocketForAllServers(ctx, servers, opts, logger)
-	output.SetupSnapshotUploadForAllServers(ctx, servers, opts, logger)
-	SetupQueryRunnerForAllServers(ctx, servers, opts, logger)
+	for _, server := range serverList.Load() {
+		activateServer(server, opts, logger)
+	}
 
 	keepRunning = true
 	return

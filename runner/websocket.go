@@ -15,23 +15,27 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func SetupWebsocketForAllServers(ctx context.Context, servers []*state.Server, opts state.CollectionOpts, logger *util.Logger) {
+func SetupWebsocketForAllServers(servers []*state.Server, opts state.CollectionOpts, logger *util.Logger) {
+	for _, server := range servers {
+		SetupWebsocketForServer(server, opts, logger)
+	}
+}
+
+func SetupWebsocketForServer(server *state.Server, opts state.CollectionOpts, logger *util.Logger) {
 	if opts.ForceEmptyGrant {
 		return
 	}
-	for _, server := range servers {
-		prefixedLogger := logger.WithPrefixAndRememberErrors(server.Config.SectionName)
-		server.WebSocket = util.NewReconnectingSocket(
-			ctx, prefixedLogger,
-			config.CreateWebSocketDialer(server.Config),
-			server.Config.WebSocketUrl,
-			config.APIHeaders(server.Config, opts.TestRun, opts.StartedAt),
-			1*time.Minute, 8*time.Minute,
-		)
+	prefixedLogger := logger.WithPrefixAndRememberErrors(server.Config.SectionName)
+	server.WebSocket = util.NewReconnectingSocket(
+		server.Ctx, prefixedLogger,
+		config.CreateWebSocketDialer(server.Config),
+		server.Config.WebSocketUrl,
+		config.APIHeaders(server.Config, opts.TestRun, opts.StartedAt),
+		1*time.Minute, 8*time.Minute,
+	)
 
-		// Server messages are read in processServerMessages, snapshots are sent via output.SetupSnapshotUploadForAllServers
-		go processServerMessages(ctx, server, prefixedLogger)
-	}
+	// Server messages are read in processServerMessages, snapshots are sent via output.SetupSnapshotUploadForAllServers
+	go processServerMessages(server.Ctx, server, prefixedLogger)
 }
 
 func processServerMessages(ctx context.Context, server *state.Server, logger *util.Logger) {
