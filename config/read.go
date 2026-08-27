@@ -181,6 +181,9 @@ func getDefaultConfig() *ServerConfig {
 	if awsDbClusterMembers := os.Getenv("AWS_DB_CLUSTER_MEMBERS"); awsDbClusterMembers != "" {
 		config.AwsDbClusterMembers = awsDbClusterMembers
 	}
+	if awsDbClusterClones := os.Getenv("AWS_DB_CLUSTER_CLONES"); awsDbClusterClones != "" {
+		config.AwsDbClusterClones = parseConfigBool(awsDbClusterClones)
+	}
 	if awsAccessKeyID := os.Getenv("AWS_ACCESS_KEY_ID"); awsAccessKeyID != "" {
 		config.AwsAccessKeyID = awsAccessKeyID
 	}
@@ -707,6 +710,9 @@ func preprocessConfig(config *ServerConfig) (*ServerConfig, error) {
 		if config.AwsDbClusterID == "" {
 			return config, fmt.Errorf("aws_db_cluster_members requires a cluster, set aws_db_cluster_id or use the cluster endpoint as the database host")
 		}
+	}
+	if config.AwsDbClusterClones && config.AwsDbClusterMembers != "all" {
+		return config, fmt.Errorf("aws_db_cluster_clones requires aws_db_cluster_members = all")
 	}
 
 	if config.GcpCloudSQLInstanceID != "" && strings.Count(config.GcpCloudSQLInstanceID, ":") == 2 {

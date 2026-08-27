@@ -2,7 +2,6 @@ package runner
 
 import (
 	"context"
-	"fmt"
 	"net/url"
 	"strings"
 	"sync"
@@ -80,8 +79,17 @@ func ExpandServerConfigs(ctx context.Context, sectionConfigs []config.ServerConf
 	return expanded
 }
 
+// Cluster statuses for which member discovery is skipped (the cluster has no
+// usable instances yet, or won't have them much longer)
+var excludedClusterStatuses = map[string]bool{
+	"creating":  true,
+	"deleting":  true,
+	"preparing": true,
+}
+
 // discoverClusterMemberConfigs determines a server config for each member
-// instance of the section's cluster
+// instance of the section's cluster, and - when enabled - of all clusters
+// cloned from it (or that it was cloned from)
 func discoverClusterMemberConfigs(ctx context.Context, sectionCfg config.ServerConfig, staticInstances map[string]bool, logger *util.Logger) ([]config.ServerConfig, error) {
 	account, err := awsutil.GetAccount(ctx, sectionCfg)
 	if err != nil {
@@ -93,10 +101,51 @@ func discoverClusterMemberConfigs(ctx context.Context, sectionCfg config.ServerC
 		return nil, err
 	}
 
-	return clusterMemberConfigs(ctx, account, sectionCfg, cluster, staticInstances, logger)
+	memberConfigs, err := clusterMemberConfigs(ctx, account, sectionCfg, cluster, staticInstances, true, logger)
+	if err != nil {
+		return nil, err
+	}
+
+	// Aurora clones are separate clusters that share a clone group with the
+	// cluster they were created from (the clone group only exists once the
+	// first clone has been created)
+	cloneGroupID := util.StringPtrToString(cluster.CloneGroupId)
+	if sectionCfg.AwsDbClusterClones && cloneGroupID != "" {
+		// Note this requires the account-wide cluster listing (unlike member
+		// discovery, which can fall back to individual lookups when a scoped
+		// IAM policy denies the listing)
+		clusters, err := account.GetAllRdsClusters(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for i, cloneCluster := range clusters {
+			if util.StringPtrToString(cloneCluster.CloneGroupId) != cloneGroupID {
+				continue
+			}
+			cloneClusterID := util.StringPtrToString(cloneCluster.DBClusterIdentifier)
+			if cloneClusterID == sectionCfg.AwsDbClusterID {
+				continue
+			}
+			status := util.StringPtrToString(cloneCluster.Status)
+			if excludedClusterStatuses[status] {
+				logger.PrintVerbose("Skipping clone cluster \"%s\" with status \"%s\"", cloneClusterID, status)
+				continue
+			}
+			cloneMemberConfigs, err := clusterMemberConfigs(ctx, account, sectionCfg, &clusters[i], staticInstances, false, logger)
+			if err != nil {
+				return nil, err
+			}
+			memberConfigs = append(memberConfigs, cloneMemberConfigs...)
+		}
+	}
+
+	return memberConfigs, nil
 }
 
-func clusterMemberConfigs(ctx context.Context, account *awsutil.Account, sectionCfg config.ServerConfig, cluster *rdstypes.DBCluster, staticInstances map[string]bool, logger *util.Logger) ([]config.ServerConfig, error) {
+// clusterMemberConfigs determines the server configs for all usable member
+// instances of one cluster. The section's fallback identity is only assigned
+// when monitoring the writer of the section's own cluster (not a clone).
+func clusterMemberConfigs(ctx context.Context, account *awsutil.Account, sectionCfg config.ServerConfig, cluster *rdstypes.DBCluster, staticInstances map[string]bool, sectionIdentityFallback bool, logger *util.Logger) ([]config.ServerConfig, error) {
 	clusterID := util.StringPtrToString(cluster.DBClusterIdentifier)
 
 	var memberConfigs []config.ServerConfig
@@ -130,24 +179,30 @@ func clusterMemberConfigs(ctx context.Context, account *awsutil.Account, section
 			continue
 		}
 
-		memberConfigs = append(memberConfigs, memberServerConfig(sectionCfg, clusterID, instanceID, *instance.Endpoint.Address, int(*instance.Endpoint.Port), util.BoolPtrToBool(member.IsClusterWriter)))
+		memberConfigs = append(memberConfigs, memberServerConfig(sectionCfg, clusterID, instanceID, *instance.Endpoint.Address, int(*instance.Endpoint.Port), sectionIdentityFallback && util.BoolPtrToBool(member.IsClusterWriter)))
 	}
 
+	// If every member lookup failed we treat this as a discovery error (keeping
+	// the last known set), since it likely indicates an API or IAM policy issue
+	// rather than the members being gone
+	if len(memberConfigs) == 0 && lastErr != nil {
+		return nil, lastErr
+	}
+
+	// Note that zero members is a legitimate result (e.g. for a stopped
+	// cluster), and distinct from an error (which keeps the last known set)
 	if len(memberConfigs) == 0 {
-		// If a member lookup failed we surface that error (it likely indicates an
-		// API or IAM policy issue), rather than the members being gone
-		if lastErr != nil {
-			return nil, lastErr
-		}
-		return nil, fmt.Errorf("cluster \"%s\" has no usable member instances", clusterID)
+		logger.PrintVerbose("Found no usable member instances for cluster \"%s\"", clusterID)
 	}
 
 	return memberConfigs, nil
 }
 
 // memberServerConfig derives the server config for a single discovered cluster
-// member instance from its section's config
-func memberServerConfig(sectionCfg config.ServerConfig, clusterID string, instanceID string, endpointHost string, endpointPort int, isWriter bool) config.ServerConfig {
+// member instance from its section's config. sectionIdentityFallback is set
+// for the writer of the section's own cluster, which takes over the identity
+// previously used by the cluster-level config as its fallback identity.
+func memberServerConfig(sectionCfg config.ServerConfig, clusterID string, instanceID string, endpointHost string, endpointPort int, sectionIdentityFallback bool) config.ServerConfig {
 	cfg := sectionCfg
 
 	cfg.SectionName = sectionCfg.SectionName + "/" + instanceID
@@ -213,7 +268,7 @@ func memberServerConfig(sectionCfg config.ServerConfig, clusterID string, instan
 	// The section's identity is what a cluster-level config reported as before
 	// members were discovered individually - point the writer's fallback
 	// identity at it, so pganalyze can match up the existing server
-	if isWriter && !sectionCfg.AwsDbClusterReadonly {
+	if sectionIdentityFallback && !sectionCfg.AwsDbClusterReadonly {
 		cfg.SystemIDFallback = sectionCfg.SystemID
 		cfg.SystemTypeFallback = sectionCfg.SystemType
 		cfg.SystemScopeFallback = sectionCfg.SystemScope

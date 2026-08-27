@@ -81,6 +81,7 @@ type ServerConfig struct {
 	AwsDbClusterID          string `ini:"aws_db_cluster_id"`
 	AwsDbClusterReadonly    bool   `ini:"aws_db_cluster_readonly"`
 	AwsDbClusterMembers     string `ini:"aws_db_cluster_members"`
+	AwsDbClusterClones      bool   `ini:"aws_db_cluster_clones"`
 	AwsAccessKeyID          string `ini:"aws_access_key_id"`
 	AwsSecretAccessKey      string `ini:"aws_secret_access_key"`
 	AwsAssumeRole           string `ini:"aws_assume_role"`
