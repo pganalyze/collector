@@ -25,6 +25,7 @@ import (
 	"github.com/pganalyze/collector/runner"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
+	"github.com/pganalyze/collector/util/awsutil"
 
 	_ "github.com/lib/pq" // Enable database package to use Postgres
 )
@@ -311,6 +312,7 @@ ReadConfigAndRun:
 			cancel()
 			wg.Wait()
 			writeStateFile()
+			awsutil.ClearAccounts()
 			opts.StartedAt = time.Now() // Signal to pganalyze API that collector essentially restarted
 			goto ReadConfigAndRun
 		}

@@ -23,16 +23,16 @@ func GetSystemState(ctx context.Context, server *state.Server, logger *util.Logg
 	config := server.Config
 	system.Info.Type = state.AmazonRdsSystem
 
-	awsCfg, err := awsutil.GetAwsConfig(ctx, config)
+	account, err := awsutil.GetAccount(ctx, config)
 	if err != nil {
 		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectSystemStats, "error getting session: %v", err)
 		logger.PrintError("Rds/System: Encountered error getting session: %v\n", err)
 		return
 	}
 
-	rdsSvc := awsutil.NewRdsClient(awsCfg, config)
+	rdsSvc := account.RDS
 
-	instance, err := awsutil.FindRdsInstance(ctx, config, awsCfg)
+	instance, err := awsutil.FindRdsInstance(ctx, config, account, logger)
 	if err != nil {
 		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectSystemStats, "error finding instance: %v", err)
 		logger.PrintError("Rds/System: Encountered error when looking for instance: %v\n", err)
@@ -111,7 +111,7 @@ func GetSystemState(ctx context.Context, server *state.Server, logger *util.Logg
 
 	dbInstanceID := *instance.DBInstanceIdentifier
 	dbClusterID := util.StringPtrToString(instance.DBClusterIdentifier)
-	cloudWatchReader := awsutil.NewRdsCloudWatchReader(awsCfg, config, logger, dbInstanceID, dbClusterID)
+	cloudWatchReader := awsutil.NewRdsCloudWatchReader(account, logger, dbInstanceID, dbClusterID)
 
 	system.Disks = make(state.DiskMap)
 	system.Disks["default"] = state.Disk{
@@ -139,9 +139,7 @@ func GetSystemState(ctx context.Context, server *state.Server, logger *util.Logg
 	if instance.EnhancedMonitoringResourceArn != nil && instance.MonitoringInterval != nil && *instance.MonitoringInterval != 0 {
 		system.Info.AmazonRds.EnhancedMonitoring = true
 
-		cwlogsSvc := awsutil.NewCloudWatchLogsClient(awsCfg, config)
-
-		resp, err := cwlogsSvc.GetLogEvents(ctx, &cloudwatchlogs.GetLogEventsInput{
+		resp, err := account.CloudWatchLogs.GetLogEvents(ctx, &cloudwatchlogs.GetLogEventsInput{
 			LogGroupName:  aws.String("RDSOSMetrics"),
 			LogStreamName: instance.DbiResourceId,
 			Limit:         aws.Int32(1),

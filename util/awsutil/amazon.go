@@ -102,18 +102,3 @@ func GetAwsConfig(ctx context.Context, cfg config.ServerConfig) (aws.Config, err
 
 	return baseCfg, nil
 }
-
-// NewRdsClient creates an RDS client
-func NewRdsClient(awsCfg aws.Config, serverCfg config.ServerConfig) *rds.Client {
-	return rds.NewFromConfig(awsCfg)
-}
-
-// NewCloudWatchClient creates a CloudWatch client
-func NewCloudWatchClient(awsCfg aws.Config, serverCfg config.ServerConfig) *cloudwatch.Client {
-	return cloudwatch.NewFromConfig(awsCfg)
-}
-
-// NewCloudWatchLogsClient creates a CloudWatch Logs client
-func NewCloudWatchLogsClient(awsCfg aws.Config, serverCfg config.ServerConfig) *cloudwatchlogs.Client {
-	return cloudwatchlogs.NewFromConfig(awsCfg)
-}
