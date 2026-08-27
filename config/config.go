@@ -80,6 +80,7 @@ type ServerConfig struct {
 	AwsDbInstanceID         string `ini:"aws_db_instance_id"`
 	AwsDbClusterID          string `ini:"aws_db_cluster_id"`
 	AwsDbClusterReadonly    bool   `ini:"aws_db_cluster_readonly"`
+	AwsDbClusterMembers     string `ini:"aws_db_cluster_members"`
 	AwsAccessKeyID          string `ini:"aws_access_key_id"`
 	AwsSecretAccessKey      string `ini:"aws_secret_access_key"`
 	AwsAssumeRole           string `ini:"aws_assume_role"`
@@ -312,6 +313,12 @@ func (config ServerConfig) MaxLogParsingSize() int {
 // SupportsLogDownload - Determines whether the specified config can download logs
 func (config ServerConfig) SupportsLogDownload() bool {
 	return config.AwsDbInstanceID != "" || config.AwsDbClusterID != "" || config.LogPgReadFile || config.SupportsPlanetScaleLogs()
+}
+
+// DiscoversServers - Determines whether this config section discovers the set of
+// servers to monitor at runtime (instead of statically describing a single server)
+func (config ServerConfig) DiscoversServers() bool {
+	return config.AwsDbClusterMembers == "all"
 }
 
 // SupportsPlanetScaleLogs - Determines whether PlanetScale logs are configured

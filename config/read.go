@@ -178,6 +178,9 @@ func getDefaultConfig() *ServerConfig {
 	if awsDbClusterReadonly := os.Getenv("AWS_DB_CLUSTER_READONLY"); awsDbClusterReadonly != "" {
 		config.AwsDbClusterReadonly = parseConfigBool(awsDbClusterReadonly)
 	}
+	if awsDbClusterMembers := os.Getenv("AWS_DB_CLUSTER_MEMBERS"); awsDbClusterMembers != "" {
+		config.AwsDbClusterMembers = awsDbClusterMembers
+	}
 	if awsAccessKeyID := os.Getenv("AWS_ACCESS_KEY_ID"); awsAccessKeyID != "" {
 		config.AwsAccessKeyID = awsAccessKeyID
 	}
@@ -695,6 +698,15 @@ func preprocessConfig(config *ServerConfig) (*ServerConfig, error) {
 	// combined with only specifying its name, but not its region.
 	if (config.AwsDbClusterID != "" || config.AwsDbInstanceID != "") && config.AwsRegion == "" {
 		config.AwsRegion = "us-east-1"
+	}
+
+	if config.AwsDbClusterMembers != "" {
+		if config.AwsDbClusterMembers != "all" {
+			return config, fmt.Errorf("unsupported value for aws_db_cluster_members: \"%s\" (only \"all\" is supported)", config.AwsDbClusterMembers)
+		}
+		if config.AwsDbClusterID == "" {
+			return config, fmt.Errorf("aws_db_cluster_members requires a cluster, set aws_db_cluster_id or use the cluster endpoint as the database host")
+		}
 	}
 
 	if config.GcpCloudSQLInstanceID != "" && strings.Count(config.GcpCloudSQLInstanceID, ":") == 2 {

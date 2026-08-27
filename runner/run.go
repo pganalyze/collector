@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"os/user"
 	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 
@@ -100,13 +101,29 @@ func Run(ctx context.Context, wg *sync.WaitGroup, opts state.CollectionOpts, log
 	hasAnyHeroku := false
 	hasAnyTembo := false
 
-	var servers []*state.Server
 	serverConfigs := conf.Servers
-	for _, config := range serverConfigs {
-		if opts.TestRun && opts.TestSection != "" && opts.TestSection != config.SectionName {
+	expandedConfigs := ExpandServerConfigs(ctx, serverConfigs, logger)
+
+	var servers []*state.Server
+	for _, config := range expandedConfigs {
+		if opts.TestRun && opts.TestSection != "" && !matchesServerSection(config.SectionName, opts.TestSection) {
 			continue
 		}
 		servers = append(servers, createServer(ctx, config, opts, logger))
+	}
+	serverList.Store(servers)
+
+	// Determine the flags from both the section configs and the expanded servers,
+	// so that a discovery-based section that momentarily has no servers still
+	// enables its collection mechanisms
+	hasAnyServerDiscovery := false
+	for _, config := range append(append([]config.ServerConfig{}, serverConfigs...), expandedConfigs...) {
+		if opts.TestRun && opts.TestSection != "" && !matchesServerSection(config.SectionName, opts.TestSection) {
+			continue
+		}
+		if config.DiscoversServers() {
+			hasAnyServerDiscovery = true
+		}
 		if !config.DisableLogs {
 			hasAnyLogsEnabled = true
 		}
@@ -126,7 +143,6 @@ func Run(ctx context.Context, wg *sync.WaitGroup, opts state.CollectionOpts, log
 			hasAnyTembo = true
 		}
 	}
-	serverList.Store(servers)
 
 	if opts.GenerateStatsHelperSql != "" {
 		wg.Add(1)
@@ -298,8 +314,19 @@ func Run(ctx context.Context, wg *sync.WaitGroup, opts state.CollectionOpts, log
 		activateServer(server, opts, logger)
 	}
 
+	if hasAnyServerDiscovery {
+		SetupServerDiscovery(ctx, wg, serverList, serverConfigs, opts, logger)
+	}
+
 	keepRunning = true
 	return
+}
+
+// matchesServerSection determines whether a server belongs to the given config
+// section - either directly, or as a server discovered through the section
+// (named "section/instance")
+func matchesServerSection(sectionName string, testSection string) bool {
+	return sectionName == testSection || strings.HasPrefix(sectionName, testSection+"/")
 }
 
 func checkAllInitialCollectionStatus(ctx context.Context, servers []*state.Server, opts state.CollectionOpts, logger *util.Logger) {

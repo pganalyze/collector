@@ -68,7 +68,9 @@ func RefreshServers(ctx context.Context, serverList *state.ServerList, desiredCo
 	seen := make(map[config.ServerIdentifier]bool)
 	for _, cfg := range desiredConfigs {
 		if seen[cfg.Identifier] {
-			logger.PrintWarning("Skipping duplicate server %s (identical to another monitored server)", cfg.SectionName)
+			// Note this is only printed in verbose mode since RefreshServers may
+			// run every discovery interval
+			logger.PrintVerbose("Skipping duplicate server %s (identical to another monitored server)", cfg.SectionName)
 			continue
 		}
 		seen[cfg.Identifier] = true
