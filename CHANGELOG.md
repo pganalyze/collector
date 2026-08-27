@@ -1,5 +1,25 @@
 # Changelog
 
+## Unreleased
+
+- Amazon RDS / Aurora: Add discovery of cluster member instances and clones
+  - New config setting "aws_db_cluster_members" / AWS_DB_CLUSTER_MEMBERS: when
+    set to "all" on a cluster-based config section, every member instance of
+    the cluster (the writer and all readers) is monitored as its own server,
+    tracking instances added or removed by Aurora auto-scaling at runtime
+    (checked every minute)
+  - New config setting "aws_db_cluster_clones" / AWS_DB_CLUSTER_CLONES: when
+    enabled (requires aws_db_cluster_members = all), clusters cloned from the
+    configured cluster (or that it was cloned from) are discovered and
+    monitored as well, using the same connection settings
+  - Discovered servers report per-instance system identity
+    (api_system_id = instance ID, api_system_scope = region/account), with the
+    cluster writer carrying the previous cluster-level identity as its fallback
+    identity so existing servers in pganalyze are matched up
+  - The set of monitored servers can now change at runtime; state of removed
+    servers is retained for 14 days so auto-scaling readers cycling off and on
+    resume their statistics baselines
+
 ## 0.73.0      2026-09-01
 
 - Avoid disrupting snapshot collection when uploads are slow or delayed
