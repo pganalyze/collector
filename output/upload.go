@@ -26,8 +26,7 @@ func SetupSnapshotUploadForAllServers(ctx context.Context, servers []*state.Serv
 // Maximum time a legacy HTTP snapshot upload may take before it is abandoned,
 // so a slow or unreachable server does not indefinitely stall the per-server
 // upload queue (and with it all snapshot types, since uploads run sequentially)
-const fullSnapshotUploadTimeout = 1 * time.Minute
-const compactSnapshotUploadTimeout = 20 * time.Second
+const snapshotUploadTimeout = 1 * time.Minute
 
 func snapshotUploadForServer(ctx context.Context, server *state.Server, logger *util.Logger, opts state.CollectionOpts) {
 	var compactLogTime time.Time
@@ -43,7 +42,7 @@ func snapshotUploadForServer(ctx context.Context, server *state.Server, logger *
 				continue
 			}
 
-			err = uploadViaWebsocketOrHttp(ctx, server, logger, opts, data, s.SnapshotUuid, s.CollectedAt.AsTime(), false, fullSnapshotUploadTimeout)
+			err = uploadViaWebsocketOrHttp(ctx, server, logger, opts, data, s.SnapshotUuid, s.CollectedAt.AsTime(), false, snapshotUploadTimeout)
 			if err != nil {
 				logger.PrintError("Error uploading snapshot: %s", err)
 			} else if !opts.TestRun {
@@ -56,7 +55,7 @@ func snapshotUploadForServer(ctx context.Context, server *state.Server, logger *
 				continue
 			}
 
-			err = uploadViaWebsocketOrHttp(ctx, server, logger, opts, data, s.SnapshotUuid, s.CollectedAt.AsTime(), false, compactSnapshotUploadTimeout)
+			err = uploadViaWebsocketOrHttp(ctx, server, logger, opts, data, s.SnapshotUuid, s.CollectedAt.AsTime(), false, snapshotUploadTimeout)
 			if err != nil {
 				logger.PrintError("Error uploading snapshot: %s", err)
 				continue
