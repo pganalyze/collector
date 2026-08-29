@@ -58,6 +58,7 @@ func CollectFull(ctx context.Context, server *state.Server, connection *sql.DB, 
 	}
 	ts.Version = c.PostgresVersion
 	ts.Roles = c.Roles
+	ps.InstanceIdentity = c.InstanceIdentity
 
 	ts.Databases, ps.DatabaseStats, err = postgres.GetDatabases(ctx, connection)
 	if err != nil {

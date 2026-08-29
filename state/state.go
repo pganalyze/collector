@@ -25,6 +25,8 @@ type SchemaStats struct {
 type PersistedState struct {
 	CollectedAt time.Time
 
+	InstanceIdentity PostgresInstanceIdentity
+
 	DatabaseStats PostgresDatabaseStatsMap
 	SchemaStats   map[Oid]*SchemaStats
 
@@ -40,6 +42,8 @@ type PersistedHighFreqState struct {
 	StatementStats PostgresStatementStatsMap
 	PlanStats      PostgresPlanStatsMap
 	ServerIoStats  PostgresServerIoStatsMap
+
+	InstanceIdentity PostgresInstanceIdentity
 
 	// Keep track of when we last collected statement stats, to calculate time distance
 	LastStatementStatsAt time.Time

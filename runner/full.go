@@ -47,12 +47,34 @@ func collectDiffAndSubmit(ctx context.Context, server *state.Server, opts state.
 	}
 	server.SetLogIgnoreFlags(logsIgnoreStatement, logsIgnoreDuration)
 
-	collectedIntervalSecs := uint32(newState.CollectedAt.Sub(server.PrevState.CollectedAt) / time.Second)
-	if collectedIntervalSecs == 0 {
-		collectedIntervalSecs = 1 // Avoid divide by zero errors for fast consecutive runs
+	prevState := server.PrevState
+
+	collectedIntervalSecs := uint32(1)
+	if !prevState.CollectedAt.IsZero() {
+		interval := newState.CollectedAt.Sub(prevState.CollectedAt)
+		if interval > time.Second {
+			collectedIntervalSecs = uint32(interval / time.Second)
+		}
+		// Otherwise leave this at 1, to avoid divide by zero errors for fast
+		// consecutive runs, and to keep the uint32 conversion from wrapping if the
+		// clock moved backwards
 	}
 
-	diffState := diffState(logger, server.PrevState, newState, collectedIntervalSecs)
+	// Relation, index and database statistics are cumulative counters from one
+	// instance's memory, and we may have reached a different instance than the
+	// snapshot we would diff against. Diff against an empty reference point
+	// instead: absolute values are still reported, but no activity is attributed
+	// to this interval.
+	if !prevState.InstanceIdentity.Matches(newState.InstanceIdentity) {
+		logger.PrintInfo(
+			"Detected a different Postgres instance than the last full snapshot (%s, was %s); resetting statistics reference point to avoid diffing statistics across instances",
+			newState.InstanceIdentity, prevState.InstanceIdentity)
+		// Collector process statistics are kept, since they don't come from the
+		// monitored instance
+		prevState = state.PersistedState{CollectorStats: prevState.CollectorStats}
+	}
+
+	diffState := diffState(logger, prevState, newState, collectedIntervalSecs)
 
 	err = output.SendFull(ctx, server, opts, logger, newState, diffState, transientState, collectedIntervalSecs)
 	if err != nil {

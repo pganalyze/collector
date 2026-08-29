@@ -21,6 +21,11 @@ type Collection struct {
 	ConnectedAsSuperUser      bool
 	ConnectedAsMonitoringRole bool
 
+	// Which instance, and which postmaster on it, this connection reached. Used
+	// to avoid diffing cumulative statistics across two different instances.
+	// Zero if it could not be determined.
+	InstanceIdentity state.PostgresInstanceIdentity
+
 	// Information that is specific to the current database we're connected to
 	HelperFunctions map[string][]state.PostgresFunction
 
@@ -56,6 +61,13 @@ func NewCollection(ctx context.Context, logger *util.Logger, server *state.Serve
 	}
 	server.SelfTest.MarkCollectionAspect(state.CollectionAspectPgVersion, state.CollectionStateOkay, "%s", version.Short)
 
+	// A failure here is not fatal: without an identity we fall back to the
+	// previous behaviour of always diffing against the last reference point.
+	instanceIdentity, err := GetInstanceIdentity(ctx, db)
+	if err != nil {
+		logger.PrintVerbose("Could not determine Postgres instance identity, statistics diffs will not be checked for instance changes: %s", err)
+	}
+
 	roles, err := getRoles(ctx, db, server.Config.SystemType)
 	if err != nil {
 		return &Collection{}, fmt.Errorf("failed collecting pg_roles: %s", err)
@@ -82,6 +94,7 @@ func NewCollection(ctx context.Context, logger *util.Logger, server *state.Serve
 		Roles:                     roles,
 		ConnectedAsSuperUser:      connectedAsSuperUser,
 		ConnectedAsMonitoringRole: connectedAsMonitoringRole,
+		InstanceIdentity:          instanceIdentity,
 		HelperFunctions:           helpersFromFunctions(helperFunctions),
 		Fingerprints:              server.Fingerprints,
 	}, nil
@@ -97,6 +110,7 @@ func (c *Collection) ForCurrentDatabase(functions []state.PostgresFunction) *Col
 		Roles:                     c.Roles,
 		ConnectedAsSuperUser:      c.ConnectedAsSuperUser,
 		ConnectedAsMonitoringRole: c.ConnectedAsMonitoringRole,
+		InstanceIdentity:          c.InstanceIdentity,
 		HelperFunctions:           helpersFromFunctions(functions),
 		Fingerprints:              c.Fingerprints,
 	}
