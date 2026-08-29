@@ -340,8 +340,11 @@ func MakeServer(config config.ServerConfig, testRun bool) *Server {
 		ActivityStateMutex:    &sync.Mutex{},
 		HighFreqStateMutex:    &sync.Mutex{},
 		CollectionStatusMutex: &sync.Mutex{},
-		FullSnapshotUpload:    make(chan *pganalyze_collector.FullSnapshot),
-		CompactSnapshotUpload: make(chan *pganalyze_collector.CompactSnapshot),
+		// Buffered so a slow upload does not immediately block the collection
+		// runners (and with them the collection schedulers); when the buffer is
+		// full, new snapshots are discarded with an error instead of blocking
+		FullSnapshotUpload:    make(chan *pganalyze_collector.FullSnapshot, 2),
+		CompactSnapshotUpload: make(chan *pganalyze_collector.CompactSnapshot, 10),
 		InitialConfigReceived: make(chan struct{}, 1),
 		QueryRuns:             make(map[int64]*QueryRun),
 		QueryRunsMutex:        &sync.Mutex{},

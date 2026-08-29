@@ -65,7 +65,11 @@ func submitFull(ctx context.Context, s *snapshot.FullSnapshot, server *state.Ser
 		return nil
 	}
 
-	server.FullSnapshotUpload <- s
+	select {
+	case server.FullSnapshotUpload <- s:
+	default:
+		return fmt.Errorf("skipping full snapshot, upload queue is full (previous snapshot uploads may be slow or stuck)")
+	}
 
 	return nil
 }

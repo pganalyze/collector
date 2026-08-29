@@ -23,6 +23,11 @@ func SetupSnapshotUploadForAllServers(ctx context.Context, servers []*state.Serv
 	}
 }
 
+// Maximum time a legacy HTTP snapshot upload may take before it is abandoned,
+// so a slow or unreachable server does not indefinitely stall the per-server
+// upload queue (and with it all snapshot types, since uploads run sequentially)
+const snapshotUploadTimeout = 1 * time.Minute
+
 func snapshotUploadForServer(ctx context.Context, server *state.Server, logger *util.Logger, opts state.CollectionOpts) {
 	var compactLogTime time.Time
 	compactLogStats := make(map[string]uint8)
@@ -37,7 +42,7 @@ func snapshotUploadForServer(ctx context.Context, server *state.Server, logger *
 				continue
 			}
 
-			err = uploadViaWebsocketOrHttp(ctx, server, logger, opts, data, s.SnapshotUuid, s.CollectedAt.AsTime(), false)
+			err = uploadViaWebsocketOrHttp(ctx, server, logger, opts, data, s.SnapshotUuid, s.CollectedAt.AsTime(), false, snapshotUploadTimeout)
 			if err != nil {
 				logger.PrintError("Error uploading snapshot: %s", err)
 			} else if !opts.TestRun {
@@ -50,7 +55,7 @@ func snapshotUploadForServer(ctx context.Context, server *state.Server, logger *
 				continue
 			}
 
-			err = uploadViaWebsocketOrHttp(ctx, server, logger, opts, data, s.SnapshotUuid, s.CollectedAt.AsTime(), false)
+			err = uploadViaWebsocketOrHttp(ctx, server, logger, opts, data, s.SnapshotUuid, s.CollectedAt.AsTime(), false, snapshotUploadTimeout)
 			if err != nil {
 				logger.PrintError("Error uploading snapshot: %s", err)
 				continue
@@ -92,7 +97,7 @@ func summarizeCounts(counts map[string]uint8) string {
 	return details
 }
 
-func uploadViaWebsocketOrHttp(ctx context.Context, server *state.Server, logger *util.Logger, opts state.CollectionOpts, data []byte, snapshotUUID string, collectedAt time.Time, compactSnapshot bool) error {
+func uploadViaWebsocketOrHttp(ctx context.Context, server *state.Server, logger *util.Logger, opts state.CollectionOpts, data []byte, snapshotUUID string, collectedAt time.Time, compactSnapshot bool, httpUploadTimeout time.Duration) error {
 	var compressedData bytes.Buffer
 	w := zlib.NewWriter(&compressedData)
 	w.Write(data)
@@ -104,11 +109,13 @@ func uploadViaWebsocketOrHttp(ctx context.Context, server *state.Server, logger 
 	} else if server.Config.APIRequireWebsocket {
 		return errors.New("Error uploading snapshot: WebSocket not connected")
 	} else {
-		s3Location, err := uploadSnapshot(ctx, server.Config.HTTPClientWithRetry, server.Grant.Load(), logger, compressedData.Bytes(), snapshotUUID)
+		uploadCtx, cancel := context.WithTimeout(ctx, httpUploadTimeout)
+		defer cancel()
+		s3Location, err := uploadSnapshot(uploadCtx, server.Config.HTTPClientWithRetry, server.Grant.Load(), logger, compressedData.Bytes(), snapshotUUID)
 		if err != nil {
 			return err
 		}
-		submitSnapshot(ctx, server, opts, logger, s3Location, collectedAt, compactSnapshot)
+		return submitSnapshot(uploadCtx, server, opts, logger, s3Location, collectedAt, compactSnapshot)
 	}
 	return nil
 }
