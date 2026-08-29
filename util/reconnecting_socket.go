@@ -94,9 +94,7 @@ func NewReconnectingSocket(ctx context.Context, logger *Logger, dialer websocket
 					w.startWait <- ErrorConnectRateLimited
 				}
 			case <-w.shutdown:
-				if w.Connected() {
-					w.closeConnection()
-				}
+				w.closeConnection(w.conn.Load())
 			}
 		}
 	}()
@@ -217,14 +215,14 @@ func (w *ReconnectingSocket) connect(ctx context.Context) (int, error) {
 		for {
 			select {
 			case <-connCtx.Done():
-				w.closeConnection()
+				w.closeConnection(conn)
 				return
 			case msg := <-w.write:
 				conn.SetWriteDeadline(time.Now().Add(socketWriteTimeout))
 				err := conn.WriteMessage(websocket.BinaryMessage, msg.data)
 				msg.result <- err
 				if err != nil {
-					w.closeConnection()
+					w.closeConnection(conn)
 					return
 				}
 			case <-ticker.C:
@@ -232,7 +230,7 @@ func (w *ReconnectingSocket) connect(ctx context.Context) (int, error) {
 				err := conn.WriteMessage(websocket.PingMessage, nil)
 				if err != nil {
 					w.logger.PrintWarning("Error sending websocket ping: %s", err)
-					w.closeConnection()
+					w.closeConnection(conn)
 					return
 				}
 			}
@@ -263,12 +261,17 @@ func (w *ReconnectingSocket) connect(ctx context.Context) (int, error) {
 	return connectStatus, nil
 }
 
-func (w *ReconnectingSocket) closeConnection() {
-	conn := w.conn.Swap(nil)
-	if conn != nil {
-		err := conn.Close()
-		if err != nil {
-			w.logger.PrintWarning("Error closing websocket: %s", err)
-		}
+// closeConnection - Closes the given connection, unless it was already closed,
+// or a newer connection has been established in the meantime
+//
+// Callers pass the connection they are working with, so a lingering goroutine
+// from an earlier connection can't tear down its replacement.
+func (w *ReconnectingSocket) closeConnection(conn *websocket.Conn) {
+	if conn == nil || !w.conn.CompareAndSwap(conn, nil) {
+		return
+	}
+	err := conn.Close()
+	if err != nil {
+		w.logger.PrintWarning("Error closing websocket: %s", err)
 	}
 }
