@@ -3,17 +3,13 @@ package output
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"encoding/xml"
 	"fmt"
 	"io"
-	"mime"
 	"mime/multipart"
 	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/pganalyze/collector/config"
@@ -106,28 +102,13 @@ func uploadToS3(ctx context.Context, httpClient *http.Client, S3URL string, S3Fi
 	return s3Resp.Key, nil
 }
 
-func submitSnapshot(ctx context.Context, server *state.Server, opts state.CollectionOpts, logger *util.Logger, s3Location string, collectedAt time.Time, compact bool) error {
-	requestURL := server.Config.APIBaseURL + "/v2/snapshots"
-
-	if opts.TestRun {
-		requestURL = server.Config.APIBaseURL + "/v2/snapshots/test"
-	} else if compact {
-		requestURL = server.Config.APIBaseURL + "/v2/snapshots/compact"
-	}
-
-	data := url.Values{
-		"s3_location":  {s3Location},
-		"collected_at": {fmt.Sprintf("%d", collectedAt.Unix())},
-	}
-
-	req, err := http.NewRequestWithContext(ctx, "POST", requestURL, strings.NewReader(data.Encode()))
+func markTestRun(ctx context.Context, server *state.Server, opts state.CollectionOpts) error {
+	req, err := http.NewRequestWithContext(ctx, "POST", server.Config.APIBaseURL+"/v2/snapshots/test", nil)
 	if err != nil {
 		return err
 	}
 
 	req.Header = config.APIHeaders(server.Config, opts.TestRun, opts.StartedAt)
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Add("Accept", "application/json,text/plain")
 
 	resp, err := server.Config.HTTPClientWithRetry.Do(req)
 	if err != nil {
@@ -135,39 +116,12 @@ func submitSnapshot(ctx context.Context, server *state.Server, opts state.Collec
 	}
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("Error when submitting: %s\n", body)
-	}
-
-	if opts.TestRun {
-		contentType, _, err := mime.ParseMediaType(resp.Header.Get("Content-Type"))
+		body, err := io.ReadAll(resp.Body)
 		if err != nil {
-			return fmt.Errorf("Error decoding response: %s\n", err)
+			return err
 		}
-
-		var msg string
-
-		if contentType == "application/json" {
-			var jsonBody struct {
-				Message string `json:"message"`
-			}
-			err = json.Unmarshal(body, &jsonBody)
-			if err != nil {
-				return fmt.Errorf("Error decoding response: %s\n", err)
-			}
-			msg = jsonBody.Message
-		} else {
-			msg = string(body)
-		}
-
-		if len(msg) > 0 {
-			logger.PrintInfo("  %s", msg)
-		}
+		return fmt.Errorf("Error when marking test run: %s", body)
 	}
 
 	return nil
