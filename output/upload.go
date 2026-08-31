@@ -105,7 +105,10 @@ func uploadViaWebsocketOrHttp(ctx context.Context, server *state.Server, logger 
 
 	if server.WebSocket.Connected() {
 		logger.PrintVerbose("Uploading snapshot to websocket")
-		server.WebSocket.Write <- compressedData.Bytes()
+		err := server.WebSocket.WriteMessage(ctx, compressedData.Bytes())
+		if err != nil {
+			return fmt.Errorf("Error writing to websocket: %w", err)
+		}
 	} else if server.Config.APIRequireWebsocket {
 		return errors.New("Error uploading snapshot: WebSocket not connected")
 	} else {

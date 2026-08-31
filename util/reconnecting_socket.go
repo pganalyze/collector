@@ -11,9 +11,12 @@ import (
 )
 
 type ReconnectingSocket struct {
-	// Channels shared with the caller
-	Read  chan []byte
-	Write chan []byte
+	// Channel shared with the caller for incoming messages
+	Read chan []byte
+
+	// Channel for handing outgoing messages to the writer goroutine
+	// (use WriteMessage to send out messages)
+	write chan socketWrite
 
 	// Initial arguments
 	dialer  websocket.Dialer
@@ -30,7 +33,30 @@ type ReconnectingSocket struct {
 	shutdown  chan struct{}
 }
 
+// socketWrite - A single outgoing message, together with the channel used to
+// hand the write's outcome back to the caller
+type socketWrite struct {
+	data []byte
+	// Must be buffered (capacity 1), so the writer goroutine never blocks
+	// handing back the result to a caller that has stopped waiting
+	result chan error
+}
+
 var ErrorConnectRateLimited = errors.New("Skipping connection attempt because of previous 4XX error")
+var ErrorWriteNotAccepted = errors.New("Timeout waiting for websocket connection to accept message")
+
+// Timeouts to detect dead connections (e.g. a NAT/firewall silently dropping
+// the TCP session), which would otherwise only fail after the kernel's TCP
+// retransmission timeout (which can exceed 15 minutes)
+const (
+	// Time allowed to write a message to the peer before considering the connection dead
+	socketWriteTimeout = 30 * time.Second
+	// Interval at which pings are sent when the connection is otherwise idle
+	socketPingInterval = 30 * time.Second
+	// Time allowed to receive any message (including pong replies) from the
+	// peer; must exceed socketPingInterval
+	socketPongTimeout = 70 * time.Second
+)
 
 // NewReconnectingSocket - Initializes a new reconnecting WebSocket
 //
@@ -38,7 +64,7 @@ var ErrorConnectRateLimited = errors.New("Skipping connection attempt because of
 func NewReconnectingSocket(ctx context.Context, logger *Logger, dialer websocket.Dialer, url string, headers map[string][]string, reconnectInterval time.Duration, clientErrorTimeout time.Duration) *ReconnectingSocket {
 	w := &ReconnectingSocket{
 		Read:      make(chan []byte),
-		Write:     make(chan []byte),
+		write:     make(chan socketWrite),
 		ctx:       ctx,
 		dialer:    dialer,
 		url:       url,
@@ -68,9 +94,7 @@ func NewReconnectingSocket(ctx context.Context, logger *Logger, dialer websocket
 					w.startWait <- ErrorConnectRateLimited
 				}
 			case <-w.shutdown:
-				if w.Connected() {
-					w.closeConnection()
-				}
+				w.closeConnection(w.conn.Load())
 			}
 		}
 	}()
@@ -125,6 +149,41 @@ func (w *ReconnectingSocket) Connect() error {
 	}
 }
 
+// WriteMessage - Sends the given data over the WebSocket, waiting for the write
+// to actually complete.
+//
+// Returns an error if the write failed, or if no connection was available to
+// take the message in time. If the context is canceled while waiting, ctx.Err()
+// is returned and the message may or may not have been sent.
+func (w *ReconnectingSocket) WriteMessage(ctx context.Context, data []byte) error {
+	// Must be buffered with capacity 1, see socketWrite definition
+	result := make(chan error, 1)
+
+	// A healthy writer goroutine picks the message up right away. Waiting longer
+	// than a single write deadline means there is no writer goroutine to take it
+	// (e.g. the connection was torn down after the caller checked Connected()).
+	// Give up in that case, instead of blocking until the next reconnect and then
+	// sending data that is stale by then.
+	timeout := time.NewTimer(socketWriteTimeout)
+	defer timeout.Stop()
+
+	select {
+	case w.write <- socketWrite{data: data, result: result}:
+	case <-timeout.C:
+		return ErrorWriteNotAccepted
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+
+	// Wait on the message send, bounded by the write deadline set by the writer goroutine
+	select {
+	case err := <-result:
+		return err
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
 // Disconnect - Shuts down the WebSocket connection
 //
 // Does nothing if the WebSocket is already disconnected. If needed the WebSocket
@@ -151,22 +210,37 @@ func (w *ReconnectingSocket) connect(ctx context.Context) (int, error) {
 	w.conn.Store(conn)
 	// Writer goroutine
 	go func() {
+		ticker := time.NewTicker(socketPingInterval)
+		defer ticker.Stop()
 		for {
 			select {
 			case <-connCtx.Done():
-				w.closeConnection()
+				w.closeConnection(conn)
 				return
-			case data := <-w.Write:
-				err = conn.WriteMessage(websocket.BinaryMessage, data)
+			case msg := <-w.write:
+				conn.SetWriteDeadline(time.Now().Add(socketWriteTimeout))
+				err := conn.WriteMessage(websocket.BinaryMessage, msg.data)
+				msg.result <- err
 				if err != nil {
-					w.logger.PrintError("Error writing to websocket: %s", err)
-					w.closeConnection()
+					w.closeConnection(conn)
+					return
+				}
+			case <-ticker.C:
+				conn.SetWriteDeadline(time.Now().Add(socketWriteTimeout))
+				err := conn.WriteMessage(websocket.PingMessage, nil)
+				if err != nil {
+					w.logger.PrintWarning("Error sending websocket ping: %s", err)
+					w.closeConnection(conn)
 					return
 				}
 			}
 		}
 	}()
 	// Reader goroutine
+	conn.SetReadDeadline(time.Now().Add(socketPongTimeout))
+	conn.SetPongHandler(func(string) error {
+		return conn.SetReadDeadline(time.Now().Add(socketPongTimeout))
+	})
 	go func() {
 		for {
 			_, data, err := conn.ReadMessage()
@@ -179,6 +253,7 @@ func (w *ReconnectingSocket) connect(ctx context.Context) (int, error) {
 				cancelConn()
 				return
 			}
+			conn.SetReadDeadline(time.Now().Add(socketPongTimeout))
 
 			w.Read <- data
 		}
@@ -186,12 +261,17 @@ func (w *ReconnectingSocket) connect(ctx context.Context) (int, error) {
 	return connectStatus, nil
 }
 
-func (w *ReconnectingSocket) closeConnection() {
-	conn := w.conn.Swap(nil)
-	if conn != nil {
-		err := conn.Close()
-		if err != nil {
-			w.logger.PrintWarning("Error closing websocket: %s", err)
-		}
+// closeConnection - Closes the given connection, unless it was already closed,
+// or a newer connection has been established in the meantime
+//
+// Callers pass the connection they are working with, so a lingering goroutine
+// from an earlier connection can't tear down its replacement.
+func (w *ReconnectingSocket) closeConnection(conn *websocket.Conn) {
+	if conn == nil || !w.conn.CompareAndSwap(conn, nil) {
+		return
+	}
+	err := conn.Close()
+	if err != nil {
+		w.logger.PrintWarning("Error closing websocket: %s", err)
 	}
 }
