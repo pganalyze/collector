@@ -3,6 +3,7 @@ package output
 import (
 	"log"
 	"os"
+	"strings"
 	"testing"
 	"unicode/utf8"
 
@@ -49,10 +50,13 @@ func TestSanitizeInvalidUTF8Map(t *testing.T) {
 		t.Fatal("expected raw proto.Marshal to reject the invalid UTF-8 map entry")
 	}
 
-	sanitizeInvalidUTF8(si.ProtoReflect())
+	fixed := sanitizeInvalidUTF8("", si.ProtoReflect())
 
 	if _, err := proto.Marshal(si); err != nil {
 		t.Fatalf("marshal should succeed after scrub, got: %v", err)
+	}
+	if len(fixed) == 0 || !containsPathPrefix(fixed, "resource_tags") {
+		t.Errorf("expected reported paths to include resource_tags, got %v", fixed)
 	}
 	if len(si.ResourceTags) != 2 {
 		t.Errorf("expected 2 map entries after scrub, got %d", len(si.ResourceTags))
@@ -65,4 +69,25 @@ func TestSanitizeInvalidUTF8Map(t *testing.T) {
 			t.Errorf("map value still invalid: %q", v)
 		}
 	}
+}
+
+func TestSanitizeInvalidUTF8ReportsNestedPath(t *testing.T) {
+	fs := &snapshot.FullSnapshot{
+		Settings: []*snapshot.Setting{
+			{Name: "pgsodium.getkey_script", BootValue: &snapshot.NullString{Valid: true, Value: bad}},
+		},
+	}
+	fixed := sanitizeInvalidUTF8("", fs.ProtoReflect())
+	if !containsPathPrefix(fixed, "settings[0].boot_value.value") {
+		t.Errorf("expected reported path settings[0].boot_value.value, got %v", fixed)
+	}
+}
+
+func containsPathPrefix(paths []string, prefix string) bool {
+	for _, p := range paths {
+		if strings.HasPrefix(p, prefix) {
+			return true
+		}
+	}
+	return false
 }

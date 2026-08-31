@@ -9,13 +9,26 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-// when a setting value isn't valid UTF-8 (originally hit on pgsodium "boot_val") and therefore
-// can't be marshalled in a protobuf string field, replace with this consistent placeholder value
-// so that the snapshot can still be sent and we don't trigger value change logic every time
-// the non-UTF8 value changes.
+// maskedSettingNames lists GUCs whose values are known to be unstable or not
+// meaningfully representable; their values are always replaced with a constant,
+// regardless of the current bytes. Masking by name keeps the value from flipping
+// snapshot-to-snapshot (which would churn config-change tracking) and avoids
+// shipping unstable data and increased noise. Add others here as we run into them.
+var maskedSettingNames = map[string]bool{
+	"pgsodium.getkey_script": true,
+}
+
+const settingValueMasked = "<masked value>"
+
+// settingValueNonUTF8 is the fallback for any *other* setting value that isn't valid
+// UTF-8 (and so can't be put in a protobuf string field), so the snapshot can still be
+// sent rather than dropped.
 const settingValueNonUTF8 = "<non-utf8 value>"
 
-func settingValue(v string) string {
+func settingValue(name, v string) string {
+	if maskedSettingNames[name] {
+		return settingValueMasked
+	}
 	if !utf8.ValidString(v) {
 		return settingValueNonUTF8
 	}
@@ -137,16 +150,16 @@ func transformPostgresConfig(s snapshot.FullSnapshot, transientState state.Trans
 		info := snapshot.Setting{Name: setting.Name}
 
 		if setting.CurrentValue.Valid {
-			info.CurrentValue = settingValue(setting.CurrentValue.String)
+			info.CurrentValue = settingValue(setting.Name, setting.CurrentValue.String)
 		}
 		if setting.Unit.Valid {
 			info.Unit = &snapshot.NullString{Valid: true, Value: setting.Unit.String}
 		}
 		if setting.BootValue.Valid {
-			info.BootValue = &snapshot.NullString{Valid: true, Value: settingValue(setting.BootValue.String)}
+			info.BootValue = &snapshot.NullString{Valid: true, Value: settingValue(setting.Name, setting.BootValue.String)}
 		}
 		if setting.ResetValue.Valid {
-			info.ResetValue = &snapshot.NullString{Valid: true, Value: settingValue(setting.ResetValue.String)}
+			info.ResetValue = &snapshot.NullString{Valid: true, Value: settingValue(setting.Name, setting.ResetValue.String)}
 		}
 		if setting.Source.Valid {
 			info.Source = &snapshot.NullString{Valid: true, Value: setting.Source.String}

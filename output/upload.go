@@ -79,42 +79,46 @@ func snapshotUploadForServer(ctx context.Context, server *state.Server, logger *
 	}
 }
 
-// The Unicode replacement character (U+FFFD) substituted for runs
-// of invalid bytes, so an unrepresentable field becomes a valid (if lossy) string.
-const utf8Replacement = "\uFFFD"
+const utf8Replacement = util.InvalidUTF8Replacement
 
-// Marshal a snapshot. If it fails due to invalid UTF-8 in a string field, scrub
-// the offending bytes and retry once.
+// Marshal a snapshot. If it fails due to invalid UTF-8 in a string field, scrub the
+// offending bytes and retry once, logging which field(s) were affected. Reporting the
+// paths keeps this from silently masking problems: an unexpected field showing up here
+// is a signal to handle it tactically (e.g. add the setting to the denylist).
 func marshalSnapshot(m proto.Message, logger *util.Logger) ([]byte, error) {
 	data, err := proto.Marshal(m)
 	if err != nil {
-		sanitizeInvalidUTF8(m.ProtoReflect())
+		fixed := sanitizeInvalidUTF8("", m.ProtoReflect())
 		data, err = proto.Marshal(m)
-		if err == nil {
-			logger.PrintVerbose("Sanitized invalid UTF-8 in a snapshot string field before marshaling")
+		if err == nil && len(fixed) > 0 {
+			logger.PrintWarning("Replaced invalid UTF-8 to allow snapshot marshaling; affected field(s): %s", strings.Join(fixed, ", "))
 		}
 	}
 	return data, err
 }
 
-// Recursively replaces invalid UTF-8 in every string field, list element, and map key/value
-// of a proto message. Mutations to scalar string fields are deferred until after the range,
-// since protoreflect only permits mutating the current field's own value during iteration.
-func sanitizeInvalidUTF8(msg protoreflect.Message) {
+// Recursively replaces invalid UTF-8 in every string field, list element, and map
+// key/value of a proto message, returning the paths it fixed. Mutations to scalar string
+// fields are deferred until after the range, since protoreflect only permits mutating the
+// current field's own value during iteration.
+func sanitizeInvalidUTF8(prefix string, msg protoreflect.Message) []string {
+	var fixed []string
 	var fixFds []protoreflect.FieldDescriptor
 	var fixVals []string
 	msg.Range(func(fd protoreflect.FieldDescriptor, v protoreflect.Value) bool {
+		name := prefix + string(fd.Name())
 		switch {
 		case fd.IsList():
-			sanitizeUTF8List(fd, v.List())
+			fixed = append(fixed, sanitizeUTF8List(name, fd, v.List())...)
 		case fd.IsMap():
-			sanitizeUTF8Map(fd, v.Map())
+			fixed = append(fixed, sanitizeUTF8Map(name, fd, v.Map())...)
 		case fd.Kind() == protoreflect.MessageKind || fd.Kind() == protoreflect.GroupKind:
-			sanitizeInvalidUTF8(v.Message())
+			fixed = append(fixed, sanitizeInvalidUTF8(name+".", v.Message())...)
 		case fd.Kind() == protoreflect.StringKind:
 			if s := v.String(); !utf8.ValidString(s) {
 				fixFds = append(fixFds, fd)
 				fixVals = append(fixVals, strings.ToValidUTF8(s, utf8Replacement))
+				fixed = append(fixed, name)
 			}
 		}
 		return true
@@ -122,24 +126,29 @@ func sanitizeInvalidUTF8(msg protoreflect.Message) {
 	for i, fd := range fixFds {
 		msg.Set(fd, protoreflect.ValueOfString(fixVals[i]))
 	}
+	return fixed
 }
 
-func sanitizeUTF8List(fd protoreflect.FieldDescriptor, list protoreflect.List) {
+func sanitizeUTF8List(name string, fd protoreflect.FieldDescriptor, list protoreflect.List) []string {
+	var fixed []string
 	switch fd.Kind() {
 	case protoreflect.MessageKind, protoreflect.GroupKind:
 		for i := 0; i < list.Len(); i++ {
-			sanitizeInvalidUTF8(list.Get(i).Message())
+			fixed = append(fixed, sanitizeInvalidUTF8(fmt.Sprintf("%s[%d].", name, i), list.Get(i).Message())...)
 		}
 	case protoreflect.StringKind:
 		for i := 0; i < list.Len(); i++ {
 			if s := list.Get(i).String(); !utf8.ValidString(s) {
 				list.Set(i, protoreflect.ValueOfString(strings.ToValidUTF8(s, utf8Replacement)))
+				fixed = append(fixed, fmt.Sprintf("%s[%d]", name, i))
 			}
 		}
 	}
+	return fixed
 }
 
-func sanitizeUTF8Map(fd protoreflect.FieldDescriptor, m protoreflect.Map) {
+func sanitizeUTF8Map(name string, fd protoreflect.FieldDescriptor, m protoreflect.Map) []string {
+	var fixed []string
 	valFd := fd.MapValue()
 	valIsMessage := valFd.Kind() == protoreflect.MessageKind || valFd.Kind() == protoreflect.GroupKind
 	valIsString := valFd.Kind() == protoreflect.StringKind
@@ -148,7 +157,7 @@ func sanitizeUTF8Map(fd protoreflect.FieldDescriptor, m protoreflect.Map) {
 	var fixKeys []protoreflect.MapKey
 	m.Range(func(mk protoreflect.MapKey, mv protoreflect.Value) bool {
 		if valIsMessage {
-			sanitizeInvalidUTF8(mv.Message())
+			fixed = append(fixed, sanitizeInvalidUTF8(fmt.Sprintf("%s[%v].", name, mk.Interface()), mv.Message())...)
 		}
 		badVal := valIsString && !utf8.ValidString(mv.String())
 		badKey := keyIsString && !utf8.ValidString(mk.String())
@@ -161,14 +170,17 @@ func sanitizeUTF8Map(fd protoreflect.FieldDescriptor, m protoreflect.Map) {
 		val := m.Get(mk)
 		if valIsString && !utf8.ValidString(val.String()) {
 			val = protoreflect.ValueOfString(strings.ToValidUTF8(val.String(), utf8Replacement))
+			fixed = append(fixed, fmt.Sprintf("%s[%v]", name, mk.Interface()))
 		}
 		if keyIsString && !utf8.ValidString(mk.String()) {
+			fixed = append(fixed, fmt.Sprintf("%s[key %q]", name, mk.String()))
 			m.Clear(mk)
 			m.Set(protoreflect.ValueOfString(strings.ToValidUTF8(mk.String(), utf8Replacement)).MapKey(), val)
 		} else {
 			m.Set(mk, val)
 		}
 	}
+	return fixed
 }
 
 func summarizeCounts(counts map[string]uint8) string {
