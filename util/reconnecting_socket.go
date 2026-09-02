@@ -191,7 +191,12 @@ func (w *ReconnectingSocket) WriteMessage(ctx context.Context, data []byte) erro
 func (w *ReconnectingSocket) Disconnect() {
 	w.requested.Store(false)
 	if w.Connected() {
-		w.shutdown <- struct{}{}
+		// The channel reader is stopped once the context is canceled, so we must
+		// not block on the send when the collector is shutting down or reloading
+		select {
+		case w.shutdown <- struct{}{}:
+		case <-w.ctx.Done():
+		}
 	}
 }
 
