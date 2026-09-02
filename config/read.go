@@ -528,7 +528,7 @@ func APIHeaders(conf ServerConfig, testRun bool, startedAt time.Time) map[string
 }
 
 // CreateEC2IMDSHTTPClient - Create HTTP client for EC2 instance meta data service (IMDS)
-func CreateEC2IMDSHTTPClient(conf ServerConfig) *http.Client {
+func CreateEC2IMDSHTTPClient() *http.Client {
 	// Match https://github.com/aws/aws-sdk-go/pull/3066
 	return &http.Client{
 		Timeout: 1 * time.Second,

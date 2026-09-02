@@ -14,61 +14,32 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
-func findRdsClusterByIdentifier(ctx context.Context, clusterIdentifier string, client *rds.Client) (*rdstypes.DBCluster, error) {
-	resp, err := client.DescribeDBClusters(ctx, &rds.DescribeDBClustersInput{
-		DBClusterIdentifier: aws.String(clusterIdentifier),
-	})
+func findRdsInstanceByHostAndPort(ctx context.Context, host string, port int, account *Account) (*rdstypes.DBInstance, error) {
+	instances, err := account.GetAllRdsInstances(ctx)
 	if err != nil {
 		return nil, err
 	}
-	if len(resp.DBClusters) == 0 {
-		return nil, fmt.Errorf("Unexpected empty result set for DescribeDBClusters with DBClusterIdentifier = \"%s\"", clusterIdentifier)
-	}
-	return &resp.DBClusters[0], nil
-}
-
-func findRdsInstanceByIdentifier(ctx context.Context, instanceIdentifier string, client *rds.Client) (*rdstypes.DBInstance, error) {
-	resp, err := client.DescribeDBInstances(ctx, &rds.DescribeDBInstancesInput{
-		DBInstanceIdentifier: aws.String(instanceIdentifier),
-	})
-	if err != nil {
-		return nil, err
-	}
-	if len(resp.DBInstances) == 0 {
-		return nil, fmt.Errorf("Unexpected empty result set for DescribeDBInstances with DBInstanceIdentifier = \"%s\"", instanceIdentifier)
-	}
-	return &resp.DBInstances[0], nil
-}
-
-func findRdsInstanceByHostAndPort(ctx context.Context, host string, port int, client *rds.Client) (*rdstypes.DBInstance, error) {
-	resp, err := client.DescribeDBInstances(ctx, &rds.DescribeDBInstancesInput{
-		MaxRecords: aws.Int32(100),
-	})
-	if err != nil {
-		return nil, err
-	}
-	for i, instance := range resp.DBInstances {
+	for i, instance := range instances {
 		if instance.Endpoint != nil &&
 			instance.Endpoint.Address != nil &&
 			instance.Endpoint.Port != nil &&
 			*instance.Endpoint.Address == host &&
 			int(*instance.Endpoint.Port) == port {
-			return &resp.DBInstances[i], nil
+			return &instances[i], nil
 		}
 	}
 	return nil, fmt.Errorf("Failed to find RDS instance using endpoint-based search for host \"%s\" and port %d", host, port)
 }
 
 // FindRdsInstance finds and returns an RDS DBInstance for the given server config.
-func FindRdsInstance(ctx context.Context, serverCfg config.ServerConfig, awsCfg aws.Config) (*rdstypes.DBInstance, error) {
-	client := NewRdsClient(awsCfg, serverCfg)
-
+// The result is shared with other callers and must not be modified.
+func FindRdsInstance(ctx context.Context, serverCfg config.ServerConfig, account *Account, logger *util.Logger) (*rdstypes.DBInstance, error) {
 	if serverCfg.AwsDbInstanceID != "" {
-		return findRdsInstanceByIdentifier(ctx, serverCfg.AwsDbInstanceID, client)
+		return account.GetRdsInstance(ctx, serverCfg.AwsDbInstanceID, logger)
 	}
 
 	if serverCfg.AwsDbClusterID != "" {
-		cluster, err := findRdsClusterByIdentifier(ctx, serverCfg.AwsDbClusterID, client)
+		cluster, err := account.GetRdsCluster(ctx, serverCfg.AwsDbClusterID, logger)
 		if err != nil {
 			return nil, err
 		}
@@ -94,13 +65,13 @@ func FindRdsInstance(ctx context.Context, serverCfg config.ServerConfig, awsCfg 
 		if instanceID == "" {
 			return nil, fmt.Errorf("Could not locate usable instance ID for cluster \"%s\" (readonly = %t)", serverCfg.AwsDbClusterID, serverCfg.AwsDbClusterReadonly)
 		}
-		return findRdsInstanceByIdentifier(ctx, instanceID, client)
+		return account.GetRdsInstance(ctx, instanceID, logger)
 	}
 
 	// If neither instance ID nor cluster ID were specified, but we still have
 	// an RDS system type, attempt to find the instance based on the hostname
 	// (this is a long shot, but there are some cases where this helps)
-	return findRdsInstanceByHostAndPort(ctx, serverCfg.GetDbHost(), serverCfg.GetDbPortOrDefault(), client)
+	return findRdsInstanceByHostAndPort(ctx, serverCfg.GetDbHost(), serverCfg.GetDbPortOrDefault(), account)
 }
 
 // GetRdsParameter looks up a single named parameter from an RDS parameter group.
@@ -134,10 +105,10 @@ type RdsCloudWatchReader struct {
 	logger   *util.Logger
 }
 
-// NewRdsCloudWatchReader creates an RdsCloudWatchReader backed by a CloudWatch client.
-func NewRdsCloudWatchReader(awsCfg aws.Config, serverCfg config.ServerConfig, logger *util.Logger, instance string, cluster string) RdsCloudWatchReader {
+// NewRdsCloudWatchReader creates an RdsCloudWatchReader backed by the account's shared CloudWatch client.
+func NewRdsCloudWatchReader(account *Account, logger *util.Logger, instance string, cluster string) RdsCloudWatchReader {
 	return RdsCloudWatchReader{
-		svc:      NewCloudWatchClient(awsCfg, serverCfg),
+		svc:      account.CloudWatch,
 		instance: instance,
 		cluster:  cluster,
 		logger:   logger,

@@ -3,7 +3,6 @@ package rds
 import (
 	"bufio"
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -24,13 +23,13 @@ func DownloadLogFiles(ctx context.Context, server *state.Server, opts state.Coll
 	var logFiles []state.LogFile
 	var samples []state.PostgresQuerySample
 
-	awsCfg, err := awsutil.GetAwsConfig(ctx, server.Config)
+	account, err := awsutil.GetAccount(ctx, server.Config)
 	if err != nil {
 		err = fmt.Errorf("Error getting session: %s", err)
 		return server.LogPrevState, nil, nil, err
 	}
 
-	identifier, err := getAwsDbInstanceID(ctx, server.Config, awsCfg)
+	identifier, err := getAwsDbInstanceID(ctx, server.Config, account, logger)
 	if err != nil {
 		return server.LogPrevState, nil, nil, err
 	}
@@ -54,7 +53,7 @@ func DownloadLogFiles(ctx context.Context, server *state.Server, opts state.Coll
 		FileLastWritten:      &lastWritten,
 	}
 
-	rdsSvc := awsutil.NewRdsClient(awsCfg, server.Config)
+	rdsSvc := account.RDS
 
 	resp, err := rdsSvc.DescribeDBLogFiles(ctx, params)
 	if err != nil {
@@ -135,10 +134,8 @@ func DownloadLogFiles(ctx context.Context, server *state.Server, opts state.Coll
 	return psl, logFiles, samples, err
 }
 
-var DescribeDBClustersErrorCache *util.TTLMap = util.NewTTLMap(10 * 60)
-
 // getAwsDbInstanceID - Finds actual instance ID from Aurora cluster endpoint names in order to download logs
-func getAwsDbInstanceID(ctx context.Context, config config.ServerConfig, awsCfg aws.Config) (string, error) {
+func getAwsDbInstanceID(ctx context.Context, config config.ServerConfig, account *awsutil.Account, logger *util.Logger) (string, error) {
 	if config.AwsDbInstanceID != "" {
 		return config.AwsDbInstanceID, nil
 	}
@@ -147,19 +144,9 @@ func getAwsDbInstanceID(ctx context.Context, config config.ServerConfig, awsCfg 
 		return "", fmt.Errorf("Neither AWS instance ID or cluster ID are specified - skipping log download")
 	}
 
-	// Remember when an Aurora instance find failed previously to avoid failing on the same
-	// DescribeDBClusters call again and again. Note that we don't cache successes because
-	// we want to react quickly to failover events.
-	cachedError := DescribeDBClustersErrorCache.Get(config.AwsDbClusterID)
-	if cachedError != "" {
-		return "", errors.New(cachedError)
-	}
-
-	instance, err := awsutil.FindRdsInstance(ctx, config, awsCfg)
+	instance, err := awsutil.FindRdsInstance(ctx, config, account, logger)
 	if err != nil {
-		err = fmt.Errorf("Error finding instance for cluster ID \"%s\": %s", config.AwsDbClusterID, err)
-		DescribeDBClustersErrorCache.Put(config.AwsDbClusterID, err.Error())
-		return "", err
+		return "", fmt.Errorf("Error finding instance for cluster ID \"%s\": %s", config.AwsDbClusterID, err)
 	}
 
 	return *instance.DBInstanceIdentifier, nil
