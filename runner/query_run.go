@@ -38,37 +38,53 @@ func SetupQueryRunnerForAllServers(ctx context.Context, servers []*state.Server,
 }
 
 func run(ctx context.Context, server *state.Server, collectionOpts state.CollectionOpts, logger *util.Logger) {
-	for id, query := range server.QueryRuns {
-		if !query.FinishedAt.IsZero() {
-			continue
-		}
-
+	for _, query := range pendingQueryRuns(server) {
 		server.QueryRunsMutex.Lock()
-		server.QueryRuns[id].StartedAt = time.Now()
+		query.StartedAt = time.Now()
 		server.QueryRunsMutex.Unlock()
 		logger.PrintVerbose("Query run %d starting: %s", query.Id, query.QueryText)
 
-		result, err := runQueryOnDatabase(ctx, server, collectionOpts, logger, id, query)
+		result, err := runQueryOnDatabase(ctx, server, collectionOpts, logger, query)
 		if err != nil {
 			server.QueryRunsMutex.Lock()
-			server.QueryRuns[id].FinishedAt = time.Now()
-			server.QueryRuns[id].Error = err.Error()
+			query.FinishedAt = time.Now()
+			query.Error = err.Error()
 			server.QueryRunsMutex.Unlock()
 			continue
 		}
 
 		server.QueryRunsMutex.Lock()
-		server.QueryRuns[id].FinishedAt = time.Now()
-		server.QueryRuns[id].Result = result
+		query.FinishedAt = time.Now()
+		query.Result = result
+		queryRun := *query
 		server.QueryRunsMutex.Unlock()
 
 		// Activity snapshots will eventually send the query run result, but to reduce latency
 		// we also send a query run snapshot immediately after the query has finished.
-		output.SubmitQueryRunSnapshot(ctx, server, collectionOpts, logger, *server.QueryRuns[id])
+		output.SubmitQueryRunSnapshot(ctx, server, collectionOpts, logger, queryRun)
 	}
 }
 
-func runQueryOnDatabase(ctx context.Context, server *state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, id int64, query *state.QueryRun) (string, error) {
+// Returns the query runs that have not been run yet
+//
+// The map must be read whilst holding the mutex, since the WebSocket message handler
+// adds new query runs to it concurrently.
+func pendingQueryRuns(server *state.Server) []*state.QueryRun {
+	var pending []*state.QueryRun
+
+	server.QueryRunsMutex.Lock()
+	defer server.QueryRunsMutex.Unlock()
+
+	for _, query := range server.QueryRuns {
+		if query.FinishedAt.IsZero() {
+			pending = append(pending, query)
+		}
+	}
+
+	return pending
+}
+
+func runQueryOnDatabase(ctx context.Context, server *state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, query *state.QueryRun) (string, error) {
 	if query.Type != pganalyze_collector.QueryRunType_EXPLAIN {
 		logger.PrintVerbose("Unhandled query run type %d for %d", query.Type, query.Id)
 		return "", errors.New("Unhandled query run type")
@@ -97,7 +113,7 @@ func runQueryOnDatabase(ctx context.Context, server *state.Server, collectionOpt
 		return "", err
 	}
 	server.QueryRunsMutex.Lock()
-	server.QueryRuns[id].BackendPid = pid
+	query.BackendPid = pid
 	server.QueryRunsMutex.Unlock()
 
 	for name, value := range query.PostgresSettings {
