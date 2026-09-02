@@ -42,7 +42,7 @@ func snapshotUploadForServer(ctx context.Context, server *state.Server, logger *
 				continue
 			}
 
-			err = uploadViaWebsocketOrHttp(ctx, server, logger, opts, data, s.SnapshotUuid, s.CollectedAt.AsTime(), false, snapshotUploadTimeout)
+			err = uploadViaWebsocketOrHttp(ctx, server, logger, opts, data, s.SnapshotUuid, snapshotUploadTimeout)
 			if err != nil {
 				logger.PrintError("Error uploading snapshot: %s", err)
 			} else if !opts.TestRun {
@@ -55,7 +55,7 @@ func snapshotUploadForServer(ctx context.Context, server *state.Server, logger *
 				continue
 			}
 
-			err = uploadViaWebsocketOrHttp(ctx, server, logger, opts, data, s.SnapshotUuid, s.CollectedAt.AsTime(), false, snapshotUploadTimeout)
+			err = uploadViaWebsocketOrHttp(ctx, server, logger, opts, data, s.SnapshotUuid, snapshotUploadTimeout)
 			if err != nil {
 				logger.PrintError("Error uploading snapshot: %s", err)
 				continue
@@ -97,7 +97,7 @@ func summarizeCounts(counts map[string]uint8) string {
 	return details
 }
 
-func uploadViaWebsocketOrHttp(ctx context.Context, server *state.Server, logger *util.Logger, opts state.CollectionOpts, data []byte, snapshotUUID string, collectedAt time.Time, compactSnapshot bool, httpUploadTimeout time.Duration) error {
+func uploadViaWebsocketOrHttp(ctx context.Context, server *state.Server, logger *util.Logger, opts state.CollectionOpts, data []byte, snapshotUUID string, httpUploadTimeout time.Duration) error {
 	var compressedData bytes.Buffer
 	w := zlib.NewWriter(&compressedData)
 	w.Write(data)
@@ -114,11 +114,13 @@ func uploadViaWebsocketOrHttp(ctx context.Context, server *state.Server, logger 
 	} else {
 		uploadCtx, cancel := context.WithTimeout(ctx, httpUploadTimeout)
 		defer cancel()
-		s3Location, err := uploadSnapshot(uploadCtx, server.Config.HTTPClientWithRetry, server.Grant.Load(), logger, compressedData.Bytes(), snapshotUUID)
+		_, err := uploadSnapshot(uploadCtx, server.Config.HTTPClientWithRetry, server.Grant.Load(), logger, compressedData.Bytes(), snapshotUUID)
 		if err != nil {
 			return err
 		}
-		return submitSnapshot(uploadCtx, server, opts, logger, s3Location, collectedAt, compactSnapshot)
+		if opts.TestRun {
+			return markTestRun(uploadCtx, server, opts, logger)
+		}
 	}
 	return nil
 }
