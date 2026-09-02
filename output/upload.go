@@ -80,17 +80,24 @@ func snapshotUploadForServer(ctx context.Context, server *state.Server, logger *
 	}
 }
 
-// Marshal a snapshot. proto.Marshal rejects strings that aren't valid UTF-8, but the
-// error it returns doesn't say which field was affected. To make that tractable to
-// track down, walk the snapshot on failure and include the offending paths.
+// Marshal a snapshot, annotating any error with the paths of invalid UTF-8 fields.
 func marshalSnapshot(m proto.Message) ([]byte, error) {
 	data, err := proto.Marshal(m)
-	if err != nil {
-		if paths := findInvalidUTF8(m); len(paths) > 0 {
-			err = fmt.Errorf("%w (in %s)", err, strings.Join(paths, ", "))
-		}
+	return data, annotateInvalidUTF8(err, m)
+}
+
+// proto.Marshal and protojson.Marshal reject strings that aren't valid UTF-8, but the
+// error they return doesn't say which field was affected. To make that tractable to
+// track down (and fix at the source, e.g. by adding a setting to the denylist in
+// output/transform), walk the message on failure and append the offending paths.
+func annotateInvalidUTF8(err error, m proto.Message) error {
+	if err == nil {
+		return nil
 	}
-	return data, err
+	if paths := findInvalidUTF8(m); len(paths) > 0 {
+		return fmt.Errorf("%w (in %s)", err, strings.Join(paths, ", "))
+	}
+	return err
 }
 
 // Returns the path of every string field, list element, map value and map key in the
