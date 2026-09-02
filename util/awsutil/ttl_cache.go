@@ -37,6 +37,10 @@ type ttlCacheEntry[T any] struct {
 // all servers in the account, so one server's cancellation or deadline must
 // not fail - or worse, get cached for - the others. Each caller still honors
 // its own context while waiting.
+//
+// Errors served from the cache (as opposed to those returned by the fetch
+// itself) are marked as such, so log output makes clear that a fix of the
+// underlying problem may not be reflected until the cache entry expires.
 func (c *ttlCache[T]) get(ctx context.Context, key string, fetch func(context.Context) (T, error)) (T, error) {
 	c.mutex.Lock()
 	if c.entries == nil {
@@ -48,7 +52,10 @@ func (c *ttlCache[T]) get(ctx context.Context, key string, fetch func(context.Co
 		case <-entry.done: // Completed fetch, check for expiry
 			if time.Since(entry.fetchedAt) < cacheTTL {
 				c.mutex.Unlock()
-				return entry.value, entry.err
+				if entry.err != nil {
+					return entry.value, fmt.Errorf("%w (cached error, retries every %.0fs)", entry.err, cacheTTL.Seconds())
+				}
+				return entry.value, nil
 			}
 			// Expired, fall through and fetch again
 		default: // Fetch in progress, wait for its result
@@ -67,6 +74,10 @@ func (c *ttlCache[T]) get(ctx context.Context, key string, fetch func(context.Co
 
 	entry = &ttlCacheEntry[T]{done: make(chan struct{})}
 	c.entries[key] = entry
+
+	// Unlock now so that other callers that are also interested in the result
+	// can start waiting on the done channel (synchronized by the mutex lock at
+	// the start of the function)
 	c.mutex.Unlock()
 
 	go func() {

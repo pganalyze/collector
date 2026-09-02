@@ -144,9 +144,6 @@ func getAwsDbInstanceID(ctx context.Context, config config.ServerConfig, account
 		return "", fmt.Errorf("Neither AWS instance ID or cluster ID are specified - skipping log download")
 	}
 
-	// Errors are cached (briefly) by the account's describe cache, so a failing
-	// DescribeDBClusters call is not repeated on every log download, while
-	// still reacting quickly to failover events
 	instance, err := awsutil.FindRdsInstance(ctx, config, account, logger)
 	if err != nil {
 		return "", fmt.Errorf("Error finding instance for cluster ID \"%s\": %s", config.AwsDbClusterID, err)

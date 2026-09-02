@@ -27,7 +27,7 @@ func TestTtlCacheCachesValues(t *testing.T) {
 		}
 	}
 
-	if fetches != 1 {
+	if atomic.LoadInt32(&fetches) != 1 {
 		t.Errorf("expected 1 fetch, got %d", fetches)
 	}
 }
@@ -42,8 +42,14 @@ func TestTtlCacheCachesErrors(t *testing.T) {
 			atomic.AddInt32(&fetches, 1)
 			return "", fetchErr
 		})
-		if err != fetchErr {
+		if !errors.Is(err, fetchErr) {
 			t.Fatalf("unexpected error: %v", err)
+		}
+		if i == 0 && err != fetchErr {
+			t.Errorf("expected first caller to receive the fetch error as-is, got %v", err)
+		}
+		if i > 0 && !strings.Contains(err.Error(), "cached error") {
+			t.Errorf("expected error served from cache to be marked as cached, got %v", err)
 		}
 	}
 

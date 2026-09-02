@@ -19,7 +19,7 @@ import (
 // and API clients (and their cached API results).
 //
 // Note that this does not include "Account ID" because we typically don't know
-// that directly in the config, but instead its inferred from the context
+// that directly in the config, but instead it's inferred from the context
 // (metadata service, credentials, assume role, etc).
 type AccountKey struct {
 	Region                    string
@@ -96,7 +96,7 @@ func GetAccount(ctx context.Context, cfg config.ServerConfig) (*Account, error) 
 		return account, nil
 	}
 
-	awsCfg, err := GetAwsConfig(ctx, cfg)
+	awsCfg, err := getAwsConfig(ctx, key, cfg.HTTPClient)
 	if err != nil {
 		return nil, err
 	}
