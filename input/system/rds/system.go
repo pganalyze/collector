@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -13,10 +14,44 @@ import (
 	"github.com/pganalyze/collector/util/awsutil"
 )
 
-// Aurora storage is automatically extended up to 128TB, so report that as
-// total disk space since CloudWatch does not expose the actual limit for
-// Aurora PostgreSQL.
-const AuroraMaxStorage = 128 * 1024 * 1024 * 1024 * 1024
+// Aurora storage is automatically extended up to a version-dependent maximum,
+// so report that as total disk space since CloudWatch does not expose it.
+// See https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/CHAP_Limits.html#RDS_Limits.FileSize.Aurora
+const (
+	auroraMaxStorage128TiB uint64 = 128 * 1024 * 1024 * 1024 * 1024
+	auroraMaxStorage256TiB uint64 = 256 * 1024 * 1024 * 1024 * 1024
+)
+
+// First minor version per major that raised the limit from 128 to 256 TiB (18+ always has 256 TiB)
+var auroraMinMinorFor256TiB = map[int]int{
+	15: 13,
+	16: 9,
+	17: 5,
+}
+
+// AuroraMaxStorage returns the maximum cluster volume size in bytes for an
+// Aurora PostgreSQL engine version (e.g. "16.9"), defaulting to 128 TiB.
+func AuroraMaxStorage(engineVersion string) uint64 {
+	parts := strings.SplitN(engineVersion, ".", 3)
+	if len(parts) < 2 {
+		return auroraMaxStorage128TiB
+	}
+	major, err := strconv.Atoi(parts[0])
+	if err != nil {
+		return auroraMaxStorage128TiB
+	}
+	minor, err := strconv.Atoi(parts[1])
+	if err != nil {
+		return auroraMaxStorage128TiB
+	}
+	if major > 17 {
+		return auroraMaxStorage256TiB
+	}
+	if minMinor, ok := auroraMinMinorFor256TiB[major]; ok && minor >= minMinor {
+		return auroraMaxStorage256TiB
+	}
+	return auroraMaxStorage128TiB
+}
 
 // GetSystemState - Gets system information about an Amazon RDS instance
 func GetSystemState(ctx context.Context, server *state.Server, logger *util.Logger) (system state.SystemState) {
@@ -50,6 +85,7 @@ func GetSystemState(ctx context.Context, server *state.Server, logger *util.Logg
 	system.Info.ClusterID = clusterID
 
 	isAurora := util.StringPtrToString(instance.Engine) == "aurora-postgresql"
+	auroraMaxStorage := AuroraMaxStorage(util.StringPtrToString(instance.EngineVersion))
 
 	isServerless := util.StringPtrToString(instance.DBInstanceClass) == "db.serverless"
 
@@ -241,7 +277,7 @@ func GetSystemState(ctx context.Context, server *state.Server, logger *util.Logg
 					}
 					if isAurora && diskPartition.MountPoint == system.DataDirectoryPartition {
 						dp.UsedBytes = uint64(auroraVolumeUsed)
-						dp.TotalBytes = AuroraMaxStorage
+						dp.TotalBytes = auroraMaxStorage
 					}
 					system.DiskPartitions[diskPartition.MountPoint] = dp
 				}
@@ -274,7 +310,7 @@ func GetSystemState(ctx context.Context, server *state.Server, logger *util.Logg
 			system.DiskPartitions["/"] = state.DiskPartition{
 				DiskName:   "default",
 				UsedBytes:  uint64(auroraVolumeUsed),
-				TotalBytes: AuroraMaxStorage,
+				TotalBytes: auroraMaxStorage,
 			}
 		} else if instance.AllocatedStorage != nil {
 			bytesTotal := int64(util.Int32PtrToInt(instance.AllocatedStorage)) * 1024 * 1024 * 1024
