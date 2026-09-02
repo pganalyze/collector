@@ -57,21 +57,24 @@ func (schedule Schedule) Schedule(ctx context.Context, wg *sync.WaitGroup, runne
 			case <-ctx.Done():
 				return
 			case <-time.After(delay):
-				func() {
-					// Cancel runner at latest right before next scheduled execution should
-					// occur, to prevent skipping over runner executions by accident.
-					deadline := nextExecutions[1].Add(-1 * time.Second)
-					// Extend the deadline of very short runs to avoid pointless cancellations.
-					if nextExecutions[1].Sub(nextExecutions[0]) < 19*time.Second {
-						deadline = nextExecutions[0].Add(19 * time.Second)
-					}
-					ctx, cancel := context.WithDeadline(ctx, deadline)
-					defer cancel()
-					runner(ctx)
-				}()
+				runWithDeadline(ctx, runner, nextExecutions[0], nextExecutions[1])
 			}
 		}
 	}()
+}
+
+// runWithDeadline - Runs the given runner, ensuring it does not run over into
+// the next execution
+func runWithDeadline(ctx context.Context, runner func(context.Context), thisExecution time.Time, nextExecution time.Time) {
+	deadline := nextExecution.Add(-1 * time.Second)
+	// Extend the deadline of very short runs to avoid excessively frequent
+	// cancellations.
+	if nextExecution.Sub(thisExecution) < 19*time.Second {
+		deadline = thisExecution.Add(19 * time.Second)
+	}
+	ctx, cancel := context.WithDeadline(ctx, deadline)
+	defer cancel()
+	runner(ctx)
 }
 
 // ScheduleSecondary - Behaves almost like Schedule, but ignores the point in time
@@ -82,7 +85,8 @@ func (schedule Schedule) ScheduleSecondary(ctx context.Context, primarySchedule 
 		defer wg.Done()
 		for {
 			timeNow := time.Now()
-			delay := schedule.interval.Next(timeNow).Sub(timeNow)
+			nextExecutions := schedule.interval.NextN(timeNow, 2)
+			delay := nextExecutions[0].Sub(timeNow)
 			delayPrimary := primarySchedule.interval.Next(timeNow).Sub(timeNow)
 
 			// Make sure to not run more often than once a second - this can happen
@@ -101,7 +105,7 @@ func (schedule Schedule) ScheduleSecondary(ctx context.Context, primarySchedule 
 				if int(delay.Seconds()) == int(delayPrimary.Seconds()) {
 					logger.PrintVerbose("Skipping run for %s since it overlaps with primary schedule", logName)
 				} else {
-					runner(ctx)
+					runWithDeadline(ctx, runner, nextExecutions[0], nextExecutions[1])
 				}
 			}
 		}
