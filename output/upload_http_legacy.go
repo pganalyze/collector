@@ -3,9 +3,11 @@ package output
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"encoding/xml"
 	"fmt"
 	"io"
+	"mime"
 	"mime/multipart"
 	"net/http"
 	"os"
@@ -102,13 +104,14 @@ func uploadToS3(ctx context.Context, httpClient *http.Client, S3URL string, S3Fi
 	return s3Resp.Key, nil
 }
 
-func markTestRun(ctx context.Context, server *state.Server, opts state.CollectionOpts) error {
+func markTestRun(ctx context.Context, server *state.Server, opts state.CollectionOpts, logger *util.Logger) error {
 	req, err := http.NewRequestWithContext(ctx, "POST", server.Config.APIBaseURL+"/v2/snapshots/test", nil)
 	if err != nil {
 		return err
 	}
 
 	req.Header = config.APIHeaders(server.Config, opts.TestRun, opts.StartedAt)
+	req.Header.Add("Accept", "application/json,text/plain")
 
 	resp, err := server.Config.HTTPClientWithRetry.Do(req)
 	if err != nil {
@@ -116,12 +119,36 @@ func markTestRun(ctx context.Context, server *state.Server, opts state.Collectio
 	}
 	defer resp.Body.Close()
 
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
 	if resp.StatusCode != http.StatusOK {
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return err
-		}
 		return fmt.Errorf("Error when marking test run: %s", body)
+	}
+
+	contentType, _, err := mime.ParseMediaType(resp.Header.Get("Content-Type"))
+	if err != nil {
+		return fmt.Errorf("Error decoding response: %s", err)
+	}
+
+	var msg string
+	if contentType == "application/json" {
+		var jsonBody struct {
+			Message string `json:"message"`
+		}
+		err = json.Unmarshal(body, &jsonBody)
+		if err != nil {
+			return fmt.Errorf("Error decoding response: %s", err)
+		}
+		msg = jsonBody.Message
+	} else {
+		msg = string(body)
+	}
+
+	if len(msg) > 0 {
+		logger.PrintInfo("  %s", msg)
 	}
 
 	return nil

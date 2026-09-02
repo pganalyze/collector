@@ -116,7 +116,7 @@ func uploadViaWebsocketOrHttp(ctx context.Context, server *state.Server, logger 
 			return err
 		}
 		if opts.TestRun {
-			return markTestRun(uploadCtx, server, opts)
+			return markTestRun(uploadCtx, server, opts, logger)
 		}
 	}
 	return nil
