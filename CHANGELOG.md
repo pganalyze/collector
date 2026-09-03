@@ -3,9 +3,9 @@
 ## 0.73.0      2026-09-01
 
 - Avoid disrupting snapshot collection when uploads are slow or delayed
-  - Previously, a slow or stuck upload could block the collection runners, and
-    with them the collection schedulers, silently skipping activity and full
-    snapshot runs for all servers
+  - Previously, a slow or stuck upload could block the collection runners and
+    the schedulers behind them, so activity and full snapshot runs would be
+    silently skipped for all servers
   - Snapshots are now queued to the upload routine with a buffer, and discarded
     with an explicit error when the queue is full, so collection continues and
     the condition is visible in the logs
@@ -14,14 +14,14 @@
     silently ignored (relevant for test runs using HTTP uploads)
 - WebSocket: Detect dead connections via write deadlines and ping/pong
   - Previously a silently dropped TCP session (e.g. by a NAT or firewall) could
-    stall snapshot uploads for 15+ minutes while the connection still reported
-    as connected
+    stall snapshot uploads for 15+ minutes while the connection was still
+    reported as connected
   - Dead connections are now closed within a minute, letting uploads fall back
     to HTTP and the existing reconnect logic re-establish the WebSocket
-- Improve statistics diffing on restarts and promotions
-  - Previously the use of cluster endpoints or virtual IPs pointing to different
-    instances over time could accidentally cause counter values to jump due to
-    using the wrong reference value
+- Improve statistics diffing on restarts and failovers
+  - Previously, when a cluster endpoint or virtual IP started pointing at a
+    different instance, such as after a failover, statistics for that interval
+    could be wildly inflated due to the wrong reference point
   - The collector now records which instance and postmaster it connected to
     and resets the statistics reference point when it changes, including after
     a plain restart of the same instance
@@ -41,6 +41,10 @@
     calls fail, the collector falls back to an individual lookup for the
     configured instance and logs a verbose notice
 - AWS: Correctly detect 256 TB max storage size for new Aurora versions
+- Avoid race condition that could cause a collector that is configured to watch
+  a replica with skip_if_replica to get stuck during a reload
+- Ensure stalled 1 minute stats collection can't delay full snapshots
+- Avoid race condition in Workbooks Collector Workflow
 
 
 ## 0.72.0      2026-08-12
