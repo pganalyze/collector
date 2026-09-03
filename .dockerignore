@@ -2,3 +2,4 @@ packages/tmp/
 test/
 pganalyze-collector
 pganalyze-collector-helper
+pganalyze-collector-image-*.oci.tar
