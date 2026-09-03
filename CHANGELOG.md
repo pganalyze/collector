@@ -1,5 +1,52 @@
 # Changelog
 
+## 0.73.0      2026-09-01
+
+- Avoid disrupting snapshot collection when uploads are slow or delayed
+  - Previously, a slow or stuck upload could block the collection runners and
+    the schedulers behind them, so activity and full snapshot runs would be
+    silently skipped for all servers
+  - Snapshots are now queued to the upload routine with a buffer, and discarded
+    with an explicit error when the queue is full, so collection continues and
+    the condition is visible in the logs
+  - Legacy HTTP uploads are now abandoned after 1 minute instead of retrying
+    for up to 20 minutes, and errors from the snapshot submit call are no longer
+    silently ignored (relevant for test runs using HTTP uploads)
+- WebSocket: Detect dead connections via write deadlines and ping/pong
+  - Previously a silently dropped TCP session (e.g. by a NAT or firewall) could
+    stall snapshot uploads for 15+ minutes while the connection was still
+    reported as connected
+  - Dead connections are now closed within a minute, letting uploads fall back
+    to HTTP and the existing reconnect logic re-establish the WebSocket
+- Improve statistics diffing on restarts and failovers
+  - Previously, when a cluster endpoint or virtual IP started pointing at a
+    different instance, such as after a failover, statistics for that interval
+    could be wildly inflated due to the wrong reference point
+  - The collector now records which instance and postmaster it connected to
+    and resets the statistics reference point when it changes, including after
+    a plain restart of the same instance
+- Log Insights: Add classifications for additional Postgres log events
+  - Adds new log event types
+  - Improve log line matching for existing classifications, including
+    partition-related CHECK_CONSTRAINT_VIOLATION errors
+  - Rename the "Autovacuum" log category to "Maintenance"
+- AWS: Cache RDS describe results per AWS account and cache API sessions
+  - Avoids rate limit issues when monitoring hundreds of database servers within
+    the same AWS account, by sharing API sessions per account and caching the
+    results of rds:DescribeDBInstances and rds:DescribeDBClusters for 60 seconds
+  - Note this delays the collector's reaction to failover events: a configured
+    cluster endpoint may continue pointing to the prior target for up to 60
+    seconds for log downloads
+  - If the IAM policy restricts which servers are accessible and the Describe*
+    calls fail, the collector falls back to an individual lookup for the
+    configured instance and logs a verbose notice
+- AWS: Correctly detect 256 TB max storage size for new Aurora versions
+- Avoid race condition that could cause a collector that is configured to watch
+  a replica with skip_if_replica to get stuck during a reload
+- Ensure stalled 1 minute stats collection can't delay full snapshots
+- Avoid race condition in Workbooks Collector Workflow
+
+
 ## 0.72.0      2026-08-12
 
 - Add Supabase and Neon as a supported system type
