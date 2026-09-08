@@ -53,13 +53,7 @@ then
   fail "unsupported architecture: $arch"
 fi
 
-if grep -q '^ID="amzn"$' /etc/os-release && grep -q '^VERSION_ID="2"$' /etc/os-release;
-then
-  # Amazon Linux 2, based on RHEL7
-  pkg=yum
-  distribution=el
-  version=7
-elif grep -q '^ID="amzn"$' /etc/os-release && grep -q '^VERSION_ID="2023"$' /etc/os-release;
+if grep -q '^ID="amzn"$' /etc/os-release && grep -q '^VERSION_ID="2023"$' /etc/os-release;
 then
   # Amazon Linux 2023, utilizing same glibc version (2.34) as CentOS Stream 9
   pkg=yum
@@ -71,7 +65,7 @@ then
   pkg=yum
   distribution=el
   version=$(grep VERSION_ID /etc/os-release | cut -d= -f2 | tr -d '"' | cut -d. -f1)
-  if [ "$version" != 7 ] && [ "$version" != 8 ] && [ "$version" != 9 ] && [ "$version" != 10 ];
+  if [ "$version" != 8 ] && [ "$version" != 9 ] && [ "$version" != 10 ];
   then
     if confirm "Unsupported RHEL, CentOS Stream, AlmaLinux, Rocky Linux or Oracle Linux version; try RHEL10 package?";
     then
@@ -102,7 +96,7 @@ then
   pkg=deb
   distribution=ubuntu
   version=$(grep VERSION_CODENAME /etc/os-release | cut -d= -f2)
-  if [ "$version" != noble ] && [ "$version" != jammy ] && [ "$version" != focal ];
+  if [ "$version" != noble ] && [ "$version" != jammy ];
   then
     if confirm "Unsupported Ubuntu version; try Ubuntu Noble (24.04) package?";
     then
@@ -117,7 +111,7 @@ then
   pkg=deb
   distribution=debian
   version=$(grep VERSION_CODENAME /etc/os-release | cut -d= -f2)
-  if [ "$version" != trixie ] && [ "$version" != bookworm ] && [ "$version" != bullseye ];
+  if [ "$version" != trixie ] && [ "$version" != bookworm ];
   then
     if confirm "Unsupported Debian version; try Debian Trixie (13) package?";
     then

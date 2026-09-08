@@ -11,11 +11,8 @@ docker_test_and_clean = $(DOCKER_CMD) exec pga-collector-test /root/systemd_test
 
 # Note: The default list excludes rockylinux9 since there is an open issue with
 # /sbin/init not being present, see https://github.com/rocky-linux/sig-cloud-instance-images/issues/39
-# Note: The default list also excludes centos7 since it's EOL, we will drop the support near future
-DISTROS_X86_64=rhel8_x86_64 rockylinux8_x86_64 rhel9_x86_64 rhel10_x86_64 fedora42_x86_64 fedora43_x86_64 amazonlinux2_x86_64 amazonlinux2023_x86_64 ubuntu-focal_x86_64 ubuntu-jammy_x86_64 ubuntu-noble_x86_64 debian-bullseye_x86_64 debian-bookworm_x86_64 debian-trixie_x86_64
-DISTROS_ARM64=rhel8_arm64 rockylinux8_arm64 rhel9_arm64 rhel10_arm64 fedora42_arm64 fedora43_arm64 amazonlinux2_arm64 amazonlinux2023_arm64 ubuntu-focal_arm64 ubuntu-jammy_arm64 ubuntu-noble_arm64 debian-bullseye_arm64 debian-bookworm_arm64 debian-trixie_arm64
-
-CGROUPS_V1 := $(shell test `stat -fc %T /sys/fs/cgroup/` = tmpfs && echo '1' 1>&2 2> /dev/null)
+DISTROS_X86_64=rhel8_x86_64 rockylinux8_x86_64 rhel9_x86_64 rhel10_x86_64 fedora42_x86_64 fedora43_x86_64 amazonlinux2023_x86_64 ubuntu-jammy_x86_64 ubuntu-noble_x86_64 debian-bookworm_x86_64 debian-trixie_x86_64
+DISTROS_ARM64=rhel8_arm64 rockylinux8_arm64 rhel9_arm64 rhel10_arm64 fedora42_arm64 fedora43_arm64 amazonlinux2023_arm64 ubuntu-jammy_arm64 ubuntu-noble_arm64 debian-bookworm_arm64 debian-trixie_arm64
 
 .PHONY: all $(DISTROS_X86_64) $(DISTROS_ARM64)
 
@@ -46,22 +43,6 @@ clean_arm64: $(RPM_PACKAGE_ARM64) $(DEB_PACKAGE_ARM64)
 	rm $(DEB_PACKAGE_ARM64)
 
 clean: clean_x86_64 clean_arm64
-
-centos7_x86_64: $(RPM_PACKAGE_X86_64)
-	echo "FROM centos:7" > Dockerfile.tmp
-	echo "COPY . /root" >> Dockerfile.tmp
-	$(call docker_build_and_run,amd64)
-	$(call docker_exec,/bin/bash -c "yum install -y --nogpgcheck /root/$(RPM_PACKAGE_X86_64)")
-	$(call docker_test_and_clean)
-	rm Dockerfile.tmp
-
-centos7_arm64: $(RPM_PACKAGE_ARM64)
-	echo "FROM centos:7" > Dockerfile.tmp
-	echo "COPY . /root" >> Dockerfile.tmp
-	$(call docker_build_and_run,arm64)
-	$(call docker_exec,/bin/bash -c "yum install -y --nogpgcheck /root/$(RPM_PACKAGE_ARM64)")
-	$(call docker_test_and_clean)
-	rm Dockerfile.tmp
 
 rhel8_x86_64: $(RPM_PACKAGE_X86_64)
 	echo "FROM redhat/ubi8:latest" > Dockerfile.tmp
@@ -189,32 +170,6 @@ fedora43_arm64: $(RPM_PACKAGE_ARM64)
 	$(call docker_test_and_clean)
 	rm Dockerfile.tmp
 
-amazonlinux2_x86_64: $(RPM_PACKAGE_X86_64)
-	echo "FROM amazonlinux:2" > Dockerfile.tmp
-	echo "RUN yum install -y procps" >> Dockerfile.tmp
-	echo "COPY . /root" >> Dockerfile.tmp
-ifeq ($(CGROUPS_V1),1)
-	$(call docker_build_and_run,amd64)
-	$(call docker_exec,yum install -y --nogpgcheck /root/$(RPM_PACKAGE_X86_64))
-	$(call docker_test_and_clean)
-else
-	echo "Skipping Amazon Linux 2 test since host system uses cgroup v2"
-endif
-	rm Dockerfile.tmp
-
-amazonlinux2_arm64: $(RPM_PACKAGE_ARM64)
-	echo "FROM amazonlinux:2" > Dockerfile.tmp
-	echo "RUN yum install -y procps" >> Dockerfile.tmp
-	echo "COPY . /root" >> Dockerfile.tmp
-ifeq ($(CGROUPS_V1),1)
-	$(call docker_build_and_run,arm64)
-	$(call docker_exec,yum install -y --nogpgcheck /root/$(RPM_PACKAGE_ARM64))
-	$(call docker_test_and_clean)
-else
-	echo "Skipping Amazon Linux 2 test since host system uses cgroup v2"
-endif
-	rm Dockerfile.tmp
-
 amazonlinux2023_x86_64: $(RPM_PACKAGE_X86_64)
 	echo "FROM amazonlinux:2023" > Dockerfile.tmp
 	echo "RUN yum install -y procps systemd" >> Dockerfile.tmp
@@ -230,28 +185,6 @@ amazonlinux2023_arm64: $(RPM_PACKAGE_ARM64)
 	echo "COPY . /root" >> Dockerfile.tmp
 	$(call docker_build_and_run,arm64)
 	$(call docker_exec,dnf install -y --nogpgcheck /root/$(RPM_PACKAGE_ARM64))
-	$(call docker_test_and_clean)
-	rm Dockerfile.tmp
-
-ubuntu-focal_x86_64: $(DEB_PACKAGE_X86_64)
-	echo "FROM ubuntu:focal" > Dockerfile.tmp
-	echo "COPY . /root" >> Dockerfile.tmp
-	echo "RUN apt-get update" >> Dockerfile.tmp
-	echo "RUN apt-get install systemd-sysv -y" >> Dockerfile.tmp
-	echo "RUN rm /usr/sbin/policy-rc.d" >> Dockerfile.tmp
-	$(call docker_build_and_run,amd64)
-	$(call docker_exec,apt-get install -y /root/$(DEB_PACKAGE_X86_64))
-	$(call docker_test_and_clean)
-	rm Dockerfile.tmp
-
-ubuntu-focal_arm64: $(DEB_PACKAGE_ARM64)
-	echo "FROM ubuntu:focal" > Dockerfile.tmp
-	echo "COPY . /root" >> Dockerfile.tmp
-	echo "RUN apt-get update" >> Dockerfile.tmp
-	echo "RUN apt-get install systemd-sysv -y" >> Dockerfile.tmp
-	echo "RUN rm /usr/sbin/policy-rc.d" >> Dockerfile.tmp
-	$(call docker_build_and_run,arm64)
-	$(call docker_exec,apt-get install -y /root/$(DEB_PACKAGE_ARM64))
 	$(call docker_test_and_clean)
 	rm Dockerfile.tmp
 
@@ -293,26 +226,6 @@ ubuntu-noble_arm64: $(DEB_PACKAGE_ARM64)
 	echo "COPY . /root" >> Dockerfile.tmp
 	echo "RUN apt-get update" >> Dockerfile.tmp
 	echo "RUN apt-get install systemd-sysv -y" >> Dockerfile.tmp
-	echo "RUN rm /usr/sbin/policy-rc.d" >> Dockerfile.tmp
-	$(call docker_build_and_run,arm64)
-	$(call docker_exec,apt-get install -y /root/$(DEB_PACKAGE_ARM64))
-	$(call docker_test_and_clean)
-	rm Dockerfile.tmp
-
-debian-bullseye_x86_64: $(DEB_PACKAGE_X86_64)
-	echo "FROM debian:bullseye" > Dockerfile.tmp
-	echo "RUN apt-get update -qq && apt-get install -y -q systemd-sysv procps" >> Dockerfile.tmp
-	echo "COPY . /root" >> Dockerfile.tmp
-	echo "RUN rm /usr/sbin/policy-rc.d" >> Dockerfile.tmp
-	$(call docker_build_and_run,amd64)
-	$(call docker_exec,apt-get install -y /root/$(DEB_PACKAGE_X86_64))
-	$(call docker_test_and_clean)
-	rm Dockerfile.tmp
-
-debian-bullseye_arm64: $(DEB_PACKAGE_ARM64)
-	echo "FROM debian:bullseye" > Dockerfile.tmp
-	echo "RUN apt-get update -qq && apt-get install -y -q systemd-sysv procps" >> Dockerfile.tmp
-	echo "COPY . /root" >> Dockerfile.tmp
 	echo "RUN rm /usr/sbin/policy-rc.d" >> Dockerfile.tmp
 	$(call docker_build_and_run,arm64)
 	$(call docker_exec,apt-get install -y /root/$(DEB_PACKAGE_ARM64))

@@ -1,4 +1,4 @@
-FROM debian:bullseye
+FROM debian:bookworm
 
 ARG TARGETARCH
 ENV GOPATH /go
@@ -33,6 +33,10 @@ RUN make build_dist
 # Update contrib and packages directory beyond the tagged release
 COPY ./contrib $CODE_DIR/contrib
 COPY ./packages $CODE_DIR/packages
+
+# Verify we did not accidentally raise the minimum glibc version (see packages/README.md)
+ENV MAX_GLIBC 2.34
+RUN sh $CODE_DIR/packages/src/check_glibc.sh $MAX_GLIBC pganalyze-collector pganalyze-collector-helper pganalyze-collector-setup
 
 # Prepare the package source
 RUN mkdir -p $SOURCE_DIR/usr/bin/

@@ -13,13 +13,6 @@ rpm --import https://packages.pganalyze.com/pganalyze_signing_key.asc
 rpm --checksig -v /rpm/systemd/$RPM_PACKAGE_X86_64
 rpm --checksig -v /rpm/systemd/$RPM_PACKAGE_ARM64
 
-mkdir -p /repo/el/7/RPMS
-cp /rpm/systemd/$RPM_PACKAGE_X86_64 /repo/el/7/RPMS/
-cp /rpm/systemd/$RPM_PACKAGE_ARM64 /repo/el/7/RPMS/
-createrepo --update /repo/el/7
-rm -f /repo/el/7/repodata/repomd.xml.asc
-gpg --detach-sign --armor --batch /repo/el/7/repodata/repomd.xml
-
 mkdir -p /repo/el/8/RPMS
 cp /rpm/systemd/$RPM_PACKAGE_X86_64 /repo/el/8/RPMS/
 cp /rpm/systemd/$RPM_PACKAGE_ARM64 /repo/el/8/RPMS/

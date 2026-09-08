@@ -1,4 +1,4 @@
-FROM amazonlinux:2
+FROM rockylinux:8
 
 # Build arguments
 ARG VERSION
@@ -8,7 +8,7 @@ ENV RPM_DIR /rpm
 RUN mkdir -p $RPM_DIR
 RUN mkdir -p $RPM_DIR/systemd
 
-RUN yum install -y -q rpm-sign createrepo
+RUN dnf install -y -q rpm-sign createrepo_c gnupg2
 
 RUN echo "%_gpg_name team@pganalyze.com" > /root/.rpmmacros
 
