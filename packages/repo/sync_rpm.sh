@@ -2,7 +2,10 @@
 
 set -e
 
-# Remove all except the master signing key, so rpm does the right thing (subkeys are not supported)
+# Remove all subkeys, so gpg signs with the master key rather than the newer signing subkey
+# it would pick by default. Subkeys were previously not handled correctly by RPM, and this
+# keeps the key ID consistent with all previously published packages and repository metadata,
+# and matches what sync_deb.sh does.
 printf "key 1\ndelkey\ny\nkey 1\ndelkey\ny\nsave\n" | gpg --batch --command-fd 0 --edit-key $REPO_GPG_KEY
 
 # We run without a TTY (via docker exec) and the key has no passphrase after export.
