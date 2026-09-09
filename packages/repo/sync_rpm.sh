@@ -5,6 +5,10 @@ set -e
 # Remove all except the master signing key, so rpm does the right thing (subkeys are not supported)
 printf "key 1\ndelkey\ny\nkey 1\ndelkey\ny\nsave\n" | gpg --batch --command-fd 0 --edit-key $REPO_GPG_KEY
 
+# We run without a TTY (via docker exec) and the key has no passphrase after export.
+# Set GPG_TTY so rpmsign does not warn that it cannot determine the TTY from stdin.
+export GPG_TTY=/dev/null
+
 rpm --addsign /rpm/systemd/$RPM_PACKAGE_X86_64
 rpm --addsign /rpm/systemd/$RPM_PACKAGE_ARM64
 
