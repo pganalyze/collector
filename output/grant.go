@@ -14,6 +14,10 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
+// Maximum time to wait for the WebSocket connection to be established before
+// falling back to the HTTP-based grant (when the WebSocket is not required)
+const websocketConnectTimeout = 10 * time.Second
+
 // EnsureGrant - Ensures the server has a valid grant stored from either WebSocket or HTTP-based grant API
 func EnsureGrant(ctx context.Context, server *state.Server, opts state.CollectionOpts, logger *util.Logger, refetchAlways bool) error {
 	if opts.ForceEmptyGrant {
@@ -28,7 +32,17 @@ func EnsureGrant(ctx context.Context, server *state.Server, opts state.Collectio
 		return nil
 	}
 
-	err := server.WebSocket.Connect()
+	var err error
+	if server.Config.APIRequireWebsocket {
+		err = server.WebSocket.Connect(ctx)
+	} else {
+		// Don't let a slow or unreachable WebSocket endpoint hold up the collection
+		// run, since we can fall back to the HTTP-based grant. The reconnect logic
+		// keeps trying to establish the WebSocket in the background.
+		connectCtx, cancel := context.WithTimeout(ctx, websocketConnectTimeout)
+		err = server.WebSocket.Connect(connectCtx)
+		cancel()
+	}
 	if err != nil {
 		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectWebSocket, "error starting WebSocket: %s", err)
 		if server.Config.APIRequireWebsocket {

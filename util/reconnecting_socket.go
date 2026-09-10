@@ -28,8 +28,7 @@ type ReconnectingSocket struct {
 	ctx       context.Context
 	requested atomic.Bool
 	conn      atomic.Pointer[websocket.Conn]
-	start     chan struct{}
-	startWait chan error
+	start     chan connectRequest
 	shutdown  chan struct{}
 }
 
@@ -38,6 +37,16 @@ type ReconnectingSocket struct {
 type socketWrite struct {
 	data []byte
 	// Must be buffered (capacity 1), so the writer goroutine never blocks
+	// handing back the result to a caller that has stopped waiting
+	result chan error
+}
+
+// connectRequest - A single request to establish the connection, together with
+// the channel used to hand the outcome back to the caller
+type connectRequest struct {
+	// Bounds the connection attempt made on behalf of this request
+	ctx context.Context
+	// Must be buffered (capacity 1), so the manager goroutine never blocks
 	// handing back the result to a caller that has stopped waiting
 	result chan error
 }
@@ -63,36 +72,41 @@ const (
 // The passed context must eventually be canceled in order for internal Goroutines to be stopped.
 func NewReconnectingSocket(ctx context.Context, logger *Logger, dialer websocket.Dialer, url string, headers map[string][]string, reconnectInterval time.Duration, clientErrorTimeout time.Duration) *ReconnectingSocket {
 	w := &ReconnectingSocket{
-		Read:      make(chan []byte),
-		write:     make(chan socketWrite),
-		ctx:       ctx,
-		dialer:    dialer,
-		url:       url,
-		headers:   headers,
-		logger:    logger,
-		start:     make(chan struct{}, 1),
-		startWait: make(chan error, 1),
-		shutdown:  make(chan struct{}),
+		Read:     make(chan []byte),
+		write:    make(chan socketWrite),
+		ctx:      ctx,
+		dialer:   dialer,
+		url:      url,
+		headers:  headers,
+		logger:   logger,
+		start:    make(chan connectRequest),
+		shutdown: make(chan struct{}),
 	}
 
+	// Manager goroutine: serializes connection attempts and shutdowns
 	go func() {
 		var skipConnectUntil time.Time
 		for {
 			select {
 			case <-ctx.Done():
 				return
-			case <-w.start:
+			case req := <-w.start:
+				var err error
 				if w.Connected() || !w.requested.Load() {
-					w.startWait <- nil
+					// Nothing to do
+				} else if req.ctx.Err() != nil {
+					// The caller gave up while waiting for an earlier attempt to finish
+					err = req.ctx.Err()
 				} else if time.Now().After(skipConnectUntil) {
-					connectStatus, err := w.connect(ctx)
+					var connectStatus int
+					connectStatus, err = w.connect(req.ctx)
 					if connectStatus >= 400 && connectStatus < 500 {
 						skipConnectUntil = time.Now().Add(clientErrorTimeout) // Delay reconnect when server responds with 4xx errors
 					}
-					w.startWait <- err
 				} else {
-					w.startWait <- ErrorConnectRateLimited
+					err = ErrorConnectRateLimited
 				}
+				req.result <- err
 			case <-w.shutdown:
 				w.closeConnection(w.conn.Load())
 			}
@@ -107,16 +121,7 @@ func NewReconnectingSocket(ctx context.Context, logger *Logger, dialer websocket
 				return
 			case <-time.After(reconnectInterval):
 				if !w.Connected() && w.requested.Load() {
-					select {
-					case w.start <- struct{}{}:
-					case <-ctx.Done():
-						return
-					}
-					select {
-					case <-w.startWait:
-					case <-ctx.Done():
-						return
-					}
+					w.requestConnect(ctx)
 				}
 			}
 		}
@@ -130,20 +135,37 @@ func (w *ReconnectingSocket) Connected() bool {
 
 // Connect - Blocks until connection is either established, or fails to be established
 //
+// The passed context bounds the connection attempt: when it is canceled, the
+// attempt is abandoned and ctx.Err() is returned. This does not stop the socket
+// from reconnecting in the background later on.
+//
 // Does nothing if the WebSocket is already connected
-func (w *ReconnectingSocket) Connect() error {
+func (w *ReconnectingSocket) Connect(ctx context.Context) error {
 	w.requested.Store(true)
 	if w.Connected() {
 		return nil
 	}
+	return w.requestConnect(ctx)
+}
+
+// requestConnect - Hands a connection request to the manager goroutine and
+// waits for its outcome, giving up when either the passed context or the
+// socket's own context is canceled
+func (w *ReconnectingSocket) requestConnect(ctx context.Context) error {
+	// Must be buffered with capacity 1, see connectRequest definition
+	req := connectRequest{ctx: ctx, result: make(chan error, 1)}
 	select {
-	case w.start <- struct{}{}:
+	case w.start <- req:
+	case <-ctx.Done():
+		return ctx.Err()
 	case <-w.ctx.Done():
 		return w.ctx.Err()
 	}
 	select {
-	case err := <-w.startWait:
+	case err := <-req.result:
 		return err
+	case <-ctx.Done():
+		return ctx.Err()
 	case <-w.ctx.Done():
 		return w.ctx.Err()
 	}
@@ -200,19 +222,37 @@ func (w *ReconnectingSocket) Disconnect() {
 	}
 }
 
+// connect - Makes a single connection attempt, bounded by the passed context
+// (in addition to the socket's own context and the dialer's handshake timeout)
+//
+// Returns the HTTP status code of the handshake response, if there was one.
 func (w *ReconnectingSocket) connect(ctx context.Context) (int, error) {
 	var connectStatus int
-	connCtx, cancelConn := context.WithCancel(ctx)
-	conn, response, err := w.dialer.DialContext(ctx, w.url, w.headers)
+
+	// The dial only lives as long as the request that triggered it, but must also
+	// stop when the socket as a whole is shut down
+	dialCtx, cancelDial := context.WithCancel(ctx)
+	defer cancelDial()
+	stopAfterFunc := context.AfterFunc(w.ctx, cancelDial)
+	defer stopAfterFunc()
+
+	conn, response, err := w.dialer.DialContext(dialCtx, w.url, w.headers)
 	if response != nil {
 		connectStatus = response.StatusCode
 	}
 	if err != nil {
-		cancelConn()
-		w.logger.PrintWarning("Error starting websocket: %s %v", err, response)
-		return 0, err
+		if response != nil {
+			w.logger.PrintWarning("Error starting websocket: %s (HTTP status %d)", err, connectStatus)
+		} else {
+			w.logger.PrintWarning("Error starting websocket: %s", err)
+		}
+		return connectStatus, err
 	}
 	w.conn.Store(conn)
+
+	// The established connection is independent of the request that started it,
+	// and lives until it fails or the socket is shut down
+	connCtx, cancelConn := context.WithCancel(w.ctx)
 	// Writer goroutine
 	go func() {
 		ticker := time.NewTicker(socketPingInterval)
