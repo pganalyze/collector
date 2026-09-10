@@ -96,3 +96,33 @@ func TestPreprocessConfigAiven(t *testing.T) {
 	}
 
 }
+
+func TestPreprocessConfigWebsocketSettings(t *testing.T) {
+	{
+		var config ServerConfig
+		config.APIDisableWebsocket = true
+		_, err := preprocessConfig(&config)
+		if err != nil {
+			t.Errorf("api_disable_websocket alone: want nil; got %v", err)
+		}
+	}
+
+	{
+		var config ServerConfig
+		config.APIRequireWebsocket = true
+		_, err := preprocessConfig(&config)
+		if err != nil {
+			t.Errorf("api_require_websocket alone: want nil; got %v", err)
+		}
+	}
+
+	{
+		var config ServerConfig
+		config.APIRequireWebsocket = true
+		config.APIDisableWebsocket = true
+		_, err := preprocessConfig(&config)
+		if err == nil {
+			t.Errorf("api_require_websocket and api_disable_websocket together: want error; got nil")
+		}
+	}
+}

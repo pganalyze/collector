@@ -273,6 +273,10 @@ type ServerConfig struct {
 	// Require WebSocket connection (if false, will try WebSocket but fall back to legacy HTTPS API)
 	APIRequireWebsocket bool `ini:"api_require_websocket"`
 
+	// Disable WebSocket connection entirely and only use the legacy HTTPS API
+	// (compatibility mode for environments that can't support WebSockets, will be removed in the future)
+	APIDisableWebsocket bool `ini:"api_disable_websocket"`
+
 	// WebSocket URL to be used for API WebSocket connection
 	WebSocketUrl string
 

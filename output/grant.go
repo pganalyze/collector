@@ -28,8 +28,9 @@ func EnsureGrant(ctx context.Context, server *state.Server, opts state.Collectio
 		return nil
 	}
 
-	err := server.WebSocket.Connect()
-	if err != nil {
+	if server.Config.APIDisableWebsocket {
+		server.SelfTest.MarkCollectionAspectNotAvailable(state.CollectionAspectWebSocket, "disabled by collector setting api_disable_websocket / API_DISABLE_WEBSOCKET")
+	} else if err := server.WebSocket.Connect(); err != nil {
 		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectWebSocket, "error starting WebSocket: %s", err)
 		if server.Config.APIRequireWebsocket {
 			return fmt.Errorf("Error starting WebSocket: %w", err)

@@ -21,6 +21,11 @@ func SetupWebsocketForAllServers(ctx context.Context, servers []*state.Server, o
 	}
 	for _, server := range servers {
 		prefixedLogger := logger.WithPrefixAndRememberErrors(server.Config.SectionName)
+		if server.Config.APIDisableWebsocket {
+			prefixedLogger.PrintWarning("WebSocket connections disabled by collector setting api_disable_websocket / API_DISABLE_WEBSOCKET, using legacy HTTP compatibility mode. Note that a future collector release will require WebSocket support, and this setting will be removed.")
+		}
+		// The socket is always set up (but only connected on demand, see output.EnsureGrant),
+		// so callers can rely on it being present
 		server.WebSocket = util.NewReconnectingSocket(
 			ctx, prefixedLogger,
 			config.CreateWebSocketDialer(server.Config),
