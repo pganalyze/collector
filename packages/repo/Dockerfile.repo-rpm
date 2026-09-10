@@ -12,8 +12,8 @@ RUN dnf install -y -q rpm-sign createrepo_c gnupg2
 
 RUN echo "%_gpg_name team@pganalyze.com" > /root/.rpmmacros
 
-# Sign with SHA256 instead of SHA1 to support RHEL9 and newer
-# See https://www.redhat.com/en/blog/rhel-security-sha-1-package-signatures-distrusted-rhel-9
+# Pin SHA256 digests, since RHEL 9 and newer reject SHA-1 signed packages.
+# gpg 2.2 already defaults to SHA256, this only makes the requirement explicit.
 RUN echo "%_gpg_digest_algo sha256" >> /root/.rpmmacros
 
 # Never prompt interactively
