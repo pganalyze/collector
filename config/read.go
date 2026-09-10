@@ -426,6 +426,8 @@ func getDefaultConfig() *ServerConfig {
 	}
 	if apiRequireWebSocket := os.Getenv("API_REQUIRE_WEBSOCKET"); apiRequireWebSocket != "" {
 		config.APIRequireWebsocket = parseConfigBool(apiRequireWebSocket)
+	} else {
+		config.APIRequireWebsocket = true
 	}
 	if apiDisableWebSocket := os.Getenv("API_DISABLE_WEBSOCKET"); apiDisableWebSocket != "" {
 		config.APIDisableWebsocket = parseConfigBool(apiDisableWebSocket)
