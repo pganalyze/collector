@@ -427,6 +427,9 @@ func getDefaultConfig() *ServerConfig {
 	if apiRequireWebSocket := os.Getenv("API_REQUIRE_WEBSOCKET"); apiRequireWebSocket != "" {
 		config.APIRequireWebsocket = parseConfigBool(apiRequireWebSocket)
 	}
+	if apiDisableWebSocket := os.Getenv("API_DISABLE_WEBSOCKET"); apiDisableWebSocket != "" {
+		config.APIDisableWebsocket = parseConfigBool(apiDisableWebSocket)
+	}
 
 	return config
 }
@@ -861,6 +864,10 @@ func preprocessConfig(config *ServerConfig) (*ServerConfig, error) {
 		wsUrl.Scheme = "wss"
 	}
 	config.WebSocketUrl = wsUrl.String()
+
+	if config.APIRequireWebsocket && config.APIDisableWebsocket {
+		return config, fmt.Errorf("api_require_websocket and api_disable_websocket can't both be enabled")
+	}
 
 	return config, nil
 }
