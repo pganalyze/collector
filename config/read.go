@@ -507,6 +507,17 @@ func CreateWebSocketDialer(conf ServerConfig) websocket.Dialer {
 		Proxy: func(req *http.Request) (*url.URL, error) {
 			return proxyConfig.ProxyFunc()(req.URL)
 		},
+		// Bound the whole connection attempt (TCP connect, proxy CONNECT, TLS and
+		// the HTTP upgrade). Without this, an unreachable address is only given up
+		// on after the kernel's TCP connect timeout, which is 2+ minutes on Linux
+		// and can be multiplied when the hostname resolves to several addresses.
+		HandshakeTimeout: 30 * time.Second,
+		// Match the dial settings of the HTTP client (see CreateHTTPClient)
+		NetDialContext: (&net.Dialer{
+			Timeout:   30 * time.Second,
+			KeepAlive: 30 * time.Second,
+			DualStack: true,
+		}).DialContext,
 	}
 }
 
