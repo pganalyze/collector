@@ -31,8 +31,12 @@ When changing the initial package build step one needs to be careful to not incr
 
 Currently the following minimum glibc versions apply:
 
-* RPM, systemd: glibc 2.26 (Amazon Linux 2)
-* DEB, systemd: glibc 2.31 (Debian Bullseye)
+* RPM, systemd: glibc 2.28 (built on Rocky Linux 8, oldest supported target is RHEL 8 with glibc 2.28)
+* DEB, systemd: glibc 2.34 (built on Debian Bookworm, oldest supported target is Ubuntu Jammy with glibc 2.35)
+
+Note that the minimum version is determined by the glibc symbol versions referenced by the
+built binaries, not by the glibc version of the build image. The build verifies this using
+`packages/src/check_glibc.sh`, which fails the build if a binary requires a newer glibc.
 
 
 Requirements

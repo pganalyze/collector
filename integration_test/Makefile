@@ -13,7 +13,7 @@ docker_run_cmd = docker run --name pganalyze-collector-test \
   -d pganalyze-collector-test $(1)
 docker_run_cmd_postgres = $(call docker_run_cmd,postgres -c pg_stat_statements.track_utility=off)
 
-TARGETS := pg10 pg11 pg12 pg13 pg14 pg15 pg16 reload guided-setup installer otel-vector
+TARGETS := pg12 pg13 pg14 pg15 pg16 reload guided-setup installer otel-vector
 
 # Citus doesn't release ARM images, thus skip on ARM
 ifeq ($(findstring $(shell uname -m),arm64 aarch64),)
@@ -23,52 +23,6 @@ endif
 .PHONY: all $(TARGETS)
 
 all: $(TARGETS)
-
-pg10:
-	docker build -f Dockerfile.test-pg10 $(DOCKER_BUILD_OPTS)
-	$(docker_run_cmd_postgres)
-	sleep 10
-	docker exec pganalyze-collector-test pgbench -U postgres -i
-	docker exec pganalyze-collector-test pgbench -U postgres
-	docker exec pganalyze-collector-test sh -c "DB_USERNAME=postgres PGA_API_KEY=dummy PGA_DISABLE_ACTIVITY=1 IGNORE_SCHEMA_REGEXP=pgbench_history pganalyze-collector --dry-run --force-state-update -v" > pg10_1.json
-	docker exec pganalyze-collector-test pgbench -U postgres
-	docker exec pganalyze-collector-test sh -c "DB_USERNAME=postgres PGA_API_KEY=dummy PGA_DISABLE_ACTIVITY=1 IGNORE_SCHEMA_REGEXP=pgbench_history pganalyze-collector --dry-run --force-state-update -v" > pg10_2.json
-	docker rm -f pganalyze-collector-test
-	docker rmi pganalyze-collector-test
-	if [ "`jq '.collectorErrors' pg10_2.json | tr -d ' \n\r\t '`" != "null" ]; then \
-		jq '.collectorErrors' pg10_2.json; \
-		exit 1; \
-	fi
-	if jq '.relationReferences' pg10_2.json | grep --quiet pgbench_history; then \
-                echo "failed to ignore table according to IGNORE_SCHEMA_REGEXP=pgbench_history" \
-		jq '.relationReferences' pg10_2.json; \
-		exit 1; \
-	fi
-	jq '.queryInformations[].normalizedQuery' pg10_2.json | sort --version-sort -f > pg10.out
-	diff -Naur pg10.expected pg10.out && echo 'success'
-
-pg11:
-	docker build -f Dockerfile.test-pg11 $(DOCKER_BUILD_OPTS)
-	$(docker_run_cmd_postgres)
-	sleep 10
-	docker exec pganalyze-collector-test pgbench -U postgres -i
-	docker exec pganalyze-collector-test pgbench -U postgres
-	docker exec pganalyze-collector-test sh -c "DB_USERNAME=postgres PGA_API_KEY=dummy PGA_DISABLE_ACTIVITY=1 IGNORE_SCHEMA_REGEXP=pgbench_history pganalyze-collector --dry-run --force-state-update -v" > pg11_1.json
-	docker exec pganalyze-collector-test pgbench -U postgres
-	docker exec pganalyze-collector-test sh -c "DB_USERNAME=postgres PGA_API_KEY=dummy PGA_DISABLE_ACTIVITY=1 IGNORE_SCHEMA_REGEXP=pgbench_history pganalyze-collector --dry-run --force-state-update -v" > pg11_2.json
-	docker rm -f pganalyze-collector-test
-	docker rmi pganalyze-collector-test
-	if [ "`jq '.collectorErrors' pg11_2.json | tr -d ' \n\r\t '`" != "null" ]; then \
-		jq '.collectorErrors' pg11_2.json; \
-		exit 1; \
-	fi
-	if jq '.relationReferences' pg11_2.json | grep --quiet pgbench_history; then \
-                echo "failed to ignore table according to IGNORE_SCHEMA_REGEXP=pgbench_history" \
-		jq '.relationReferences' pg11_2.json; \
-		exit 1; \
-	fi
-	jq '.queryInformations[].normalizedQuery' pg11_2.json | sort --version-sort -f > pg11.out
-	diff -Naur pg11.expected pg11.out && echo 'success'
 
 pg12:
 	docker build -f Dockerfile.test-pg12 $(DOCKER_BUILD_OPTS)

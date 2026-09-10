@@ -1,4 +1,4 @@
-FROM amazonlinux:2
+FROM rockylinux:8
 
 # Build arguments
 ARG VERSION
@@ -8,18 +8,16 @@ ENV RPM_DIR /rpm
 RUN mkdir -p $RPM_DIR
 RUN mkdir -p $RPM_DIR/systemd
 
-RUN yum install -y -q rpm-sign createrepo
+RUN dnf install -y -q rpm-sign createrepo_c gnupg2
 
 RUN echo "%_gpg_name team@pganalyze.com" > /root/.rpmmacros
 
-# Switch signature algorithm from SHA1 to SHA256 to support RHEL9 and newer
-# See https://www.redhat.com/en/blog/rhel-security-sha-1-package-signatures-distrusted-rhel-9
-RUN echo "%__gpg_sign_cmd                 %{__gpg} \
-        gpg --batch --no-verbose --no-armor --passphrase-fd 3 \
-        %{?_gpg_digest_algo:--digest-algo %{_gpg_digest_algo}} \
-        --no-secmem-warning \
-        --digest-algo sha256 \
-        -u \"%{_gpg_name}\" -sbo %{__signature_filename} %{__plaintext_filename}" >> /root/.rpmmacros
+# Pin SHA256 digests, since RHEL 9 and newer reject SHA-1 signed packages.
+# gpg 2.2 already defaults to SHA256, this only makes the requirement explicit.
+RUN echo "%_gpg_digest_algo sha256" >> /root/.rpmmacros
+
+# Never prompt interactively
+RUN echo "%_gpg_sign_cmd_extra_args --batch" >> /root/.rpmmacros
 
 COPY sync_rpm.sh /root
 COPY $NAME-$VERSION-1.x86_64.rpm $RPM_DIR/systemd/$NAME-$VERSION-1.x86_64.rpm
