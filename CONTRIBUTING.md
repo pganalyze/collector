@@ -116,13 +116,35 @@ time="2024-04-26T02:01:07Z" level=info msg="Generating README Documentation for 
 2. Once PR is merged, create a new tag `git tag v0.x.y`, then push it `git push origin v0.x.y`
 3. Once a new tag is pushed, GitHub Action Release will be kicked and create a new release (this will take about 2 hours, due to the package build and test)
 4. Modify the newly created release's description to match to CHANGELOG.md
-5. Release docker images using `make docker_release` (this requires access to the Quay.io push key, as well as "docker buildx" with QEMU emulation support, see below)
+5. Release docker images (see below)
 6. Sign and release packages using `make -C packages repo` (this requires access to the Keybase GPG key)
 
-To run step 5 from an Ubuntu 24.04 VM, do the following:
-(use a c8i.2xlarge instance or higher, takes ~10+ minutes)
+#### Releasing docker images
 
+The Release workflow builds the images for both architectures on native runners
+and attaches them to the GitHub release as OCI archives. Push these images to
+quay.io by following the steps below.
+
+##### Prerequisites
+
+Nothing is compiled here, so any machine will do. You need `docker` with the
+buildx plugin, `skopeo`, and `gh`.
+
+<details>
+<summary>On macOS</summary>
+
+With Docker Desktop already installed (it provides `docker` and `docker buildx`):
+
+```sh
+brew install skopeo gh
 ```
+
+</details>
+
+<details>
+<summary>On a fresh Ubuntu 24.04 EC2 instance</summary>
+
+```sh
 # Add Docker's official GPG key:
 sudo apt-get update && \
 sudo apt-get install -y ca-certificates curl gnupg && \
@@ -136,16 +158,34 @@ echo \
   $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
   sudo tee /etc/apt/sources.list.d/docker.list > /dev/null && \
 sudo apt-get update && \
-sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin qemu-user-static binfmt-support make
+sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin skopeo make && \
+sudo snap install gh
+```
+
+Prefix the publishing commands below with `sudo`, so that they run as the same
+user the credentials are stored for.
+
+</details>
+
+##### Publishing
+
+```sh
+git checkout v0.x.y
 
 # Get password (entered interactively) from Quay.io
 # (under the robot accounts of the pganalyze organization)
-sudo docker login -u="pganalyze+push" quay.io
+# Both tools need it, as they keep their credentials separately
+docker login -u="pganalyze+push" quay.io
+skopeo login -u="pganalyze+push" quay.io
 
-# Pull collector repository and build
-git clone https://github.com/pganalyze/collector.git && \
-cd collector && \
-sudo make docker_release
+# Download the two images that the Release workflow built
+gh release download v0.x.y -p '*.oci.tar'
+
+# Push both into the staging repository
+make docker_release_staging
+
+# Publish: join them into one multi-architecture image under the release tags
+make docker_release_manifest
 ```
 
 ### Updating wait event types and names

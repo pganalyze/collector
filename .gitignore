@@ -1,6 +1,7 @@
 /pganalyze-collector
 /pganalyze-collector-helper
 /pganalyze-collector-setup
+/pganalyze-collector-image-*.oci.tar
 packages/tmp
 /tmp
 integration_test/*.json
