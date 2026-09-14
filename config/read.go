@@ -90,6 +90,12 @@ func getDefaultConfig() *ServerConfig {
 	if systemScope := os.Getenv("PGA_API_SYSTEM_SCOPE"); systemScope != "" {
 		config.SystemScope = systemScope
 	}
+	if systemIDFallback := os.Getenv("PGA_API_SYSTEM_ID_FALLBACK"); systemIDFallback != "" {
+		config.SystemIDFallback = systemIDFallback
+	}
+	if systemTypeFallback := os.Getenv("PGA_API_SYSTEM_TYPE_FALLBACK"); systemTypeFallback != "" {
+		config.SystemTypeFallback = systemTypeFallback
+	}
 	if systemScopeFallback := os.Getenv("PGA_API_SYSTEM_SCOPE_FALLBACK"); systemScopeFallback != "" {
 		config.SystemScopeFallback = systemScopeFallback
 	}
