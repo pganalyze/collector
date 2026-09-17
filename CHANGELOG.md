@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.74.0      2026-09-17
+
+- Stop supporting Amazon Linux 2, RHEL 7, Debian 11 (Bullseye) and Ubuntu 20.04 (Focal)
+  - These distributions are end of life
+  - This raises the minimum glibc requirement to 2.28 (RHEL-based) and 2.34
+    (Debian-based), which is now checked explicitly during the package build
+- Allow disabling WebSocket use via config setting
+  - By default the collector uploads snapshots over a WebSocket connection and
+    falls back to HTTP when that fails. The new setting
+    `api_disable_websocket` / `API_DISABLE_WEBSOCKET` skips the WebSocket
+    entirely and goes straight to HTTP, as an interim workaround for
+    environments where the WebSocket connection can't be used at all
+- WebSocket: Add 30 second timeout for opening connections
+  - This matches how HTTP connections are handled
+- WebSocket: Avoid full snapshots and test runs stalling when the endpoint is
+  unreachable
+  - These now wait at most 10 seconds for the WebSocket connection before
+    falling back to HTTP, instead of up to a minute, while reconnects keep
+    being attempted in the background
+- Support `PGA_API_SYSTEM_ID_FALLBACK` and `PGA_API_SYSTEM_TYPE_FALLBACK`
+  environment variables, matching the existing config file settings
+
+
 ## 0.73.0      2026-09-01
 
 - Avoid disrupting snapshot collection when uploads are slow or delayed
