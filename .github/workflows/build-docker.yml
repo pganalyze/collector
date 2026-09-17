@@ -1,0 +1,60 @@
+name: Build Docker images
+
+# Builds the collector image for both architectures as OCI archives on native
+# runners, and uploads them as workflow artifacts.
+#
+# Called by the Release workflow for the images attached to a release, and run
+# directly against a branch to build a one-off image.
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+  amd64:
+    runs-on: ubuntu-24.04
+    permissions: {}
+
+    steps:
+
+    - name: Check out code
+      uses: actions/checkout@v7
+      with:
+        submodules: true
+
+    - name: Build image
+      run: |
+        make docker_image_amd64
+
+    - name: Upload image as artifact
+      uses: actions/upload-artifact@v7
+      with:
+        name: docker_image_amd64
+        path: pganalyze-collector-image-linux-amd64.oci.tar
+        if-no-files-found: error
+        # Use a shorter retention than the default: these archives are only in transit
+        retention-days: 7
+
+  arm64:
+    runs-on: ubuntu-24.04-arm
+    permissions: {}
+
+    steps:
+
+    - name: Check out code
+      uses: actions/checkout@v7
+      with:
+        submodules: true
+
+    - name: Build image
+      run: |
+        make docker_image_arm64
+
+    - name: Upload image as artifact
+      uses: actions/upload-artifact@v7
+      with:
+        name: docker_image_arm64
+        path: pganalyze-collector-image-linux-arm64.oci.tar
+        if-no-files-found: error
+        # Use a shorter retention than the default: these archives are only in transit
+        retention-days: 7
