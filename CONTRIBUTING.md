@@ -127,16 +127,17 @@ quay.io by following the steps below.
 
 ##### Prerequisites
 
-Nothing is compiled here, so any machine will do. You need `docker` with the
-buildx plugin, `skopeo`, and `gh`.
+Nothing is compiled here, so any machine will do. You need `podman` and `gh`.
 
 <details>
 <summary>On macOS</summary>
 
-With Docker Desktop already installed (it provides `docker` and `docker buildx`):
-
 ```sh
-brew install skopeo gh
+brew install podman gh
+
+# podman runs Linux in a VM, which needs to be started once
+podman machine init
+podman machine start
 ```
 
 </details>
@@ -145,25 +146,10 @@ brew install skopeo gh
 <summary>On a fresh Ubuntu 24.04 EC2 instance</summary>
 
 ```sh
-# Add Docker's official GPG key:
 sudo apt-get update && \
-sudo apt-get install -y ca-certificates curl gnupg && \
-sudo install -m 0755 -d /etc/apt/keyrings && \
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg && \
-sudo chmod a+r /etc/apt/keyrings/docker.gpg
-
-# Add the repository to Apt sources:
-echo \
-  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
-  $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
-  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null && \
-sudo apt-get update && \
-sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin skopeo make && \
+sudo apt-get install -y podman make && \
 sudo snap install gh
 ```
-
-Prefix the publishing commands below with `sudo`, so that they run as the same
-user the credentials are stored for.
 
 </details>
 
@@ -174,19 +160,18 @@ git checkout v0.x.y
 
 # Get password (entered interactively) from Quay.io
 # (under the robot accounts of the pganalyze organization)
-# Both tools need it, as they keep their credentials separately
-docker login -u="pganalyze+push" quay.io
-skopeo login -u="pganalyze+push" quay.io
+podman login -u="pganalyze+push" quay.io
 
 # Download the two images that the Release workflow built
 gh release download v0.x.y -p '*.oci.tar'
 
-# Push both into the staging repository
-make docker_release_staging
-
-# Publish: join them into one multi-architecture image under the release tags
-make docker_release_manifest
+# Join them into one multi-architecture image and push it under the release tags
+make docker_release
 ```
+
+`make docker_release` prints the assembled manifest before pushing. Expect four
+entries: an image and a provenance attestation for each of `linux/amd64` and
+`linux/arm64`.
 
 ### Updating wait event types and names
 
