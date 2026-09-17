@@ -116,37 +116,62 @@ time="2024-04-26T02:01:07Z" level=info msg="Generating README Documentation for 
 2. Once PR is merged, create a new tag `git tag v0.x.y`, then push it `git push origin v0.x.y`
 3. Once a new tag is pushed, GitHub Action Release will be kicked and create a new release (this will take about 2 hours, due to the package build and test)
 4. Modify the newly created release's description to match to CHANGELOG.md
-5. Release docker images using `make docker_release` (this requires access to the Quay.io push key, as well as "docker buildx" with QEMU emulation support, see below)
+5. Release docker images (see below)
 6. Sign and release packages using `make -C packages repo` (this requires access to the Keybase GPG key)
 
-To run step 5 from an Ubuntu 24.04 VM, do the following:
-(use a c8i.2xlarge instance or higher, takes ~10+ minutes)
+#### Releasing docker images
 
+The Release workflow builds the images for both architectures on native runners
+and attaches them to the GitHub release as OCI archives. Push these images to
+quay.io by following the steps below.
+
+##### Prerequisites
+
+Nothing is compiled here, so any machine will do. You need `podman` and `gh`.
+
+<details>
+<summary>On macOS</summary>
+
+```sh
+brew install podman gh
+
+# podman runs Linux in a VM, which needs to be started once
+podman machine init
+podman machine start
 ```
-# Add Docker's official GPG key:
-sudo apt-get update && \
-sudo apt-get install -y ca-certificates curl gnupg && \
-sudo install -m 0755 -d /etc/apt/keyrings && \
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg && \
-sudo chmod a+r /etc/apt/keyrings/docker.gpg
 
-# Add the repository to Apt sources:
-echo \
-  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
-  $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
-  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null && \
+</details>
+
+<details>
+<summary>On a fresh Ubuntu 24.04 EC2 instance</summary>
+
+```sh
 sudo apt-get update && \
-sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin qemu-user-static binfmt-support make
+sudo apt-get install -y podman make && \
+sudo snap install gh
+```
+
+</details>
+
+##### Publishing
+
+```sh
+git checkout v0.x.y
 
 # Get password (entered interactively) from Quay.io
 # (under the robot accounts of the pganalyze organization)
-sudo docker login -u="pganalyze+push" quay.io
+podman login -u="pganalyze+push" quay.io
 
-# Pull collector repository and build
-git clone https://github.com/pganalyze/collector.git && \
-cd collector && \
-sudo make docker_release
+# Download the two images that the Release workflow built
+gh release download v0.x.y -p '*.oci.tar'
+
+# Join them into one multi-architecture image and push it under the release tags
+make docker_release
 ```
+
+`make docker_release` prints the assembled manifest before pushing. Expect four
+entries: an image and a provenance attestation for each of `linux/amd64` and
+`linux/arm64`.
 
 ### Updating wait event types and names
 

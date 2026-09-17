@@ -165,8 +165,59 @@ jobs:
           pganalyze-collector-*.tgz
         if-no-files-found: error
 
+  # The Docker images are built here but deliberately not pushed: the archives are
+  # attached to the release, and pushing them to quay.io is a manual step. See
+  # "Releasing docker images" in CONTRIBUTING.md.
+  build_docker_amd64:
+    runs-on: ubuntu-24.04
+    permissions: {}
+    # ensure we don't release on create events for branches (only tags)
+    if: ${{ startsWith( github.ref, 'refs/tags' ) }}
+
+    steps:
+
+    - name: Check out code
+      uses: actions/checkout@v4
+      with:
+        submodules: true
+
+    - name: Build image
+      run: |
+        make docker_image_amd64
+
+    - name: Upload image as artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: docker_image_amd64
+        path: pganalyze-collector-image-linux-amd64.oci.tar
+        if-no-files-found: error
+
+  build_docker_arm64:
+    runs-on: ubuntu-24.04-arm
+    permissions: {}
+    # ensure we don't release on create events for branches (only tags)
+    if: ${{ startsWith( github.ref, 'refs/tags' ) }}
+
+    steps:
+
+    - name: Check out code
+      uses: actions/checkout@v4
+      with:
+        submodules: true
+
+    - name: Build image
+      run: |
+        make docker_image_arm64
+
+    - name: Upload image as artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: docker_image_arm64
+        path: pganalyze-collector-image-linux-arm64.oci.tar
+        if-no-files-found: error
+
   release:
-    needs: [build, build_arm, build_packages_x86_64, build_packages_arm64, build_charts]
+    needs: [build, build_arm, build_packages_x86_64, build_packages_arm64, build_charts, build_docker_amd64, build_docker_arm64]
     runs-on: ubuntu-latest
     # ensure we don't release on create events for branches (only tags)
     if: ${{ startsWith( github.ref, 'refs/tags' ) }}
@@ -196,6 +247,16 @@ jobs:
       uses: actions/download-artifact@v4
       with:
         name: charts
+
+    - name: Download Docker image (amd64)
+      uses: actions/download-artifact@v4
+      with:
+        name: docker_image_amd64
+
+    - name: Download Docker image (arm64)
+      uses: actions/download-artifact@v4
+      with:
+        name: docker_image_arm64
 
     - name: Get version and git version from tag
       id: get_version
@@ -275,6 +336,26 @@ jobs:
         asset_path: ./pganalyze-collector_${{ steps.get_version.outputs.version }}_arm64.deb
         asset_name: pganalyze-collector_${{ steps.get_version.outputs.version }}_arm64.deb
         asset_content_type: application/octet-stream
+
+    - name: Upload release Docker image (amd64)
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./pganalyze-collector-image-linux-amd64.oci.tar
+        asset_name: pganalyze-collector-image-linux-amd64.oci.tar
+        asset_content_type: application/x-tar
+
+    - name: Upload release Docker image (arm64)
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./pganalyze-collector-image-linux-arm64.oci.tar
+        asset_name: pganalyze-collector-image-linux-arm64.oci.tar
+        asset_content_type: application/x-tar
 
   release_charts:
     needs: [release]

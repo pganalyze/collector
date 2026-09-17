@@ -23,7 +23,7 @@ ifeq ($(shell uname), Darwin)
 endif
 PROTOC_URL := $(PROTOC_BASE_URL)v$(PROTOC_VERSION_NEEDED)/$(PROTOC_FILENAME)
 
-.PHONY: default build build_dist vendor test docker_release packages integration_test
+.PHONY: default build build_dist vendor test docker_image_amd64 docker_image_arm64 docker_release packages integration_test
 
 default: build test
 
@@ -68,15 +68,50 @@ packages:
 	make -C packages
 
 DOCKER_RELEASE_TAG := $(shell git describe --tags --exact-match --abbrev=0 2> /dev/null)
+DOCKER_IMAGE := quay.io/pganalyze/collector
+DOCKER_BUILDER := collector-build
+DOCKER_OCI_AMD64 := pganalyze-collector-image-linux-amd64.oci.tar
+DOCKER_OCI_ARM64 := pganalyze-collector-image-linux-arm64.oci.tar
+DOCKER_MANIFEST := pganalyze-collector-release
+
+# Builds one architecture as an OCI archive. The Release workflow runs these on a
+# native runner per architecture and attaches the archives to the GitHub release,
+# which are then published with docker_release.
+define docker_build_oci
+docker buildx inspect $(DOCKER_BUILDER) > /dev/null 2>&1 || docker buildx create --name $(DOCKER_BUILDER) --driver docker-container
+	docker buildx build --platform linux/$(1) --builder $(DOCKER_BUILDER) \
+	--provenance=true \
+	--output type=oci,dest=$(2) \
+	.
+	docker buildx rm $(DOCKER_BUILDER)
+endef
+
+docker_image_amd64:
+	$(call docker_build_oci,amd64,$(DOCKER_OCI_AMD64))
+
+docker_image_arm64:
+	$(call docker_build_oci,arm64,$(DOCKER_OCI_ARM64))
+
+# Publishes the release: joins the two single-architecture OCI archives downloaded
+# from the GitHub release into one multi-architecture image, and pushes it to
+# quay.io under the release tags.
+#
+# Each archive is itself an index, holding that architecture's image plus its
+# provenance attestation, so "podman manifest add" needs --all to carry both over.
 docker_release:
 	@test -n "$(DOCKER_RELEASE_TAG)" || (echo "ERROR: DOCKER_RELEASE_TAG is not set, make sure you are on a git release tag or override by setting DOCKER_RELEASE_TAG" ; exit 1)
-	docker buildx create --name collector-build --driver docker-container
-	docker buildx build --platform linux/amd64,linux/arm64 --builder collector-build --push \
-	-t quay.io/pganalyze/collector:$(DOCKER_RELEASE_TAG) \
-	-t quay.io/pganalyze/collector:latest \
-	-t quay.io/pganalyze/collector:stable \
-	.
-	docker buildx rm collector-build
+	@test -f $(DOCKER_OCI_AMD64) || (echo "ERROR: $(DOCKER_OCI_AMD64) not found, download it with: gh release download $(DOCKER_RELEASE_TAG) -p '*.oci.tar'" ; exit 1)
+	@test -f $(DOCKER_OCI_ARM64) || (echo "ERROR: $(DOCKER_OCI_ARM64) not found, download it with: gh release download $(DOCKER_RELEASE_TAG) -p '*.oci.tar'" ; exit 1)
+	-podman manifest rm $(DOCKER_MANIFEST) 2> /dev/null
+	podman manifest create $(DOCKER_MANIFEST)
+	podman manifest add --all $(DOCKER_MANIFEST) oci-archive:$(DOCKER_OCI_AMD64)
+	podman manifest add --all $(DOCKER_MANIFEST) oci-archive:$(DOCKER_OCI_ARM64)
+	# Expect four entries: one image and one attestation per architecture
+	podman manifest inspect $(DOCKER_MANIFEST)
+	podman manifest push --all $(DOCKER_MANIFEST) docker://$(DOCKER_IMAGE):$(DOCKER_RELEASE_TAG)
+	podman manifest push --all $(DOCKER_MANIFEST) docker://$(DOCKER_IMAGE):latest
+	podman manifest push --all $(DOCKER_MANIFEST) docker://$(DOCKER_IMAGE):stable
+	podman manifest rm $(DOCKER_MANIFEST)
 
 output/pganalyze_collector/snapshot.pb.go: $(PROTOBUF_FILES)
 ifdef PROTOC_VERSION
@@ -91,11 +126,11 @@ install_protoc:
 ifeq (,$(findstring $(PROTOC_VERSION_NEEDED), $(PROTOC_VERSION)))
 	@echo "⚠️  protoc version needed: $(PROTOC_VERSION_NEEDED) vs $(PROTOC_VERSION) installed"
 	@echo "ℹ️  Vendoring protoc $(PROTOC_VERSION_NEEDED)"
-  
+
 	@mkdir -p tmp
 	curl --location --output tmp/$(PROTOC_FILENAME) $(PROTOC_URL)
 	unzip -d protoc tmp/$(PROTOC_FILENAME)
 	rm tmp/$(PROTOC_FILENAME)
-  
+
 	@echo "ℹ️  If this is macOS, you will need to try running the binary yourself, then go to Security & Privacy to explicitly allow it."
 endif
