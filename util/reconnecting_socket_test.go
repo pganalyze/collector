@@ -48,7 +48,7 @@ func TestSocketReconnect(t *testing.T) {
 		1*time.Second,
 	)
 
-	err = socket.Connect()
+	err = socket.Connect(ctx)
 	if err != nil {
 		t.Errorf("TestSocketReconnect: failed initial socket connection: %v", err)
 	}
@@ -87,7 +87,7 @@ func TestSocketConnectReturnsAfterContextCancel(t *testing.T) {
 
 	done := make(chan error, 1)
 	go func() {
-		done <- socket.Connect()
+		done <- socket.Connect(context.Background())
 	}()
 
 	select {
@@ -95,6 +95,109 @@ func TestSocketConnectReturnsAfterContextCancel(t *testing.T) {
 		// Connect() returned (with or without an error) instead of hanging.
 	case <-time.After(5 * time.Second):
 		t.Fatal("TestSocketConnectReturnsAfterContextCancel: Connect() blocked indefinitely after context cancellation")
+	}
+}
+
+// Verifies that the context passed to Connect() bounds the connection attempt,
+// so a slow or unreachable endpoint does not stall the caller (e.g. EnsureGrant
+// falling back to the HTTP-based grant). The server here accepts the TCP
+// connection but never answers the handshake, which is only given up on after
+// the dialer's handshake timeout otherwise.
+func TestSocketConnectReturnsAfterCallerContextTimeout(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	ln, err := net.Listen("tcp", "localhost:9127")
+	if err != nil {
+		t.Fatalf("TestSocketConnectReturnsAfterCallerContextTimeout: failed to start listener: %v", err)
+	}
+	defer ln.Close()
+	go func() {
+		for {
+			c, err := ln.Accept()
+			if err != nil {
+				return
+			}
+			// Hold the connection open without responding
+			go func() {
+				<-ctx.Done()
+				c.Close()
+			}()
+		}
+	}()
+
+	socket := util.NewReconnectingSocket(
+		ctx, &util.Logger{Destination: log.New(os.Stderr, "", 0)},
+		websocket.Dialer{HandshakeTimeout: 30 * time.Second}, "ws://localhost:9127", make(map[string][]string),
+		1*time.Second,
+		1*time.Second,
+	)
+
+	connectCtx, connectCancel := context.WithTimeout(ctx, 200*time.Millisecond)
+	defer connectCancel()
+
+	start := time.Now()
+	err = socket.Connect(connectCtx)
+	elapsed := time.Since(start)
+
+	if err == nil {
+		t.Fatal("TestSocketConnectReturnsAfterCallerContextTimeout: expected an error for a connection that was never established")
+	}
+	if elapsed > 2*time.Second {
+		t.Errorf("TestSocketConnectReturnsAfterCallerContextTimeout: Connect() took %v, expected it to return shortly after the 200ms context timeout", elapsed)
+	}
+	if socket.Connected() {
+		t.Error("TestSocketConnectReturnsAfterCallerContextTimeout: socket unexpectedly reports as connected")
+	}
+}
+
+// Verifies that a caller's context only bounds its own connection attempt, and
+// does not tear down an established connection or stop later attempts
+func TestSocketConnectCallerContextDoesNotAffectConnection(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	serverMux := http.NewServeMux()
+	serverMux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		upgrader := websocket.Upgrader{}
+		c, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			return
+		}
+		defer c.Close()
+		<-ctx.Done()
+	})
+	s := &http.Server{Addr: "localhost:9128", Handler: serverMux}
+	ln, err := net.Listen("tcp", s.Addr)
+	if err != nil {
+		t.Fatalf("TestSocketConnectCallerContextDoesNotAffectConnection: failed to start socket: %v", err)
+	}
+	go s.Serve(ln)
+	defer s.Shutdown(context.Background())
+
+	socket := util.NewReconnectingSocket(
+		ctx, &util.Logger{Destination: log.New(os.Stderr, "", 0)},
+		websocket.Dialer{}, "ws://localhost:9128", make(map[string][]string),
+		1*time.Second,
+		1*time.Second,
+	)
+
+	connectCtx, connectCancel := context.WithCancel(ctx)
+	err = socket.Connect(connectCtx)
+	if err != nil {
+		t.Fatalf("TestSocketConnectCallerContextDoesNotAffectConnection: failed initial socket connection: %v", err)
+	}
+	connectCancel()
+
+	// Canceling the caller's context must not close the connection
+	time.Sleep(100 * time.Millisecond)
+	if !socket.Connected() {
+		t.Fatal("TestSocketConnectCallerContextDoesNotAffectConnection: connection was closed after the caller's context was canceled")
+	}
+
+	err = socket.WriteMessage(ctx, []byte("still connected"))
+	if err != nil {
+		t.Errorf("TestSocketConnectCallerContextDoesNotAffectConnection: unexpected write error: %v", err)
 	}
 }
 
@@ -136,7 +239,7 @@ func TestSocketWriteMessage(t *testing.T) {
 		1*time.Second,
 	)
 
-	err = socket.Connect()
+	err = socket.Connect(ctx)
 	if err != nil {
 		t.Fatalf("TestSocketWriteMessage: failed initial socket connection: %v", err)
 	}
