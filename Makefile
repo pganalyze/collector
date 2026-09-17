@@ -104,8 +104,8 @@ docker_release:
 	@test -f $(DOCKER_OCI_ARM64) || (echo "ERROR: $(DOCKER_OCI_ARM64) not found, download it with: gh release download $(DOCKER_RELEASE_TAG) -p '*.oci.tar'" ; exit 1)
 	-podman manifest rm $(DOCKER_MANIFEST) 2> /dev/null
 	podman manifest create $(DOCKER_MANIFEST)
-	podman manifest add --all $(DOCKER_MANIFEST) oci-archive:$(DOCKER_OCI_AMD64)
-	podman manifest add --all $(DOCKER_MANIFEST) oci-archive:$(DOCKER_OCI_ARM64)
+	podman manifest add --all $(DOCKER_MANIFEST) oci-archive:$(CURDIR)/$(DOCKER_OCI_AMD64)
+	podman manifest add --all $(DOCKER_MANIFEST) oci-archive:$(CURDIR)/$(DOCKER_OCI_ARM64)
 	# Expect four entries: one image and one attestation per architecture
 	podman manifest inspect $(DOCKER_MANIFEST)
 	podman manifest push --all $(DOCKER_MANIFEST) docker://$(DOCKER_IMAGE):$(DOCKER_RELEASE_TAG)
