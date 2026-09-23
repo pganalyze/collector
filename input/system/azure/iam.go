@@ -16,10 +16,7 @@ import (
 const dbAuthScope = "https://ossrdbms-aad.database.windows.net/.default"
 
 // GetDbAuthToken fetches an Entra ID (AAD) access token to use as the
-// password when connecting to Azure Database for PostgreSQL with IAM auth
-// (i.e. db_use_iam_auth). This supports the same credential sources as our
-// Event Hub / ARM integrations: client secret, client certificate, workload
-// identity, or (the common case for PoC/testing) VM/AKS managed identity.
+// password when connecting to Azure Database for PostgreSQL with IAM auth.
 func GetDbAuthToken(ctx context.Context, config config.ServerConfig) (string, error) {
 	credential, err := getAzureCredential(config)
 	if err != nil {
