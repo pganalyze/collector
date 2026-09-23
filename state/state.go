@@ -164,6 +164,7 @@ type CollectorConfig struct {
 	HasProxy                   bool
 	ConfigFromEnv              bool
 	OtelExporterOtlpEndpoint   string
+	ConfigFileOutdated         bool
 }
 
 type CollectorPlatform struct {

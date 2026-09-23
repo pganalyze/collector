@@ -76,6 +76,7 @@ func transformCollectorConfig(s snapshot.FullSnapshot, state state.TransientStat
 		HasProxy:                   c.HasProxy,
 		ConfigFromEnv:              c.ConfigFromEnv,
 		OtelExporterOtlpEndpoint:   c.OtelExporterOtlpEndpoint,
+		ConfigFileOutdated:         c.ConfigFileOutdated,
 	}
 	return s
 }

@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
+	"syscall"
 
 	"github.com/shirou/gopsutil/process"
 )
@@ -26,6 +27,14 @@ func reloadPid(pid int) error {
 		return err
 	}
 	return nil
+}
+
+// ReloadSelf - sends SIGHUP to the collector's own process, triggering the
+// same reload as a manual one (the running process re-reads the config file
+// and restarts collection). Used for automatic reloads when the config file
+// has changed and the auto_reload setting is enabled.
+func ReloadSelf() error {
+	return syscall.Kill(os.Getpid(), syscall.SIGHUP)
 }
 
 func Reload() (reloadedPid int, err error) {

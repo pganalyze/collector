@@ -14,6 +14,13 @@ import (
 
 type Config struct {
 	Servers []ServerConfig
+
+	// AutoReload, when set to true in the [pganalyze] section, makes the
+	// collector automatically reload itself whenever it detects that the
+	// config file on disk has changed. Without it, the collector keeps using
+	// the in-memory configuration until a manual reload (SIGHUP or
+	// `pganalyze-collector --reload`)
+	AutoReload bool
 }
 
 // ServerIdentifier -
