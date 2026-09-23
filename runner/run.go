@@ -283,6 +283,12 @@ func Run(ctx context.Context, wg *sync.WaitGroup, opts state.CollectionOpts, log
 	}
 
 	scheduler.TenMinute.Schedule(ctx, wg, func(ctx context.Context) {
+		// If the config file changed and auto_reload is enabled, a reload is
+		// triggered and this run is shut down right away, so we skip the
+		// collection (the restarted collector picks it up on the next schedule)
+		if checkConfigFileOutdated(conf.AutoReload, configFilename, logger) {
+			return
+		}
 		CollectAllServers(ctx, servers, opts, logger)
 	}, logger, "full snapshot of all servers")
 
@@ -310,6 +316,39 @@ func Run(ctx context.Context, wg *sync.WaitGroup, opts state.CollectionOpts, log
 
 	keepRunning = true
 	return
+}
+
+// checkConfigFileOutdated - checks whether the config file on disk has been
+// modified since the collector loaded it. If it has, an error is logged
+// prompting the user to reload the collector. If the auto_reload setting is
+// enabled, the reload is triggered automatically by sending SIGHUP to our own
+// process (the same signal that a manual reload sends to the collector),
+// which makes the main loop re-read the config file and restart collection; in
+// that case this function returns true, so the caller can skip the snapshot
+// collection that is about to be interrupted by the reload.
+//
+// This is run as part of the 10 minute full snapshot schedule, so the error
+// (and the automatic reload) happen at most once every 10 minutes. Note that
+// if the reloaded config file is invalid, the collector keeps running without
+// any servers (and without this check), so a broken file cannot cause an
+// endless reload loop; a manual reload (SIGHUP) is required once the file is
+// fixed again.
+func checkConfigFileOutdated(autoReload bool, configFilename string, logger *util.Logger) (reloaded bool) {
+	if !config.ConfigFileOutdated() {
+		return false
+	}
+
+	if autoReload {
+		logger.PrintError("Config file %s has been modified, but the collector is still using the previously loaded version; automatically reloading the collector to pick up the changes", configFilename)
+		if err := util.ReloadSelf(); err != nil {
+			logger.PrintError("Could not trigger the automatic reload: %s; please reload the collector manually (e.g. 'pganalyze-collector --reload')", err)
+			return false
+		}
+		return true
+	}
+
+	logger.PrintError("Config file %s has been modified, but the collector is still using the previously loaded in-memory version; run 'pganalyze-collector --reload' (or send SIGHUP to the collector) to pick up the changes, or set 'auto_reload = true' in the [pganalyze] section to have the collector reload automatically", configFilename)
+	return false
 }
 
 func checkAllInitialCollectionStatus(ctx context.Context, servers []*state.Server, opts state.CollectionOpts, logger *util.Logger) {
