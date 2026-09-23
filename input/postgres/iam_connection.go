@@ -11,6 +11,7 @@ import (
 	"cloud.google.com/go/cloudsqlconn"
 	rdsauth "github.com/aws/aws-sdk-go-v2/feature/rds/auth"
 	"github.com/pganalyze/collector/config"
+	"github.com/pganalyze/collector/input/system/azure"
 	"github.com/pganalyze/collector/util/awsutil"
 	"github.com/pganalyze/collector/util/pgxdriver"
 )
@@ -79,8 +80,18 @@ func getIamConnectionParams(ctx context.Context, config config.ServerConfig) (dr
 		// See https://github.com/GoogleCloudPlatform/cloud-sql-go-connector/issues/889
 		iamParams.sslmodeOverride = "disable"
 
+	case "azure_database":
+		var dbToken string
+		dbToken, err = azure.GetDbAuthToken(ctx, config)
+		if err != nil {
+			return
+		}
+
+		driverName = "postgres"
+		iamParams.passwordOverride = dbToken
+
 	default:
-		err = errors.New("IAM auth is only supported for Amazon RDS, Aurora, Google Cloud SQL, and Google AlloyDB - turn off IAM auth setting to use password-based authentication")
+		err = errors.New("IAM auth is only supported for Amazon RDS, Aurora, Google Cloud SQL, Google AlloyDB, and Azure Database for PostgreSQL - turn off IAM auth setting to use password-based authentication")
 		return
 	}
 
