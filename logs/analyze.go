@@ -91,7 +91,7 @@ var skippingVacuum = analyzeGroup{
 var autoVacuum = analyzeGroup{
 	classification: pganalyze_collector.LogLineInformation_AUTOVACUUM_COMPLETED,
 	primary: match{
-		prefixes: []string{"automatic vacuum of table", "automatic aggressive vacuum of table", "automatic aggressive vacuum to prevent wraparound of table"},
+		prefixes: []string{"automatic vacuum of table", "automatic aggressive vacuum of table", "automatic vacuum to prevent wraparound of table", "automatic aggressive vacuum to prevent wraparound of table"},
 		regexp: regexp.MustCompile(`^automatic (?P<aggressive>aggressive )?vacuum (?P<wraparound>to prevent wraparound )?of table "(?P<relname>.+?)": index scans: (?P<idx_scans>\d+),?\s*` +
 			`(?:elapsed time: \d+ \w+, index vacuum time: \d+ \w+,)?\s*` + // Google AlloyDB for PostgreSQL
 
