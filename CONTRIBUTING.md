@@ -173,6 +173,37 @@ make docker_release
 entries: an image and a provenance attestation for each of `linux/amd64` and
 `linux/arm64`.
 
+### Building a custom docker image
+
+To build a one-off image from a branch, for example to try a fix before it is
+released, run the Build Docker images workflow against that branch, either with
+the "Run workflow" button in the Actions tab or with `gh`. It builds the image
+for both architectures and uploads the OCI archives as workflow artifacts.
+
+```sh
+gh workflow run build-docker.yml --ref my-branch
+```
+
+Once the build finishes, push it under the tag you want to pull it as. This needs
+the same `podman` and `gh` setup as a release, see
+[Prerequisites](#prerequisites) above.
+
+```sh
+# Find the run you just started
+gh run list --workflow=build-docker.yml
+
+gh run download <run-id> -n docker_image_amd64
+gh run download <run-id> -n docker_image_arm64
+
+# Get password (entered interactively) from Quay.io
+# (under the robot accounts of the pganalyze organization)
+podman login -u="pganalyze+push" quay.io
+
+make docker_push DOCKER_PUSH_TAGS=some-tag
+```
+
+The image can then be pulled as `quay.io/pganalyze/collector:some-tag`.
+
 ### Updating wait event types and names
 
 Postgres can change wait event names or add new wait event types, which are

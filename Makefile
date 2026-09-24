@@ -23,7 +23,7 @@ ifeq ($(shell uname), Darwin)
 endif
 PROTOC_URL := $(PROTOC_BASE_URL)v$(PROTOC_VERSION_NEEDED)/$(PROTOC_FILENAME)
 
-.PHONY: default build build_dist vendor test docker_image_amd64 docker_image_arm64 docker_release packages integration_test
+.PHONY: default build build_dist vendor test docker_image_amd64 docker_image_arm64 docker_push docker_release packages integration_test
 
 default: build test
 
@@ -92,26 +92,35 @@ docker_image_amd64:
 docker_image_arm64:
 	$(call docker_build_oci,arm64,$(DOCKER_OCI_ARM64))
 
-# Publishes the release: joins the two single-architecture OCI archives downloaded
-# from the GitHub release into one multi-architecture image, and pushes it to
-# quay.io under the release tags.
+# Joins the two single-architecture OCI archives in the current directory into one
+# multi-architecture image, and pushes it to quay.io under every tag passed in
+# DOCKER_PUSH_TAGS.
 #
 # Each archive is itself an index, holding that architecture's image plus its
 # provenance attestation, so "podman manifest add" needs --all to carry both over.
-docker_release:
-	@test -n "$(DOCKER_RELEASE_TAG)" || (echo "ERROR: DOCKER_RELEASE_TAG is not set, make sure you are on a git release tag or override by setting DOCKER_RELEASE_TAG" ; exit 1)
-	@test -f $(DOCKER_OCI_AMD64) || (echo "ERROR: $(DOCKER_OCI_AMD64) not found, download it with: gh release download $(DOCKER_RELEASE_TAG) -p '*.oci.tar'" ; exit 1)
-	@test -f $(DOCKER_OCI_ARM64) || (echo "ERROR: $(DOCKER_OCI_ARM64) not found, download it with: gh release download $(DOCKER_RELEASE_TAG) -p '*.oci.tar'" ; exit 1)
+DOCKER_OCI_HINT := see "Building a custom docker image" in CONTRIBUTING.md for how to download them
+docker_push:
+	@test -n "$(DOCKER_PUSH_TAGS)" || (echo "ERROR: DOCKER_PUSH_TAGS is not set, pass the tags to push, for example: make docker_push DOCKER_PUSH_TAGS=some-tag" ; exit 1)
+	@test -f $(DOCKER_OCI_AMD64) || (echo "ERROR: $(DOCKER_OCI_AMD64) not found, $(DOCKER_OCI_HINT)" ; exit 1)
+	@test -f $(DOCKER_OCI_ARM64) || (echo "ERROR: $(DOCKER_OCI_ARM64) not found, $(DOCKER_OCI_HINT)" ; exit 1)
 	-podman manifest rm $(DOCKER_MANIFEST) 2> /dev/null
 	podman manifest create $(DOCKER_MANIFEST)
 	podman manifest add --all $(DOCKER_MANIFEST) oci-archive:$(CURDIR)/$(DOCKER_OCI_AMD64)
 	podman manifest add --all $(DOCKER_MANIFEST) oci-archive:$(CURDIR)/$(DOCKER_OCI_ARM64)
 	# Expect four entries: one image and one attestation per architecture
 	podman manifest inspect $(DOCKER_MANIFEST)
-	podman manifest push --all $(DOCKER_MANIFEST) docker://$(DOCKER_IMAGE):$(DOCKER_RELEASE_TAG)
-	podman manifest push --all $(DOCKER_MANIFEST) docker://$(DOCKER_IMAGE):latest
-	podman manifest push --all $(DOCKER_MANIFEST) docker://$(DOCKER_IMAGE):stable
+	for tag in $(DOCKER_PUSH_TAGS); do \
+	  podman manifest push --all $(DOCKER_MANIFEST) docker://$(DOCKER_IMAGE):$$tag || exit 1 ; \
+	done
 	podman manifest rm $(DOCKER_MANIFEST)
+
+# Publishes the release: pushes the OCI archives downloaded from the GitHub
+# release under the version tag, as well as latest and stable.
+docker_release:
+	@test -n "$(DOCKER_RELEASE_TAG)" || (echo "ERROR: DOCKER_RELEASE_TAG is not set, make sure you are on a git release tag or override by setting DOCKER_RELEASE_TAG" ; exit 1)
+	$(MAKE) docker_push \
+	  DOCKER_PUSH_TAGS="$(DOCKER_RELEASE_TAG) latest stable" \
+	  DOCKER_OCI_HINT="download them with: gh release download $(DOCKER_RELEASE_TAG) -p '*.oci.tar'"
 
 output/pganalyze_collector/snapshot.pb.go: $(PROTOBUF_FILES)
 ifdef PROTOC_VERSION
