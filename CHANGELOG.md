@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.75.0      2026-09-30
+
+- Update pg_query_go to 6.2.5
+  - Security fix: Heap out-of-bounds write and read in query normalization
+    ([GHSA-6ggm-xmc9-8ffg](https://github.com/pganalyze/libpg_query/security/advisories/GHSA-6ggm-xmc9-8ffg))
+  - Certain crafted utility statements (e.g. `DO ... LANGUAGE`, or
+    `CREATE/ALTER SUBSCRIPTION ... CONNECTION`) could cause the collector to
+    leak process memory into normalized query text, or crash
+  - Adds normalization support for `NOTIFY` statements, and fixes several
+    deparser issues
+- Azure: Support `db_use_iam_auth` for Azure Database for PostgreSQL
+  - When enabled, the collector connects using a Microsoft Entra ID access
+    token, fetched with the same credentials already used for Azure Event Hub
+    log collection (client secret, client certificate, workload identity or
+    managed identity)
+- Crunchy Bridge: Detect cluster ID from internal hostnames (`i.*.db.postgresbridge.com`)
+- Log Insights: Correctly classify non-aggressive anti-wraparound autovacuum
+  log events ("automatic vacuum to prevent wraparound of table")
+- Add schema version tracking to snapshots
+
+
 ## 0.74.0      2026-09-17
 
 - Stop supporting Amazon Linux 2, RHEL 7, Debian 11 (Bullseye) and Ubuntu 20.04 (Focal)
