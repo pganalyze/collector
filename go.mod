@@ -57,7 +57,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/jackc/pgx/v5 v5.9.2
-	github.com/pganalyze/pg_query_go/v6 v6.2.2
+	github.com/pganalyze/pg_query_go/v6 v6.2.5
 	github.com/prometheus/procfs v0.7.3
 	go.opentelemetry.io/otel v1.44.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.43.0
