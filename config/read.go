@@ -684,7 +684,7 @@ func preprocessConfig(config *ServerConfig) (*ServerConfig, error) {
 		}
 	} else if strings.HasSuffix(host, ".postgresbridge.com") {
 		parts := strings.SplitN(host, ".", 3)
-		if len(parts) == 3 && parts[0] == "p" && (parts[2] == "db.postgresbridge.com") { // Safety check for any escaping issues
+		if len(parts) == 3 && (parts[0] == "p" || parts[0] == "i") && (parts[2] == "db.postgresbridge.com") { // Safety check for any escaping issues
 			if config.CrunchyBridgeClusterID == "" {
 				config.CrunchyBridgeClusterID = parts[1]
 			}
