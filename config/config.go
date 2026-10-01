@@ -14,6 +14,10 @@ import (
 
 type Config struct {
 	Servers []ServerConfig
+
+	// Allows the collector to automatically reload itself whenever it detects the config file has changed.
+	// Without it, the collector keeps using the in-memory configuration until a manual reload.
+	AutoReload bool
 }
 
 // ServerIdentifier -

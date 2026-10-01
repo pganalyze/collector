@@ -283,7 +283,9 @@ func Run(ctx context.Context, wg *sync.WaitGroup, opts state.CollectionOpts, log
 	}
 
 	scheduler.TenMinute.Schedule(ctx, wg, func(ctx context.Context) {
-		checkConfigFileOutdated(configFilename, logger)
+		if checkConfigFileOutdated(conf.AutoReload, configFilename, logger) {
+			return
+		}
 		CollectAllServers(ctx, servers, opts, logger)
 	}, logger, "full snapshot of all servers")
 
@@ -313,11 +315,20 @@ func Run(ctx context.Context, wg *sync.WaitGroup, opts state.CollectionOpts, log
 	return
 }
 
-func checkConfigFileOutdated(configFilename string, logger *util.Logger) {
+func checkConfigFileOutdated(autoReload bool, configFilename string, logger *util.Logger) (reloaded bool) {
 	if !config.ConfigFileOutdated() {
-		return
+		return false
 	}
-	logger.PrintError("Config file %s has been modified, but the collector is still using the previous version. Run 'pganalyze-collector --reload' to fix this", configFilename)
+	if autoReload {
+		logger.PrintError("Config file %s has been modified, but the collector is still using the previous version; reloading the collector to pick up the changes", configFilename)
+		if err := util.ReloadSelf(); err != nil {
+			logger.PrintError("Could not trigger the automatic reload: %s; please reload the collector manually (e.g. 'pganalyze-collector --reload')", err)
+			return false
+		}
+		return true
+	}
+	logger.PrintError("Config file %s has been modified, but the collector is still using the previous version. Run 'pganalyze-collector --reload' to fix this, or set 'auto_reload = true' in the [pganalyze] section to have the collector reload automatically", configFilename)
+	return false
 }
 
 func checkAllInitialCollectionStatus(ctx context.Context, servers []*state.Server, opts state.CollectionOpts, logger *util.Logger) {
