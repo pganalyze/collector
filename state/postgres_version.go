@@ -1,5 +1,7 @@
 package state
 
+import "github.com/pganalyze/collector/util"
+
 // Known PostgresVersion values - use these for checks in version-dependent code
 const (
 	PostgresVersion10 = 100000
@@ -27,4 +29,14 @@ type PostgresVersion struct {
 	IsAlloyDB   bool // Google AlloyDB for PostgreSQL
 	IsCitus     bool // Citus extension (e.g. with Azure CosmosDB for PostgreSQL)
 	IsEPAS      bool // EnterpriseDB Advanced Server
+}
+
+// FingerprintOptsForVersion - Fingerprint options that match how the given
+// Postgres version calculates query IDs. A version number of zero means the
+// version is not known yet, in which case the Postgres 18+ behavior is assumed.
+func FingerprintOptsForVersion(versionNum int) util.FingerprintOpts {
+	if versionNum == 0 || versionNum >= PostgresVersion18 {
+		return util.FingerprintOptsDefault
+	}
+	return util.FingerprintOptsPG17Compat
 }

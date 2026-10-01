@@ -365,6 +365,12 @@ func checkOneInitialCollectionStatus(ctx context.Context, server *state.Server, 
 		logger.PrintInfo("Log statement lines will be ignored for this server: %s", logsDisabledReason)
 	}
 
+	version, err := postgres.GetPostgresVersion(ctx, conn)
+	if err != nil {
+		return err
+	}
+	server.SyncPostgresVersion(version)
+
 	logs.SyncLogParser(server, settings)
 	parser := server.GetLogParser()
 	if parser == nil {

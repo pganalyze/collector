@@ -49,7 +49,7 @@ func helpersFromFunctions(functions []state.PostgresFunction) map[string][]state
 }
 
 func NewCollection(ctx context.Context, logger *util.Logger, server *state.Server, globalOpts state.CollectionOpts, db *sql.DB) (*Collection, error) {
-	version, err := getPostgresVersion(ctx, db)
+	version, err := GetPostgresVersion(ctx, db)
 	if err != nil {
 		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectPgVersion, "%s", err.Error())
 		return &Collection{}, fmt.Errorf("failed collecting Postgres Version: %s", err)
@@ -60,6 +60,7 @@ func NewCollection(ctx context.Context, logger *util.Logger, server *state.Serve
 		return &Collection{}, fmt.Errorf("your PostgreSQL server version (%s) is too old, 10 or newer is required", version.Short)
 	}
 	server.SelfTest.MarkCollectionAspect(state.CollectionAspectPgVersion, state.CollectionStateOkay, "%s", version.Short)
+	server.SyncPostgresVersion(version)
 
 	// A failure here is not fatal: without an identity we fall back to the
 	// previous behaviour of always diffing against the last reference point.
