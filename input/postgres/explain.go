@@ -12,7 +12,7 @@ import (
 	"github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
-	pg_query "github.com/pganalyze/pg_query_go/v6"
+	pg_query "github.com/pganalyze/pg_query_go/v18"
 )
 
 func RunExplain(ctx context.Context, server *state.Server, inputs []state.PostgresQuerySample, collectionOpts state.CollectionOpts, logger *util.Logger) (outputs []state.PostgresQuerySample) {

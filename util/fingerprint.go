@@ -1,7 +1,7 @@
 package util
 
 import (
-	pg_query "github.com/pganalyze/pg_query_go/v6"
+	pg_query "github.com/pganalyze/pg_query_go/v18"
 )
 
 // TryFingerprintQuery - Generates a unique fingerprint for the given query,
