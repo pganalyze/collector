@@ -466,7 +466,7 @@ func fingerprintAndNormalize(c *Collection, key state.PostgresStatementKey, quer
 			IgnoreIoTiming: ignoreIoTiming,
 		}
 	} else {
-		fp := c.Fingerprints.LoadOrStore(queryID, text, c.Config.FilterQueryText, -1)
+		fp := c.Fingerprints.LoadOrStore(queryID, text, c.Config.FilterQueryText, -1, state.FingerprintOptsForVersion(c.PostgresVersion.Numeric))
 		statements[key] = state.PostgresStatement{Fingerprint: fp, IgnoreIoTiming: ignoreIoTiming}
 		_, ok := statementTextsByFp[fp]
 		if !ok {

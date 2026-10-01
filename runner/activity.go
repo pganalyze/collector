@@ -80,6 +80,7 @@ func processActivityForServer(ctx context.Context, server *state.Server, opts st
 	if err != nil {
 		return newState, false, err
 	}
+	activity.PostgresVersion = c.PostgresVersion
 
 	activity.Backends, err = postgres.GetBackends(ctx, c, connection)
 	if err != nil {

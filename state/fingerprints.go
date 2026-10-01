@@ -29,12 +29,12 @@ func (c *Fingerprints) Load(queryID int64) (uint64, bool) {
 	return fingerprint, exists
 }
 
-func (c *Fingerprints) LoadOrStore(queryID int64, text string, filterQueryText string, trackActivityQuerySize int) uint64 {
+func (c *Fingerprints) LoadOrStore(queryID int64, text string, filterQueryText string, trackActivityQuerySize int, opts util.FingerprintOpts) uint64 {
 	fingerprint, exists := c.Load(queryID)
 	if exists {
 		return fingerprint
 	}
-	fingerprint, virtual := util.TryFingerprintQuery(text, filterQueryText, trackActivityQuerySize)
+	fingerprint, virtual := util.TryFingerprintQuery(text, filterQueryText, trackActivityQuerySize, opts)
 	if virtual {
 		// Don't store virtual fingerprints so we can cache real fingerprints later
 		return fingerprint

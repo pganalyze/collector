@@ -334,6 +334,26 @@ type Server struct {
 
 	// Cache of Postgres query_id -> pg_query fingerprint mappings
 	Fingerprints *Fingerprints
+
+	// Last known Postgres version, updated at startup and whenever a snapshot
+	// determines the version, for code paths that don't have a database
+	// connection (e.g. log processing)
+	lastPostgresVersion atomic.Pointer[PostgresVersion]
+}
+
+// SyncPostgresVersion - Updates the last known Postgres version
+func (s *Server) SyncPostgresVersion(version PostgresVersion) {
+	s.lastPostgresVersion.Store(&version)
+}
+
+// GetLastPostgresVersion - Returns the last known Postgres version, or the
+// zero value (Numeric == 0) if not known yet
+func (s *Server) GetLastPostgresVersion() PostgresVersion {
+	version := s.lastPostgresVersion.Load()
+	if version == nil {
+		return PostgresVersion{}
+	}
+	return *version
 }
 
 func MakeServer(config config.ServerConfig, testRun bool) *Server {

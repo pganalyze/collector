@@ -19,7 +19,7 @@ import (
 const otelSpanName = "EXPLAIN Plan"
 
 func urlToSample(server *state.Server, serverUrl string, sample state.PostgresQuerySample) string {
-	fp := util.FingerprintQuery(sample.Query, server.Config.FilterQueryText, -1)
+	fp := util.FingerprintQuery(sample.Query, server.Config.FilterQueryText, -1, state.FingerprintOptsForVersion(server.GetLastPostgresVersion().Numeric))
 	fpBin := make([]byte, 8)
 	binary.BigEndian.PutUint64(fpBin, fp)
 
