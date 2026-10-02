@@ -283,6 +283,7 @@ func Run(ctx context.Context, wg *sync.WaitGroup, opts state.CollectionOpts, log
 	}
 
 	scheduler.TenMinute.Schedule(ctx, wg, func(ctx context.Context) {
+		checkConfigFileOutdated(configFilename, logger)
 		CollectAllServers(ctx, servers, opts, logger)
 	}, logger, "full snapshot of all servers")
 
@@ -310,6 +311,13 @@ func Run(ctx context.Context, wg *sync.WaitGroup, opts state.CollectionOpts, log
 
 	keepRunning = true
 	return
+}
+
+func checkConfigFileOutdated(configFilename string, logger *util.Logger) {
+	if !config.ConfigFileOutdated() {
+		return
+	}
+	logger.PrintError("Config file %s has been modified, but the collector is still using the previous version. Run 'pganalyze-collector --reload' to fix this", configFilename)
 }
 
 func checkAllInitialCollectionStatus(ctx context.Context, servers []*state.Server, opts state.CollectionOpts, logger *util.Logger) {

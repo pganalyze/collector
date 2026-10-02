@@ -883,6 +883,8 @@ func Read(testRun bool, logger *util.Logger, filename string) (Config, error) {
 	var conf Config
 	var err error
 
+	resetConfigFileTracking()
+
 	if _, err = os.Stat(filename); err == nil {
 		configFile, err := ini.LoadSources(ini.LoadOptions{SpaceBeforeInlineComment: true}, filename)
 		if err != nil {
@@ -961,6 +963,8 @@ func Read(testRun bool, logger *util.Logger, filename string) (Config, error) {
 		if len(conf.Servers) == 0 {
 			return conf, fmt.Errorf("Configuration contains no valid servers, please edit %s and reload the collector", filename)
 		}
+
+		RecordConfigFile(filename)
 	} else {
 		if os.Getenv("PGA_API_KEY") != "" && (os.Getenv("DB_URL") != "" || os.Getenv("DB_HOST") != "" || os.Getenv("DB_PORT") != "" || os.Getenv("DB_NAME") != "" || os.Getenv("DB_USERNAME") != "" || os.Getenv("DB_PASSWORD") != "") {
 			config := getDefaultConfig()
