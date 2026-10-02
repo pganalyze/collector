@@ -1,9 +1,13 @@
 package config
 
 import (
+	"io"
+	"log"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/pganalyze/collector/util"
 )
 
 func writeTestConfigFile(t *testing.T, content string) string {
@@ -68,5 +72,38 @@ func TestConfigFileOutdatedUnreadableAtRecordTime(t *testing.T) {
 	RecordConfigFile(filepath.Join(t.TempDir(), "nonexistent.conf"))
 	if ConfigFileOutdated() {
 		t.Errorf("Expected config file to not be outdated when recording a nonexistent file")
+	}
+}
+
+func TestReadAutoReloadSetting(t *testing.T) {
+	logger := &util.Logger{Destination: log.New(io.Discard, "", 0)}
+
+	tests := []struct {
+		name           string
+		pgaSection     string
+		expectedReload bool
+	}{
+		{"not set", "", false},
+		{"set to false", "auto_reload = false", false},
+		{"set to true", "auto_reload = true", true},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			content := "[pganalyze]\n" + test.pgaSection + "\n\n[default]\ndb_url = postgres://user@localhost/db\n"
+			filename := writeTestConfigFile(t, content)
+
+			conf, err := Read(false, logger, filename)
+			if err != nil {
+				t.Fatalf("Could not read test config file: %s", err)
+			}
+			if conf.AutoReload != test.expectedReload {
+				t.Errorf("Expected AutoReload to be %v; got %v", test.expectedReload, conf.AutoReload)
+			}
+			// The loaded file should be recorded, and not outdated
+			if ConfigFileOutdated() {
+				t.Errorf("Expected config file to not be outdated right after loading it")
+			}
+		})
 	}
 }
