@@ -83,6 +83,46 @@ var tests = []testpair{
 	},
 	{
 		[]state.LogLine{{
+			Content:  "duration: 4079.697 ms  execute <unnamed>: \nSELECT * FROM x WHERE y = $1 LIMIT $2",
+			LogLevel: pganalyze_collector.LogLineInformation_LOG,
+		}, {
+			Content:  "Parameters: $1 = 'o''clock', $2 = '1'",
+			LogLevel: pganalyze_collector.LogLineInformation_DETAIL,
+		}},
+		[]state.LogLine{{
+			Query:              "SELECT * FROM x WHERE y = $1 LIMIT $2",
+			Classification:     pganalyze_collector.LogLineInformation_STATEMENT_DURATION,
+			LogLevel:           pganalyze_collector.LogLineInformation_LOG,
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 43,
+				ByteEnd:   80,
+				Kind:      state.StatementTextLogSecret,
+			}},
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_DETAIL,
+			ReviewedForSecrets: true,
+			SecretMarkers: []state.LogSecretMarker{{
+				ByteStart: 18,
+				ByteEnd:   26,
+				Kind:      state.StatementParameterLogSecret,
+			}, {
+				ByteStart: 35,
+				ByteEnd:   36,
+				Kind:      state.StatementParameterLogSecret,
+			}},
+		}},
+		[]state.PostgresQuerySample{{
+			Query:     "SELECT * FROM x WHERE y = $1 LIMIT $2",
+			RuntimeMs: 4079.697,
+			Parameters: []null.String{
+				null.StringFrom("o''clock"),
+				null.StringFrom("1"),
+			},
+		}},
+	},
+	{
+		[]state.LogLine{{
 			Content:  "duration: 4079.697 ms  execute <unnamed>: \nSELECT * FROM x WHERE y = $1 AND z = $2 LIMIT $3",
 			LogLevel: pganalyze_collector.LogLineInformation_LOG,
 		}, {

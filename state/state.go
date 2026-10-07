@@ -405,6 +405,6 @@ func (s *Server) GetLogParser() LogParser {
 func (s *Server) IgnoreLogLine(content string) bool {
 	flags := atomic.LoadUint32(&s.LogIgnoreFlags)
 
-	return (flags&LOG_IGNORE_STATEMENT != 0 && (strings.HasPrefix(content, "statement: ") || strings.HasPrefix(content, "execute ") || strings.HasPrefix(content, "parameters: "))) ||
+	return (flags&LOG_IGNORE_STATEMENT != 0 && (strings.HasPrefix(content, "statement: ") || strings.HasPrefix(content, "execute ") || strings.HasPrefix(content, "parameters: ") || strings.HasPrefix(content, "Parameters: "))) ||
 		(flags&LOG_IGNORE_DURATION != 0 && strings.HasPrefix(content, "duration: ") && !strings.Contains(content, " ms  plan:\n"))
 }
