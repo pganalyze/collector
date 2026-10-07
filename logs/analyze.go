@@ -62,7 +62,7 @@ var duration = analyzeGroup{
 		remainderKind: state.StatementTextLogSecret,
 	},
 	detail: match{
-		regexp:  regexp.MustCompile(`(?:parameters: |, )\$\d+ = (?:(NULL)|'((?:[^']|'')*)')`),
+		regexp:  regexp.MustCompile(`(?:[Pp]arameters: |, )\$\d+ = (?:(NULL)|'((?:[^']|'')*)')`),
 		secrets: []state.LogSecretKind{state.StatementParameterLogSecret, state.StatementParameterLogSecret},
 	},
 }
@@ -1505,7 +1505,7 @@ var statementLog = analyzeGroup{
 		secrets:  []state.LogSecretKind{state.StatementTextLogSecret},
 	},
 	detail: match{
-		regexp:  regexp.MustCompile(`(?:parameters: |, )\$\d+ = '([^']*)'|^prepare: (.+)`),
+		regexp:  regexp.MustCompile(`(?:[Pp]arameters: |, )\$\d+ = '([^']*)'|^prepare: (.+)`),
 		secrets: []state.LogSecretKind{state.StatementParameterLogSecret, state.StatementTextLogSecret},
 	},
 }
@@ -1978,7 +1978,7 @@ func classifyAndSetDetails(logLine state.LogLine, statementLine state.LogLine, d
 			logLine.Details = map[string]interface{}{"truncated": true}
 		} else if len(parts) == 5 {
 			var parameterParts [][]string
-			if strings.HasPrefix(detailLine.Content, "parameters: ") {
+			if strings.HasPrefix(detailLine.Content, "parameters: ") || strings.HasPrefix(detailLine.Content, "Parameters: ") {
 				detailLine, parameterParts = matchLogLineAll(detailLine, duration.detail)
 			}
 			queryText := logLine.Content[len(parts[0]):len(logLine.Content)]
