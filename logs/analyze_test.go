@@ -765,6 +765,27 @@ var tests = []testpair{
 		}},
 		nil,
 	},
+	{
+		[]state.LogLine{{
+			Content:  "recovery restart point at 4E8/9B13FBB0",
+			LogLevel: pganalyze_collector.LogLineInformation_LOG,
+			UUID:     uuid.UUID{1},
+		}, {
+			Content:  "Last completed transaction was at log time 2017-05-05 20:17:06.511443+00.",
+			LogLevel: pganalyze_collector.LogLineInformation_DETAIL,
+		}},
+		[]state.LogLine{{
+			Classification:     pganalyze_collector.LogLineInformation_RESTARTPOINT_AT,
+			LogLevel:           pganalyze_collector.LogLineInformation_LOG,
+			UUID:               uuid.UUID{1},
+			ReviewedForSecrets: true,
+		}, {
+			LogLevel:           pganalyze_collector.LogLineInformation_DETAIL,
+			ParentUUID:         uuid.UUID{1},
+			ReviewedForSecrets: true,
+		}},
+		nil,
+	},
 	// WAL/Archiving
 	{
 		[]state.LogLine{{

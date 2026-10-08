@@ -172,8 +172,8 @@ var restartpointAt = analyzeGroup{
 		secrets:  []state.LogSecretKind{0, 0},
 	},
 	detail: match{
-		prefixes: []string{"last completed transaction was at log time "},
-		regexp:   regexp.MustCompile(`^last completed transaction was at log time (\d+-\d+-\d+ \d+:\d+:\d+\.\d+[\d:+-]+)`),
+		prefixes: []string{"last completed transaction was at log time ", "Last completed transaction was at log time "},
+		regexp:   regexp.MustCompile(`^[Ll]ast completed transaction was at log time (\d+-\d+-\d+ \d+:\d+:\d+\.\d+[\d:+-]+)`),
 		secrets:  []state.LogSecretKind{0},
 	},
 }
