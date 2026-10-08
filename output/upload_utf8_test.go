@@ -1,93 +1,58 @@
 package output
 
 import (
-	"log"
-	"os"
+	"reflect"
+	"sort"
 	"strings"
 	"testing"
-	"unicode/utf8"
 
 	snapshot "github.com/pganalyze/collector/output/pganalyze_collector"
-	"github.com/pganalyze/collector/util"
-	"google.golang.org/protobuf/proto"
 )
 
 // bad is the exact invalid-UTF-8 value observed in pgsodium.getkey_script's boot_val
 // on a live Supabase instance.
 const bad = "p;\xd3\xf3DY"
 
-func TestMarshalSnapshotRecoversNestedInvalidUTF8(t *testing.T) {
-	// The real case: FullSnapshot -> repeated Setting -> BootValue (message) -> Value.
+func TestMarshalSnapshotRejectsInvalidUTF8(t *testing.T) {
 	fs := &snapshot.FullSnapshot{
 		Settings: []*snapshot.Setting{
 			{Name: "pgsodium.getkey_script", BootValue: &snapshot.NullString{Valid: true, Value: bad}},
 		},
 	}
-
-	if _, err := proto.Marshal(fs); err == nil {
-		t.Fatal("expected raw proto.Marshal to reject the invalid UTF-8")
+	_, err := marshalSnapshot(fs)
+	if err == nil {
+		t.Fatal("expected marshalSnapshot to reject invalid UTF-8")
 	}
-
-	logger := &util.Logger{Destination: log.New(os.Stderr, "", log.LstdFlags)}
-	data, err := marshalSnapshot(fs, logger)
-	if err != nil {
-		t.Fatalf("marshalSnapshot should recover, got: %v", err)
-	}
-	if len(data) == 0 {
-		t.Fatal("expected non-empty marshaled data")
-	}
-	if v := fs.Settings[0].BootValue.Value; !utf8.ValidString(v) {
-		t.Errorf("boot value still invalid after scrub: %q", v)
+	if !strings.Contains(err.Error(), ".settings[0].boot_value.value") {
+		t.Errorf("error should name the offending field, got: %v", err)
 	}
 }
 
-func TestSanitizeInvalidUTF8Map(t *testing.T) {
-	// Map with both a bad value and a bad key.
-	si := &snapshot.SystemInformation{
-		ResourceTags: map[string]string{"good-key": bad, bad: "good-value"},
-	}
-	if _, err := proto.Marshal(si); err == nil {
-		t.Fatal("expected raw proto.Marshal to reject the invalid UTF-8 map entry")
-	}
-
-	fixed := sanitizeInvalidUTF8("", si.ProtoReflect())
-
-	if _, err := proto.Marshal(si); err != nil {
-		t.Fatalf("marshal should succeed after scrub, got: %v", err)
-	}
-	if len(fixed) == 0 || !containsPathPrefix(fixed, "resource_tags") {
-		t.Errorf("expected reported paths to include resource_tags, got %v", fixed)
-	}
-	if len(si.ResourceTags) != 2 {
-		t.Errorf("expected 2 map entries after scrub, got %d", len(si.ResourceTags))
-	}
-	for k, v := range si.ResourceTags {
-		if !utf8.ValidString(k) {
-			t.Errorf("map key still invalid: %q", k)
-		}
-		if !utf8.ValidString(v) {
-			t.Errorf("map value still invalid: %q", v)
-		}
-	}
-}
-
-func TestSanitizeInvalidUTF8ReportsNestedPath(t *testing.T) {
+func TestFindInvalidUTF8(t *testing.T) {
 	fs := &snapshot.FullSnapshot{
 		Settings: []*snapshot.Setting{
+			{Name: "work_mem", CurrentValue: "4MB"},
 			{Name: "pgsodium.getkey_script", BootValue: &snapshot.NullString{Valid: true, Value: bad}},
 		},
+		System: &snapshot.System{
+			SystemInformation: &snapshot.SystemInformation{
+				ResourceTags: map[string]string{"good-key": bad, bad: "good-value"},
+			},
+		},
 	}
-	fixed := sanitizeInvalidUTF8("", fs.ProtoReflect())
-	if !containsPathPrefix(fixed, "settings[0].boot_value.value") {
-		t.Errorf("expected reported path settings[0].boot_value.value, got %v", fixed)
-	}
-}
 
-func containsPathPrefix(paths []string, prefix string) bool {
-	for _, p := range paths {
-		if strings.HasPrefix(p, prefix) {
-			return true
-		}
+	got := findInvalidUTF8(fs)
+	sort.Strings(got)
+	want := []string{
+		`.settings[1].boot_value.value`,
+		`.system.system_information.resource_tags["good-key"]`,
+		`.system.system_information.resource_tags["p;\xd3\xf3DY"] (key)`,
 	}
-	return false
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("findInvalidUTF8 = %q, want %q", got, want)
+	}
+
+	if got := findInvalidUTF8(&snapshot.FullSnapshot{Settings: []*snapshot.Setting{{Name: "work_mem", CurrentValue: "4MB"}}}); len(got) != 0 {
+		t.Errorf("expected no paths for valid snapshot, got %q", got)
+	}
 }
