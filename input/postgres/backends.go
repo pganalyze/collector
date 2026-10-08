@@ -8,6 +8,7 @@ import (
 
 	"github.com/lib/pq"
 	"github.com/pganalyze/collector/state"
+	"github.com/pganalyze/collector/util"
 )
 
 const pgBlockingPidsField = `
@@ -69,9 +70,11 @@ func GetBackends(ctx context.Context, c *Collection, db *sql.DB) ([]state.Postgr
 			return nil, err
 		}
 
-		// Special case to avoid errors for certain backends with weird names
-		if c.Config.SystemType == "azure_database" && row.BackendType.Valid {
-			row.BackendType.String = strings.ToValidUTF8(row.BackendType.String, "")
+		// backend_type can contain invalid UTF-8 on some platforms (e.g. Azure
+		// management backends, Supabase's Supavisor), which would fail snapshot
+		// marshaling; scrub it uniformly to the replacement character.
+		if row.BackendType.Valid {
+			row.BackendType.String = strings.ToValidUTF8(row.BackendType.String, util.InvalidUTF8Replacement)
 		}
 
 		activities = append(activities, row)

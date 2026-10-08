@@ -7,11 +7,15 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protopath"
+	"google.golang.org/protobuf/reflect/protorange"
 )
 
 func SetupSnapshotUploadForAllServers(ctx context.Context, servers []*state.Server, opts state.CollectionOpts, logger *util.Logger) {
@@ -36,9 +40,9 @@ func snapshotUploadForServer(ctx context.Context, server *state.Server, logger *
 		case <-ctx.Done():
 			return
 		case s := <-server.FullSnapshotUpload:
-			data, err := proto.Marshal(s)
+			data, err := marshalSnapshot(s)
 			if err != nil {
-				logger.PrintError("Error marshaling protocol buffers")
+				logger.PrintError("Error marshaling protocol buffers: %s", err)
 				continue
 			}
 
@@ -49,9 +53,9 @@ func snapshotUploadForServer(ctx context.Context, server *state.Server, logger *
 				logger.PrintInfo("Submitted full snapshot successfully")
 			}
 		case s := <-server.CompactSnapshotUpload:
-			data, err := proto.Marshal(s)
+			data, err := marshalSnapshot(s)
 			if err != nil {
-				logger.PrintError("Error marshaling protocol buffers")
+				logger.PrintError("Error marshaling protocol buffers: %s", err)
 				continue
 			}
 
@@ -79,6 +83,47 @@ func snapshotUploadForServer(ctx context.Context, server *state.Server, logger *
 			}
 		}
 	}
+}
+
+// Marshal a snapshot, annotating any error with the paths of invalid UTF-8 fields.
+func marshalSnapshot(m proto.Message) ([]byte, error) {
+	data, err := proto.Marshal(m)
+	return data, annotateInvalidUTF8(err, m)
+}
+
+// proto.Marshal and protojson.Marshal reject strings that aren't valid UTF-8, but the
+// error they return doesn't say which field was affected. To make that tractable to
+// track down (and fix at the source, e.g. by adding a setting to the denylist in
+// output/transform), walk the message on failure and append the offending paths.
+func annotateInvalidUTF8(err error, m proto.Message) error {
+	if err == nil {
+		return nil
+	}
+	if paths := findInvalidUTF8(m); len(paths) > 0 {
+		return fmt.Errorf("%w (in %s)", err, strings.Join(paths, ", "))
+	}
+	return err
+}
+
+// Returns the path of every string field, list element, map value and map key in the
+// message that isn't valid UTF-8, e.g. ".settings[0].boot_value.value".
+func findInvalidUTF8(m proto.Message) []string {
+	var paths []string
+	protorange.Range(m.ProtoReflect(), func(p protopath.Values) error {
+		last := p.Index(-1)
+		// p.Path[0] is the root step, which would print as the message type name
+		path := p.Path[1:].String()
+		if s, ok := last.Value.Interface().(string); ok && !utf8.ValidString(s) {
+			paths = append(paths, path)
+		}
+		if last.Step.Kind() == protopath.MapIndexStep {
+			if k, ok := last.Step.MapIndex().Interface().(string); ok && !utf8.ValidString(k) {
+				paths = append(paths, path+" (key)")
+			}
+		}
+		return nil
+	})
+	return paths
 }
 
 func summarizeCounts(counts map[string]uint8) string {
