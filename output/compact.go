@@ -62,7 +62,7 @@ func debugCompactOutputAsJSON(logger *util.Logger, s *pganalyze_collector.Compac
 	var out bytes.Buffer
 	dataJSON, err := protojson.Marshal(s)
 	if err != nil {
-		logger.PrintError("Failed to transform protocol buffers to JSON: %s", err)
+		logger.PrintError("Failed to transform protocol buffers to JSON: %s", annotateInvalidUTF8(err, s))
 		return
 	}
 	json.Indent(&out, dataJSON, "", "\t")
