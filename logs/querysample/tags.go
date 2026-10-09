@@ -5,7 +5,7 @@ import (
 	"regexp"
 	"strings"
 
-	pg_query "github.com/pganalyze/pg_query_go/v6"
+	pg_query "github.com/pganalyze/pg_query_go/v18"
 )
 
 var singleQuotedRegex = regexp.MustCompile(`^'(.*)'$`)

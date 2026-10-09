@@ -16,7 +16,7 @@ import (
 	"github.com/pganalyze/collector/selftest"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
-	pg_query "github.com/pganalyze/pg_query_go/v6"
+	pg_query "github.com/pganalyze/pg_query_go/v18"
 )
 
 // pg_stat_statements 1.3+ (Postgres 9.5+)
@@ -466,7 +466,7 @@ func fingerprintAndNormalize(c *Collection, key state.PostgresStatementKey, quer
 			IgnoreIoTiming: ignoreIoTiming,
 		}
 	} else {
-		fp := c.Fingerprints.LoadOrStore(queryID, text, c.Config.FilterQueryText, -1)
+		fp := c.Fingerprints.LoadOrStore(queryID, text, c.Config.FilterQueryText, -1, state.FingerprintOptsForVersion(c.PostgresVersion.Numeric))
 		statements[key] = state.PostgresStatement{Fingerprint: fp, IgnoreIoTiming: ignoreIoTiming}
 		_, ok := statementTextsByFp[fp]
 		if !ok {
