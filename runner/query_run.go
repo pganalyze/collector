@@ -46,12 +46,11 @@ func run(ctx context.Context, server *state.Server, collectionOpts state.Collect
 			continue
 		}
 		logger.PrintVerbose("Query run %d starting: %s", query.Id, query.QueryText)
+		output.SubmitQueryRunSnapshot(ctx, server, collectionOpts, logger, copyQueryRun(server, query))
 
 		result, err := runQueryOnDatabase(runCtx, server, collectionOpts, logger, query)
 
-		// Activity snapshots will eventually send the query run result, but to reduce latency
-		// we also send a query run snapshot immediately after the query has finished.
-		if queryRun, submit := finishQueryRun(server, query, result, err); submit {
+		if queryRun, finished := finishQueryRun(server, query, result, err); finished {
 			output.SubmitQueryRunSnapshot(ctx, server, collectionOpts, logger, queryRun)
 		}
 	}
@@ -97,8 +96,8 @@ func startQueryRun(ctx context.Context, server *state.Server, query *state.Query
 	return runCtx, true
 }
 
-// Records the outcome of the query run, unless it was canceled while running, and returns a
-// copy of the run along with whether to submit it right away
+// Records the outcome of the query run and returns a copy of it, unless it was canceled
+// while running
 func finishQueryRun(server *state.Server, query *state.QueryRun, result string, err error) (state.QueryRun, bool) {
 	server.QueryRunsMutex.Lock()
 	defer server.QueryRunsMutex.Unlock()
@@ -114,10 +113,17 @@ func finishQueryRun(server *state.Server, query *state.QueryRun, result string, 
 	query.FinishedAt = time.Now()
 	if err != nil {
 		query.Error = err.Error()
-		return *query, false
+	} else {
+		query.Result = result
 	}
-	query.Result = result
 	return *query, true
+}
+
+func copyQueryRun(server *state.Server, query *state.QueryRun) state.QueryRun {
+	server.QueryRunsMutex.Lock()
+	defer server.QueryRunsMutex.Unlock()
+
+	return *query
 }
 
 // Stops the given query runs, whether or not they've started

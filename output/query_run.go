@@ -21,5 +21,8 @@ func SubmitQueryRunSnapshot(ctx context.Context, server *state.Server, collectio
 			BackendPid: int32(query.BackendPid),
 		}}},
 	}
-	uploadAndSubmitCompactSnapshot(ctx, s, server, collectionOpts, logger, time.Now())
+	err := uploadAndSubmitCompactSnapshot(ctx, s, server, collectionOpts, logger, time.Now())
+	if err != nil {
+		logger.PrintWarning("Could not submit query run %d: %s", query.Id, err)
+	}
 }

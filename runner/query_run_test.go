@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/pganalyze/collector/config"
+	"github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
 )
@@ -83,5 +84,37 @@ func TestStartQueryRunCanceledAfterSnapshot(t *testing.T) {
 	}
 	if !pending[0].StartedAt.IsZero() {
 		t.Errorf("canceled run has StartedAt set")
+	}
+}
+
+func TestRunSubmitsStartAndError(t *testing.T) {
+	server := state.MakeServer(config.ServerConfig{}, false)
+	// An unknown type fails before connecting to the database
+	server.QueryRuns[1] = &state.QueryRun{Id: 1, Type: pganalyze_collector.QueryRunType(-1)}
+
+	run(context.Background(), server, state.CollectionOpts{SubmitCollectedData: true}, &util.Logger{})
+
+	runs := submittedQueryRuns(server)
+	if len(runs) != 2 {
+		t.Fatalf("got %d query run snapshots, want 2 (start and error)", len(runs))
+	}
+	start, finish := runs[0], runs[1]
+	if start.Id != 1 || start.StartedAt.AsTime().IsZero() || !start.FinishedAt.AsTime().IsZero() || start.Error != "" {
+		t.Errorf("first snapshot is not the start of run 1: %v", start)
+	}
+	if finish.Id != 1 || finish.FinishedAt.AsTime().IsZero() || finish.Error != "Unhandled query run type" {
+		t.Errorf("second snapshot is not the error of run 1: %v", finish)
+	}
+}
+
+func submittedQueryRuns(server *state.Server) []*pganalyze_collector.QueryRun {
+	var runs []*pganalyze_collector.QueryRun
+	for {
+		select {
+		case s := <-server.CompactSnapshotUpload:
+			runs = append(runs, s.GetQueryRunSnapshot().GetQueryRun())
+		default:
+			return runs
+		}
 	}
 }
