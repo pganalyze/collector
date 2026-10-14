@@ -22,8 +22,6 @@ func TestWaitWithTimeoutFinishes(t *testing.T) {
 	}
 }
 
-// A collection Goroutine blocked on a Postgres read that never returns never
-// marks itself done, which is what we must not wait for indefinitely
 func TestWaitWithTimeoutGivesUp(t *testing.T) {
 	var wg sync.WaitGroup
 	stuck := make(chan struct{})

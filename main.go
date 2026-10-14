@@ -33,14 +33,7 @@ import (
 const defaultConfigFile = "/etc/pganalyze-collector.conf"
 const defaultStateFile = "/var/lib/pganalyze-collector/state"
 
-// Time collection Goroutines get to stop after their context is canceled, before
-// we give up waiting on them. A canceled context does not necessarily end a
-// Postgres query, since lib/pq sets no deadline on the connection once it is
-// established, so a server that accepts a connection but never answers can keep a
-// collection Goroutine running indefinitely.
-//
-// Kept well below systemd's default TimeoutStopSec of 90 seconds, so stopping the
-// collector does not need a SIGKILL.
+// Time allotted for a snapshot to complete when a shutdown signal comes in.
 const collectionStopTimeout = 30 * time.Second
 
 func main() {
@@ -321,9 +314,7 @@ ReadConfigAndRun:
 			shutdown()
 			cancel()
 			if !util.WaitWithTimeout(&wg, collectionStopTimeout) {
-				// Writing the state file and starting over would both block on the
-				// mutexes the stuck Goroutine holds, so exit and let the service
-				// manager restart us with a clean slate
+				// Can't be sure of collection state at this point: exit to be safe.
 				logger.PrintError("Collection did not stop within %s, exiting instead of reloading", collectionStopTimeout)
 				os.Exit(1)
 			}
