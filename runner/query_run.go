@@ -41,29 +41,20 @@ func SetupQueryRunnerForAllServers(ctx context.Context, servers []*state.Server,
 
 func run(ctx context.Context, server *state.Server, collectionOpts state.CollectionOpts, logger *util.Logger) {
 	for _, query := range pendingQueryRuns(server) {
-		server.QueryRunsMutex.Lock()
-		query.StartedAt = time.Now()
-		server.QueryRunsMutex.Unlock()
-		logger.PrintVerbose("Query run %d starting: %s", query.Id, query.QueryText)
-
-		result, err := runQueryOnDatabase(ctx, server, collectionOpts, logger, query)
-		if err != nil {
-			server.QueryRunsMutex.Lock()
-			query.FinishedAt = time.Now()
-			query.Error = err.Error()
-			server.QueryRunsMutex.Unlock()
+		runCtx, cancel, started := startQueryRun(ctx, server, query)
+		if !started {
 			continue
 		}
+		logger.PrintVerbose("Query run %d starting: %s", query.Id, query.QueryText)
 
-		server.QueryRunsMutex.Lock()
-		query.FinishedAt = time.Now()
-		query.Result = result
-		queryRun := *query
-		server.QueryRunsMutex.Unlock()
+		result, err := runQueryOnDatabase(runCtx, server, collectionOpts, logger, query)
+		cancel()
 
 		// Activity snapshots will eventually send the query run result, but to reduce latency
 		// we also send a query run snapshot immediately after the query has finished.
-		output.SubmitQueryRunSnapshot(ctx, server, collectionOpts, logger, queryRun)
+		if queryRun, submit := finishQueryRun(server, query, result, err); submit {
+			output.SubmitQueryRunSnapshot(ctx, server, collectionOpts, logger, queryRun)
+		}
 	}
 }
 
@@ -89,6 +80,64 @@ func pendingQueryRuns(server *state.Server) []*state.QueryRun {
 	})
 
 	return pending
+}
+
+// Marks the query run as started and returns the context to run it with, unless it was
+// canceled after pendingQueryRuns returned it
+func startQueryRun(ctx context.Context, server *state.Server, query *state.QueryRun) (context.Context, context.CancelFunc, bool) {
+	server.QueryRunsMutex.Lock()
+	defer server.QueryRunsMutex.Unlock()
+
+	if !query.FinishedAt.IsZero() {
+		return nil, nil, false
+	}
+
+	runCtx, cancel := context.WithCancel(ctx)
+	query.StartedAt = time.Now()
+	query.Cancel = cancel
+	return runCtx, cancel, true
+}
+
+// Records the outcome of the query run, unless it was canceled while running, and returns a
+// copy of the run along with whether to submit it right away
+func finishQueryRun(server *state.Server, query *state.QueryRun, result string, err error) (state.QueryRun, bool) {
+	server.QueryRunsMutex.Lock()
+	defer server.QueryRunsMutex.Unlock()
+
+	if !query.FinishedAt.IsZero() {
+		// The server has already discarded this run
+		return *query, false
+	}
+
+	query.FinishedAt = time.Now()
+	if err != nil {
+		query.Error = err.Error()
+		return *query, false
+	}
+	query.Result = result
+	return *query, true
+}
+
+// Stops the given query runs, whether or not they've started
+//
+// Runs are marked finished right away, so a run that hasn't started is skipped, and the
+// outcome of one that's running is discarded.
+func cancelQueryRuns(server *state.Server, ids []int64, logger *util.Logger) {
+	server.QueryRunsMutex.Lock()
+	defer server.QueryRunsMutex.Unlock()
+
+	for _, id := range ids {
+		query, exists := server.QueryRuns[id]
+		if !exists || !query.FinishedAt.IsZero() {
+			continue
+		}
+		logger.PrintVerbose("Query run %d canceled", id)
+		query.FinishedAt = time.Now()
+		query.Error = "Query run was canceled"
+		if query.Cancel != nil {
+			query.Cancel()
+		}
+	}
 }
 
 func runQueryOnDatabase(ctx context.Context, server *state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, query *state.QueryRun) (string, error) {

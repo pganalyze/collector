@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"strings"
 	"testing"
 	"time"
 
@@ -331,6 +332,55 @@ func TestExplainAnalyzeForQueryRun(t *testing.T) {
 		if errStr != pair.expectedError {
 			t.Errorf("Incorrect error for query '%s' (via collector code):\n got: %s\n expected: %s", pair.query, errStr, pair.expectedError)
 		}
+	}
+}
+
+func TestExplainAnalyzeForQueryRunCanceled(t *testing.T) {
+	db := setupTest(t)
+	defer db.Close()
+	monitor, err := makeConnection(os.Getenv("TEST_DATABASE_URL"))
+	if err != nil {
+		t.Fatalf("Could not connect to test database: %s", err)
+	}
+	defer monitor.Close()
+
+	marker := "/* pganalyze-query-run:cancel-test */ "
+	countActive := func() int {
+		var active int
+		err := monitor.QueryRow("SELECT count(*) FROM pg_stat_activity WHERE state = 'active' AND query LIKE $1 AND pid <> pg_backend_pid()", marker+"%").Scan(&active)
+		if err != nil {
+			t.Errorf("Could not check pg_stat_activity: %s", err)
+		}
+		return active
+	}
+
+	// Cancel only once the query is running, since a cancel request that reaches the backend
+	// before it starts the query has no effect
+	ctx, cancel := context.WithCancel(context.Background())
+	started := make(chan bool, 1)
+	go func() {
+		defer cancel()
+		for deadline := time.Now().Add(10 * time.Second); time.Now().Before(deadline); time.Sleep(10 * time.Millisecond) {
+			if countActive() == 1 {
+				started <- true
+				return
+			}
+		}
+		started <- false
+	}()
+
+	// The sleep only bounds how long the test takes if canceling doesn't work
+	_, err = postgres.RunExplainAnalyzeForQueryRun(ctx, db, "SELECT pg_sleep(30)", []null.String{}, []string{}, marker)
+	if !<-started {
+		t.Fatalf("Query run did not become active on the database")
+	}
+	if err == nil || !strings.Contains(err.Error(), "canceling statement due to user request") {
+		t.Fatalf("Got error %v, want the query canceled on the database", err)
+	}
+
+	// lib/pq only returns once the backend is ready for the next query, so it must have stopped
+	if active := countActive(); active != 0 {
+		t.Errorf("Got %d active query runs after canceling, want 0", active)
 	}
 }
 

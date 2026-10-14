@@ -1,6 +1,7 @@
 package state
 
 import (
+	"context"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -286,6 +287,8 @@ type QueryRun struct {
 	StartedAt           time.Time
 	FinishedAt          time.Time
 	BackendPid          int
+	// Stops the query on the database; set once the run starts
+	Cancel context.CancelFunc
 }
 
 type Server struct {

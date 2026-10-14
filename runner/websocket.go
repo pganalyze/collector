@@ -92,6 +92,8 @@ func processServerMessages(ctx context.Context, server *state.Server, logger *ut
 					}
 				}
 				server.QueryRunsMutex.Unlock()
+			} else if message.GetQueryRunCancel() != nil {
+				cancelQueryRuns(server, message.GetQueryRunCancel().Ids, logger)
 			}
 		}
 	}
