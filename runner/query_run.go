@@ -1,9 +1,11 @@
 package runner
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/lib/pq"
@@ -65,7 +67,8 @@ func run(ctx context.Context, server *state.Server, collectionOpts state.Collect
 	}
 }
 
-// Returns the query runs that have not been run yet
+// Returns the query runs that have not been run yet, in the order the server created them
+// (IDs are assigned sequentially by the server)
 //
 // The map must be read whilst holding the mutex, since the WebSocket message handler
 // adds new query runs to it concurrently.
@@ -80,6 +83,10 @@ func pendingQueryRuns(server *state.Server) []*state.QueryRun {
 			pending = append(pending, query)
 		}
 	}
+
+	slices.SortFunc(pending, func(a, b *state.QueryRun) int {
+		return cmp.Compare(a.Id, b.Id)
+	})
 
 	return pending
 }
