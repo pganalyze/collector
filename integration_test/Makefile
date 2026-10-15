@@ -191,7 +191,8 @@ citus:
 #
 # Note that we reload twice after adding a server to the config, so we can test the
 # "write state file when reload occurs" logic, that requires the server to be there
-# *before* the reload
+# *before* the reload. Since --reload only signals the running collector, which writes
+# the state file asynchronously, we poll for it instead of checking once.
 reload:
 	docker build -f Dockerfile.test-reload $(DOCKER_BUILD_OPTS)
 	$(call docker_run_cmd,)
@@ -203,7 +204,7 @@ reload:
 	docker exec pganalyze-collector-test bash -c "echo 'db_url = postgres://127.0.0.1/postgres' >> /etc/pganalyze-collector.conf"
 	docker exec pganalyze-collector-test pganalyze-collector --reload
 	docker exec pganalyze-collector-test pganalyze-collector --reload
-	docker exec pganalyze-collector-test test -f /var/lib/pganalyze-collector/state
+	docker exec pganalyze-collector-test timeout 30 bash -c 'until test -f /var/lib/pganalyze-collector/state; do sleep 0.1; done'
 	docker rm -f pganalyze-collector-test
 	docker rmi pganalyze-collector-test
 
