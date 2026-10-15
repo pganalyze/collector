@@ -23,16 +23,16 @@ func RunExplainAnalyzeForQueryRun(ctx context.Context, db *sql.DB, query string,
 	}
 
 	// Warm up caches without collecting timing info (slightly faster)
-	_, err = runExplainAnalyze(ctx, db, query, parameters, parameterTypes, []string{"ANALYZE", "TIMING OFF"}, marker)
+	warmupResult, err := runExplainAnalyze(ctx, db, query, parameters, parameterTypes, []string{"ANALYZE", "TIMING OFF"}, marker)
 	if err != nil {
-		if !strings.Contains(err.Error(), "statement timeout") {
+		if !isStatementTimeout(err) {
 			return
 		}
 
 		// Run again if it was a timeout error, to make sure we got the caches warmed up all the way
-		_, err = runExplainAnalyze(ctx, db, query, parameters, parameterTypes, []string{"ANALYZE", "TIMING OFF"}, marker)
+		warmupResult, err = runExplainAnalyze(ctx, db, query, parameters, parameterTypes, []string{"ANALYZE", "TIMING OFF"}, marker)
 		if err != nil {
-			if !strings.Contains(err.Error(), "statement timeout") {
+			if !isStatementTimeout(err) {
 				return
 			}
 
@@ -42,7 +42,18 @@ func RunExplainAnalyzeForQueryRun(ctx context.Context, db *sql.DB, query string,
 	}
 
 	// Run EXPLAIN ANALYZE once more to get a warm cache result (this is the one we return)
-	return runExplainAnalyze(ctx, db, query, parameters, parameterTypes, []string{"ANALYZE", "BUFFERS"}, marker)
+	result, err = runExplainAnalyze(ctx, db, query, parameters, parameterTypes, []string{"ANALYZE", "BUFFERS"}, marker)
+	if err != nil && isStatementTimeout(err) {
+		// If the final run timed out (e.g. due to the overhead of timing collection), fall
+		// back to the successful warm-up result instead of discarding it
+		return warmupResult, nil
+	}
+
+	return
+}
+
+func isStatementTimeout(err error) bool {
+	return strings.Contains(err.Error(), "statement timeout")
 }
 
 func runExplainAnalyze(ctx context.Context, db *sql.DB, query string, parameters []null.String, parameterTypes []string, analyzeFlags []string, marker string) (explainOutput string, err error) {
