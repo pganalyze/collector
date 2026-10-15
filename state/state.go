@@ -1,6 +1,7 @@
 package state
 
 import (
+	"context"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -286,6 +287,7 @@ type QueryRun struct {
 	StartedAt           time.Time
 	FinishedAt          time.Time
 	BackendPid          int
+	Cancel              context.CancelFunc
 }
 
 type Server struct {

@@ -13,6 +13,8 @@ message ServerMessage {
     Pause pause = 2;
     // Request for the collector to run a query on behalf of a user
     QueryRun query_run = 3;
+    // Request for the collector to stop query runs it has received, whether or not they've started
+    QueryRunCancel query_run_cancel = 4;
   }
 
   message Config {
@@ -53,6 +55,11 @@ message ServerMessage {
     repeated NullString query_parameters = 5;
     repeated string query_parameter_types = 6;
     map<string, string> postgres_settings = 7;
+  }
+
+  message QueryRunCancel {
+    // Unknown and already finished IDs are ignored, so the server can safely re-send cancellations
+    repeated int64 ids = 1;
   }
 
   // The pganalyze server reports capability to handle breaking changes by setting these fields.
