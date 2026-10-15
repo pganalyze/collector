@@ -37,6 +37,7 @@ func ActivityStateToCompactActivitySnapshot(server *state.Server, activityState 
 				backend.Query.String,
 				backend.QueryId,
 				activityState.TrackActivityQuerySize,
+				state.FingerprintOptsForVersion(activityState.PostgresVersion.Numeric),
 			)
 			b.HasQueryIdx = true
 			b.QueryText = backend.Query.String
