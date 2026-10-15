@@ -50,7 +50,9 @@ func run(ctx context.Context, server *state.Server, collectionOpts state.Collect
 
 		result, err := runQueryOnDatabase(runCtx, server, collectionOpts, logger, query)
 
-		if queryRun, finished := finishQueryRun(server, query, result, err); finished {
+		// Activity snapshots will eventually send the query run result, but to reduce latency
+		// we also send a query run snapshot immediately after the query has finished.
+		if queryRun, ok := finishQueryRun(server, query, result, err); ok {
 			output.SubmitQueryRunSnapshot(ctx, server, collectionOpts, logger, queryRun)
 		}
 	}
