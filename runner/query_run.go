@@ -41,14 +41,13 @@ func SetupQueryRunnerForAllServers(ctx context.Context, servers []*state.Server,
 
 func run(ctx context.Context, server *state.Server, collectionOpts state.CollectionOpts, logger *util.Logger) {
 	for _, query := range pendingQueryRuns(server) {
-		runCtx, cancel, started := startQueryRun(ctx, server, query)
-		if !started {
+		runCtx, ok := startQueryRun(ctx, server, query)
+		if !ok {
 			continue
 		}
 		logger.PrintVerbose("Query run %d starting: %s", query.Id, query.QueryText)
 
 		result, err := runQueryOnDatabase(runCtx, server, collectionOpts, logger, query)
-		cancel()
 
 		// Activity snapshots will eventually send the query run result, but to reduce latency
 		// we also send a query run snapshot immediately after the query has finished.
@@ -83,19 +82,19 @@ func pendingQueryRuns(server *state.Server) []*state.QueryRun {
 }
 
 // Marks the query run as started and returns the context to run it with, unless it was
-// canceled after pendingQueryRuns returned it
-func startQueryRun(ctx context.Context, server *state.Server, query *state.QueryRun) (context.Context, context.CancelFunc, bool) {
+// canceled after pendingQueryRuns returned it. finishQueryRun releases the context.
+func startQueryRun(ctx context.Context, server *state.Server, query *state.QueryRun) (context.Context, bool) {
 	server.QueryRunsMutex.Lock()
 	defer server.QueryRunsMutex.Unlock()
 
 	if !query.FinishedAt.IsZero() {
-		return nil, nil, false
+		return nil, false
 	}
 
 	runCtx, cancel := context.WithCancel(ctx)
 	query.StartedAt = time.Now()
 	query.Cancel = cancel
-	return runCtx, cancel, true
+	return runCtx, true
 }
 
 // Records the outcome of the query run, unless it was canceled while running, and returns a
@@ -104,8 +103,11 @@ func finishQueryRun(server *state.Server, query *state.QueryRun, result string, 
 	server.QueryRunsMutex.Lock()
 	defer server.QueryRunsMutex.Unlock()
 
+	query.Cancel()
+	query.Cancel = nil
+
 	if !query.FinishedAt.IsZero() {
-		// The server has already discarded this run
+		// Canceled by the server (see cancelQueryRuns)
 		return *query, false
 	}
 
@@ -119,9 +121,6 @@ func finishQueryRun(server *state.Server, query *state.QueryRun, result string, 
 }
 
 // Stops the given query runs, whether or not they've started
-//
-// Runs are marked finished right away, so a run that hasn't started is skipped, and the
-// outcome of one that's running is discarded.
 func cancelQueryRuns(server *state.Server, ids []int64, logger *util.Logger) {
 	server.QueryRunsMutex.Lock()
 	defer server.QueryRunsMutex.Unlock()

@@ -354,8 +354,7 @@ func TestExplainAnalyzeForQueryRunCanceled(t *testing.T) {
 		return active
 	}
 
-	// Cancel only once the query is running, since a cancel request that reaches the backend
-	// before it starts the query has no effect
+	// Ensure query is running before we attempt to test cancellation
 	ctx, cancel := context.WithCancel(context.Background())
 	started := make(chan bool, 1)
 	go func() {
@@ -369,7 +368,6 @@ func TestExplainAnalyzeForQueryRunCanceled(t *testing.T) {
 		started <- false
 	}()
 
-	// The sleep only bounds how long the test takes if canceling doesn't work
 	_, err = postgres.RunExplainAnalyzeForQueryRun(ctx, db, "SELECT pg_sleep(30)", []null.String{}, []string{}, marker)
 	if !<-started {
 		t.Fatalf("Query run did not become active on the database")
@@ -378,7 +376,6 @@ func TestExplainAnalyzeForQueryRunCanceled(t *testing.T) {
 		t.Fatalf("Got error %v, want the query canceled on the database", err)
 	}
 
-	// lib/pq only returns once the backend is ready for the next query, so it must have stopped
 	if active := countActive(); active != 0 {
 		t.Errorf("Got %d active query runs after canceling, want 0", active)
 	}

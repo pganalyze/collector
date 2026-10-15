@@ -44,7 +44,7 @@ func TestCancelQueryRuns(t *testing.T) {
 	for _, run := range []*state.QueryRun{queued, running, finished} {
 		server.QueryRuns[run.Id] = run
 	}
-	runCtx, _, started := startQueryRun(context.Background(), server, running)
+	runCtx, started := startQueryRun(context.Background(), server, running)
 	if !started {
 		t.Fatalf("startQueryRun() did not start run 2")
 	}
@@ -78,7 +78,7 @@ func TestStartQueryRunCanceledAfterSnapshot(t *testing.T) {
 
 	cancelQueryRuns(server, []int64{1}, &util.Logger{})
 
-	if _, _, started := startQueryRun(context.Background(), server, pending[0]); started {
+	if _, started := startQueryRun(context.Background(), server, pending[0]); started {
 		t.Errorf("startQueryRun() started a run canceled after the pending snapshot")
 	}
 	if !pending[0].StartedAt.IsZero() {
