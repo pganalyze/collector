@@ -26,8 +26,7 @@ RUN if [ "$INSTALL_VECTOR" = true ]; then \
 # Build the collector
 COPY . $CODE_DIR
 WORKDIR $CODE_DIR
-# Share Go's build cache across the test images, which would otherwise each
-# compile the collector from scratch
+# Share Go's build cache across the test images
 RUN --mount=type=cache,target=/root/.cache/go-build make build_dist
 
 # Make sure collector state can be saved
