@@ -1,4 +1,4 @@
-FROM ubuntu:20.04
+FROM ubuntu:20.04 AS base
 
 ARG TARGETARCH
 
@@ -36,6 +36,12 @@ RUN cp $CODE_DIR/pganalyze-collector-setup /usr/bin/
 RUN cp $CODE_DIR/contrib/pganalyze-collector.conf /etc/pganalyze-collector.conf
 
 RUN sh $CODE_DIR/packages/src/deb-systemd/after-install.sh
+
+FROM base AS reload
+
+RUN cp $CODE_DIR/contrib/systemd/pganalyze-collector.service /etc/systemd/system/pganalyze-collector.service
+
+FROM base AS guided-setup
 
 # install postgres
 RUN DEBIAN_FRONTEND=noninteractive apt-get install --yes --quiet postgresql

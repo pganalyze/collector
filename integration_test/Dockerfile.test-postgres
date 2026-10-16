@@ -1,4 +1,5 @@
-FROM postgres:17
+ARG BASE_IMAGE=postgres:17
+FROM ${BASE_IMAGE}
 
 # Workaround for https://github.com/docker-library/postgres/issues/1112
 RUN echo en_US.UTF-8 UTF-8 >> /etc/locale.gen
@@ -16,8 +17,11 @@ RUN apt-get update -qq && apt-get install -y -q build-essential git curl
 RUN curl -o go.tar.gz -sSL "https://go.dev/dl/go${GOVERSION}.linux-${TARGETARCH}.tar.gz"
 RUN tar -C /usr/local -xzf go.tar.gz
 
-# Vector
-RUN bash -c "$(curl -L https://setup.vector.dev)" && apt-get install -y vector
+# Vector, only needed by the otel-vector test
+ARG INSTALL_VECTOR=false
+RUN if [ "$INSTALL_VECTOR" = true ]; then \
+      bash -c "$(curl -L https://setup.vector.dev)" && apt-get install -y vector; \
+    fi
 
 # Build the collector
 COPY . $CODE_DIR
