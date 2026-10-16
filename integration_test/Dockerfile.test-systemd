@@ -25,7 +25,8 @@ RUN tar -C /usr/local -xzf go.tar.gz
 # Build the collector
 COPY . $CODE_DIR
 WORKDIR $CODE_DIR
-RUN make build_dist
+# Share Go's build cache across the test images
+RUN --mount=type=cache,target=/root/.cache/go-build make build_dist
 
 # Make sure collector state can be saved
 RUN mkdir /var/lib/pganalyze-collector/
