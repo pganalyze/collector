@@ -146,7 +146,12 @@ func collectSchemaData(ctx context.Context, c *Collection, db *sql.DB, ps state.
 	}
 	ps.Functions = append(ps.Functions, newFunctions...)
 
-	c = c.ForCurrentDatabase(newFunctions)
+	isCitus, err := GetIsCitus(ctx, db)
+	if err != nil {
+		c.Logger.PrintWarning("error checking for Citus extension: %s", err)
+	}
+
+	c = c.ForCurrentDatabase(newFunctions, isCitus)
 
 	if c.GlobalOpts.CollectPostgresRelations {
 		newRelations, err := GetRelations(ctx, c, db, databaseOid)
