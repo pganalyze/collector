@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/guregu/null"
+	"github.com/lib/pq"
 	"github.com/pganalyze/collector/state"
 )
 
@@ -217,7 +218,7 @@ func GetRelations(ctx context.Context, c *Collection, db *sql.DB, currentDatabas
 
 	for rows.Next() {
 		var row state.PostgresRelation
-		var options null.String
+		var options pq.StringArray
 		var childRelids null.String
 		var partCols null.String
 
@@ -233,13 +234,7 @@ func GetRelations(ctx context.Context, c *Collection, db *sql.DB, currentDatabas
 
 		row.ChildTableOids = unpackPostgresOidArray(childRelids)
 
-		row.Options = make(map[string]string)
-		if options.Valid {
-			for _, cstr := range strings.Split(strings.Trim(options.String, "{}"), ",") {
-				parts := strings.Split(cstr, "=")
-				row.Options[parts[0]] = parts[1]
-			}
-		}
+		row.Options = unpackPostgresRelOptions(options)
 
 		if partCols.Valid {
 			for _, cstr := range strings.Split(partCols.String, " ") {
@@ -309,7 +304,7 @@ func GetRelations(ctx context.Context, c *Collection, db *sql.DB, currentDatabas
 	for rows.Next() {
 		var row state.PostgresIndex
 		var columns string
-		var options null.String
+		var options pq.StringArray
 		var exclusivelyLocked bool
 		var childRelids null.String
 
@@ -328,13 +323,7 @@ func GetRelations(ctx context.Context, c *Collection, db *sql.DB, currentDatabas
 			row.Columns = append(row.Columns, int32(cint))
 		}
 
-		row.Options = make(map[string]string)
-		if options.Valid {
-			for _, cstr := range strings.Split(strings.Trim(options.String, "{}"), ",") {
-				parts := strings.Split(cstr, "=")
-				row.Options[parts[0]] = parts[1]
-			}
-		}
+		row.Options = unpackPostgresRelOptions(options)
 
 		relation, ok := relations[row.RelationOid]
 		if !ok {
