@@ -25,6 +25,15 @@ func unpackPostgresOidArray(input null.String) (result []state.Oid) {
 	return
 }
 
+func unpackPostgresRelOptions(options []string) map[string]string {
+	result := make(map[string]string, len(options))
+	for _, option := range options {
+		name, value, _ := strings.Cut(option, "=")
+		result[name] = value
+	}
+	return result
+}
+
 const resolveToastSQL string = `
 SELECT n.nspname, c.relname
   FROM pg_catalog.pg_class c
