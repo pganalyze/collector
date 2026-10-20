@@ -28,7 +28,7 @@ docker exec --user pganalyze "$CONTAINER" cat /etc/pganalyze-collector.conf > gu
 docker exec --env PGA_DISABLE_ACTIVITY=1 "$CONTAINER" pganalyze-collector --dry-run --force-state-update -v \
   > guided-setup.snapshot.json.out 2> guided-setup-snapshot.log.out
 
-docker exec --user postgres "$CONTAINER" pg_ctl --pgdata /var/lib/postgresql/12/main --wait stop --mode fast
+docker exec --user postgres "$CONTAINER" pg_ctl --pgdata /var/lib/postgresql/14/main --wait stop --mode fast
 
 diff -Nau guided-setup.postgres.expected guided-setup.postgres.out
 echo 'postgres configuration modified as expected'
