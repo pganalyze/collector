@@ -27,10 +27,11 @@ func collectDiffAndSubmit(ctx context.Context, server *state.Server, opts state.
 	if err != nil {
 		return newState, state.CollectionStatus{}, fmt.Errorf("Failed to connect to database: %s", err)
 	}
+	// Covers panics too, which unwind past the early Close below
+	defer connection.Close()
 
 	newState, transientState, err := input.CollectFull(ctx, server, connection, opts, logger)
 	if err != nil {
-		connection.Close()
 		return newState, state.CollectionStatus{}, err
 	}
 	if opts.TestRun {
