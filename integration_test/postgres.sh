@@ -10,6 +10,8 @@ TEST_NAME=$1
 # shellcheck source=lib.sh
 source "$(dirname "$0")/lib.sh"
 
+snapshot_env=()
+
 pgbench() {
   docker exec "$CONTAINER" pgbench -U postgres postgres "$@"
 }
@@ -18,6 +20,7 @@ snapshot() {
   docker exec \
     --env DB_USERNAME=postgres --env PGA_API_KEY=dummy --env PGA_DISABLE_ACTIVITY=1 \
     --env IGNORE_SCHEMA_REGEXP=pgbench_history \
+    "${snapshot_env[@]}" \
     "$CONTAINER" pganalyze-collector --dry-run --force-state-update -v
 }
 
@@ -34,6 +37,11 @@ wait_for_postgres
 pgbench -i
 if [[ $TEST_NAME == citus ]]; then
   docker exec -i "$CONTAINER" psql -U postgres postgres < citus-pgbench-ddl.sql
+  # Citus is installed per database, so schema collection must also work for
+  # databases on the same server that don't have it
+  docker exec "$CONTAINER" psql -U postgres -c "CREATE DATABASE non_citus"
+  docker exec "$CONTAINER" psql -U postgres non_citus -c "CREATE TABLE non_citus_table (id int PRIMARY KEY)"
+  snapshot_env+=(--env DB_ALL_NAMES=1)
 fi
 pgbench
 snapshot > "${TEST_NAME}_1.json"
