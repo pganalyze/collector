@@ -47,7 +47,13 @@ BEGIN
 	END IF;
 
 	IF array_length(params, 1) > 0 THEN
-		SELECT string_agg(quote_literal(param) || '::unknown', ',') FROM unnest(params) p(param) INTO prepared_params;
+		SELECT array_to_string(
+			ARRAY(
+				SELECT quote_literal(param) || '::unknown' FROM unnest(params) p(param)
+			),
+			',',
+			'NULL'
+		) INTO prepared_params;
 
 		EXECUTE 'PREPARE pganalyze_explain AS ' || prepared_query;
 		BEGIN
