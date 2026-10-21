@@ -77,10 +77,6 @@ func NewCollection(ctx context.Context, logger *util.Logger, server *state.Serve
 	if err != nil {
 		return &Collection{}, fmt.Errorf("failed collecting pg_proc: %s", err)
 	}
-	isCitus, err := GetIsCitus(ctx, db)
-	if err != nil {
-		logger.PrintWarning("failed checking for Citus extension: %s", err)
-	}
 
 	roleByName := make(map[string]state.PostgresRole)
 	for _, role := range roles {
@@ -101,7 +97,6 @@ func NewCollection(ctx context.Context, logger *util.Logger, server *state.Serve
 		ConnectedAsMonitoringRole: connectedAsMonitoringRole,
 		InstanceIdentity:          instanceIdentity,
 		HelperFunctions:           helpersFromFunctions(helperFunctions),
-		IsCitus:                   isCitus,
 		Fingerprints:              server.Fingerprints,
 	}, nil
 }

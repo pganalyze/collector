@@ -52,11 +52,3 @@ func GetIsAlloyDB(ctx context.Context, db *sql.DB) (bool, error) {
 	err := db.QueryRowContext(ctx, QueryMarkerSQL+"SELECT pg_catalog.count(1) >= 1 FROM pg_settings WHERE name LIKE 'alloydb.%'").Scan(&isAlloyDB)
 	return isAlloyDB, err
 }
-
-// Unlike the checks above, this is specific to the database we're connected to,
-// since extensions are installed per database
-func GetIsCitus(ctx context.Context, db *sql.DB) (bool, error) {
-	var isCitus bool
-	err := db.QueryRowContext(ctx, QueryMarkerSQL+"SELECT pg_catalog.count(1) = 1 FROM pg_extension WHERE extname = 'citus'").Scan(&isCitus)
-	return isCitus, err
-}
