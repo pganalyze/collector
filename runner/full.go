@@ -85,14 +85,34 @@ func collectDiffAndSubmit(ctx context.Context, server *state.Server, opts state.
 	return newState, collectionStatus, nil
 }
 
-func capturePanic(f func()) (err interface{}, stackTrace []byte) {
+// Calls f, recovering from any panic and returning it with its stack trace. If
+// a Sentry client is given, the panic is also reported to Sentry.
+func capturePanic(f func(), sentryClient *raven.Client) (err interface{}, stackTrace []byte) {
+	// Record the stack (so we can return it whether or not Sentry is involved)
+	// but don't recover the panic: continue to Sentry's handler or the
+	// defer/recover below.
+	fInstrumented := func() {
+		returned := false
+		defer func() {
+			if !returned {
+				stackTrace = debug.Stack()
+			}
+		}()
+		f()
+		returned = true
+	}
+
+	if sentryClient != nil {
+		err, _ = sentryClient.CapturePanic(fInstrumented, nil)
+		sentryClient.Wait()
+		return
+	}
+
 	defer func() {
-		if err = recover(); err != nil {
-			stackTrace = debug.Stack()
-		}
+		err = recover()
 	}()
 
-	f()
+	fInstrumented()
 
 	return
 }
@@ -131,14 +151,7 @@ func processServer(ctx context.Context, server *state.Server, opts state.Collect
 		newState, collectionStatus, err = collectDiffAndSubmit(ctx, server, opts, logger)
 	}
 
-	var panicErr interface{}
-	var stackTrace []byte
-	if sentryClient != nil {
-		panicErr, _ = sentryClient.CapturePanic(runFunc, nil)
-		sentryClient.Wait()
-	} else {
-		panicErr, stackTrace = capturePanic(runFunc)
-	}
+	panicErr, stackTrace := capturePanic(runFunc, sentryClient)
 	if panicErr != nil {
 		err = fmt.Errorf("%s", panicErr)
 		logger.PrintWarning("Panic: %s\n%s", err, stackTrace)
