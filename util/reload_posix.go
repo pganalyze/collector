@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
+	"syscall"
 
 	"github.com/shirou/gopsutil/process"
 )
@@ -47,4 +48,8 @@ func Reload() (reloadedPid int, err error) {
 		}
 	}
 	return -1, errors.New("could not find collector in process list; try restarting the pganalyze-collector process")
+}
+
+func ReloadSelf() error {
+	return syscall.Kill(os.Getpid(), syscall.SIGHUP)
 }
