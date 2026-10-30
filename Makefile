@@ -23,7 +23,7 @@ ifeq ($(shell uname), Darwin)
 endif
 PROTOC_URL := $(PROTOC_BASE_URL)v$(PROTOC_VERSION_NEEDED)/$(PROTOC_FILENAME)
 
-.PHONY: default build build_dist vendor test docker_image_amd64 docker_image_arm64 docker_push docker_release packages integration_test
+.PHONY: default build build_dist vendor test docker_image_amd64 docker_image_arm64 docker_push docker_release packages integration_test generate_wait_event_mappings check_wait_event_mappings
 
 default: build test
 
@@ -54,6 +54,17 @@ vendor:
 
 test: build
 	go test -race -coverprofile=coverage.out ./...
+
+# Regenerates wait_event_to_type.json from the WaitEvent enum
+# sections in protobuf/compact_activity_snapshot.proto. Run this after moving
+# enum values or adding new ones, and commit the result.
+generate_wait_event_mappings:
+	go test ./protobuf/mappings -run TestWaitEventTypeOfEventJSON -update
+
+# Network-bound check that upstream Postgres wait event names stay unique per
+# wait event type (CI runs this; needs network access to github.com)
+check_wait_event_mappings:
+	PGANALYZE_CHECK_POSTGRES_WAIT_EVENT_NAMES=1 go test -v ./protobuf/mappings
 
 coverage: test
 	go tool cover -html=coverage.out
