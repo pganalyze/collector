@@ -15,6 +15,10 @@ import (
 // snapshot-to-snapshot (which would churn config-change tracking) and avoids
 // shipping unstable data and increased noise. Add others here as we run into them.
 var maskedSettingNames = map[string]bool{
+	// pgsodium is currently enabled by Supabase and it keeps this
+	// value in memory that is freed after a backend forks, so it
+	// can read back as arbitrary (sometimes invalid UTF-8) bytes:
+	// https://github.com/michelp/pgsodium/pull/126
 	"pgsodium.getkey_script": true,
 }
 
