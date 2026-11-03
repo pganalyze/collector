@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/pganalyze/collector/state"
+	"github.com/pganalyze/collector/util"
 )
 
 const backendCountsSQL string = `
@@ -45,10 +46,10 @@ func GetBackendCounts(ctx context.Context, c *Collection, db *sql.DB) ([]state.P
 			return nil, err
 		}
 
-		// Special case to avoid errors for certain backends with weird names
-		if c.Config.SystemType == "azure_database" {
-			row.BackendType = strings.ToValidUTF8(row.BackendType, "")
-		}
+		// backend_type can contain invalid UTF-8 on some platforms (e.g. Azure
+		// management backends, Supabase's Supavisor), which would fail snapshot
+		// marshaling; scrub it uniformly to the replacement character.
+		row.BackendType = strings.ToValidUTF8(row.BackendType, util.InvalidUTF8Replacement)
 
 		backendCounts = append(backendCounts, row)
 	}
