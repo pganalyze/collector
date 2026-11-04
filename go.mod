@@ -134,4 +134,9 @@ require (
 
 go 1.26
 
+// Disable Multipath TCP (enabled by default for listeners since Go 1.24) for
+// all TCP listeners, including those created by vendored libraries such as the
+// syslog server, to mitigate CVE-2026-98432.
+godebug multipathtcp=0
+
 replace github.com/papertrail/go-tail => github.com/pganalyze/go-tail v0.0.0-20260713192021-82ac8bcb98c1
