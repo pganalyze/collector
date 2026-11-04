@@ -22,7 +22,7 @@ SELECT logicalrelid::oid,
 `
 
 func collectCitusRelationStats(c *Collection) bool {
-	return c.PostgresVersion.IsCitus && c.Config.DisableCitusSchemaStats != "all"
+	return c.IsCitus && c.Config.DisableCitusSchemaStats != "all"
 }
 
 func handleRelationStatsAux(ctx context.Context, c *Collection, db *sql.DB, relStats state.PostgresRelationStatsMap) (state.PostgresRelationStatsMap, error) {
@@ -106,7 +106,7 @@ GROUP BY
 `
 
 func collectCitusIndexStats(c *Collection) bool {
-	return c.PostgresVersion.IsCitus && c.Config.DisableCitusSchemaStats != "all" && c.Config.DisableCitusSchemaStats != "index"
+	return c.IsCitus && c.Config.DisableCitusSchemaStats != "all" && c.Config.DisableCitusSchemaStats != "index"
 }
 
 func handleIndexStatsAux(ctx context.Context, c *Collection, db *sql.DB, idxStats state.PostgresIndexStatsMap) (state.PostgresIndexStatsMap, error) {

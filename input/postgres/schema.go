@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/pganalyze/collector/config"
@@ -146,7 +147,16 @@ func collectSchemaData(ctx context.Context, c *Collection, db *sql.DB, ps state.
 	}
 	ps.Functions = append(ps.Functions, newFunctions...)
 
-	c = c.ForCurrentDatabase(newFunctions)
+	newExtensions, err := GetExtensions(ctx, db, databaseOid)
+	if err != nil {
+		return ps, ts, fmt.Errorf("error collecting extension information: %s", err)
+	}
+	ts.Extensions = append(ts.Extensions, newExtensions...)
+
+	isCitus := slices.ContainsFunc(newExtensions, func(e state.PostgresExtension) bool {
+		return e.ExtensionName == "citus"
+	})
+	c = c.ForCurrentDatabase(newFunctions, isCitus)
 
 	if c.GlobalOpts.CollectPostgresRelations {
 		newRelations, err := GetRelations(ctx, c, db, databaseOid)
@@ -189,12 +199,6 @@ func collectSchemaData(ctx context.Context, c *Collection, db *sql.DB, ps state.
 			}
 		}
 	}
-
-	newExtensions, err := GetExtensions(ctx, db, databaseOid)
-	if err != nil {
-		return ps, ts, fmt.Errorf("error collecting extension information: %s", err)
-	}
-	ts.Extensions = append(ts.Extensions, newExtensions...)
 
 	newTypes, err := GetTypes(ctx, c, db, databaseOid)
 	if err != nil {

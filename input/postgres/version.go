@@ -38,11 +38,6 @@ func getPostgresVersion(ctx context.Context, db *sql.DB) (version state.Postgres
 	}
 	version.IsAlloyDB = isAlloyDB
 
-	err = db.QueryRowContext(ctx, QueryMarkerSQL+"SELECT pg_catalog.count(1) = 1 FROM pg_extension WHERE extname = 'citus'").Scan(&version.IsCitus)
-	if err != nil {
-		return
-	}
-
 	return
 }
 

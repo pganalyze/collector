@@ -28,6 +28,7 @@ type Collection struct {
 
 	// Information that is specific to the current database we're connected to
 	HelperFunctions map[string][]state.PostgresFunction
+	IsCitus         bool
 
 	Fingerprints *state.Fingerprints
 }
@@ -100,7 +101,7 @@ func NewCollection(ctx context.Context, logger *util.Logger, server *state.Serve
 	}, nil
 }
 
-func (c *Collection) ForCurrentDatabase(functions []state.PostgresFunction) *Collection {
+func (c *Collection) ForCurrentDatabase(functions []state.PostgresFunction, isCitus bool) *Collection {
 	return &Collection{
 		Config:                    c.Config,
 		Logger:                    c.Logger,
@@ -112,6 +113,7 @@ func (c *Collection) ForCurrentDatabase(functions []state.PostgresFunction) *Col
 		ConnectedAsMonitoringRole: c.ConnectedAsMonitoringRole,
 		InstanceIdentity:          c.InstanceIdentity,
 		HelperFunctions:           helpersFromFunctions(functions),
+		IsCitus:                   isCitus,
 		Fingerprints:              c.Fingerprints,
 	}
 }
