@@ -2267,6 +2267,87 @@ index scan needed: 1 pages from table (100.00% of total) had 60 dead item identi
 		nil,
 	}, {
 		[]state.LogLine{{
+			Content: `automatic analyze of table "mydb.myschema.mytable"
+	delay time: 24.769 ms
+	I/O timings: read: 9066.817 ms, write: 0.000 ms
+	avg read rate: 26.022 MB/s, avg write rate: 0.000 MB/s
+	buffer usage: 60364 hits, 33998 reads, 0 dirtied
+	WAL usage: 0 records, 0 full page images, 0 bytes, 0 buffers full
+	system usage: CPU: user: 1.14 s, system: 0.41 s, elapsed: 10.20 s`,
+			LogLevel: pganalyze_collector.LogLineInformation_LOG,
+		}},
+		[]state.LogLine{{
+			Classification: pganalyze_collector.LogLineInformation_AUTOANALYZE_COMPLETED,
+			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
+			Database:       "mydb",
+			SchemaName:     "myschema",
+			RelationName:   "mytable",
+			Details: map[string]interface{}{
+				"blk_read_time":      9066.817,
+				"blk_write_time":     0.000,
+				"read_rate_mb":       26.022,
+				"write_rate_mb":      0.000,
+				"analyze_page_hit":   60364,
+				"analyze_page_miss":  33998,
+				"analyze_page_dirty": 0,
+				"rusage_user":        1.14,
+				"rusage_kernel":      0.41,
+				"elapsed_secs":       10.20,
+			},
+			ReviewedForSecrets: true,
+		}},
+		nil,
+	}, {
+		[]state.LogLine{{
+			Content: `automatic vacuum of table "mydb.myschema.mytable": index scans: 0
+	pages: 0 removed, 100 remain, 100 scanned (100.00% of total), 0 eagerly scanned
+	tuples: 0 removed, 1000 remain, 0 are dead but not yet removable
+	delay time: 4406.851 ms
+	I/O timings: read: 1.250 ms, write: 0.310 ms
+	avg read rate: 1.000 MB/s, avg write rate: 0.000 MB/s
+	buffer usage: 200 hits, 100 reads, 0 dirtied
+	WAL usage: 0 records, 0 full page images, 0 bytes, 0 buffers full
+	system usage: CPU: user: 0.10 s, system: 0.05 s, elapsed: 1.00 s`,
+			LogLevel: pganalyze_collector.LogLineInformation_LOG,
+		}},
+		[]state.LogLine{{
+			Classification: pganalyze_collector.LogLineInformation_AUTOVACUUM_COMPLETED,
+			LogLevel:       pganalyze_collector.LogLineInformation_LOG,
+			Database:       "mydb",
+			SchemaName:     "myschema",
+			RelationName:   "mytable",
+			Details: map[string]interface{}{
+				"aggressive":            false,
+				"anti_wraparound":       false,
+				"num_index_scans":       0,
+				"pages_removed":         0,
+				"rel_pages":             100,
+				"scanned_pages":         100,
+				"scanned_pages_percent": 100,
+				"eagerly_scanned_pages": 0,
+				"tuples_deleted":        0,
+				"new_rel_tuples":        1000,
+				"new_dead_tuples":       0,
+				"blk_read_time":         1.250,
+				"blk_write_time":        0.310,
+				"read_rate_mb":          1.000,
+				"write_rate_mb":         0.000,
+				"vacuum_page_hit":       200,
+				"vacuum_page_miss":      100,
+				"vacuum_page_dirty":     0,
+				"wal_records":           0,
+				"wal_fpi":               0,
+				"wal_bytes":             0,
+				"wal_buffers_full":      0,
+				"rusage_user":           0.10,
+				"rusage_kernel":         0.05,
+				"elapsed_secs":          1.00,
+			},
+			ReviewedForSecrets: true,
+		}},
+		nil,
+	}, {
+		[]state.LogLine{{
 			Content:  "skipping vacuum of \"mytable\" --- lock not available",
 			LogLevel: pganalyze_collector.LogLineInformation_LOG,
 			UUID:     uuid.UUID{1},

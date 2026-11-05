@@ -111,6 +111,7 @@ var autoVacuum = analyzeGroup{
 			`(?:index scan (?P<idxscan_status>not needed|needed|bypassed|bypassed by failsafe): (?P<idxscan_pages>\d+) pages from table \((?P<idxscan_pages_pct>[\d.]+)% of total\) (?:have|had) (?P<idxscan_dead>\d+) dead item identifiers(?: removed)?)?,?\s*` + // Postgres 14+
 			`(?:max_dead_tuples:(?P<max_dead_tuples>\d+),\s*)?` + // AlloyDB
 			`(?P<idx_details>(?:index ".+?": pages: \d+ in total, \d+ newly deleted, \d+ currently deleted, \d+ reusable,?\s*)*)?` + // Postgres 14+
+			`(?:delay time: [\d.]+ ms)?,?\s*` + // Postgres 18+ (track_cost_delay_timing)
 			`(?:I/O timings: read: (?P<io_read_ms>[\d.]+) ms, write: (?P<io_write_ms>[\d.]+) ms)?,?\s*` + // Postgres 14+
 			`(?:avg read rate: (?P<io_read_rate>[\d.]+) MB/s, avg write rate: (?P<io_write_rate>[\d.]+) MB/s)?,?\s*` + // Postgres 14+
 			`buffer usage: (?P<buffer_hits>\d+) hits, (?P<buffer_misses>\d+) (?:misses|reads), (?P<buffers_dirtied>\d+) dirtied,?\s*` +
@@ -127,9 +128,11 @@ var autoAnalyze = analyzeGroup{
 	primary: match{
 		prefixes: []string{"automatic analyze of table"},
 		regexp: regexp.MustCompile(`^automatic analyze of table "(.+?)"\s*` +
+			`(?:delay time: [\d.]+ ms)?\s*` + // Postgres 18+ (track_cost_delay_timing)
 			`(?:I/O timings: read: ([\d.]+) ms, write: ([\d.]+) ms)?\s*` + // Postgres 14+
 			`(?:avg read rate: ([\d.]+) MB/s, avg write rate: ([\d.]+) MB/s)?\s*` + // Postgres 14+
 			`(?:buffer usage: (\d+) hits, (\d+) (?:misses|reads), (\d+) dirtied)?\s*` + // Postgres 14+
+			`(?:WAL usage: \d+ records, \d+ full page images, \d+ bytes(?:, \d+ buffers full)?)?\s*` + // Postgres 18+
 			`system usage: CPU(?:(?: ([\d.]+)s/([\d.]+)u sec elapsed ([\d.]+) sec)|(?:: user: ([\d.]+) s, system: ([\d.]+) s, elapsed: ([\d.]+) s))`),
 		secrets: []state.LogSecretKind{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 	},
