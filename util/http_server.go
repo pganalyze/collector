@@ -14,6 +14,10 @@ func GoServeHTTP(ctx context.Context, logger *Logger, addr string, serveMux *htt
 		Handler:     serveMux,
 	}
 	lc := net.ListenConfig{}
+	// Explicitly disable Multipath TCP (enabled by default for listeners since
+	// Go 1.24) to mitigate CVE-2026-98432. This is also set globally via the
+	// godebug setting in go.mod, but we keep it here in case this code is reused.
+	lc.SetMultipathTCP(false)
 	l, err := lc.Listen(ctx, "tcp", s.Addr)
 	if err != nil {
 		logger.PrintError("Error starting HTTP server on %s: %v\n", addr, err)
