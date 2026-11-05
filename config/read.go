@@ -902,6 +902,8 @@ func Read(testRun bool, logger *util.Logger, filename string) (Config, error) {
 			return conf, fmt.Errorf("Failed to map [pganalyze] section in config: %s", err)
 		}
 
+		conf.AutoReload = pgaSection.Key("auto_reload").MustBool()
+
 		sections := configFile.Sections()
 		for _, section := range sections {
 			sectionName := section.Name()
