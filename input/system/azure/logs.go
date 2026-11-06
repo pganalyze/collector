@@ -141,6 +141,30 @@ func getEventHubPartitionIDs(ctx context.Context, consumerClient *azeventhubs.Co
 	return info.PartitionIDs, nil
 }
 
+// Tracks the sequence number of the last event received for each partition,
+// so we can resume where we left off after reconnecting (instead of reading
+// all events retained in the Event Hub again)
+type eventHubPartitionPositions struct {
+	mu        sync.Mutex
+	positions map[string]int64
+}
+
+func (p *eventHubPartitionPositions) startPosition(partitionID string) azeventhubs.StartPosition {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if seq, ok := p.positions[partitionID]; ok {
+		return azeventhubs.StartPosition{SequenceNumber: to.Ptr(seq), Inclusive: false}
+	}
+	// Older log lines get filtered out by the log transformer
+	return azeventhubs.StartPosition{Earliest: to.Ptr(true)}
+}
+
+func (p *eventHubPartitionPositions) update(partitionID string, seq int64) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.positions[partitionID] = seq
+}
+
 // Receives events from all partitions of the Event Hub until the context is
 // cancelled, or an error occurs on any partition. Partial failures cause all
 // partitions to stop, so that the caller can reconnect from scratch.
@@ -149,7 +173,7 @@ func getEventHubPartitionIDs(ctx context.Context, consumerClient *azeventhubs.Co
 // working connection that failed later apart from one that never worked.
 // Note that connection problems (e.g. missing permissions or quota limits)
 // may only surface when receiving, since partition links are opened lazily.
-func receiveEventHubEvents(ctx context.Context, logger *util.Logger, config config.ServerConfig, handler func(context.Context, *azeventhubs.ReceivedEventData)) (bool, error) {
+func receiveEventHubEvents(ctx context.Context, logger *util.Logger, config config.ServerConfig, positions *eventHubPartitionPositions, handler func(context.Context, *azeventhubs.ReceivedEventData)) (bool, error) {
 	consumerClient, err := getEventHubConsumerClient(config)
 	if err != nil {
 		return false, err
@@ -183,9 +207,7 @@ func receiveEventHubEvents(ctx context.Context, logger *util.Logger, config conf
 			defer wg.Done()
 
 			partitionClient, err := consumerClient.NewPartitionClient(partID, &azeventhubs.PartitionClientOptions{
-				StartPosition: azeventhubs.StartPosition{
-					Earliest: to.Ptr(true),
-				},
+				StartPosition: positions.startPosition(partID),
 			})
 			if err != nil {
 				fail(fmt.Errorf("failed to set up partition client for partition %s: %s", partID, err))
@@ -197,6 +219,7 @@ func receiveEventHubEvents(ctx context.Context, logger *util.Logger, config conf
 				events, err := partitionClient.ReceiveEvents(receiveCtx, 1, nil)
 				for _, event := range events {
 					handler(receiveCtx, event)
+					positions.update(partID, event.SequenceNumber)
 					receivedEvents.Store(true)
 				}
 				if err != nil {
@@ -222,6 +245,7 @@ const (
 // Keeps receiving events from the Event Hub until the context is cancelled,
 // reconnecting with exponential backoff whenever setup or receiving fails.
 func runEventHubReceiver(ctx context.Context, logger *util.Logger, config config.ServerConfig, handler func(context.Context, *azeventhubs.ReceivedEventData)) {
+	positions := &eventHubPartitionPositions{positions: make(map[string]int64)}
 	retryDelay := eventHubMinRetryDelay
 	var err error
 
@@ -237,7 +261,7 @@ func runEventHubReceiver(ctx context.Context, logger *util.Logger, config config
 		}
 
 		var receivedEvents bool
-		receivedEvents, err = receiveEventHubEvents(ctx, logger, config, handler)
+		receivedEvents, err = receiveEventHubEvents(ctx, logger, config, positions, handler)
 		if ctx.Err() != nil {
 			return
 		}
