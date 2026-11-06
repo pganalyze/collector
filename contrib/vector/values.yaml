@@ -164,8 +164,8 @@ customConfig:
           },
           "scopeLogs": [{
             "logRecords": [{
-              "timeUnixNano": to_unix_timestamp(parse_timestamp!(.timestamp, "%+"), unit: "nanoseconds"),
-              "observedTimeUnixNano": to_unix_timestamp(parse_timestamp!(structured.ts, "%+"), unit: "nanoseconds"),
+              "timeUnixNano": to_unix_timestamp!(parse_timestamp!(.timestamp, "%+"), unit: "nanoseconds"),
+              "observedTimeUnixNano": to_unix_timestamp!(parse_timestamp!(structured.ts, "%+"), unit: "nanoseconds"),
               "body": {"kvlistValue": {"values": bodyValues}},
               "severityText": severity_text
             }]
