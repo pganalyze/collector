@@ -244,10 +244,14 @@ const (
 
 // Keeps receiving events from the Event Hub until the context is cancelled,
 // reconnecting with exponential backoff whenever setup or receiving fails.
-func runEventHubReceiver(ctx context.Context, logger *util.Logger, config config.ServerConfig, handler func(context.Context, *azeventhubs.ReceivedEventData)) {
+func runEventHubReceiver(ctx context.Context, logger *util.Logger, config config.ServerConfig, handler func(context.Context, *azeventhubs.ReceivedEventData), initialErr error) {
 	positions := &eventHubPartitionPositions{positions: make(map[string]int64)}
 	retryDelay := eventHubMinRetryDelay
-	var err error
+	err := initialErr
+	// The initial error may be caused by the context being cancelled during setup
+	if err != nil && ctx.Err() != nil {
+		return
+	}
 
 	for {
 		if err != nil {
@@ -278,13 +282,21 @@ func runEventHubReceiver(ctx context.Context, logger *util.Logger, config config
 }
 
 func setupEventHubReceiver(ctx context.Context, wg *sync.WaitGroup, logger *util.Logger, config config.ServerConfig, azureLogStream chan AzurePostgresLogRecord, opts state.CollectionOpts) error {
+	// Verify that we can connect, so that configuration errors are reported
+	// right away (and test runs fail). Outside of test runs we keep retrying
+	// in the background, since errors may be temporary (e.g. a role assignment
+	// for a managed identity that has not propagated yet).
+	var initialErr error
 	consumerClient, err := getEventHubConsumerClient(config)
 	if err == nil {
 		_, err = getEventHubPartitionIDs(ctx, consumerClient)
 		consumerClient.Close(ctx)
 	}
 	if err != nil {
-		return err
+		if opts.TestRun {
+			return err
+		}
+		initialErr = err
 	}
 
 	handler := func(ctx context.Context, event *azeventhubs.ReceivedEventData) {
@@ -309,7 +321,7 @@ func setupEventHubReceiver(ctx context.Context, wg *sync.WaitGroup, logger *util
 		}
 	}
 
-	go runEventHubReceiver(ctx, logger, config, handler)
+	go runEventHubReceiver(ctx, logger, config, handler, initialErr)
 
 	return nil
 }
