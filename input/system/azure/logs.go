@@ -17,6 +17,7 @@ import (
 	"github.com/pganalyze/collector/util"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs"
@@ -119,11 +120,33 @@ func getAzureCredential(config config.ServerConfig) (azcore.TokenCredential, err
 	return credential, nil
 }
 
-func getEventHubConsumerClient(config config.ServerConfig) (*azeventhubs.ConsumerClient, error) {
+// Wraps a credential so that token requests also get cancelled when the
+// given context is cancelled.
+//
+// The Event Hub client calls GetToken with context.TODO() (see
+// azeventhubs/internal/sbauth/token_provider.go), so token requests are not
+// cancelled when the context passed to Event Hub client methods is. Since the
+// client holds a lock while requesting a token for a new link, this would also
+// block closing the client, potentially for minutes (e.g. with IMDS retries).
+type contextTokenCredential struct {
+	ctx        context.Context
+	credential azcore.TokenCredential
+}
+
+func (c contextTokenCredential) GetToken(ctx context.Context, opts policy.TokenRequestOptions) (azcore.AccessToken, error) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	stop := context.AfterFunc(c.ctx, cancel)
+	defer stop()
+	return c.credential.GetToken(ctx, opts)
+}
+
+func getEventHubConsumerClient(ctx context.Context, config config.ServerConfig) (*azeventhubs.ConsumerClient, error) {
 	credential, err := getAzureCredential(config)
 	if err != nil {
 		return nil, err
 	}
+	credential = contextTokenCredential{ctx: ctx, credential: credential}
 
 	consumerClient, err := azeventhubs.NewConsumerClient(config.AzureEventhubNamespace+".servicebus.windows.net", config.AzureEventhubName, azeventhubs.DefaultConsumerGroup, credential, nil)
 	if err != nil {
@@ -174,13 +197,19 @@ func (p *eventHubPartitionPositions) update(partitionID string, seq int64) {
 // Note that connection problems (e.g. missing permissions or quota limits)
 // may only surface when receiving, since partition links are opened lazily.
 func receiveEventHubEvents(ctx context.Context, logger *util.Logger, config config.ServerConfig, positions *eventHubPartitionPositions, handler func(context.Context, *azeventhubs.ReceivedEventData)) (bool, error) {
-	consumerClient, err := getEventHubConsumerClient(config)
+	// Cancelled when any partition fails, so that all partitions stop. This is
+	// also used for the consumer client, so that token requests for other
+	// partitions are cancelled as well, instead of delaying the reconnect
+	receiveCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	consumerClient, err := getEventHubConsumerClient(receiveCtx, config)
 	if err != nil {
 		return false, err
 	}
 	defer consumerClient.Close(ctx)
 
-	partitionIDs, err := getEventHubPartitionIDs(ctx, consumerClient)
+	partitionIDs, err := getEventHubPartitionIDs(receiveCtx, consumerClient)
 	if err != nil {
 		return false, err
 	}
@@ -188,9 +217,6 @@ func receiveEventHubEvents(ctx context.Context, logger *util.Logger, config conf
 	logger.PrintVerbose("Initializing Azure Event Hub handler for %d partitions", len(partitionIDs))
 
 	var receivedEvents atomic.Bool
-	receiveCtx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
 	var wg sync.WaitGroup
 	var firstErr error
 	var errOnce sync.Once
@@ -216,6 +242,16 @@ func receiveEventHubEvents(ctx context.Context, logger *util.Logger, config conf
 			defer partitionClient.Close(receiveCtx)
 
 			for {
+				// Stop right away once cancelled. Receiving with a cancelled
+				// context still returns events that were already prefetched,
+				// one call at a time, so we'd otherwise work through the whole
+				// prefetch buffer before exiting. Events left behind are
+				// received again after reconnecting, since the position is
+				// only advanced for events that were handled.
+				if receiveCtx.Err() != nil {
+					return
+				}
+
 				events, err := partitionClient.ReceiveEvents(receiveCtx, 1, nil)
 				if err != nil {
 					if receiveCtx.Err() == nil {
@@ -287,7 +323,7 @@ func setupEventHubReceiver(ctx context.Context, wg *sync.WaitGroup, logger *util
 	// managed identity that has not propagated yet), and we don't want to
 	// hold up startup while the connection is attempted.
 	if opts.TestRun {
-		consumerClient, err := getEventHubConsumerClient(config)
+		consumerClient, err := getEventHubConsumerClient(ctx, config)
 		if err != nil {
 			return err
 		}
@@ -315,12 +351,22 @@ func setupEventHubReceiver(ctx context.Context, wg *sync.WaitGroup, logger *util
 		}
 		for _, record := range eventData.Records {
 			if record.Category == "PostgreSQLLogs" && record.OperationName == "LogEvent" {
-				azureLogStream <- record
+				// The log transformer stops reading when the context is cancelled, so
+				// don't block forever if the buffer is full
+				select {
+				case azureLogStream <- record:
+				case <-ctx.Done():
+					return
+				}
 			}
 		}
 	}
 
-	go runEventHubReceiver(ctx, logger, config, handler)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		runEventHubReceiver(ctx, logger, config, handler)
+	}()
 
 	return nil
 }
