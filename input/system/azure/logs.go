@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/pganalyze/collector/config"
@@ -132,13 +133,7 @@ func getEventHubConsumerClient(config config.ServerConfig) (*azeventhubs.Consume
 	return consumerClient, nil
 }
 
-func getEventHubPartitionIDs(ctx context.Context, config config.ServerConfig) ([]string, error) {
-	consumerClient, err := getEventHubConsumerClient(config)
-	if err != nil {
-		return nil, err
-	}
-	defer consumerClient.Close(ctx)
-
+func getEventHubPartitionIDs(ctx context.Context, consumerClient *azeventhubs.ConsumerClient) ([]string, error) {
 	info, err := consumerClient.GetEventHubProperties(ctx, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to the Event Hub management node: %s", err)
@@ -146,16 +141,41 @@ func getEventHubPartitionIDs(ctx context.Context, config config.ServerConfig) ([
 	return info.PartitionIDs, nil
 }
 
-func runEventHubHandlers(ctx context.Context, partitionIDs []string, logger *util.Logger, config config.ServerConfig, handler func(context.Context, *azeventhubs.ReceivedEventData)) {
-	// This function keeps running until all partition clients have exited, so we can clean up the consumer client
-	var wg sync.WaitGroup
-
+// Receives events from all partitions of the Event Hub until the context is
+// cancelled, or an error occurs on any partition. Partial failures cause all
+// partitions to stop, so that the caller can reconnect from scratch.
+//
+// Also returns whether any events were received, so the caller can tell a
+// working connection that failed later apart from one that never worked.
+// Note that connection problems (e.g. missing permissions or quota limits)
+// may only surface when receiving, since partition links are opened lazily.
+func receiveEventHubEvents(ctx context.Context, logger *util.Logger, config config.ServerConfig, handler func(context.Context, *azeventhubs.ReceivedEventData)) (bool, error) {
 	consumerClient, err := getEventHubConsumerClient(config)
 	if err != nil {
-		logger.PrintError("Failed to set up Azure Event Hub consumer client: %s", err)
-		return
+		return false, err
 	}
 	defer consumerClient.Close(ctx)
+
+	partitionIDs, err := getEventHubPartitionIDs(ctx, consumerClient)
+	if err != nil {
+		return false, err
+	}
+
+	logger.PrintVerbose("Initializing Azure Event Hub handler for %d partitions", len(partitionIDs))
+
+	var receivedEvents atomic.Bool
+	receiveCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	var wg sync.WaitGroup
+	var firstErr error
+	var errOnce sync.Once
+	fail := func(err error) {
+		errOnce.Do(func() {
+			firstErr = err
+			cancel()
+		})
+	}
 
 	for _, partitionID := range partitionIDs {
 		wg.Add(1)
@@ -168,36 +188,91 @@ func runEventHubHandlers(ctx context.Context, partitionIDs []string, logger *uti
 				},
 			})
 			if err != nil {
-				logger.PrintError("Failed to set up Azure Event Hub partition client for partition %s: %s", partID, err)
+				fail(fmt.Errorf("failed to set up partition client for partition %s: %s", partID, err))
+				return
 			}
-			defer partitionClient.Close(ctx)
+			defer partitionClient.Close(receiveCtx)
 
 			for {
-				events, err := partitionClient.ReceiveEvents(ctx, 1, nil)
+				events, err := partitionClient.ReceiveEvents(receiveCtx, 1, nil)
 				if err != nil {
-					if err != context.Canceled {
-						logger.PrintError("Failed to receive events from Azure Event Hub for partition %s: %s", partID, err)
+					if receiveCtx.Err() == nil {
+						fail(fmt.Errorf("failed to receive events for partition %s: %s", partID, err))
 					}
-					break
+					return
 				}
-
 				for _, event := range events {
+					// Pass the parent context, not the receive context, so that
+					// handling an event we already received isn't cut short
+					// when another partition fails
 					handler(ctx, event)
+					receivedEvents.Store(true)
 				}
 			}
 		}(partitionID)
 	}
 
 	wg.Wait()
+
+	return receivedEvents.Load(), firstErr
+}
+
+const (
+	eventHubMinRetryDelay = 10 * time.Second
+	eventHubMaxRetryDelay = 5 * time.Minute
+)
+
+// Keeps receiving events from the Event Hub until the context is cancelled,
+// reconnecting with exponential backoff whenever setup or receiving fails.
+func runEventHubReceiver(ctx context.Context, logger *util.Logger, config config.ServerConfig, handler func(context.Context, *azeventhubs.ReceivedEventData)) {
+	retryDelay := eventHubMinRetryDelay
+	var err error
+
+	for {
+		if err != nil {
+			logger.PrintError("Azure Event Hub log receiver failed, retrying in %s: %s", retryDelay, err)
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(retryDelay):
+			}
+			retryDelay = min(retryDelay*2, eventHubMaxRetryDelay)
+		}
+
+		var receivedEvents bool
+		receivedEvents, err = receiveEventHubEvents(ctx, logger, config, handler)
+		if ctx.Err() != nil {
+			return
+		}
+		if err == nil {
+			// Should not happen unless the context was cancelled, but make sure we don't spin
+			err = fmt.Errorf("receiver stopped unexpectedly")
+		}
+		// Only start over with the minimum delay if the connection actually
+		// worked, so that persistent errors keep backing off
+		if receivedEvents {
+			retryDelay = eventHubMinRetryDelay
+		}
+	}
 }
 
 func setupEventHubReceiver(ctx context.Context, wg *sync.WaitGroup, logger *util.Logger, config config.ServerConfig, azureLogStream chan AzurePostgresLogRecord, opts state.CollectionOpts) error {
-	partitionIDs, err := getEventHubPartitionIDs(ctx, config)
-	if err != nil {
-		return err
+	// For test runs, verify that we can connect, so that errors fail the test
+	// run. Otherwise the receiver connects in the background and keeps
+	// retrying, since errors may be temporary (e.g. a role assignment for a
+	// managed identity that has not propagated yet), and we don't want to
+	// hold up startup while the connection is attempted.
+	if opts.TestRun {
+		consumerClient, err := getEventHubConsumerClient(config)
+		if err != nil {
+			return err
+		}
+		_, err = getEventHubPartitionIDs(ctx, consumerClient)
+		consumerClient.Close(ctx)
+		if err != nil {
+			return err
+		}
 	}
-
-	logger.PrintVerbose("Initializing Azure Event Hub handler for %d partitions", len(partitionIDs))
 
 	handler := func(ctx context.Context, event *azeventhubs.ReceivedEventData) {
 		var eventData AzureEventHubData
@@ -221,7 +296,7 @@ func setupEventHubReceiver(ctx context.Context, wg *sync.WaitGroup, logger *util
 		}
 	}
 
-	go runEventHubHandlers(ctx, partitionIDs, logger, config, handler)
+	go runEventHubReceiver(ctx, logger, config, handler)
 
 	return nil
 }
