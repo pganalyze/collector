@@ -65,14 +65,14 @@ func upsertQueryReferenceAndInformation(s *snapshot.FullSnapshot, statementTexts
 	return idx
 }
 
-func upsertQueryReferenceAndInformationSimple(server *state.Server, refs []*snapshot.QueryReference, infos []*snapshot.QueryInformation, roleIdx int32, databaseIdx int32, originalQuery string, queryID int64, trackActivityQuerySize int) (int32, []*snapshot.QueryReference, []*snapshot.QueryInformation) {
+func upsertQueryReferenceAndInformationSimple(server *state.Server, refs []*snapshot.QueryReference, infos []*snapshot.QueryInformation, roleIdx int32, databaseIdx int32, originalQuery string, queryID int64, trackActivityQuerySize int, fingerprintOpts util.FingerprintOpts) (int32, []*snapshot.QueryReference, []*snapshot.QueryInformation) {
 	var fingerprint uint64
 	// When the query ID is missing, always fingerprint the query instead of trying to use the fingerprint cache.
 	// It's always zero for query samples from logs, but can also be zero from pg_stat_activity in old Postgres versions.
 	if queryID == 0 {
-		fingerprint = util.FingerprintQuery(originalQuery, server.Config.FilterQueryText, trackActivityQuerySize)
+		fingerprint = util.FingerprintQuery(originalQuery, server.Config.FilterQueryText, trackActivityQuerySize, fingerprintOpts)
 	} else {
-		fingerprint = server.Fingerprints.LoadOrStore(queryID, originalQuery, server.Config.FilterQueryText, trackActivityQuerySize)
+		fingerprint = server.Fingerprints.LoadOrStore(queryID, originalQuery, server.Config.FilterQueryText, trackActivityQuerySize, fingerprintOpts)
 	}
 
 	fpBuf := make([]byte, 8)

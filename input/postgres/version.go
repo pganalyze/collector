@@ -9,7 +9,7 @@ import (
 )
 
 // getPostgresVersion - Reads the version of the connected PostgreSQL server
-func getPostgresVersion(ctx context.Context, db *sql.DB) (version state.PostgresVersion, err error) {
+func GetPostgresVersion(ctx context.Context, db *sql.DB) (version state.PostgresVersion, err error) {
 	err = db.QueryRowContext(ctx, QueryMarkerSQL+"SELECT pg_catalog.version()").Scan(&version.Full)
 	if err != nil {
 		return

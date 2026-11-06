@@ -48,6 +48,7 @@ func transformPostgresQuerySamples(server *state.Server, s snapshot.CompactLogSn
 			sampleIn.Query,
 			0,
 			-1,
+			state.FingerprintOptsForVersion(server.GetLastPostgresVersion().Numeric),
 		)
 
 		var parameters []*snapshot.NullString
@@ -186,6 +187,7 @@ func transformSystemLogLine(server *state.Server, r *snapshot.CompactSnapshot_Ba
 			logLineIn.Query,
 			0,
 			-1,
+			state.FingerprintOptsForVersion(server.GetLastPostgresVersion().Numeric),
 		)
 		logLine.HasQueryIdx = true
 	}
