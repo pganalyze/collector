@@ -39,7 +39,7 @@ func GetSystemState(ctx context.Context, server *state.Server, logger *util.Logg
 		StorageGB:   clusterInfo.Storage,
 		MemoryGB:    clusterInfo.Memory,
 	}
-	if parsedCreatedAt, err := time.Parse(time.RFC3339, clusterInfo.CreatedAt); err != nil {
+	if parsedCreatedAt, err := time.Parse(time.RFC3339, clusterInfo.CreatedAt); err == nil {
 		system.Info.CrunchyBridge.CreatedAt = parsedCreatedAt
 	}
 
