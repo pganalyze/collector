@@ -52,6 +52,9 @@ jobs:
         version: "2025.1.1"
         install-go: false
 
+    - name: Check wait event mappings
+      run: make check_wait_event_mappings
+
     - name: Run tests
       run: |
         make build OUTFILE=pganalyze-collector-linux-amd64
