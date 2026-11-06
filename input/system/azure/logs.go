@@ -201,9 +201,10 @@ func setupEventHubReceiver(ctx context.Context, wg *sync.WaitGroup, logger *util
 
 	handler := func(ctx context.Context, event *azeventhubs.ReceivedEventData) {
 		var eventData AzureEventHubData
-		err = json.Unmarshal(event.Body, &eventData)
+		err := json.Unmarshal(event.Body, &eventData)
 		if err != nil {
 			logger.PrintWarning("Error parsing Azure Event Hub event: %s", err)
+			return
 		}
 		if opts.VeryVerbose {
 			jsonData, err := json.MarshalIndent(eventData, "", "  ")
