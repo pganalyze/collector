@@ -235,17 +235,17 @@ message Backend {
     WAIT_EVENT_RECOVERY_PAUSE = 742; // RecoveryPause
     WAIT_EVENT_ARCHIVE_CLEANUP_COMMAND = 743; // ArchiveCleanupCommand (PG15+)
     WAIT_EVENT_ARCHIVE_COMMAND = 744; // ArchiveCommand (PG15+)
-    WAIT_EVENT_CHECKPOINT_DELAY_COMPLETE = 745; // CheckpointDelayComplete (PG18+)
-    WAIT_EVENT_CHECKPOINT_DELAY_START = 746; // CheckpointDelayStart (PG18+)
-    WAIT_EVENT_HASH_GROW_BATCHES_REALLOCATE = 747; // HashGrowBatchesReallocate (PG18+, renamed from Allocate)
-    WAIT_EVENT_HASH_GROW_BUCKETS_REALLOCATE = 748; // HashGrowBucketsReallocate (PG18+, renamed from Allocate)
-    WAIT_EVENT_LOGICAL_APPLY_SEND_DATA = 749; // LogicalApplySendData (PG16+)
-    WAIT_EVENT_LOGICAL_PARALLEL_APPLY_STATE_CHANGE = 750; // LogicalParallelApplyStateChange (PG16+)
-    WAIT_EVENT_MULTIXACT_CREATION = 751; // MultixactCreation (PG17+)
-    WAIT_EVENT_RECOVERY_END_COMMAND = 752; // RecoveryEndCommand (PG15+)
-    WAIT_EVENT_RESTORE_COMMAND = 753; // RestoreCommand (PG15+)
-    WAIT_EVENT_WAL_RECEIVER_EXIT = 754; // WalReceiverExit (PG14+)
-    WAIT_EVENT_WAL_SUMMARY_READY = 755; // WalSummaryReady (PG17+)
+    WAIT_EVENT_CHECKPOINT_DELAY_COMPLETE = 746; // CheckpointDelayComplete (PG18+)
+    WAIT_EVENT_CHECKPOINT_DELAY_START = 747; // CheckpointDelayStart (PG18+)
+    WAIT_EVENT_HASH_GROW_BATCHES_REALLOCATE = 748; // HashGrowBatchesReallocate (PG18+, renamed from Allocate)
+    WAIT_EVENT_HASH_GROW_BUCKETS_REALLOCATE = 749; // HashGrowBucketsReallocate (PG18+, renamed from Allocate)
+    WAIT_EVENT_LOGICAL_APPLY_SEND_DATA = 750; // LogicalApplySendData (PG16+)
+    WAIT_EVENT_LOGICAL_PARALLEL_APPLY_STATE_CHANGE = 751; // LogicalParallelApplyStateChange (PG16+)
+    WAIT_EVENT_MULTIXACT_CREATION = 752; // MultixactCreation (PG17+)
+    WAIT_EVENT_RECOVERY_END_COMMAND = 753; // RecoveryEndCommand (PG15+)
+    WAIT_EVENT_RESTORE_COMMAND = 754; // RestoreCommand (PG15+)
+    WAIT_EVENT_WAL_RECEIVER_EXIT = 755; // WalReceiverExit (PG14+)
+    WAIT_EVENT_WAL_SUMMARY_READY = 756; // WalSummaryReady (PG17+)
     // WaitEventType: Timeout
     WAIT_EVENT_BASE_BACKUP_THROTTLE = 800; // BaseBackupThrottle
     WAIT_EVENT_PG_SLEEP = 801; // PgSleep
@@ -325,7 +325,7 @@ message Backend {
     WAIT_EVENT_WAL_READ = 964; // WALRead
     WAIT_EVENT_WAL_SYNC = 965; // WALSync
     WAIT_EVENT_WAL_SYNC_METHOD_ASSIGN = 966; // WALSyncMethodAssign
-    WAIT_EVENT_WAL_WRITE = 967; // WALWrite
+    WAIT_EVENT_WAL_WRITE = 967; // WalWrite
     WAIT_EVENT_PROC_SIGNAL_BARRIER = 968; // ProcSignalBarrier (moved to IPC category in 13)
     WAIT_EVENT_AIO_IO_COMPLETION = 969; // AioIoCompletion (PG18+)
     WAIT_EVENT_AIO_IO_URING_SUBMIT = 970; // AioIoUringSubmit (PG18+)
@@ -342,9 +342,12 @@ message Backend {
     WAIT_EVENT_WAL_SUMMARY_READ = 981; // WalSummaryRead (PG17+)
     WAIT_EVENT_WAL_SUMMARY_WRITE = 982; // WalSummaryWrite (PG17+)
     // Custom third-party events for extensions and Postgres forks
+    // WaitEventType: IO
     WAIT_EVENT_IO_XACT_SYNC = 10000; // XactSync (AWS Aurora)
+    // WaitEventType: Activity
     WAIT_EVENT_AURORA_READER_MAIN = 10001; // AuroraReaderMain (AWS Aurora)
     WAIT_EVENT_AURORA_RUNTIME_MAIN = 10002; // AuroraRuntimeMain (AWS Aurora)
+    // WaitEventType: Extension
     WAIT_EVENT_CITUS_QUERY_STATS = 10003; // citus_query_stats (Citus Enterprise)
     // WaitEventType: InjectionPoint
     // Since this is not predefined and created runtime, no names are listed

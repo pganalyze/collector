@@ -216,9 +216,19 @@ to a protobuf enum value (e.g. `111`), which is then stored in the pganalyze
 database to reduce storage space. Later on, this value is mapped back to the
 original name when displaying it in the client/UI.
 
+The app stores only the enum value. The wait event type is recovered from the
+value alone via the generated reverse mapping (`wait_event_to_type.json`),
+which works because the enum value of every wait event name identifies exactly
+one wait event type.
+
 * `protobuf/compact_activity_snapshot.proto`: defines enums of `WaitEventType` and `WaitEvent`
 * `protobuf/mappings/wait_event_type.json`: defines a mapping of wait event types to enum values
 * `protobuf/mappings/wait_event.json`: defines a mapping of wait event names to enum values
+* `protobuf/mappings/wait_event_type_resolver.json`: maps each wait event name that
+  Postgres reports under more than one wait event type (today only `SyncRep`) to its
+  enum value per type
+* `protobuf/mappings/wait_event_to_type.json`: generated reverse mapping
+  of enum value to wait event type
 
 To update the wait event names, first check the history of [wait_event_names.txt](https://github.com/postgres/postgres/blob/master/src/backend/utils/activity/wait_event_names.txt)
 to find out what has been introduced/removed/renamed/moved to a different type.
@@ -268,3 +278,38 @@ enum value can still be used.
 
 1. Add a `(moved to NEWTYPE in PG1X)` comment to `protobuf/compact_activity_snapshot.proto`
 2. No changes to `protobuf/mappings/wait_event.json`
+3. Keep the event under its original `// WaitEventType:` section in the proto, so
+   the generated reverse mapping keeps reporting the original type and values
+   already stored in the database stay interpretable
+
+**Names reported under multiple types**
+
+Some names appear under more than one wait event type in `pg_stat_activity`. The
+only current example is `SyncRep`: PG 13 and newer report it both as `LWLock`
+(contention on the SyncRep LWLock, enum value 132) and as `IPC` (waiting for the
+synchronous standby to confirm, enum value 734). On PG 12 and older the LWLock
+display name was `SyncRepLock`, so there was no collision.
+
+Because the app derives the wait event type from the stored enum value alone, any
+name like this needs a resolver entry:
+
+1. Add `NAME: { TYPE: enum value, ... }` to
+   `protobuf/mappings/wait_event_type_resolver.json`, one entry per wait event
+   type that reports the name, using the canonical type labels from the proto
+   sections
+2. Keep the existing flat `NAME: enum value` line in `protobuf/mappings/wait_event.json`
+   unchanged; its value must be one of the resolver values, so the two lookup
+   paths cannot disagree
+3. Run `make generate_wait_event_mappings` to refresh the reverse mapping, and
+   commit the result
+
+The collector keeps sending `wait_event_type` on the wire for backward
+compatibility with older snapshot ingest servers. The app uses the wire type only
+to resolve the enum value for resolver-covered names, and can drop its own type
+column once existing rows have been migrated to the per-type values (for example
+`UPDATE ... SET wait_event_id = 132 WHERE wait_event_type = 'LWLock' AND
+wait_event_id = 734`).
+
+`protobuf/mappings/wait_event_mappings_test.go` enforces all of this offline, and
+CI runs `make check_wait_event_mappings` to fetch upstream `wait_event_names.txt`
+and catch new cross-type names automatically.
