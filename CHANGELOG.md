@@ -1,5 +1,41 @@
 # Changelog
 
+## 0.76.0      2026-11-13
+- Log Insights
+  - fix parameter parsing statement parameter log output for Postgres 18
+  - fix autovacuum/autoanalyze log parsing for Postgres 18
+  - fix restart point statement parsing
+  - fix handling of NULL parameter values in log-based EXPLAIN
+- pganalyze Workbooks collector workflow
+  - return initial warm-up result if second query run times out
+  - execute pending query runs in order (previously they were accidentally
+    executed in arbitrary order)
+  - add mechanism for processing query 
+  - submit query run snapshots on start and error for quicker feedback
+- Fix parsing of reloptions that include a comma
+- Improve handling of invalid UTF-8: if invalid UTF-8 ends up in a snapshot
+  (e.g., from a bug in an extension), that can cause snapshot errors and prevent
+  all statistics reporting. Instead, mask out the affected fields, log the
+  source of the problem, and report the patched-up snapshot.
+- Warn if the collector config file has been changed, but not reloaded (i.e.,
+  the collector is running with a stale config)
+- Add stop/reload timeout: in some rare situations, the collector can get stuck
+  on reload or shutdown, and this change forces it to exit after a timeout
+  (instead of being stuck indefinitely) when this happens. In a normal install,
+  the collector will immediately be restarted by its supervisor process (e.g.,
+  systemd).
+- CloudNativePG: Fix config for Vector 0.61+
+- Crunchy Bridge: fix cluster created_at never being recorded
+- Citus: Support setups where only some databases have the Citus extension
+  installed
+- Explicitly turn off multipath TCP (MPTCP) to mitigate CVE-2026-98432 (this is
+  not relevant unless running `db_log_syslog_server` on an unpatched Linux
+  kernel).
+- Always log panic stack traces even when Sentry is configured
+- Update opentelemetry to address CVE-2026-81870 and CVE-2026-128085
+- Update azure-sdk-for-go to stable version
+
+
 ## 0.75.0      2026-09-30
 
 - Update pg_query_go to 6.2.5
