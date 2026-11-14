@@ -1,42 +1,12 @@
-// +heroku goVersion go1.26
+// +heroku goVersion go1.27
 
 module github.com/pganalyze/collector
-
-require (
-	cloud.google.com/go v0.123.0 // indirect
-	github.com/AlecAivazis/survey/v2 v2.2.1
-	github.com/certifi/gocertifi v0.0.0-20210507211836-431795d63e8d // indirect
-	github.com/fsnotify/fsnotify v1.4.9
-	github.com/getsentry/raven-go v0.0.0-20161115135411-3f7439d3e74d
-	github.com/go-ini/ini v1.62.0
-	github.com/go-ole/go-ole v1.2.6 // indirect
-	github.com/gopherjs/gopherjs v0.0.0-20181103185306-d547d1d9531e // indirect
-	github.com/gorhill/cronexpr v0.0.0-20160318121724-f0984319b442
-	github.com/guregu/null v0.0.0-20160228005316-41961cea0328
-	github.com/hashicorp/go-retryablehttp v0.7.7
-	github.com/jtolds/gls v4.2.0+incompatible // indirect
-	github.com/juju/syslog v0.0.0-20150205155936-6be94e8b7187
-	github.com/kr/logfmt v0.0.0-20140226030751-b84e30acd515
-	github.com/kylelemons/godebug v1.1.0
-	github.com/lib/pq v1.10.7
-	github.com/ogier/pflag v0.0.0-20160129220114-45c278ab3607
-	github.com/papertrail/go-tail v0.0.0-20180509224916-973c153b0431
-	github.com/pkg/errors v0.9.1
-	github.com/shirou/gopsutil v3.21.11+incompatible
-	github.com/smartystreets/assertions v0.0.0-20160707190355-2063fd1cc7c9 // indirect
-	github.com/smartystreets/goconvey v0.0.0-20160704134950-4622128e06c7 // indirect
-	golang.org/x/crypto v0.55.0 // indirect
-	golang.org/x/net v0.58.0
-	google.golang.org/api v0.264.0
-	google.golang.org/protobuf v1.36.11
-	gopkg.in/ini.v1 v1.62.0 // indirect
-	gopkg.in/mcuadros/go-syslog.v2 v2.3.0
-)
 
 require (
 	cloud.google.com/go/alloydbconn v1.15.2
 	cloud.google.com/go/cloudsqlconn v1.17.0
 	cloud.google.com/go/pubsub/v2 v2.0.0
+	github.com/AlecAivazis/survey/v2 v2.2.1
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.17.1
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.8.2
 	github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs v1.0.0
@@ -54,11 +24,25 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/rds v1.119.3
 	github.com/aws/aws-sdk-go-v2/service/sts v1.43.3
 	github.com/fatih/color v1.16.0
+	github.com/fsnotify/fsnotify v1.4.9
+	github.com/getsentry/raven-go v0.0.0-20161115135411-3f7439d3e74d
+	github.com/go-ini/ini v1.62.0
 	github.com/google/uuid v1.6.0
+	github.com/gorhill/cronexpr v0.0.0-20160318121724-f0984319b442
 	github.com/gorilla/websocket v1.5.3
+	github.com/guregu/null v0.0.0-20160228005316-41961cea0328
+	github.com/hashicorp/go-retryablehttp v0.7.7
 	github.com/jackc/pgx/v5 v5.9.2
+	github.com/juju/syslog v0.0.0-20150205155936-6be94e8b7187
+	github.com/kr/logfmt v0.0.0-20140226030751-b84e30acd515
+	github.com/kylelemons/godebug v1.1.0
+	github.com/lib/pq v1.10.7
+	github.com/ogier/pflag v0.0.0-20160129220114-45c278ab3607
+	github.com/papertrail/go-tail v0.0.0-20180509224916-973c153b0431
 	github.com/pganalyze/pg_query_go/v6 v6.2.5
+	github.com/pkg/errors v0.9.1
 	github.com/prometheus/procfs v0.7.3
+	github.com/shirou/gopsutil v3.21.11+incompatible
 	go.opentelemetry.io/otel v1.45.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.45.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.43.0
@@ -66,10 +50,15 @@ require (
 	go.opentelemetry.io/otel/sdk v1.45.0
 	go.opentelemetry.io/otel/trace v1.45.0
 	go.opentelemetry.io/proto/otlp v1.11.0
+	golang.org/x/net v0.58.0
+	google.golang.org/api v0.264.0
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260803160001-6ac0973c030d
+	google.golang.org/protobuf v1.36.11
+	gopkg.in/mcuadros/go-syslog.v2 v2.3.0
 )
 
 require (
+	cloud.google.com/go v0.123.0 // indirect
 	cloud.google.com/go/alloydb v1.15.2 // indirect
 	cloud.google.com/go/auth v0.18.2 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.8 // indirect
@@ -93,25 +82,31 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.36.6 // indirect
 	github.com/aws/smithy-go v1.27.3 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
+	github.com/certifi/gocertifi v0.0.0-20210507211836-431795d63e8d // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/go-logr/logr v1.4.4 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
+	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/golang-jwt/jwt/v5 v5.2.2 // indirect
 	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 // indirect
 	github.com/google/s2a-go v0.1.9 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.11 // indirect
 	github.com/googleapis/gax-go/v2 v2.17.0 // indirect
+	github.com/gopherjs/gopherjs v0.0.0-20181103185306-d547d1d9531e // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.29.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
+	github.com/jtolds/gls v4.2.0+incompatible // indirect
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mgutz/ansi v0.0.0-20170206155736-9520e82c474b // indirect
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c // indirect
+	github.com/smartystreets/assertions v0.0.0-20160707190355-2063fd1cc7c9 // indirect
+	github.com/smartystreets/goconvey v0.0.0-20160704134950-4622128e06c7 // indirect
 	github.com/tklauser/go-sysconf v0.3.9 // indirect
 	github.com/tklauser/numcpus v0.3.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
@@ -121,6 +116,7 @@ require (
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.63.0 // indirect
 	go.opentelemetry.io/otel/metric v1.45.0 // indirect
 	go.opentelemetry.io/otel/sdk/metric v1.45.0 // indirect
+	golang.org/x/crypto v0.55.0 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
 	golang.org/x/sync v0.22.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
@@ -130,9 +126,10 @@ require (
 	google.golang.org/genproto v0.0.0-20260128011058-8636f8732409 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260803160001-6ac0973c030d // indirect
 	google.golang.org/grpc v1.83.2 // indirect
+	gopkg.in/ini.v1 v1.62.0 // indirect
 )
 
-go 1.26
+go 1.27
 
 // Disable Multipath TCP (enabled by default for listeners since Go 1.24) for
 // all TCP listeners, including those created by vendored libraries such as the
