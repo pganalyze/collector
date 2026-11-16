@@ -2,6 +2,7 @@ package runner
 
 import (
 	"context"
+	"errors"
 	"slices"
 	"testing"
 	"time"
@@ -116,5 +117,23 @@ func submittedQueryRuns(server *state.Server) []*pganalyze_collector.QueryRun {
 		default:
 			return runs
 		}
+	}
+}
+
+func TestRunQueryOnDatabaseDisabled(t *testing.T) {
+	// Unreachable database settings, so attempting to connect would produce a different error
+	server := state.MakeServer(config.ServerConfig{DisableQueryRuns: true, DbHost: "invalid.invalid", DbPort: 1}, false)
+	query := &state.QueryRun{Id: 1, Type: pganalyze_collector.QueryRunType_EXPLAIN, DatabaseName: "postgres", QueryText: "SELECT 1"}
+
+	result, err := runQueryOnDatabase(context.Background(), server, state.CollectionOpts{}, &util.Logger{}, query)
+
+	if !errors.Is(err, errQueryRunsDisabled) {
+		t.Errorf("runQueryOnDatabase() error = %v, want %v", err, errQueryRunsDisabled)
+	}
+	if result != "" {
+		t.Errorf("runQueryOnDatabase() result = %q, want empty", result)
+	}
+	if query.BackendPid != 0 {
+		t.Errorf("runQueryOnDatabase() connected to the database (BackendPid = %d)", query.BackendPid)
 	}
 }

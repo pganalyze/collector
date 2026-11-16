@@ -344,6 +344,7 @@ message CollectorConfig {
   bool disable_activity = 3;
   bool enable_log_explain = 4;
   reserved 5; // enable_query_runner, now enabled automatically if helper function is defined
+  bool disable_query_runs = 6;
 
   string db_name = 14;
   string db_username = 15;
