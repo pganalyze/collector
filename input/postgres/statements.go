@@ -33,12 +33,15 @@ const statementSQLOptionalFieldsMinorVersion8 = "min_exec_time, max_exec_time, m
 const statementSQLTopLevelFieldMinorVersion9 = "toplevel"
 
 // pg_stat_statements 1.11+ (Postgres 17+)
+const statementSQLStatsSinceFieldDefault = "NULL::timestamptz"
+const statementSQLStatsSinceFieldMinorVersion11 = "stats_since"
 const statementSQLIoTimeFieldsMinorVersion11 = "shared_blk_read_time + local_blk_read_time + temp_blk_read_time, shared_blk_write_time + local_blk_write_time + temp_blk_write_time"
 
 const statementStatsSQL string = `
 SELECT dbid, userid, queryid, %s, calls, %s, rows, shared_blks_hit, shared_blks_read,
 			 shared_blks_dirtied, shared_blks_written, local_blks_hit, local_blks_read,
 			 local_blks_dirtied, local_blks_written, temp_blks_read, temp_blks_written,
+			 %s,
 			 %s,
 			 %s
 	FROM %s`
@@ -151,7 +154,13 @@ func GetStatementStats(ctx context.Context, c *Collection, db *sql.DB) (state.Po
 		optionalFields = statementSQLOptionalFieldsMinorVersion8
 	}
 
-	querySql := QueryMarkerSQL + fmt.Sprintf(statementStatsSQL, topLevelField, totalTimeField, ioTimeFields, optionalFields, source.Table)
+	// Only available on newer versions, older versions keep diffing by key alone
+	statsSinceField := statementSQLStatsSinceFieldDefault
+	if source.MinorVersion >= 11 {
+		statsSinceField = statementSQLStatsSinceFieldMinorVersion11
+	}
+
+	querySql := QueryMarkerSQL + fmt.Sprintf(statementStatsSQL, topLevelField, totalTimeField, ioTimeFields, optionalFields, statsSinceField, source.Table)
 	rows, err := db.QueryContext(ctx, querySql)
 	if err != nil {
 		return nil, source.hintOutdatedExtension(c, err)
@@ -169,7 +178,7 @@ func GetStatementStats(ctx context.Context, c *Collection, db *sql.DB) (state.Po
 			&stats.SharedBlksHit, &stats.SharedBlksRead, &stats.SharedBlksDirtied, &stats.SharedBlksWritten,
 			&stats.LocalBlksHit, &stats.LocalBlksRead, &stats.LocalBlksDirtied, &stats.LocalBlksWritten,
 			&stats.TempBlksRead, &stats.TempBlksWritten, &stats.BlkReadTime, &stats.BlkWriteTime,
-			&stats.MinTime, &stats.MaxTime, &stats.MeanTime, &stats.StddevTime)
+			&stats.MinTime, &stats.MaxTime, &stats.MeanTime, &stats.StddevTime, &stats.StatsSince)
 		if err != nil {
 			return nil, err
 		}
