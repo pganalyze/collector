@@ -12,6 +12,7 @@ func transformCollectorConfig(s snapshot.FullSnapshot, state state.TransientStat
 		DisableLogs:                c.DisableLogs,
 		DisableActivity:            c.DisableActivity,
 		EnableLogExplain:           c.EnableLogExplain,
+		WorkbooksExplainAnalyze:    c.WorkbooksExplainAnalyze,
 		DbName:                     c.DbName,
 		DbUsername:                 c.DbUsername,
 		DbHost:                     c.DbHost,

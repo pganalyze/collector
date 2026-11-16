@@ -344,6 +344,7 @@ message CollectorConfig {
   bool disable_activity = 3;
   bool enable_log_explain = 4;
   reserved 5; // enable_query_runner, now enabled automatically if helper function is defined
+  string workbooks_explain_analyze = 6; // "disable", "allow" or "allow_no_version_check"
 
   string db_name = 14;
   string db_username = 15;

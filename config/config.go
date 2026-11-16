@@ -47,6 +47,14 @@ type ServerConfig struct {
 	DisableActivity  bool `ini:"disable_activity"`
 	EnableLogExplain bool `ini:"enable_log_explain"`
 
+	// Whether to allow EXPLAIN ANALYZE query runs for user-provided queries, as requested by
+	// pganalyze Workbooks (Collector Workflow), see WorkbooksExplainAnalyze* values.
+	//
+	// Even when allowed (the default), these runs only happen if the pganalyze.explain_analyze
+	// helper function has been created in the database, which is an explicit opt-in step.
+	// This does not affect other (future) query run types, like maintenance commands.
+	WorkbooksExplainAnalyze string `ini:"workbooks_explain_analyze"`
+
 	DbURL                 string `ini:"db_url"`
 	DbURLFile             string `ini:"db_url_file"`
 	DbName                string `ini:"db_name"`
@@ -287,6 +295,19 @@ type ServerConfig struct {
 
 const MinLogDownloadInterval = 30
 const MaxLogDownloadInterval = 600
+
+// Values for the workbooks_explain_analyze setting
+const (
+	// Refuse all Workbooks EXPLAIN ANALYZE runs, even if the helper function exists
+	WorkbooksExplainAnalyzeDisable = "disable"
+	// Allow Workbooks EXPLAIN ANALYZE runs if the pganalyze.explain_analyze helper function
+	// exists and the Postgres minor version includes required security fixes, currently those
+	// from the November 2026 release (default)
+	WorkbooksExplainAnalyzeAllow = "allow"
+	// Allow Workbooks EXPLAIN ANALYZE runs if the pganalyze.explain_analyze helper function
+	// exists, regardless of the Postgres minor version
+	WorkbooksExplainAnalyzeAllowNoVersionCheck = "allow_no_version_check"
+)
 
 // LogDownloadIntervalDuration - How often logs are downloaded for this server
 func (config ServerConfig) LogDownloadIntervalDuration() time.Duration {

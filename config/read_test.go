@@ -60,6 +60,44 @@ func TestPreprocessConfigLogDownloadInterval(t *testing.T) {
 	}
 }
 
+func TestPreprocessConfigWorkbooksExplainAnalyze(t *testing.T) {
+	type testItem struct {
+		input       string
+		expected    string
+		expectError bool
+	}
+
+	tests := []testItem{
+		{"", WorkbooksExplainAnalyzeAllow, false},
+		{"disable", WorkbooksExplainAnalyzeDisable, false},
+		{"allow", WorkbooksExplainAnalyzeAllow, false},
+		{"allow_no_version_check", WorkbooksExplainAnalyzeAllowNoVersionCheck, false},
+		{" Allow_No_Version_Check ", WorkbooksExplainAnalyzeAllowNoVersionCheck, false},
+		{"off", "", true},
+		{"true", "", true},
+	}
+
+	for _, item := range tests {
+		var config ServerConfig
+		config.WorkbooksExplainAnalyze = item.input
+
+		processed, err := preprocessConfig(&config)
+		if item.expectError {
+			if err == nil {
+				t.Errorf("%q: want error; got nil", item.input)
+			}
+			continue
+		}
+		if err != nil {
+			t.Errorf("%q: want nil; got %v", item.input, err)
+			continue
+		}
+		if processed.WorkbooksExplainAnalyze != item.expected {
+			t.Errorf("%q: want %q; got %q", item.input, item.expected, processed.WorkbooksExplainAnalyze)
+		}
+	}
+}
+
 func TestPreprocessConfigAiven(t *testing.T) {
 	for idx, item := range aivenTests {
 		var config ServerConfig
