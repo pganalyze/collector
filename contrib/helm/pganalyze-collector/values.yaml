@@ -152,6 +152,8 @@ volumeMounts:
     name: scratch
     subPath: config
 
+priorityClassName: ""
+
 nodeSelector: {}
 
 tolerations: []
