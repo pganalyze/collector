@@ -33,23 +33,26 @@ func (pgfn *PGHelperFn) Matches(md5hash string) bool {
 	return md5hash == expected
 }
 
+// The helper intentionally runs with the caller's search_path (so queries resolve application
+// tables), so all objects it references itself are schema-qualified. This avoids picking up
+// objects from the caller's temporary schema, which is searched first for relations and types.
 var ExplainHelper = PGHelperFn{
 	name: "explain",
 	head: "CREATE OR REPLACE FUNCTION pganalyze.explain(query text, params text[]) RETURNS text AS $$",
 	body: `DECLARE
-	prepared_query text;
-	prepared_params text;
-	result text;
+	prepared_query pg_catalog.text;
+	prepared_params pg_catalog.text;
+	result pg_catalog.text;
 BEGIN
-	SELECT regexp_replace(query, ';+\s*\Z', '') INTO prepared_query;
+	SELECT pg_catalog.regexp_replace(query, ';+\s*\Z', '') INTO prepared_query;
 	IF prepared_query LIKE '%;%' THEN
 		RAISE EXCEPTION 'cannot run EXPLAIN when query contains semicolon';
 	END IF;
 
-	IF array_length(params, 1) > 0 THEN
-		SELECT array_to_string(
+	IF pg_catalog.array_length(params, 1) > 0 THEN
+		SELECT pg_catalog.array_to_string(
 			ARRAY(
-				SELECT quote_literal(param) || '::unknown' FROM unnest(params) p(param)
+				SELECT pg_catalog.quote_literal(param) || '::pg_catalog.unknown' FROM pg_catalog.unnest(params) p(param)
 			),
 			',',
 			'NULL'

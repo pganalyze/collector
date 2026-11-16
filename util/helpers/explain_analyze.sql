@@ -1,15 +1,15 @@
 CREATE OR REPLACE FUNCTION pganalyze.explain_analyze(query text, params text[], param_types text[], analyze_flags text[]) RETURNS text AS $$
 DECLARE
-  prepared_query text;
-  params_str text;
-  param_types_str text;
-  explain_prefix text;
-  explain_flag text;
-  result text;
+  prepared_query pg_catalog.text;
+  params_str pg_catalog.text;
+  param_types_str pg_catalog.text;
+  explain_prefix pg_catalog.text;
+  explain_flag pg_catalog.text;
+  result pg_catalog.text;
 BEGIN
   SET TRANSACTION READ ONLY;
 
-  PERFORM 1 FROM pg_roles WHERE (rolname = current_user AND rolsuper) OR (pg_has_role(oid, 'MEMBER') AND rolname IN ('rds_superuser', 'azure_pg_admin', 'cloudsqlsuperuser'));
+  PERFORM 1 FROM pg_catalog.pg_roles WHERE (rolname = current_user AND rolsuper) OR (pg_catalog.pg_has_role(oid, 'MEMBER') AND rolname IN ('rds_superuser', 'azure_pg_admin', 'cloudsqlsuperuser'));
   IF FOUND THEN
     RAISE EXCEPTION 'cannot run: pganalyze.explain_analyze helper is owned by superuser - recreate function with lesser privileged user';
   END IF;
@@ -20,7 +20,7 @@ BEGIN
   END IF;
 
   explain_prefix := 'EXPLAIN (VERBOSE, FORMAT JSON';
-  FOR explain_flag IN SELECT * FROM unnest(analyze_flags)
+  FOR explain_flag IN SELECT * FROM pg_catalog.unnest(analyze_flags)
   LOOP
     IF explain_flag NOT SIMILAR TO '[A-z_ ]+' THEN
       RAISE EXCEPTION 'cannot run pganalyze.explain_analyze helper with invalid flag';
@@ -29,7 +29,7 @@ BEGIN
   END LOOP;
   explain_prefix := explain_prefix || ') ';
 
-  IF cardinality(params) > 0 THEN
+  IF pg_catalog.cardinality(params) > 0 THEN
     SELECT '(' || pg_catalog.array_to_string(
       ARRAY(
         SELECT pg_catalog.quote_literal(p)
