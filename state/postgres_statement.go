@@ -2,6 +2,8 @@ package state
 
 import (
 	"time"
+
+	"github.com/guregu/null"
 )
 
 // PostgresStatement - Specific kind of statement that has run one or multiple times
@@ -38,6 +40,22 @@ type PostgresStatementStats struct {
 	MaxTime           float64 // Maximum time spent in the statement, in milliseconds
 	MeanTime          float64 // Mean time spent in the statement, in milliseconds
 	StddevTime        float64 // Population standard deviation of time spent in the statement, in milliseconds
+
+	// Time at which the pg_stat_statements entry was created (pg_stat_statements 1.11+, otherwise not set).
+	// An entry that was evicted (or reset) and then created again has the same key, but a newer value here.
+	StatsSince null.Time
+}
+
+// SameEntryAs - Whether these statistics come from the same pg_stat_statements entry as
+// the earlier statistics for the same key, i.e. whether its counters continue from them.
+//
+// Without this information (older pg_stat_statements versions, or statistics that
+// were saved before we collected it) we assume the entry is the same.
+func (curr PostgresStatementStats) SameEntryAs(prev PostgresStatementStats) bool {
+	if !curr.StatsSince.Valid || !prev.StatsSince.Valid {
+		return true
+	}
+	return curr.StatsSince.Time.Equal(prev.StatsSince.Time)
 }
 
 // PostgresStatementKey - Information that uniquely identifies a query (this needs to match pgssHashKey in pg_stat_statements.c)
