@@ -35,6 +35,7 @@ pganalyze statistics collector
 | podSecurityContext.runAsNonRoot | bool | `true` |  |
 | podSecurityContext.runAsUser | int | `1000` |  |
 | podSecurityContext.seccompProfile.type | string | `"RuntimeDefault"` |  |
+| priorityClassName | string | `""` |  |
 | replicaCount | int | `1` |  |
 | resources.limits.cpu | string | `"1000m"` |  |
 | resources.limits.memory | string | `"1024Mi"` |  |
