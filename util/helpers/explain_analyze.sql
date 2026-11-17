@@ -9,49 +9,50 @@ DECLARE
 BEGIN
   SET TRANSACTION READ ONLY;
 
-  PERFORM 1 FROM pg_catalog.pg_roles WHERE (rolname = current_user AND rolsuper) OR (pg_catalog.pg_has_role(oid, 'MEMBER') AND rolname IN ('rds_superuser', 'azure_pg_admin', 'cloudsqlsuperuser'));
+  PERFORM 1 FROM pg_catalog.pg_roles WHERE (rolname OPERATOR(pg_catalog.=) current_user AND rolsuper) OR (pg_catalog.pg_has_role(oid, 'MEMBER') AND rolname OPERATOR(pg_catalog.=) ANY (ARRAY['rds_superuser', 'azure_pg_admin', 'cloudsqlsuperuser']::pg_catalog.name[]));
   IF FOUND THEN
     RAISE EXCEPTION 'cannot run: pganalyze.explain_analyze helper is owned by superuser - recreate function with lesser privileged user';
   END IF;
 
   SELECT pg_catalog.regexp_replace(query, ';+\s*\Z', '') INTO prepared_query;
-  IF prepared_query LIKE '%;%' THEN
+  IF prepared_query OPERATOR(pg_catalog.~~) '%;%' THEN
     RAISE EXCEPTION 'cannot run pganalyze.explain_analyze helper with a multi-statement query';
   END IF;
 
   explain_prefix := 'EXPLAIN (VERBOSE, FORMAT JSON';
   FOR explain_flag IN SELECT * FROM pg_catalog.unnest(analyze_flags)
   LOOP
-    IF explain_flag NOT SIMILAR TO '[A-z_ ]+' THEN
+    -- Equivalent to NOT SIMILAR TO '[A-z_ ]+', written as a regular expression to allow qualifying the operator
+    IF explain_flag OPERATOR(pg_catalog.!~) '^(?:[A-z_ ]+)$' THEN
       RAISE EXCEPTION 'cannot run pganalyze.explain_analyze helper with invalid flag';
     END IF;
-    explain_prefix := explain_prefix || ', ' || explain_flag;
+    explain_prefix := explain_prefix OPERATOR(pg_catalog.||) ', ' OPERATOR(pg_catalog.||) explain_flag;
   END LOOP;
-  explain_prefix := explain_prefix || ') ';
+  explain_prefix := explain_prefix OPERATOR(pg_catalog.||) ') ';
 
-  IF pg_catalog.cardinality(params) > 0 THEN
-    SELECT '(' || pg_catalog.array_to_string(
+  IF pg_catalog.cardinality(params) OPERATOR(pg_catalog.>) 0 THEN
+    SELECT '(' OPERATOR(pg_catalog.||) pg_catalog.array_to_string(
       ARRAY(
         SELECT pg_catalog.quote_literal(p)
         FROM pg_catalog.unnest(params) _(p)
       ),
       ',',
       'NULL'
-    ) || ')' INTO params_str;
+    ) OPERATOR(pg_catalog.||) ')' INTO params_str;
   ELSE
     SELECT '' INTO params_str;
   END IF;
-  SELECT COALESCE('(' || pg_catalog.string_agg(
+  SELECT COALESCE('(' OPERATOR(pg_catalog.||) pg_catalog.string_agg(
     CASE
-      WHEN p ~ '^[a-z_][a-z0-9_]*(\[\])?$' THEN p
+      WHEN p OPERATOR(pg_catalog.~) '^[a-z_][a-z0-9_]*(\[\])?$' THEN p
       ELSE pg_catalog.quote_ident(p)
     END,
     ','
-  ) || ')', '') FROM pg_catalog.unnest(param_types) _(p) INTO param_types_str;
+  ) OPERATOR(pg_catalog.||) ')', '') FROM pg_catalog.unnest(param_types) _(p) INTO param_types_str;
 
-  EXECUTE 'PREPARE pganalyze_explain_analyze ' || param_types_str || ' AS ' || prepared_query;
+  EXECUTE 'PREPARE pganalyze_explain_analyze ' OPERATOR(pg_catalog.||) param_types_str OPERATOR(pg_catalog.||) ' AS ' OPERATOR(pg_catalog.||) prepared_query;
   BEGIN
-    EXECUTE explain_prefix || 'EXECUTE pganalyze_explain_analyze' || params_str INTO STRICT result;
+    EXECUTE explain_prefix OPERATOR(pg_catalog.||) 'EXECUTE pganalyze_explain_analyze' OPERATOR(pg_catalog.||) params_str INTO STRICT result;
   EXCEPTION WHEN QUERY_CANCELED OR OTHERS THEN
     DEALLOCATE pganalyze_explain_analyze;
     RAISE;
