@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -340,4 +341,32 @@ func makeTestServer(logsURL string) (*state.Server, *util.Logger) {
 
 	logger := &util.Logger{Destination: log.New(os.Stderr, "", log.LstdFlags)}
 	return server, logger
+}
+
+func TestLogStreamReader_MalformedStreamReturnsError(t *testing.T) {
+	body := io.NopCloser(strings.NewReader(`{"_time":"2025-01-01T00:00:00Z","_msg":"ok"}` + "\n" + `{"_msg":`))
+	reader := &LogStreamReader{body: body, decoder: json.NewDecoder(body)}
+
+	entry, err := reader.Read()
+	if err != nil || entry.Msg != "ok" {
+		t.Fatalf("expected first entry, got %v, %v", entry, err)
+	}
+
+	done := make(chan error, 1)
+	go func() {
+		_, err := reader.Read()
+		done <- err
+	}()
+
+	select {
+	case err := <-done:
+		if err == nil || err == io.EOF {
+			t.Fatalf("expected a decode error for truncated JSON, got %v", err)
+		}
+		if _, err2 := reader.Read(); err2 != err {
+			t.Fatalf("expected error to be sticky, got %v", err2)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("Read did not return for a malformed stream")
+	}
 }

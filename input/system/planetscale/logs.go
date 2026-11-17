@@ -89,11 +89,13 @@ func (r *LogStreamReader) Read() (*LogEntry, error) {
 				r.err = io.EOF
 				return nil, io.EOF
 			}
-			// Log parse errors but continue trying
+			// A failed decode leaves the decoder in an error state, so retrying
+			// would spin forever on the same error. Remember it and return it.
 			if r.logger != nil {
 				r.logger.PrintVerbose("PlanetScale: failed to parse log entry: %v", err)
 			}
-			continue
+			r.err = err
+			return nil, err
 		}
 
 		// Track newest timestamp
