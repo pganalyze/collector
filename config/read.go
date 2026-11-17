@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path"
 	"regexp"
 	"strconv"
 	"strings"
@@ -555,6 +556,22 @@ func CreateEC2IMDSHTTPClient() *http.Client {
 	}
 }
 
+// otlpHTTPTracesPath returns the URL path that traces are sent to for an
+// OTLP/HTTP endpoint with the given path. Per the OpenTelemetry specification
+// the configured endpoint is a base URL, and the traces signal is sent to
+// "v1/traces" relative to it (e.g. "/otlp" becomes "/otlp/v1/traces").
+//
+// For compatibility with existing configurations, an endpoint path that
+// already ends in the traces signal path is used as-is.
+func otlpHTTPTracesPath(endpointPath string) string {
+	const tracesPath = "/v1/traces"
+	cleaned := path.Join("/", endpointPath)
+	if strings.HasSuffix(cleaned, tracesPath) {
+		return cleaned
+	}
+	return path.Join(cleaned, tracesPath)
+}
+
 func CreateOTelTracingProvider(ctx context.Context, conf ServerConfig) (*sdktrace.TracerProvider, func(context.Context) error, error) {
 	res, err := sdkresource.New(ctx,
 		sdkresource.WithAttributes(
@@ -598,7 +615,10 @@ func CreateOTelTracingProvider(ctx context.Context, conf ServerConfig) (*sdktrac
 
 	switch scheme {
 	case "http", "https":
-		opts := []otlptracehttp.Option{otlptracehttp.WithEndpoint(u.Host)}
+		opts := []otlptracehttp.Option{
+			otlptracehttp.WithEndpoint(u.Host),
+			otlptracehttp.WithURLPath(otlpHTTPTracesPath(u.Path)),
+		}
 		if scheme == "http" {
 			opts = append(opts, otlptracehttp.WithInsecure())
 		}
