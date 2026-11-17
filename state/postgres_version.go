@@ -2,8 +2,6 @@ package state
 
 // Known PostgresVersion values - use these for checks in version-dependent code
 const (
-	PostgresVersion10 = 100000
-	PostgresVersion11 = 110000
 	PostgresVersion12 = 120000
 	PostgresVersion13 = 130000
 	PostgresVersion14 = 140000
@@ -12,8 +10,8 @@ const (
 	PostgresVersion17 = 170000
 	PostgresVersion18 = 180000
 
-	// MinRequiredPostgresVersion - We require PostgreSQL 10 or newer
-	MinRequiredPostgresVersion = PostgresVersion10
+	// MinRequiredPostgresVersion - We require PostgreSQL 12 or newer
+	MinRequiredPostgresVersion = PostgresVersion12
 )
 
 // PostgresVersion - Identifying information about the PostgreSQL server version and build details

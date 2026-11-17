@@ -57,8 +57,8 @@ func NewCollection(ctx context.Context, logger *util.Logger, server *state.Serve
 	}
 	logger.PrintVerbose("Detected PostgreSQL Version %d (%s)", version.Numeric, version.Full)
 	if version.Numeric < state.MinRequiredPostgresVersion {
-		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectPgVersion, "PostgreSQL server version (%s) is too old, 10 or newer is required.", version.Short)
-		return &Collection{}, fmt.Errorf("your PostgreSQL server version (%s) is too old, 10 or newer is required", version.Short)
+		server.SelfTest.MarkCollectionAspectError(state.CollectionAspectPgVersion, "PostgreSQL server version (%s) is too old, 12 or newer is required.", version.Short)
+		return &Collection{}, fmt.Errorf("your PostgreSQL server version (%s) is too old, 12 or newer is required", version.Short)
 	}
 	server.SelfTest.MarkCollectionAspect(state.CollectionAspectPgVersion, state.CollectionStateOkay, "%s", version.Short)
 

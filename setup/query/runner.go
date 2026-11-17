@@ -37,8 +37,8 @@ func (qr *Runner) InDB(dbname string) *Runner {
 
 // N.B.: older Postgres version will follow with another trailing dot and the point
 // release number, but we don't care about that so we can match just the first two.
-// This format goes back to at least Postgres 10.0, our oldest supported version
-// right now.
+// This format goes back to at least Postgres 10.0, which predates our oldest
+// supported version.
 var versionRE = regexp.MustCompile("psql \\(PostgreSQL\\) (\\d+\\.\\d+)")
 
 func (qr *Runner) checkUseCSV() {

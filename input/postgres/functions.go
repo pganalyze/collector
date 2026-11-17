@@ -10,9 +10,6 @@ import (
 	"github.com/pganalyze/collector/util"
 )
 
-const functionsSQLDefaultKindFields = "CASE WHEN pp.proisagg THEN 'a' WHEN pp.proiswindow THEN 'w' ELSE 'f' END AS prokind"
-const functionsSQLpg11KindFields = "pp.prokind"
-
 const functionsSQLHelperFilter = "n.nspname = 'pganalyze'"
 
 const functionsSQL string = `
@@ -25,7 +22,7 @@ SELECT pp.oid,
 	   pp.proconfig,
 	   pg_catalog.pg_get_function_arguments(pp.oid),
 	   COALESCE(pg_catalog.pg_get_function_result(pp.oid), ''),
-	   %s,
+	   pp.prokind,
 	   pp.prosecdef,
 	   pp.proleakproof,
 	   pp.proisstrict,
@@ -54,14 +51,7 @@ type FunctionSignature struct {
 }
 
 func GetFunctions(ctx context.Context, logger *util.Logger, db *sql.DB, postgresVersion state.PostgresVersion, currentDatabaseOid state.Oid, ignoreRegexp string, helpersOnly bool) ([]state.PostgresFunction, error) {
-	var kindFields string
 	var systemCatalogFilter string
-
-	if postgresVersion.Numeric >= state.PostgresVersion11 {
-		kindFields = functionsSQLpg11KindFields
-	} else {
-		kindFields = functionsSQLDefaultKindFields
-	}
 
 	if helpersOnly {
 		systemCatalogFilter = functionsSQLHelperFilter
@@ -71,7 +61,7 @@ func GetFunctions(ctx context.Context, logger *util.Logger, db *sql.DB, postgres
 		systemCatalogFilter = relationSQLdefaultSystemCatalogFilter
 	}
 
-	rows, err := db.QueryContext(ctx, QueryMarkerSQL+fmt.Sprintf(functionsSQL, kindFields, systemCatalogFilter), ignoreRegexp)
+	rows, err := db.QueryContext(ctx, QueryMarkerSQL+fmt.Sprintf(functionsSQL, systemCatalogFilter), ignoreRegexp)
 	if err != nil {
 		return nil, err
 	}
