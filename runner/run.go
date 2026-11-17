@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"os/user"
 	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 
@@ -117,6 +118,9 @@ func Run(ctx context.Context, wg *sync.WaitGroup, opts state.CollectionOpts, log
 		if opts.TestRun && opts.TestSection != "" && opts.TestSection != config.SectionName {
 			continue
 		}
+		if !opts.CollectLogs {
+			config.DisableLogs = true
+		}
 		servers = append(servers, state.MakeServer(config, opts.TestRun))
 		if !config.DisableLogs {
 			hasAnyLogsEnabled = true
@@ -136,6 +140,17 @@ func Run(ctx context.Context, wg *sync.WaitGroup, opts state.CollectionOpts, log
 		if config.SystemType == "tembo" {
 			hasAnyTembo = true
 		}
+	}
+
+	if opts.TestRun && opts.TestSection != "" && len(servers) == 0 {
+		var sectionNames []string
+		for _, config := range serverConfigs {
+			sectionNames = append(sectionNames, config.SectionName)
+		}
+		logger.PrintError("ERROR - No section named %q (available sections: %s)", opts.TestSection, strings.Join(sectionNames, ", "))
+		testRunSuccess = make(chan bool, 1)
+		testRunSuccess <- false
+		return
 	}
 
 	if opts.GenerateStatsHelperSql != "" {
