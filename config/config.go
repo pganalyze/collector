@@ -47,6 +47,10 @@ type ServerConfig struct {
 	DisableActivity  bool `ini:"disable_activity"`
 	EnableLogExplain bool `ini:"enable_log_explain"`
 
+	// Refuse query runs (e.g. EXPLAIN ANALYZE requests from the pganalyze Workbooks
+	// Collector Workflow) requested by the pganalyze server
+	DisableQueryRuns bool `ini:"disable_query_runs"`
+
 	DbURL                 string `ini:"db_url"`
 	DbURLFile             string `ini:"db_url_file"`
 	DbName                string `ini:"db_name"`

@@ -147,7 +147,15 @@ func cancelQueryRuns(server *state.Server, ids []int64, logger *util.Logger) {
 	}
 }
 
+var errQueryRunsDisabled = errors.New("Query runs are disabled in the collector configuration (disable_query_runs setting or PGA_DISABLE_QUERY_RUNS environment variable)")
+
 func runQueryOnDatabase(ctx context.Context, server *state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, query *state.QueryRun) (string, error) {
+	// Checked before connecting to the database, so no query run text is ever sent to Postgres
+	if server.Config.DisableQueryRuns {
+		logger.PrintVerbose("Query run %d refused: query runs are disabled", query.Id)
+		return "", errQueryRunsDisabled
+	}
+
 	if query.Type != pganalyze_collector.QueryRunType_EXPLAIN {
 		logger.PrintVerbose("Unhandled query run type %d for %d", query.Type, query.Id)
 		return "", errors.New("Unhandled query run type")

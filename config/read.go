@@ -108,6 +108,9 @@ func getDefaultConfig() *ServerConfig {
 	if disableActivity := os.Getenv("PGA_DISABLE_ACTIVITY"); disableActivity != "" {
 		config.DisableActivity = parseConfigBool(disableActivity)
 	}
+	if disableQueryRuns := os.Getenv("PGA_DISABLE_QUERY_RUNS"); disableQueryRuns != "" {
+		config.DisableQueryRuns = parseConfigBool(disableQueryRuns)
+	}
 	if enableLogExplain := os.Getenv("PGA_ENABLE_LOG_EXPLAIN"); enableLogExplain != "" {
 		config.EnableLogExplain = parseConfigBool(enableLogExplain)
 	}
