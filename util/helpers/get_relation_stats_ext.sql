@@ -10,4 +10,4 @@ $$
   most_common_val_nulls, most_common_freqs, most_common_base_freqs
   FROM pg_catalog.pg_stats_ext se
   WHERE schemaname NOT IN ('pg_catalog', 'information_schema') AND tablename <> 'pg_subscription';
-$$ LANGUAGE sql VOLATILE SECURITY DEFINER;
+$$ LANGUAGE sql VOLATILE SECURITY DEFINER SET search_path = pg_catalog, pg_temp;
