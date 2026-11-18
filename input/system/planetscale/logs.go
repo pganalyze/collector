@@ -82,31 +82,29 @@ func (r *LogStreamReader) Read() (*LogEntry, error) {
 		return nil, r.err
 	}
 
-	for {
-		var entry LogEntry
-		if err := r.decoder.Decode(&entry); err != nil {
-			if err == io.EOF {
-				r.err = io.EOF
-				return nil, io.EOF
-			}
-			// A failed decode leaves the decoder in an error state, so retrying
-			// would spin forever on the same error. Remember it and return it.
-			if r.logger != nil {
-				r.logger.PrintVerbose("PlanetScale: failed to parse log entry: %v", err)
-			}
-			r.err = err
-			return nil, err
+	var entry LogEntry
+	if err := r.decoder.Decode(&entry); err != nil {
+		if err == io.EOF {
+			r.err = io.EOF
+			return nil, io.EOF
 		}
-
-		// Track newest timestamp
-		if entryTime, err := time.Parse(time.RFC3339Nano, entry.Time); err == nil {
-			if r.newestTime.IsZero() || entryTime.After(r.newestTime) {
-				r.newestTime = entryTime
-			}
+		// A failed decode leaves the decoder in an error state, so retrying
+		// would spin forever on the same error. Remember it and return it.
+		if r.logger != nil {
+			r.logger.PrintVerbose("PlanetScale: failed to parse log entry: %v", err)
 		}
-
-		return &entry, nil
+		r.err = err
+		return nil, err
 	}
+
+	// Track newest timestamp
+	if entryTime, err := time.Parse(time.RFC3339Nano, entry.Time); err == nil {
+		if r.newestTime.IsZero() || entryTime.After(r.newestTime) {
+			r.newestTime = entryTime
+		}
+	}
+
+	return &entry, nil
 }
 
 // GetNewestTimestamp returns the newest timestamp seen during streaming
