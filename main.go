@@ -95,8 +95,8 @@ func main() {
 	flag.BoolVar(&dryRun, "dry-run", false, "Print JSON data that would get sent to web service (without actually sending) and exit afterwards")
 	flag.BoolVar(&dryRunLogs, "dry-run-logs", false, "Print JSON data for log snapshot (without actually sending) and exit afterwards")
 	flag.StringVar(&analyzeLogfile, "analyze-logfile", "", "Analyzes the content of the given log file and returns debug output about it")
-	flag.StringVar(&logfilePrefix, "logfile-prefix", "", "The log_line_prefix used to write the log file given to --analyze-logfile or --filter-logfile")
-	flag.StringVar(&logfileTz, "logfile-tz", "", "The log_timezone used to write the log file given to --analyze-logfile or --filter-logfile (default: UTC)")
+	flag.StringVar(&logfilePrefix, "logfile-prefix", "", "The log_line_prefix to use with --analyze-logfile or --filter-logfile")
+	flag.StringVar(&logfileTz, "logfile-tz", "", "The log_timezone to use with --analyze-logfile or --filter-logfile (default: UTC)")
 	flag.StringVar(&analyzeDebugClassifications, "analyze-debug-classifications", "", "When used with --analyze-logfile, print detailed information about given classifications (can be comma-separated list of integer classifications, or keyword 'all')")
 	flag.StringVar(&filterLogFile, "filter-logfile", "", "Test command that filters all known secrets in the logfile according to the filter-log-secret option")
 	flag.StringVar(&filterLogSecret, "filter-log-secret", "all", "Sets the type of secrets filtered by the filter-logfile test command (default: all)")
@@ -124,8 +124,7 @@ func main() {
 		return
 	}
 
-	// Checked before setting up the logger, which can send output to syslog,
-	// so that usage errors always reach the terminal.
+	// Sanity-check flag combinations
 	givenFlags := make(map[string]bool)
 	flag.Visit(func(f *flag.Flag) { givenFlags[f.Name] = true })
 	if err := checkFlagCombination(givenFlags); err != nil {
@@ -391,20 +390,19 @@ var modeFlags = []string{
 	"discover-log-location",
 }
 
-// The mode when no mode flag is given.
 const daemonMode = ""
 
 var testRunModes = []string{"test", "test-logs", "test-explain", "dry-run", "dry-run-logs"}
+var logfileModes = []string{"analyze-logfile", "filter-logfile"}
+var collectionModes = []string{daemonMode, "test", "dry-run"}
 
-// Flags that only have an effect in some modes and the modes they apply to.
-// "reload" is --reload without a mode, which reloads the running collector
-// immediately.
+// Flags that only have an effect in some modes and the modes they apply to
 var modifierFlags = []struct {
 	flag  string
 	modes []string
 }{
 	{"reload", slices.Concat([]string{"reload"}, testRunModes)},
-	// --test is the only mode that reloads by default.
+	// --test is the only mode that reloads by default
 	{"no-reload", []string{"test"}},
 	{"trace", testRunModes},
 	{"test-section", testRunModes},
@@ -422,15 +420,8 @@ var modifierFlags = []struct {
 	{"no-postgres-locks", collectionModes},
 	{"no-system-information", collectionModes},
 	{"no-logs", collectionModes},
-	// The other modes exit before the pidfile is written.
 	{"pidfile", []string{daemonMode, "test", "test-logs", "test-explain", "dry-run", "dry-run-logs", "generate-stats-helper-sql", "generate-explain-analyze-helper-sql", "debug-logs", "discover-log-location"}},
 }
-
-var logfileModes = []string{"analyze-logfile", "filter-logfile"}
-
-// Modes that collect full snapshots, activity snapshots and logs, which the
-// --no-* flags each partially disable.
-var collectionModes = []string{daemonMode, "test", "dry-run"}
 
 // Pairs of flags where one would silently override the other.
 var conflictingFlags = [][2]string{
@@ -442,8 +433,7 @@ var conflictingFlags = [][2]string{
 	{"quiet", "very-verbose"},
 }
 
-// checkFlagCombination returns an error if givenFlags (the names of the flags
-// set on the command line) contains flags that can't be used together.
+// checkFlagCombination returns an error on invalid combinations
 func checkFlagCombination(givenFlags map[string]bool) error {
 	var modes []string
 	for _, f := range modeFlags {
@@ -503,7 +493,7 @@ func flagNames(names []string) []string {
 	return flags
 }
 
-// joinList formats items as "a and b", or "a, b or c".
+// joinList formats items as "a and b" or "a, b or c".
 func joinList(items []string, conjunction string) string {
 	if len(items) == 1 {
 		return items[0]

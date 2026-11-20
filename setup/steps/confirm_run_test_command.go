@@ -37,7 +37,6 @@ var ConfirmRunTestCommand = &state.Step{
 		}
 
 		s.Log("")
-		// Lets tests without a pganalyze API to submit to use --dry-run.
 		mode := "--test"
 		if envMode := os.Getenv("PGA_SETUP_COLLECTOR_TEST_MODE"); envMode != "" {
 			mode = envMode
