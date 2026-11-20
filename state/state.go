@@ -222,7 +222,6 @@ type CollectionOpts struct {
 	CollectPostgresViews     bool
 
 	CollectLogs              bool
-	CollectExplain           bool
 	CollectSystemInformation bool
 
 	CollectorApplicationName string

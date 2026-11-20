@@ -15,7 +15,7 @@ wait_for_systemd
 docker exec "$CONTAINER" systemctl start postgresql
 docker exec --user pganalyze --detach "$CONTAINER" pganalyze-collector
 
-docker exec --privileged --env PGA_SETUP_COLLECTOR_TEST_EXTRA_ARGS=--dry-run "$CONTAINER" \
+docker exec --privileged --env PGA_SETUP_COLLECTOR_TEST_MODE=--dry-run "$CONTAINER" \
   pganalyze-collector-setup --api-key=abc123 --recommended --db-name=postgres
 
 docker exec --user postgres "$CONTAINER" psql \
