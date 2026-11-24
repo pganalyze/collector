@@ -71,7 +71,7 @@ func getStatementExtensionVersions(ctx context.Context, db *sql.DB) (extSchema s
 }
 
 func collectorStatement(query string) bool {
-	return strings.HasPrefix(query, QueryMarkerSQL)
+	return strings.Contains(query, queryMarker)
 }
 
 func insufficientPrivilege(query string) bool {

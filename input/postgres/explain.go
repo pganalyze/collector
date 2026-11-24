@@ -24,7 +24,7 @@ func RunExplain(ctx context.Context, server *state.Server, inputs []state.Postgr
 
 		return !monitoredDb ||
 			// Ignore collector queries
-			strings.HasPrefix(sample.Query, QueryMarkerSQL) ||
+			strings.Contains(sample.Query, queryMarker) ||
 			// Ignore backup-related queries (they usually take long but not because of something that can be EXPLAINed)
 			strings.Contains(sample.Query, "pg_start_backup") ||
 			strings.Contains(sample.Query, "pg_stop_backup")
