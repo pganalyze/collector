@@ -2,6 +2,7 @@ package logs_test
 
 import (
 	"bufio"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -95,6 +96,23 @@ var replaceTests = []replaceTestpair{
 		input:           "2018-03-11 20:00:02 UTC:1.1.1.1(2):a@b:[3]:ERROR:  deadlock detected\n2018-03-11 20:00:02 UTC:1.1.1.1(2):a@b:[3]:DETAIL:  Process 3 waits for ShareLock on transaction 2; blocked by process 4.\n\tProcess 4 waits for ShareLock on transaction 1; blocked by process 3.\n\tProcess 3: UPDATE accounts\n\tSET name = 'alice' WHERE id = 1;\n\tProcess 4: UPDATE accounts\n\tSET name = 'bob' WHERE id = 2;\n",
 		output:          "deadlock detected\nProcess 3 waits for ShareLock on transaction 2; blocked by process 4.\n\t[redacted]\n",
 	},
+	// The continuation lines of a multi-line statement are statement text too, so
+	// filtering only statement_text must redact them, not just "all"
+	{
+		filterLogSecret: "statement_text",
+		input:           "2018-03-11 20:00:02 UTC:1.1.1.1(2):a@b:[3]:LOG:  statement: INSERT INTO accounts(name, plan)\n\tVALUES ('alice', 'pro');\n",
+		output:          "statement: [redacted]\n",
+	},
+	{
+		filterLogSecret: "statement_text",
+		input:           "2018-03-11 20:00:02 UTC:1.1.1.1(2):a@b:[3]:LOG:  statement: EXECUTE p_ins('bob');\n2018-03-11 20:00:02 UTC:1.1.1.1(2):a@b:[3]:DETAIL:  prepare: PREPARE p_ins(text) AS INSERT INTO accounts(name, plan)\n\tVALUES ($1, 'free');\n",
+		output:          "statement: [redacted]\nprepare: [redacted]\n",
+	},
+	{
+		filterLogSecret: "statement_text",
+		input:           "2018-03-11 20:00:02 UTC::@:[1]:LOG:  server process (PID 123) was terminated by signal 11: Segmentation fault\n2018-03-11 20:00:02 UTC::@:[1]:DETAIL:  Failed process was running: SELECT * FROM accounts\n\tWHERE name = 'alice';\n",
+		output:          "server process (PID 123) was terminated by signal 11: Segmentation fault\nFailed process was running: [redacted]\n",
+	},
 }
 
 func TestReplaceSecrets(t *testing.T) {
@@ -126,29 +144,38 @@ func TestReplaceSecretsStructured(t *testing.T) {
 	}
 	tests := []struct {
 		in   []state.LogLine
-		want string
+		want []string
 	}{
 		{
 			in:   []state.LogLine{makeLine(pganalyze_collector.LogLineInformation_LOG, "statement: INSERT INTO accounts(name, plan)\nVALUES ('alice', 'pro');")},
-			want: "statement: [redacted]",
+			want: []string{"statement: [redacted]"},
 		},
 		{
 			in: []state.LogLine{
 				makeLine(pganalyze_collector.LogLineInformation_ERROR, "deadlock detected"),
 				makeLine(pganalyze_collector.LogLineInformation_DETAIL, "Process 1 waits for ShareLock on transaction 2; blocked by process 2.\nProcess 2 waits for ShareLock on transaction 1; blocked by process 1.\nProcess 1: UPDATE accounts\nSET name = 'alice' WHERE id = 1;\nProcess 2: UPDATE accounts\nSET name = 'bob' WHERE id = 2;"),
 			},
-			want: "deadlock detected" + "Process 1 waits for ShareLock on transaction 2; blocked by process 2.\nProcess 2 waits for ShareLock on transaction 1; blocked by process 1.\nProcess 1: [redacted]Process 2: [redacted]",
+			// Redacting a statement's continuation lines must keep the newline that
+			// separates it from the next "Process N:" entry
+			want: []string{
+				"deadlock detected",
+				"Process 1 waits for ShareLock on transaction 2; blocked by process 2.\nProcess 2 waits for ShareLock on transaction 1; blocked by process 1.\nProcess 1: [redacted]\nProcess 2: [redacted]",
+			},
 		},
 	}
-	for _, tt := range tests {
-		analyzed, _ := logs.AnalyzeLogLines(tt.in)
-		logs.ReplaceSecrets(analyzed, state.ParseFilterLogSecret("all"))
-		got := ""
-		for _, l := range analyzed {
-			got += l.Content
-		}
-		if got != tt.want {
-			t.Errorf("got %q, want %q", got, tt.want)
+	// Every secret in these inputs is statement text, so filtering only
+	// statement_text must redact the same as "all"
+	for _, filter := range []string{"all", "statement_text"} {
+		for _, tt := range tests {
+			analyzed, _ := logs.AnalyzeLogLines(tt.in)
+			logs.ReplaceSecrets(analyzed, state.ParseFilterLogSecret(filter))
+			got := make([]string, len(analyzed))
+			for i, l := range analyzed {
+				got[i] = l.Content
+			}
+			if !slices.Equal(got, tt.want) {
+				t.Errorf("For filter %q:\ngot  %q\nwant %q", filter, got, tt.want)
+			}
 		}
 	}
 }
