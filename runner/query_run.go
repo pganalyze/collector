@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/lib/pq"
+	"github.com/pganalyze/collector/config"
 	"github.com/pganalyze/collector/input/postgres"
 	"github.com/pganalyze/collector/output"
 	"github.com/pganalyze/collector/output/pganalyze_collector"
@@ -147,10 +148,17 @@ func cancelQueryRuns(server *state.Server, ids []int64, logger *util.Logger) {
 	}
 }
 
+var errWorkbooksExplainAnalyzeDisabled = errors.New("Workbooks EXPLAIN ANALYZE runs are disabled in the collector configuration (workbooks_explain_analyze setting or PGA_WORKBOOKS_EXPLAIN_ANALYZE environment variable set to \"disable\")")
+
 func runQueryOnDatabase(ctx context.Context, server *state.Server, collectionOpts state.CollectionOpts, logger *util.Logger, query *state.QueryRun) (string, error) {
 	if query.Type != pganalyze_collector.QueryRunType_EXPLAIN {
 		logger.PrintVerbose("Unhandled query run type %d for %d", query.Type, query.Id)
 		return "", errors.New("Unhandled query run type")
+	}
+
+	if server.Config.WorkbooksExplainAnalyze == config.WorkbooksExplainAnalyzeDisable {
+		logger.PrintVerbose("Query run %d refused: Workbooks EXPLAIN ANALYZE runs are disabled", query.Id)
+		return "", errWorkbooksExplainAnalyzeDisabled
 	}
 
 	db, err := postgres.EstablishConnection(ctx, server, logger, collectionOpts, query.DatabaseName)
@@ -162,6 +170,12 @@ func runQueryOnDatabase(ctx context.Context, server *state.Server, collectionOpt
 	h, err := postgres.NewCollection(ctx, logger, server, collectionOpts, db)
 	if err != nil {
 		return "", err
+	}
+
+	// An empty setting (e.g. config constructed programmatically) is treated like the default
+	if server.Config.WorkbooksExplainAnalyze != config.WorkbooksExplainAnalyzeAllowNoVersionCheck && !h.PostgresVersion.HasNov2026SecurityFixes() {
+		logger.PrintVerbose("Query run %d refused: Postgres %s is missing required security fixes", query.Id, h.PostgresVersion.Short)
+		return "", fmt.Errorf("Postgres server version %s is missing security fixes required for Workbooks EXPLAIN ANALYZE runs: update to %s or a newer minor release, or set workbooks_explain_analyze = %s in the collector configuration to skip this check", h.PostgresVersion.Short, state.Nov2026MinimumVersionsHuman, config.WorkbooksExplainAnalyzeAllowNoVersionCheck)
 	}
 
 	if h.HelperExists("explain_analyze", []string{"text", "text[]", "text[]", "text[]"}) {

@@ -101,6 +101,7 @@ type CollectorConfig struct {
 	DisableLogs                bool
 	DisableActivity            bool
 	EnableLogExplain           bool
+	WorkbooksExplainAnalyze    string
 	DbName                     string
 	DbUsername                 string
 	DbHost                     string

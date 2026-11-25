@@ -109,6 +109,9 @@ func getDefaultConfig() *ServerConfig {
 	if disableActivity := os.Getenv("PGA_DISABLE_ACTIVITY"); disableActivity != "" {
 		config.DisableActivity = parseConfigBool(disableActivity)
 	}
+	if workbooksExplainAnalyze := os.Getenv("PGA_WORKBOOKS_EXPLAIN_ANALYZE"); workbooksExplainAnalyze != "" {
+		config.WorkbooksExplainAnalyze = workbooksExplainAnalyze
+	}
 	if enableLogExplain := os.Getenv("PGA_ENABLE_LOG_EXPLAIN"); enableLogExplain != "" {
 		config.EnableLogExplain = parseConfigBool(enableLogExplain)
 	}
@@ -878,6 +881,15 @@ func preprocessConfig(config *ServerConfig) (*ServerConfig, error) {
 
 	if config.DisableCitusSchemaStats != "" {
 		config.DisableCitusSchemaStats = parseConfigDisableCitusSchemaStats(config.DisableCitusSchemaStats)
+	}
+
+	config.WorkbooksExplainAnalyze = strings.ToLower(strings.TrimSpace(config.WorkbooksExplainAnalyze))
+	switch config.WorkbooksExplainAnalyze {
+	case "":
+		config.WorkbooksExplainAnalyze = WorkbooksExplainAnalyzeAllow
+	case WorkbooksExplainAnalyzeDisable, WorkbooksExplainAnalyzeAllow, WorkbooksExplainAnalyzeAllowNoVersionCheck:
+	default:
+		return config, fmt.Errorf("workbooks_explain_analyze must be one of \"%s\", \"%s\" or \"%s\", but is set to \"%s\"", WorkbooksExplainAnalyzeAllow, WorkbooksExplainAnalyzeDisable, WorkbooksExplainAnalyzeAllowNoVersionCheck, config.WorkbooksExplainAnalyze)
 	}
 
 	wsUrl, err := url.Parse(config.APIBaseURL + "/v2/snapshots/websocket")
