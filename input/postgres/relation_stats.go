@@ -20,8 +20,10 @@ locked_relids_with_parents AS (
 	UNION SELECT relid FROM locked_relids
 ),
 -- The set of relations we collect stats for (everything not filtered out). Pulled into
--- its own CTE so the partition-size rollup below can restrict to exactly this set.
-primary_objects AS %s (
+-- its own CTE so the partition-size rollup below can restrict to exactly this set. It is
+-- referenced by both the main query and filtered_partitions, so it is explicitly
+-- materialized to make sure it is computed once instead of being inlined.
+primary_objects AS MATERIALIZED (
 	SELECT c.*
 	  FROM pg_catalog.pg_class c
 	  LEFT JOIN pg_catalog.pg_namespace n ON (n.oid = c.relnamespace)
@@ -192,15 +194,7 @@ func GetRelationStats(ctx context.Context, c *Collection, db *sql.DB, currentDat
 		systemCatalogFilter = relationSQLdefaultSystemCatalogFilter
 	}
 
-	// primary_objects is referenced by both the main query and filtered_partitions (which
-	// drives from it), so we want it computed once. CTEs are always materialized before
-	// PostgreSQL 12; from 12 on we ask for it explicitly so it isn't inlined and recomputed.
-	cteMaterialized := ""
-	if c.PostgresVersion.Numeric >= state.PostgresVersion12 {
-		cteMaterialized = "MATERIALIZED"
-	}
-
-	rows, err := db.QueryContext(ctx, QueryMarkerSQL+fmt.Sprintf(relationStatsSQL, cteMaterialized, systemCatalogFilter, insertsSinceVacuumField), c.Config.IgnoreSchemaRegexp)
+	rows, err := db.QueryContext(ctx, QueryMarkerSQL+fmt.Sprintf(relationStatsSQL, systemCatalogFilter, insertsSinceVacuumField), c.Config.IgnoreSchemaRegexp)
 	if err != nil {
 		err = fmt.Errorf("RelationStats/Query: %s", err)
 		return

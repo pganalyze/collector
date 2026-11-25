@@ -15,9 +15,6 @@ import (
 const relationSQLdefaultSystemCatalogFilter = "n.nspname NOT IN ('pg_catalog', 'pg_toast', 'information_schema')"
 const relationSQLEPASSystemCatalogFilter = "n.nspname NOT IN ('pg_catalog', 'pg_toast', 'information_schema', 'sys') AND n.nspparent <> 'sys'::regnamespace"
 
-const relationsSQLOidField = "c.relhasoids AS relation_has_oids"
-const relationsSQLpg12OidField = "false AS relation_has_oids"
-
 const relationsSQL string = `
 	 WITH locked_relids AS (SELECT DISTINCT relation relid FROM pg_catalog.pg_locks WHERE mode = 'AccessExclusiveLock' AND relation IS NOT NULL AND locktype = 'relation'),
  partition_children AS (SELECT inhparent, array_agg(inhrelid) AS relids FROM pg_catalog.pg_inherits JOIN pg_catalog.pg_partitioned_table ON (partrelid = inhparent) GROUP BY 1)
@@ -26,7 +23,7 @@ const relationsSQL string = `
 				c.relname AS table_name,
 				c.relkind AS relation_type,
 				c.reloptions AS relation_options,
-				%s,
+				false AS relation_has_oids,
 				c.relpersistence AS relation_persistence,
 				c.relhassubclass AS relation_has_inheritance_children,
 				c.reltoastrelid IS NOT NULL AS relation_has_toast,
@@ -201,15 +198,7 @@ func GetRelations(ctx context.Context, c *Collection, db *sql.DB, currentDatabas
 	}
 
 	// Relations
-	var oidField string
-
-	if c.PostgresVersion.Numeric >= state.PostgresVersion12 {
-		oidField = relationsSQLpg12OidField
-	} else {
-		oidField = relationsSQLOidField
-	}
-
-	rows, err := db.QueryContext(ctx, QueryMarkerSQL+fmt.Sprintf(relationsSQL, oidField, systemCatalogFilter), c.Config.IgnoreSchemaRegexp)
+	rows, err := db.QueryContext(ctx, QueryMarkerSQL+fmt.Sprintf(relationsSQL, systemCatalogFilter), c.Config.IgnoreSchemaRegexp)
 	if err != nil {
 		err = fmt.Errorf("Relations/Query: %s", err)
 		return nil, err

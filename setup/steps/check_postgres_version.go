@@ -17,8 +17,8 @@ var CheckPostgresVersion = &state.Step{
 		s.PGVersionStr = row.GetString(0)
 		s.PGVersionNum = row.GetInt(1)
 
-		if s.PGVersionNum < 100000 {
-			return false, fmt.Errorf("not supported for Postgres versions older than 10; found %s", s.PGVersionStr)
+		if s.PGVersionNum < 120000 {
+			return false, fmt.Errorf("not supported for Postgres versions older than 12; found %s", s.PGVersionStr)
 		}
 		return true, nil
 	},
