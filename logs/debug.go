@@ -3,9 +3,12 @@ package logs
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"regexp"
+	"strconv"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/pganalyze/collector/output/pganalyze_collector"
@@ -71,6 +74,30 @@ func PrintDebugLogLines(logLines []state.LogLine, classifications map[pganalyze_
 		}
 		fmt.Printf("---\n")
 	}
+}
+
+// ParseLogClassifications parses a comma-separated list of log classification
+// numbers, or "all", for PrintDebugLogLines. "all" returns an empty map,
+// which PrintDebugLogLines treats as every classification.
+func ParseLogClassifications(list string) (map[pganalyze_collector.LogLineInformation_LogClassification]bool, error) {
+	classifications := make(map[pganalyze_collector.LogLineInformation_LogClassification]bool)
+	if list == "all" {
+		return classifications, nil
+	}
+	for _, entry := range strings.Split(list, ",") {
+		if entry == "all" {
+			return nil, errors.New("\"all\" can't be combined with other classifications")
+		}
+		value, err := strconv.ParseInt(entry, 10, 32)
+		if err != nil {
+			return nil, fmt.Errorf("invalid classification %q: must be an integer or \"all\"", entry)
+		}
+		if _, ok := pganalyze_collector.LogLineInformation_LogClassification_name[int32(value)]; !ok {
+			return nil, fmt.Errorf("unknown classification %d", value)
+		}
+		classifications[pganalyze_collector.LogLineInformation_LogClassification(value)] = true
+	}
+	return classifications, nil
 }
 
 var HerokuPostgresDebugRegexp = regexp.MustCompile(`^(\w+ \d+ \d+:\d+:\d+ \w+ app\[postgres\] \w+ )?\[(\w+)\] \[\d+-\d+\] (.+)`)
