@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.77.0      2026-11-25
+
+- Raise minimum supported version to Postgres 12
+- Avoid potential search path attacks on collector helper functions
+  - To apply this, re-create existing helper functions using the updated
+    definitions
+- pganalyze Workbooks Collector Workflow: Add `workbooks_explain_analyze`
+  setting (`PGA_WORKBOOKS_EXPLAIN_ANALYZE`) to control EXPLAIN ANALYZE runs
+  - `allow` (default): Run only if the Postgres minor version includes the
+    November 2026 security fixes (18.7, 17.12, 16.16, 15.20, 14.25 or newer)
+  - `allow_no_version_check`: Run regardless of the Postgres minor version
+  - `disable`: Never run
+- Postgres 17+: Use `pg_stat_statements.stats_since` to avoid incorrect query
+  statistics after entries are deallocated or reset
+- Log Insights: Fix secret filtering for multi-line statements where parts of
+  the statement could be left unredacted
+- Validate command-line flag combinations, and exit with an error when they
+  conflict or don't apply to the selected mode
+  - `--logfile-prefix` and `--logfile-tz` replace `--analyze-logfile-prefix`
+    and `--analyze-logfile-tz`
+  - `--no-logs` now turns off all log collection, like `disable_logs`
+  - Remove `--no-explain`, which no longer had any effect
+- OpenTelemetry: Fix OTLP/HTTP endpoint path when configured via the config file
+- Guided setup: Fix onboarding progress reporting
+- Helm chart: Allow setting `priorityClassName`
+
 ## 0.76.0      2026-11-13
 
 - Log Insights
