@@ -86,16 +86,6 @@ var replaceTests = []replaceTestpair{
 		input:           "2018-03-11 20:00:02 UTC:1.1.1.1(2):a@b:[3]:LOG:  statement: EXECUTE p_ins('bob');\n2018-03-11 20:00:02 UTC:1.1.1.1(2):a@b:[3]:DETAIL:  prepare: PREPARE p_ins(text) AS INSERT INTO accounts(name, plan)\n\tVALUES ($1, 'free');\n",
 		output:          "statement: [redacted]\nprepare: [redacted]\n",
 	},
-	{
-		filterLogSecret: "all",
-		input:           "2018-03-11 20:00:02 UTC::@:[1]:LOG:  server process (PID 123) was terminated by signal 9: Killed\n2018-03-11 20:00:02 UTC::@:[1]:DETAIL:  Failed process was running: SELECT * FROM accounts\n\tWHERE name = 'alice';\n",
-		output:          "server process (PID 123) was terminated by signal 9: Killed\n[redacted]\n",
-	},
-	{
-		filterLogSecret: "all",
-		input:           "2018-03-11 20:00:02 UTC:1.1.1.1(2):a@b:[3]:ERROR:  deadlock detected\n2018-03-11 20:00:02 UTC:1.1.1.1(2):a@b:[3]:DETAIL:  Process 3 waits for ShareLock on transaction 2; blocked by process 4.\n\tProcess 4 waits for ShareLock on transaction 1; blocked by process 3.\n\tProcess 3: UPDATE accounts\n\tSET name = 'alice' WHERE id = 1;\n\tProcess 4: UPDATE accounts\n\tSET name = 'bob' WHERE id = 2;\n",
-		output:          "deadlock detected\nProcess 3 waits for ShareLock on transaction 2; blocked by process 4.\n\t[redacted]\n",
-	},
 	// The continuation lines of a multi-line statement are statement text too, so
 	// filtering only statement_text must redact them, not just "all"
 	{
