@@ -156,8 +156,6 @@ func runQueryOnDatabase(ctx context.Context, server *state.Server, collectionOpt
 		return "", errors.New("Unhandled query run type")
 	}
 
-	// Checked before connecting to the database, so no query text is ever sent to Postgres
-	// when Workbooks EXPLAIN ANALYZE runs are disabled.
 	if server.Config.WorkbooksExplainAnalyze == config.WorkbooksExplainAnalyzeDisable {
 		logger.PrintVerbose("Query run %d refused: Workbooks EXPLAIN ANALYZE runs are disabled", query.Id)
 		return "", errWorkbooksExplainAnalyzeDisabled

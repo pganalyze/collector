@@ -296,7 +296,6 @@ type ServerConfig struct {
 const MinLogDownloadInterval = 30
 const MaxLogDownloadInterval = 600
 
-// Values for the workbooks_explain_analyze setting
 const (
 	// Refuse all Workbooks EXPLAIN ANALYZE runs, even if the helper function exists
 	WorkbooksExplainAnalyzeDisable = "disable"
