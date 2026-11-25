@@ -2550,9 +2550,11 @@ func matchLogLineCommon(logLine state.LogLine, m match, matchAll bool) (state.Lo
 	parts := make([][]string, len(p))
 	// `.` doesn't match newlines, so statement text captured up to the end of a
 	// match stops at the statement's first line break. The unmatched text after
-	// such a match is the rest of that statement.
-	continuationKind := make([]state.LogSecretKind, len(p))
+	// such a match is the rest of that statement, so we extend the statement's
+	// marker to cover it (index into logLine.SecretMarkers, or -1 if none)
+	continuationMarker := make([]int, len(p))
 	for x := 0; x < len(p); x++ {
+		continuationMarker[x] = -1
 		parts[x] = make([]string, 1+m.regexp.NumSubexp())
 		for i := range parts[x] {
 			if 2*i < len(p[x]) && p[x][2*i] >= 0 {
@@ -2583,13 +2585,13 @@ func matchLogLineCommon(logLine state.LogLine, m match, matchAll bool) (state.Lo
 
 			kind := m.secrets[idx]
 			if kind != 0 {
+				if kind == state.StatementTextLogSecret && end == p[x][1] {
+					continuationMarker[x] = len(logLine.SecretMarkers)
+				}
 				logLine.SecretMarkers = append(logLine.SecretMarkers, state.LogSecretMarker{
 					ByteStart: start,
 					ByteEnd:   end,
 					Kind:      kind})
-			}
-			if kind == state.StatementTextLogSecret && end == p[x][1] {
-				continuationKind[x] = kind
 			}
 		}
 		if x > 0 && p[x-1][1] < p[x][0]-1 {
@@ -2599,15 +2601,19 @@ func matchLogLineCommon(logLine state.LogLine, m match, matchAll bool) (state.Lo
 			if logLine.Content[gapEnd-1] == '\n' {
 				gapEnd--
 			}
-			logLine.SecretMarkers = append(logLine.SecretMarkers, state.LogSecretMarker{
-				ByteStart: p[x-1][1],
-				ByteEnd:   gapEnd,
-				Kind:      cmp.Or(continuationKind[x-1], state.UnidentifiedLogSecret),
-			})
+			if c := continuationMarker[x-1]; c >= 0 {
+				logLine.SecretMarkers[c].ByteEnd = gapEnd
+			} else {
+				logLine.SecretMarkers = append(logLine.SecretMarkers, state.LogSecretMarker{
+					ByteStart: p[x-1][1],
+					ByteEnd:   gapEnd,
+					Kind:      state.UnidentifiedLogSecret,
+				})
+			}
 		}
 	}
 	if p[len(p)-1][1] < len(logLine.Content)-1 {
-		kind := cmp.Or(m.remainderKind, continuationKind[len(p)-1], state.UnidentifiedLogSecret)
+		c := continuationMarker[len(p)-1]
 		markerByteStart := p[len(p)-1][1]
 		markerByteEnd := len(logLine.Content)
 
@@ -2617,11 +2623,15 @@ func matchLogLineCommon(logLine state.LogLine, m match, matchAll bool) (state.Lo
 		}
 
 		if markerByteEnd-markerByteStart > 0 {
-			logLine.SecretMarkers = append(logLine.SecretMarkers, state.LogSecretMarker{
-				ByteStart: markerByteStart,
-				ByteEnd:   markerByteEnd,
-				Kind:      kind,
-			})
+			if m.remainderKind == 0 && c >= 0 {
+				logLine.SecretMarkers[c].ByteEnd = markerByteEnd
+			} else {
+				logLine.SecretMarkers = append(logLine.SecretMarkers, state.LogSecretMarker{
+					ByteStart: markerByteStart,
+					ByteEnd:   markerByteEnd,
+					Kind:      cmp.Or(m.remainderKind, state.UnidentifiedLogSecret),
+				})
+			}
 		}
 	}
 	return logLine, parts

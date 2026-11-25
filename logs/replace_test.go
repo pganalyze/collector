@@ -103,6 +103,18 @@ var replaceTests = []replaceTestpair{
 		input:           "2018-03-11 20:00:02 UTC::@:[1]:LOG:  server process (PID 123) was terminated by signal 11: Segmentation fault\n2018-03-11 20:00:02 UTC::@:[1]:DETAIL:  Failed process was running: SELECT * FROM accounts\n\tWHERE name = 'alice';\n",
 		output:          "server process (PID 123) was terminated by signal 11: Segmentation fault\nFailed process was running: [redacted]\n",
 	},
+	// Credentials on a continuation line of a multi-line utility statement must
+	// be detected based on the whole statement, not just its first line
+	{
+		filterLogSecret: "credential",
+		input:           "2018-03-11 20:00:02 UTC:1.1.1.1(2):a@b:[3]:LOG:  statement: ALTER ROLE foo\n\tPASSWORD 'hunter2';\n",
+		output:          "statement: [redacted]\n",
+	},
+	{
+		filterLogSecret: "credential,parsing_error,unidentified",
+		input:           "2018-03-11 20:00:02 UTC:1.1.1.1(2):a@b:[3]:LOG:  statement: ALTER ROLE foo\n\tPASSWORD 'hunter2';\n",
+		output:          "statement: [redacted]\n",
+	},
 }
 
 func TestReplaceSecrets(t *testing.T) {
