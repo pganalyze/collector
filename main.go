@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -41,8 +42,8 @@ func main() {
 	var dryRun bool
 	var dryRunLogs bool
 	var analyzeLogfile string
-	var analyzeLogfilePrefix string
-	var analyzeLogfileTz string
+	var logfilePrefix string
+	var logfileTz string
 	var analyzeDebugClassifications string
 	var filterLogFile string
 	var filterLogSecret string
@@ -60,9 +61,9 @@ func main() {
 	var stateFilename string
 	var pidFilename string
 	var noPostgresSettings, noPostgresLocks bool
-	var noPostgresRelations, noLogs, noExplain, noSystemInformation bool
+	var noPostgresRelations, noLogs, noSystemInformation bool
 	var writeHeapProfile bool
-	var testRunAndTrace bool
+	var writeTrace bool
 	var logToSyslog bool
 	var logToJSON bool
 	var logNoTimestamps bool
@@ -88,13 +89,13 @@ func main() {
 	flag.BoolVar(&veryVerbose, "very-verbose", false, "Enable very verbose logging (will also enable verbose logging)")
 	flag.BoolVarP(&logger.Quiet, "quiet", "q", false, "Only outputs error messages to the logs and hides informational and warning messages")
 	flag.BoolVar(&logToSyslog, "syslog", false, "Write all log output to syslog instead of stderr (disabled by default)")
-	flag.BoolVar(&logToJSON, "json-logs", false, "Write all log output to stderr as newline delimited json (disabled by default, ignored if --syslog is set)")
+	flag.BoolVar(&logToJSON, "json-logs", false, "Write all log output to stderr as newline delimited json (disabled by default)")
 	flag.BoolVar(&logNoTimestamps, "no-log-timestamps", false, "Disable timestamps in the log output (automatically done when syslog is enabled)")
 	flag.BoolVar(&dryRun, "dry-run", false, "Print JSON data that would get sent to web service (without actually sending) and exit afterwards")
 	flag.BoolVar(&dryRunLogs, "dry-run-logs", false, "Print JSON data for log snapshot (without actually sending) and exit afterwards")
 	flag.StringVar(&analyzeLogfile, "analyze-logfile", "", "Analyzes the content of the given log file and returns debug output about it")
-	flag.StringVar(&analyzeLogfilePrefix, "analyze-logfile-prefix", "", "The log_line_prefix to use with --analyze-logfile")
-	flag.StringVar(&analyzeLogfileTz, "analyze-logfile-tz", "", "The log_timezone to use with --analyze-logfile (default: UTC)")
+	flag.StringVar(&logfilePrefix, "logfile-prefix", "", "The log_line_prefix to use with --analyze-logfile or --filter-logfile")
+	flag.StringVar(&logfileTz, "logfile-tz", "", "The log_timezone to use with --analyze-logfile or --filter-logfile (default: UTC)")
 	flag.StringVar(&analyzeDebugClassifications, "analyze-debug-classifications", "", "When used with --analyze-logfile, print detailed information about given classifications (can be comma-separated list of integer classifications, or keyword 'all')")
 	flag.StringVar(&filterLogFile, "filter-logfile", "", "Test command that filters all known secrets in the logfile according to the filter-log-secret option")
 	flag.StringVar(&filterLogSecret, "filter-log-secret", "all", "Sets the type of secrets filtered by the filter-logfile test command (default: all)")
@@ -105,10 +106,9 @@ func main() {
 	flag.BoolVar(&noPostgresSettings, "no-postgres-settings", false, "Don't collect Postgres configuration settings")
 	flag.BoolVar(&noPostgresLocks, "no-postgres-locks", false, "Don't collect Postgres lock information")
 	flag.BoolVar(&noLogs, "no-logs", false, "Don't collect log data")
-	flag.BoolVar(&noExplain, "no-explain", false, "Don't automatically EXPLAIN slow queries logged in the logfile")
 	flag.BoolVar(&noSystemInformation, "no-system-information", false, "Don't collect OS level performance data")
 	flag.BoolVar(&writeHeapProfile, "write-heap-profile", false, "Write a Go memory heap profile to ~/pganalyze_collector.mprof when SIGHUP is received (disabled by default, only useful for debugging)")
-	flag.BoolVar(&testRunAndTrace, "trace", false, "Write a Go trace file to ~/pganalyze_collector.trace for a single test run (only useful for debugging)")
+	flag.BoolVar(&writeTrace, "trace", false, "Write a Go trace file to ~/pganalyze_collector.trace during a test or dry run (only useful for debugging)")
 	flag.StringVar(&configFilename, "config", defaultConfigFile, "Specify alternative path for config file")
 	flag.StringVar(&stateFilename, "statefile", defaultStateFile, "Specify alternative path for state file")
 	flag.StringVar(&pidFilename, "pidfile", "", "Specifies a path that a pidfile should be written to (default is no pidfile being written)")
@@ -121,6 +121,14 @@ func main() {
 	if showVersion {
 		fmt.Printf("%s\n", util.CollectorVersion)
 		return
+	}
+
+	// Sanity-check flag combinations
+	givenFlags := make(map[string]bool)
+	flag.Visit(func(f *flag.Flag) { givenFlags[f.Name] = true })
+	if err := checkFlagCombination(givenFlags); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %s\n", err)
+		os.Exit(2)
 	}
 
 	if logNoTimestamps || logToSyslog {
@@ -149,7 +157,7 @@ func main() {
 		}
 	}
 
-	if testRunLogs || testRunAndTrace || testExplain || generateStatsHelperSql != "" || generateHelperExplainAnalyzeSql != "" {
+	if testRunLogs || testExplain || generateStatsHelperSql != "" || generateHelperExplainAnalyzeSql != "" {
 		testRun = true
 	}
 
@@ -173,7 +181,6 @@ func main() {
 		CollectPostgresSettings:          !noPostgresSettings,
 		CollectPostgresLocks:             !noPostgresLocks,
 		CollectLogs:                      !noLogs,
-		CollectExplain:                   !noExplain,
 		CollectSystemInformation:         !noSystemInformation,
 		StateFilename:                    stateFilename,
 		WriteStateUpdate:                 (!dryRun && !dryRunLogs && !testRun) || forceStateUpdate,
@@ -182,14 +189,14 @@ func main() {
 		VeryVerbose:                      veryVerbose,
 	}
 
-	if reload && !testRun {
-		Reload(logger)
-		return
-	}
-
 	if dryRun || dryRunLogs {
 		opts.SubmitCollectedData = false
 		opts.TestRun = true
+	}
+
+	if reload && !opts.TestRun {
+		Reload(logger)
+		return
 	}
 
 	if opts.TestRun || opts.TestRunLogs ||
@@ -200,42 +207,31 @@ func main() {
 	}
 
 	if analyzeLogfile != "" {
+		var classifications map[pganalyze_collector.LogLineInformation_LogClassification]bool
+		if analyzeDebugClassifications != "" {
+			var err error
+			classifications, err = logs.ParseLogClassifications(analyzeDebugClassifications)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "ERROR: %s\n", err)
+				os.Exit(1)
+			}
+		}
 		contentBytes, err := os.ReadFile(analyzeLogfile)
 		if err != nil {
-			fmt.Printf("ERROR: %s\n", err)
-			return
+			fmt.Fprintf(os.Stderr, "ERROR: %s\n", err)
+			os.Exit(1)
 		}
 		logReader := logs.NewMaybeHerokuLogReader(strings.NewReader(string(contentBytes)))
-		server := state.MakeServer(config.ServerConfig{}, false)
-		tz, err := time.LoadLocation(analyzeLogfileTz)
+		server, err := makeStubLogServer(logfilePrefix, logfileTz)
 		if err != nil {
-			fmt.Printf("ERROR: could not read time zone: %s\n", err)
-			return
+			fmt.Fprintf(os.Stderr, "ERROR: %s\n", err)
+			os.Exit(1)
 		}
-		if analyzeLogfilePrefix == "" {
-			fmt.Println("ERROR: must specify log_line_prefix used to generate logfile with --analyze-logfile-prefix")
-			return
-		}
-		server.LogParser = logs.NewLogParser(analyzeLogfilePrefix, tz, false)
 
 		logLines, samples := logs.ParseAndAnalyzeBuffer(logReader, time.Time{}, server, opts, logger)
 		logs.PrintDebugInfo(logLines, samples)
 		if analyzeDebugClassifications != "" {
-			classifications := strings.Split(analyzeDebugClassifications, ",")
-			classMap := make(map[pganalyze_collector.LogLineInformation_LogClassification]bool)
-			for _, classification := range classifications {
-				if classification == "all" {
-					// we represent "all" as an empty map
-					continue
-				}
-				classVal, err := strconv.ParseInt(classification, 10, 32)
-				if err != nil {
-					fmt.Printf("ERROR: invalid classification: %s\n", err)
-				}
-				classInt := int32(classVal)
-				classMap[pganalyze_collector.LogLineInformation_LogClassification(classInt)] = true
-			}
-			logs.PrintDebugLogLines(logLines, classMap)
+			logs.PrintDebugLogLines(logLines, classifications)
 		}
 		return
 	}
@@ -243,11 +239,16 @@ func main() {
 	if filterLogFile != "" {
 		contentBytes, err := os.ReadFile(filterLogFile)
 		if err != nil {
-			fmt.Printf("ERROR: %s\n", err)
-			return
+			fmt.Fprintf(os.Stderr, "ERROR: %s\n", err)
+			os.Exit(1)
 		}
 		logReader := logs.NewMaybeHerokuLogReader(strings.NewReader(string(contentBytes)))
-		logLines, _ := logs.ParseAndAnalyzeBuffer(logReader, time.Time{}, state.MakeServer(config.ServerConfig{}, false), opts, logger)
+		server, err := makeStubLogServer(logfilePrefix, logfileTz)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "ERROR: %s\n", err)
+			os.Exit(1)
+		}
+		logLines, _ := logs.ParseAndAnalyzeBuffer(logReader, time.Time{}, server, opts, logger)
 		logs.ReplaceSecrets(logLines, state.ParseFilterLogSecret(filterLogSecret))
 		output := ""
 		for _, logLine := range logLines {
@@ -266,7 +267,7 @@ func main() {
 		}
 	}
 
-	if testRunAndTrace {
+	if writeTrace {
 		usr, err := user.Current()
 		if err != nil {
 			panic(err)
@@ -364,13 +365,26 @@ ReadConfigAndRun:
 
 	signal.Stop(sigs)
 
-	if testRunAndTrace {
+	if writeTrace {
 		trace.Stop()
 	}
 
 	if exitCode != 0 {
 		os.Exit(exitCode)
 	}
+}
+
+func makeStubLogServer(prefix string, tzName string) (*state.Server, error) {
+	if prefix == "" {
+		return nil, errors.New("must specify log_line_prefix used to generate logfile with --logfile-prefix")
+	}
+	tz, err := time.LoadLocation(tzName)
+	if err != nil {
+		return nil, fmt.Errorf("could not read time zone: %s", err)
+	}
+	server := state.MakeServer(config.ServerConfig{}, false)
+	server.LogParser = logs.NewLogParser(prefix, tz, false)
+	return server, nil
 }
 
 func Reload(logger *util.Logger) {

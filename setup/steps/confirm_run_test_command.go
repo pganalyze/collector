@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"strings"
 
 	survey "github.com/AlecAivazis/survey/v2"
 	"github.com/guregu/null"
@@ -38,13 +37,11 @@ var ConfirmRunTestCommand = &state.Step{
 		}
 
 		s.Log("")
-		args := []string{"--test", "--reload", fmt.Sprintf("--config=%s", s.ConfigFilename)}
-		extraArgsStr := os.Getenv("PGA_SETUP_COLLECTOR_TEST_EXTRA_ARGS")
-		if extraArgsStr != "" {
-			extraArgs := strings.Split(extraArgsStr, " ")
-			args = append(args, extraArgs...)
+		mode := "--test"
+		if envMode := os.Getenv("PGA_SETUP_COLLECTOR_TEST_MODE"); envMode != "" {
+			mode = envMode
 		}
-		cmd := exec.Command("pganalyze-collector", args...)
+		cmd := exec.Command("pganalyze-collector", mode, "--reload", fmt.Sprintf("--config=%s", s.ConfigFilename))
 		var stdOut bytes.Buffer
 		cmd.Stdout = &stdOut
 		cmd.Stderr = os.Stderr

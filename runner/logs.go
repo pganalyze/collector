@@ -74,10 +74,6 @@ func SetupLogCollection(ctx context.Context, wg *sync.WaitGroup, servers []*stat
 }
 
 func setupLogDownloadForAllServers(ctx context.Context, wg *sync.WaitGroup, opts state.CollectionOpts, logger *util.Logger, servers []*state.Server) {
-	if !opts.CollectLogs {
-		return
-	}
-
 	// The log download interval is configurable per server, so group servers by
 	// their interval to keep one goroutine per distinct interval (instead of one
 	// per server)
