@@ -83,16 +83,21 @@ func CollectAndDiff1minStats(ctx context.Context, c *postgres.Collection, connec
 }
 
 func diffStatements(new state.PostgresStatementStatsMap, prev state.PostgresStatementStatsMap) (diff state.DiffedPostgresStatementStatsMap) {
-	followUpRun := len(prev) > 0
 	diff = make(state.DiffedPostgresStatementStatsMap)
+	if len(prev) == 0 {
+		// Return early if we have no reference point, since we can't be sure when the activity happened
+		return
+	}
 
 	for key, statement := range new {
 		var diffedStatement state.DiffedPostgresStatementStats
 
 		prevStatement, exists := prev[key]
-		if exists {
+		if exists && statement.SameEntryAs(prevStatement) {
 			diffedStatement = statement.DiffSince(prevStatement)
-		} else if followUpRun { // New statement since the last run
+		} else {
+			// This is either a new statement since the last run, or the entry was evicted (or reset)
+			// and created again since the last run, so we need to reset what we compare with
 			diffedStatement = statement.DiffSince(state.PostgresStatementStats{})
 		}
 
@@ -105,8 +110,11 @@ func diffStatements(new state.PostgresStatementStatsMap, prev state.PostgresStat
 }
 
 func diffPlanStats(new state.PostgresPlanStatsMap, prev state.PostgresPlanStatsMap) (diff state.DiffedPostgresPlanStatsMap) {
-	followUpRun := len(prev) > 0
 	diff = make(state.DiffedPostgresPlanStatsMap)
+	if len(prev) == 0 {
+		// Return early if we have no reference point, since we can't be sure when the activity happened
+		return
+	}
 
 	for key, planStats := range new {
 		var diffedPlanStats state.DiffedPostgresStatementStats
@@ -114,7 +122,8 @@ func diffPlanStats(new state.PostgresPlanStatsMap, prev state.PostgresPlanStatsM
 		prevPlanStats, exists := prev[key]
 		if exists {
 			diffedPlanStats = planStats.DiffSince(prevPlanStats)
-		} else if followUpRun { // New plan since the last run
+		} else {
+			// New plan since the last run
 			diffedPlanStats = planStats.DiffSince(state.PostgresStatementStats{})
 		}
 
@@ -126,16 +135,24 @@ func diffPlanStats(new state.PostgresPlanStatsMap, prev state.PostgresPlanStatsM
 	return
 }
 
+// Note that we intentionally do not check whether pg_stat_io was reset since the last run
+// (which could be detected through its stats_reset column), since that is very uncommon in
+// practice. If it does happen, the counters start over and the values for that one interval
+// are incorrect (and can be negative).
 func diffServerIoStats(new state.PostgresServerIoStatsMap, prev state.PostgresServerIoStatsMap) (diff state.DiffedPostgresServerIoStatsMap) {
-	followUpRun := len(prev) > 0
-
 	diff = make(state.DiffedPostgresServerIoStatsMap)
+	if len(prev) == 0 {
+		// Return early if we have no reference point, since we can't be sure when the activity happened
+		return
+	}
+
 	for k, stats := range new {
 		var s state.DiffedPostgresServerIoStats
 		prevStats, exists := prev[k]
 		if exists {
 			s = stats.DiffSince(prevStats)
-		} else if followUpRun { // New since the last run
+		} else {
+			// New since the last run
 			s = stats.DiffSince(state.PostgresServerIoStats{})
 		}
 		// Skip over empty diffs (which can occur either because there was no activity, or for fixed entries that never saw activity)
