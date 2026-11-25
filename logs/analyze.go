@@ -1,6 +1,7 @@
 package logs
 
 import (
+	"cmp"
 	"fmt"
 	"math"
 	"regexp"
@@ -2547,6 +2548,10 @@ func matchLogLineCommon(logLine state.LogLine, m match, matchAll bool) (state.Lo
 
 	logLine.ReviewedForSecrets = true
 	parts := make([][]string, len(p))
+	// `.` doesn't match newlines, so statement text captured up to the end of a
+	// match stops at the statement's first line break. The unmatched text after
+	// such a match is the rest of that statement.
+	continuationKind := make([]state.LogSecretKind, len(p))
 	for x := 0; x < len(p); x++ {
 		parts[x] = make([]string, 1+m.regexp.NumSubexp())
 		for i := range parts[x] {
@@ -2583,22 +2588,26 @@ func matchLogLineCommon(logLine state.LogLine, m match, matchAll bool) (state.Lo
 					ByteEnd:   end,
 					Kind:      kind})
 			}
+			if kind == state.StatementTextLogSecret && end == p[x][1] {
+				continuationKind[x] = kind
+			}
 		}
 		if x > 0 && p[x-1][1] < p[x][0]-1 {
+			gapEnd := p[x][0]
+			// Keep the line break before the next match out of the marker, so
+			// redacting the gap doesn't join that match onto the previous line
+			if logLine.Content[gapEnd-1] == '\n' {
+				gapEnd--
+			}
 			logLine.SecretMarkers = append(logLine.SecretMarkers, state.LogSecretMarker{
 				ByteStart: p[x-1][1],
-				ByteEnd:   p[x][0],
-				Kind:      state.UnidentifiedLogSecret,
+				ByteEnd:   gapEnd,
+				Kind:      cmp.Or(continuationKind[x-1], state.UnidentifiedLogSecret),
 			})
 		}
 	}
 	if p[len(p)-1][1] < len(logLine.Content)-1 {
-		var kind state.LogSecretKind
-		if m.remainderKind != 0 {
-			kind = m.remainderKind
-		} else {
-			kind = state.UnidentifiedLogSecret
-		}
+		kind := cmp.Or(m.remainderKind, continuationKind[len(p)-1], state.UnidentifiedLogSecret)
 		markerByteStart := p[len(p)-1][1]
 		markerByteEnd := len(logLine.Content)
 
