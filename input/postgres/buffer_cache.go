@@ -43,13 +43,13 @@ func GetBufferCache(ctx context.Context, server *state.Server, logger *util.Logg
 	defer db.Close()
 
 	schemaName := ""
-	db.QueryRowContext(ctx, QueryMarkerSQL+bufferCacheExtensionSQL).Scan(&schemaName)
+	db.QueryRowContext(ctx, WithQueryMarker(bufferCacheExtensionSQL)).Scan(&schemaName)
 	if schemaName == "" {
 		return
 	}
 
 	sizeGB := 0
-	db.QueryRowContext(ctx, QueryMarkerSQL+bufferCacheSizeSQL).Scan(&sizeGB)
+	db.QueryRowContext(ctx, WithQueryMarker(bufferCacheSizeSQL)).Scan(&sizeGB)
 	if sizeGB > server.Config.MaxBufferCacheMonitoringGB {
 		if opts.TestRun {
 			logger.PrintWarning("GetBufferCache: skipping collection. To enable, set max_buffer_cache_monitoring_gb to a value over %d", sizeGB)
@@ -57,7 +57,7 @@ func GetBufferCache(ctx context.Context, server *state.Server, logger *util.Logg
 		return
 	}
 
-	rows, err := db.QueryContext(ctx, QueryMarkerSQL+fmt.Sprintf(bufferCacheSQL, schemaName))
+	rows, err := db.QueryContext(ctx, WithQueryMarker(fmt.Sprintf(bufferCacheSQL, schemaName)))
 	if err != nil {
 		logger.PrintError("GetBufferCache: %s", err)
 		return

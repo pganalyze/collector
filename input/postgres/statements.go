@@ -8,7 +8,6 @@ import (
 	"io"
 	"os"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/guregu/null"
@@ -66,12 +65,8 @@ SELECT nspname,
 // server (not set if the server doesn't report an available version, and technically
 // not necessarily a number, so callers need to handle both)
 func getStatementExtensionVersions(ctx context.Context, db *sql.DB) (extSchema string, installedMinorVersion int16, availableMinorVersion null.String, err error) {
-	err = db.QueryRowContext(ctx, QueryMarkerSQL+statementExtensionVersionSQL).Scan(&extSchema, &installedMinorVersion, &availableMinorVersion)
+	err = db.QueryRowContext(ctx, WithQueryMarker(statementExtensionVersionSQL)).Scan(&extSchema, &installedMinorVersion, &availableMinorVersion)
 	return
-}
-
-func collectorStatement(query string) bool {
-	return strings.Contains(query, queryMarker)
 }
 
 func insufficientPrivilege(query string) bool {
@@ -124,7 +119,7 @@ func ResetStatements(ctx context.Context, c *Collection, db *sql.DB) (err error)
 		}
 		method = "pg_stat_statements_reset()"
 	}
-	_, err = db.ExecContext(ctx, QueryMarkerSQL+"SELECT "+method)
+	_, err = db.ExecContext(ctx, WithQueryMarker("SELECT "+method))
 	return
 }
 
@@ -160,7 +155,7 @@ func GetStatementStats(ctx context.Context, c *Collection, db *sql.DB) (state.Po
 		statsSinceField = statementSQLStatsSinceFieldMinorVersion11
 	}
 
-	querySql := QueryMarkerSQL + fmt.Sprintf(statementStatsSQL, topLevelField, totalTimeField, ioTimeFields, optionalFields, statsSinceField, source.Table)
+	querySql := WithQueryMarker(fmt.Sprintf(statementStatsSQL, topLevelField, totalTimeField, ioTimeFields, optionalFields, statsSinceField, source.Table))
 	rows, err := db.QueryContext(ctx, querySql)
 	if err != nil {
 		return nil, source.hintOutdatedExtension(c, err)
@@ -213,7 +208,7 @@ func GetStatementTexts(ctx context.Context, c *Collection, db *sql.DB) (statemen
 		topLevelField = statementSQLTopLevelFieldMinorVersion9
 	}
 
-	querySql := QueryMarkerSQL + fmt.Sprintf(statementTextSQL, topLevelField, source.Table)
+	querySql := WithQueryMarker(fmt.Sprintf(statementTextSQL, topLevelField, source.Table))
 	rows, err := db.QueryContext(ctx, querySql)
 	if err != nil {
 		err = source.hintOutdatedExtension(c, err)
@@ -348,7 +343,7 @@ func getStatementSource(ctx context.Context, c *Collection, db *sql.DB, showtext
 
 	if err == sql.ErrNoRows {
 		c.Logger.PrintInfo("pg_stat_statements does not exist, trying to create extension...")
-		_, err = db.ExecContext(ctx, QueryMarkerSQL+"CREATE EXTENSION IF NOT EXISTS pg_stat_statements SCHEMA public")
+		_, err = db.ExecContext(ctx, WithQueryMarker("CREATE EXTENSION IF NOT EXISTS pg_stat_statements SCHEMA public"))
 		if err != nil {
 			c.SelfTest.MarkCollectionAspectError(state.CollectionAspectPgStatStatements, "extension does not exist in database %s and could not be created: %s", c.Config.DbName, err)
 			c.Logger.PrintInfo("HINT - if you expect the extension to already be installed, please review the pganalyze documentation: https://pganalyze.com/docs/install/troubleshooting/pg_stat_statements")

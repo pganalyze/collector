@@ -88,7 +88,7 @@ func GetVacuumProgress(ctx context.Context, c *Collection, db *sql.DB) ([]state.
 	}
 	sql = fmt.Sprintf(vacuumProgressSQLDefault, activitySourceTable, fields, vacuumSourceTable)
 
-	rows, err := db.QueryContext(ctx, QueryMarkerSQL+sql, c.Config.IgnoreSchemaRegexp)
+	rows, err := db.QueryContext(ctx, WithQueryMarker(sql), c.Config.IgnoreSchemaRegexp)
 	if err != nil {
 		return nil, err
 	}

@@ -198,7 +198,7 @@ func GetRelations(ctx context.Context, c *Collection, db *sql.DB, currentDatabas
 	}
 
 	// Relations
-	rows, err := db.QueryContext(ctx, QueryMarkerSQL+fmt.Sprintf(relationsSQL, systemCatalogFilter), c.Config.IgnoreSchemaRegexp)
+	rows, err := db.QueryContext(ctx, WithQueryMarker(fmt.Sprintf(relationsSQL, systemCatalogFilter)), c.Config.IgnoreSchemaRegexp)
 	if err != nil {
 		err = fmt.Errorf("Relations/Query: %s", err)
 		return nil, err
@@ -243,7 +243,7 @@ func GetRelations(ctx context.Context, c *Collection, db *sql.DB, currentDatabas
 	}
 
 	// Columns
-	rows, err = db.QueryContext(ctx, QueryMarkerSQL+fmt.Sprintf(columnsSQL, systemCatalogFilter), c.Config.IgnoreSchemaRegexp)
+	rows, err = db.QueryContext(ctx, WithQueryMarker(fmt.Sprintf(columnsSQL, systemCatalogFilter)), c.Config.IgnoreSchemaRegexp)
 	if err != nil {
 		err = fmt.Errorf("Columns/Query: %s", err)
 		return nil, err
@@ -282,7 +282,7 @@ func GetRelations(ctx context.Context, c *Collection, db *sql.DB, currentDatabas
 	}
 
 	// Indices
-	rows, err = db.QueryContext(ctx, QueryMarkerSQL+fmt.Sprintf(indicesSQL, systemCatalogFilter), c.Config.IgnoreSchemaRegexp)
+	rows, err = db.QueryContext(ctx, WithQueryMarker(fmt.Sprintf(indicesSQL, systemCatalogFilter)), c.Config.IgnoreSchemaRegexp)
 	if err != nil {
 		err = fmt.Errorf("Indices/Query: %s", err)
 		return nil, err
@@ -334,7 +334,7 @@ func GetRelations(ctx context.Context, c *Collection, db *sql.DB, currentDatabas
 	}
 
 	// Constraints
-	rows, err = db.QueryContext(ctx, QueryMarkerSQL+fmt.Sprintf(constraintsSQL, systemCatalogFilter), c.Config.IgnoreSchemaRegexp)
+	rows, err = db.QueryContext(ctx, WithQueryMarker(fmt.Sprintf(constraintsSQL, systemCatalogFilter)), c.Config.IgnoreSchemaRegexp)
 	if err != nil {
 		err = fmt.Errorf("Constraints/Query: %s", err)
 		return nil, err
@@ -398,7 +398,7 @@ func GetRelations(ctx context.Context, c *Collection, db *sql.DB, currentDatabas
 	}
 
 	// View definitions
-	rows, err = db.QueryContext(ctx, QueryMarkerSQL+fmt.Sprintf(viewDefinitionSQL, systemCatalogFilter), c.Config.IgnoreSchemaRegexp)
+	rows, err = db.QueryContext(ctx, WithQueryMarker(fmt.Sprintf(viewDefinitionSQL, systemCatalogFilter)), c.Config.IgnoreSchemaRegexp)
 	if err != nil {
 		err = fmt.Errorf("Views/Prepare: %s", err)
 		return nil, err

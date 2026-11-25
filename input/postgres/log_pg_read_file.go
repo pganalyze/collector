@@ -25,7 +25,7 @@ SELECT (SELECT size FROM pg_catalog.pg_ls_logdir() WHERE name = $1),
 	(SELECT GREATEST(size - $3, $2) FROM pg_catalog.pg_ls_logdir() WHERE name = $1),
 	$3
   )
-;`
+`
 const HelperReadLogFile = `
 SELECT (SELECT size FROM pg_catalog.pg_ls_logdir() WHERE name = $1),
   pganalyze.read_log_file(
@@ -59,7 +59,7 @@ func LogPgReadFile(ctx context.Context, server *state.Server, opts state.Collect
 		return server.LogPrevState, nil, nil, err
 	}
 
-	rows, err := db.QueryContext(ctx, QueryMarkerSQL+LogFileSql, logDownloadWindow.Seconds())
+	rows, err := db.QueryContext(ctx, WithQueryMarker(LogFileSql), logDownloadWindow.Seconds())
 	if err != nil {
 		err = fmt.Errorf("LogFileSql/Query: %s", err)
 		return server.LogPrevState, nil, nil, err
@@ -98,7 +98,7 @@ func LogPgReadFile(ctx context.Context, server *state.Server, opts state.Collect
 		var logData string
 		var newOffset int64
 		prevOffset := psl.ReadFileMarkers[fileName]
-		err = db.QueryRowContext(ctx, QueryMarkerSQL+logReadSql, fileName, prevOffset, maxLogParsingSize).Scan(&newOffset, &logData)
+		err = db.QueryRowContext(ctx, WithQueryMarker(logReadSql), fileName, prevOffset, maxLogParsingSize).Scan(&newOffset, &logData)
 		if err != nil {
 			err = fmt.Errorf("LogReadSql/QueryRow: %s", err)
 			return server.LogPrevState, nil, nil, err

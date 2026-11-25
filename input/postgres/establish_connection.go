@@ -76,7 +76,7 @@ func connectToDb(ctx context.Context, config config.ServerConfig, opts state.Col
 func validateConnectionCount(ctx context.Context, connection *sql.DB, logger *util.Logger, maxCollectorConnections int, opts state.CollectionOpts) error {
 	var connectionCount int
 
-	err := connection.QueryRowContext(ctx, QueryMarkerSQL+"SELECT pg_catalog.count(*) FROM pg_catalog.pg_stat_activity WHERE application_name = '"+opts.CollectorApplicationName+"'").Scan(&connectionCount)
+	err := connection.QueryRowContext(ctx, WithQueryMarker("SELECT pg_catalog.count(*) FROM pg_catalog.pg_stat_activity WHERE application_name = '"+opts.CollectorApplicationName+"'")).Scan(&connectionCount)
 	if err != nil {
 		return err
 	}
@@ -89,7 +89,7 @@ func validateConnectionCount(ctx context.Context, connection *sql.DB, logger *ut
 }
 
 func SetStatementTimeout(ctx context.Context, connection *sql.DB, statementTimeoutMs int32) error {
-	_, err := connection.ExecContext(ctx, fmt.Sprintf("%sSET statement_timeout = %d", QueryMarkerSQL, statementTimeoutMs))
+	_, err := connection.ExecContext(ctx, WithQueryMarker(fmt.Sprintf("SET statement_timeout = %d", statementTimeoutMs)))
 	if err != nil {
 		return err
 	}

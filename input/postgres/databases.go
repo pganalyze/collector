@@ -32,7 +32,7 @@ FROM pg_catalog.pg_database d
 	ON d.oid = sd.datid`
 
 func GetDatabases(ctx context.Context, db *sql.DB) ([]state.PostgresDatabase, state.PostgresDatabaseStatsMap, error) {
-	rows, err := db.QueryContext(ctx, QueryMarkerSQL+databasesSQL)
+	rows, err := db.QueryContext(ctx, WithQueryMarker(databasesSQL))
 	if err != nil {
 		return nil, nil, err
 	}

@@ -1,9 +1,15 @@
 package postgres
 
-const queryMarker string = "/* pganalyze-collector */"
+import (
+	"strings"
+)
 
-const QueryMarkerSQL string = queryMarker + " "
+const queryMarker string = "/* pganalyze-collector */"
 
 func WithQueryMarker(sql string) string {
 	return sql + "\n" + queryMarker
+}
+
+func collectorStatement(query string) bool {
+	return strings.Contains(query, queryMarker)
 }

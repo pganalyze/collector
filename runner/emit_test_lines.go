@@ -17,7 +17,7 @@ func EmitTestLogMsg(ctx context.Context, server *state.Server, opts state.Collec
 	}
 	defer db.Close()
 
-	_, err = db.ExecContext(ctx, postgres.QueryMarkerSQL+fmt.Sprintf("DO $$BEGIN\nRAISE LOG 'pganalyze-collector-identify: %s';\nEND$$;", server.Config.SectionName))
+	_, err = db.ExecContext(ctx, postgres.WithQueryMarker(fmt.Sprintf("DO $$BEGIN\nRAISE LOG 'pganalyze-collector-identify: %s';\nEND$$", server.Config.SectionName)))
 	return err
 }
 

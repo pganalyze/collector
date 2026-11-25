@@ -39,7 +39,7 @@ func getRoles(ctx context.Context, db *sql.DB, systemType string) ([]state.Postg
 		cloudSuperuserName = "cloudsqlsuperuser"
 	}
 
-	rows, err := db.QueryContext(ctx, QueryMarkerSQL+rolesSQL, cloudSuperuserName)
+	rows, err := db.QueryContext(ctx, WithQueryMarker(rolesSQL), cloudSuperuserName)
 	if err != nil {
 		return nil, err
 	}

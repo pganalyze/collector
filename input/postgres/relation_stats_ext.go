@@ -70,7 +70,7 @@ func GetRelationStatsExtended(ctx context.Context, c *Collection, db *sql.DB, db
 		}
 	}
 
-	rows, err := db.QueryContext(ctx, QueryMarkerSQL+fmt.Sprintf(extendedStatisticsSQL, exprsField, inheritedField, sourceTable), c.Config.IgnoreSchemaRegexp)
+	rows, err := db.QueryContext(ctx, WithQueryMarker(fmt.Sprintf(extendedStatisticsSQL, exprsField, inheritedField, sourceTable)), c.Config.IgnoreSchemaRegexp)
 	if err != nil {
 		return nil, err
 	}

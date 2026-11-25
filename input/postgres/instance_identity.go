@@ -18,7 +18,7 @@ SELECT pg_catalog.pg_postmaster_start_time(),
 // on it, this connection is talking to.
 func GetInstanceIdentity(ctx context.Context, db *sql.DB) (state.PostgresInstanceIdentity, error) {
 	var identity state.PostgresInstanceIdentity
-	err := db.QueryRowContext(ctx, QueryMarkerSQL+instanceIdentitySQL).Scan(
+	err := db.QueryRowContext(ctx, WithQueryMarker(instanceIdentitySQL)).Scan(
 		&identity.PostmasterStartTime, &identity.ServerAddr,
 	)
 	if err != nil {

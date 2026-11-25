@@ -28,7 +28,7 @@ func GetBackendCounts(ctx context.Context, c *Collection, db *sql.DB) ([]state.P
 		sourceTable = "pg_catalog.pg_stat_activity"
 	}
 
-	rows, err := db.QueryContext(ctx, QueryMarkerSQL+fmt.Sprintf(backendCountsSQL, sourceTable))
+	rows, err := db.QueryContext(ctx, WithQueryMarker(fmt.Sprintf(backendCountsSQL, sourceTable)))
 	if err != nil {
 		return nil, err
 	}
