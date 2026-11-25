@@ -420,7 +420,7 @@ var modifierFlags = []struct {
 	{"no-postgres-locks", collectionModes},
 	{"no-system-information", collectionModes},
 	{"no-logs", collectionModes},
-	{"pidfile", []string{daemonMode, "test", "test-logs", "test-explain", "dry-run", "dry-run-logs", "generate-stats-helper-sql", "generate-explain-analyze-helper-sql", "debug-logs", "discover-log-location"}},
+	{"pidfile", []string{daemonMode, "debug-logs"}},
 }
 
 // Pairs of flags where one would silently override the other.
