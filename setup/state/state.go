@@ -170,8 +170,23 @@ func (state *SetupState) SaveConfig() error {
 	return state.Config.SaveTo(state.ConfigFilename)
 }
 
+// apiSetting returns the value of a pganalyze API setting (API key or base URL):
+// the explicitly passed input if present, otherwise the value in the pganalyze
+// section of the collector config file (which is where the install script puts
+// them). Returns an empty string if neither is set.
+func (state *SetupState) apiSetting(input null.String, configKey string) string {
+	if input.Valid && input.String != "" {
+		return input.String
+	}
+	if state.PGAnalyzeSection != nil && state.PGAnalyzeSection.HasKey(configKey) {
+		return state.PGAnalyzeSection.Key(configKey).String()
+	}
+	return ""
+}
+
 func (state *SetupState) ReportStep(stepID string, stepErr error) {
-	if !state.Inputs.Settings.APIKey.Valid || state.Inputs.Settings.APIKey.String == "" {
+	apiKey := state.apiSetting(state.Inputs.Settings.APIKey, "api_key")
+	if apiKey == "" {
 		return
 	}
 	transport := &http.Transport{
@@ -213,9 +228,9 @@ func (state *SetupState) ReportStep(stepID string, stepErr error) {
 		"success":          {isSuccess},
 		"used_inputs_file": {usedInputsFile},
 	}
-	var baseUrl = config.DefaultAPIBaseURL
-	if state.Inputs.Settings.APIBaseURL.Valid {
-		baseUrl = state.Inputs.Settings.APIBaseURL.String
+	baseUrl := state.apiSetting(state.Inputs.Settings.APIBaseURL, "api_base_url")
+	if baseUrl == "" {
+		baseUrl = config.DefaultAPIBaseURL
 	}
 	reportURL := baseUrl + "/v2/setup/guided_setup"
 	req, err := http.NewRequest("POST", reportURL, strings.NewReader(data.Encode()))
@@ -225,7 +240,7 @@ func (state *SetupState) ReportStep(stepID string, stepErr error) {
 		return
 	}
 
-	req.Header.Set("Pganalyze-Api-Key", state.Inputs.Settings.APIKey.String)
+	req.Header.Set("Pganalyze-Api-Key", apiKey)
 	req.Header.Set("User-Agent", util.CollectorNameAndVersion)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Add("Accept", "application/json,text/plain")

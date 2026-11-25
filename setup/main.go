@@ -280,6 +280,12 @@ func loadCollectorConfig(s *state.SetupState) error {
 		return err
 	}
 
+	// Set this first, so failures below can be reported using the API key from
+	// the config file
+	if section, err := config.GetSection("pganalyze"); err == nil {
+		s.PGAnalyzeSection = section
+	}
+
 	// TODO: relax this
 	if len(config.Sections()) != 3 {
 		// N.B.: DEFAULT section, pganalyze section, server section
@@ -287,9 +293,7 @@ func loadCollectorConfig(s *state.SetupState) error {
 	}
 	s.Config = config
 	for _, section := range config.Sections() {
-		if section.Name() == "pganalyze" {
-			s.PGAnalyzeSection = section
-		} else if section.Name() == "DEFAULT" {
+		if section.Name() == "pganalyze" || section.Name() == "DEFAULT" {
 			continue
 		} else {
 			s.CurrentSection = section
