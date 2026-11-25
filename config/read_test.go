@@ -126,3 +126,24 @@ func TestPreprocessConfigWebsocketSettings(t *testing.T) {
 		}
 	}
 }
+
+func TestOtlpHTTPTracesPath(t *testing.T) {
+	tests := []struct {
+		endpointPath string
+		expected     string
+	}{
+		{"", "/v1/traces"},
+		{"/", "/v1/traces"},
+		{"/otlp", "/otlp/v1/traces"},
+		{"/otlp/", "/otlp/v1/traces"},
+		{"/v1/traces", "/v1/traces"},
+		{"/otlp/v1/traces", "/otlp/v1/traces"},
+		{"/otlp/v1/traces/", "/otlp/v1/traces"},
+	}
+	for _, test := range tests {
+		actual := otlpHTTPTracesPath(test.endpointPath)
+		if actual != test.expected {
+			t.Errorf("otlpHTTPTracesPath(%q): expected %q, got %q", test.endpointPath, test.expected, actual)
+		}
+	}
+}
