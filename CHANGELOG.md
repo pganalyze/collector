@@ -14,8 +14,12 @@
   - `disable`: Never run
 - Postgres 17+: Use `pg_stat_statements.stats_since` to avoid incorrect query
   statistics after entries are deallocated or reset
-- Log Insights: Fix secret filtering for multi-line statements where parts of
-  the statement could be left unredacted
+- Log Insights: Fix secret filtering leaving parts of multi-line statements
+  unredacted when filtering both `statement_text` and `unidentified` (e.g.
+  `filter_log_secret = all`)
+  - This affected `log_statement` output, as well as "prepare" and "Failed
+    process was running" details, but not `log_min_duration_statement` or
+    `auto_explain` output
 - Validate command-line flag combinations, and exit with an error when they
   conflict or don't apply to the selected mode
   - `--logfile-prefix` and `--logfile-tz` replace `--analyze-logfile-prefix`
@@ -23,7 +27,7 @@
   - `--no-logs` now turns off all log collection, like `disable_logs`
   - Remove `--no-explain`, which no longer had any effect
 - OpenTelemetry: Fix OTLP/HTTP endpoint path when configured via the config file
-- Guided setup: Fix onboarding progress reporting
+- Guided setup: Fix onboarding telemetry
 - Helm chart: Allow setting `priorityClassName`
 
 ## 0.76.0      2026-11-13
