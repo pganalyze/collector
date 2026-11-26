@@ -672,6 +672,8 @@ var standbyStreamingInterrupted = analyzeGroup{
 		prefixes: []string{"could not receive data from WAL stream"},
 		regexp:   regexp.MustCompile(`^could not receive data from WAL stream: ([\w: ]+)`),
 		secrets:  []state.LogSecretKind{state.OpsLogSecret},
+		// libpq error messages can span several lines
+		remainderKind: state.OpsLogSecret,
 	},
 }
 var standbyStoppedStreaming = analyzeGroup{
