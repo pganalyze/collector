@@ -78,6 +78,11 @@ var replaceTests = []replaceTestpair{
 	// markers merged into a single replacement
 	{
 		filterLogSecret: "all",
+		input:           "2018-03-11 20:00:02 UTC::@:[1]:FATAL:  could not receive data from WAL stream: server closed the connection unexpectedly\n\t\tThis probably means the server terminated abnormally\n\t\tbefore or while processing the request.\n",
+		output:          "could not receive data from WAL stream: [redacted]\n",
+	},
+	{
+		filterLogSecret: "all",
 		input:           "2018-03-11 20:00:02 UTC:1.1.1.1(2):a@b:[3]:LOG:  statement: INSERT INTO accounts(name, plan)\n\tVALUES ('alice', 'pro');\n",
 		output:          "statement: [redacted]\n",
 	},
