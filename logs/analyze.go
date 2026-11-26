@@ -2585,9 +2585,15 @@ func matchLogLineCommon(logLine state.LogLine, m match, matchAll bool) (state.Lo
 			}
 		}
 		if x > 0 && p[x-1][1] < p[x][0]-1 {
+			gapEnd := p[x][0]
+			// Keep the line break before the next match out of the marker, so
+			// redacting the gap doesn't join that match onto the previous line
+			if logLine.Content[gapEnd-1] == '\n' {
+				gapEnd--
+			}
 			logLine.SecretMarkers = append(logLine.SecretMarkers, state.LogSecretMarker{
 				ByteStart: p[x-1][1],
-				ByteEnd:   p[x][0],
+				ByteEnd:   gapEnd,
 				Kind:      state.UnidentifiedLogSecret,
 			})
 		}
