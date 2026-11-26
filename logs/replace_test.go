@@ -81,6 +81,13 @@ var replaceTests = []replaceTestpair{
 		input:           "2018-03-11 20:00:02 UTC::@:[1]:FATAL:  could not receive data from WAL stream: server closed the connection unexpectedly\n\t\tThis probably means the server terminated abnormally\n\t\tbefore or while processing the request.\n",
 		output:          "could not receive data from WAL stream: [redacted]\n",
 	},
+	// The continuation lines of a multi-line libpq error are part of the same
+	// ops secret, so filtering only ops must redact them, not just "all"
+	{
+		filterLogSecret: "ops",
+		input:           "2018-03-11 20:00:02 UTC::@:[1]:FATAL:  could not receive data from WAL stream: server closed the connection unexpectedly\n\t\tThis probably means the server terminated abnormally\n\t\tbefore or while processing the request.\n",
+		output:          "could not receive data from WAL stream: [redacted]\n",
+	},
 	{
 		filterLogSecret: "all",
 		input:           "2018-03-11 20:00:02 UTC:1.1.1.1(2):a@b:[3]:LOG:  statement: INSERT INTO accounts(name, plan)\n\tVALUES ('alice', 'pro');\n",
