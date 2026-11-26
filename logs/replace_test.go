@@ -91,6 +91,20 @@ var replaceTests = []replaceTestpair{
 		input:           "2018-03-11 20:00:02 UTC:1.1.1.1(2):a@b:[3]:LOG:  statement: EXECUTE p_ins('bob');\n2018-03-11 20:00:02 UTC:1.1.1.1(2):a@b:[3]:DETAIL:  prepare: PREPARE p_ins(text) AS INSERT INTO accounts(name, plan)\n\tVALUES ($1, 'free');\n",
 		output:          "statement: [redacted]\nprepare: [redacted]\n",
 	},
+	// Continuation lines of a multi-line statement are intentionally marked as
+	// unidentified, not statement text, so with the default filter (which
+	// doesn't include statement_text) only the first line is kept.
+	//
+	// Any line that doesn't start with a log_line_prefix is stitched onto the
+	// previous log line as a continuation, including lines that aren't part of
+	// it (e.g. archive_command output, or interleaved output when not using the
+	// logging collector). If we marked continuation lines as statement text,
+	// such unrelated lines would no longer be redacted by the default filter.
+	{
+		filterLogSecret: "credential,parsing_error,unidentified",
+		input:           "2018-03-11 20:00:02 UTC:1.1.1.1(2):a@b:[3]:LOG:  statement: INSERT INTO accounts(name, plan)\n\tVALUES ('alice', 'pro');\n",
+		output:          "statement: INSERT INTO accounts(name, plan)[redacted]\n",
+	},
 }
 
 func TestReplaceSecrets(t *testing.T) {
