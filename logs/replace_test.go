@@ -2,13 +2,16 @@ package logs_test
 
 import (
 	"bufio"
+	"slices"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/kylelemons/godebug/pretty"
 	"github.com/pganalyze/collector/config"
 	"github.com/pganalyze/collector/logs"
+	"github.com/pganalyze/collector/output/pganalyze_collector"
 	"github.com/pganalyze/collector/state"
 	"github.com/pganalyze/collector/util"
 )
@@ -70,6 +73,38 @@ var replaceTests = []replaceTestpair{
 		input:           "2018-03-11 20:00:02 UTC:1.1.1.1(2):a@b:[3]:LOG:  duration: 4079.697 ms  execute <unnamed>: \nSELECT * FROM x WHERE y = $1 LIMIT $2\n2018-03-11 20:00:02 UTC:1.1.1.1(2):a@b:[3]:DETAIL:  parameters: $1 = 'long string', $2 = '1'\n",
 		output:          "duration: 4079.697 ms  execute <unnamed>: \n[redacted]\nparameters: $1 = '[redacted]', $2 = '[redacted]'\n",
 	},
+	// Multi-line content where a secret marker ends exactly where the next one
+	// (gap or remainder) starts - all of it must be redacted, with adjacent
+	// markers merged into a single replacement
+	{
+		filterLogSecret: "all",
+		input:           "2018-03-11 20:00:02 UTC::@:[1]:FATAL:  could not receive data from WAL stream: server closed the connection unexpectedly\n\t\tThis probably means the server terminated abnormally\n\t\tbefore or while processing the request.\n",
+		output:          "could not receive data from WAL stream: [redacted]\n",
+	},
+	{
+		filterLogSecret: "all",
+		input:           "2018-03-11 20:00:02 UTC:1.1.1.1(2):a@b:[3]:LOG:  statement: INSERT INTO accounts(name, plan)\n\tVALUES ('alice', 'pro');\n",
+		output:          "statement: [redacted]\n",
+	},
+	{
+		filterLogSecret: "all",
+		input:           "2018-03-11 20:00:02 UTC:1.1.1.1(2):a@b:[3]:LOG:  statement: EXECUTE p_ins('bob');\n2018-03-11 20:00:02 UTC:1.1.1.1(2):a@b:[3]:DETAIL:  prepare: PREPARE p_ins(text) AS INSERT INTO accounts(name, plan)\n\tVALUES ($1, 'free');\n",
+		output:          "statement: [redacted]\nprepare: [redacted]\n",
+	},
+	// Continuation lines of a multi-line statement are intentionally marked as
+	// unidentified, not statement text, so with the default filter (which
+	// doesn't include statement_text) only the first line is kept.
+	//
+	// Any line that doesn't start with a log_line_prefix is stitched onto the
+	// previous log line as a continuation, including lines that aren't part of
+	// it (e.g. archive_command output, or interleaved output when not using the
+	// logging collector). If we marked continuation lines as statement text,
+	// such unrelated lines would no longer be redacted by the default filter.
+	{
+		filterLogSecret: "credential,parsing_error,unidentified",
+		input:           "2018-03-11 20:00:02 UTC:1.1.1.1(2):a@b:[3]:LOG:  statement: INSERT INTO accounts(name, plan)\n\tVALUES ('alice', 'pro');\n",
+		output:          "statement: INSERT INTO accounts(name, plan)[redacted]\n",
+	},
 }
 
 func TestReplaceSecrets(t *testing.T) {
@@ -89,6 +124,46 @@ func TestReplaceSecrets(t *testing.T) {
 		}
 		if diff := cfg.Compare(pair.output, output); diff != "" {
 			t.Errorf("For filter \"%s\", text:\n%vdiff: (-want +got)\n%s", pair.filterLogSecret, pair.input, diff)
+		}
+	}
+}
+
+// Structured log sources (OTel jsonlog, Supabase, Tembo) deliver the message and
+// detail fields as-is, with bare newlines (no tab prefix) and no trailing newline
+func TestReplaceSecretsStructured(t *testing.T) {
+	makeLine := func(level pganalyze_collector.LogLineInformation_LogLevel, content string) state.LogLine {
+		return state.LogLine{UUID: uuid.New(), LogLevel: level, BackendPid: 1, Content: content}
+	}
+	tests := []struct {
+		in   []state.LogLine
+		want []string
+	}{
+		{
+			in:   []state.LogLine{makeLine(pganalyze_collector.LogLineInformation_LOG, "statement: INSERT INTO accounts(name, plan)\nVALUES ('alice', 'pro');")},
+			want: []string{"statement: [redacted]"},
+		},
+		{
+			in: []state.LogLine{
+				makeLine(pganalyze_collector.LogLineInformation_ERROR, "deadlock detected"),
+				makeLine(pganalyze_collector.LogLineInformation_DETAIL, "Process 1 waits for ShareLock on transaction 2; blocked by process 2.\nProcess 2 waits for ShareLock on transaction 1; blocked by process 1.\nProcess 1: UPDATE accounts\nSET name = 'alice' WHERE id = 1;\nProcess 2: UPDATE accounts\nSET name = 'bob' WHERE id = 2;"),
+			},
+			// Redacting a statement's continuation lines must keep the newline that
+			// separates it from the next "Process N:" entry
+			want: []string{
+				"deadlock detected",
+				"Process 1 waits for ShareLock on transaction 2; blocked by process 2.\nProcess 2 waits for ShareLock on transaction 1; blocked by process 1.\nProcess 1: [redacted]\nProcess 2: [redacted]",
+			},
+		},
+	}
+	for _, tt := range tests {
+		analyzed, _ := logs.AnalyzeLogLines(tt.in)
+		logs.ReplaceSecrets(analyzed, state.ParseFilterLogSecret("all"))
+		got := make([]string, len(analyzed))
+		for i, l := range analyzed {
+			got[i] = l.Content
+		}
+		if !slices.Equal(got, tt.want) {
+			t.Errorf("got  %q\nwant %q", got, tt.want)
 		}
 	}
 }
