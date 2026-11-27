@@ -32,6 +32,16 @@ func getPostgresVersion(ctx context.Context, db *sql.DB) (version state.Postgres
 	}
 	version.IsAwsAurora = isAwsAurora
 
+	if isAwsAurora {
+		// server_version only reflects the community minor release, but Aurora patch
+		// releases (e.g. 18.6.2) may include backported security fixes. Not being able to
+		// determine this is non-fatal, we just treat the server as the community minor release.
+		var auroraVersion string
+		if db.QueryRowContext(ctx, QueryMarkerSQL+"SELECT pg_catalog.aurora_version()").Scan(&auroraVersion) == nil {
+			version.AuroraVersion = auroraVersion
+		}
+	}
+
 	isAlloyDB, err := GetIsAlloyDB(ctx, db)
 	if err != nil {
 		return
