@@ -174,8 +174,12 @@ func runQueryOnDatabase(ctx context.Context, server *state.Server, collectionOpt
 
 	// An empty setting (e.g. config constructed programmatically) is treated like the default
 	if server.Config.WorkbooksExplainAnalyze != config.WorkbooksExplainAnalyzeAllowNoVersionCheck && !h.PostgresVersion.HasNov2026SecurityFixes() {
-		logger.PrintVerbose("Query run %d refused: Postgres %s is missing required security fixes", query.Id, h.PostgresVersion.Short)
-		return "", fmt.Errorf("Postgres server version %s is missing security fixes required for Workbooks EXPLAIN ANALYZE runs: update to %s or a newer minor release, or set workbooks_explain_analyze = %s in the collector configuration to skip this check", h.PostgresVersion.Short, state.Nov2026MinimumVersionsHuman, config.WorkbooksExplainAnalyzeAllowNoVersionCheck)
+		serverVersion := h.PostgresVersion.Short
+		if h.PostgresVersion.AuroraVersion != "" {
+			serverVersion += " (Aurora " + h.PostgresVersion.AuroraVersion + ")"
+		}
+		logger.PrintVerbose("Query run %d refused: Postgres %s is missing required security fixes", query.Id, serverVersion)
+		return "", fmt.Errorf("Postgres server version %s is missing security fixes required for Workbooks EXPLAIN ANALYZE runs: update to %s or a newer minor release, or set workbooks_explain_analyze = %s in the collector configuration to skip this check", serverVersion, h.PostgresVersion.Nov2026MinimumVersionsHumanFor(), config.WorkbooksExplainAnalyzeAllowNoVersionCheck)
 	}
 
 	if h.HelperExists("explain_analyze", []string{"text", "text[]", "text[]", "text[]"}) {
