@@ -5273,14 +5273,14 @@ index scan needed: 1 pages from table (100.00% of total) had 60 dead item identi
 			Content:  "PL/pgSQL function inline_code_block line 2 at RAISE",
 			LogLevel: pganalyze_collector.LogLineInformation_CONTEXT,
 		}, {
-			Content:  "/* pganalyze-collector */ DO $$BEGIN\nRAISE LOG 'pganalyze-collector-identify: server1';\nEND$$;",
+			Content:  "DO $$BEGIN\nRAISE LOG 'pganalyze-collector-identify: server1';\nEND$$\n/* pganalyze-collector */",
 			LogLevel: pganalyze_collector.LogLineInformation_STATEMENT,
 		}},
 		[]state.LogLine{{
 			LogLevel:           pganalyze_collector.LogLineInformation_LOG,
 			Classification:     pganalyze_collector.LogLineInformation_PGA_COLLECTOR_IDENTIFY,
 			UUID:               uuid.UUID{1},
-			Query:              "/* pganalyze-collector */ DO $$BEGIN\nRAISE LOG 'pganalyze-collector-identify: server1';\nEND$$;",
+			Query:              "DO $$BEGIN\nRAISE LOG 'pganalyze-collector-identify: server1';\nEND$$\n/* pganalyze-collector */",
 			Details:            map[string]interface{}{"config_section": "server1"},
 			ReviewedForSecrets: true,
 			SecretMarkers: []state.LogSecretMarker{{
@@ -5297,7 +5297,7 @@ index scan needed: 1 pages from table (100.00% of total) had 60 dead item identi
 			ParentUUID:         uuid.UUID{1},
 			ReviewedForSecrets: true,
 			SecretMarkers: []state.LogSecretMarker{{
-				ByteEnd: 94,
+				ByteEnd: 93,
 				Kind:    state.StatementTextLogSecret,
 			}},
 		}},

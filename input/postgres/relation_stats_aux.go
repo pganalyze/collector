@@ -30,7 +30,7 @@ func handleRelationStatsAux(ctx context.Context, c *Collection, db *sql.DB, relS
 		return relStats, nil
 	}
 
-	rows, err := db.QueryContext(ctx, QueryMarkerSQL+citusRelationSizeSQL, c.Config.IgnoreSchemaRegexp)
+	rows, err := db.QueryContext(ctx, WithQueryMarker(citusRelationSizeSQL), c.Config.IgnoreSchemaRegexp)
 	if err != nil {
 		return relStats, fmt.Errorf("RelationStatsExt/Query: %s", err)
 	}
@@ -102,7 +102,7 @@ FROM
 WHERE
 	all_success
 GROUP BY
-  oid;
+  oid
 `
 
 func collectCitusIndexStats(c *Collection) bool {
@@ -114,7 +114,7 @@ func handleIndexStatsAux(ctx context.Context, c *Collection, db *sql.DB, idxStat
 		return idxStats, nil
 	}
 
-	rows, err := db.QueryContext(ctx, QueryMarkerSQL+citusIndexSizeSQL, c.Config.IgnoreSchemaRegexp)
+	rows, err := db.QueryContext(ctx, WithQueryMarker(citusIndexSizeSQL), c.Config.IgnoreSchemaRegexp)
 	if err != nil {
 		return idxStats, fmt.Errorf("IndexStatsExt/Query: %s", err)
 	}

@@ -72,7 +72,7 @@ func GetReplication(ctx context.Context, c *Collection, db *sql.DB) (state.Postg
 		replicationSQL = replicationSQLPostgres
 	}
 
-	err = db.QueryRowContext(ctx, QueryMarkerSQL+replicationSQL).Scan(
+	err = db.QueryRowContext(ctx, WithQueryMarker(replicationSQL)).Scan(
 		&repl.InRecovery, &repl.CurrentXlogLocation, &repl.IsStreaming,
 		&repl.ReceiveLocation, &repl.ReplayLocation, &repl.ApplyByteLag,
 		&repl.ReplayTimestamp, &repl.ReplayTimestampAge,
@@ -103,7 +103,7 @@ func GetReplication(ctx context.Context, c *Collection, db *sql.DB) (state.Postg
 		sourceTable = "pg_stat_replication"
 	}
 
-	rows, err := db.QueryContext(ctx, QueryMarkerSQL+fmt.Sprintf(replicationStandbySQL, sourceTable))
+	rows, err := db.QueryContext(ctx, WithQueryMarker(fmt.Sprintf(replicationStandbySQL, sourceTable)))
 	if err != nil {
 		return repl, err
 	}
@@ -146,7 +146,7 @@ func GetIsReplica(ctx context.Context, logger *util.Logger, db *sql.DB) (bool, e
 
 func getIsReplica(ctx context.Context, db *sql.DB) (bool, error) {
 	var isReplica bool
-	err := db.QueryRowContext(ctx, QueryMarkerSQL+"SELECT pg_catalog.pg_is_in_recovery()").Scan(&isReplica)
+	err := db.QueryRowContext(ctx, WithQueryMarker("SELECT pg_catalog.pg_is_in_recovery()")).Scan(&isReplica)
 	return isReplica, err
 }
 
@@ -158,7 +158,7 @@ func getIsReplicaAurora(ctx context.Context, db *sql.DB) (bool, error) {
 		return false, nil
 	}
 	var isReplica bool
-	err := db.QueryRowContext(ctx, QueryMarkerSQL+"SELECT session_id <> 'MASTER_SESSION_ID' FROM pg_catalog.aurora_replica_status() WHERE server_id = pg_catalog.aurora_db_instance_identifier()").Scan(&isReplica)
+	err := db.QueryRowContext(ctx, WithQueryMarker("SELECT session_id <> 'MASTER_SESSION_ID' FROM pg_catalog.aurora_replica_status() WHERE server_id = pg_catalog.aurora_db_instance_identifier()")).Scan(&isReplica)
 	return isReplica, err
 }
 
@@ -171,7 +171,7 @@ SELECT 1 AS available
 func auroraDbInstanceIdentifierExists(ctx context.Context, db *sql.DB) bool {
 	var available bool
 
-	err := db.QueryRowContext(ctx, QueryMarkerSQL+auroraDbInstanceIdentifierSQL).Scan(&available)
+	err := db.QueryRowContext(ctx, WithQueryMarker(auroraDbInstanceIdentifierSQL)).Scan(&available)
 	if err != nil {
 		return false
 	}

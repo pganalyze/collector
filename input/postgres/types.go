@@ -45,7 +45,7 @@ func GetTypes(ctx context.Context, c *Collection, db *sql.DB, currentDatabaseOid
 		systemCatalogFilter = relationSQLdefaultSystemCatalogFilter
 	}
 
-	rows, err := db.QueryContext(ctx, QueryMarkerSQL+fmt.Sprintf(typesSQL, systemCatalogFilter))
+	rows, err := db.QueryContext(ctx, WithQueryMarker(fmt.Sprintf(typesSQL, systemCatalogFilter)))
 	if err != nil {
 		return nil, err
 	}

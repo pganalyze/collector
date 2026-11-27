@@ -16,7 +16,7 @@ SELECT extname,
 	 `
 
 func GetExtensions(ctx context.Context, db *sql.DB, currentDatabaseOid state.Oid) ([]state.PostgresExtension, error) {
-	rows, err := db.QueryContext(ctx, QueryMarkerSQL+extensionsSQL)
+	rows, err := db.QueryContext(ctx, WithQueryMarker(extensionsSQL))
 	if err != nil {
 		return nil, err
 	}

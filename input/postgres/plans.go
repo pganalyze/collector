@@ -83,7 +83,7 @@ func GetPlans(ctx context.Context, c *Collection, db *sql.DB, showtext bool) (st
 		querySql = fmt.Sprintf(auroraPlanSQL, ioTimeFields, showtext)
 	} else {
 		var extSchema string
-		err = db.QueryRowContext(ctx, QueryMarkerSQL+plansExtensionSQL).Scan(&extSchema)
+		err = db.QueryRowContext(ctx, WithQueryMarker(plansExtensionSQL)).Scan(&extSchema)
 		if err == sql.ErrNoRows {
 			// In case the extension does not exist we return without an error here - because pg_stat_plans
 			// is not widely available yet, we don't want to confuse the test output.
@@ -96,7 +96,7 @@ func GetPlans(ctx context.Context, c *Collection, db *sql.DB, showtext bool) (st
 		querySql = fmt.Sprintf(statPlanSQL, extSchema, showtext)
 	}
 
-	rows, err := db.QueryContext(ctx, QueryMarkerSQL+querySql)
+	rows, err := db.QueryContext(ctx, WithQueryMarker(querySql))
 	if err != nil {
 		return nil, nil, err
 	}

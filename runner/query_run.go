@@ -185,7 +185,7 @@ func runQueryOnDatabase(ctx context.Context, server *state.Server, collectionOpt
 	}
 
 	pid := 0
-	err = db.QueryRow(postgres.QueryMarkerSQL + "SELECT pg_backend_pid()").Scan(&pid)
+	err = db.QueryRow(postgres.WithQueryMarker("SELECT pg_backend_pid()")).Scan(&pid)
 	if err != nil {
 		return "", err
 	}
@@ -194,7 +194,7 @@ func runQueryOnDatabase(ctx context.Context, server *state.Server, collectionOpt
 	server.QueryRunsMutex.Unlock()
 
 	for name, value := range query.PostgresSettings {
-		_, err = db.ExecContext(ctx, postgres.QueryMarkerSQL+fmt.Sprintf("SET %s = %s", pq.QuoteIdentifier(name), pq.QuoteLiteral(value)))
+		_, err = db.ExecContext(ctx, postgres.WithQueryMarker(fmt.Sprintf("SET %s = %s", pq.QuoteIdentifier(name), pq.QuoteLiteral(value))))
 		if err != nil {
 			return "", err
 		}
@@ -205,7 +205,7 @@ func runQueryOnDatabase(ctx context.Context, server *state.Server, collectionOpt
 		return "", err
 	}
 
-	// We don't include QueryMarkerSQL so query runs are reported separately in pganalyze
+	// We don't include the query marker so query runs are reported separately in pganalyze
 	marker := fmt.Sprintf("/* pganalyze:no-alert,pganalyze-query-run:%d */ ", query.Id)
 
 	return postgres.RunExplainAnalyzeForQueryRun(ctx, db, query.QueryText, query.QueryParameters, query.QueryParameterTypes, marker)

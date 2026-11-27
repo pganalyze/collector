@@ -24,7 +24,7 @@ func RunExplain(ctx context.Context, server *state.Server, inputs []state.Postgr
 
 		return !monitoredDb ||
 			// Ignore collector queries
-			strings.HasPrefix(sample.Query, QueryMarkerSQL) ||
+			strings.Contains(sample.Query, queryMarker) ||
 			// Ignore backup-related queries (they usually take long but not because of something that can be EXPLAINed)
 			strings.Contains(sample.Query, "pg_start_backup") ||
 			strings.Contains(sample.Query, "pg_stop_backup")
@@ -104,7 +104,7 @@ func runExplainForSample(ctx context.Context, db *sql.DB, inputs []state.Postgre
 			sample.ExplainFormat = pganalyze_collector.QuerySample_JSON_EXPLAIN_FORMAT
 
 			if useHelper {
-				err = db.QueryRowContext(ctx, QueryMarkerSQL+"SELECT pganalyze.explain($1, $2)", sample.Query, pq.Array(sample.Parameters)).Scan(&explainOutput)
+				err = db.QueryRowContext(ctx, WithQueryMarker("SELECT pganalyze.explain($1, $2)"), sample.Query, pq.Array(sample.Parameters)).Scan(&explainOutput)
 				if err != nil {
 					if ctx.Err() != nil {
 						return nil, err
@@ -112,8 +112,13 @@ func runExplainForSample(ctx context.Context, db *sql.DB, inputs []state.Postgre
 					sample.ExplainError = fmt.Sprintf("%s", err)
 				}
 			} else {
+				query := sample.Query
+				statements, err := pg_query.SplitWithParser(sample.Query, true)
+				if err == nil && len(statements) == 1 {
+					query = statements[0]
+				}
 				if len(sample.Parameters) > 0 {
-					_, err = db.ExecContext(ctx, QueryMarkerSQL+"PREPARE pganalyze_explain AS "+sample.Query)
+					_, err = db.ExecContext(ctx, WithQueryMarker("PREPARE pganalyze_explain AS "+query))
 					if err != nil {
 						if ctx.Err() != nil {
 							return nil, err
@@ -121,7 +126,7 @@ func runExplainForSample(ctx context.Context, db *sql.DB, inputs []state.Postgre
 						sample.ExplainError = fmt.Sprintf("%s", err)
 					} else {
 						paramStr := getQuotedParamsStr(sample.Parameters)
-						err = db.QueryRowContext(ctx, QueryMarkerSQL+"EXPLAIN (VERBOSE, FORMAT JSON) EXECUTE pganalyze_explain("+paramStr+")").Scan(&explainOutput)
+						err = db.QueryRowContext(ctx, WithQueryMarker("EXPLAIN (VERBOSE, FORMAT JSON) EXECUTE pganalyze_explain("+paramStr+")")).Scan(&explainOutput)
 						if err != nil {
 							if ctx.Err() != nil {
 								return nil, err
@@ -129,13 +134,13 @@ func runExplainForSample(ctx context.Context, db *sql.DB, inputs []state.Postgre
 							sample.ExplainError = fmt.Sprintf("%s", err)
 						}
 
-						_, err = db.ExecContext(ctx, QueryMarkerSQL+"DEALLOCATE pganalyze_explain")
+						_, err = db.ExecContext(ctx, WithQueryMarker("DEALLOCATE pganalyze_explain"))
 						if err != nil {
 							return nil, err
 						}
 					}
 				} else {
-					err = db.QueryRowContext(ctx, QueryMarkerSQL+"EXPLAIN (VERBOSE, FORMAT JSON) "+sample.Query).Scan(&explainOutput)
+					err = db.QueryRowContext(ctx, WithQueryMarker("EXPLAIN (VERBOSE, FORMAT JSON) "+query)).Scan(&explainOutput)
 					if err != nil {
 						if ctx.Err() != nil {
 							return nil, err

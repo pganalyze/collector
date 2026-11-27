@@ -57,7 +57,7 @@ func GetColumnStats(ctx context.Context, c *Collection, db *sql.DB, dbName strin
 		}
 	}
 
-	rows, err := db.QueryContext(ctx, QueryMarkerSQL+fmt.Sprintf(columnStatsSQL, sourceTable), c.Config.IgnoreSchemaRegexp)
+	rows, err := db.QueryContext(ctx, WithQueryMarker(fmt.Sprintf(columnStatsSQL, sourceTable)), c.Config.IgnoreSchemaRegexp)
 	if err != nil {
 		return nil, err
 	}

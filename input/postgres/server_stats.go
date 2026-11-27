@@ -82,7 +82,7 @@ const pgStatStatementsInfoSQL string = `
 SELECT
 	dealloc,
 	stats_reset
-FROM %s;
+FROM %s
 `
 
 const ioStatisticSQLPg16 string = `
@@ -133,7 +133,7 @@ func GetServerStats(ctx context.Context, c *Collection, db *sql.DB, ps state.Per
 		} else {
 			auroraStatsRel = "(VALUES(NULL)) AS _(feedback_xmin)"
 		}
-		err = db.QueryRowContext(ctx, QueryMarkerSQL+fmt.Sprintf(xminHorizonSQL, sourceStatReplicationTable, auroraStatsRel)).Scan(
+		err = db.QueryRowContext(ctx, WithQueryMarker(fmt.Sprintf(xminHorizonSQL, sourceStatReplicationTable, auroraStatsRel))).Scan(
 			&stats.XminHorizonBackend, &stats.XminHorizonReplicationSlot, &stats.XminHorizonReplicationSlotCatalog,
 			&stats.XminHorizonPreparedXact, &stats.XminHorizonStandby,
 		)
@@ -148,7 +148,7 @@ func GetServerStats(ctx context.Context, c *Collection, db *sql.DB, ps state.Per
 			transactionIdSQL = transactionIdSQLDefault
 		}
 
-		err = db.QueryRowContext(ctx, QueryMarkerSQL+transactionIdSQL).Scan(
+		err = db.QueryRowContext(ctx, WithQueryMarker(transactionIdSQL)).Scan(
 			&stats.CurrentXactId, &stats.NextMultiXactId,
 		)
 		if err != nil {
@@ -175,7 +175,7 @@ func getPgStatStatementsInfo(ctx context.Context, db *sql.DB, stats *state.PgSta
 	}
 
 	pgStatStatementsInfoView = extSchema + ".pg_stat_statements_info"
-	err = db.QueryRowContext(ctx, QueryMarkerSQL+fmt.Sprintf(pgStatStatementsInfoSQL, pgStatStatementsInfoView)).Scan(
+	err = db.QueryRowContext(ctx, WithQueryMarker(fmt.Sprintf(pgStatStatementsInfoSQL, pgStatStatementsInfoView))).Scan(
 		&stats.Dealloc, &stats.Reset,
 	)
 	if err != nil {
@@ -196,7 +196,7 @@ func GetPgStatIo(ctx context.Context, c *Collection, db *sql.DB) (stats state.Po
 	if c.PostgresVersion.Numeric < state.PostgresVersion16 {
 		return
 	}
-	rows, err = db.Query(QueryMarkerSQL + ioStatisticSQLPg16)
+	rows, err = db.Query(WithQueryMarker(ioStatisticSQLPg16))
 	if err != nil {
 		return
 	}

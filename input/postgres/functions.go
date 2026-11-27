@@ -61,7 +61,7 @@ func GetFunctions(ctx context.Context, logger *util.Logger, db *sql.DB, postgres
 		systemCatalogFilter = relationSQLdefaultSystemCatalogFilter
 	}
 
-	rows, err := db.QueryContext(ctx, QueryMarkerSQL+fmt.Sprintf(functionsSQL, systemCatalogFilter), ignoreRegexp)
+	rows, err := db.QueryContext(ctx, WithQueryMarker(fmt.Sprintf(functionsSQL, systemCatalogFilter)), ignoreRegexp)
 	if err != nil {
 		return nil, err
 	}
@@ -122,7 +122,7 @@ func GetFunctionStats(ctx context.Context, db *sql.DB, postgresVersion state.Pos
 		systemCatalogFilter = relationSQLdefaultSystemCatalogFilter
 	}
 
-	rows, err := db.QueryContext(ctx, QueryMarkerSQL+fmt.Sprintf(functionStatsSQL, systemCatalogFilter), ignoreRegexp)
+	rows, err := db.QueryContext(ctx, WithQueryMarker(fmt.Sprintf(functionStatsSQL, systemCatalogFilter)), ignoreRegexp)
 	if err != nil {
 		err = fmt.Errorf("FunctionStats/Query: %s", err)
 		return

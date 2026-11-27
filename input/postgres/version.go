@@ -10,18 +10,18 @@ import (
 
 // getPostgresVersion - Reads the version of the connected PostgreSQL server
 func getPostgresVersion(ctx context.Context, db *sql.DB) (version state.PostgresVersion, err error) {
-	err = db.QueryRowContext(ctx, QueryMarkerSQL+"SELECT pg_catalog.version()").Scan(&version.Full)
+	err = db.QueryRowContext(ctx, WithQueryMarker("SELECT pg_catalog.version()")).Scan(&version.Full)
 	if err != nil {
 		return
 	}
 	version.IsEPAS = strings.Contains(version.Full, "EnterpriseDB Advanced Server")
 
-	err = db.QueryRowContext(ctx, QueryMarkerSQL+"SHOW server_version").Scan(&version.Short)
+	err = db.QueryRowContext(ctx, WithQueryMarker("SHOW server_version")).Scan(&version.Short)
 	if err != nil {
 		return
 	}
 
-	err = db.QueryRowContext(ctx, QueryMarkerSQL+"SHOW server_version_num").Scan(&version.Numeric)
+	err = db.QueryRowContext(ctx, WithQueryMarker("SHOW server_version_num")).Scan(&version.Numeric)
 	if err != nil {
 		return
 	}
@@ -43,12 +43,12 @@ func getPostgresVersion(ctx context.Context, db *sql.DB) (version state.Postgres
 
 func GetIsAwsAurora(ctx context.Context, db *sql.DB) (bool, error) {
 	var isAurora bool
-	err := db.QueryRowContext(ctx, QueryMarkerSQL+"SELECT pg_catalog.count(1) = 1 FROM pg_settings WHERE name = 'rds.extensions' AND setting LIKE '%aurora_stat_utils%'").Scan(&isAurora)
+	err := db.QueryRowContext(ctx, WithQueryMarker("SELECT pg_catalog.count(1) = 1 FROM pg_settings WHERE name = 'rds.extensions' AND setting LIKE '%aurora_stat_utils%'")).Scan(&isAurora)
 	return isAurora, err
 }
 
 func GetIsAlloyDB(ctx context.Context, db *sql.DB) (bool, error) {
 	var isAlloyDB bool
-	err := db.QueryRowContext(ctx, QueryMarkerSQL+"SELECT pg_catalog.count(1) >= 1 FROM pg_settings WHERE name LIKE 'alloydb.%'").Scan(&isAlloyDB)
+	err := db.QueryRowContext(ctx, WithQueryMarker("SELECT pg_catalog.count(1) >= 1 FROM pg_settings WHERE name LIKE 'alloydb.%'")).Scan(&isAlloyDB)
 	return isAlloyDB, err
 }

@@ -46,7 +46,7 @@ SELECT n.nspname, c.relname
 
 func resolveToastTable(ctx context.Context, db *sql.DB, toastName string) (string, string, error) {
 	var schemaName, relationName string
-	err := db.QueryRowContext(ctx, QueryMarkerSQL+resolveToastSQL, toastName).Scan(&schemaName, &relationName)
+	err := db.QueryRowContext(ctx, WithQueryMarker(resolveToastSQL), toastName).Scan(&schemaName, &relationName)
 	if err != nil {
 		return "", "", err
 	}
@@ -68,7 +68,7 @@ var ErrUnknownSetting = errors.New("Setting is not defined")
 func GetPostgresSetting(ctx context.Context, db *sql.DB, settingName string) (string, error) {
 	var value string
 
-	err := db.QueryRow(QueryMarkerSQL + fmt.Sprintf(settingValueSQL, settingName)).Scan(&value)
+	err := db.QueryRow(WithQueryMarker(fmt.Sprintf(settingValueSQL, settingName))).Scan(&value)
 	if err == sql.ErrNoRows {
 		return "", ErrUnknownSetting
 	} else if err != nil {

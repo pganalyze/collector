@@ -48,7 +48,7 @@ func GetBackends(ctx context.Context, c *Collection, db *sql.DB) ([]state.Postgr
 		sourceTable = "pg_catalog.pg_stat_activity"
 	}
 
-	rows, err := db.QueryContext(ctx, QueryMarkerSQL+fmt.Sprintf(activitySQL, blockingPidsField, queryIdField, sourceTable))
+	rows, err := db.QueryContext(ctx, WithQueryMarker(fmt.Sprintf(activitySQL, blockingPidsField, queryIdField, sourceTable)))
 	if err != nil {
 		return nil, err
 	}
