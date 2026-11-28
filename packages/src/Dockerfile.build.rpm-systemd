@@ -12,6 +12,13 @@ ENV SOURCE_DIR /source
 #
 # Rocky Linux 8 ships glibc 2.28, matching RHEL 8 as the oldest supported RPM target, and
 # RPM 4.14, which already emits the SHA256 header and payload digests newer systems expect.
+#
+# Use the primary Rocky mirror instead of the mirrorlist: individual community mirrors can be
+# partially synced (e.g. AppStream updated before BaseOS), causing intermittent dependency errors.
+RUN sed -i \
+    -e 's/^mirrorlist=/#mirrorlist=/' \
+    -e 's|^#baseurl=http://dl.rockylinux.org|baseurl=https://dl.rockylinux.org|' \
+    /etc/yum.repos.d/Rocky-*.repo
 RUN dnf -y -q module enable ruby:3.3 \
   && dnf install -y tar make git gcc binutils ruby ruby-devel redhat-rpm-config rpm-build gzip xz
 
