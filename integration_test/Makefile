@@ -1,4 +1,4 @@
-POSTGRES_TARGETS := pg12 pg13 pg14 pg15 pg16 pg17
+POSTGRES_TARGETS := pg12 pg13 pg14 pg15 pg16 pg17 pg18
 SCRIPT_TARGETS := reload guided-setup installer otel-vector
 
 TARGETS := $(POSTGRES_TARGETS) $(SCRIPT_TARGETS)

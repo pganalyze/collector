@@ -4,7 +4,7 @@
 # collector errors, for the table excluded by IGNORE_SCHEMA_REGEXP, and against
 # the expected normalized queries in <test>.expected.
 #
-# Usage: ./postgres.sh pg12|pg13|pg14|pg15|pg16|pg17|citus
+# Usage: ./postgres.sh pg12|pg13|pg14|pg15|pg16|pg17|pg18|citus
 
 TEST_NAME=$1
 # shellcheck source=lib.sh
