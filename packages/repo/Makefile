@@ -10,9 +10,20 @@ docker_clean = $(DOCKER_CMD) kill pga-collector-repo && $(DOCKER_CMD) rm pga-col
 
 all: download_repo update_rpm update_deb copy_install_script upload_repo
 
+# The distributions we publish packages for. Retired distributions are not downloaded or
+# updated, but remain available in the S3 bucket.
+#
+# If you change this also update the tested distributions in packages/test/Makefile
+RPM_DISTROS=el/8 el/9 el/10 fedora/42 fedora/43
+DEB_DISTROS=ubuntu/jammy ubuntu/noble debian/bookworm debian/trixie
+ACTIVE_DISTROS=$(RPM_DISTROS) $(DEB_DISTROS)
+DISTRO_FAMILIES=$(sort $(foreach distro,$(ACTIVE_DISTROS),$(firstword $(subst /, ,$(distro)))))
+
 download_repo:
 	rm -rf $(REPO_DIR)
-	aws s3 sync s3://packages.pganalyze.com/ $(REPO_DIR)
+	aws s3 sync s3://packages.pganalyze.com/ $(REPO_DIR) \
+		$(foreach family,$(DISTRO_FAMILIES),--exclude "$(family)/*") \
+		$(foreach distro,$(ACTIVE_DISTROS),--include "$(distro)/*")
 	mkdir -p $(REPO_DIR)
 
 upload_repo:
@@ -31,6 +42,7 @@ update_rpm:
 		-e REPO_GPG_KEY=$(REPO_GPG_KEY) \
 		-e RPM_PACKAGE_X86_64=$(RPM_PACKAGE_X86_64) \
 		-e RPM_PACKAGE_ARM64=$(RPM_PACKAGE_ARM64) \
+		-e RPM_DISTROS="$(RPM_DISTROS)" \
 		pga-collector-repo sleep 600
 	keybase pgp export --unencrypted -s -q $(REPO_GPG_KEY) | $(DOCKER_CMD) exec -i pga-collector-repo gpg --allow-secret-key-import --import
 	$(DOCKER_CMD) exec -i pga-collector-repo /root/sync_rpm.sh
@@ -46,6 +58,7 @@ update_deb:
 		-e REPO_GPG_KEY=$(REPO_GPG_KEY) \
 		-e DEB_PACKAGE_X86_64=$(DEB_PACKAGE_X86_64) \
 		-e DEB_PACKAGE_ARM64=$(DEB_PACKAGE_ARM64) \
+		-e DEB_DISTROS="$(DEB_DISTROS)" \
 		-e container=docker \
 		--privileged=true \
 		pga-collector-repo /sbin/init

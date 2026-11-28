@@ -5,29 +5,21 @@ set -e
 # Remove all except the master signing key, so reprepro does the right thing (subkeys are not supported)
 printf "key 1\ndelkey\ny\nkey 1\ndelkey\ny\nsave\n" | gpg --batch --command-fd 0 --edit-key $REPO_GPG_KEY
 
-mkdir -p /repo/ubuntu/jammy/conf
-cp /root/deb.distributions /repo/ubuntu/jammy/conf/distributions
-reprepro --basedir /repo/ubuntu/jammy includedeb stable /deb/systemd/$DEB_PACKAGE_X86_64
-reprepro --basedir /repo/ubuntu/jammy includedeb stable /deb/systemd/$DEB_PACKAGE_ARM64
+# The list of distributions is passed in from the Makefile
+if [ -z "$DEB_DISTROS" ]; then
+  echo "DEB_DISTROS is not set" >&2
+  exit 1
+fi
 
-mkdir -p /repo/ubuntu/noble/conf
-cp /root/deb.distributions /repo/ubuntu/noble/conf/distributions
-reprepro --basedir /repo/ubuntu/noble includedeb stable /deb/systemd/$DEB_PACKAGE_X86_64
-reprepro --basedir /repo/ubuntu/noble includedeb stable /deb/systemd/$DEB_PACKAGE_ARM64
-
-mkdir -p /repo/debian/bookworm/conf
-cp /root/deb.distributions /repo/debian/bookworm/conf/distributions
-reprepro --basedir /repo/debian/bookworm includedeb stable /deb/systemd/$DEB_PACKAGE_X86_64
-reprepro --basedir /repo/debian/bookworm includedeb stable /deb/systemd/$DEB_PACKAGE_ARM64
-
-mkdir -p /repo/debian/trixie/conf
-cp /root/deb.distributions /repo/debian/trixie/conf/distributions
-reprepro --basedir /repo/debian/trixie includedeb stable /deb/systemd/$DEB_PACKAGE_X86_64
-reprepro --basedir /repo/debian/trixie includedeb stable /deb/systemd/$DEB_PACKAGE_ARM64
+for distro in $DEB_DISTROS; do
+  mkdir -p /repo/$distro/conf
+  cp /root/deb.distributions /repo/$distro/conf/distributions
+  reprepro --basedir /repo/$distro includedeb stable /deb/systemd/$DEB_PACKAGE_X86_64
+  reprepro --basedir /repo/$distro includedeb stable /deb/systemd/$DEB_PACKAGE_ARM64
+done
 
 # Verify signatures
 gpg --dearmor --yes -o /repo/pganalyze_signing_key.gpg /repo/pganalyze_signing_key.asc
-gpgv --keyring /repo/pganalyze_signing_key.gpg /repo/ubuntu/jammy/dists/stable/InRelease
-gpgv --keyring /repo/pganalyze_signing_key.gpg /repo/ubuntu/noble/dists/stable/InRelease
-gpgv --keyring /repo/pganalyze_signing_key.gpg /repo/debian/bookworm/dists/stable/InRelease
-gpgv --keyring /repo/pganalyze_signing_key.gpg /repo/debian/trixie/dists/stable/InRelease
+for distro in $DEB_DISTROS; do
+  gpgv --keyring /repo/pganalyze_signing_key.gpg /repo/$distro/dists/stable/InRelease
+done

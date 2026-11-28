@@ -20,37 +20,17 @@ rpm --import https://packages.pganalyze.com/pganalyze_signing_key.asc
 rpm --checksig -v /rpm/systemd/$RPM_PACKAGE_X86_64
 rpm --checksig -v /rpm/systemd/$RPM_PACKAGE_ARM64
 
-mkdir -p /repo/el/8/RPMS
-cp /rpm/systemd/$RPM_PACKAGE_X86_64 /repo/el/8/RPMS/
-cp /rpm/systemd/$RPM_PACKAGE_ARM64 /repo/el/8/RPMS/
-createrepo --update /repo/el/8
-rm -f /repo/el/8/repodata/repomd.xml.asc
-gpg --detach-sign --armor --batch /repo/el/8/repodata/repomd.xml
+# The list of distributions is passed in from the Makefile
+if [ -z "$RPM_DISTROS" ]; then
+  echo "RPM_DISTROS is not set" >&2
+  exit 1
+fi
 
-mkdir -p /repo/el/9/RPMS
-cp /rpm/systemd/$RPM_PACKAGE_X86_64 /repo/el/9/RPMS/
-cp /rpm/systemd/$RPM_PACKAGE_ARM64 /repo/el/9/RPMS/
-createrepo --update /repo/el/9
-rm -f /repo/el/9/repodata/repomd.xml.asc
-gpg --detach-sign --armor --batch /repo/el/9/repodata/repomd.xml
-
-mkdir -p /repo/el/10/RPMS
-cp /rpm/systemd/$RPM_PACKAGE_X86_64 /repo/el/10/RPMS/
-cp /rpm/systemd/$RPM_PACKAGE_ARM64 /repo/el/10/RPMS/
-createrepo --update /repo/el/10
-rm -f /repo/el/10/repodata/repomd.xml.asc
-gpg --detach-sign --armor --batch /repo/el/10/repodata/repomd.xml
-
-mkdir -p /repo/fedora/42/RPMS
-cp /rpm/systemd/$RPM_PACKAGE_X86_64 /repo/fedora/42/RPMS/
-cp /rpm/systemd/$RPM_PACKAGE_ARM64 /repo/fedora/42/RPMS/
-createrepo --update /repo/fedora/42
-rm -f /repo/fedora/42/repodata/repomd.xml.asc
-gpg --detach-sign --armor --batch /repo/fedora/42/repodata/repomd.xml
-
-mkdir -p /repo/fedora/43/RPMS
-cp /rpm/systemd/$RPM_PACKAGE_X86_64 /repo/fedora/43/RPMS/
-cp /rpm/systemd/$RPM_PACKAGE_ARM64 /repo/fedora/43/RPMS/
-createrepo --update /repo/fedora/43
-rm -f /repo/fedora/43/repodata/repomd.xml.asc
-gpg --detach-sign --armor --batch /repo/fedora/43/repodata/repomd.xml
+for distro in $RPM_DISTROS; do
+  mkdir -p /repo/$distro/RPMS
+  cp /rpm/systemd/$RPM_PACKAGE_X86_64 /repo/$distro/RPMS/
+  cp /rpm/systemd/$RPM_PACKAGE_ARM64 /repo/$distro/RPMS/
+  createrepo --update /repo/$distro
+  rm -f /repo/$distro/repodata/repomd.xml.asc
+  gpg --detach-sign --armor --batch /repo/$distro/repodata/repomd.xml
+done
