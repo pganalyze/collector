@@ -9,6 +9,10 @@ docker_exec = $(DOCKER_CMD) exec pga-collector-test $(1)
 docker_test_and_clean = $(DOCKER_CMD) exec pga-collector-test /root/systemd_test.sh && \
   $(DOCKER_CMD) kill pga-collector-test && $(DOCKER_CMD) rm pga-collector-test && $(DOCKER_CMD) rmi -f pga-collector-test
 
+# Use the primary Rocky mirror instead of the mirrorlist: individual community mirrors can be
+# partially synced (e.g. AppStream updated before BaseOS), causing intermittent dependency errors.
+ROCKY_USE_PRIMARY_MIRROR = RUN sed -i -e 's/^mirrorlist=/\#mirrorlist=/' -e 's|^\#baseurl=http://dl.rockylinux.org|baseurl=https://dl.rockylinux.org|' /etc/yum.repos.d/*.repo
+
 # Note: The default list excludes rockylinux9 since there is an open issue with
 # /sbin/init not being present, see https://github.com/rocky-linux/sig-cloud-instance-images/issues/39
 DISTROS_X86_64=rhel8_x86_64 rockylinux8_x86_64 rhel9_x86_64 rhel10_x86_64 fedora42_x86_64 fedora43_x86_64 amazonlinux2023_x86_64 ubuntu-jammy_x86_64 ubuntu-noble_x86_64 debian-bookworm_x86_64 debian-trixie_x86_64
@@ -64,6 +68,7 @@ rhel8_arm64: $(RPM_PACKAGE_ARM64)
 
 rockylinux8_x86_64: $(RPM_PACKAGE_X86_64)
 	echo "FROM rockylinux:8" > Dockerfile.tmp
+	echo "$(ROCKY_USE_PRIMARY_MIRROR)" >> Dockerfile.tmp
 	echo "RUN dnf install -y procps" >> Dockerfile.tmp
 	echo "COPY . /root" >> Dockerfile.tmp
 	$(call docker_build_and_run,amd64)
@@ -73,6 +78,7 @@ rockylinux8_x86_64: $(RPM_PACKAGE_X86_64)
 
 rockylinux8_arm64: $(RPM_PACKAGE_ARM64)
 	echo "FROM rockylinux:8" > Dockerfile.tmp
+	echo "$(ROCKY_USE_PRIMARY_MIRROR)" >> Dockerfile.tmp
 	echo "RUN dnf install -y procps" >> Dockerfile.tmp
 	echo "COPY . /root" >> Dockerfile.tmp
 	$(call docker_build_and_run,arm64)
@@ -100,6 +106,7 @@ rhel9_arm64: $(RPM_PACKAGE_ARM64)
 
 rockylinux9_x86_64: $(RPM_PACKAGE_X86_64)
 	echo "FROM rockylinux:9" > Dockerfile.tmp
+	echo "$(ROCKY_USE_PRIMARY_MIRROR)" >> Dockerfile.tmp
 	echo "RUN dnf install -y procps" >> Dockerfile.tmp
 	echo "COPY . /root" >> Dockerfile.tmp
 	$(call docker_build_and_run,amd64)
@@ -109,6 +116,7 @@ rockylinux9_x86_64: $(RPM_PACKAGE_X86_64)
 
 rockylinux9_arm64: $(RPM_PACKAGE_ARM64)
 	echo "FROM rockylinux:9" > Dockerfile.tmp
+	echo "$(ROCKY_USE_PRIMARY_MIRROR)" >> Dockerfile.tmp
 	echo "RUN dnf install -y procps" >> Dockerfile.tmp
 	echo "COPY . /root" >> Dockerfile.tmp
 	$(call docker_build_and_run,arm64)
